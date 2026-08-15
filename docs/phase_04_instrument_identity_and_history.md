@@ -86,6 +86,7 @@ This gives every historical ATLAS source object one provenance chain:
 
 ```text
 Massive remote inventory
+  -> actual read-entitlement probe
   -> exact missing-file plan
   -> atomic download
   -> gzip/schema validation
@@ -117,10 +118,33 @@ without writing files:
   --dry-run
 ```
 
-The dry-run reports exchange sessions, remote availability, files already complete,
-planned downloads, provider-reported bytes, and free space on the drive containing
-ATLAS. Raw download size is only part of the final footprint because canonical 1m
-and derived 15m/1h/4h Parquet are also retained.
+The dry-run reports exchange sessions, remote listing availability, files already
+complete, planned downloads, provider-reported bytes, and free space on the drive
+containing ATLAS. A listed object is not automatically assumed readable because
+Massive can expose older object names outside the account's current GetObject
+history entitlement.
+
+Use the access probe when establishing a clean historical boundary:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\probe_massive_history_access.py `
+  --dataset daily `
+  --start 2021-01-04 `
+  --end 2026-08-14
+```
+
+and repeat for `--dataset minute`. The probe uses one-byte range reads and binary
+search to find the first actually readable session. A 403/AccessDenied response is
+treated as a non-retriable entitlement restriction rather than a transient download
+failure.
+
+For the validated 2026-08-15 local environment, both stock daily and minute flat
+files had the same boundary: 2021-08-13 denied and 2021-08-16 readable. This is an
+observed subscription boundary, not a permanent date; it can move as a rolling
+history window or account entitlement changes.
+
+Raw download size is only part of the final footprint because canonical 1m and
+derived 15m/1h/4h Parquet are also retained.
 
 ## 5. Optional legacy recovery import
 
@@ -134,7 +158,7 @@ A fast existence/coverage audit:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\audit_historical_lake.py `
-  --start 2021-01-04 `
+  --start 2021-08-16 `
   --end 2026-08-14 `
   --json-out research\reports\historical_lake_audit.json
 ```
@@ -158,10 +182,18 @@ Download missing provider files from Massive and materialize them:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\build_historical_lake.py `
-  --start 2021-01-04 `
+  --start 2021-08-16 `
   --end 2026-08-14 `
   --download-missing
 ```
+
+When `--download-missing` is used, ATLAS probes the daily and minute read entitlement
+before downloading. If the requested range starts before the common readable
+boundary, the inaccessible prefix is reported and skipped automatically. The
+effective build range is the intersection readable for all required source datasets.
+Running without `--download-missing` does not apply that trim, so previously retained
+local source files can still be materialized even if they later age outside a rolling
+provider entitlement window.
 
 The Phase 2 ingestion manifest and Phase 3 materialization manifest are authoritative
 for idempotency. A stopped or failed build is restarted with the same command;
@@ -175,10 +207,10 @@ For an initial performance/safety test, use a session cap:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\build_historical_lake.py `
-  --start 2026-08-03 `
-  --end 2026-08-14 `
+  --start 2021-08-16 `
+  --end 2021-09-30 `
   --download-missing `
-  --max-sessions 3
+  --max-sessions 20
 ```
 
 ## 8. Session-envelope facts remain canonical
