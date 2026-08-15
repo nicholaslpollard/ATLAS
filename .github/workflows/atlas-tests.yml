@@ -1,0 +1,51 @@
+name: ATLAS tests
+
+on:
+  push:
+    branches:
+      - main
+      - 'phase-*'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Install ATLAS
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock
+          python -m pip install -e .
+
+      - name: Compile
+        run: python -m compileall -q packages apps scripts tests
+
+      - name: Validate foundation
+        run: python scripts/validate_foundation.py
+
+      - name: Validate Phase 3
+        run: python scripts/validate_phase3.py
+
+      - name: Validate Phase 4
+        run: python scripts/validate_phase4.py
+
+      - name: Run tests
+        run: python -m pytest -q
