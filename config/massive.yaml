@@ -50,3 +50,10 @@ massive:
     max_retry_seconds: 20.0
     validate_gzip_crc: true
     count_rows_during_validation: false
+
+  reference:
+    page_limit: 1000
+    request_timeout_seconds: 30.0
+    max_attempts: 4
+    initial_retry_seconds: 1.0
+    max_retry_seconds: 20.0

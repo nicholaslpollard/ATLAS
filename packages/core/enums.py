@@ -44,6 +44,12 @@ class AssetClass(StrEnum):
     UNKNOWN = "unknown"
 
 
+class InstrumentIdentityQuality(StrEnum):
+    STRONG = "strong"
+    MEDIUM = "medium"
+    FALLBACK = "fallback"
+
+
 class Timeframe(StrEnum):
     MINUTE_1 = "1m"
     MINUTE_15 = "15m"
