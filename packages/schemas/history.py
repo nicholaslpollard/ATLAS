@@ -60,6 +60,7 @@ class HistoricalBuildResult(BaseModel):
     effective_start_date: date | None = None
     effective_end_date: date | None = None
     sessions_requested: int = Field(ge=0)
+    sessions_processed: int = Field(default=0, ge=0)
     inaccessible_sessions_skipped: int = Field(default=0, ge=0)
     daily_downloads_planned: int = Field(default=0, ge=0)
     minute_downloads_planned: int = Field(default=0, ge=0)
