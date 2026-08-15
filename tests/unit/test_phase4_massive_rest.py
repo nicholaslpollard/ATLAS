@@ -63,9 +63,10 @@ class FakeTickerClient:
         return []
 
 
-def test_reference_provider_combines_active_and_inactive():
+def test_reference_provider_combines_active_and_inactive_without_case_folding_tickers():
     settings = load_settings(ROOT, "development")
     provider = MassiveReferenceProvider(settings, client=FakeTickerClient())
     rows = provider.stock_snapshot(date(2026, 8, 14), include_inactive=True)
-    assert [row["ticker"] for row in rows] == ["AAPL", "OLD"]
+    assert [row["ticker"] for row in rows] == ["aapl", "old"]
+    # Stable code-like identifiers are normalized; ticker text is not.
     assert rows[0]["composite_figi"] == "BBG000B9XRY4"
