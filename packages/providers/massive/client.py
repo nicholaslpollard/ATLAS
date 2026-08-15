@@ -7,9 +7,12 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
-from packages.core.exceptions import ProviderError
+from packages.core.exceptions import ProviderAccessDeniedError, ProviderError
 from packages.core.secrets import get_secret
 from packages.core.settings import AtlasSettings
+
+
+_ACCESS_DENIED_CODES = {"403", "AccessDenied", "Forbidden"}
 
 
 class MassiveS3Client:
@@ -39,6 +42,12 @@ class MassiveS3Client:
             config=Config(signature_version="s3v4", retries={"max_attempts": 0}),
         )
 
+    @staticmethod
+    def _is_access_denied(exc: ClientError) -> bool:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        status = exc.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        return code in _ACCESS_DENIED_CODES or status == 403
+
     def list_objects(self, prefix: str) -> Iterator[dict[str, Any]]:
         try:
             paginator = self._client.get_paginator("list_objects_v2")
@@ -47,6 +56,29 @@ class MassiveS3Client:
                     yield obj
         except (BotoCoreError, ClientError) as exc:
             raise ProviderError(f"Massive flat-file listing failed for prefix {prefix!r}: {type(exc).__name__}") from exc
+
+    def can_read_object(self, remote_key: str) -> bool:
+        """Probe actual subscription read access without downloading the full object.
+
+        Massive can expose object names in listing results even when the account's
+        historical entitlement does not permit GetObject for that date. A one-byte
+        range read therefore distinguishes remote existence from readable access.
+        """
+        try:
+            response = self._client.get_object(Bucket=self.bucket, Key=remote_key, Range="bytes=0-0")
+            body = response.get("Body")
+            if body is not None:
+                body.read(1)
+                close = getattr(body, "close", None)
+                if callable(close):
+                    close()
+            return True
+        except ClientError as exc:
+            if self._is_access_denied(exc):
+                return False
+            raise ProviderError(f"Massive flat-file access probe failed for {remote_key!r}: ClientError") from exc
+        except (BotoCoreError, OSError) as exc:
+            raise ProviderError(f"Massive flat-file access probe failed for {remote_key!r}: {type(exc).__name__}") from exc
 
     def iter_object_chunks(self, remote_key: str, chunk_size: int) -> Iterable[bytes]:
         try:
@@ -57,5 +89,11 @@ class MassiveS3Client:
                 if not chunk:
                     break
                 yield chunk
-        except (BotoCoreError, ClientError, OSError) as exc:
+        except ClientError as exc:
+            if self._is_access_denied(exc):
+                raise ProviderAccessDeniedError(
+                    f"Massive denied flat-file read access for {remote_key!r}; the object may be outside the current subscription history window"
+                ) from exc
+            raise ProviderError(f"Massive flat-file read failed for {remote_key!r}: ClientError") from exc
+        except (BotoCoreError, OSError) as exc:
             raise ProviderError(f"Massive flat-file read failed for {remote_key!r}: {type(exc).__name__}") from exc
