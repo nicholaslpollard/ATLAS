@@ -29,49 +29,31 @@ def main(argv: list[str] | None = None) -> int:
     settings = load_settings(PROJECT_ROOT)
     dataset = parse_stock_dataset(args.dataset)
     provider = MassiveFlatFileProvider(settings)
-    files = provider.list_files(dataset, args.start, args.end)
+    first, inaccessible, listed = provider.first_readable_file(dataset, args.start, args.end)
 
     print(f"ATLAS Massive history-access probe: {dataset.value}")
     print(f"Range: {args.start} -> {args.end}")
-    print(f"Remote files listed: {len(files)}")
-    if not files:
+    print(f"Remote files listed: {listed}")
+    if listed == 0:
         print("No remote files were listed in the requested range.")
         return 2
-
-    if not provider.client.can_read_object(files[-1].remote_key):
-        print(f"Newest listed session is not readable: {files[-1].trading_date}")
-        print("The current S3 credentials do not have read access to this dataset/range.")
+    if first is None:
+        print("No listed session in the requested range is readable under the current S3 subscription.")
         return 2
 
-    if provider.client.can_read_object(files[0].remote_key):
-        first_index = 0
-    else:
-        low = 0
-        high = len(files) - 1
-        while low < high:
-            mid = (low + high) // 2
-            if provider.client.can_read_object(files[mid].remote_key):
-                high = mid
-            else:
-                low = mid + 1
-        first_index = low
-
-    first = files[first_index]
-    inaccessible = first_index
-    readable = len(files) - first_index
-    readable_bytes = sum(item.expected_size_bytes or 0 for item in files[first_index:])
-
+    files = provider.list_files(dataset, first.trading_date, args.end)
+    readable_bytes = sum(item.expected_size_bytes or 0 for item in files)
     print(f"Earliest readable session: {first.trading_date}")
-    print(f"Earlier listed but inaccessible: {inaccessible}")
-    print(f"Readable listed sessions: {readable}")
+    if inaccessible:
+        print(f"Earlier listed but inaccessible: {inaccessible}")
+    print(f"Readable listed sessions: {listed - inaccessible}")
     print(f"Readable provider bytes: {readable_bytes / (1024 ** 3):.2f} GiB")
-    if first_index > 0:
-        previous = files[first_index - 1]
-        previous_readable = provider.client.can_read_object(previous.remote_key)
-        print(f"Boundary check previous session: {previous.trading_date} -> {'READABLE' if previous_readable else 'DENIED'}")
-        if previous_readable:
-            print("WARNING: access is not monotonic at the detected boundary; do not use this result as an automatic cutoff.")
-            return 3
+    if inaccessible:
+        previous_files = provider.list_files(dataset, args.start, first.trading_date)
+        previous = [item for item in previous_files if item.trading_date < first.trading_date]
+        if previous:
+            boundary = previous[-1]
+            print(f"Boundary check previous session: {boundary.trading_date} -> DENIED")
     return 0
 
 
