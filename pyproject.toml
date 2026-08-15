@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlas-trading-system"
+version = "0.1.0"
+description = "ATLAS — Autonomous Trading, Learning & Analysis System"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.13,<3",
+    "pydantic-settings>=2.14,<3",
+    "PyYAML>=6.0,<7",
+    "exchange-calendars>=4.13,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9,<10",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["packages*"]
+namespaces = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+pythonpath = ["."]

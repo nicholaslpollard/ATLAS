@@ -1,0 +1,5 @@
+logging:
+  level: INFO
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+  utc_timestamps: true
+  redact_secrets: true

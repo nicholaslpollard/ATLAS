@@ -1,0 +1,38 @@
+data:
+  calendar:
+    exchange: XNYS
+    market_timezone: America/New_York
+    canonical_timezone: UTC
+    premarket_start_local: "04:00"
+    after_hours_end_local: "20:00"
+
+  canonical:
+    stock_timeframes:
+      - 1m
+      - 1d
+    preserve_provider_vwap: true
+    preserve_transaction_count: true
+    partitioning:
+      intraday: date
+      daily: year
+
+  materialized_derived_bars:
+    - 15m
+    - 1h
+    - 4h
+
+  on_demand_bars:
+    - 1w
+    - 1mo
+
+  paths:
+    provider: data/provider
+    staging: data/staging
+    canonical: data/canonical
+    derived: data/derived
+    live: data/live
+    models: data/models
+    cache: data/cache
+    duckdb: data/duckdb
+    manifests: data/manifests
+    checkpoints: data/checkpoints

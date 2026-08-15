@@ -1,0 +1,11 @@
+project:
+  name: ATLAS
+  acronym: Autonomous Trading, Learning & Analysis System
+  version: 0.1.0
+
+app:
+  environment: development
+  trading_mode: shadow
+  market_scope: full_market
+  timezone: America/New_York
+  canonical_timezone: UTC

@@ -1,0 +1,6 @@
+app:
+  environment: shadow
+  trading_mode: shadow
+
+logging:
+  level: INFO

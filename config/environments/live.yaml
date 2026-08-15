@@ -1,0 +1,6 @@
+app:
+  environment: live
+  trading_mode: autonomous
+
+logging:
+  level: INFO

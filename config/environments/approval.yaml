@@ -1,0 +1,6 @@
+app:
+  environment: approval
+  trading_mode: approval
+
+logging:
+  level: INFO

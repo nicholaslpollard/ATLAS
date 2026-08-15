@@ -1,0 +1,6 @@
+app:
+  environment: development
+  trading_mode: shadow
+
+logging:
+  level: DEBUG
