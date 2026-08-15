@@ -30,8 +30,8 @@ def make_bar(**overrides):
     return CanonicalBar(**values)
 
 
-def test_symbol_is_normalized():
-    assert make_bar().symbol == "AAPL"
+def test_symbol_preserves_case_and_trims_whitespace():
+    assert make_bar(symbol="  TpC  ").symbol == "TpC"
 
 
 def test_timestamp_normalized_to_utc():
