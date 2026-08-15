@@ -63,6 +63,19 @@ Resolve a symbol against a snapshot with:
 .\.venv\Scripts\python.exe scripts\query_instrument_registry.py --ticker AAPL --date 2026-08-14
 ```
 
+### Provider ticker case is significant
+
+Massive follows SIP ticker formatting and uses a lowercase `p` in preferred-share
+symbols. ATLAS therefore preserves ticker case exactly apart from surrounding
+whitespace. For example, `TPC` and `TpC` are separate securities, as are `BCPC`
+and `BCpC`.
+
+Canonical market bars, reference snapshots, ticker fallback identities, registry
+lookups, quarantine records, and DuckDB symbol queries all use this exact
+provider-native symbol contract. User-facing search can later offer aliases or
+case-insensitive suggestions, but those conveniences must never alter canonical
+identity or joins.
+
 ## 4. Legacy Massive source-file import
 
 The legacy Chart Monitor derived Parquet files are not trusted as ATLAS canonical
@@ -147,10 +160,13 @@ For an initial performance test, use a safety cap:
   --max-sessions 3
 ```
 
-## 7. Provider conflicts remain quarantined
+## 7. Genuine exact-symbol conflicts remain quarantined
 
-Reference identity does not magically resolve ambiguous flat-file rows because
-Massive aggregate flat files contain ticker text but no FIGI. If the same ticker
-contains incompatible price histories in one source session, ATLAS continues the
-Phase 3 policy: quarantine the entire ambiguous ticker/session and never guess a
-winner.
+The August 14 BCPC/TPC anomaly exposed an ATLAS normalization bug rather than a
+Massive duplicate: uppercasing provider tickers had collapsed `BCpC` into `BCPC`
+and `TpC` into `TPC`. That is now fixed by preserving provider-native case.
+
+Quarantine still applies when two materially different rows share the same exact
+case-sensitive provider symbol and canonical bar key. Because Massive aggregate
+flat files contain ticker text but no FIGI, ATLAS still refuses to guess a winner
+for a genuine exact-symbol conflict.
