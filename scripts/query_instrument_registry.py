@@ -23,9 +23,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     store = InstrumentRegistryStore(load_settings(PROJECT_ROOT))
-    rows = store.resolve_ticker(args.ticker, args.date)
+    ticker = args.ticker.strip()
+    rows = store.resolve_ticker(ticker, args.date)
     if not rows:
-        print(f"No ATLAS reference observation for {args.ticker.upper()} on {args.date}.")
+        print(f"No ATLAS reference observation for {ticker} on {args.date}.")
         return 1
     for row in rows:
         print(row)
