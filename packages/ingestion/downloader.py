@@ -5,7 +5,7 @@ import os
 import time
 from pathlib import Path
 
-from packages.core.exceptions import DownloadError, ProviderError
+from packages.core.exceptions import DownloadError, ProviderAccessDeniedError, ProviderError
 from packages.schemas.ingestion import DownloadResult, IngestionPlanItem
 
 
@@ -63,6 +63,11 @@ class AtomicDownloader:
                     attempts=attempt,
                     elapsed_seconds=time.perf_counter() - started,
                 )
+            except ProviderAccessDeniedError as exc:
+                temp.unlink(missing_ok=True)
+                raise DownloadError(
+                    f"Provider denied access to {descriptor.remote_key}; check the Massive flat-file historical entitlement for this date"
+                ) from exc
             except (ProviderError, DownloadError, OSError) as exc:
                 last_error = exc
                 temp.unlink(missing_ok=True)
