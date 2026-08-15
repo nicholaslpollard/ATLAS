@@ -11,6 +11,7 @@ from packages.core.exceptions import DownloadError, ProviderAccessDeniedError
 from packages.core.settings import load_settings
 from packages.ingestion.downloader import AtomicDownloader
 from packages.providers.massive.client import MassiveS3Client
+from packages.providers.massive.flat_files import MassiveFlatFileProvider
 from packages.schemas.ingestion import IngestionPlanItem, ProviderFileDescriptor
 
 
@@ -59,6 +60,26 @@ class _DeniedProvider:
         yield b""  # pragma: no cover
 
 
+class _BoundaryClient:
+    def __init__(self, first_readable_index: int) -> None:
+        self.first_readable_index = first_readable_index
+        self.calls: list[str] = []
+
+    def can_read_object(self, remote_key: str) -> bool:
+        self.calls.append(remote_key)
+        return int(remote_key.removeprefix("key-")) >= self.first_readable_index
+
+
+def _descriptor(index: int, trading_date: date) -> ProviderFileDescriptor:
+    return ProviderFileDescriptor(
+        provider=DataProvider.MASSIVE,
+        dataset=DatasetType.STOCK_DAILY_AGGREGATES,
+        trading_date=trading_date,
+        remote_key=f"key-{index}",
+        expected_size_bytes=100 + index,
+    )
+
+
 def test_massive_access_probe_distinguishes_listed_but_denied_object():
     fake = _FakeS3()
     client = MassiveS3Client(load_settings(), s3_client=fake)
@@ -95,3 +116,29 @@ def test_downloader_does_not_retry_subscription_access_denial(tmp_path: Path):
 
     assert provider.calls == 1
     assert sleeps == []
+
+
+def test_first_readable_file_binary_searches_subscription_boundary(monkeypatch):
+    files = [
+        _descriptor(0, date(2021, 8, 12)),
+        _descriptor(1, date(2021, 8, 13)),
+        _descriptor(2, date(2021, 8, 16)),
+        _descriptor(3, date(2021, 8, 17)),
+        _descriptor(4, date(2021, 8, 18)),
+    ]
+    provider = object.__new__(MassiveFlatFileProvider)
+    provider.client = _BoundaryClient(first_readable_index=2)
+    monkeypatch.setattr(provider, "list_files", lambda dataset, start, end: files)
+
+    first, inaccessible, listed = provider.first_readable_file(
+        DatasetType.STOCK_DAILY_AGGREGATES,
+        date(2021, 8, 12),
+        date(2021, 8, 18),
+    )
+
+    assert first is not None
+    assert first.trading_date == date(2021, 8, 16)
+    assert inaccessible == 2
+    assert listed == 5
+    assert provider.client.can_read_object("key-1") is False
+    assert provider.client.can_read_object("key-2") is True
