@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--download-missing", action="store_true", help="Use Phase 2 to download provider sessions that are missing.")
     parser.add_argument("--no-materialize", action="store_true", help="Only download/audit; do not run Phase 3 materialization.")
     parser.add_argument("--max-download-files", type=int, default=None)
-    parser.add_argument("--max-sessions", type=int, default=None, help="Safety cap on exchange sessions processed this run.")
+    parser.add_argument("--max-sessions", type=int, default=None, help="Safety cap on readable exchange sessions processed this run.")
     parser.add_argument("--fail-fast", action="store_true", help="Stop on the first materialization error instead of recording it and continuing.")
     return parser
 
@@ -37,14 +37,18 @@ def main(argv: list[str] | None = None) -> int:
         continue_on_error=not args.fail_fast,
     )
     print("ATLAS Historical Build")
-    print(f"Range: {result.start_date} -> {result.end_date}")
-    print(f"Sessions requested:       {result.sessions_requested}")
-    print(f"Daily downloads planned: {result.daily_downloads_planned}")
-    print(f"Minute downloads planned:{result.minute_downloads_planned}")
-    print(f"Materialized units:       {result.materialized_sessions}")
-    print(f"Skipped current units:    {result.skipped_materializations}")
-    print(f"Failures:                 {len(result.failures)}")
-    print(f"Elapsed seconds:          {result.elapsed_seconds:.2f}")
+    print(f"Requested range:          {result.start_date} -> {result.end_date}")
+    if result.effective_start_date is not None and result.effective_end_date is not None:
+        print(f"Effective build range:    {result.effective_start_date} -> {result.effective_end_date}")
+    print(f"Exchange sessions requested: {result.sessions_requested}")
+    print(f"Readable sessions processed: {result.sessions_processed}")
+    print(f"Entitlement-skipped sessions:{result.inaccessible_sessions_skipped}")
+    print(f"Daily downloads planned:     {result.daily_downloads_planned}")
+    print(f"Minute downloads planned:    {result.minute_downloads_planned}")
+    print(f"Materialized units:           {result.materialized_sessions}")
+    print(f"Skipped current units:        {result.skipped_materializations}")
+    print(f"Failures:                     {len(result.failures)}")
+    print(f"Elapsed seconds:              {result.elapsed_seconds:.2f}")
     if result.failures:
         print("Failures:")
         for key, message in list(result.failures.items())[:20]:
