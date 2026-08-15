@@ -16,3 +16,15 @@ class TimestampError(AtlasError):
 
 class DataValidationError(AtlasError):
     """Raised when market or ingestion data violates a hard contract."""
+
+
+class ProviderError(AtlasError):
+    """Raised when an external data provider operation fails."""
+
+
+class DownloadError(ProviderError):
+    """Raised when a provider object cannot be downloaded safely."""
+
+
+class ManifestError(AtlasError):
+    """Raised when ingestion manifest state cannot be read or written."""

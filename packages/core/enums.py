@@ -33,6 +33,7 @@ class DatasetType(StrEnum):
     STOCK_DAILY_AGGREGATES = "stock_daily_aggregates"
     STOCK_REFERENCE = "stock_reference"
     CORPORATE_ACTIONS = "corporate_actions"
+    DERIVED_STOCK_BARS = "derived_stock_bars"
 
 
 class AssetClass(StrEnum):
@@ -99,3 +100,17 @@ class DataQualityCode(StrEnum):
     CORPORATE_ACTION_REVIEW = "corporate_action_review"
     SESSION_MISMATCH = "session_mismatch"
     SOURCE_MISMATCH = "source_mismatch"
+    SYMBOL_CONFLICT = "symbol_conflict"
+    INVALID_SYMBOL = "invalid_symbol"
+    NULL_VALUE = "null_value"
+    NEGATIVE_TRANSACTIONS = "negative_transactions"
+
+
+class MaterializationStatus(StrEnum):
+    PLANNED = "planned"
+    NORMALIZING = "normalizing"
+    VALIDATING = "validating"
+    WRITING_CANONICAL = "writing_canonical"
+    BUILDING_DERIVED = "building_derived"
+    COMPLETE = "complete"
+    FAILED = "failed"

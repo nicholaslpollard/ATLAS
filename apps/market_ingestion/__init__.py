@@ -1,0 +1,1 @@
+"""ATLAS market ingestion application."""

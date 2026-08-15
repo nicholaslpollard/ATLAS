@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, ConfigDict, Field
 
 from .enums import Environment, MarketScope, TradingMode
@@ -53,9 +54,20 @@ class CanonicalConfig(BaseModel):
     partitioning: dict[str, str] = Field(default_factory=dict)
 
 
+class ParquetConfig(BaseModel):
+    compression: str = "zstd"
+    row_group_size: int = Field(default=122_880, ge=10_000)
+
+
+class StagingConfig(BaseModel):
+    retain_normalized_after_success: bool = False
+
+
 class DataConfig(BaseModel):
     calendar: CalendarConfig
     canonical: CanonicalConfig
+    parquet: ParquetConfig = Field(default_factory=ParquetConfig)
+    staging: StagingConfig = Field(default_factory=StagingConfig)
     materialized_derived_bars: list[str]
     on_demand_bars: list[str]
     paths: DataPaths
@@ -82,10 +94,27 @@ class MassiveStocksConfig(BaseModel):
     use_delayed_feed_initially: bool = True
 
 
+class MassiveFlatFileDatasetConfig(BaseModel):
+    prefix: str
+    local_subdir: str
+    expected_columns: list[str]
+
+
+class MassiveFlatFilesConfig(BaseModel):
+    datasets: dict[str, MassiveFlatFileDatasetConfig]
+    chunk_size_bytes: int = Field(default=4 * 1024 * 1024, ge=64 * 1024)
+    max_attempts: int = Field(default=4, ge=1, le=20)
+    initial_retry_seconds: float = Field(default=1.0, ge=0)
+    max_retry_seconds: float = Field(default=20.0, ge=0)
+    validate_gzip_crc: bool = True
+    count_rows_during_validation: bool = False
+
+
 class MassiveConfig(BaseModel):
     provider: MassiveProviderConfig
     credentials: MassiveCredentialsConfig
     stocks: MassiveStocksConfig
+    flat_files: MassiveFlatFilesConfig
 
 
 class LoggingConfig(BaseModel):
@@ -149,6 +178,12 @@ def find_project_root(start: Path | None = None) -> Path:
 
 def load_settings(project_root: Path | None = None, environment: str | Environment | None = None) -> AtlasSettings:
     root = (project_root.resolve() if project_root else find_project_root())
+
+    # Local development may keep private values in ATLAS/.env. Existing process
+    # environment variables always win so cloud/container secret injection remains
+    # authoritative in production. Missing .env files are intentionally harmless.
+    load_dotenv(dotenv_path=root / ".env", override=False)
+
     config_dir = root / "config"
 
     app_doc = _load_yaml(config_dir / "app.yaml")

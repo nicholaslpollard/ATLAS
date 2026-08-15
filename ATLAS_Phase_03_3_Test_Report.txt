@@ -1,0 +1,29 @@
+ATLAS Phase 03.3 — DuckDB UTC Canonical-Time Fix
+
+Observed local failure:
+- DuckDB returned 09:30 America/New_York
+- Tests compared the raw `.hour` against 13
+- 09:30 EDT is the same instant as 13:30 UTC
+
+Root cause:
+DuckDB TIMESTAMPTZ display/return timezone follows the connection TimeZone.
+The prior tests implicitly assumed UTC display even though the host connection
+was using America/New_York.
+
+Changes:
+- Added packages/data/duckdb_connection.py
+- Every ATLAS-owned DuckDB connection is explicitly set to UTC
+- DuckDBMarketRepository now returns canonical timestamps under UTC connection
+  semantics
+- Phase 03 validator explicitly verifies DuckDB TimeZone is UTC
+- Integration tests compare timezone-aware values as UTC instants
+
+Artifact environment:
+- compileall: PASS
+- pytest collection: PASS
+- pytest: 33 passed, 2 DuckDB-dependent modules skipped
+- no collection/import failures
+
+Expected on user's system with DuckDB installed:
+- validate_phase3.py: PASS, including canonical timezone UTC
+- pytest -q: 37 passed

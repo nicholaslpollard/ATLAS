@@ -12,6 +12,10 @@ dependencies = [
     "pydantic-settings>=2.14,<3",
     "PyYAML>=6.0,<7",
     "exchange-calendars>=4.13,<5",
+    "boto3>=1.43,<2",
+    "python-dotenv>=1.1,<2",
+    "duckdb>=1.5.5,<1.6",
+    "pytz>=2026.2,<2027",
 ]
 
 [project.optional-dependencies]

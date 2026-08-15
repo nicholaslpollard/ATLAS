@@ -36,6 +36,7 @@ class CanonicalBar(BaseModel):
     dataset: DatasetType
     source_id: str = Field(min_length=1)
     is_adjusted: bool | None = None
+    provider_timestamp_utc: datetime | None = None
 
     @field_validator("symbol")
     @classmethod
@@ -45,10 +46,10 @@ class CanonicalBar(BaseModel):
             raise ValueError("symbol cannot be blank")
         return value
 
-    @field_validator("timestamp_utc")
+    @field_validator("timestamp_utc", "provider_timestamp_utc")
     @classmethod
-    def normalize_timestamp(cls, value: datetime) -> datetime:
-        return to_utc(value)
+    def normalize_timestamp(cls, value: datetime | None) -> datetime | None:
+        return to_utc(value) if value is not None else None
 
     @model_validator(mode="after")
     def validate_bar(self) -> "CanonicalBar":
@@ -78,3 +79,42 @@ class BarKey(BaseModel):
     @classmethod
     def normalize_timestamp(cls, value: datetime) -> datetime:
         return to_utc(value)
+
+
+class DerivedBar(BaseModel):
+    """Materialized ATLAS bar derived from canonical 1m provider facts."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str = Field(min_length=1, max_length=32)
+    timestamp_utc: datetime
+    bar_end_utc: datetime
+    session_date: date
+    timeframe: Timeframe
+    session_segment: SessionSegment
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float = Field(ge=0)
+    vwap: float | None = Field(default=None, gt=0)
+    transaction_count: int | None = Field(default=None, ge=0)
+    input_bar_count: int = Field(ge=1)
+    source_id: str = Field(min_length=1)
+
+    @field_validator("symbol")
+    @classmethod
+    def normalize_derived_symbol(cls, value: str) -> str:
+        return value.strip().upper()
+
+    @field_validator("timestamp_utc", "bar_end_utc")
+    @classmethod
+    def normalize_derived_timestamp(cls, value: datetime) -> datetime:
+        return to_utc(value)
+
+    @model_validator(mode="after")
+    def validate_derived_bar(self) -> "DerivedBar":
+        validate_ohlc(self.open, self.high, self.low, self.close)
+        if self.bar_end_utc <= self.timestamp_utc:
+            raise ValueError("bar_end_utc must be after timestamp_utc")
+        return self

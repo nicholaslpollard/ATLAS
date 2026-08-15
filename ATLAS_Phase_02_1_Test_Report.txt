@@ -1,0 +1,11 @@
+ATLAS Phase 02.1 — Local .env Loading
+
+Foundation validation: PASS
+compileall: PASS
+pytest: 28 passed
+
+Added coverage:
+- Repository-root .env loads local secrets automatically
+- Existing process environment variables override .env values
+- No .env file is required
+- Secret access remains environment-only inside ATLAS components

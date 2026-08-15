@@ -33,3 +33,45 @@ def test_secret_redaction_is_recursive():
     assert redacted["api_key"] == "***REDACTED***"
     assert redacted["nested"]["password"] == "***REDACTED***"
     assert redacted["normal"] == 4
+
+
+def test_root_dotenv_loads_local_secrets(tmp_path, monkeypatch):
+    import shutil
+    import os
+
+    project_root = tmp_path / "ATLAS"
+    shutil.copytree(ROOT / "config", project_root / "config")
+    (project_root / ".env").write_text(
+        "MASSIVE_API_KEY=dotenv-test-key\n"
+        "MASSIVE_S3_ACCESS_KEY_ID=dotenv-access\n"
+        "MASSIVE_S3_SECRET_ACCESS_KEY=dotenv-secret\n",
+        encoding="utf-8",
+    )
+
+    for name in ("MASSIVE_API_KEY", "MASSIVE_S3_ACCESS_KEY_ID", "MASSIVE_S3_SECRET_ACCESS_KEY"):
+        monkeypatch.delenv(name, raising=False)
+
+    from packages.core.secrets import get_secret
+
+    load_settings(project_root, "development")
+    assert get_secret("MASSIVE_API_KEY") == "dotenv-test-key"
+    assert get_secret("MASSIVE_S3_ACCESS_KEY_ID") == "dotenv-access"
+    assert get_secret("MASSIVE_S3_SECRET_ACCESS_KEY") == "dotenv-secret"
+
+    # load_dotenv mutates os.environ directly, so clean up values it introduced.
+    for name in ("MASSIVE_API_KEY", "MASSIVE_S3_ACCESS_KEY_ID", "MASSIVE_S3_SECRET_ACCESS_KEY"):
+        os.environ.pop(name, None)
+
+
+def test_process_environment_overrides_dotenv(tmp_path, monkeypatch):
+    import shutil
+
+    project_root = tmp_path / "ATLAS"
+    shutil.copytree(ROOT / "config", project_root / "config")
+    (project_root / ".env").write_text("MASSIVE_API_KEY=dotenv-value\n", encoding="utf-8")
+    monkeypatch.setenv("MASSIVE_API_KEY", "process-value")
+
+    from packages.core.secrets import get_secret
+
+    load_settings(project_root, "development")
+    assert get_secret("MASSIVE_API_KEY") == "process-value"

@@ -1,0 +1,25 @@
+ATLAS Phase 03.1 — Circular Import Fix
+
+Reproduced original collection failure: YES
+
+Root cause:
+packages.aggregation.bar_builder
+ -> packages.data.atomic
+ -> packages.data.__init__
+ -> packages.data.materializer
+ -> packages.aggregation.bar_builder
+
+Fix:
+- Removed eager imports of materializer and DuckDB repository from
+  packages.data package initialization.
+- Added lazy PEP 562 __getattr__ exports.
+- Preserved public names in __all__.
+
+Validation in artifact environment:
+- compileall: PASS
+- pytest collection: PASS
+- pytest: 33 passed, 2 DuckDB-dependent modules skipped
+- circular-import collection error: RESOLVED
+
+Expected on local Phase 03 system with DuckDB installed:
+- pytest -q: 37 passed

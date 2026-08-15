@@ -16,3 +16,37 @@ massive:
     websocket_minute_channel: AM
     websocket_default_subscription: "*"
     use_delayed_feed_initially: true
+
+  flat_files:
+    datasets:
+      stock_minute_aggregates:
+        prefix: us_stocks_sip/minute_aggs_v1
+        local_subdir: massive/flat_files/minute_aggs
+        expected_columns:
+          - ticker
+          - volume
+          - open
+          - close
+          - high
+          - low
+          - window_start
+          - transactions
+      stock_daily_aggregates:
+        prefix: us_stocks_sip/day_aggs_v1
+        local_subdir: massive/flat_files/day_aggs
+        expected_columns:
+          - ticker
+          - volume
+          - open
+          - close
+          - high
+          - low
+          - window_start
+          - transactions
+
+    chunk_size_bytes: 4194304
+    max_attempts: 4
+    initial_retry_seconds: 1.0
+    max_retry_seconds: 20.0
+    validate_gzip_crc: true
+    count_rows_during_validation: false

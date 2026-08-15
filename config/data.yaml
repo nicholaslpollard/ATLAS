@@ -13,8 +13,15 @@ data:
     preserve_provider_vwap: true
     preserve_transaction_count: true
     partitioning:
-      intraday: date
-      daily: year
+      intraday: session
+      daily: session_within_year
+
+  parquet:
+    compression: zstd
+    row_group_size: 122880
+
+  staging:
+    retain_normalized_after_success: false
 
   materialized_derived_bars:
     - 15m

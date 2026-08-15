@@ -1,0 +1,32 @@
+ATLAS Phase 03 — Canonical Storage + Session-Aware Aggregation
+Build validation report
+
+Python compileall: PASS
+Phase 01 foundation validator: PASS
+Pytest in artifact sandbox: 33 passed, 2 modules skipped
+
+Why two modules were skipped:
+- Phase 03 adds DuckDB 1.5.5.
+- The artifact sandbox has no DuckDB preinstalled and cannot reach PyPI to install
+  additional wheels.
+- The skipped modules contain 4 tests, so the project contains 37 test functions
+  total when DuckDB is installed.
+
+DuckDB-dependent tests included:
+- minute provider CSV.gz -> canonical 1m Parquet
+- canonical 1m -> session-anchored 15m/1h/4h
+- 09:30 ET regular-session anchoring
+- source-hash idempotency / second-run skip
+- changed-source re-materialization
+- daily canonical materialization and provider timestamp preservation
+- aggregation independence from input row order
+
+Local acceptance target after:
+  python -m pip install -r requirements.lock
+
+Expected:
+- scripts/validate_phase3.py: PASS
+- pytest -q: 37 passed
+
+No .env, credentials, downloaded provider data, canonical data, or virtual
+environment are included in either ZIP.

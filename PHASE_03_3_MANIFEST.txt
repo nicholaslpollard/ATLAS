@@ -1,0 +1,14 @@
+ATLAS Phase 03.3 — DuckDB UTC Canonical-Time Fix
+
+Changed/new implementation files: 10
+
+packages/aggregation/bar_builder.py
+packages/data/duckdb_connection.py
+packages/data/duckdb_repository.py
+packages/data/materializer.py
+packages/data/normalizer.py
+packages/data_quality/bar_validator.py
+packages/data_quality/daily_reconciliation.py
+scripts/validate_phase3.py
+tests/integration/test_phase3_aggregation_determinism.py
+tests/integration/test_phase3_materialization.py

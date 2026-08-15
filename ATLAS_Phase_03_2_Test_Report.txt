@@ -1,0 +1,20 @@
+ATLAS Phase 03.2 — pytz Dependency Fix
+
+Root cause:
+DuckDB Python timezone-aware Parquet conversion required the `pytz` module at
+runtime, but Phase 03 did not declare it as an ATLAS dependency.
+
+Changes:
+- requirements.lock: pytz==2026.2
+- pyproject.toml: pytz>=2026.2,<2027
+- validate_phase3.py: explicit pytz dependency validation
+
+Artifact environment validation:
+- compileall: PASS
+- pytest collection: PASS
+- pytest: 33 passed, 2 DuckDB-dependent modules skipped because DuckDB is not
+  installed in the artifact sandbox
+
+Expected local result after dependency installation:
+- validate_phase3.py: PASS
+- pytest -q: 37 passed

@@ -1,0 +1,32 @@
+ATLAS Phase 03.5 — Provider Symbol Conflict Quarantine
+
+Real-data finding supplied by user:
+- BCPC daily rows:
+  ~24 price regime and ~175-179 price regime
+- TPC daily rows:
+  ~17 price regime and ~95-98 price regime
+- Same incompatible regimes are present in the minute aggregate file.
+- Point-in-time reference lookup returns one active BCPC (Balchem) and one
+  active TPC (Tutor Perini).
+
+Policy:
+- never choose a conflicting row arbitrarily
+- exact duplicates => deterministic dedupe + warning
+- conflicting symbol/date rows => quarantine whole symbol/session
+- propagate daily quarantine to minute/derived data
+- clean market rows continue materializing
+- quarantine registry becomes a minute-materialization dependency
+
+Changed/new behavior tests added:
+1. conflicting daily rows are quarantined, not guessed
+2. minute materialization propagates the daily symbol quarantine
+3. exact duplicate daily rows are deduplicated with warning
+4. changed quarantine registry invalidates/rebuilds minute materialization
+
+Artifact environment:
+- compileall: PASS
+- pytest: 34 passed, 2 DuckDB-dependent modules skipped
+- the DuckDB integration module contains the 4 new tests
+
+Expected on user's machine (previously 38 passed with DuckDB installed):
+- pytest -q: 42 passed

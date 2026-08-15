@@ -11,6 +11,8 @@ from packages.core.timestamps import to_utc
 
 
 class ProviderFileDescriptor(BaseModel):
+    """Provider-side immutable metadata for one downloadable source object."""
+
     model_config = ConfigDict(frozen=True)
 
     provider: DataProvider
@@ -18,7 +20,14 @@ class ProviderFileDescriptor(BaseModel):
     trading_date: date
     remote_key: str = Field(min_length=1)
     expected_size_bytes: int | None = Field(default=None, ge=0)
-    checksum: str | None = None
+    etag: str | None = None
+    provider_checksum: str | None = None
+    last_modified_utc: datetime | None = None
+
+    @field_validator("last_modified_utc")
+    @classmethod
+    def normalize_last_modified(cls, value: datetime | None) -> datetime | None:
+        return to_utc(value) if value is not None else None
 
     @property
     def source_id(self) -> str:
@@ -38,6 +47,22 @@ class IngestionPlanItem(BaseModel):
         return stable_id(self.descriptor.source_id, self.local_path.as_posix(), prefix="plan")
 
 
+class IngestionPlan(BaseModel):
+    provider: DataProvider
+    dataset: DatasetType
+    start_date: date
+    end_date: date
+    expected_sessions: list[date] = Field(default_factory=list)
+    available_remote_sessions: list[date] = Field(default_factory=list)
+    unavailable_remote_sessions: list[date] = Field(default_factory=list)
+    items: list[IngestionPlanItem] = Field(default_factory=list)
+    already_complete: int = Field(default=0, ge=0)
+
+    @property
+    def planned_count(self) -> int:
+        return len(self.items)
+
+
 class IngestionManifestRecord(BaseModel):
     source_id: str
     provider: DataProvider
@@ -48,7 +73,8 @@ class IngestionManifestRecord(BaseModel):
     status: IngestionStatus = IngestionStatus.PLANNED
     validation_status: ValidationStatus = ValidationStatus.UNKNOWN
     size_bytes: int | None = Field(default=None, ge=0)
-    checksum: str | None = None
+    sha256: str | None = None
+    etag: str | None = None
     attempt_count: int = Field(default=0, ge=0)
     last_error: str | None = None
     downloaded_at_utc: datetime | None = None
@@ -59,6 +85,31 @@ class IngestionManifestRecord(BaseModel):
     @classmethod
     def normalize_optional_timestamp(cls, value: datetime | None) -> datetime | None:
         return to_utc(value) if value is not None else None
+
+
+class DownloadResult(BaseModel):
+    source_id: str
+    local_path: Path
+    size_bytes: int = Field(ge=0)
+    sha256: str = Field(min_length=64, max_length=64)
+    attempts: int = Field(ge=1)
+    elapsed_seconds: float = Field(ge=0)
+    skipped_existing: bool = False
+
+
+class FileValidationResult(BaseModel):
+    path: Path
+    status: ValidationStatus
+    size_bytes: int = Field(ge=0)
+    sha256: str | None = None
+    header: list[str] = Field(default_factory=list)
+    row_count: int | None = Field(default=None, ge=0)
+    errors: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+    @property
+    def is_valid(self) -> bool:
+        return self.status in {ValidationStatus.VALID, ValidationStatus.WARNING}
 
 
 class IngestionCheckpoint(BaseModel):

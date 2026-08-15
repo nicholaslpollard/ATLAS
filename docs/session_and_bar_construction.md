@@ -1,32 +1,38 @@
-# Sessions and Derived Bar Construction
+# ATLAS Session and Bar Construction
 
-The legacy Chart Monitor used wall-clock flooring that could mix premarket, regular-market, and after-hours data. ATLAS does not.
+ATLAS uses XNYS exchange-session boundaries and stores timestamps in UTC.
+Session interpretation uses America/New_York local-market time.
 
-## Session classification
+## Segments
 
-For U.S. equities ATLAS initially uses the XNYS calendar for official regular-session open/close times. Extended-hours conventions are tracked separately:
+- Premarket: 04:00 local -> official regular open
+- Regular: official open -> official close
+- After-hours: official close -> 20:00 local
+- Closed: outside the configured envelope
 
-- premarket: 04:00 ET to official regular open
-- regular: official exchange open through official close
-- after-hours: official close to 20:00 ET
+## Derived-bar anchors
 
-Holidays and early closes come from the exchange calendar.
+Derived intraday bars are anchored to the start of their own segment, never to
+midnight or generic wall-clock multiples.
 
-## Regular-session derived bars
+For a normal 09:30–16:00 regular session:
 
-Regular-session 15m/1h/4h bars are anchored to the actual regular-session open.
+- 15m: 09:30, 09:45, ...
+- 1h: 09:30, 10:30, ... 15:30
+- 4h: 09:30 and 13:30
 
-Example normal session:
+The final bar in a segment may be shorter than the nominal timeframe. Its
+`bar_end_utc` records the actual segment boundary.
 
-- 1h: 09:30–10:29:59, 10:30–11:29:59, ...
-- 4h: 09:30–13:29:59, then a final partial regular-session bar from 13:30–16:00
+OHLC is deterministic:
 
-The exact final-bar labeling convention will be implemented and unit-tested in the aggregation phase.
+- open = first minute open ordered by timestamp
+- high = maximum minute high
+- low = minimum minute low
+- close = last minute close ordered by timestamp
+- volume = sum of minute volume
+- transaction count = sum when supplied
+- VWAP = volume-weighted aggregation only when source VWAP exists; otherwise null
 
-## Extended hours
-
-Extended-hours 1-minute facts are preserved. They are not silently mixed into regular-session derived bars. Extended-hours features may be built separately where useful (gap behavior, premarket volume, overnight movement, etc.).
-
-## No arbitrary row-chunk boundaries
-
-Aggregation windows are determined from timestamps/session boundaries, never from arbitrary DataFrame chunk sizes. Chunking may be used internally for memory management only if aggregation correctness across boundaries is explicitly preserved.
+Premarket, regular, and after-hours observations are never combined in a single
+derived bar.

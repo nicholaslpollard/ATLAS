@@ -1,0 +1,24 @@
+ATLAS Phase 03.4 — Provider Path Contract Fix
+
+Root cause:
+- Phase 2 configuration local_subdir already contains `massive/flat_files/...`
+- Phase 3 prepended `massive/flat_files` again
+- Result: Phase 3 searched a duplicated directory hierarchy
+
+Correct Phase 2 / Phase 3 shared paths:
+- data/provider/massive/flat_files/day_aggs/YYYY/YYYY-MM-DD.csv.gz
+- data/provider/massive/flat_files/minute_aggs/YYYY/YYYY-MM-DD.csv.gz
+
+Changes:
+- packages/data/paths.py
+- tests/unit/test_phase3_provider_paths.py
+
+Artifact validation:
+- compileall: PASS
+- new provider-path regression test: PASS
+- unit suite: PASS
+- 32 passed, 1 DuckDB-dependent test skipped in selected sandbox run
+
+Expected on user's system with DuckDB installed:
+- pytest -q: 38 passed
+- materialize_market_data.py should discover the existing August 14 daily and minute files
