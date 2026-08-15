@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import PurePosixPath
 
 from packages.core.enums import DataProvider, DatasetType
-from packages.core.exceptions import ConfigurationError
+from packages.core.exceptions import ConfigurationError, ProviderError
 from packages.core.settings import AtlasSettings
 from packages.schemas.ingestion import ProviderFileDescriptor
 
@@ -73,3 +73,46 @@ class MassiveFlatFileProvider:
                 by_key[key] = descriptor
 
         return sorted(by_key.values(), key=lambda item: (item.trading_date, item.remote_key))
+
+    def first_readable_file(
+        self,
+        dataset: DatasetType,
+        start_date: date,
+        end_date: date,
+    ) -> tuple[ProviderFileDescriptor | None, int, int]:
+        """Find the first listed object readable under the current S3 entitlement.
+
+        Massive can list objects outside an account's historical GetObject window.
+        Access is expected to be monotonic by trading date: older sessions may be
+        denied while newer sessions are readable. We binary-search that boundary
+        using one-byte range reads.
+
+        Returns ``(first_readable, inaccessible_count, listed_count)``. If even the
+        newest listed object is denied, ``first_readable`` is ``None``.
+        """
+        files = self.list_files(dataset, start_date, end_date)
+        if not files:
+            return None, 0, 0
+
+        if not self.client.can_read_object(files[-1].remote_key):
+            return None, len(files), len(files)
+
+        if self.client.can_read_object(files[0].remote_key):
+            return files[0], 0, len(files)
+
+        low = 0
+        high = len(files) - 1
+        while low < high:
+            mid = (low + high) // 2
+            if self.client.can_read_object(files[mid].remote_key):
+                high = mid
+            else:
+                low = mid + 1
+
+        first_index = low
+        if first_index > 0 and self.client.can_read_object(files[first_index - 1].remote_key):
+            raise ProviderError(
+                "Massive historical read access was non-monotonic at the detected boundary; "
+                "ATLAS will not infer an entitlement cutoff"
+            )
+        return files[first_index], first_index, len(files)
