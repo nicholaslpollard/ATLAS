@@ -4,9 +4,9 @@ from packages.core.enums import DataProvider, DatasetType, SessionSegment, Timef
 from packages.schemas.market import CanonicalBar, DerivedBar
 
 
-def test_canonical_bar_preserves_provider_timestamp():
+def test_canonical_bar_preserves_provider_timestamp_and_symbol_case():
     bar = CanonicalBar(
-        symbol="aapl",
+        symbol="TpC",
         timestamp_utc=datetime(2026, 8, 14, 13, 30, tzinfo=UTC),
         provider_timestamp_utc=datetime(2026, 8, 14, 0, 0, tzinfo=UTC),
         session_date=date(2026, 8, 14),
@@ -17,7 +17,7 @@ def test_canonical_bar_preserves_provider_timestamp():
         dataset=DatasetType.STOCK_DAILY_AGGREGATES,
         source_id="src_test",
     )
-    assert bar.symbol == "AAPL"
+    assert bar.symbol == "TpC"
     assert bar.provider_timestamp_utc is not None
 
 
