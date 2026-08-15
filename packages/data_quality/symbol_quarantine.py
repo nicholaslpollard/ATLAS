@@ -55,10 +55,13 @@ class SessionSymbolQuarantine:
     """Safely isolate ambiguous provider-symbol data without guessing a winner.
 
     Massive aggregate flat files identify observations by ticker text only. If a
-    daily source contains materially different rows for the same ticker/date,
-    ATLAS cannot prove which row belongs to the point-in-time instrument from
-    the flat file alone. The deterministic response is therefore to quarantine
-    that symbol for the whole session, not keep-first/keep-last.
+    daily source contains materially different rows for the same exact provider
+    ticker/date, ATLAS cannot prove which row belongs to the point-in-time
+    instrument from the flat file alone. The deterministic response is therefore
+    to quarantine that symbol for the whole session, not keep-first/keep-last.
+
+    Provider symbol case is significant. In particular, Massive uses lowercase
+    'p' in preferred-share symbols, so BCPC and BCpC are distinct tickers.
     """
 
     def __init__(self, *, compression: str = "zstd", row_group_size: int = 122_880) -> None:
@@ -84,7 +87,7 @@ class SessionSymbolQuarantine:
         if not path.exists():
             return ()
         payload = json.loads(path.read_text(encoding="utf-8"))
-        return tuple(sorted({str(x).strip().upper() for x in payload.get("symbols", []) if str(x).strip()}))
+        return tuple(sorted({str(x).strip() for x in payload.get("symbols", []) if str(x).strip()}))
 
     def _rewrite(self, source_path: Path, select_sql: str) -> None:
         temp = atomic_target(source_path)
@@ -143,7 +146,7 @@ class SessionSymbolQuarantine:
         finally:
             con.close()
 
-        symbols = tuple(sorted({str(row[0]).upper() for row in conflict_rows}))
+        symbols = tuple(sorted({str(row[0]) for row in conflict_rows}))
         if symbols:
             sym_sql = self._symbol_list_sql(symbols)
             quarantine_path.parent.mkdir(parents=True, exist_ok=True)
@@ -182,7 +185,7 @@ class SessionSymbolQuarantine:
             {
                 "trading_date": trading_date.isoformat(),
                 "reason": "conflicting_daily_symbol_rows",
-                "policy": "quarantine_entire_symbol_session_no_guess",
+                "policy": "quarantine_entire_exact_provider_symbol_session_no_guess",
                 "symbols": list(symbols),
                 "exact_duplicate_rows_removed": exact_removed,
                 "conflicting_rows_quarantined": len(conflict_rows),
