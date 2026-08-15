@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from datetime import date
 
 from apps.market_ingestion.flat_file_service import FlatFileIngestionService
@@ -11,6 +12,9 @@ from packages.core.settings import AtlasSettings
 from packages.data.materializer import MarketDataMaterializer
 from packages.ingestion.checkpoint import CheckpointStore
 from packages.schemas.history import HistoricalBuildResult
+
+
+ProgressCallback = Callable[[str, int, int, date], None]
 
 
 class HistoricalBuildService:
@@ -41,6 +45,7 @@ class HistoricalBuildService:
         max_download_files: int | None = None,
         max_sessions: int | None = None,
         continue_on_error: bool = True,
+        progress_callback: ProgressCallback | None = None,
     ) -> HistoricalBuildResult:
         if end_date < start_date:
             raise ValueError("end_date must be on or after start_date")
@@ -92,7 +97,13 @@ class HistoricalBuildService:
                 else:
                     minute_planned = plan.planned_count
                 if plan.planned_count:
-                    ingestion.sync(dataset, effective_start, effective_end, max_files=max_download_files)
+                    ingestion.sync(
+                        dataset,
+                        effective_start,
+                        effective_end,
+                        max_files=max_download_files,
+                        progress_callback=progress_callback,
+                    )
 
         materialized_count = 0
         skipped_count = 0
@@ -129,6 +140,8 @@ class HistoricalBuildService:
                     completed_units=completed_sessions,
                     total_units=len(sessions),
                 )
+                if progress_callback is not None:
+                    progress_callback("materialize", completed_sessions, len(sessions), trading_date)
                 if session_failed and not continue_on_error:
                     break
 
