@@ -31,13 +31,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     state = "SKIPPED (already current)" if result.skipped else "SYNCED"
     print(f"ATLAS instrument reference {args.date}: {state}")
-    print(f"  rows:              {result.row_count:,}")
-    print(f"  instruments:       {result.instrument_count:,}")
-    print(f"  strong identities: {result.strong_identity_count:,}")
-    print(f"  medium identities: {result.medium_identity_count:,}")
-    print(f"  fallback identities:{result.fallback_identity_count:,}")
-    print(f"  snapshot:          {result.path}")
-    print(f"  registry:          {settings.resolved_path(settings.data.paths.derived) / 'reference' / 'instruments' / 'registry.parquet'}")
+    print(f"  rows:                {result.row_count:,}")
+    print(f"  instruments:         {result.instrument_count:,}")
+    print(f"  strong identities:   {result.strong_identity_count:,}")
+    print(f"  medium identities:   {result.medium_identity_count:,}")
+    print(f"  fallback identities: {result.fallback_identity_count:,}")
+    print(f"  snapshot:            {result.path}")
+    print(f"  registry:            {settings.resolved_path(settings.data.paths.derived) / 'reference' / 'instruments' / 'registry.parquet'}")
     return 0
 
 
