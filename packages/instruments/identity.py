@@ -24,7 +24,9 @@ class InstrumentIdentityResolver:
         if cik and (exchange or security_type):
             identity_key = f"massive:cik:{cik}:exchange:{exchange}:type:{security_type}"
             return stable_id(identity_key, prefix="ins"), identity_key, InstrumentIdentityQuality.MEDIUM
-        ticker = str(row.get("ticker") or "").strip().upper()
+        # Massive ticker case is provider-significant for preferred shares, so a
+        # fallback identity must preserve it rather than fold to uppercase.
+        ticker = str(row.get("ticker") or "").strip()
         if not ticker:
             raise ValueError("Massive reference row has no usable ticker or stable identifier")
         identity_key = f"massive:ticker_snapshot:{ticker}:{as_of_date.isoformat()}"
