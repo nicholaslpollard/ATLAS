@@ -55,7 +55,8 @@ Use:
 ATLAS requests both active and inactive stock reference populations for that date,
 creates stable instrument identities, writes the canonical snapshot, and rebuilds
 the aggregate identity registry. Re-running the same command skips an existing
-snapshot unless `--force` is supplied.
+snapshot unless the reference transformation contract changes or `--force` is
+supplied.
 
 Resolve a symbol against a snapshot with:
 
@@ -76,34 +77,58 @@ provider-native symbol contract. User-facing search can later offer aliases or
 case-insensitive suggestions, but those conveniences must never alter canonical
 identity or joins.
 
-## 4. Legacy Massive source-file import
+## 4. Historical source policy — fresh ATLAS download
 
-The legacy Chart Monitor derived Parquet files are not trusted as ATLAS canonical
-history. Original Massive `.csv.gz` source files *are* useful and can be imported
-without downloading them again.
+The official ATLAS historical-build path is a fresh download from Massive. Legacy
+Chart Monitor raw and derived data are not inputs to the normal ATLAS build.
 
-Example daily import:
+This gives every historical ATLAS source object one provenance chain:
 
-```powershell
-.\.venv\Scripts\python.exe scripts\import_legacy_massive_files.py `
-  --source "D:\OldChartMonitor\data\raw\day_aggs" `
-  --dataset day
+```text
+Massive remote inventory
+  -> exact missing-file plan
+  -> atomic download
+  -> gzip/schema validation
+  -> SHA-256 + ingestion manifest
+  -> canonical normalization
+  -> quality gate
+  -> session-aware derived bars
 ```
 
-Minute import:
+The legacy importer remains in the repository only as an optional disaster-
+recovery utility. It should not be used for a normal clean build.
+
+Before a large backfill, inspect the exact Massive inventory and download size
+without writing files:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\import_legacy_massive_files.py `
-  --source "D:\OldChartMonitor\data\raw\minute_aggs" `
-  --dataset minute
+.\.venv\Scripts\python.exe scripts\sync_missing_massive_data.py `
+  --dataset daily `
+  --start 2021-01-04 `
+  --end 2026-08-14 `
+  --dry-run
 ```
 
-Every candidate file is gzip/CSV/schema validated before promotion. Valid imports
-are registered in the Phase 2 ingestion manifest so later sync planning recognizes
-them as complete. Existing ATLAS files are never replaced by different content
-unless `--replace-existing` is explicit.
+```powershell
+.\.venv\Scripts\python.exe scripts\sync_missing_massive_data.py `
+  --dataset minute `
+  --start 2021-01-04 `
+  --end 2026-08-14 `
+  --dry-run
+```
 
-## 5. Historical lake audit
+The dry-run reports exchange sessions, remote availability, files already complete,
+planned downloads, provider-reported bytes, and free space on the drive containing
+ATLAS. Raw download size is only part of the final footprint because canonical 1m
+and derived 15m/1h/4h Parquet are also retained.
+
+## 5. Optional legacy recovery import
+
+`scripts/import_legacy_massive_files.py` can validate and register existing Massive
+`.csv.gz` files if a future recovery situation makes that useful. It is not part of
+the clean ATLAS migration plan and should not be run unless explicitly chosen.
+
+## 6. Historical lake audit
 
 A fast existence/coverage audit:
 
@@ -127,17 +152,9 @@ The report independently measures:
 - quarantine sessions/symbols
 - tracked disk bytes
 
-## 6. Resumable historical build
+## 7. Resumable historical build
 
-Materialize whatever provider files are already available:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\build_historical_lake.py `
-  --start 2021-01-04 `
-  --end 2026-08-14
-```
-
-Download missing provider files first, then materialize:
+Download missing provider files from Massive and materialize them:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\build_historical_lake.py `
@@ -146,21 +163,33 @@ Download missing provider files first, then materialize:
   --download-missing
 ```
 
-Daily data is materialized before minute data for each session so Phase 3 symbol
-quarantine propagates to 1m/15m/1h/4h data. The Phase 2 and Phase 3 manifests remain
-the authoritative idempotency records; the historical build checkpoint records
-range-level progress. Restarting the same range therefore skips completed work.
+The Phase 2 ingestion manifest and Phase 3 materialization manifest are authoritative
+for idempotency. A stopped or failed build is restarted with the same command;
+current units are skipped and only missing/stale work is retried.
 
-For an initial performance test, use a safety cap:
+Daily data is materialized before minute data for each session so any genuine
+exact-symbol quarantine propagates to 1m/15m/1h/4h data. The historical-build
+checkpoint records range-level progress but does not replace the per-file manifests.
+
+For an initial performance/safety test, use a session cap:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\build_historical_lake.py `
   --start 2026-08-03 `
   --end 2026-08-14 `
+  --download-missing `
   --max-sessions 3
 ```
 
-## 7. Genuine exact-symbol conflicts remain quarantined
+## 8. Session-envelope facts remain canonical
+
+ATLAS retains provider minute observations even when they fall outside the modeled
+04:00–20:00 ET trading envelope. Those rows are labeled `closed`, generate a
+non-blocking quality warning, and are excluded from 15m/1h/4h derived trading bars.
+A minute whose `window_start` is exactly 20:00 ET is therefore canonical provider
+data but is not an after-hours trading bar.
+
+## 9. Genuine exact-symbol conflicts remain quarantined
 
 The August 14 BCPC/TPC anomaly exposed an ATLAS normalization bug rather than a
 Massive duplicate: uppercasing provider tickers had collapsed `BCpC` into `BCPC`
