@@ -41,7 +41,17 @@ def main(argv: list[str] | None = None) -> int:
     settings = load_settings(PROJECT_ROOT)
     dataset = parse_stock_dataset(args.dataset)
     service = FlatFileIngestionService(settings)
-    plan = service.plan(dataset, args.start, args.end, verify_existing_hashes=args.verify_existing_hashes)
+
+    first_readable, inaccessible_listed, listed = service.provider.first_readable_file(dataset, args.start, args.end)
+    if listed and first_readable is None:
+        print(f"ATLAS Massive sync plan: {dataset.value}")
+        print(f"Requested range: {args.start} -> {args.end}")
+        print(f"Remote files listed: {listed}")
+        print("No listed files in this range are readable under the current S3 subscription.")
+        return 2
+
+    effective_start = first_readable.trading_date if first_readable is not None else args.start
+    plan = service.plan(dataset, effective_start, args.end, verify_existing_hashes=args.verify_existing_hashes)
 
     known_sizes = [item.descriptor.expected_size_bytes for item in plan.items if item.descriptor.expected_size_bytes is not None]
     planned_bytes = sum(known_sizes)
@@ -49,9 +59,11 @@ def main(argv: list[str] | None = None) -> int:
     disk = shutil.disk_usage(PROJECT_ROOT)
 
     print(f"ATLAS Massive sync plan: {dataset.value}")
-    print(f"Range: {args.start} -> {args.end}")
+    print(f"Requested range: {args.start} -> {args.end}")
+    print(f"Effective readable range: {effective_start} -> {args.end}")
+    print(f"Earlier listed but inaccessible: {inaccessible_listed}")
     print(f"Exchange sessions expected: {len(plan.expected_sessions)}")
-    print(f"Remote files available: {len(plan.available_remote_sessions)}")
+    print(f"Remote files available/readable-range: {len(plan.available_remote_sessions)}")
     print(f"Already complete: {plan.already_complete}")
     print(f"Planned downloads: {plan.planned_count}")
     print(f"Planned provider bytes: {_format_bytes(planned_bytes)}")
@@ -64,7 +76,7 @@ def main(argv: list[str] | None = None) -> int:
         print("WARNING: free disk space is less than 2x the raw provider estimate; canonical/derived data will require additional space.")
 
     if plan.unavailable_remote_sessions:
-        print("Provider files not yet available for sessions:")
+        print("Provider files not yet available for readable-range sessions:")
         for session in plan.unavailable_remote_sessions:
             print(f"  - {session}")
 
@@ -80,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
 
     service.sync(
         dataset,
-        args.start,
+        effective_start,
         args.end,
         max_files=args.max_files,
         verify_existing_hashes=args.verify_existing_hashes,
