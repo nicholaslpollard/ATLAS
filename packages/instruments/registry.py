@@ -105,7 +105,7 @@ class InstrumentRegistryStore:
                         identity_quality,
                         provider,
                         CAST(as_of_date AS DATE) AS as_of_date,
-                        upper(ticker) AS ticker,
+                        trim(ticker) AS ticker,
                         name,
                         market,
                         locale,
@@ -286,8 +286,8 @@ class InstrumentRegistryStore:
             rows = con.execute(
                 f"""SELECT instrument_id, ticker, name, composite_figi, share_class_figi, cik,
                            primary_exchange, security_type, active
-                    FROM read_parquet('{safe}') WHERE upper(ticker)=? ORDER BY instrument_id""",
-                [ticker.strip().upper()],
+                    FROM read_parquet('{safe}') WHERE ticker=? ORDER BY instrument_id""",
+                [ticker.strip()],
             ).fetchall()
             columns = ["instrument_id", "ticker", "name", "composite_figi", "share_class_figi", "cik", "primary_exchange", "security_type", "active"]
             return [dict(zip(columns, row)) for row in rows]
