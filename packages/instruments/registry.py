@@ -22,6 +22,9 @@ except ImportError:  # pragma: no cover
     duckdb = None
 
 
+REFERENCE_CONTRACT_VERSION = "reference-v2-provider-symbol-case"
+
+
 def _parse_optional_datetime(value: object) -> datetime | None:
     if value in (None, ""):
         return None
@@ -162,7 +165,10 @@ class InstrumentRegistryStore:
                 meta = json.loads(manifest.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 meta = {}
-            if bool(meta.get("include_inactive")) == include_inactive:
+            if (
+                bool(meta.get("include_inactive")) == include_inactive
+                and meta.get("contract_version") == REFERENCE_CONTRACT_VERSION
+            ):
                 rows, instruments, quality = self._snapshot_counts(target)
                 self.rebuild_registry()
                 return ReferenceSnapshotResult(
@@ -192,6 +198,7 @@ class InstrumentRegistryStore:
                 {
                     "as_of_date": as_of_date.isoformat(),
                     "include_inactive": include_inactive,
+                    "contract_version": REFERENCE_CONTRACT_VERSION,
                     "row_count": row_count,
                     "instrument_count": instrument_count,
                     "fetched_at_utc": datetime.now(UTC).isoformat(),
