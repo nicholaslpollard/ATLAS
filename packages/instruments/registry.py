@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
     duckdb = None
 
 
-REFERENCE_CONTRACT_VERSION = "reference-v2-provider-symbol-case"
+REFERENCE_CONTRACT_VERSION = "reference-v3-provider-native-ticker-case"
 
 
 def _parse_optional_datetime(value: object) -> datetime | None:
