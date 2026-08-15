@@ -9,7 +9,12 @@ from .rest import MassiveRESTClient
 
 
 class MassiveReferenceProvider:
-    """Point-in-time Massive stock reference provider."""
+    """Point-in-time Massive stock reference provider.
+
+    Ticker text is provider-native and case-sensitive. In particular, Massive/SIP
+    preferred-share symbols may contain a lowercase ``p`` (for example ``TpC``).
+    ATLAS therefore trims ticker whitespace but never case-folds ticker identity.
+    """
 
     def __init__(self, settings: AtlasSettings, *, client: MassiveRESTClient | None = None) -> None:
         self.settings = settings
@@ -19,7 +24,7 @@ class MassiveReferenceProvider:
     def _normalize(item: dict[str, Any]) -> dict[str, Any]:
         out = dict(item)
         if out.get("ticker") is not None:
-            out["ticker"] = str(out["ticker"]).strip().upper()
+            out["ticker"] = str(out["ticker"]).strip()
         for key in ("composite_figi", "share_class_figi", "cik", "primary_exchange", "type"):
             if out.get(key) is not None:
                 value = str(out[key]).strip()
@@ -35,7 +40,13 @@ class MassiveReferenceProvider:
                 row = self._normalize(raw)
                 if not row.get("ticker"):
                     continue
-                key = (row.get("ticker"), row.get("composite_figi"), row.get("share_class_figi"), row.get("cik"), bool(row.get("active", active)))
+                key = (
+                    row.get("ticker"),
+                    row.get("composite_figi"),
+                    row.get("share_class_figi"),
+                    row.get("cik"),
+                    bool(row.get("active", active)),
+                )
                 if key in seen:
                     continue
                 seen.add(key)
