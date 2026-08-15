@@ -41,7 +41,9 @@ class CanonicalBar(BaseModel):
     @field_validator("symbol")
     @classmethod
     def normalize_symbol(cls, value: str) -> str:
-        value = value.strip().upper()
+        # Provider symbol case is significant for Massive preferred shares: the
+        # lowercase 'p' distinguishes, for example, TPC from TpC.
+        value = value.strip()
         if not value:
             raise ValueError("symbol cannot be blank")
         return value
@@ -73,7 +75,7 @@ class BarKey(BaseModel):
     @field_validator("symbol")
     @classmethod
     def normalize_symbol(cls, value: str) -> str:
-        return value.strip().upper()
+        return value.strip()
 
     @field_validator("timestamp_utc")
     @classmethod
@@ -105,7 +107,7 @@ class DerivedBar(BaseModel):
     @field_validator("symbol")
     @classmethod
     def normalize_derived_symbol(cls, value: str) -> str:
-        return value.strip().upper()
+        return value.strip()
 
     @field_validator("timestamp_utc", "bar_end_utc")
     @classmethod
