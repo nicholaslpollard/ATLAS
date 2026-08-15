@@ -32,7 +32,9 @@ class InstrumentReferenceObservation(BaseModel):
     @field_validator("ticker")
     @classmethod
     def normalize_ticker(cls, value: str) -> str:
-        value = value.strip().upper()
+        # Massive uses lowercase 'p' in preferred-share symbols. Preserve the
+        # provider ticker exactly apart from surrounding whitespace.
+        value = value.strip()
         if not value:
             raise ValueError("ticker cannot be blank")
         return value
