@@ -69,6 +69,28 @@ class SessionSegment(StrEnum):
     UNKNOWN = "unknown"
 
 
+class LiveFeedMode(StrEnum):
+    DELAYED = "delayed"
+    REALTIME = "realtime"
+
+
+class LiveFreshness(StrEnum):
+    FRESH = "fresh"
+    AGING = "aging"
+    STALE = "stale"
+    UNKNOWN = "unknown"
+
+
+class LiveConnectionState(StrEnum):
+    DISCONNECTED = "disconnected"
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    AUTHENTICATED = "authenticated"
+    SUBSCRIBED = "subscribed"
+    DEGRADED = "degraded"
+    STOPPED = "stopped"
+
+
 class IngestionStatus(StrEnum):
     PLANNED = "planned"
     DOWNLOADING = "downloading"
