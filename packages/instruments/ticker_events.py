@@ -224,12 +224,79 @@ class TickerEventStore:
                     pass
         promote(temp, target)
 
+    def _rebuild_authoritative_intervals(self, *, files_exist: bool) -> None:
+        """Build half-open ticker validity intervals from authoritative event facts.
+
+        Only Composite-FIGI-backed rows (``continuity_authority=true``) are eligible.
+        If a provider timeline reports more than one ticker on the same event date,
+        that date is excluded from the interval map rather than imposing an arbitrary
+        order. The continuity reconciler surfaces that condition as blocking evidence.
+        """
+
+        target = self.paths.authoritative_ticker_intervals_file()
+        if not files_exist:
+            target.unlink(missing_ok=True)
+            return
+
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temp = atomic_target(target)
+        temp.unlink(missing_ok=True)
+        compression = self.settings.data.parquet.compression.upper()
+        con = connect_utc(":memory:")
+        try:
+            con.execute(
+                f"""
+                COPY (
+                    WITH authoritative AS (
+                        SELECT
+                            instrument_id,
+                            ticker,
+                            event_date,
+                            query_identifier,
+                            query_identifier_type,
+                            fetched_at_utc,
+                            count(DISTINCT ticker) OVER (
+                                PARTITION BY instrument_id, event_date
+                            ) AS tickers_on_event_date
+                        FROM read_parquet(
+                            '{self._safe(self.paths.ticker_events_glob())}',
+                            union_by_name=true,
+                            hive_partitioning=false
+                        )
+                        WHERE continuity_authority = true
+                    ), clean AS (
+                        SELECT *
+                        FROM authoritative
+                        WHERE tickers_on_event_date = 1
+                    )
+                    SELECT
+                        instrument_id,
+                        ticker,
+                        event_date AS valid_from_date,
+                        lead(event_date) OVER (
+                            PARTITION BY instrument_id ORDER BY event_date, ticker
+                        ) AS valid_to_date_exclusive,
+                        query_identifier,
+                        query_identifier_type,
+                        true AS continuity_authority,
+                        'massive_ticker_events' AS evidence_source,
+                        fetched_at_utc
+                    FROM clean
+                    ORDER BY instrument_id, valid_from_date, ticker
+                ) TO {sql_string(temp)} (FORMAT PARQUET, COMPRESSION {compression})
+                """
+            )
+        finally:
+            con.close()
+        promote(temp, target)
+
     def _rebuild_event_view(self) -> None:
         root = self.settings.resolved_path(self.settings.data.paths.canonical) / "corporate_actions" / "massive" / "ticker_events"
         files = list(root.glob("instrument_id=*/*.parquet")) if root.exists() else []
         target = self.paths.ticker_event_observations_file()
         if not files:
             target.unlink(missing_ok=True)
+            self._rebuild_authoritative_intervals(files_exist=False)
             return
 
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -254,6 +321,11 @@ class TickerEventStore:
         finally:
             con.close()
         promote(temp, target)
+        self._rebuild_authoritative_intervals(files_exist=True)
+
+    def rebuild_derived_views(self) -> None:
+        """Rebuild combined ticker-event and authoritative interval artifacts."""
+        self._rebuild_event_view()
 
     def sync_for_ticker(self, ticker: str, as_of_date: date, *, force: bool = False) -> TickerEventSyncResult:
         target_obs = self._resolve_snapshot_target(ticker, as_of_date)
