@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -44,6 +45,9 @@ class FeatureSessionMaterializationResult:
     output_state_fingerprint: str
 
 
+FeatureProgressCallback = Callable[[FeatureSessionMaterializationResult, int, int], None]
+
+
 @dataclass(frozen=True, slots=True)
 class FeatureRangeMaterializationResult:
     timeframe: Timeframe
@@ -59,10 +63,11 @@ class FeatureRangeMaterializationResult:
 class HistoricalFeatureMaterializer:
     """Exact chronological feature persistence using the live-compatible state engine.
 
-    This service intentionally does not approximate recursive warm-up. A first-ever
-    historical build must explicitly bootstrap from the chosen ATLAS history origin.
-    Subsequent runs resume from the durable current-state checkpoint. Intraday
-    recursive state is isolated by exact provider symbol + Phase 3 session segment.
+    A first historical build bootstraps explicitly from the ATLAS history origin.
+    Intraday recursive state is isolated by exact provider symbol + Phase 3 session
+    segment. Durable state is checkpointed at month-end replay anchors and at the end
+    of each requested run rather than after every session, avoiding excessive gzip
+    checkpoint churn while limiting crash replay to at most the current month.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -93,9 +98,7 @@ class HistoricalFeatureMaterializer:
                 select_columns = "symbol, timestamp_utc, high, low, close, volume"
                 order_columns = "symbol, timestamp_utc"
             else:
-                select_columns = (
-                    "symbol, timestamp_utc, session_segment, high, low, close, volume"
-                )
+                select_columns = "symbol, timestamp_utc, session_segment, high, low, close, volume"
                 order_columns = "symbol, session_segment, timestamp_utc"
             return con.execute(
                 f"""
@@ -150,12 +153,13 @@ class HistoricalFeatureMaterializer:
         )
         return not future or future[0].month != trading_date.month
 
-    def _write_state_checkpoints(
+    def _write_state_checkpoint(
         self,
         engine: IncrementalFeatureEngine,
         *,
         timeframe: Timeframe,
         trading_date: date,
+        write_monthly_anchor: bool,
     ) -> str:
         current = self.paths.feature_current_state_file(timeframe)
         fingerprint = self.checkpoints.write(
@@ -164,14 +168,16 @@ class HistoricalFeatureMaterializer:
             timeframe=timeframe,
             as_of_date=trading_date.isoformat(),
         )
-        if self._is_last_exchange_session_of_month(trading_date):
+        if write_monthly_anchor:
             monthly = self.paths.feature_monthly_state_file(timeframe, trading_date)
-            self.checkpoints.write(
+            monthly_fingerprint = self.checkpoints.write(
                 monthly,
                 engine,
                 timeframe=timeframe,
                 as_of_date=trading_date.isoformat(),
             )
+            if monthly_fingerprint != fingerprint:
+                raise RuntimeError("monthly feature-state anchor fingerprint mismatch")
         return fingerprint
 
     def materialize_session(
@@ -201,13 +207,6 @@ class HistoricalFeatureMaterializer:
             input_state_fingerprint=input_state_fingerprint,
             output_state_fingerprint=output_state_fingerprint,
         )
-        checkpoint_fingerprint = self._write_state_checkpoints(
-            engine,
-            timeframe=timeframe,
-            trading_date=trading_date,
-        )
-        if checkpoint_fingerprint != output_state_fingerprint:
-            raise RuntimeError("persisted feature-state checkpoint fingerprint mismatch")
         return FeatureSessionMaterializationResult(
             timeframe=timeframe,
             trading_date=trading_date,
@@ -217,6 +216,28 @@ class HistoricalFeatureMaterializer:
             input_state_fingerprint=input_state_fingerprint,
             output_state_fingerprint=output_state_fingerprint,
         )
+
+    def _persist_anchor_if_needed(
+        self,
+        engine: IncrementalFeatureEngine,
+        *,
+        timeframe: Timeframe,
+        trading_date: date,
+        output_state_fingerprint: str,
+        is_final_session: bool,
+    ) -> date | None:
+        month_end = self._is_last_exchange_session_of_month(trading_date)
+        if not month_end and not is_final_session:
+            return None
+        checkpoint_fingerprint = self._write_state_checkpoint(
+            engine,
+            timeframe=timeframe,
+            trading_date=trading_date,
+            write_monthly_anchor=month_end,
+        )
+        if checkpoint_fingerprint != output_state_fingerprint:
+            raise RuntimeError("persisted feature-state checkpoint fingerprint mismatch")
+        return trading_date
 
     def _load_current(
         self,
@@ -261,8 +282,6 @@ class HistoricalFeatureMaterializer:
         start: date,
         end: date,
     ) -> tuple[date, ...]:
-        """Return materialized sessions whose source SHA/contract no longer matches."""
-
         stale: list[date] = []
         for trading_date in self.calendar.sessions_in_range(start, end):
             source = self.partition_store.source_path(timeframe, trading_date)
@@ -286,9 +305,8 @@ class HistoricalFeatureMaterializer:
         end: date,
         history_start: date,
         allow_candidate: bool = False,
+        progress: FeatureProgressCallback | None = None,
     ) -> FeatureRangeMaterializationResult:
-        """Recompute from the nearest exact state anchor before a corrected session."""
-
         if end < corrected_date:
             raise ValueError("replay end precedes corrected session")
         if corrected_date < history_start:
@@ -312,7 +330,9 @@ class HistoricalFeatureMaterializer:
         rows_processed = 0
         effective_start: date | None = None
         effective_end: date | None = None
-        for trading_date in sessions:
+        checkpoint_as_of: date | None = anchor[0] if anchor is not None else None
+        total = len(sessions)
+        for index, trading_date in enumerate(sessions, start=1):
             result = self.materialize_session(
                 engine,
                 timeframe=timeframe,
@@ -323,6 +343,16 @@ class HistoricalFeatureMaterializer:
             effective_start = effective_start or trading_date
             effective_end = trading_date
             input_as_of = trading_date.isoformat()
+            persisted = self._persist_anchor_if_needed(
+                engine,
+                timeframe=timeframe,
+                trading_date=trading_date,
+                output_state_fingerprint=result.output_state_fingerprint,
+                is_final_session=index == total,
+            )
+            checkpoint_as_of = persisted or checkpoint_as_of
+            if progress is not None:
+                progress(result, index, total)
 
         return FeatureRangeMaterializationResult(
             timeframe=timeframe,
@@ -332,7 +362,7 @@ class HistoricalFeatureMaterializer:
             effective_end=effective_end,
             sessions_processed=len(sessions),
             rows_processed=rows_processed,
-            checkpoint_as_of=effective_end,
+            checkpoint_as_of=checkpoint_as_of,
         )
 
     def materialize_range(
@@ -343,6 +373,7 @@ class HistoricalFeatureMaterializer:
         end: date,
         bootstrap_from_empty: bool = False,
         allow_candidate: bool = False,
+        progress: FeatureProgressCallback | None = None,
     ) -> FeatureRangeMaterializationResult:
         if end < start:
             raise ValueError("feature materialization end precedes start")
@@ -390,7 +421,9 @@ class HistoricalFeatureMaterializer:
         rows_processed = 0
         effective_start: date | None = None
         effective_end: date | None = None
-        for trading_date in sessions:
+        checkpoint_as_of = checkpoint_date
+        total = len(sessions)
+        for index, trading_date in enumerate(sessions, start=1):
             result = self.materialize_session(
                 engine,
                 timeframe=timeframe,
@@ -401,8 +434,17 @@ class HistoricalFeatureMaterializer:
             effective_start = effective_start or trading_date
             effective_end = trading_date
             input_as_of = trading_date.isoformat()
+            persisted = self._persist_anchor_if_needed(
+                engine,
+                timeframe=timeframe,
+                trading_date=trading_date,
+                output_state_fingerprint=result.output_state_fingerprint,
+                is_final_session=index == total,
+            )
+            checkpoint_as_of = persisted or checkpoint_as_of
+            if progress is not None:
+                progress(result, index, total)
 
-        final_checkpoint = effective_end or checkpoint_date
         return FeatureRangeMaterializationResult(
             timeframe=timeframe,
             requested_start=start,
@@ -411,5 +453,5 @@ class HistoricalFeatureMaterializer:
             effective_end=effective_end,
             sessions_processed=len(sessions),
             rows_processed=rows_processed,
-            checkpoint_as_of=final_checkpoint,
+            checkpoint_as_of=checkpoint_as_of,
         )
