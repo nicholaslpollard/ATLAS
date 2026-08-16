@@ -90,8 +90,12 @@ def test_unique_temp_paths_do_not_collide_within_same_process(tmp_path: Path):
     assert second.parent == target.parent
 
 
-def test_persistently_locked_checkpoint_warns_but_does_not_abort(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_persistently_locked_checkpoint_warns_once_then_disables_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    calls = 0
+
     def locked_write(*args, **kwargs):
+        nonlocal calls
+        calls += 1
         raise PermissionError(5, "persistently locked")
 
     monkeypatch.setattr(checkpoint_module, "atomic_write_text", locked_write)
@@ -105,6 +109,9 @@ def test_persistently_locked_checkpoint_warns_but_does_not_abort(tmp_path: Path,
     )
 
     with pytest.warns(RuntimeWarning, match="advisory checkpoint"):
-        saved = store.save(checkpoint)
+        first_saved = store.save(checkpoint)
+    second_saved = store.save(checkpoint)
 
-    assert saved is False
+    assert first_saved is False
+    assert second_saved is False
+    assert calls == 1
