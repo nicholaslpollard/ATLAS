@@ -19,6 +19,7 @@ from packages.data.sql import sql_string
 from packages.features.engine import compute_core_features
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
 from packages.features.partition_store import FeaturePartitionStore
+from packages.features.verification import first_market_key_difference, market_key_series_equal
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -127,8 +128,14 @@ def main(argv: list[str] | None = None) -> int:
         return 5
 
     for column in key_columns:
-        if not expected[column].equals(persisted[column]):
+        if not market_key_series_equal(expected[column], persisted[column], column):
+            difference = first_market_key_difference(expected[column], persisted[column], column)
             print(f"Persisted feature verification failed: key mismatch in {column}")
+            if difference is not None:
+                index, expected_value, persisted_value = difference
+                print(f"  first mismatch row: {index}")
+                print(f"  expected:           {expected_value!r}")
+                print(f"  persisted:          {persisted_value!r}")
             return 5
 
     failures: list[str] = []
