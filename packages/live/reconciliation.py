@@ -19,6 +19,74 @@ class LiveFinalizationReconciler:
         self.settings = settings
         self.paths = MarketDataPaths(settings)
 
+    @staticmethod
+    def _create_empty_live_table(con) -> None:
+        con.execute(
+            """
+            CREATE TEMP TABLE live_last (
+                symbol VARCHAR,
+                timestamp_utc TIMESTAMPTZ,
+                open DOUBLE,
+                high DOUBLE,
+                low DOUBLE,
+                close DOUBLE,
+                volume DOUBLE,
+                received_at_utc TIMESTAMPTZ
+            )
+            """
+        )
+
+    def _create_live_view(self, con, journal) -> None:
+        if not journal.is_file() or journal.stat().st_size == 0:
+            self._create_empty_live_table(con)
+            return
+
+        source = f"read_json_auto({sql_string(journal)}, format='newline_delimited')"
+        described = con.execute(f"DESCRIBE SELECT * FROM {source}").fetchall()
+        available = {str(row[0]) for row in described}
+        required = {"ev", "sym", "s", "o", "h", "l", "c", "_atlas_received_at_utc"}
+        if not required.issubset(available):
+            # A journal containing only unsupported/focused event types may not have
+            # any AM-shaped fields at all. That is a valid zero-live-bars session,
+            # not a schema failure.
+            self._create_empty_live_table(con)
+            return
+
+        if "dv" in available and "v" in available:
+            volume_expr = "COALESCE(TRY_CAST(dv AS DOUBLE), TRY_CAST(v AS DOUBLE), 0.0)"
+        elif "dv" in available:
+            volume_expr = "COALESCE(TRY_CAST(dv AS DOUBLE), 0.0)"
+        elif "v" in available:
+            volume_expr = "COALESCE(TRY_CAST(v AS DOUBLE), 0.0)"
+        else:
+            volume_expr = "0.0"
+
+        con.execute(
+            f"""
+            CREATE TEMP VIEW live_last AS
+            WITH parsed AS (
+                SELECT
+                    trim(sym) AS symbol,
+                    to_timestamp(CAST(s AS DOUBLE) / 1000.0) AS timestamp_utc,
+                    CAST(o AS DOUBLE) AS open,
+                    CAST(h AS DOUBLE) AS high,
+                    CAST(l AS DOUBLE) AS low,
+                    CAST(c AS DOUBLE) AS close,
+                    {volume_expr} AS volume,
+                    CAST(_atlas_received_at_utc AS TIMESTAMPTZ) AS received_at_utc,
+                    row_number() OVER (
+                        PARTITION BY trim(sym), CAST(s AS BIGINT)
+                        ORDER BY CAST(_atlas_received_at_utc AS TIMESTAMPTZ) DESC
+                    ) AS rn
+                FROM {source}
+                WHERE ev = 'AM'
+            )
+            SELECT symbol, timestamp_utc, open, high, low, close, volume, received_at_utc
+            FROM parsed
+            WHERE rn = 1
+            """
+        )
+
     def reconcile(
         self,
         session_date: date,
@@ -38,48 +106,7 @@ class LiveFinalizationReconciler:
 
         con = connect_utc(":memory:")
         try:
-            if journal.is_file() and journal.stat().st_size > 0:
-                con.execute(
-                    f"""
-                    CREATE TEMP VIEW live_last AS
-                    WITH parsed AS (
-                        SELECT
-                            trim(sym) AS symbol,
-                            to_timestamp(CAST(s AS DOUBLE) / 1000.0) AS timestamp_utc,
-                            CAST(o AS DOUBLE) AS open,
-                            CAST(h AS DOUBLE) AS high,
-                            CAST(l AS DOUBLE) AS low,
-                            CAST(c AS DOUBLE) AS close,
-                            COALESCE(TRY_CAST(dv AS DOUBLE), TRY_CAST(v AS DOUBLE), 0.0) AS volume,
-                            CAST(_atlas_received_at_utc AS TIMESTAMPTZ) AS received_at_utc,
-                            row_number() OVER (
-                                PARTITION BY trim(sym), CAST(s AS BIGINT)
-                                ORDER BY CAST(_atlas_received_at_utc AS TIMESTAMPTZ) DESC
-                            ) AS rn
-                        FROM read_json_auto({sql_string(journal)}, format='newline_delimited')
-                        WHERE ev = 'AM'
-                    )
-                    SELECT symbol, timestamp_utc, open, high, low, close, volume, received_at_utc
-                    FROM parsed
-                    WHERE rn = 1
-                    """
-                )
-            else:
-                con.execute(
-                    """
-                    CREATE TEMP TABLE live_last (
-                        symbol VARCHAR,
-                        timestamp_utc TIMESTAMPTZ,
-                        open DOUBLE,
-                        high DOUBLE,
-                        low DOUBLE,
-                        close DOUBLE,
-                        volume DOUBLE,
-                        received_at_utc TIMESTAMPTZ
-                    )
-                    """
-                )
-
+            self._create_live_view(con, journal)
             con.execute(
                 f"""
                 CREATE TEMP VIEW canonical_final AS
