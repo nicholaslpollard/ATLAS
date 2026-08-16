@@ -13,6 +13,7 @@ from packages.core.enums import Timeframe
 from packages.core.settings import load_settings
 from packages.features.historical_materializer import (
     FeatureBootstrapRequired,
+    FeatureSessionMaterializationResult,
     HistoricalFeatureMaterializer,
 )
 from packages.features.materialization import ACTIVE_FEATURE_PERSISTENCE_POLICY
@@ -33,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--allow-candidate",
         action="store_true",
-        help="Allow persistence for a benchmark-candidate timeframe such as 1h.",
+        help="Allow persistence for a benchmark-candidate timeframe, if one exists.",
     )
     parser.add_argument(
         "--audit-only",
@@ -53,6 +54,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="ATLAS feature-history origin; required if replay may need to fall back to genesis.",
     )
     return parser
+
+
+def _progress(result: FeatureSessionMaterializationResult, index: int, total: int) -> None:
+    print(
+        f"  [{index:>4}/{total:<4}] {result.trading_date}  "
+        f"rows={result.row_count:,} symbols={result.symbol_count:,}"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -89,6 +97,7 @@ def main(argv: list[str] | None = None) -> int:
             end=args.end,
             history_start=args.history_start,
             allow_candidate=args.allow_candidate,
+            progress=_progress,
         )
     else:
         try:
@@ -98,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
                 end=args.end,
                 bootstrap_from_empty=args.bootstrap_from_empty,
                 allow_candidate=args.allow_candidate,
+                progress=_progress,
             )
         except FeatureBootstrapRequired as exc:
             print(f"  bootstrap required: {exc}")
