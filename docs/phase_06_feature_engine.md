@@ -152,8 +152,10 @@ never changed, because an earlier correction can alter the EMA/RSI/ATR/OBV state
 `HistoricalFeatureMaterializer` processes source sessions chronologically through the same
 incremental engine intended for live use. A first historical build requires an explicit
 empty-state bootstrap at the chosen ATLAS history origin. Subsequent runs resume from the
-current exact checkpoint. Month-end state snapshots are retained as replay anchors for later
-corrected-session rebuilds.
+current exact checkpoint. Month-end state snapshots are retained as replay anchors. A
+corrected historical source replays from the latest valid month-end anchor strictly before
+the correction (or genesis if none exists), replacing every downstream feature partition
+through the requested end rather than patching one recursive day in isolation.
 
 ## Phase 6D measured persistence architecture
 
@@ -231,19 +233,24 @@ Run:
 ```
 
 The validator checks a classic Wilder RSI reference vector, a hand-calculated Wilder ATR recurrence,
-provider-native ticker separation, feature contract metadata, and the registry fingerprint.
+provider-native ticker separation, feature contract metadata, the registry fingerprint, measured
+persistence tiers, and state-dependent feature partition fingerprints.
 
-The pytest suite additionally covers exact EMA/Wilder initialization, RSI/ATR/MACD warm-up,
-Bollinger population standard deviation, OBV, structure levels, session isolation, exact symbol
-case, batch-vs-incremental equivalence, state checkpoint continuation, benchmark projections,
-measured persistence tiers, state-dependent partition invalidation, and historical checkpoint resume.
+At branch head `e3ae02d019fa8bfc88fce4f77b3430e21aa01b76`, GitHub Actions is green on both
+Ubuntu and Windows Python 3.14. The Windows run reports **116 passed in 8.57s**.
+
+The pytest suite covers exact EMA/Wilder initialization, RSI/ATR/MACD warm-up, Bollinger
+population standard deviation, OBV, structure levels, session isolation, exact symbol case,
+batch-vs-incremental equivalence, state checkpoint continuation, benchmark projections,
+measured persistence tiers, state-dependent partition invalidation, exact historical resume,
+and monthly-anchor corrected-history replay.
 
 ## Remaining Phase 06 acceptance
 
 1. Run the 1h real historical benchmark and lock its tier.
-2. Finish corrected-session replay selection from monthly state anchors and downstream partition invalidation.
-3. Run a small real historical materialization pilot using the permanent 4h contract before the full feature backfill.
-4. Validate selected real historical feature values against canonical/derived bars and independent calculations.
-5. Prove the persisted current state can feed the Phase 5 live path without numerical discontinuity.
+2. Run a small real historical materialization pilot using the permanent 4h contract before the full feature backfill.
+3. Validate selected real historical feature values against canonical/derived bars and independent calculations.
+4. Prove the persisted current state can feed the Phase 5 live path without numerical discontinuity.
+5. Only after those gates, backfill permanent feature timeframes across the provider-backed history.
 
 Phase 05's market-hours WebSocket throughput/finalization gates remain separate and may be completed while Phase 06 proceeds.
