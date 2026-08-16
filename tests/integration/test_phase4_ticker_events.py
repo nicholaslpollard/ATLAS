@@ -8,6 +8,7 @@ import pytest
 pytest.importorskip("duckdb")
 
 from packages.core.settings import load_settings
+from packages.data.duckdb_connection import connect_utc
 from packages.instruments.registry import InstrumentRegistryStore
 from packages.instruments.ticker_events import TickerEventStore
 
@@ -76,10 +77,27 @@ def test_composite_figi_event_sync_is_authoritative_and_idempotent(tmp_path):
     ]
     assert all(item["continuity_authority"] is True for item in timeline)
 
+    con = connect_utc(":memory:")
+    try:
+        rows = con.execute(
+            f"""
+            SELECT ticker, valid_from_date, valid_to_date_exclusive, continuity_authority
+            FROM read_parquet('{store.paths.authoritative_ticker_intervals_file().as_posix()}')
+            ORDER BY valid_from_date
+            """
+        ).fetchall()
+    finally:
+        con.close()
+    assert rows == [
+        ("FB", date(2012, 5, 18), date(2022, 6, 9), True),
+        ("META", date(2022, 6, 9), None, True),
+    ]
+
     second = store.sync_for_ticker("META", snapshot_date)
     assert second.skipped is True
     assert provider.event_queries == ["BBG000MM2P62"]
     assert store.paths.ticker_event_observations_file().is_file()
+    assert store.paths.authoritative_ticker_intervals_file().is_file()
 
 
 def test_ticker_only_event_sync_preserves_case_and_is_non_authoritative(tmp_path):
@@ -89,9 +107,19 @@ def test_ticker_only_event_sync_preserves_case_and_is_non_authoritative(tmp_path
     snapshot_date = date(2026, 8, 14)
 
     InstrumentRegistryStore(settings, provider=provider).sync_snapshot(snapshot_date)
-    result = TickerEventStore(settings, provider=provider).sync_for_ticker("TpC", snapshot_date)
+    store = TickerEventStore(settings, provider=provider)
+    result = store.sync_for_ticker("TpC", snapshot_date)
 
     assert result.query_identifier == "TpC"
     assert result.query_identifier_type == "ticker"
     assert result.continuity_authority is False
     assert provider.event_queries == ["TpC"]
+
+    con = connect_utc(":memory:")
+    try:
+        count = con.execute(
+            f"SELECT count(*) FROM read_parquet('{store.paths.authoritative_ticker_intervals_file().as_posix()}')"
+        ).fetchone()[0]
+    finally:
+        con.close()
+    assert count == 0
