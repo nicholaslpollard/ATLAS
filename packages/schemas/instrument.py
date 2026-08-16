@@ -76,6 +76,14 @@ class TickerObservationSummary(BaseModel):
     last_observed_date: date
     observation_count: int = Field(ge=1)
 
+    @field_validator("ticker")
+    @classmethod
+    def preserve_observed_ticker_case(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("ticker cannot be blank")
+        return value
+
 
 class ReferenceSnapshotResult(BaseModel):
     as_of_date: date
@@ -135,3 +143,61 @@ class TickerEventSyncResult(BaseModel):
     event_count: int = Field(ge=0)
     path: str
     skipped: bool = False
+
+
+class TickerValidityInterval(BaseModel):
+    """Half-open provider-authoritative ticker interval: [from, to)."""
+
+    instrument_id: str
+    ticker: str
+    valid_from_date: date
+    valid_to_date_exclusive: date | None = None
+    query_identifier: str
+    query_identifier_type: str
+    continuity_authority: bool = True
+    evidence_source: str = "massive_ticker_events"
+
+    @field_validator("ticker")
+    @classmethod
+    def preserve_interval_ticker_case(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("ticker cannot be blank")
+        return value
+
+
+class TickerReuseObservation(BaseModel):
+    """The same exact provider ticker observed on a different instrument identity."""
+
+    ticker: str
+    other_instrument_id: str
+    current_first_observed_date: date
+    current_last_observed_date: date
+    other_first_observed_date: date
+    other_last_observed_date: date
+    observation_ranges_overlap: bool
+
+    @field_validator("ticker")
+    @classmethod
+    def preserve_reuse_ticker_case(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("ticker cannot be blank")
+        return value
+
+
+class IdentityContinuityReport(BaseModel):
+    """Deterministic reconciliation of snapshot aliases and provider event evidence."""
+
+    instrument_id: str
+    snapshot_ticker: str
+    as_of_date: date
+    status: str
+    continuity_confirmed: bool
+    blocking_anomaly: bool
+    observed_tickers: list[TickerObservationSummary] = Field(default_factory=list)
+    authoritative_events: list[TickerChangeEvent] = Field(default_factory=list)
+    authoritative_intervals: list[TickerValidityInterval] = Field(default_factory=list)
+    unresolved_observed_tickers: list[str] = Field(default_factory=list)
+    ticker_reuse_observations: list[TickerReuseObservation] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
