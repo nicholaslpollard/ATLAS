@@ -6,9 +6,10 @@ def test_measured_feature_persistence_tiers_are_disjoint_and_expected():
     policy = ACTIVE_FEATURE_PERSISTENCE_POLICY
     assert policy.tier_for(Timeframe.DAY_1) == "permanent"
     assert policy.tier_for(Timeframe.HOUR_4) == "permanent"
-    assert policy.tier_for(Timeframe.HOUR_1) == "benchmark_candidate"
+    assert policy.tier_for(Timeframe.HOUR_1) == "permanent"
     assert policy.tier_for(Timeframe.MINUTE_15) == "on_demand"
     assert policy.tier_for(Timeframe.MINUTE_1) == "current_state_only"
+    assert policy.benchmark_candidates == ()
 
 
 def test_policy_cannot_place_a_timeframe_in_multiple_tiers():
