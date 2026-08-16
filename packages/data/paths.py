@@ -83,6 +83,18 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
         return (root / "reference" / "massive" / "tickers" / "date=*" / "*.parquet").as_posix()
 
+    def live_state_file(self) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.live)
+        return root / "market_state" / "current.json"
+
+    def live_journal_file(self, session_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.live)
+        return root / "journal" / "massive" / "stocks" / f"{session_date.year:04d}" / f"{session_date}.jsonl"
+
+    def live_reconciliation_report(self, session_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.live)
+        return root / "reconciliation" / f"{session_date.year:04d}" / f"{session_date}.json"
+
     def materialization_manifest_dir(self) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
         return root / "materialization"
