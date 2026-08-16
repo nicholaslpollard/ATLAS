@@ -80,6 +80,11 @@ ATLAS will not silently discard market data when the consumer falls behind. A fu
 ingress queue raises a backpressure fault, marks the connection degraded, and causes
 a reconnect. This makes insufficient throughput observable and measurable.
 
+The client also records low-overhead telemetry from each run: frames received,
+processed events, peak ingress queue depth, and configured queue capacity. The
+market-hours benchmark uses this telemetry directly so measurement does not require
+slowing the event path with allocation tracing or per-event logging.
+
 ## Delay-aware freshness
 
 Freshness is measured relative to the expected arrival time:
@@ -139,6 +144,12 @@ Finalization reconciliation:
 data/live/reconciliation/YYYY/YYYY-MM-DD.json
 ```
 
+Live benchmark reports:
+
+```text
+data/live/benchmarks/YYYY/YYYY-MM-DD/YYYY-MM-DDTHHMMSSZ.json
+```
+
 These runtime files are outside Git and are not part of the canonical historical
 lake.
 
@@ -177,6 +188,38 @@ Run broad delayed minute state for discovery:
 provider-capability testing. It is not expected to authorize on the current Stocks
 Starter plan.
 
+### Market-hours benchmark
+
+Run the broad benchmark during an exchange session after the delayed feed has had
+time to begin delivering regular-session bars. A five-minute strict run is the Phase
+05 target-machine acceptance check:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\benchmark_live_market.py `
+  --feed delayed `
+  --minute-symbols "*" `
+  --seconds 300 `
+  --require-events `
+  --strict
+```
+
+The report includes:
+
+- raw WebSocket frames and normalized event rates;
+- current-state symbol coverage;
+- peak ingress queue depth/utilization;
+- process CPU time and one-core-equivalent utilization;
+- peak process RSS/working set;
+- fresh/aging/stale minute-state counts;
+- p50/p95/max excess lag after subtracting the expected 900-second provider delay;
+- journal byte growth;
+- parse errors, reconnects, and out-of-order observations.
+
+`--strict` returns nonzero if parsing fails, the connection reconnects, or peak ingress
+queue utilization reaches 80%. `--require-events` returns nonzero when no accepted
+market events are observed. These flags are intended for market-hours acceptance, not
+weekend smoke tests.
+
 After the corresponding Massive flat file is downloaded and materialized into
 canonical 1m, reconcile the live journal with finalized data:
 
@@ -196,11 +239,16 @@ Target Windows machine:
 - delayed endpoint authentication: PASS (`Connected Successfully`, `authenticated`);
 - combined `AM.AAPL,Q.AAPL` subscription: rejected with provider status `error: not authorized`;
 - rejection classified as expected current-plan entitlement behavior because Stocks
-  Starter includes delayed `AM` but does not include stock WebSocket `Q`.
+  Starter includes delayed `AM` but does not include stock WebSocket `Q`;
+- focused delayed `AM.AAPL` subscription: PASS, clean 15-second Sunday run with zero
+  reconnects and zero events as expected while the market was closed;
+- broad delayed `AM.*` subscription: PASS, clean 15-second Sunday run with zero parse
+  errors/reconnects and zero events as expected while the market was closed.
 
-The next provider check is a minute-only delayed subscription. Because 2026-08-16 is
-a Sunday, a clean zero-event run is acceptable; the market-hours throughput gate must
-be run during a live session.
+The next provider check is the five-minute `AM.*` benchmark during the 2026-08-17
+market session. Because the feed is delayed 15 minutes, the benchmark should begin no
+earlier than approximately 09:45 ET if regular-session event flow is the goal; a
+slightly later start gives a cleaner throughput sample.
 
 ## Acceptance gates
 
