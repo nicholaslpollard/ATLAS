@@ -12,6 +12,8 @@ keeping provider facts and derived calculations strictly separated.
 5. Recursive indicators use documented ATLAS initialization rules rather than library defaults.
 6. Feature definitions are versioned and fingerprinted for downstream invalidation/provenance.
 7. Missing inputs reset recursive state rather than silently bridging a data gap.
+8. Historical batch math and incremental/live math must be equivalent bar-for-bar.
+9. Full-market historical persistence is benchmark-driven; ATLAS will not blindly multiply the lake by every feature column.
 
 ## Phase 6A mathematical contract
 
@@ -61,9 +63,9 @@ the MACD line first becomes available at bar 26 and its signal/histogram at bar 
 
 ATLAS uses a 20-bar SMA and population standard deviation (`ddof=0`) by contract.
 
-## Phase 6A core registry
+## Core feature registry
 
-The registry currently covers the first production feature set across:
+The first production registry contains 33 features across:
 
 - momentum / returns;
 - trend averages, slopes, distance, efficiency;
@@ -82,8 +84,88 @@ dependencies
 recursive
 ```
 
-The sorted registry is SHA-256 fingerprinted. Persistence in Phase 6C will include this fingerprint
-so changes to the mathematical contract automatically make older derived partitions identifiable as stale.
+The sorted registry is SHA-256 fingerprinted. State checkpoints and later persisted
+feature artifacts carry the calculation contract/fingerprint so stale derived data is detectable.
+
+## Phase 6B session and benchmark-relative context
+
+Session-aware helpers are separate from continuous technical-series math. Regular-session
+context currently includes:
+
+- session bar index;
+- session open;
+- previous completed regular-session close;
+- overnight gap;
+- return from session open;
+- session high/low to date;
+- session range position to date.
+
+Non-regular rows do not become regular-session state. Exact provider-native symbols own
+independent state. Benchmark-relative primitives include aligned price ratio, relative
+return, and relative-strength change; they require explicitly aligned asset/benchmark bars.
+
+## Phase 6C exact incremental state
+
+ATLAS does not approximate recursive indicators by loading an arbitrary recent window.
+`IncrementalFeatureEngine` carries the exact state needed by EMA20/50/200, MACD 12/26/9,
+Wilder RSI14, Wilder ATR14, OBV, and bounded rolling features.
+
+A deterministic equivalence test feeds the same generated market sequence through:
+
+```text
+historical batch engine
+        versus
+one-bar-at-a-time incremental engine
+```
+
+and requires every registered core feature to match at each bar within floating-point
+tolerance. This test caught and corrected a real semantic discrepancy: incremental
+`drawdown_20` initially used rolling intrabar high while the batch contract correctly used
+rolling close high.
+
+Exact incremental state can be saved as portable deterministic gzip-JSON. Checkpoints carry:
+
+- checkpoint schema version;
+- feature calculation contract;
+- registry fingerprint;
+- timeframe;
+- as-of date;
+- exact per-symbol recursive state and bounded rolling buffers;
+- a SHA-256 content fingerprint.
+
+This gives later historical/live jobs resumability without pickles or hidden library state.
+
+## Phase 6D persistence benchmark gate
+
+ATLAS deliberately does **not** yet commit to materializing all 33 features for every 1m/15m
+historical row. The historical lake is large enough that this decision must be empirical.
+
+Run a real-data benchmark such as:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\benchmark_features.py `
+  --timeframe 4h `
+  --end 2026-08-14 `
+  --sessions 20 `
+  --project-sessions 1255
+```
+
+The benchmark:
+
+1. reads real canonical/derived ATLAS Parquet;
+2. calculates all 33 core features across the full sample without cross-symbol leakage;
+3. measures wall time, process CPU, peak RSS, and rows/second;
+4. writes a temporary compact key+feature Parquet using the configured ATLAS compression;
+5. measures actual compressed bytes/row and output/source ratio;
+6. optionally projects sample compute/storage to the full 1,255-session lake;
+7. removes the temporary feature file and saves only the benchmark JSON report.
+
+One-minute benchmarking requires an explicit `--allow-1m` guard because even a modest
+full-market sample can consume substantial RAM.
+
+The results determine which feature/timeframe combinations are permanently materialized,
+which are maintained only as current snapshots/state, and which are computed/cached on demand.
+This avoids repeating the legacy Chart Monitor indicator-maintenance problem.
 
 ## Validation
 
@@ -96,24 +178,16 @@ Run:
 The validator checks a classic Wilder RSI reference vector, a hand-calculated Wilder ATR recurrence,
 provider-native ticker separation, feature contract metadata, and the registry fingerprint.
 
-The full pytest suite includes exact warm-up positions and deterministic reference values for EMA,
-Wilder smoothing, RSI, ATR, MACD, Bollinger Bands, OBV, prior-window structure, registry behavior,
-and cross-symbol isolation in the core engine.
+The pytest suite additionally covers exact EMA/Wilder initialization, RSI/ATR/MACD warm-up,
+Bollinger population standard deviation, OBV, structure levels, session isolation, exact symbol
+case, batch-vs-incremental equivalence, state checkpoint continuation, and benchmark projections.
 
-## Next slices
+## Remaining Phase 06 acceptance
 
-### 6B — engine/session/multi-timeframe semantics
+1. Run the 4h real historical benchmark and use the measured footprint/throughput to lock the persistence profile.
+2. Benchmark any additional timeframe needed to resolve the persistence decision (likely 1h and/or 15m samples).
+3. Implement the selected persistence/current-state/cache policy with contract fingerprints and idempotent invalidation.
+4. Validate real historical feature values for selected symbols/timeframes against the underlying canonical bars.
+5. Prove current/live incremental feature state can resume from an exact checkpoint.
 
-Extend the core engine with session-aware features, multi-timeframe feature plans, feature selection,
-and calculation benchmarking.
-
-### 6C — incremental materialization
-
-Add bounded/stateful warm-up handling, partitioned Parquet feature storage, manifests/fingerprints,
-corrected-session invalidation, and idempotent recomputation.
-
-### 6D — real historical acceptance
-
-Run the engine against the ATLAS historical lake, validate selected symbols against independent/reference
-calculations, profile throughput and memory, and decide which feature families should be permanently
-materialized versus computed on demand.
+Phase 05's market-hours WebSocket throughput/finalization gates remain separate and may be completed while Phase 06 proceeds.
