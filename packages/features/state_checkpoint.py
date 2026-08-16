@@ -139,6 +139,19 @@ def checkpoint_fingerprint(payload: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def feature_state_fingerprint(
+    engine: IncrementalFeatureEngine,
+    *,
+    timeframe: Timeframe,
+    as_of_date: str,
+) -> str:
+    """Fingerprint exact in-memory state without writing a checkpoint file."""
+
+    return checkpoint_fingerprint(
+        build_checkpoint_payload(engine, timeframe=timeframe, as_of_date=as_of_date)
+    )
+
+
 class FeatureStateCheckpointStore:
     """Portable, deterministic gzip-JSON snapshots of exact incremental feature state."""
 
