@@ -157,6 +157,8 @@ class LiveStateSnapshot(BaseModel):
     ignored_out_of_order_events: int = Field(default=0, ge=0)
     parse_errors: int = Field(default=0, ge=0)
     reconnects: int = Field(default=0, ge=0)
+    restored_symbol_count: int = Field(default=0, ge=0)
+    observed_symbol_count: int = Field(default=0, ge=0)
     last_received_at_utc: datetime | None = None
     symbols: tuple[LiveSymbolState, ...] = ()
 
