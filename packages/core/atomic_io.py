@@ -75,9 +75,15 @@ def atomic_write_text(
     text: str,
     *,
     encoding: str = "utf-8",
-    fsync: bool = True,
+    fsync: bool = False,
 ) -> None:
-    """Durably write text to a unique sibling temp file and atomically promote it."""
+    """Write text to a unique sibling temp file and atomically promote it.
+
+    ``fsync`` is opt-in because ATLAS manifests/checkpoints are reconstructible from
+    source/canonical files and are updated very frequently during historical builds.
+    Atomic visibility is required; forcing a physical flush on every metadata state
+    transition is not.
+    """
 
     final_path = Path(final_path)
     temp_path = unique_temp_path(final_path)
