@@ -99,3 +99,62 @@ def test_historical_materializer_checkpoints_and_resumes_without_case_folding(tm
     assert rerun.sessions_processed == 0
     assert rerun.rows_processed == 0
     assert rerun.checkpoint_as_of == second
+
+
+def test_corrected_source_replays_from_latest_monthly_anchor(tmp_path):
+    service = HistoricalFeatureMaterializer(make_settings(tmp_path))
+    sessions = [
+        date(2026, 7, 30),
+        date(2026, 7, 31),
+        date(2026, 8, 3),
+        date(2026, 8, 4),
+    ]
+    for index, session in enumerate(sessions):
+        write_4h_source(service, session, float(index))
+
+    initial = service.materialize_range(
+        timeframe=Timeframe.HOUR_4,
+        start=sessions[0],
+        end=sessions[-1],
+        bootstrap_from_empty=True,
+    )
+    assert initial.sessions_processed == 4
+    anchor = service.latest_anchor_before(Timeframe.HOUR_4, date(2026, 8, 3))
+    assert anchor is not None
+    assert anchor[0] == date(2026, 7, 31)
+
+    downstream_before = service.partition_store.read_manifest(
+        Timeframe.HOUR_4, date(2026, 8, 4)
+    )
+    assert downstream_before is not None
+
+    # Correcting Aug 3 changes both that partition and the recursive state entering
+    # Aug 4. ATLAS must therefore replay Aug 3 -> Aug 4 from the July month-end
+    # state anchor rather than patching only Aug 3.
+    write_4h_source(service, date(2026, 8, 3), 20.0)
+    assert service.stale_source_sessions(
+        timeframe=Timeframe.HOUR_4,
+        start=date(2026, 8, 3),
+        end=date(2026, 8, 4),
+    ) == (date(2026, 8, 3),)
+
+    replay = service.replay_from_correction(
+        timeframe=Timeframe.HOUR_4,
+        corrected_date=date(2026, 8, 3),
+        end=date(2026, 8, 4),
+        history_start=date(2026, 7, 30),
+    )
+    assert replay.effective_start == date(2026, 8, 3)
+    assert replay.effective_end == date(2026, 8, 4)
+    assert replay.sessions_processed == 2
+
+    downstream_after = service.partition_store.read_manifest(
+        Timeframe.HOUR_4, date(2026, 8, 4)
+    )
+    assert downstream_after is not None
+    assert downstream_after.input_state_fingerprint != downstream_before.input_state_fingerprint
+    assert service.stale_source_sessions(
+        timeframe=Timeframe.HOUR_4,
+        start=date(2026, 8, 3),
+        end=date(2026, 8, 4),
+    ) == ()
