@@ -25,7 +25,11 @@ class MassiveWebSocketError(ProviderError):
 
 
 class MassiveWebSocketAuthenticationError(MassiveWebSocketError):
-    """Authentication or plan entitlement rejected the stock stream."""
+    """Authentication rejected the stock stream."""
+
+
+class MassiveWebSocketSubscriptionError(MassiveWebSocketError):
+    """The authenticated account cannot use one or more requested stream topics."""
 
 
 class MassiveWebSocketBackpressureError(MassiveWebSocketError):
@@ -216,6 +220,25 @@ class MassiveStocksWebSocketClient:
     def _status_text(event: dict[str, object]) -> tuple[str, str]:
         return str(event.get("status") or "").lower(), str(event.get("message") or "")
 
+    @classmethod
+    def _raise_for_runtime_status(cls, event: dict[str, object]) -> None:
+        status, message = cls._status_text(event)
+        combined = f"{status} {message}".lower()
+        if any(token in combined for token in ("auth_failed", "authentication failed", "invalid api key")):
+            raise MassiveWebSocketAuthenticationError(
+                f"Massive WebSocket authentication rejected: {status}: {message}"
+            )
+        if (
+            status in {"error", "failed", "not_authorized", "unauthorized"}
+            or "not authorized" in combined
+            or "not entitled" in combined
+            or "permission denied" in combined
+            or "subscription failed" in combined
+        ):
+            raise MassiveWebSocketSubscriptionError(
+                f"Massive WebSocket subscription rejected: {status}: {message}"
+            )
+
     async def _next_status(
         self,
         websocket: ClientConnection,
@@ -232,10 +255,7 @@ class MassiveStocksWebSocketClient:
                     status, message = self._status_text(event)
                     if status in accepted:
                         return status, message
-                    if any(token in status for token in ("auth_failed", "not_authorized", "unauthorized")):
-                        raise MassiveWebSocketAuthenticationError(
-                            f"Massive WebSocket authentication rejected: {status}: {message}"
-                        )
+                    self._raise_for_runtime_status(event)
 
     async def _authenticate(self, websocket: ClientConnection) -> tuple[str | None, str | None]:
         _, connected_message = await self._next_status(
@@ -332,6 +352,7 @@ class MassiveStocksWebSocketClient:
                                 continue
                             for raw_event in decode_massive_frame(frame):
                                 if str(raw_event.get("ev") or "").lower() == "status":
+                                    self._raise_for_runtime_status(raw_event)
                                     continue
                                 result = handler(raw_event, received_at)
                                 if inspect.isawaitable(result):
@@ -348,7 +369,7 @@ class MassiveStocksWebSocketClient:
                             pass
             except asyncio.CancelledError:
                 raise
-            except MassiveWebSocketAuthenticationError:
+            except (MassiveWebSocketAuthenticationError, MassiveWebSocketSubscriptionError):
                 await self._notify(state_handler, LiveConnectionState.DEGRADED)
                 raise
             except Exception:
