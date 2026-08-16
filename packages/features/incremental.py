@@ -227,11 +227,17 @@ class IncrementalSymbolFeatureState:
 
         rolling_high = max(self.highs) if len(self.highs) == 20 else None
         rolling_low = min(self.lows) if len(self.lows) == 20 else None
-        range_position = drawdown = None
+        range_position = None
         if rolling_high is not None and rolling_low is not None:
             width = rolling_high - rolling_low
             range_position = (close - rolling_low) / width if width != 0.0 else 0.5
-            drawdown = close / rolling_high - 1.0 if rolling_high > 0.0 else None
+
+        rolling_close_high = max(self.closes) if len(self.closes) == 20 else None
+        drawdown = (
+            close / rolling_close_high - 1.0
+            if rolling_close_high is not None and rolling_close_high > 0.0
+            else None
+        )
 
         price_distance_ema20 = close / ema20 - 1.0 if ema20 is not None and ema20 != 0.0 else None
 
