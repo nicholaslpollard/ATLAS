@@ -52,6 +52,10 @@ def _validate_input(frame: pd.DataFrame) -> pd.DataFrame:
     result["symbol"] = result["symbol"].astype("string").str.strip()
     if result["symbol"].isna().any() or (result["symbol"] == "").any():
         raise FeatureInputError("feature input contains a blank symbol")
+    if "session_segment" in result.columns:
+        result["session_segment"] = result["session_segment"].astype("string").str.strip()
+        if result["session_segment"].isna().any() or (result["session_segment"] == "").any():
+            raise FeatureInputError("feature input contains a blank session_segment")
     result["timestamp_utc"] = pd.to_datetime(result["timestamp_utc"], utc=True, errors="raise")
     for column in ("high", "low", "close", "volume"):
         result[column] = pd.to_numeric(result[column], errors="coerce").astype("float64")
@@ -64,9 +68,16 @@ def _validate_input(frame: pd.DataFrame) -> pd.DataFrame:
     outside = (result["close"] > result["high"]) | (result["close"] < result["low"])
     if outside.any():
         raise FeatureInputError("feature input contains close outside [low, high]")
-    if result.duplicated(["symbol", "timestamp_utc"]).any():
-        raise FeatureInputError("feature input contains duplicate (symbol, timestamp_utc) keys")
-    return result.sort_values(["symbol", "timestamp_utc"], kind="stable").reset_index(drop=True)
+    duplicate_key = ["symbol", "timestamp_utc"]
+    if "session_segment" in result.columns:
+        duplicate_key.append("session_segment")
+    if result.duplicated(duplicate_key).any():
+        raise FeatureInputError("feature input contains duplicate market keys")
+    sort_columns = ["symbol"]
+    if "session_segment" in result.columns:
+        sort_columns.append("session_segment")
+    sort_columns.append("timestamp_utc")
+    return result.sort_values(sort_columns, kind="stable").reset_index(drop=True)
 
 
 def _compute_symbol_features(group: pd.DataFrame) -> pd.DataFrame:
@@ -117,17 +128,20 @@ def _compute_symbol_features(group: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_core_features(frame: pd.DataFrame) -> pd.DataFrame:
-    """Compute the Phase 6 core feature contract without cross-symbol leakage.
+    """Compute the Phase 6 core feature contract without cross-stream leakage.
 
-    Output is deterministically ordered by exact provider-native symbol and UTC bar
-    timestamp. Source columns are retained, feature columns are appended, and the
-    DataFrame attrs carry the calculation-contract fingerprint for downstream
-    persistence/provenance.
+    Provider-native symbol case is preserved. If ``session_segment`` is present,
+    premarket, regular, and after-hours bars form independent recursive/rolling
+    streams for the same symbol. Source columns are retained and feature columns are
+    appended with calculation-contract metadata in DataFrame attrs.
     """
 
     ordered = _validate_input(frame)
+    grouping: str | list[str] = "symbol"
+    if "session_segment" in ordered.columns:
+        grouping = ["symbol", "session_segment"]
     feature_parts: list[pd.DataFrame] = []
-    for _, group in ordered.groupby("symbol", sort=False, observed=True):
+    for _, group in ordered.groupby(grouping, sort=False, observed=True):
         feature_parts.append(_compute_symbol_features(group))
     features = pd.concat(feature_parts).sort_index() if feature_parts else pd.DataFrame(index=ordered.index)
     result = pd.concat([ordered, features], axis=1)
