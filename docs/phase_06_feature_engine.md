@@ -206,7 +206,7 @@ matrix because its row volume/rebuild cost is much larger. 1m remains state/curr
 
 One 1h benchmark is still required to decide whether 1h joins the permanent tier or remains
 on-demand/cache. The persistence code is already tier-agnostic, so promoting 1h later does
-not require redesign.
+not require redesign. No 15m benchmark is required for this decision.
 
 ## Benchmark command
 
@@ -236,8 +236,9 @@ The validator checks a classic Wilder RSI reference vector, a hand-calculated Wi
 provider-native ticker separation, feature contract metadata, the registry fingerprint, measured
 persistence tiers, and state-dependent feature partition fingerprints.
 
-At branch head `e3ae02d019fa8bfc88fce4f77b3430e21aa01b76`, GitHub Actions is green on both
-Ubuntu and Windows Python 3.14. The Windows run reports **116 passed in 8.57s**.
+At implementation head `e3ae02d019fa8bfc88fce4f77b3430e21aa01b76`, GitHub Actions is green on both
+Ubuntu and Windows Python 3.14. The Windows run reports **116 passed in 8.57s**. Subsequent
+commits through this document update only Phase 6 documentation.
 
 The pytest suite covers exact EMA/Wilder initialization, RSI/ATR/MACD warm-up, Bollinger
 population standard deviation, OBV, structure levels, session isolation, exact symbol case,
