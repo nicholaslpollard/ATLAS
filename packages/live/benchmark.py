@@ -141,6 +141,8 @@ def build_benchmark_summary(
         "parse_errors": snapshot.parse_errors,
         "reconnects": snapshot.reconnects,
         "symbol_count": snapshot.symbol_count,
+        "restored_symbol_count": snapshot.restored_symbol_count,
+        "observed_symbol_count": snapshot.observed_symbol_count,
         "peak_ingress_queue_depth": runtime_stats.peak_ingress_queue_depth,
         "ingress_queue_capacity": runtime_stats.ingress_queue_capacity,
         "peak_queue_utilization": queue_utilization,
