@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from packages.core.atomic_io import atomic_write_text
 from packages.core.enums import DataQualityCode, DataQualitySeverity
 from packages.data.atomic import atomic_target, promote
 from packages.data.duckdb_connection import connect_utc
@@ -76,10 +77,7 @@ class SessionSymbolQuarantine:
 
     @staticmethod
     def _write_registry(path: Path, payload: dict[str, object]) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temp = path.with_suffix(path.suffix + ".tmp")
-        temp.write_text(json.dumps(payload, indent=2, default=str) + "\n", encoding="utf-8")
-        temp.replace(path)
+        atomic_write_text(path, json.dumps(payload, indent=2, default=str) + "\n")
 
     @staticmethod
     def load_registry(path: Path) -> tuple[str, ...]:
