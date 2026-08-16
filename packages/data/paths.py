@@ -51,6 +51,18 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
         return root / "reference" / "massive_tickers" / f"{as_of_date}.json"
 
+    def ticker_events_file(self, instrument_id: str) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.canonical)
+        return root / "corporate_actions" / "massive" / "ticker_events" / f"instrument_id={instrument_id}" / "part-000.parquet"
+
+    def ticker_events_manifest(self, instrument_id: str) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.manifests)
+        return root / "reference" / "massive_ticker_events" / f"{instrument_id}.json"
+
+    def ticker_events_glob(self) -> str:
+        root = self.settings.resolved_path(self.settings.data.paths.canonical)
+        return (root / "corporate_actions" / "massive" / "ticker_events" / "instrument_id=*" / "*.parquet").as_posix()
+
     def instrument_registry_file(self) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "reference" / "instruments" / "registry.parquet"
@@ -58,6 +70,10 @@ class MarketDataPaths:
     def ticker_observations_file(self) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "reference" / "instruments" / "ticker_observations.parquet"
+
+    def ticker_event_observations_file(self) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "reference" / "instruments" / "ticker_event_observations.parquet"
 
     def reference_snapshot_glob(self) -> str:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
