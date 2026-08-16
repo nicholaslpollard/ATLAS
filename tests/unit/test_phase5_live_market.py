@@ -1,19 +1,32 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-from packages.core.enums import LiveFeedMode, LiveFreshness, SessionSegment
+from packages.core.enums import (
+    LiveConnectionState,
+    LiveFeedMode,
+    LiveFreshness,
+    SessionSegment,
+)
 from packages.core.settings import load_settings
 from packages.core.timestamps import utc_to_epoch_ms
+from packages.live.benchmark import build_benchmark_summary
 from packages.live.freshness import FreshnessPolicy
 from packages.live.session_clock import LiveSessionClock
 from packages.providers.massive.websocket import (
     MassiveStockEventParser,
     MassiveStocksWebSocketClient,
+    MassiveWebSocketRuntimeStats,
     decode_massive_frame,
 )
-from packages.schemas.live_market import LiveMinuteAggregate, LiveQuote
+from packages.schemas.live_market import (
+    LiveMinuteAggregate,
+    LiveQuote,
+    LiveSessionStatus,
+    LiveStateSnapshot,
+    LiveSymbolState,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -123,6 +136,87 @@ def test_subscription_topics_are_exact_case_and_client_does_not_retain_secret():
         minute_symbols=("*",),
         quote_symbols=("TPC", "TpC", "TPC"),
     ) == ("AM.*", "Q.TPC", "Q.TpC")
+
+
+def test_websocket_runtime_stats_start_empty_with_configured_capacity():
+    settings = load_settings(ROOT, "development")
+    client = MassiveStocksWebSocketClient(settings, LiveFeedMode.DELAYED)
+    stats = client.runtime_stats
+    assert stats.frames_received == 0
+    assert stats.processed_events == 0
+    assert stats.peak_ingress_queue_depth == 0
+    assert stats.ingress_queue_capacity == settings.massive.stocks.websocket_ingress_queue_size
+    assert stats.peak_queue_utilization == 0.0
+
+
+def test_live_benchmark_summary_reports_rates_queue_and_delay_adjusted_lag():
+    start = datetime(2026, 8, 17, 14, 0, tzinfo=UTC)
+    end = start + timedelta(minutes=1)
+    received = end + timedelta(minutes=15, seconds=12)
+    minute = LiveMinuteAggregate(
+        symbol="AAPL",
+        bar_start_utc=start,
+        bar_end_utc=end,
+        session_date=date(2026, 8, 17),
+        session_segment=SessionSegment.REGULAR,
+        open=100.0,
+        high=101.0,
+        low=99.5,
+        close=100.5,
+        volume=1000.0,
+        feed_mode=LiveFeedMode.DELAYED,
+        expected_delay_seconds=900,
+        received_at_utc=received,
+    )
+    generated = received + timedelta(seconds=5)
+    snapshot = LiveStateSnapshot(
+        generated_at_utc=generated,
+        feed_mode=LiveFeedMode.DELAYED,
+        expected_delay_seconds=900,
+        connection_state=LiveConnectionState.STOPPED,
+        subscriptions=("AM.*",),
+        session=LiveSessionStatus(
+            as_of_utc=generated,
+            local_date=date(2026, 8, 17),
+            is_exchange_session=True,
+            session_segment=SessionSegment.REGULAR,
+            regular_open_utc=datetime(2026, 8, 17, 13, 30, tzinfo=UTC),
+            regular_close_utc=datetime(2026, 8, 17, 20, 0, tzinfo=UTC),
+        ),
+        received_events=100,
+        accepted_events=98,
+        symbols=(
+            LiveSymbolState(
+                symbol="AAPL",
+                as_of_utc=generated,
+                minute=minute,
+                minute_freshness=LiveFreshness.FRESH,
+            ),
+        ),
+    )
+    stats = MassiveWebSocketRuntimeStats(
+        frames_received=10,
+        processed_events=100,
+        peak_ingress_queue_depth=25,
+        ingress_queue_capacity=10_000,
+    )
+
+    summary = build_benchmark_summary(
+        snapshot,
+        stats,
+        wall_seconds=10.0,
+        process_cpu_seconds=2.5,
+        peak_rss_bytes=128 * 1024 * 1024,
+        journal_growth_bytes=4096,
+    )
+
+    assert summary["received_events_per_second"] == 10.0
+    assert summary["accepted_events_per_second"] == 9.8
+    assert summary["cpu_one_core_percent"] == 25.0
+    assert summary["peak_queue_utilization"] == 0.0025
+    assert summary["minute_freshness_counts"]["fresh"] == 1
+    assert summary["latest_minute_excess_lag_seconds"]["p50"] == 12.0
+    assert summary["baseline_healthy"] is True
 
 
 def test_decode_massive_frame_accepts_batched_events():
