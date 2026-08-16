@@ -184,6 +184,24 @@ canonical 1m, reconcile the live journal with finalized data:
 .\.venv\Scripts\python.exe scripts\reconcile_live_session.py --date YYYY-MM-DD
 ```
 
+## Real-provider acceptance log
+
+### 2026-08-16
+
+Target Windows machine:
+
+- full suite: **85 passed in 8.88s**;
+- Phase 05 validator: PASS;
+- delayed endpoint connection: PASS;
+- delayed endpoint authentication: PASS (`Connected Successfully`, `authenticated`);
+- combined `AM.AAPL,Q.AAPL` subscription: rejected with provider status `error: not authorized`;
+- rejection classified as expected current-plan entitlement behavior because Stocks
+  Starter includes delayed `AM` but does not include stock WebSocket `Q`.
+
+The next provider check is a minute-only delayed subscription. Because 2026-08-16 is
+a Sunday, a clean zero-event run is acceptable; the market-hours throughput gate must
+be run during a live session.
+
 ## Acceptance gates
 
 Phase 05 is accepted only after all of the following are proven:
