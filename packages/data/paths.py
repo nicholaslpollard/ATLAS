@@ -75,6 +75,10 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "reference" / "instruments" / "ticker_event_observations.parquet"
 
+    def authoritative_ticker_intervals_file(self) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "reference" / "instruments" / "authoritative_ticker_intervals.parquet"
+
     def reference_snapshot_glob(self) -> str:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
         return (root / "reference" / "massive" / "tickers" / "date=*" / "*.parquet").as_posix()
