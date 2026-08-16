@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Callable
 
+from packages.core.atomic_io import atomic_write_text
 from packages.core.enums import DatasetType, Timeframe
 from packages.core.market_calendar import MarketCalendar
 from packages.core.settings import AtlasSettings
@@ -109,7 +109,10 @@ class HistoricalLakeAuditor:
                 payload = json.loads(registry.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
-            symbols = [str(s).strip().upper() for s in payload.get("symbols", []) if str(s).strip()]
+            # Provider ticker case is semantically significant (for example preferred
+            # share symbols containing lowercase 'p'), so audit summaries must preserve
+            # the exact canonical symbol rather than case-folding quarantine entries.
+            symbols = [str(s).strip() for s in payload.get("symbols", []) if str(s).strip()]
             if symbols:
                 quarantine_sessions.append(session)
                 quarantined_symbols.update(symbols)
@@ -133,7 +136,4 @@ class HistoricalLakeAuditor:
     @staticmethod
     def persist(report: HistoricalLakeAuditReport, path: Path) -> None:
         path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temp = path.with_suffix(path.suffix + f".{os.getpid()}.tmp")
-        temp.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        os.replace(temp, path)
+        atomic_write_text(path, report.model_dump_json(indent=2) + "\n")
