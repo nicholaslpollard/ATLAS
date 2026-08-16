@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from packages.core.atomic_io import atomic_write_text
 from packages.core.enums import (
     DataQualityCode,
     DataQualitySeverity,
@@ -92,10 +92,7 @@ class ParquetBarValidator:
 
     @staticmethod
     def persist(report: DataQualityReport, path: Path) -> None:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temp = path.with_suffix(path.suffix + ".tmp")
-        temp.write_text(report.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        temp.replace(path)
+        atomic_write_text(path, report.model_dump_json(indent=2) + "\n")
 
     @staticmethod
     def enforce(report: DataQualityReport) -> None:
