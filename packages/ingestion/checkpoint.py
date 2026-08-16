@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from packages.core.atomic_io import atomic_write_text
 from packages.schemas.ingestion import IngestionCheckpoint
 
 
@@ -23,9 +23,7 @@ class CheckpointStore:
 
     def save(self, checkpoint: IngestionCheckpoint) -> None:
         path = self._path(checkpoint.checkpoint_id)
-        temp = path.with_suffix(path.suffix + f".{os.getpid()}.tmp")
-        temp.write_text(checkpoint.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        os.replace(temp, path)
+        atomic_write_text(path, checkpoint.model_dump_json(indent=2) + "\n")
 
     def advance(
         self,
