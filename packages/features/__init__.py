@@ -5,6 +5,13 @@ from packages.features.feature_registry import (
     FeatureDefinition,
     FeatureRegistry,
 )
+from packages.features.incremental import (
+    IncrementalFeatureEngine,
+    IncrementalFeatureError,
+    IncrementalSymbolFeatureState,
+)
+from packages.features.session import regular_session_features
+from packages.features.state_checkpoint import FeatureStateCheckpointStore
 
 __all__ = [
     "CORE_FEATURE_CONTRACT_VERSION",
@@ -12,5 +19,10 @@ __all__ = [
     "FeatureDefinition",
     "FeatureInputError",
     "FeatureRegistry",
+    "FeatureStateCheckpointStore",
+    "IncrementalFeatureEngine",
+    "IncrementalFeatureError",
+    "IncrementalSymbolFeatureState",
     "compute_core_features",
+    "regular_session_features",
 ]
