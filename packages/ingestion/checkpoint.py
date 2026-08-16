@@ -13,13 +13,15 @@ class CheckpointStore:
 
     Checkpoints improve observability but are not the authoritative recovery state:
     ingestion/materialization manifests and committed data files are. A checkpoint
-    that remains locked after atomic replace retries therefore emits a warning rather
-    than aborting a long historical build.
+    that remains locked after atomic replace retries therefore emits one warning and
+    disables further checkpoint writes for this store instance rather than aborting
+    or repeatedly stalling a long historical build.
     """
 
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
+        self._writes_disabled = False
 
     def _path(self, checkpoint_id: str) -> Path:
         return self.root / f"{checkpoint_id}.json"
@@ -31,14 +33,18 @@ class CheckpointStore:
         return IngestionCheckpoint.model_validate_json(path.read_text(encoding="utf-8"))
 
     def save(self, checkpoint: IngestionCheckpoint) -> bool:
+        if self._writes_disabled:
+            return False
         path = self._path(checkpoint.checkpoint_id)
         try:
             atomic_write_text(path, checkpoint.model_dump_json(indent=2) + "\n")
             return True
         except OSError as exc:
+            self._writes_disabled = True
             warnings.warn(
                 f"ATLAS could not update advisory checkpoint {path.name}: "
-                f"{type(exc).__name__}: {exc}. Authoritative manifests/data remain usable.",
+                f"{type(exc).__name__}: {exc}. Checkpoint writes are disabled for the remainder "
+                "of this process; authoritative manifests/data remain usable.",
                 RuntimeWarning,
                 stacklevel=2,
             )
