@@ -4,7 +4,7 @@ import json
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from packages.core.atomic_io import atomic_write_text
+from packages.core.atomic_io import atomic_write_text, unique_temp_path
 from packages.core.enums import DataProvider
 from packages.core.identifiers import stable_id
 from packages.core.settings import AtlasSettings
@@ -171,7 +171,7 @@ class TickerEventStore:
         staging_json: Path | None = None
         try:
             if events:
-                staging_json = target.with_name(f".{target.name}.{events[0].instrument_id}.jsonl")
+                staging_json = unique_temp_path(target.with_suffix(".jsonl"))
                 with staging_json.open("w", encoding="utf-8") as handle:
                     for event in events:
                         handle.write(event.model_dump_json() + "\n")
@@ -218,7 +218,10 @@ class TickerEventStore:
         finally:
             con.close()
             if staging_json is not None:
-                staging_json.unlink(missing_ok=True)
+                try:
+                    staging_json.unlink(missing_ok=True)
+                except OSError:
+                    pass
         promote(temp, target)
 
     def _rebuild_event_view(self) -> None:
@@ -239,7 +242,11 @@ class TickerEventStore:
                 f"""
                 COPY (
                     SELECT *
-                    FROM read_parquet('{self._safe(self.paths.ticker_events_glob())}', union_by_name=true)
+                    FROM read_parquet(
+                        '{self._safe(self.paths.ticker_events_glob())}',
+                        union_by_name=true,
+                        hive_partitioning=false
+                    )
                     ORDER BY instrument_id, event_date, ticker
                 ) TO {sql_string(temp)} (FORMAT PARQUET, COMPRESSION {compression})
                 """
