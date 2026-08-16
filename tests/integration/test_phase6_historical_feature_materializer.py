@@ -16,6 +16,7 @@ from packages.features.historical_materializer import (
     FeatureBootstrapRequired,
     HistoricalFeatureMaterializer,
 )
+from packages.features.incremental import feature_stream_key
 
 
 def make_settings(tmp_path: Path):
@@ -34,10 +35,42 @@ def write_4h_source(materializer: HistoricalFeatureMaterializer, d: date, offset
                 datetime(d.year, d.month, d.day, 13, 30, tzinfo=UTC),
                 datetime(d.year, d.month, d.day, 13, 30, tzinfo=UTC),
             ],
+            "session_segment": ["regular", "regular"],
             "high": [102.0 + offset, 12.0 + offset],
             "low": [99.0 + offset, 9.0 + offset],
             "close": [101.0 + offset, 11.0 + offset],
             "volume": [1000.0 + offset, 500.0 + offset],
+        }
+    )
+    con = connect_utc(":memory:")
+    try:
+        con.register("bars", frame)
+        con.execute(f"COPY bars TO {sql_string(path)} (FORMAT PARQUET, COMPRESSION ZSTD)")
+    finally:
+        con.close()
+
+
+def write_segmented_aapl_source(
+    materializer: HistoricalFeatureMaterializer,
+    d: date,
+    *,
+    premarket_close: float,
+    regular_close: float,
+) -> None:
+    path = materializer.partition_store.source_path(Timeframe.HOUR_4, d)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    frame = pd.DataFrame(
+        {
+            "symbol": ["AAPL", "AAPL"],
+            "timestamp_utc": [
+                datetime(d.year, d.month, d.day, 8, 0, tzinfo=UTC),
+                datetime(d.year, d.month, d.day, 13, 30, tzinfo=UTC),
+            ],
+            "session_segment": ["premarket", "regular"],
+            "high": [premarket_close + 1.0, regular_close + 1.0],
+            "low": [premarket_close - 1.0, regular_close - 1.0],
+            "close": [premarket_close, regular_close],
+            "volume": [500.0, 1000.0],
         }
     )
     con = connect_utc(":memory:")
@@ -76,7 +109,11 @@ def test_historical_materializer_checkpoints_and_resumes_without_case_folding(tm
     current = service.paths.feature_current_state_file(Timeframe.HOUR_4)
     engine, payload = service.checkpoints.read(current, expected_timeframe=Timeframe.HOUR_4)
     assert payload["as_of_date"] == second.isoformat()
-    assert set(engine._states) == {"TPC", "TpC"}
+    assert set(engine._states) == {
+        feature_stream_key("TPC", "regular"),
+        feature_stream_key("TpC", "regular"),
+    }
+    assert {state.symbol for state in engine._states.values()} == {"TPC", "TpC"}
 
     con = connect_utc(":memory:")
     try:
@@ -84,12 +121,14 @@ def test_historical_materializer_checkpoints_and_resumes_without_case_folding(tm
         symbols = con.execute(
             f"SELECT DISTINCT symbol FROM read_parquet({sql_string(output)}) ORDER BY symbol"
         ).fetchall()
+        segments = con.execute(
+            f"SELECT DISTINCT session_segment FROM read_parquet({sql_string(output)})"
+        ).fetchall()
     finally:
         con.close()
     assert symbols == [("TPC",), ("TpC",)]
+    assert segments == [("regular",)]
 
-    # The current checkpoint makes an identical rerun idempotent without replaying
-    # recursive history.
     rerun = service.materialize_range(
         timeframe=Timeframe.HOUR_4,
         start=first,
@@ -99,6 +138,57 @@ def test_historical_materializer_checkpoints_and_resumes_without_case_folding(tm
     assert rerun.sessions_processed == 0
     assert rerun.rows_processed == 0
     assert rerun.checkpoint_as_of == second
+
+
+def test_intraday_recursive_features_do_not_cross_session_segments(tmp_path):
+    service = HistoricalFeatureMaterializer(make_settings(tmp_path))
+    first = date(2026, 8, 13)
+    second = date(2026, 8, 14)
+    write_segmented_aapl_source(
+        service,
+        first,
+        premarket_close=10.0,
+        regular_close=100.0,
+    )
+    write_segmented_aapl_source(
+        service,
+        second,
+        premarket_close=20.0,
+        regular_close=110.0,
+    )
+
+    service.materialize_range(
+        timeframe=Timeframe.HOUR_4,
+        start=first,
+        end=second,
+        bootstrap_from_empty=True,
+    )
+
+    current = service.paths.feature_current_state_file(Timeframe.HOUR_4)
+    engine, payload = service.checkpoints.read(current, expected_timeframe=Timeframe.HOUR_4)
+    assert payload["state_count"] == 2
+    assert payload["symbol_count"] == 1
+    assert set(engine._states) == {
+        feature_stream_key("AAPL", "premarket"),
+        feature_stream_key("AAPL", "regular"),
+    }
+
+    con = connect_utc(":memory:")
+    try:
+        output = service.paths.feature_file(Timeframe.HOUR_4, second)
+        rows = con.execute(
+            f"""
+            SELECT session_segment, return_1
+            FROM read_parquet({sql_string(output)})
+            WHERE symbol='AAPL'
+            ORDER BY session_segment
+            """
+        ).fetchall()
+    finally:
+        con.close()
+    values = dict(rows)
+    assert values["premarket"] == pytest.approx(1.0)
+    assert values["regular"] == pytest.approx(0.10)
 
 
 def test_corrected_source_replays_from_latest_monthly_anchor(tmp_path):
@@ -128,9 +218,6 @@ def test_corrected_source_replays_from_latest_monthly_anchor(tmp_path):
     )
     assert downstream_before is not None
 
-    # Correcting Aug 3 changes both that partition and the recursive state entering
-    # Aug 4. ATLAS must therefore replay Aug 3 -> Aug 4 from the July month-end
-    # state anchor rather than patching only Aug 3.
     write_4h_source(service, date(2026, 8, 3), 20.0)
     assert service.stale_source_sessions(
         timeframe=Timeframe.HOUR_4,
