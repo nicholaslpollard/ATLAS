@@ -165,11 +165,17 @@ def main(argv: list[str] | None = None) -> int:
     wall_start = time.perf_counter()
     cpu_start = time.process_time()
     try:
+        if timeframe == Timeframe.DAY_1:
+            select_columns = "symbol, timestamp_utc, high, low, close, volume"
+            order_columns = "symbol, timestamp_utc"
+        else:
+            select_columns = "symbol, timestamp_utc, session_segment, high, low, close, volume"
+            order_columns = "symbol, session_segment, timestamp_utc"
         bars = con.execute(
             f"""
-            SELECT symbol, timestamp_utc, high, low, close, volume
+            SELECT {select_columns}
             FROM read_parquet({source_sql}, union_by_name=true, hive_partitioning=true)
-            ORDER BY symbol, timestamp_utc
+            ORDER BY {order_columns}
             """
         ).fetch_df()
         print(f"  loaded rows:        {len(bars):,}")
@@ -177,7 +183,10 @@ def main(argv: list[str] | None = None) -> int:
         print("  computing features...")
         features = compute_core_features(bars)
         feature_names = [definition.name for definition in CORE_FEATURE_REGISTRY.all()]
-        compact = features[["symbol", "timestamp_utc", *feature_names]].copy()
+        key_columns = ["symbol", "timestamp_utc"]
+        if "session_segment" in features.columns:
+            key_columns.append("session_segment")
+        compact = features[[*key_columns, *feature_names]].copy()
         output_memory_bytes = int(compact.memory_usage(index=True, deep=True).sum())
 
         cache_root = settings.resolved_path(settings.data.paths.cache)
@@ -213,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         summary["sample_start"] = sessions[0].isoformat()
         summary["sample_end"] = sessions[-1].isoformat()
+        summary["session_isolated_intraday"] = timeframe != Timeframe.DAY_1
         summary["feature_registry_fingerprint"] = CORE_FEATURE_REGISTRY.fingerprint()
         if args.project_sessions is not None:
             summary["projection"] = project_feature_storage(
