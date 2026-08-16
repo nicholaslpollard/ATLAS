@@ -22,7 +22,7 @@ from packages.features.incremental import (
 )
 
 
-FEATURE_STATE_SCHEMA_VERSION = 1
+FEATURE_STATE_SCHEMA_VERSION = 2
 
 
 def _recursive_payload(state: _EMAState | _WilderState) -> dict[str, float | int | None]:
@@ -52,8 +52,9 @@ def _wilder(payload: dict[str, Any]) -> _WilderState:
     )
 
 
-def _state_payload(state: IncrementalSymbolFeatureState) -> dict[str, Any]:
+def _state_payload(state_key: str, state: IncrementalSymbolFeatureState) -> dict[str, Any]:
     return {
+        "state_key": state_key,
         "symbol": state.symbol,
         "last_timestamp_utc": (
             state.last_timestamp_utc.isoformat() if state.last_timestamp_utc is not None else None
@@ -82,7 +83,7 @@ def _state_payload(state: IncrementalSymbolFeatureState) -> dict[str, Any]:
 
 def _restore_symbol(payload: dict[str, Any]) -> IncrementalSymbolFeatureState:
     last_timestamp = payload.get("last_timestamp_utc")
-    state = IncrementalSymbolFeatureState(
+    return IncrementalSymbolFeatureState(
         symbol=str(payload["symbol"]),
         last_timestamp_utc=datetime.fromisoformat(last_timestamp) if last_timestamp else None,
         previous_close=(
@@ -113,7 +114,6 @@ def _restore_symbol(payload: dict[str, Any]) -> IncrementalSymbolFeatureState:
             (float(value) for value in payload.get("log_returns", [])), maxlen=20
         ),
     )
-    return state
 
 
 def build_checkpoint_payload(
@@ -122,14 +122,18 @@ def build_checkpoint_payload(
     timeframe: Timeframe,
     as_of_date: str,
 ) -> dict[str, Any]:
-    states = [_state_payload(engine._states[symbol]) for symbol in sorted(engine._states)]
+    states = [
+        _state_payload(state_key, engine._states[state_key])
+        for state_key in sorted(engine._states)
+    ]
     return {
         "schema_version": FEATURE_STATE_SCHEMA_VERSION,
         "feature_contract_version": CORE_FEATURE_CONTRACT_VERSION,
         "feature_registry_fingerprint": CORE_FEATURE_REGISTRY.fingerprint(),
         "timeframe": timeframe.value,
         "as_of_date": as_of_date,
-        "symbol_count": len(states),
+        "state_count": len(states),
+        "symbol_count": engine.symbol_count,
         "states": states,
     }
 
@@ -213,9 +217,14 @@ class FeatureStateCheckpointStore:
         engine = IncrementalFeatureEngine()
         for item in payload.get("states", []):
             state = _restore_symbol(item)
-            if state.symbol in engine._states:
-                raise ValueError(f"duplicate feature-state symbol: {state.symbol}")
-            engine._states[state.symbol] = state
+            state_key = str(item.get("state_key", ""))
+            if not state_key:
+                raise ValueError("feature-state checkpoint contains a blank state_key")
+            if state_key in engine._states:
+                raise ValueError(f"duplicate feature-state key: {state_key}")
+            engine._states[state_key] = state
+        if int(payload.get("state_count", -1)) != engine.state_count:
+            raise ValueError("feature-state checkpoint state count mismatch")
         if int(payload.get("symbol_count", -1)) != engine.symbol_count:
             raise ValueError("feature-state checkpoint symbol count mismatch")
         return engine, payload
