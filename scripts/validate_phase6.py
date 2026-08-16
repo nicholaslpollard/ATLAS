@@ -10,9 +10,12 @@ if str(PROJECT_ROOT) not in sys.path:
 import numpy as np
 import pandas as pd
 
+from packages.core.enums import Timeframe
 from packages.features.engine import compute_core_features
 from packages.features.feature_registry import CORE_FEATURE_CONTRACT_VERSION, CORE_FEATURE_REGISTRY
+from packages.features.materialization import ACTIVE_FEATURE_PERSISTENCE_POLICY
 from packages.features.momentum import rsi_wilder
+from packages.features.partition_store import feature_dependency_fingerprint
 from packages.features.volatility import atr_wilder
 
 
@@ -58,6 +61,30 @@ def main() -> int:
     if output.attrs.get("feature_registry_fingerprint") != CORE_FEATURE_REGISTRY.fingerprint():
         raise RuntimeError("Feature engine registry fingerprint mismatch")
 
+    policy = ACTIVE_FEATURE_PERSISTENCE_POLICY
+    if policy.tier_for(Timeframe.DAY_1) != "permanent":
+        raise RuntimeError("1d measured feature persistence tier mismatch")
+    if policy.tier_for(Timeframe.HOUR_4) != "permanent":
+        raise RuntimeError("4h measured feature persistence tier mismatch")
+    if policy.tier_for(Timeframe.HOUR_1) != "benchmark_candidate":
+        raise RuntimeError("1h should remain benchmark-gated")
+    if policy.tier_for(Timeframe.MINUTE_15) != "on_demand":
+        raise RuntimeError("15m should remain on-demand/cache")
+    if policy.tier_for(Timeframe.MINUTE_1) != "current_state_only":
+        raise RuntimeError("1m should remain current-state-only")
+
+    source_sha = "a" * 64
+    dependency_a = feature_dependency_fingerprint(
+        source_sha256=source_sha,
+        input_state_fingerprint="state-a",
+    )
+    dependency_b = feature_dependency_fingerprint(
+        source_sha256=source_sha,
+        input_state_fingerprint="state-b",
+    )
+    if dependency_a == dependency_b:
+        raise RuntimeError("feature partition fingerprint ignored incoming recursive state")
+
     print(f"NumPy: {np.__version__}")
     print(f"pandas: {pd.__version__}")
     print(f"Feature contract: {CORE_FEATURE_CONTRACT_VERSION}")
@@ -66,6 +93,8 @@ def main() -> int:
     print("Wilder RSI reference vector: PASS")
     print("Wilder ATR reference vector: PASS")
     print("Provider-native ticker separation: PASS")
+    print("Measured persistence tiers: PASS")
+    print("State-dependent partition fingerprint: PASS")
     print("Phase 06 feature foundation: PASS")
     return 0
 
