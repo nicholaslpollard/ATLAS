@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -8,6 +9,14 @@ from packages.schemas.ingestion import IngestionCheckpoint
 
 
 class CheckpointStore:
+    """Best-effort progress checkpoints.
+
+    Checkpoints improve observability but are not the authoritative recovery state:
+    ingestion/materialization manifests and committed data files are. A checkpoint
+    that remains locked after atomic replace retries therefore emits a warning rather
+    than aborting a long historical build.
+    """
+
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
@@ -21,9 +30,19 @@ class CheckpointStore:
             return None
         return IngestionCheckpoint.model_validate_json(path.read_text(encoding="utf-8"))
 
-    def save(self, checkpoint: IngestionCheckpoint) -> None:
+    def save(self, checkpoint: IngestionCheckpoint) -> bool:
         path = self._path(checkpoint.checkpoint_id)
-        atomic_write_text(path, checkpoint.model_dump_json(indent=2) + "\n")
+        try:
+            atomic_write_text(path, checkpoint.model_dump_json(indent=2) + "\n")
+            return True
+        except OSError as exc:
+            warnings.warn(
+                f"ATLAS could not update advisory checkpoint {path.name}: "
+                f"{type(exc).__name__}: {exc}. Authoritative manifests/data remain usable.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            return False
 
     def advance(
         self,
