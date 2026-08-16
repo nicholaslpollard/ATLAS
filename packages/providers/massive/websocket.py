@@ -46,6 +46,22 @@ class MassiveWebSocketProbeResult:
     auth_message: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class MassiveWebSocketRuntimeStats:
+    """Low-overhead telemetry from the most recent consume() call."""
+
+    frames_received: int
+    processed_events: int
+    peak_ingress_queue_depth: int
+    ingress_queue_capacity: int
+
+    @property
+    def peak_queue_utilization(self) -> float:
+        if self.ingress_queue_capacity <= 0:
+            return 0.0
+        return self.peak_ingress_queue_depth / self.ingress_queue_capacity
+
+
 def decode_massive_frame(message: str | bytes) -> list[dict[str, object]]:
     if isinstance(message, bytes):
         message = message.decode("utf-8")
@@ -178,6 +194,9 @@ class MassiveStocksWebSocketClient:
             else settings.massive.provider.websocket_realtime_url
         )
         self.api_key_env = settings.massive.credentials.api_key_env
+        self._frames_received = 0
+        self._processed_events = 0
+        self._peak_ingress_queue_depth = 0
 
     @property
     def expected_delay_seconds(self) -> int:
@@ -185,6 +204,15 @@ class MassiveStocksWebSocketClient:
             self.config.delayed_feed_expected_delay_seconds
             if self.feed_mode == LiveFeedMode.DELAYED
             else self.config.realtime_feed_expected_delay_seconds
+        )
+
+    @property
+    def runtime_stats(self) -> MassiveWebSocketRuntimeStats:
+        return MassiveWebSocketRuntimeStats(
+            frames_received=self._frames_received,
+            processed_events=self._processed_events,
+            peak_ingress_queue_depth=self._peak_ingress_queue_depth,
+            ingress_queue_capacity=self.config.websocket_ingress_queue_size,
         )
 
     def subscription_topics(
@@ -313,6 +341,9 @@ class MassiveStocksWebSocketClient:
         stop = stop_event or asyncio.Event()
         processed = 0
         reconnect_delay = 1.0
+        self._frames_received = 0
+        self._processed_events = 0
+        self._peak_ingress_queue_depth = 0
 
         while not stop.is_set() and (max_events is None or processed < max_events):
             try:
@@ -335,6 +366,11 @@ class MassiveStocksWebSocketClient:
                         async for frame in websocket:
                             try:
                                 queue.put_nowait((frame, datetime.now(UTC)))
+                                self._frames_received += 1
+                                self._peak_ingress_queue_depth = max(
+                                    self._peak_ingress_queue_depth,
+                                    queue.qsize(),
+                                )
                             except asyncio.QueueFull as exc:
                                 raise MassiveWebSocketBackpressureError(
                                     "Massive WebSocket ingress queue filled; refusing to drop market data"
@@ -358,6 +394,7 @@ class MassiveStocksWebSocketClient:
                                 if inspect.isawaitable(result):
                                     await result
                                 processed += 1
+                                self._processed_events = processed
                                 if max_events is not None and processed >= max_events:
                                     stop.set()
                                     break
