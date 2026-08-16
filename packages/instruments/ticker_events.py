@@ -228,9 +228,9 @@ class TickerEventStore:
         """Build half-open ticker validity intervals from authoritative event facts.
 
         Only Composite-FIGI-backed rows (``continuity_authority=true``) are eligible.
-        If a provider timeline reports more than one ticker on the same event date,
-        that date is excluded from the interval map rather than imposing an arbitrary
-        order. The continuity reconciler surfaces that condition as blocking evidence.
+        If an instrument has more than one ticker on any one provider event date,
+        ATLAS suppresses that instrument's entire interval map. It is safer to have
+        no mapping than to bridge across ambiguous provider evidence.
         """
 
         target = self.paths.authoritative_ticker_intervals_file()
@@ -254,20 +254,23 @@ class TickerEventStore:
                             event_date,
                             query_identifier,
                             query_identifier_type,
-                            fetched_at_utc,
-                            count(DISTINCT ticker) OVER (
-                                PARTITION BY instrument_id, event_date
-                            ) AS tickers_on_event_date
+                            fetched_at_utc
                         FROM read_parquet(
                             '{self._safe(self.paths.ticker_events_glob())}',
                             union_by_name=true,
                             hive_partitioning=false
                         )
                         WHERE continuity_authority = true
-                    ), clean AS (
-                        SELECT *
+                    ), conflicted AS (
+                        SELECT DISTINCT instrument_id
                         FROM authoritative
-                        WHERE tickers_on_event_date = 1
+                        GROUP BY instrument_id, event_date
+                        HAVING count(DISTINCT ticker) > 1
+                    ), clean AS (
+                        SELECT a.*
+                        FROM authoritative a
+                        LEFT JOIN conflicted c USING (instrument_id)
+                        WHERE c.instrument_id IS NULL
                     )
                     SELECT
                         instrument_id,
