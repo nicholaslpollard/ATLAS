@@ -95,5 +95,10 @@ def atomic_write_text(
                 os.fsync(handle.fileno())
         replace_with_retry(temp_path, final_path)
     except Exception:
-        temp_path.unlink(missing_ok=True)
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            # Cleanup is secondary; never mask the write/promotion error that caused
+            # this path. A later maintenance pass may remove a stale temp file.
+            pass
         raise
