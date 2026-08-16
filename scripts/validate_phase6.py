@@ -62,12 +62,11 @@ def main() -> int:
         raise RuntimeError("Feature engine registry fingerprint mismatch")
 
     policy = ACTIVE_FEATURE_PERSISTENCE_POLICY
-    if policy.tier_for(Timeframe.DAY_1) != "permanent":
-        raise RuntimeError("1d measured feature persistence tier mismatch")
-    if policy.tier_for(Timeframe.HOUR_4) != "permanent":
-        raise RuntimeError("4h measured feature persistence tier mismatch")
-    if policy.tier_for(Timeframe.HOUR_1) != "benchmark_candidate":
-        raise RuntimeError("1h should remain benchmark-gated")
+    for timeframe in (Timeframe.DAY_1, Timeframe.HOUR_4, Timeframe.HOUR_1):
+        if policy.tier_for(timeframe) != "permanent":
+            raise RuntimeError(f"{timeframe.value} measured feature persistence tier mismatch")
+    if policy.benchmark_candidates:
+        raise RuntimeError("all Phase 6 persistence benchmark candidates should be resolved")
     if policy.tier_for(Timeframe.MINUTE_15) != "on_demand":
         raise RuntimeError("15m should remain on-demand/cache")
     if policy.tier_for(Timeframe.MINUTE_1) != "current_state_only":
@@ -93,7 +92,7 @@ def main() -> int:
     print("Wilder RSI reference vector: PASS")
     print("Wilder ATR reference vector: PASS")
     print("Provider-native ticker separation: PASS")
-    print("Measured persistence tiers: PASS")
+    print("Measured persistence tiers: PASS (1d, 4h, 1h permanent)")
     print("State-dependent partition fingerprint: PASS")
     print("Phase 06 feature foundation: PASS")
     return 0
