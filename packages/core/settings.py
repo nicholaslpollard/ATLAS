@@ -90,8 +90,19 @@ class MassiveCredentialsConfig(BaseModel):
 
 class MassiveStocksConfig(BaseModel):
     websocket_minute_channel: str = "AM"
+    websocket_quote_channel: str = "Q"
     websocket_default_subscription: str = "*"
     use_delayed_feed_initially: bool = True
+    delayed_feed_expected_delay_seconds: int = Field(default=900, ge=0)
+    realtime_feed_expected_delay_seconds: int = Field(default=0, ge=0)
+    websocket_open_timeout_seconds: float = Field(default=10.0, gt=0)
+    websocket_auth_timeout_seconds: float = Field(default=10.0, gt=0)
+    websocket_ping_interval_seconds: float = Field(default=20.0, gt=0)
+    websocket_ping_timeout_seconds: float = Field(default=20.0, gt=0)
+    websocket_ingress_queue_size: int = Field(default=10_000, ge=100)
+    live_state_snapshot_interval_seconds: float = Field(default=5.0, gt=0)
+    freshness_fresh_seconds: int = Field(default=90, ge=0)
+    freshness_aging_seconds: int = Field(default=300, ge=1)
 
 
 class MassiveFlatFileDatasetConfig(BaseModel):
