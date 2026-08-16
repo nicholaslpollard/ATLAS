@@ -86,3 +86,52 @@ class ReferenceSnapshotResult(BaseModel):
     strong_identity_count: int = Field(default=0, ge=0)
     medium_identity_count: int = Field(default=0, ge=0)
     fallback_identity_count: int = Field(default=0, ge=0)
+
+
+class TickerChangeEvent(BaseModel):
+    """One provider-reported ticker label in an instrument's event timeline."""
+
+    model_config = ConfigDict(frozen=True)
+
+    event_id: str = Field(min_length=1)
+    instrument_id: str = Field(min_length=1)
+    provider: DataProvider = DataProvider.MASSIVE
+    event_type: str = Field(default="ticker_change", min_length=1)
+    event_date: date
+    ticker: str = Field(min_length=1, max_length=64)
+    query_identifier: str = Field(min_length=1)
+    query_identifier_type: str = Field(min_length=1)
+    continuity_authority: bool
+    provider_name: str | None = None
+    fetched_at_utc: datetime
+
+    @field_validator("ticker")
+    @classmethod
+    def preserve_provider_ticker_case(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("ticker cannot be blank")
+        return value
+
+    @field_validator("query_identifier")
+    @classmethod
+    def normalize_query_identifier(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("query_identifier cannot be blank")
+        return value
+
+    @field_validator("fetched_at_utc")
+    @classmethod
+    def normalize_fetched_at(cls, value: datetime) -> datetime:
+        return to_utc(value)
+
+
+class TickerEventSyncResult(BaseModel):
+    instrument_id: str
+    query_identifier: str
+    query_identifier_type: str
+    continuity_authority: bool
+    event_count: int = Field(ge=0)
+    path: str
+    skipped: bool = False
