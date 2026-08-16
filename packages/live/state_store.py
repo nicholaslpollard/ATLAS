@@ -25,7 +25,9 @@ class LiveStateStore:
 
     Only the latest minute bar and latest quote per symbol are retained in memory.
     Full provisional event history belongs in the append-only live journal, not in
-    this cache.
+    this cache. On restart, the last persisted provisional values are restored when
+    they were produced by the same feed mode; freshness is always recalculated at the
+    new snapshot time.
     """
 
     def __init__(
@@ -50,6 +52,9 @@ class LiveStateStore:
         self._lock = RLock()
         self._minutes: dict[str, LiveMinuteAggregate] = {}
         self._quotes: dict[str, LiveQuote] = {}
+        self._restored_symbols: set[str] = set()
+        self._observed_symbols: set[str] = set()
+        self._restore_warning: str | None = None
         self._connection_state = LiveConnectionState.DISCONNECTED
         self._received_events = 0
         self._accepted_events = 0
@@ -57,6 +62,41 @@ class LiveStateStore:
         self._parse_errors = 0
         self._reconnects = 0
         self._last_received_at_utc: datetime | None = None
+        self._restore_latest_values()
+
+    @property
+    def restored_symbol_count(self) -> int:
+        with self._lock:
+            return len(self._restored_symbols)
+
+    @property
+    def observed_symbol_count(self) -> int:
+        with self._lock:
+            return len(self._observed_symbols)
+
+    @property
+    def restore_warning(self) -> str | None:
+        return self._restore_warning
+
+    def _restore_latest_values(self) -> None:
+        path = self.paths.live_state_file()
+        if not path.exists():
+            return
+        try:
+            prior = LiveStateSnapshot.model_validate_json(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            self._restore_warning = (
+                f"Could not restore provisional live state from {path}: {type(exc).__name__}"
+            )
+            return
+        if prior.feed_mode != self.feed_mode:
+            return
+        for state in prior.symbols:
+            if state.minute is not None:
+                self._minutes[state.symbol] = state.minute
+            if state.quote is not None:
+                self._quotes[state.symbol] = state.quote
+        self._restored_symbols = set(self._minutes) | set(self._quotes)
 
     def set_connection_state(self, state: LiveConnectionState) -> None:
         with self._lock:
@@ -79,6 +119,7 @@ class LiveStateStore:
 
     def apply_minute(self, event: LiveMinuteAggregate) -> bool:
         with self._lock:
+            self._observed_symbols.add(event.symbol)
             current = self._minutes.get(event.symbol)
             if current is not None:
                 if event.bar_start_utc < current.bar_start_utc:
@@ -96,6 +137,7 @@ class LiveStateStore:
 
     def apply_quote(self, event: LiveQuote) -> bool:
         with self._lock:
+            self._observed_symbols.add(event.symbol)
             current = self._quotes.get(event.symbol)
             if current is not None:
                 current_key = (current.provider_timestamp_utc, current.sequence)
@@ -152,6 +194,8 @@ class LiveStateStore:
                 ignored_out_of_order_events=self._ignored_out_of_order_events,
                 parse_errors=self._parse_errors,
                 reconnects=self._reconnects,
+                restored_symbol_count=len(self._restored_symbols),
+                observed_symbol_count=len(self._observed_symbols),
                 last_received_at_utc=self._last_received_at_utc,
                 symbols=tuple(symbol_states),
             )
