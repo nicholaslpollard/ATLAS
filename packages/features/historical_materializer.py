@@ -12,7 +12,7 @@ from packages.core.settings import AtlasSettings
 from packages.data.duckdb_connection import connect_utc
 from packages.data.sql import sql_string
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
-from packages.features.incremental import IncrementalFeatureEngine
+from packages.features.incremental import IncrementalFeatureEngine, feature_stream_key
 from packages.features.materialization import ACTIVE_FEATURE_PERSISTENCE_POLICY
 from packages.features.partition_store import (
     FeaturePartitionManifest,
@@ -61,9 +61,8 @@ class HistoricalFeatureMaterializer:
 
     This service intentionally does not approximate recursive warm-up. A first-ever
     historical build must explicitly bootstrap from the chosen ATLAS history origin.
-    Subsequent runs resume from the durable current-state checkpoint. Partition
-    manifests bind each session to both its own source SHA and the recursive state
-    entering that session.
+    Subsequent runs resume from the durable current-state checkpoint. Intraday
+    recursive state is isolated by exact provider symbol + Phase 3 session segment.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -90,11 +89,19 @@ class HistoricalFeatureMaterializer:
             raise FileNotFoundError(f"feature source partition is missing: {source}")
         con = connect_utc(":memory:")
         try:
+            if timeframe == Timeframe.DAY_1:
+                select_columns = "symbol, timestamp_utc, high, low, close, volume"
+                order_columns = "symbol, timestamp_utc"
+            else:
+                select_columns = (
+                    "symbol, timestamp_utc, session_segment, high, low, close, volume"
+                )
+                order_columns = "symbol, session_segment, timestamp_utc"
             return con.execute(
                 f"""
-                SELECT symbol, timestamp_utc, high, low, close, volume
+                SELECT {select_columns}
                 FROM read_parquet({sql_string(source)})
-                ORDER BY symbol, timestamp_utc
+                ORDER BY {order_columns}
                 """
             ).fetch_df()
         finally:
@@ -106,10 +113,15 @@ class HistoricalFeatureMaterializer:
         bars: pd.DataFrame,
         feature_names: list[str],
     ) -> pd.DataFrame:
+        has_segment = "session_segment" in bars.columns
         records: list[dict[str, object]] = []
         for row in bars.itertuples(index=False):
+            symbol = str(row.symbol)
+            segment = str(row.session_segment) if has_segment else None
+            state_key = feature_stream_key(symbol, segment)
             values = engine.update(
-                symbol=str(row.symbol),
+                symbol=symbol,
+                state_key=state_key,
                 timestamp_utc=row.timestamp_utc,
                 high=float(row.high),
                 low=float(row.low),
@@ -117,13 +129,19 @@ class HistoricalFeatureMaterializer:
                 volume=float(row.volume),
             )
             record: dict[str, object] = {
-                "symbol": str(row.symbol),
+                "symbol": symbol,
                 "timestamp_utc": row.timestamp_utc,
             }
+            if has_segment:
+                record["session_segment"] = segment
             for name in feature_names:
                 record[name] = values[name]
             records.append(record)
-        return pd.DataFrame.from_records(records, columns=["symbol", "timestamp_utc", *feature_names])
+        columns = ["symbol", "timestamp_utc"]
+        if has_segment:
+            columns.append("session_segment")
+        columns.extend(feature_names)
+        return pd.DataFrame.from_records(records, columns=columns)
 
     def _is_last_exchange_session_of_month(self, trading_date: date) -> bool:
         future = self.calendar.sessions_in_range(
@@ -269,13 +287,7 @@ class HistoricalFeatureMaterializer:
         history_start: date,
         allow_candidate: bool = False,
     ) -> FeatureRangeMaterializationResult:
-        """Recompute from the nearest exact state anchor before a corrected session.
-
-        If no monthly anchor exists before the correction, replay starts from the
-        configured ATLAS history origin with empty recursive state. Every partition
-        from the replay start through ``end`` is deterministically replaced, and
-        month-end anchors encountered on the way are refreshed.
-        """
+        """Recompute from the nearest exact state anchor before a corrected session."""
 
         if end < corrected_date:
             raise ValueError("replay end precedes corrected session")
@@ -371,9 +383,6 @@ class HistoricalFeatureMaterializer:
             sessions = requested_sessions
             input_as_of = "genesis"
         else:
-            # Recursive state cannot jump over unprocessed exchange sessions. Resume
-            # from the first session after the checkpoint, even if the caller's
-            # requested start is later.
             resume_start = checkpoint_date + timedelta(days=1)
             sessions = self.calendar.sessions_in_range(resume_start, end)
             input_as_of = checkpoint_date.isoformat()
