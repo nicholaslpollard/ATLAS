@@ -12,6 +12,25 @@ class IncrementalFeatureError(ValueError):
     pass
 
 
+def feature_stream_key(symbol: str, session_segment: str | None = None) -> str:
+    """Return a collision-resistant internal key without changing provider ticker text.
+
+    Daily/default state is keyed by the exact provider-native symbol. Intraday state
+    may additionally be isolated by Phase 3 session segment so premarket, regular,
+    and after-hours recursive indicators never contaminate one another.
+    """
+
+    clean_symbol = str(symbol).strip()
+    if not clean_symbol:
+        raise IncrementalFeatureError("symbol cannot be blank")
+    if session_segment is None:
+        return clean_symbol
+    clean_segment = str(session_segment).strip()
+    if not clean_segment:
+        raise IncrementalFeatureError("session_segment cannot be blank")
+    return f"{len(clean_symbol)}:{clean_symbol}:{clean_segment}"
+
+
 @dataclass(slots=True)
 class _EMAState:
     period: int
@@ -62,7 +81,7 @@ def _population_std(values: deque[float]) -> float:
 
 @dataclass(slots=True)
 class IncrementalSymbolFeatureState:
-    """Exact recursive + bounded rolling state for one provider-native symbol."""
+    """Exact recursive + bounded rolling state for one provider-native symbol stream."""
 
     symbol: str
     last_timestamp_utc: datetime | None = None
@@ -188,12 +207,12 @@ class IncrementalSymbolFeatureState:
         else:
             self.log_returns.append(log_return_1)
 
-        dollar_volume = close * volume
+        dollar_volume_value = close * volume
         self.closes.append(close)
         self.highs.append(high)
         self.lows.append(low)
         self.volumes.append(volume)
-        self.dollar_volumes.append(dollar_volume)
+        self.dollar_volumes.append(dollar_volume_value)
 
         sma20 = _mean(self.closes) if len(self.closes) == 20 else None
         bb_mid = sma20
@@ -220,7 +239,7 @@ class IncrementalSymbolFeatureState:
 
         average_dollar = _mean(self.dollar_volumes) if len(self.dollar_volumes) == 20 else None
         relative_dollar = (
-            dollar_volume / average_dollar
+            dollar_volume_value / average_dollar
             if average_dollar is not None and average_dollar > 0.0
             else None
         )
@@ -268,7 +287,7 @@ class IncrementalSymbolFeatureState:
             "obv": self.obv,
             "relative_volume_20": relative_volume,
             "volume_zscore_20": volume_zscore,
-            "dollar_volume": dollar_volume,
+            "dollar_volume": dollar_volume_value,
             "relative_dollar_volume_20": relative_dollar,
             "range_position_20": range_position,
             "prior_high_20": prior_high,
@@ -283,19 +302,24 @@ class IncrementalSymbolFeatureState:
 
 
 class IncrementalFeatureEngine:
-    """Own exact feature state independently for each provider-native symbol."""
+    """Own exact feature state independently for each provider-native symbol stream."""
 
     def __init__(self) -> None:
         self._states: dict[str, IncrementalSymbolFeatureState] = {}
 
-    def state_for(self, symbol: str) -> IncrementalSymbolFeatureState:
-        symbol = symbol.strip()
-        if not symbol:
+    def state_for(self, symbol: str, *, state_key: str | None = None) -> IncrementalSymbolFeatureState:
+        clean_symbol = str(symbol).strip()
+        if not clean_symbol:
             raise IncrementalFeatureError("symbol cannot be blank")
-        state = self._states.get(symbol)
+        key = feature_stream_key(clean_symbol) if state_key is None else str(state_key)
+        if not key:
+            raise IncrementalFeatureError("state_key cannot be blank")
+        state = self._states.get(key)
         if state is None:
-            state = IncrementalSymbolFeatureState(symbol=symbol)
-            self._states[symbol] = state
+            state = IncrementalSymbolFeatureState(symbol=clean_symbol)
+            self._states[key] = state
+        elif state.symbol != clean_symbol:
+            raise IncrementalFeatureError("state_key is already bound to a different symbol")
         return state
 
     def update(
@@ -307,8 +331,9 @@ class IncrementalFeatureEngine:
         low: float,
         close: float,
         volume: float,
+        state_key: str | None = None,
     ) -> dict[str, float | None]:
-        return self.state_for(symbol).update(
+        return self.state_for(symbol, state_key=state_key).update(
             timestamp_utc=timestamp_utc,
             high=high,
             low=low,
@@ -317,5 +342,9 @@ class IncrementalFeatureEngine:
         )
 
     @property
-    def symbol_count(self) -> int:
+    def state_count(self) -> int:
         return len(self._states)
+
+    @property
+    def symbol_count(self) -> int:
+        return len({state.symbol for state in self._states.values()})
