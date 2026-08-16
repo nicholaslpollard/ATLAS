@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Iterable
 
+from packages.core.atomic_io import atomic_write_text
 from packages.core.enums import DataProvider, InstrumentIdentityQuality
 from packages.core.settings import AtlasSettings
 from packages.data.atomic import atomic_target, promote
@@ -191,9 +192,8 @@ class InstrumentRegistryStore:
             "medium": sum(obs.identity_quality == InstrumentIdentityQuality.MEDIUM for obs in observations),
             "fallback": sum(obs.identity_quality == InstrumentIdentityQuality.FALLBACK for obs in observations),
         }
-        manifest.parent.mkdir(parents=True, exist_ok=True)
-        temp_manifest = manifest.with_suffix(manifest.suffix + f".{os.getpid()}.tmp")
-        temp_manifest.write_text(
+        atomic_write_text(
+            manifest,
             json.dumps(
                 {
                     "as_of_date": as_of_date.isoformat(),
@@ -207,9 +207,7 @@ class InstrumentRegistryStore:
                 sort_keys=True,
             )
             + "\n",
-            encoding="utf-8",
         )
-        os.replace(temp_manifest, manifest)
         self.rebuild_registry()
         return ReferenceSnapshotResult(
             as_of_date=as_of_date,
