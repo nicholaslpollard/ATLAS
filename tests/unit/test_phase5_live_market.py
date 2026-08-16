@@ -114,10 +114,11 @@ def test_live_session_clock_knows_weekend_and_next_session():
     assert status.next_regular_open_utc == datetime(2026, 8, 17, 13, 30, tzinfo=UTC)
 
 
-def test_subscription_topics_are_exact_case_and_quotes_are_focused(monkeypatch):
-    monkeypatch.setenv("MASSIVE_API_KEY", "test-key")
+def test_subscription_topics_are_exact_case_and_client_does_not_retain_secret():
     settings = load_settings(ROOT, "development")
     client = MassiveStocksWebSocketClient(settings, LiveFeedMode.DELAYED)
+    assert not hasattr(client, "api_key")
+    assert client.api_key_env == settings.massive.credentials.api_key_env
     assert client.subscription_topics(
         minute_symbols=("*",),
         quote_symbols=("TPC", "TpC", "TPC"),
