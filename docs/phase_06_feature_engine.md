@@ -13,7 +13,7 @@ keeping provider facts and derived calculations strictly separated.
 6. Feature definitions are versioned and fingerprinted for downstream invalidation/provenance.
 7. Missing/non-numeric OHLCV input is rejected rather than silently interpolated.
 8. Historical batch math and incremental/live math must be equivalent bar-for-bar.
-9. Full-market historical persistence is benchmark-driven; ATLAS will not blindly multiply the lake by every feature column.
+9. Full-market historical persistence is benchmark-driven; ATLAS does not blindly multiply the lake by every feature column.
 10. Persisted recursive feature partitions depend on both their own source bars and the exact recursive state entering the partition.
 
 ## Phase 6A mathematical contract
@@ -134,7 +134,7 @@ Exact incremental state can be saved as portable deterministic gzip-JSON. Checkp
 - exact per-symbol recursive state and bounded rolling buffers;
 - a SHA-256 content fingerprint.
 
-Feature Parquet partitions now use a state-dependent manifest contract. A partition's
+Feature Parquet partitions use a state-dependent manifest contract. A partition's
 dependency fingerprint includes:
 
 ```text
@@ -151,18 +151,19 @@ never changed, because an earlier correction can alter the EMA/RSI/ATR/OBV state
 
 `HistoricalFeatureMaterializer` processes source sessions chronologically through the same
 incremental engine intended for live use. A first historical build requires an explicit
-empty-state bootstrap at the chosen ATLAS history origin. Subsequent runs resume from the
-current exact checkpoint. Month-end state snapshots are retained as replay anchors. A
-corrected historical source replays from the latest valid month-end anchor strictly before
-the correction (or genesis if none exists), replacing every downstream feature partition
-through the requested end rather than patching one recursive day in isolation.
+empty-state bootstrap at the ATLAS history origin. Subsequent runs resume from the current
+exact checkpoint. Month-end state snapshots are retained as replay anchors. A corrected
+historical source replays from the latest valid month-end anchor strictly before the
+correction (or genesis if none exists), replacing every downstream feature partition through
+the requested end rather than patching one recursive day in isolation.
 
 ## Phase 6D measured persistence architecture
 
-The first real target-machine benchmark ran on 2026-08-16 against the production ATLAS lake:
+Target-machine benchmarks ran on 2026-08-16 against the production ATLAS historical lake.
+
+### 4h benchmark
 
 ```text
-timeframe:              4h
 sample sessions:        20
 sample range:           2026-07-20 -> 2026-08-14
 rows:                   714,562
@@ -176,53 +177,74 @@ feature RAM frame:      221.3 MiB
 feature Parquet:        100.2 MiB
 compressed bytes/row:   147.1
 output/source ratio:    6.23x
+projected 1,255 rows:   44,838,766
+projected Parquet:      6,289.8 MiB (~6.14 GiB)
+projected compute:      427.9 minutes (~7.13 hours)
 ```
 
-Linear projection across the 1,255-session provider-backed lake:
+### 1h benchmark
 
 ```text
-projected rows:         44,838,766
-projected Parquet:      6,289.8 MiB (~6.14 GiB)
-projected compute:      427.9 minutes (~7.13 hours single-core)
+sample sessions:        20
+sample range:           2026-07-20 -> 2026-08-14
+rows:                   1,903,874
+symbols:                13,110
+registered features:    33
+source Parquet:         40.1 MiB
+wall/process CPU:       ~7.1 minutes
+CPU one-core equiv:     100.7%
+rows/second:            4,490
+peak process RSS:       2,419.6 MiB
+feature RAM frame:      589.6 MiB
+feature Parquet:        336.1 MiB
+compressed bytes/row:   185.1
+output/source ratio:    8.39x
+projected 1,255 rows:   119,468,094
+projected Parquet:      21,088.6 MiB (~20.59 GiB)
+projected compute:      443.4 minutes (~7.39 hours)
 ```
 
-The machine had approximately 206 GiB free after this benchmark. Therefore storage is not
-the limiting factor for 4h persistence; rebuild/maintenance time is the more important cost.
+The target machine had approximately 206 GiB free after the benchmarks and 24 GiB of RAM.
+Storage and peak memory are therefore acceptable for both 1h and 4h durable feature history.
+The controlling cost is full recomputation time, which is why normal maintenance uses exact
+state checkpoints, state-dependent manifests, and month-end replay anchors.
 
-### Active persistence policy
+### Final active persistence policy
 
 ```text
 1d   permanent full historical core features
 4h   permanent full historical core features
-1h   benchmark candidate — one target-machine benchmark still required
+1h   permanent full historical core features
 15m  on-demand / cache history
 1m   live/current feature state only
 ```
 
-The 1d dataset is materially smaller than 4h and is strategically important for regime,
-trend, research, and walk-forward work, so it is accepted as permanent without requiring a
-separate capacity gate. 15m is intentionally not promoted to a full 33-column historical
-matrix because its row volume/rebuild cost is much larger. 1m remains state/current only.
+The 1d dataset is materially smaller than 4h and strategically important for regime,
+trend, research, and walk-forward work. 15m is intentionally not promoted to a full
+33-column historical matrix because its row volume/rebuild cost is materially larger. 1m
+remains state/current only. There are no remaining benchmark-candidate timeframes in the
+Phase 6 persistence policy.
 
-One 1h benchmark is still required to decide whether 1h joins the permanent tier or remains
-on-demand/cache. The persistence code is already tier-agnostic, so promoting 1h later does
-not require redesign. No 15m benchmark is required for this decision.
+## Historical materialization
 
-## Benchmark command
+The first persistent feature build must begin at the actual provider-backed ATLAS history
+origin (`2021-08-16`). Starting at a recent date with empty recursive state would produce
+mathematically different EMA/RSI/ATR/MACD/OBV histories and is not allowed as an accepted
+production build.
+
+A controlled 4h pilot should therefore begin with the first 20 exchange sessions:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\benchmark_features.py `
-  --timeframe 1h `
-  --end 2026-08-14 `
-  --sessions 20 `
-  --project-sessions 1255
+.\.venv\Scripts\python.exe scripts\materialize_features.py `
+  --timeframe 4h `
+  --start 2021-08-16 `
+  --end 2021-09-13 `
+  --bootstrap-from-empty
 ```
 
-The Windows RSS probe was hardened after the initial 4h run returned `unknown`, so the 1h
-benchmark should also report actual peak process working-set usage.
-
-The benchmark writes only a JSON report under `data/derived/features/_benchmarks`; its
-sample feature Parquet is temporary and removed automatically.
+After the pilot is inspected, an identical command with `--end 2026-08-14` resumes from the
+exact checkpoint instead of recomputing the pilot sessions. 1h and 1d maintain independent
+state/checkpoint streams and are bootstrapped separately from the same history origin.
 
 ## Validation
 
@@ -232,13 +254,10 @@ Run:
 .\.venv\Scripts\python.exe scripts\validate_phase6.py
 ```
 
-The validator checks a classic Wilder RSI reference vector, a hand-calculated Wilder ATR recurrence,
-provider-native ticker separation, feature contract metadata, the registry fingerprint, measured
-persistence tiers, and state-dependent feature partition fingerprints.
-
-At implementation head `e3ae02d019fa8bfc88fce4f77b3430e21aa01b76`, GitHub Actions is green on both
-Ubuntu and Windows Python 3.14. The Windows run reports **116 passed in 8.57s**. Subsequent
-commits through this document update only Phase 6 documentation.
+The validator checks a classic Wilder RSI reference vector, a hand-calculated Wilder ATR
+recurrence, provider-native ticker separation, feature contract metadata, the registry
+fingerprint, final measured persistence tiers, and state-dependent feature partition
+fingerprints.
 
 The pytest suite covers exact EMA/Wilder initialization, RSI/ATR/MACD warm-up, Bollinger
 population standard deviation, OBV, structure levels, session isolation, exact symbol case,
@@ -248,10 +267,10 @@ and monthly-anchor corrected-history replay.
 
 ## Remaining Phase 06 acceptance
 
-1. Run the 1h real historical benchmark and lock its tier.
-2. Run a small real historical materialization pilot using the permanent 4h contract before the full feature backfill.
-3. Validate selected real historical feature values against canonical/derived bars and independent calculations.
-4. Prove the persisted current state can feed the Phase 5 live path without numerical discontinuity.
-5. Only after those gates, backfill permanent feature timeframes across the provider-backed history.
+1. Run the controlled real 4h historical materialization pilot from `2021-08-16`.
+2. Validate selected persisted real historical feature values against the source bars and independent calculations.
+3. Prove persisted current state can feed the Phase 5 live path without numerical discontinuity.
+4. Backfill permanent 4h, 1h, and 1d feature histories across the provider-backed range.
+5. Audit all permanent feature partitions/manifests and accept Phase 6.
 
 Phase 05's market-hours WebSocket throughput/finalization gates remain separate and may be completed while Phase 06 proceeds.
