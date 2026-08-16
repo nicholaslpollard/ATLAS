@@ -14,7 +14,11 @@ from packages.data.sql import sql_string
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
 from packages.features.incremental import IncrementalFeatureEngine
 from packages.features.materialization import ACTIVE_FEATURE_PERSISTENCE_POLICY
-from packages.features.partition_store import FeaturePartitionManifest, FeaturePartitionStore
+from packages.features.partition_store import (
+    FeaturePartitionManifest,
+    FeaturePartitionStore,
+    sha256_file,
+)
 from packages.features.state_checkpoint import (
     FeatureStateCheckpointStore,
     feature_state_fingerprint,
@@ -208,6 +212,116 @@ class HistoricalFeatureMaterializer:
         if not raw_as_of:
             raise ValueError("feature current-state checkpoint is missing as_of_date")
         return engine, date.fromisoformat(str(raw_as_of))
+
+    def _monthly_anchors(self, timeframe: Timeframe) -> list[tuple[date, Path]]:
+        current = self.paths.feature_current_state_file(timeframe)
+        root = current.parent / "monthly"
+        anchors: list[tuple[date, Path]] = []
+        if not root.exists():
+            return anchors
+        for path in root.glob("*/*.json.gz"):
+            try:
+                anchor_date = date.fromisoformat(path.name.removesuffix(".json.gz"))
+            except ValueError:
+                continue
+            anchors.append((anchor_date, path))
+        anchors.sort(key=lambda item: item[0])
+        return anchors
+
+    def latest_anchor_before(
+        self,
+        timeframe: Timeframe,
+        trading_date: date,
+    ) -> tuple[date, Path] | None:
+        eligible = [item for item in self._monthly_anchors(timeframe) if item[0] < trading_date]
+        return eligible[-1] if eligible else None
+
+    def stale_source_sessions(
+        self,
+        *,
+        timeframe: Timeframe,
+        start: date,
+        end: date,
+    ) -> tuple[date, ...]:
+        """Return materialized sessions whose source SHA/contract no longer matches."""
+
+        stale: list[date] = []
+        for trading_date in self.calendar.sessions_in_range(start, end):
+            source = self.partition_store.source_path(timeframe, trading_date)
+            if not source.is_file():
+                stale.append(trading_date)
+                continue
+            try:
+                manifest = self.partition_store.read_manifest(timeframe, trading_date)
+            except (ValueError, TypeError):
+                stale.append(trading_date)
+                continue
+            if manifest is None or manifest.source_sha256 != sha256_file(source):
+                stale.append(trading_date)
+        return tuple(stale)
+
+    def replay_from_correction(
+        self,
+        *,
+        timeframe: Timeframe,
+        corrected_date: date,
+        end: date,
+        history_start: date,
+        allow_candidate: bool = False,
+    ) -> FeatureRangeMaterializationResult:
+        """Recompute from the nearest exact state anchor before a corrected session.
+
+        If no monthly anchor exists before the correction, replay starts from the
+        configured ATLAS history origin with empty recursive state. Every partition
+        from the replay start through ``end`` is deterministically replaced, and
+        month-end anchors encountered on the way are refreshed.
+        """
+
+        if end < corrected_date:
+            raise ValueError("replay end precedes corrected session")
+        if corrected_date < history_start:
+            raise ValueError("corrected session precedes feature history origin")
+        self._validate_tier(timeframe, allow_candidate=allow_candidate)
+
+        anchor = self.latest_anchor_before(timeframe, corrected_date)
+        if anchor is None:
+            engine = IncrementalFeatureEngine()
+            replay_start = history_start
+            input_as_of = "genesis"
+        else:
+            anchor_date, anchor_path = anchor
+            engine, payload = self.checkpoints.read(anchor_path, expected_timeframe=timeframe)
+            if date.fromisoformat(str(payload["as_of_date"])) != anchor_date:
+                raise ValueError("monthly feature-state anchor date mismatch")
+            replay_start = anchor_date + timedelta(days=1)
+            input_as_of = anchor_date.isoformat()
+
+        sessions = self.calendar.sessions_in_range(replay_start, end)
+        rows_processed = 0
+        effective_start: date | None = None
+        effective_end: date | None = None
+        for trading_date in sessions:
+            result = self.materialize_session(
+                engine,
+                timeframe=timeframe,
+                trading_date=trading_date,
+                input_as_of=input_as_of,
+            )
+            rows_processed += result.row_count
+            effective_start = effective_start or trading_date
+            effective_end = trading_date
+            input_as_of = trading_date.isoformat()
+
+        return FeatureRangeMaterializationResult(
+            timeframe=timeframe,
+            requested_start=corrected_date,
+            requested_end=end,
+            effective_start=effective_start,
+            effective_end=effective_end,
+            sessions_processed=len(sessions),
+            rows_processed=rows_processed,
+            checkpoint_as_of=effective_end,
+        )
 
     def materialize_range(
         self,
