@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 import packages.core.atomic_io as atomic_io
+import packages.ingestion.checkpoint as checkpoint_module
+from packages.ingestion.checkpoint import CheckpointStore
+from packages.schemas.ingestion import IngestionCheckpoint
 
 
 def test_replace_with_retry_recovers_from_transient_permission_error(tmp_path: Path):
@@ -84,3 +88,23 @@ def test_unique_temp_paths_do_not_collide_within_same_process(tmp_path: Path):
     assert first != second
     assert first.parent == target.parent
     assert second.parent == target.parent
+
+
+def test_persistently_locked_checkpoint_warns_but_does_not_abort(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    def locked_write(*args, **kwargs):
+        raise PermissionError(5, "persistently locked")
+
+    monkeypatch.setattr(checkpoint_module, "atomic_write_text", locked_write)
+    store = CheckpointStore(tmp_path / "checkpoints")
+    checkpoint = IngestionCheckpoint(
+        checkpoint_id="history_test",
+        stage="flat_file_sync",
+        completed_units=10,
+        total_units=100,
+        updated_at_utc=datetime.now(UTC),
+    )
+
+    with pytest.warns(RuntimeWarning, match="advisory checkpoint"):
+        saved = store.save(checkpoint)
+
+    assert saved is False
