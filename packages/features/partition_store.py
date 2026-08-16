@@ -88,13 +88,7 @@ class FeaturePartitionManifest:
 
 
 class FeaturePartitionStore:
-    """Atomic Parquet + JSON manifest storage for exact feature partitions.
-
-    The dependency fingerprint includes the incoming recursive-state fingerprint.
-    This is essential: a 4h feature partition can become stale even when its own
-    source bar file did not change, because a corrected earlier session changes the
-    EMA/RSI/ATR/OBV state that enters this session.
-    """
+    """Atomic Parquet + JSON manifest storage for exact feature partitions."""
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
@@ -163,7 +157,10 @@ class FeaturePartitionStore:
         missing = sorted(required.difference(frame.columns))
         if missing:
             raise ValueError(f"feature partition frame missing columns: {', '.join(missing)}")
-        if frame.duplicated(["symbol", "timestamp_utc"]).any():
+        duplicate_key = ["symbol", "timestamp_utc"]
+        if "session_segment" in frame.columns:
+            duplicate_key.append("session_segment")
+        if frame.duplicated(duplicate_key).any():
             raise ValueError("feature partition contains duplicate market keys")
 
         source_path = self.source_path(timeframe, trading_date)
@@ -183,12 +180,15 @@ class FeaturePartitionStore:
             con.register("atlas_feature_partition", frame)
             compression = self.settings.data.parquet.compression.upper()
             row_group_size = int(self.settings.data.parquet.row_group_size)
+            order_columns = "symbol, timestamp_utc"
+            if "session_segment" in frame.columns:
+                order_columns = "symbol, session_segment, timestamp_utc"
             con.execute(
                 f"""
                 COPY (
                     SELECT *
                     FROM atlas_feature_partition
-                    ORDER BY symbol, timestamp_utc
+                    ORDER BY {order_columns}
                 )
                 TO {sql_string(temp)}
                 (FORMAT PARQUET, COMPRESSION {compression}, ROW_GROUP_SIZE {row_group_size})
