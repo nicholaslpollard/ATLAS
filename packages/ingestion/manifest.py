@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from threading import RLock
 
+from packages.core.atomic_io import atomic_write_text
 from packages.core.exceptions import ManifestError
 from packages.schemas.ingestion import IngestionManifestRecord
 
@@ -38,14 +38,11 @@ class DirectoryManifestStore:
 
     def put(self, record: IngestionManifestRecord) -> None:
         path = self._path(record.source_id)
-        temp = path.with_suffix(path.suffix + f".{os.getpid()}.tmp")
-        payload = record.model_dump_json(indent=2)
+        payload = record.model_dump_json(indent=2) + "\n"
         with self._lock:
             try:
-                temp.write_text(payload + "\n", encoding="utf-8")
-                os.replace(temp, path)
+                atomic_write_text(path, payload)
             except OSError as exc:
-                temp.unlink(missing_ok=True)
                 raise ManifestError(f"Could not write ingestion manifest record: {path.name}") from exc
 
     def list_records(self) -> list[IngestionManifestRecord]:

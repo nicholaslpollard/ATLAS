@@ -58,7 +58,6 @@ def test_root_dotenv_loads_local_secrets(tmp_path, monkeypatch):
     assert get_secret("MASSIVE_S3_ACCESS_KEY_ID") == "dotenv-access"
     assert get_secret("MASSIVE_S3_SECRET_ACCESS_KEY") == "dotenv-secret"
 
-    # load_dotenv mutates os.environ directly, so clean up values it introduced.
     for name in ("MASSIVE_API_KEY", "MASSIVE_S3_ACCESS_KEY_ID", "MASSIVE_S3_SECRET_ACCESS_KEY"):
         os.environ.pop(name, None)
 
@@ -75,3 +74,9 @@ def test_process_environment_overrides_dotenv(tmp_path, monkeypatch):
 
     load_settings(project_root, "development")
     assert get_secret("MASSIVE_API_KEY") == "process-value"
+
+
+def test_massive_reference_settings_are_bounded():
+    settings = load_settings(ROOT, "development")
+    assert settings.massive.reference.page_limit == 1000
+    assert settings.massive.reference.max_attempts >= 1

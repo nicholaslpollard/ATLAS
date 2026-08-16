@@ -35,6 +35,12 @@ except ImportError:  # pragma: no cover
     duckdb = None
 
 
+# Bump this whenever canonical/derived transformation semantics change in a way
+# that requires existing materializations to be regenerated from the same raw
+# provider file. Phase 4 v2 preserves Massive's provider-significant ticker case.
+MATERIALIZATION_CONTRACT_VERSION = "market-v2-provider-symbol-case"
+
+
 @dataclass(frozen=True, slots=True)
 class MaterializationResult:
     dataset: DatasetType
@@ -132,11 +138,17 @@ class MarketDataMaterializer:
         existing = self.manifest.get(descriptor.source_id)
 
         registry_path = self.paths.symbol_quarantine_registry(trading_date)
-        dependency_fingerprint = (
+        registry_fingerprint = (
             _sha256(registry_path)
             if dataset == DatasetType.STOCK_MINUTE_AGGREGATES and registry_path.exists()
             else None
         )
+        if dataset == DatasetType.STOCK_MINUTE_AGGREGATES:
+            dependency_fingerprint = (
+                f"{MATERIALIZATION_CONTRACT_VERSION}:quarantine:{registry_fingerprint or 'none'}"
+            )
+        else:
+            dependency_fingerprint = MATERIALIZATION_CONTRACT_VERSION
 
         timeframe = Timeframe.MINUTE_1 if dataset == DatasetType.STOCK_MINUTE_AGGREGATES else Timeframe.DAY_1
         canonical = self.paths.canonical_file(timeframe, trading_date)

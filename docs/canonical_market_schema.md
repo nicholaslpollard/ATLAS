@@ -6,7 +6,7 @@ Canonical market data stores provider/source facts only.
 
 | Field | Meaning |
 |---|---|
-| `symbol` | uppercase security symbol |
+| `symbol` | provider-native security symbol; case is preserved because Massive uses lowercase `p` in preferred-share tickers |
 | `timestamp_utc` | semantic bar start in UTC |
 | `session_date` | exchange trading-session date |
 | `timeframe` | `1m` or `1d` in canonical storage |
@@ -23,6 +23,18 @@ Canonical market data stores provider/source facts only.
 
 The Massive flat-file aggregates currently used by ATLAS do not supply a VWAP
 column, so Phase 03 deliberately stores `vwap = null`; it does not invent one.
+
+## Symbol case contract
+
+Massive follows SIP ticker formatting and uses a lowercase `p` to identify
+preferred-share symbols. Therefore ATLAS treats ticker case as semantically
+significant and preserves it exactly apart from surrounding whitespace. For
+example, `TPC` and `TpC` are different securities and must never be folded into
+the same canonical symbol.
+
+Downstream exact-symbol queries are also case-sensitive. User-facing search can
+later provide aliases or suggestions, but canonical storage and joins always use
+the provider-native symbol.
 
 ## Canonical daily timestamp
 

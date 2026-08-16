@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import os
 import time
+import uuid
 from pathlib import Path
 
-from packages.core.exceptions import DownloadError, ProviderError
+from packages.core.atomic_io import replace_with_retry
+from packages.core.exceptions import DownloadError, ProviderAccessDeniedError, ProviderError
 from packages.schemas.ingestion import DownloadResult, IngestionPlanItem
 
 
@@ -35,8 +37,9 @@ class AtomicDownloader:
         last_error: Exception | None = None
 
         for attempt in range(1, self.max_attempts + 1):
-            temp = destination.with_suffix(destination.suffix + f".{os.getpid()}.part")
-            temp.unlink(missing_ok=True)
+            temp = destination.with_name(
+                f"{destination.name}.{os.getpid()}.{uuid.uuid4().hex}.part"
+            )
             digest = hashlib.sha256()
             size = 0
             try:
@@ -54,7 +57,9 @@ class AtomicDownloader:
                     raise DownloadError(
                         f"Size mismatch for {descriptor.remote_key}: expected {descriptor.expected_size_bytes}, got {size}"
                     )
-                os.replace(temp, destination)
+                # A transient Windows sharing lock at promotion time should not force
+                # ATLAS to download the whole provider object again.
+                replace_with_retry(temp, destination)
                 return DownloadResult(
                     source_id=descriptor.source_id,
                     local_path=destination,
@@ -63,6 +68,11 @@ class AtomicDownloader:
                     attempts=attempt,
                     elapsed_seconds=time.perf_counter() - started,
                 )
+            except ProviderAccessDeniedError as exc:
+                temp.unlink(missing_ok=True)
+                raise DownloadError(
+                    f"Provider denied access to {descriptor.remote_key}; check the Massive flat-file historical entitlement for this date"
+                ) from exc
             except (ProviderError, DownloadError, OSError) as exc:
                 last_error = exc
                 temp.unlink(missing_ok=True)

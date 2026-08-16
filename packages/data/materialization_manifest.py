@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from threading import RLock
 
+from packages.core.atomic_io import atomic_write_text
 from packages.schemas.materialization import MaterializationRecord
 
 
@@ -32,7 +32,5 @@ class MaterializationManifestStore:
 
     def put(self, record: MaterializationRecord) -> None:
         path = self._path(record.source_id)
-        temp = path.with_suffix(path.suffix + f".{os.getpid()}.tmp")
         with self._lock:
-            temp.write_text(record.model_dump_json(indent=2) + "\n", encoding="utf-8")
-            os.replace(temp, path)
+            atomic_write_text(path, record.model_dump_json(indent=2) + "\n")

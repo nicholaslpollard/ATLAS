@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date, datetime, timezone
 
 from packages.core.enums import DatasetType, IngestionStatus, ValidationStatus
@@ -11,6 +12,9 @@ from packages.ingestion.planner import IngestionPlanner
 from packages.ingestion.staging import FlatFileValidator
 from packages.providers.massive.flat_files import MassiveFlatFileProvider
 from packages.schemas.ingestion import IngestionManifestRecord, IngestionPlan
+
+
+ProgressCallback = Callable[[str, int, int, date], None]
 
 
 class FlatFileIngestionService:
@@ -56,6 +60,7 @@ class FlatFileIngestionService:
         max_files: int | None = None,
         verify_existing_hashes: bool = False,
         stop_after_completed: int | None = None,
+        progress_callback: ProgressCallback | None = None,
     ) -> IngestionPlan:
         plan = self.plan(dataset, start_date, end_date, verify_existing_hashes=verify_existing_hashes)
         items = plan.items[:max_files] if max_files is not None else plan.items
@@ -121,6 +126,8 @@ class FlatFileIngestionService:
                     completed_units=completed,
                     total_units=len(items),
                 )
+                if progress_callback is not None:
+                    progress_callback(f"download:{dataset.value}", completed, len(items), descriptor.trading_date)
                 if stop_after_completed is not None and completed >= stop_after_completed:
                     raise RuntimeError("simulated ingestion interruption")
             except RuntimeError as exc:

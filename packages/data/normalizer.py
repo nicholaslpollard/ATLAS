@@ -46,11 +46,16 @@ class MassiveStockNormalizer:
         src = self._read_csv(Path(source_path))
         source_id_sql = source_id.replace("'", "''")
 
+        # Massive follows SIP ticker formatting and intentionally uses a lowercase
+        # 'p' inside preferred-share symbols (for example APTVpA). Symbol case is
+        # therefore provider-significant and must never be uppercased here.
+        provider_symbol = "trim(ticker)"
+
         if dataset == DatasetType.STOCK_MINUTE_AGGREGATES:
             ns = boundaries.as_epoch_ns()
             query = f"""
                 SELECT
-                    upper(trim(ticker)) AS symbol,
+                    {provider_symbol} AS symbol,
                     to_timestamp(window_start / 1000000000.0) AS timestamp_utc,
                     DATE '{trading_date}' AS session_date,
                     '{Timeframe.MINUTE_1.value}' AS timeframe,
@@ -79,7 +84,7 @@ class MassiveStockNormalizer:
             semantic_ts = boundaries.regular_open_utc.isoformat()
             query = f"""
                 SELECT
-                    upper(trim(ticker)) AS symbol,
+                    {provider_symbol} AS symbol,
                     TIMESTAMPTZ '{semantic_ts}' AS timestamp_utc,
                     DATE '{trading_date}' AS session_date,
                     '{Timeframe.DAY_1.value}' AS timeframe,

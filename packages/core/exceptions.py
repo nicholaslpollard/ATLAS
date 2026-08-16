@@ -22,6 +22,10 @@ class ProviderError(AtlasError):
     """Raised when an external data provider operation fails."""
 
 
+class ProviderAccessDeniedError(ProviderError):
+    """Raised when provider data exists but the current subscription cannot read it."""
+
+
 class DownloadError(ProviderError):
     """Raised when a provider object cannot be downloaded safely."""
 

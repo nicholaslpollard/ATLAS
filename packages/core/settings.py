@@ -110,11 +110,20 @@ class MassiveFlatFilesConfig(BaseModel):
     count_rows_during_validation: bool = False
 
 
+class MassiveReferenceConfig(BaseModel):
+    page_limit: int = Field(default=1000, ge=1, le=1000)
+    request_timeout_seconds: float = Field(default=30.0, gt=0)
+    max_attempts: int = Field(default=4, ge=1, le=20)
+    initial_retry_seconds: float = Field(default=1.0, ge=0)
+    max_retry_seconds: float = Field(default=20.0, ge=0)
+
+
 class MassiveConfig(BaseModel):
     provider: MassiveProviderConfig
     credentials: MassiveCredentialsConfig
     stocks: MassiveStocksConfig
     flat_files: MassiveFlatFilesConfig
+    reference: MassiveReferenceConfig = Field(default_factory=MassiveReferenceConfig)
 
 
 class LoggingConfig(BaseModel):
@@ -179,13 +188,9 @@ def find_project_root(start: Path | None = None) -> Path:
 def load_settings(project_root: Path | None = None, environment: str | Environment | None = None) -> AtlasSettings:
     root = (project_root.resolve() if project_root else find_project_root())
 
-    # Local development may keep private values in ATLAS/.env. Existing process
-    # environment variables always win so cloud/container secret injection remains
-    # authoritative in production. Missing .env files are intentionally harmless.
     load_dotenv(dotenv_path=root / ".env", override=False)
 
     config_dir = root / "config"
-
     app_doc = _load_yaml(config_dir / "app.yaml")
     data_doc = _load_yaml(config_dir / "data.yaml")
     massive_doc = _load_yaml(config_dir / "massive.yaml")

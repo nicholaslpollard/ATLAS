@@ -63,8 +63,10 @@ class DuckDBMarketRepository:
         root = Path(glob.split("**")[0])
         if not root.exists() or not any(root.rglob("*.parquet")):
             return []
-        clauses = ["upper(symbol) = upper(?)"]
-        params: list[Any] = [symbol]
+        # Massive uses lowercase 'p' in preferred-share symbols. A
+        # case-insensitive comparison would incorrectly mix TPC with TpC, etc.
+        clauses = ["symbol = ?"]
+        params: list[Any] = [symbol.strip()]
         if start is not None:
             clauses.append("timestamp_utc >= ?")
             params.append(start)

@@ -1,16 +1,25 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
+
+from packages.core.atomic_io import replace_with_retry, unique_temp_path
 
 
 def atomic_target(final_path: Path) -> Path:
-    final_path = Path(final_path)
-    final_path.parent.mkdir(parents=True, exist_ok=True)
-    return final_path.with_name(final_path.name + f".{os.getpid()}.tmp")
+    """Return a unique same-directory temporary path for an atomic data write."""
+
+    return unique_temp_path(Path(final_path))
 
 
 def promote(temp_path: Path, final_path: Path) -> None:
-    final_path = Path(final_path)
-    final_path.parent.mkdir(parents=True, exist_ok=True)
-    os.replace(temp_path, final_path)
+    """Promote a completed data file without sacrificing atomic replacement."""
+
+    temp_path = Path(temp_path)
+    try:
+        replace_with_retry(temp_path, Path(final_path))
+    except Exception:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
