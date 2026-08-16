@@ -44,7 +44,7 @@ class FeaturePersistencePolicy:
         return "unsupported"
 
 
-# Target-machine evidence, captured 2026-08-16 from the real ATLAS historical lake:
+# Target-machine evidence, captured 2026-08-16 from the real ATLAS historical lake.
 #
 # 4h sample: 20 sessions / 714,562 rows / 13,110 symbols / all 33 core features
 #   wall time              6.8 minutes
@@ -55,22 +55,34 @@ class FeaturePersistencePolicy:
 #   output/source ratio    6.23x
 #   1,255-session estimate 44,838,766 rows / 6,289.8 MiB / 427.9 minutes
 #
-# The machine had approximately 206 GiB free after the benchmark. Storage is
-# therefore not the controlling constraint for 4h history; full rebuild time is.
-# 1d is far smaller than 4h and is a high-value research/regime timeframe, so it
-# joins 4h as permanent. 15m remains cache/on-demand because extrapolated row count
-# and rebuild cost are materially larger. 1m remains live/current-state only.
-# 1h is the single unresolved candidate and requires its own measured benchmark.
+# 1h sample: 20 sessions / 1,903,874 rows / 13,110 symbols / all 33 core features
+#   wall time              7.1 minutes
+#   rows/second            4,490
+#   peak process RSS       2,419.6 MiB
+#   compact feature RAM    589.6 MiB
+#   feature Parquet        336.1 MiB
+#   compressed bytes/row   185.1
+#   output/source ratio    8.39x
+#   1,255-session estimate 119,468,094 rows / 21,088.6 MiB / 443.4 minutes
+#
+# The machine had approximately 206 GiB free after the benchmarks. Storage and peak
+# memory are therefore acceptable for permanent 1h/4h history. Full rebuild time is
+# the controlling cost, so normal maintenance relies on state-dependent manifests,
+# exact recursive checkpoints, and month-end replay anchors instead of routine full
+# recomputation. 1d is smaller than 4h and strategically important, so it also stays
+# permanent. 15m remains cache/on-demand; 1m remains live/current-state only.
 ACTIVE_FEATURE_PERSISTENCE_POLICY = FeaturePersistencePolicy(
-    permanently_materialized=(Timeframe.DAY_1, Timeframe.HOUR_4),
+    permanently_materialized=(Timeframe.DAY_1, Timeframe.HOUR_4, Timeframe.HOUR_1),
     current_state_only=(Timeframe.MINUTE_1,),
     on_demand_history=(Timeframe.MINUTE_15,),
-    benchmark_candidates=(Timeframe.HOUR_1,),
+    benchmark_candidates=(),
     rationale=(
-        "Measured 4h target-machine benchmark projects about 6.14 GiB of compact "
-        "Parquet and 427.9 minutes of single-core full-history recomputation across "
-        "1,255 sessions. Storage headroom is ample, so 1d/4h are permanent; 15m is "
-        "on-demand/cache, 1m is current-state only, and 1h remains benchmark-gated."
+        "Measured target-machine benchmarks project about 6.14 GiB for 4h and "
+        "20.59 GiB for 1h compact feature Parquet across 1,255 sessions. The 1h "
+        "sample peaked at about 2.36 GiB RSS, which is comfortable on the 24 GiB "
+        "target machine, while free disk was about 206 GiB. Therefore 1d/4h/1h are "
+        "permanent historical core-feature layers; 15m remains on-demand/cache and "
+        "1m remains current/live state only."
     ),
 )
 
