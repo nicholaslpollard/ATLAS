@@ -173,7 +173,7 @@ class MassiveStocksWebSocketClient:
             if self.feed_mode == LiveFeedMode.DELAYED
             else settings.massive.provider.websocket_realtime_url
         )
-        self.api_key = get_secret(settings.massive.credentials.api_key_env)
+        self.api_key_env = settings.massive.credentials.api_key_env
 
     @property
     def expected_delay_seconds(self) -> int:
@@ -243,7 +243,8 @@ class MassiveStocksWebSocketClient:
             accepted={"connected"},
             timeout_seconds=self.config.websocket_auth_timeout_seconds,
         )
-        await websocket.send(json.dumps({"action": "auth", "params": self.api_key}))
+        api_key = get_secret(self.api_key_env)
+        await websocket.send(json.dumps({"action": "auth", "params": api_key}))
         _, auth_message = await self._next_status(
             websocket,
             accepted={"auth_success"},
