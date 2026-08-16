@@ -43,17 +43,33 @@ AM.*
 Minute aggregates are low enough frequency to maintain broad-market current state
 and become the primary live input for the later 5K discovery funnel.
 
-Focused NBBO input:
+### Current Massive plan boundary
+
+The target deployment currently uses Massive Stocks Starter. Massive's current plan
+matrix includes stock minute-aggregate WebSockets on Starter at 15-minute delayed
+recency, but stock quote WebSockets (`Q`) are not included on Basic, Starter, or
+Developer; they are a real-time Advanced-plan feed.
+
+Therefore the production Phase 05 contract for the current deployment is:
 
 ```text
-Q.<ticker>
+Massive delayed WebSocket: AM.*
 ```
 
-Quotes are intentionally opt-in for positions, watchlist names, finalists, or other
-focused symbols. ATLAS does not default to `Q.*`; the quote stream has a much higher
-message rate and is unnecessary for first-stage broad discovery.
+and **not**:
 
-Minute and focused-quote topics share one stock-cluster connection.
+```text
+Massive delayed WebSocket: Q.<ticker>
+```
+
+The Massive quote parser/client support remains in the codebase as a provider
+capability for a future Advanced-plan deployment, but it is not an acceptance
+requirement for the current Starter deployment.
+
+Focused live bid/ask data remains part of the overall ATLAS architecture, but the
+current design obtains it later through the broker/finalist path (Robinhood) rather
+than requiring a $199/month Massive Stocks Advanced subscription before measured
+opportunity loss justifies that upgrade.
 
 ## Backpressure contract
 
@@ -140,24 +156,26 @@ Probe Massive delayed WebSocket connectivity and authentication without subscrib
 .\.venv\Scripts\python.exe scripts\probe_massive_websocket.py --feed delayed
 ```
 
-Run a focused temporary stream:
+Run a focused temporary delayed minute stream on the current Stocks Starter plan:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_live_market_state.py `
   --feed delayed `
   --minute-symbols AAPL,MSFT `
-  --quote-symbols AAPL `
   --max-seconds 60
 ```
 
-Run broad minute state with focused quotes:
+Run broad delayed minute state for discovery:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_live_market_state.py `
   --feed delayed `
-  --minute-symbols "*" `
-  --quote-symbols AAPL,MSFT
+  --minute-symbols "*"
 ```
+
+`--quote-symbols` is retained for a future Massive Stocks Advanced deployment or
+provider-capability testing. It is not expected to authorize on the current Stocks
+Starter plan.
 
 After the corresponding Massive flat file is downloaded and materialized into
 canonical 1m, reconcile the live journal with finalized data:
@@ -173,8 +191,10 @@ Phase 05 is accepted only after all of the following are proven:
 1. unit/integration tests and validators pass on Windows and Ubuntu;
 2. real Massive delayed WebSocket authentication succeeds with the user's rotated
    credentials;
-3. a real subscription writes a valid current-state snapshot and provisional journal;
-4. focused quote ingestion is proven;
+3. a real delayed minute subscription writes a valid current-state snapshot and
+   provisional journal;
+4. the current-plan entitlement boundary is explicit: Starter uses delayed `AM`, while
+   Massive `Q` is not treated as a required or available Starter feed;
 5. broad `AM.*` is observed during a market session on the target machine with no
    backpressure, parse errors, or pathological CPU/memory use;
 6. delayed-feed freshness behaves as expected;
