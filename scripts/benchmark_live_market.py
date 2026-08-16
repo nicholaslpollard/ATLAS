@@ -98,6 +98,9 @@ async def _run(args: argparse.Namespace) -> int:
     print(f"  subscriptions:     {', '.join(service.subscriptions)}")
     print(f"  requested seconds: {args.seconds:,.0f}")
     print(f"  journal:           {'disabled' if args.no_journal else 'enabled'}")
+    print(f"  restored symbols:  {service.state.restored_symbol_count:,}")
+    if service.state.restore_warning:
+        print(f"  restore warning:   {service.state.restore_warning}")
 
     snapshot = await service.run(max_seconds=args.seconds)
 
@@ -128,6 +131,8 @@ async def _run(args: argparse.Namespace) -> int:
     print(f"  frames received:    {summary['frames_received']:,}")
     print(f"  received events:    {summary['received_events']:,} ({summary['received_events_per_second']:,.1f}/s)")
     print(f"  accepted events:    {summary['accepted_events']:,} ({summary['accepted_events_per_second']:,.1f}/s)")
+    print(f"  observed this run:  {summary['observed_symbol_count']:,}")
+    print(f"  restored at start:  {summary['restored_symbol_count']:,}")
     print(f"  symbols in state:   {summary['symbol_count']:,}")
     print(
         "  peak ingress queue: "
