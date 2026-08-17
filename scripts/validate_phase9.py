@@ -31,7 +31,7 @@ def main() -> int:
         "regime-classification-probe-v1-massive-sic-point-in-time"
     )
     assert REGIME_CALIBRATION_CONTRACT_VERSION == (
-        "regime-calibration-v1-historical-activity-floor-proxy-distributions"
+        "regime-calibration-v2-historical-continuous-proxy-distributions"
     )
     assert REGIME_CALIBRATION_QUANTILES == (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
     assert MARKET_PROXY_TICKERS == ("SPY", "QQQ", "IWM", "DIA")
@@ -70,6 +70,7 @@ def main() -> int:
     print("Point-in-time classification source: Massive Ticker Overview SIC industry facts")
     print("SIC-to-sector/GICS mapping: NOT LOCKED; no guessed crosswalk")
     print("Historical regime thresholds: CALIBRATION FIRST")
+    print("Continuous proxy trend evidence: EMA20 distance + EMA20 slope")
     print("Market/sector/ticker regime labels: NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
