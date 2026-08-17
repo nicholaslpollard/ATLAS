@@ -9,7 +9,7 @@ from packages.schemas.candidate import DiscoveryActivityTier
 from packages.schemas.universe import UniverseRoute
 
 
-DISCOVERY_SCORE_CONTRACT_VERSION = "discovery-score-v1-vectorized-multitimeframe-evidence"
+DISCOVERY_SCORE_CONTRACT_VERSION = "discovery-score-v2-tail-strength-and-coverage-guard"
 
 
 class DiscoveryDirection(StrEnum):
@@ -97,4 +97,10 @@ class DiscoveryScoreRecord(BaseModel):
             raise ValueError("bullish direction contradicts evidence ordering")
         if self.direction == DiscoveryDirection.BEARISH and self.bear_evidence < self.bull_evidence:
             raise ValueError("bearish direction contradicts evidence ordering")
+        if self.scored_timeframes == 0 and self.raw_state != DiscoveryState.NORMAL:
+            raise ValueError("zero-timeframe score records must remain NORMAL")
+        if self.scored_timeframes == 1 and self.raw_state in {DiscoveryState.WARM, DiscoveryState.HOT}:
+            raise ValueError("one-timeframe score records cannot exceed WATCH")
+        if self.scored_timeframes == 2 and self.raw_state == DiscoveryState.HOT:
+            raise ValueError("two-timeframe score records cannot be HOT")
         return self
