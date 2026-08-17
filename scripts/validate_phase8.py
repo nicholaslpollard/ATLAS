@@ -24,7 +24,7 @@ def main() -> int:
     paths = MarketDataPaths(settings)
 
     assert DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION == (
-        "discovery-input-inventory-v1-measured-market-activity"
+        "discovery-input-inventory-v2-canonical-bars-plus-derived-features"
     )
     assert _strictly_increasing(DiscoveryInputInventory.CLOSE_THRESHOLDS)
     assert _strictly_increasing(DiscoveryInputInventory.VOLUME_THRESHOLDS)
@@ -45,6 +45,7 @@ def main() -> int:
     assert "input_inventory" in sample.parts
 
     print(f"Discovery input inventory contract: {DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION}")
+    print("Canonical 1d bars + derived feature separation: PASS")
     print("Measured threshold bands: PASS (informational, not policy)")
     print("Instrument-agnostic discovery foundation: PASS")
     print("Phase 08 discovery foundation: PASS")
