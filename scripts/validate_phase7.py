@@ -17,6 +17,11 @@ from packages.schemas.universe import (
     UniverseRoute,
     universe_members_fingerprint,
 )
+from packages.universe.eligibility import (
+    ACTIVE_UNIVERSE_ELIGIBILITY_POLICY,
+    UNIVERSE_ELIGIBILITY_POLICY_VERSION,
+)
+from packages.universe.manager import UNIVERSE_MANIFEST_VERSION
 from packages.universe.metadata import REFERENCE_UNIVERSE_INVENTORY_VERSION
 
 
@@ -85,13 +90,53 @@ def main() -> int:
     if bac_a == bac_b:
         raise RuntimeError("distinct issuer securities collapsed into one medium identity")
 
+    policy = ACTIVE_UNIVERSE_ELIGIBILITY_POLICY
+    eligible, reasons = policy.evaluate(
+        reference_active=True,
+        delisted_utc=None,
+        market="stocks",
+        locale="us",
+        primary_exchange="XNAS",
+        security_type="CS",
+        identity_quality=InstrumentIdentityQuality.STRONG,
+    )
+    if not eligible or reasons != (UniverseReasonCode.ELIGIBLE,):
+        raise RuntimeError("core common-stock eligibility validation failed")
+    fallback_eligible, fallback_reasons = policy.evaluate(
+        reference_active=True,
+        delisted_utc=None,
+        market="stocks",
+        locale="us",
+        primary_exchange="XNAS",
+        security_type="CS",
+        identity_quality=InstrumentIdentityQuality.FALLBACK,
+    )
+    if fallback_eligible or UniverseReasonCode.UNSUPPORTED_IDENTITY_QUALITY not in fallback_reasons:
+        raise RuntimeError("fallback identity was incorrectly admitted to broad discovery")
+    special_eligible, special_reasons = policy.evaluate(
+        reference_active=True,
+        delisted_utc=None,
+        market="stocks",
+        locale="us",
+        primary_exchange="XNAS",
+        security_type="WARRANT",
+        identity_quality=InstrumentIdentityQuality.STRONG,
+    )
+    if special_eligible or UniverseReasonCode.UNSUPPORTED_SECURITY_TYPE not in special_reasons:
+        raise RuntimeError("special-situation wrapper was incorrectly admitted to broad discovery")
+
     print(f"Universe contract: {UNIVERSE_CONTRACT_VERSION}")
     print(f"Instrument identity contract: {IDENTITY_CONTRACT_VERSION}")
     print(f"Reference inventory contract: {REFERENCE_UNIVERSE_INVENTORY_VERSION}")
+    print(f"Eligibility policy: {UNIVERSE_ELIGIBILITY_POLICY_VERSION}")
+    print(f"Eligibility policy fingerprint: {policy.fingerprint}")
+    print(f"Universe manifest contract: {UNIVERSE_MANIFEST_VERSION}")
     print(f"Semantic fingerprint: {forward}")
     print("Provider-native ticker case: PASS")
     print("Medium issuer-security separation: PASS")
     print("Discovery/override separation: PASS")
+    print("Observed metadata eligibility policy: PASS")
+    print("Fallback identity exclusion: PASS")
     print("Deterministic universe fingerprint: PASS")
     print("Phase 07 universe foundation: PASS")
     return 0
