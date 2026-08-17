@@ -33,15 +33,7 @@ class MarketDataPaths:
 
     def feature_file(self, timeframe: Timeframe, trading_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
-        return (
-            root
-            / "features"
-            / timeframe.value
-            / f"year={trading_date.year:04d}"
-            / f"month={trading_date.month:02d}"
-            / f"date={trading_date}"
-            / "part-000.parquet"
-        )
+        return root / "features" / timeframe.value / f"year={trading_date.year:04d}" / f"month={trading_date.month:02d}" / f"date={trading_date}" / "part-000.parquet"
 
     def feature_manifest_file(self, timeframe: Timeframe, trading_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
@@ -53,27 +45,12 @@ class MarketDataPaths:
 
     def feature_monthly_state_file(self, timeframe: Timeframe, as_of_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
-        return (
-            root
-            / "features"
-            / "_state"
-            / timeframe.value
-            / "monthly"
-            / f"{as_of_date.year:04d}"
-            / f"{as_of_date}.json.gz"
-        )
+        return root / "features" / "_state" / timeframe.value / "monthly" / f"{as_of_date.year:04d}" / f"{as_of_date}.json.gz"
 
     def feature_benchmark_report(self, generated_at_utc: datetime) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         stamp = generated_at_utc.strftime("%Y-%m-%dT%H%M%SZ")
-        return (
-            root
-            / "features"
-            / "_benchmarks"
-            / f"{generated_at_utc.year:04d}"
-            / f"{generated_at_utc.date()}"
-            / f"{stamp}.json"
-        )
+        return root / "features" / "_benchmarks" / f"{generated_at_utc.year:04d}" / f"{generated_at_utc.date()}" / f"{stamp}.json"
 
     def quality_report(self, timeframe: Timeframe, trading_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
@@ -101,29 +78,27 @@ class MarketDataPaths:
 
     def universe_snapshot_file(self, as_of_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
-        return (
-            root
-            / "universe"
-            / "snapshots"
-            / f"year={as_of_date.year:04d}"
-            / f"date={as_of_date}"
-            / "part-000.parquet"
-        )
+        return root / "universe" / "snapshots" / f"year={as_of_date.year:04d}" / f"date={as_of_date}" / "part-000.parquet"
 
     def universe_exclusion_file(self, as_of_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
-        return (
-            root
-            / "universe"
-            / "exclusions"
-            / f"year={as_of_date.year:04d}"
-            / f"date={as_of_date}"
-            / "part-000.parquet"
-        )
+        return root / "universe" / "exclusions" / f"year={as_of_date.year:04d}" / f"date={as_of_date}" / "part-000.parquet"
 
     def universe_snapshot_manifest(self, as_of_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
         return root / "universe" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
+    def discovery_input_inventory_report(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "discovery" / "input_inventory" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
+    def discovery_snapshot_file(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "discovery" / "snapshots" / f"year={as_of_date.year:04d}" / f"date={as_of_date}" / "part-000.parquet"
+
+    def discovery_snapshot_manifest(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.manifests)
+        return root / "discovery" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
 
     def ticker_events_file(self, instrument_id: str) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
@@ -172,13 +147,7 @@ class MarketDataPaths:
     def live_benchmark_report(self, generated_at_utc: datetime) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.live)
         stamp = generated_at_utc.strftime("%Y-%m-%dT%H%M%SZ")
-        return (
-            root
-            / "benchmarks"
-            / f"{generated_at_utc.year:04d}"
-            / f"{generated_at_utc.date()}"
-            / f"{stamp}.json"
-        )
+        return root / "benchmarks" / f"{generated_at_utc.year:04d}" / f"{generated_at_utc.date()}" / f"{stamp}.json"
 
     def materialization_manifest_dir(self) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
