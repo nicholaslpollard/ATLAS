@@ -15,7 +15,9 @@ from packages.data.duckdb_connection import connect_utc
 from packages.data.paths import MarketDataPaths
 
 
-DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION = "discovery-input-inventory-v1-measured-market-activity"
+DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION = (
+    "discovery-input-inventory-v2-canonical-bars-plus-derived-features"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,9 +68,14 @@ class DiscoveryInputInventoryReport:
 class DiscoveryInputInventory:
     """Measure the real Phase 8 discovery input population before locking filters.
 
-    This class intentionally does not decide which securities survive discovery.
-    It measures point-in-time universe/feature coverage and activity distributions so
-    the Phase 8 policy can be chosen from observed data rather than arbitrary guesses.
+    Raw OHLCV remains owned by canonical/derived market-bar partitions. Persisted
+    Phase 6 feature partitions contain market keys plus derived features only. This
+    inventory therefore joins the canonical 1d bar to the exact 1d feature row by
+    provider-native symbol and timestamp, while 4h/1h are used for coverage checks.
+
+    The class intentionally does not decide which securities survive discovery. It
+    measures point-in-time coverage and activity distributions so the Phase 8 policy
+    can be chosen from observed data rather than arbitrary guesses.
     """
 
     DAILY_METRICS = (
@@ -127,6 +134,7 @@ class DiscoveryInputInventory:
     def _required_paths(self, as_of_date: date) -> dict[str, Path]:
         paths = {
             "universe": self.paths.universe_snapshot_file(as_of_date),
+            "bars_1d": self.paths.canonical_file(Timeframe.DAY_1, as_of_date),
             "features_1d": self.paths.feature_file(Timeframe.DAY_1, as_of_date),
             "features_4h": self.paths.feature_file(Timeframe.HOUR_4, as_of_date),
             "features_1h": self.paths.feature_file(Timeframe.HOUR_1, as_of_date),
@@ -277,7 +285,9 @@ class DiscoveryInputInventory:
         con = connect_utc(":memory:")
         try:
             universe = self._safe(paths["universe"])
-            daily = self._safe(paths["features_1d"])
+            daily_bars = self._safe(paths["bars_1d"])
+            daily_features = self._safe(paths["features_1d"])
+
             con.execute(
                 f"""
                 CREATE TEMP VIEW atlas_universe AS
@@ -303,11 +313,46 @@ class DiscoveryInputInventory:
 
             con.execute(
                 f"""
-                CREATE TEMP VIEW atlas_daily_latest AS
-                SELECT * EXCLUDE (rn)
+                CREATE TEMP VIEW atlas_daily_bar_latest AS
+                SELECT symbol, timestamp_utc, close, volume
                 FROM (
-                    SELECT *, row_number() OVER (PARTITION BY symbol ORDER BY timestamp_utc DESC) AS rn
-                    FROM read_parquet('{daily}')
+                    SELECT
+                        symbol,
+                        timestamp_utc,
+                        close,
+                        volume,
+                        row_number() OVER (
+                            PARTITION BY symbol ORDER BY timestamp_utc DESC
+                        ) AS rn
+                    FROM read_parquet('{daily_bars}')
+                )
+                WHERE rn = 1
+                """
+            )
+            con.execute(
+                f"""
+                CREATE TEMP VIEW atlas_daily_feature_latest AS
+                SELECT
+                    symbol,
+                    timestamp_utc,
+                    dollar_volume,
+                    relative_volume_20,
+                    relative_dollar_volume_20,
+                    natr_14,
+                    realized_volatility_20
+                FROM (
+                    SELECT
+                        symbol,
+                        timestamp_utc,
+                        dollar_volume,
+                        relative_volume_20,
+                        relative_dollar_volume_20,
+                        natr_14,
+                        realized_volatility_20,
+                        row_number() OVER (
+                            PARTITION BY symbol ORDER BY timestamp_utc DESC
+                        ) AS rn
+                    FROM read_parquet('{daily_features}')
                 )
                 WHERE rn = 1
                 """
@@ -319,42 +364,59 @@ class DiscoveryInputInventory:
                     u.instrument_id,
                     u.ticker,
                     u.security_type,
-                    d.symbol AS feature_symbol,
-                    d.timestamp_utc,
-                    d.close,
-                    d.volume,
-                    d.dollar_volume,
-                    d.relative_volume_20,
-                    d.relative_dollar_volume_20,
-                    d.natr_14,
-                    d.realized_volatility_20
+                    b.symbol AS bar_symbol,
+                    f.symbol AS feature_symbol,
+                    b.timestamp_utc AS bar_timestamp_utc,
+                    f.timestamp_utc AS feature_timestamp_utc,
+                    (
+                        b.symbol IS NOT NULL
+                        AND f.symbol IS NOT NULL
+                        AND b.timestamp_utc = f.timestamp_utc
+                    ) AS input_complete,
+                    b.close,
+                    b.volume,
+                    CASE WHEN b.timestamp_utc = f.timestamp_utc THEN f.dollar_volume END AS dollar_volume,
+                    CASE WHEN b.timestamp_utc = f.timestamp_utc THEN f.relative_volume_20 END AS relative_volume_20,
+                    CASE WHEN b.timestamp_utc = f.timestamp_utc THEN f.relative_dollar_volume_20 END AS relative_dollar_volume_20,
+                    CASE WHEN b.timestamp_utc = f.timestamp_utc THEN f.natr_14 END AS natr_14,
+                    CASE WHEN b.timestamp_utc = f.timestamp_utc THEN f.realized_volatility_20 END AS realized_volatility_20
                 FROM atlas_universe u
-                LEFT JOIN atlas_daily_latest d ON d.symbol = u.ticker
+                LEFT JOIN atlas_daily_bar_latest b ON b.symbol = u.ticker
+                LEFT JOIN atlas_daily_feature_latest f ON f.symbol = u.ticker
                 """
             )
 
             quality_row = con.execute(
                 """
                 SELECT
-                    count(*) FILTER (WHERE feature_symbol IS NOT NULL) AS matched,
-                    count(*) FILTER (WHERE feature_symbol IS NULL) AS missing,
+                    count(*) FILTER (WHERE input_complete) AS matched,
+                    count(*) FILTER (WHERE NOT input_complete) AS missing,
+                    count(*) FILTER (WHERE bar_symbol IS NOT NULL) AS matched_bars,
+                    count(*) FILTER (WHERE bar_symbol IS NULL) AS missing_bars,
+                    count(*) FILTER (WHERE feature_symbol IS NOT NULL) AS matched_features,
+                    count(*) FILTER (WHERE feature_symbol IS NULL) AS missing_features,
                     count(*) FILTER (
-                        WHERE feature_symbol IS NOT NULL
+                        WHERE bar_symbol IS NOT NULL
+                          AND feature_symbol IS NOT NULL
+                          AND bar_timestamp_utc <> feature_timestamp_utc
+                    ) AS key_mismatch,
+                    count(*) FILTER (
+                        WHERE bar_symbol IS NOT NULL
                           AND (close IS NULL OR NOT isfinite(close) OR close <= 0)
                     ) AS invalid_close,
-                    count(*) FILTER (WHERE feature_symbol IS NOT NULL AND volume = 0) AS zero_volume,
+                    count(*) FILTER (WHERE bar_symbol IS NOT NULL AND volume = 0) AS zero_volume,
                     count(*) FILTER (
-                        WHERE feature_symbol IS NOT NULL
+                        WHERE input_complete
                           AND (dollar_volume IS NULL OR NOT isfinite(dollar_volume) OR dollar_volume <= 0)
                     ) AS nonpositive_dollar_volume,
                     count(*) FILTER (
-                        WHERE feature_symbol IS NOT NULL AND relative_volume_20 IS NULL
+                        WHERE input_complete AND relative_volume_20 IS NULL
                     ) AS relative_volume_warmup,
                     count(*) FILTER (
-                        WHERE feature_symbol IS NOT NULL AND natr_14 IS NULL
+                        WHERE input_complete AND natr_14 IS NULL
                     ) AS natr_warmup,
                     count(*) FILTER (
-                        WHERE feature_symbol IS NOT NULL AND realized_volatility_20 IS NULL
+                        WHERE input_complete AND realized_volatility_20 IS NULL
                     ) AS realized_volatility_warmup
                 FROM atlas_daily_join
                 """
@@ -362,12 +424,17 @@ class DiscoveryInputInventory:
             daily_quality = {
                 "matched_universe": int(quality_row[0]),
                 "missing_universe": int(quality_row[1]),
-                "invalid_or_nonpositive_close": int(quality_row[2]),
-                "zero_volume": int(quality_row[3]),
-                "nonpositive_or_missing_dollar_volume": int(quality_row[4]),
-                "relative_volume_warmup": int(quality_row[5]),
-                "natr_warmup": int(quality_row[6]),
-                "realized_volatility_warmup": int(quality_row[7]),
+                "matched_daily_bars": int(quality_row[2]),
+                "missing_daily_bars": int(quality_row[3]),
+                "matched_daily_features": int(quality_row[4]),
+                "missing_daily_features": int(quality_row[5]),
+                "bar_feature_key_mismatch": int(quality_row[6]),
+                "invalid_or_nonpositive_close": int(quality_row[7]),
+                "zero_volume": int(quality_row[8]),
+                "nonpositive_or_missing_dollar_volume": int(quality_row[9]),
+                "relative_volume_warmup": int(quality_row[10]),
+                "natr_warmup": int(quality_row[11]),
+                "realized_volatility_warmup": int(quality_row[12]),
             }
 
             quantiles = {metric: self._quantiles(con, metric) for metric in self.DAILY_METRICS}
@@ -400,7 +467,7 @@ class DiscoveryInputInventory:
                         """
                         SELECT count(*)
                         FROM atlas_daily_join
-                        WHERE feature_symbol IS NOT NULL
+                        WHERE input_complete
                           AND close IS NOT NULL AND isfinite(close) AND close >= ?
                           AND dollar_volume IS NOT NULL
                           AND isfinite(dollar_volume)
