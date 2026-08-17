@@ -11,7 +11,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from packages.core.enums import InstrumentIdentityQuality
 from packages.core.settings import load_settings
 from packages.data.paths import MarketDataPaths
-from packages.instruments.identity import InstrumentIdentityResolver
+from packages.instruments.identity import IDENTITY_CONTRACT_VERSION, InstrumentIdentityResolver
+from packages.instruments.registry import REFERENCE_CONTRACT_VERSION
 
 
 def main() -> int:
@@ -23,11 +24,32 @@ def main() -> int:
     if a != b or key_a != key_b or quality_a != InstrumentIdentityQuality.STRONG or quality_b != InstrumentIdentityQuality.STRONG:
         raise RuntimeError("Stable FIGI identity validation failed")
 
+    medium_base = {
+        "cik": "0000070858",
+        "primary_exchange": "XNYS",
+        "type": "PFD",
+    }
+    medium_a, _, medium_quality_a = resolver.resolve(
+        {**medium_base, "ticker": "BACpA"}, date(2026, 8, 14)
+    )
+    medium_b, _, medium_quality_b = resolver.resolve(
+        {**medium_base, "ticker": "BACpB"}, date(2026, 8, 14)
+    )
+    if (
+        medium_a == medium_b
+        or medium_quality_a != InstrumentIdentityQuality.MEDIUM
+        or medium_quality_b != InstrumentIdentityQuality.MEDIUM
+    ):
+        raise RuntimeError("Medium issuer-security separation validation failed")
+
     print(f"Massive REST base: {settings.massive.provider.rest_base_url}")
     print(f"Reference page limit: {settings.massive.reference.page_limit}")
+    print(f"Reference contract: {REFERENCE_CONTRACT_VERSION}")
+    print(f"Instrument identity contract: {IDENTITY_CONTRACT_VERSION}")
     print(f"Reference root: {paths.reference_snapshot_file(date(2026, 8, 14)).parent.parent}")
     print(f"Instrument registry: {paths.instrument_registry_file()}")
     print("Stable FIGI identity: PASS")
+    print("Medium issuer-security separation: PASS")
     try:
         from packages.data.duckdb_connection import connect_utc
         con = connect_utc(":memory:")
