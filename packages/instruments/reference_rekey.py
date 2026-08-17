@@ -13,7 +13,7 @@ from packages.data.paths import MarketDataPaths
 from packages.schemas.instrument import InstrumentReferenceObservation
 
 from .identity import IDENTITY_CONTRACT_VERSION, InstrumentIdentityResolver
-from .registry import InstrumentRegistryStore
+from .registry import REFERENCE_CONTRACT_VERSION, InstrumentRegistryStore
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,9 +175,10 @@ def rekey_reference_snapshot(settings: AtlasSettings, as_of_date: date) -> Refer
     manifest.update(
         {
             "as_of_date": as_of_date.isoformat(),
+            "contract_version": REFERENCE_CONTRACT_VERSION,
+            "identity_contract_version": IDENTITY_CONTRACT_VERSION,
             "row_count": len(observations),
             "instrument_count": len({item.instrument_id for item in observations}),
-            "identity_contract_version": IDENTITY_CONTRACT_VERSION,
             "identity_rekeyed_at_utc": datetime.now(UTC).isoformat(),
         }
     )
