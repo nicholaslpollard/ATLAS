@@ -65,6 +65,12 @@ Artifacts:
 - exclusion audit: `data/derived/universe/exclusions/year=YYYY/date=YYYY-MM-DD/part-000.parquet`
 - manifest: `data/manifests/universe/YYYY/YYYY-MM-DD.json`
 
+## Automated acceptance
+
+Latest Phase 7 head passes all Phase 1/3/4/5/6/7 validators and the complete **148-test** regression suite on both Ubuntu and Windows Python 3.14.
+
+Coverage includes the observed metadata policy, fallback-identity exclusion, special-wrapper exclusion, one-active-alias routing, ambiguous-active exclusion, position override semantics, exact historical snapshot behavior, idempotent persistence, and cross-snapshot reference Parquet schema normalization.
+
 ## Next real-data gate
 
 1. Build the corrected 2026-08-14 production universe snapshot.
