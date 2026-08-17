@@ -26,7 +26,6 @@ from .input_inventory import MARKET_PROXY_TICKERS, SECTOR_PROXY_TICKERS
 REGIME_POLICY_PROBE_CONTRACT_VERSION = (
     "regime-policy-probe-v1-quartile-dimensional-no-hysteresis"
 )
-
 MARKET_STRUCTURE_METRICS = (
     "close_above_ema_50",
     "close_above_ema_200",
@@ -68,12 +67,7 @@ class RegimePolicyProbeReport:
     report_path: str
 
 
-def quartile_vote(
-    value: float,
-    summary: dict[str, float | None],
-) -> int:
-    """Return -1 / 0 / +1 using the retrospective p25/p75 calibration bands."""
-
+def quartile_vote(value: float, summary: dict[str, float | None]) -> int:
     p25 = summary.get("p25")
     p75 = summary.get("p75")
     if pd.isna(value) or p25 is None or p75 is None:
@@ -121,10 +115,7 @@ def momentum_state(score: int) -> str:
     return "MIXED"
 
 
-def participation_state(
-    value: float,
-    summary: dict[str, float | None],
-) -> str:
+def participation_state(value: float, summary: dict[str, float | None]) -> str:
     vote = quartile_vote(value, summary)
     if vote > 0:
         return "BROAD_POSITIVE"
@@ -161,10 +152,7 @@ def volatility_state(
     return "NORMAL"
 
 
-def efficiency_state(
-    value: float,
-    summary: dict[str, float | None],
-) -> str:
+def efficiency_state(value: float, summary: dict[str, float | None]) -> str:
     vote = quartile_vote(value, summary)
     if vote > 0:
         return "HIGH"
@@ -173,42 +161,30 @@ def efficiency_state(
     return "NORMAL"
 
 
-def composite_market_state(
-    structure: str,
-    momentum: str,
-    participation: str,
-) -> str:
-    positive_momentum = {"POSITIVE", "STRONG_POSITIVE"}
-    negative_momentum = {"NEGATIVE", "STRONG_NEGATIVE"}
-    if (
-        structure == "STRONG_UP"
-        and momentum in positive_momentum
-        and participation != "BROAD_NEGATIVE"
-    ):
+def composite_market_state(structure: str, momentum: str, participation: str) -> str:
+    positive = {"POSITIVE", "STRONG_POSITIVE"}
+    negative = {"NEGATIVE", "STRONG_NEGATIVE"}
+    if structure == "STRONG_UP" and momentum in positive and participation != "BROAD_NEGATIVE":
         return "STRONG_BULL"
-    if structure in {"UP", "STRONG_UP"} and momentum not in negative_momentum:
+    if structure in {"UP", "STRONG_UP"} and momentum not in negative:
         return "BULL"
-    if (
-        structure == "STRONG_DOWN"
-        and momentum in negative_momentum
-        and participation != "BROAD_POSITIVE"
-    ):
+    if structure == "STRONG_DOWN" and momentum in negative and participation != "BROAD_POSITIVE":
         return "STRONG_BEAR"
-    if structure in {"DOWN", "STRONG_DOWN"} and momentum not in positive_momentum:
+    if structure in {"DOWN", "STRONG_DOWN"} and momentum not in positive:
         return "BEAR"
     return "MIXED"
 
 
 def composite_sector_state(structure: str, momentum: str) -> str:
-    positive_momentum = {"POSITIVE", "STRONG_POSITIVE"}
-    negative_momentum = {"NEGATIVE", "STRONG_NEGATIVE"}
-    if structure == "STRONG_UP" and momentum in positive_momentum:
+    positive = {"POSITIVE", "STRONG_POSITIVE"}
+    negative = {"NEGATIVE", "STRONG_NEGATIVE"}
+    if structure == "STRONG_UP" and momentum in positive:
         return "STRONG_BULL"
-    if structure in {"UP", "STRONG_UP"} and momentum not in negative_momentum:
+    if structure in {"UP", "STRONG_UP"} and momentum not in negative:
         return "BULL"
-    if structure == "STRONG_DOWN" and momentum in negative_momentum:
+    if structure == "STRONG_DOWN" and momentum in negative:
         return "STRONG_BEAR"
-    if structure in {"DOWN", "STRONG_DOWN"} and momentum not in positive_momentum:
+    if structure in {"DOWN", "STRONG_DOWN"} and momentum not in positive:
         return "BEAR"
     return "MIXED"
 
@@ -224,19 +200,17 @@ def run_diagnostics(states: list[str]) -> dict[str, float | int | None]:
             "one_day_run_count": 0,
             "one_day_run_share": None,
         }
-
     run_lengths: list[int] = []
     current = states[0]
     length = 1
     for state in states[1:]:
         if state == current:
             length += 1
-            continue
-        run_lengths.append(length)
-        current = state
-        length = 1
+        else:
+            run_lengths.append(length)
+            current = state
+            length = 1
     run_lengths.append(length)
-
     transitions = len(run_lengths) - 1
     one_day_runs = sum(length == 1 for length in run_lengths)
     denominator = len(states) - 1
@@ -259,20 +233,23 @@ def _counts(values: pd.Series) -> dict[str, int]:
 
 
 def _percentages(counts: dict[str, int], total: int) -> dict[str, float]:
-    if total <= 0:
-        return {key: 0.0 for key in counts}
-    return {key: value / total for key, value in counts.items()}
+    return {key: (0.0 if total <= 0 else value / total) for key, value in counts.items()}
 
 
-def _market_daily_states(
-    breadth: pd.DataFrame,
-    market_basket: pd.DataFrame,
-) -> pd.DataFrame:
-    breadth_quantiles = metric_quantiles(breadth, BREADTH_METRICS)
-    basket_quantiles = metric_quantiles(market_basket, BASKET_METRICS)
-    joined = breadth.merge(market_basket, on="trading_date", how="inner", validate="one_to_one")
+def _market_daily_states(breadth: pd.DataFrame, market_basket: pd.DataFrame) -> pd.DataFrame:
+    breadth_data = breadth.copy()
+    basket_data = market_basket.copy()
+    breadth_data["trading_date"] = pd.to_datetime(breadth_data["trading_date"]).dt.date
+    basket_data["trading_date"] = pd.to_datetime(basket_data["trading_date"]).dt.date
+    breadth_quantiles = metric_quantiles(breadth_data, BREADTH_METRICS)
+    basket_quantiles = metric_quantiles(basket_data, BASKET_METRICS)
+    joined = breadth_data.merge(
+        basket_data,
+        on="trading_date",
+        how="inner",
+        validate="one_to_one",
+    )
     rows: list[dict[str, object]] = []
-
     for _, row in joined.iterrows():
         structure_score = sum(
             quartile_vote(float(row[metric]), breadth_quantiles[metric])
@@ -284,10 +261,7 @@ def _market_daily_states(
         momentum_score = sum(
             quartile_vote(float(row[metric]), breadth_quantiles[metric])
             for metric in MARKET_MOMENTUM_BREADTH_METRICS
-        ) + quartile_vote(
-            float(row["median_rsi_14"]),
-            basket_quantiles["median_rsi_14"],
-        )
+        ) + quartile_vote(float(row["median_rsi_14"]), basket_quantiles["median_rsi_14"])
         structure = market_structure_state(structure_score)
         momentum = momentum_state(momentum_score)
         participation = participation_state(
@@ -304,7 +278,6 @@ def _market_daily_states(
             float(row["median_directional_efficiency_20"]),
             basket_quantiles["median_directional_efficiency_20"],
         )
-        composite = composite_market_state(structure, momentum, participation)
         rows.append(
             {
                 "trading_date": row["trading_date"],
@@ -315,7 +288,7 @@ def _market_daily_states(
                 "participation": participation,
                 "volatility": volatility,
                 "efficiency": efficiency,
-                "composite": composite,
+                "composite": composite_market_state(structure, momentum, participation),
             }
         )
     return pd.DataFrame(rows)
@@ -332,14 +305,8 @@ def _sector_daily_states(sector_frame: pd.DataFrame) -> pd.DataFrame:
             structure_score = (
                 (1 if float(row["close"]) > float(row["ema_50"]) else -1)
                 + (1 if float(row["close"]) > float(row["ema_200"]) else -1)
-                + quartile_vote(
-                    float(row["price_distance_ema_20"]),
-                    quantiles["price_distance_ema_20"],
-                )
-                + quartile_vote(
-                    float(row["ema_20_slope_1"]),
-                    quantiles["ema_20_slope_1"],
-                )
+                + quartile_vote(float(row["price_distance_ema_20"]), quantiles["price_distance_ema_20"])
+                + quartile_vote(float(row["ema_20_slope_1"]), quantiles["ema_20_slope_1"])
             )
             momentum_score = (
                 quartile_vote(float(row["return_1"]), quantiles["return_1"])
@@ -348,16 +315,6 @@ def _sector_daily_states(sector_frame: pd.DataFrame) -> pd.DataFrame:
             )
             structure = sector_structure_state(structure_score)
             momentum = momentum_state(momentum_score)
-            volatility = volatility_state(
-                float(row["natr_14"]),
-                float(row["realized_volatility_20"]),
-                quantiles["natr_14"],
-                quantiles["realized_volatility_20"],
-            )
-            efficiency = efficiency_state(
-                float(row["directional_efficiency_20"]),
-                quantiles["directional_efficiency_20"],
-            )
             rows.append(
                 {
                     "trading_date": row["trading_date"],
@@ -366,8 +323,16 @@ def _sector_daily_states(sector_frame: pd.DataFrame) -> pd.DataFrame:
                     "structure": structure,
                     "momentum_score": momentum_score,
                     "momentum": momentum,
-                    "volatility": volatility,
-                    "efficiency": efficiency,
+                    "volatility": volatility_state(
+                        float(row["natr_14"]),
+                        float(row["realized_volatility_20"]),
+                        quantiles["natr_14"],
+                        quantiles["realized_volatility_20"],
+                    ),
+                    "efficiency": efficiency_state(
+                        float(row["directional_efficiency_20"]),
+                        quantiles["directional_efficiency_20"],
+                    ),
                     "composite": composite_sector_state(structure, momentum),
                 }
             )
@@ -381,7 +346,7 @@ def _snapshot(row: pd.Series) -> dict[str, str | int | float | None]:
         "structure": str(row["structure"]),
         "momentum_score": int(row["momentum_score"]),
         "momentum": str(row["momentum"]),
-        "participation": None if "participation" not in row else str(row["participation"]),
+        "participation": None if "participation" not in row.index else str(row["participation"]),
         "volatility": str(row["volatility"]),
         "efficiency": str(row["efficiency"]),
         "composite": str(row["composite"]),
@@ -389,12 +354,11 @@ def _snapshot(row: pd.Series) -> dict[str, str | int | float | None]:
 
 
 class RegimePolicyProbe:
-    """Evaluate an interpretable raw regime policy before thresholds/hysteresis are locked.
+    """Measure candidate state balance/chatter before production policy is locked.
 
-    The p25/p75 thresholds are calculated over the full requested calibration window.
-    This makes the probe deliberately retrospective and unsuitable as a point-in-time
-    performance backtest. Its purpose is narrower: measure candidate state balance and
-    raw transition/chatter behavior before production policy is chosen.
+    Full-window p25/p75 thresholds make this intentionally retrospective. The probe is
+    not a point-in-time performance backtest; it is a raw state-frequency and stability
+    diagnostic. Hysteresis is deliberately absent so any chatter remains visible.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -410,9 +374,7 @@ class RegimePolicyProbe:
         proxies = self.calibration._proxy_frame(start_date, end_date)
         market_frame = proxies.loc[proxies["symbol"].isin(MARKET_PROXY_TICKERS)].copy()
         sector_frame = proxies.loc[proxies["symbol"].isin(SECTOR_PROXY_TICKERS)].copy()
-        market_basket = basket_daily(market_frame)
-
-        market_states = _market_daily_states(breadth, market_basket)
+        market_states = _market_daily_states(breadth, basket_daily(market_frame))
         sector_states = _sector_daily_states(sector_frame)
         if market_states.empty:
             raise ValueError("candidate policy probe produced no market states")
@@ -424,9 +386,6 @@ class RegimePolicyProbe:
             dimension: _counts(market_states[dimension])
             for dimension in ("structure", "momentum", "participation", "volatility", "efficiency")
         }
-        market_transition = run_diagnostics(market_states["composite"].tolist())
-        end_market = _snapshot(market_states.iloc[-1])
-
         sector_counts = _counts(sector_states["composite"])
         sector_transition: dict[str, dict[str, float | int | None]] = {}
         end_sector: dict[str, dict[str, str | int | float | None]] = {}
@@ -447,16 +406,16 @@ class RegimePolicyProbe:
             wall_seconds=perf_counter() - started,
             policy_status="CANDIDATE_ONLY",
             threshold_basis_note=(
-                "Retrospective full-window p25/p75 bands are used only to measure state balance and raw "
-                "transition behavior. They are not a point-in-time performance backtest or production thresholds."
+                "Retrospective full-window p25/p75 bands measure state balance and raw transition behavior only; "
+                "they are not point-in-time performance evidence or production thresholds."
             ),
             hysteresis_note="NONE; raw no-hysteresis stability baseline",
             market_session_count=int(len(market_states)),
             market_state_counts=market_counts,
             market_state_percentages=_percentages(market_counts, len(market_states)),
             market_dimension_counts=market_dimension_counts,
-            market_transition_diagnostics=market_transition,
-            end_date_market_state=end_market,
+            market_transition_diagnostics=run_diagnostics(market_states["composite"].tolist()),
+            end_date_market_state=_snapshot(market_states.iloc[-1]),
             sector_observation_count=int(len(sector_states)),
             sector_state_counts=sector_counts,
             sector_state_percentages=_percentages(sector_counts, len(sector_states)),
