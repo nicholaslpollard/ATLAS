@@ -26,7 +26,7 @@ from .input_inventory import MARKET_PROXY_TICKERS, SECTOR_PROXY_TICKERS
 
 
 REGIME_CALIBRATION_CONTRACT_VERSION = (
-    "regime-calibration-v1-historical-activity-floor-proxy-distributions"
+    "regime-calibration-v2-historical-continuous-proxy-distributions"
 )
 REGIME_CALIBRATION_QUANTILES = (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
 
@@ -43,6 +43,8 @@ BREADTH_METRICS = (
 
 PROXY_METRICS = (
     "return_1",
+    "price_distance_ema_20",
+    "ema_20_slope_1",
     "rsi_14",
     "natr_14",
     "realized_volatility_20",
@@ -58,6 +60,8 @@ BASKET_METRICS = (
     "fraction_positive_return_1",
     "fraction_rsi_above_50",
     "fraction_macd_hist_positive",
+    "median_price_distance_ema_20",
+    "median_ema_20_slope_1",
     "median_rsi_14",
     "median_natr_14",
     "median_realized_volatility_20",
@@ -89,9 +93,11 @@ class RegimeCalibrationReport:
     market_proxy_observation_counts: dict[str, int]
     market_proxy_quantiles: dict[str, dict[str, dict[str, float | None]]]
     market_basket_metric_quantiles: dict[str, dict[str, float | None]]
+    end_date_market_basket: dict[str, float | str | None]
     sector_proxy_observation_counts: dict[str, int]
     sector_proxy_quantiles: dict[str, dict[str, dict[str, float | None]]]
     sector_basket_metric_quantiles: dict[str, dict[str, float | None]]
+    end_date_sector_basket: dict[str, float | str | None]
     source_daily_bar_glob: str
     source_feature_glob: str
     report_path: str
@@ -115,7 +121,10 @@ def quantile_summary(series: pd.Series) -> dict[str, float | None]:
     return result
 
 
-def metric_quantiles(frame: pd.DataFrame, metrics: tuple[str, ...]) -> dict[str, dict[str, float | None]]:
+def metric_quantiles(
+    frame: pd.DataFrame,
+    metrics: tuple[str, ...],
+) -> dict[str, dict[str, float | None]]:
     return {metric: quantile_summary(frame[metric]) for metric in metrics}
 
 
@@ -142,11 +151,31 @@ def basket_daily(frame: pd.DataFrame) -> pd.DataFrame:
         fraction_positive_return_1=("positive_return_1", "mean"),
         fraction_rsi_above_50=("rsi_above_50", "mean"),
         fraction_macd_hist_positive=("macd_hist_positive", "mean"),
+        median_price_distance_ema_20=("price_distance_ema_20", "median"),
+        median_ema_20_slope_1=("ema_20_slope_1", "median"),
         median_rsi_14=("rsi_14", "median"),
         median_natr_14=("natr_14", "median"),
         median_realized_volatility_20=("realized_volatility_20", "median"),
         median_directional_efficiency_20=("directional_efficiency_20", "median"),
     ).reset_index()
+
+
+def end_date_metric_snapshot(
+    frame: pd.DataFrame,
+    end_date: date,
+    metrics: tuple[str, ...],
+) -> dict[str, float | str | None]:
+    if frame.empty:
+        return {"trading_date": None, **{metric: None for metric in metrics}}
+    dates = pd.to_datetime(frame["trading_date"]).dt.date
+    exact = frame.loc[dates == end_date]
+    row = exact.iloc[-1] if not exact.empty else frame.iloc[-1]
+    result: dict[str, float | str | None] = {
+        "trading_date": str(pd.Timestamp(row["trading_date"]).date()),
+    }
+    for metric in metrics:
+        result[metric] = float(row[metric])
+    return result
 
 
 class RegimeCalibration:
@@ -161,6 +190,10 @@ class RegimeCalibration:
     Calibration therefore joins canonical 1d close to the 1d feature lake on the exact
     ``(symbol, timestamp_utc)`` market key rather than assuming source OHLCV is stored
     inside feature Parquet.
+
+    Four market proxies make binary basket fractions intentionally coarse. Version 2
+    therefore also calibrates normalized continuous trend evidence already present in
+    Phase 6: price distance from EMA20 and fractional EMA20 slope.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -263,6 +296,7 @@ class RegimeCalibration:
                 WITH feat AS (
                     SELECT
                         symbol, timestamp_utc, return_1, ema_20, ema_50, ema_200,
+                        price_distance_ema_20, ema_20_slope_1,
                         rsi_14, macd_hist_12_26_9, natr_14,
                         realized_volatility_20, directional_efficiency_20
                     FROM read_parquet({sql_string(feature_glob)}, union_by_name=true)
@@ -272,6 +306,8 @@ class RegimeCalibration:
                       AND ema_20 IS NOT NULL
                       AND ema_50 IS NOT NULL
                       AND ema_200 IS NOT NULL
+                      AND price_distance_ema_20 IS NOT NULL
+                      AND ema_20_slope_1 IS NOT NULL
                       AND rsi_14 IS NOT NULL
                       AND macd_hist_12_26_9 IS NOT NULL
                       AND natr_14 IS NOT NULL
@@ -287,9 +323,10 @@ class RegimeCalibration:
                 SELECT
                     CAST(f.timestamp_utc AS DATE) AS trading_date,
                     f.symbol,
-                    b.close, f.return_1, f.ema_20, f.ema_50, f.ema_200, f.rsi_14,
-                    f.macd_hist_12_26_9, f.natr_14, f.realized_volatility_20,
-                    f.directional_efficiency_20
+                    b.close, f.return_1, f.ema_20, f.ema_50, f.ema_200,
+                    f.price_distance_ema_20, f.ema_20_slope_1,
+                    f.rsi_14, f.macd_hist_12_26_9, f.natr_14,
+                    f.realized_volatility_20, f.directional_efficiency_20
                 FROM feat AS f
                 INNER JOIN bars AS b
                   ON b.symbol = f.symbol
@@ -315,9 +352,16 @@ class RegimeCalibration:
         return counts, summaries
 
     @staticmethod
-    def _end_date_breadth(frame: pd.DataFrame, end_date: date) -> dict[str, float | int | None]:
+    def _end_date_breadth(
+        frame: pd.DataFrame,
+        end_date: date,
+    ) -> dict[str, float | int | None]:
         if frame.empty:
-            return {"trading_date": None, "participant_count": None, **{metric: None for metric in BREADTH_METRICS}}
+            return {
+                "trading_date": None,
+                "participant_count": None,
+                **{metric: None for metric in BREADTH_METRICS},
+            }
         dates = pd.to_datetime(frame["trading_date"]).dt.date
         exact = frame.loc[dates == end_date]
         row = exact.iloc[-1] if not exact.empty else frame.iloc[-1]
@@ -342,14 +386,28 @@ class RegimeCalibration:
 
         market_frame = proxies.loc[proxies["symbol"].isin(MARKET_PROXY_TICKERS)].copy()
         sector_frame = proxies.loc[proxies["symbol"].isin(SECTOR_PROXY_TICKERS)].copy()
-        market_counts, market_quantiles = self._proxy_summaries(market_frame, MARKET_PROXY_TICKERS)
-        sector_counts, sector_quantiles = self._proxy_summaries(sector_frame, SECTOR_PROXY_TICKERS)
+        market_counts, market_quantiles = self._proxy_summaries(
+            market_frame,
+            MARKET_PROXY_TICKERS,
+        )
+        sector_counts, sector_quantiles = self._proxy_summaries(
+            sector_frame,
+            SECTOR_PROXY_TICKERS,
+        )
         market_basket = basket_daily(market_frame)
         sector_basket = basket_daily(sector_frame)
 
         target = self.paths.regime_calibration_report(end_date)
-        first_date = None if breadth.empty else str(pd.Timestamp(breadth.iloc[0]["trading_date"]).date())
-        last_date = None if breadth.empty else str(pd.Timestamp(breadth.iloc[-1]["trading_date"]).date())
+        first_date = (
+            None
+            if breadth.empty
+            else str(pd.Timestamp(breadth.iloc[0]["trading_date"]).date())
+        )
+        last_date = (
+            None
+            if breadth.empty
+            else str(pd.Timestamp(breadth.iloc[-1]["trading_date"]).date())
+        )
         report = RegimeCalibrationReport(
             contract_version=REGIME_CALIBRATION_CONTRACT_VERSION,
             generated_at_utc=datetime.now(UTC).isoformat(),
@@ -361,8 +419,12 @@ class RegimeCalibration:
             feature_lineage_fingerprint=lineage_fingerprint,
             feature_contract_version=CORE_FEATURE_CONTRACT_VERSION,
             feature_registry_fingerprint=CORE_FEATURE_REGISTRY.fingerprint(),
-            discovery_filter_policy_version="discovery-filter-v1-250k-dollar-volume-no-price-floor",
-            minimum_dollar_volume=float(ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume),
+            discovery_filter_policy_version=(
+                "discovery-filter-v1-250k-dollar-volume-no-price-floor"
+            ),
+            minimum_dollar_volume=float(
+                ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume
+            ),
             breadth_population_note=(
                 "Historical calibration population uses complete 1d feature rows at or above the accepted "
                 "Phase 8 dollar-volume floor and exact-key canonical 1d closes. It is calibration evidence, "
@@ -371,18 +433,39 @@ class RegimeCalibration:
             usable_breadth_session_count=int(len(breadth)),
             first_usable_breadth_date=first_date,
             last_usable_breadth_date=last_date,
-            breadth_participant_count_quantiles=quantile_summary(breadth["participant_count"]),
+            breadth_participant_count_quantiles=quantile_summary(
+                breadth["participant_count"]
+            ),
             breadth_metric_quantiles=metric_quantiles(breadth, BREADTH_METRICS),
             end_date_breadth=self._end_date_breadth(breadth, end_date),
             market_proxy_observation_counts=market_counts,
             market_proxy_quantiles=market_quantiles,
-            market_basket_metric_quantiles=metric_quantiles(market_basket, BASKET_METRICS),
+            market_basket_metric_quantiles=metric_quantiles(
+                market_basket,
+                BASKET_METRICS,
+            ),
+            end_date_market_basket=end_date_metric_snapshot(
+                market_basket,
+                end_date,
+                BASKET_METRICS,
+            ),
             sector_proxy_observation_counts=sector_counts,
             sector_proxy_quantiles=sector_quantiles,
-            sector_basket_metric_quantiles=metric_quantiles(sector_basket, BASKET_METRICS),
+            sector_basket_metric_quantiles=metric_quantiles(
+                sector_basket,
+                BASKET_METRICS,
+            ),
+            end_date_sector_basket=end_date_metric_snapshot(
+                sector_basket,
+                end_date,
+                BASKET_METRICS,
+            ),
             source_daily_bar_glob=self.paths.glob_for_timeframe(Timeframe.DAY_1),
             source_feature_glob=self.paths.feature_glob(Timeframe.DAY_1),
             report_path=str(target),
         )
-        atomic_write_text(target, json.dumps(asdict(report), indent=2, sort_keys=True) + "\n")
+        atomic_write_text(
+            target,
+            json.dumps(asdict(report), indent=2, sort_keys=True) + "\n",
+        )
         return report
