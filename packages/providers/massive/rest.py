@@ -5,7 +5,7 @@ import time
 from collections.abc import Iterator, Mapping
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 from packages.core.exceptions import ProviderError
@@ -102,6 +102,19 @@ class MassiveRESTClient:
             for item in results:
                 if isinstance(item, dict):
                     yield item
+
+    def ticker_overview(self, ticker: str, *, as_of_date: str) -> dict[str, Any]:
+        ticker = ticker.strip()
+        if not ticker:
+            raise ValueError("ticker cannot be blank")
+        payload = self.get_json(
+            f"/v3/reference/tickers/{quote(ticker, safe='')}",
+            {"date": as_of_date},
+        )
+        result = payload.get("results")
+        if not isinstance(result, dict):
+            raise ProviderError("Massive Ticker Overview response `results` was not an object")
+        return result
 
     def ticker_events(self, identifier: str) -> list[dict[str, Any]]:
         identifier = identifier.strip()
