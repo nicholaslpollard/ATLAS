@@ -15,89 +15,40 @@ The regime engine must remain point-in-time safe, deterministic for finalized/as
 
 ## Gate 1 - local evidence inventory: ACCEPTED
 
-No regime labels or thresholds are locked from assumptions. `scripts/inventory_regime_inputs.py` measures what ATLAS already has locally for the requested session:
+Contract: `regime-input-inventory-v1-local-breadth-benchmark-sector-proxy-audit`.
 
-- accepted Phase 08 discovery state and evidence population
-- broad-market breadth from exact 1d canonical bars + Phase 06 features
-- coverage and daily evidence for market proxies `SPY`, `QQQ`, `IWM`, `DIA`
-- coverage and daily evidence for the eleven Select Sector SPDR proxies: `XLB`, `XLC`, `XLE`, `XLF`, `XLI`, `XLK`, `XLP`, `XLRE`, `XLU`, `XLV`, `XLY`
-- regular-session 4h/1h feature availability for those proxies
-- whether the current point-in-time universe/reference snapshots already contain sector, industry, SIC, NAICS, or GICS classification fields
-- exact source hashes for the diagnostic inputs
-
-Contract:
-
-`regime-input-inventory-v1-local-breadth-benchmark-sector-proxy-audit`
-
-Report path:
-
-```text
-data/derived/regimes/input_inventory/YYYY/YYYY-MM-DD.json
-```
-
-### Accepted 2026-08-14 inventory evidence
-
-The target-machine run completed successfully with:
+The accepted 2026-08-14 target-machine run established:
 
 - 8,034 Phase 08 discovery-state records
 - 8,034 / 8,034 exact daily breadth joins
-- 4 / 4 complete market proxies across 1d, regular-session 4h, and regular-session 1h evidence
-- 11 / 11 complete sector proxies across the same horizons
-- no sector, industry, SIC, NAICS, or GICS classification fields in the current universe/reference snapshots
+- 4 / 4 complete market proxies (`SPY`, `QQQ`, `IWM`, `DIA`) across 1d, regular 4h, and regular 1h evidence
+- 11 / 11 complete Select Sector SPDR proxies across the same horizons
+- no sector, industry, SIC, NAICS, or GICS classification fields in the accepted local universe/reference snapshots
 
-The absence of classification is an evidence result, not a reason to fabricate a mapping.
+Report path: `data/derived/regimes/input_inventory/YYYY/YYYY-MM-DD.json`.
 
 ## Gate 2 - point-in-time classification probe: ACCEPTED
 
-Because the local Phase 04/07 artifacts do not contain classification, Phase 09 measured an explicit provider classification source before designing any permanent ticker-to-sector contract.
+Contract: `regime-classification-probe-v1-massive-sic-point-in-time`.
 
-`scripts/probe_regime_classification.py` takes a deterministic sample from the exact Phase 08 discovery population and queries the Massive point-in-time Ticker Overview endpoint for raw SIC facts. The probe records:
-
-- exact `instrument_id`, provider-native ticker, and Phase 07 security type
-- provider-returned ticker and exact-case ticker match
-- raw `sic_code` and `sic_description`
-- missing-SIC observations
-- provider errors
-- coverage by security type
-- exact Phase 08 discovery-state and Phase 07 universe source hashes
-- every sampled observation for audit/review
-
-Contract:
-
-`regime-classification-probe-v1-massive-sic-point-in-time`
-
-Report path:
-
-```text
-data/derived/regimes/classification_probe/YYYY/YYYY-MM-DD.json
-```
-
-### Accepted 2026-08-14 classification evidence
-
-The target-machine 250-instrument deterministic probe returned:
+The accepted deterministic 250-instrument Massive Ticker Overview probe returned:
 
 - 250 / 250 provider responses
 - 250 / 250 exact provider-native ticker matches
-- 120 SIC codes and descriptions
+- 120 SIC codes/descriptions
 - 130 missing SIC observations
 - 0 provider errors
-- 48.00% overall SIC coverage
+- common stock (`CS`) SIC coverage: 108 / 122 = 88.52%
+- preferred (`PFD`) SIC coverage: 7 / 7
+- ETF SIC coverage: 4 / 100
 
-The security-type split is the important evidence:
+Decision: raw SIC is valid point-in-time **industry** evidence when present, especially for company-like securities. It is not a universal ATLAS security taxonomy. ETF/fund/ETN context remains on its own security-type/proxy path. Phase 09 does **not** invent a SIC-to-GICS, SIC-to-Select-Sector-SPDR, or ticker-to-sector crosswalk.
 
-- common stock (`CS`): 108 / 122 SIC-covered = 88.52%
-- preferred (`PFD`): 7 / 7 SIC-covered
-- ETF: 4 / 100 SIC-covered
-- ADR common (`ADRC`): 0 / 8 SIC-covered
-- fund (`FUND`): 0 / 11 SIC-covered
-- ETN: 0 / 1 SIC-covered
-- ETV: 1 / 1 SIC-covered, too small to generalize
+Report path: `data/derived/regimes/classification_probe/YYYY/YYYY-MM-DD.json`.
 
-Decision: raw SIC remains valid point-in-time **industry** evidence when present, especially for company-like securities, but SIC is not a universal ATLAS security classification. ETF/fund/ETN context remains on a separate security-type/proxy path. Phase 09 does **not** invent a SIC-to-GICS, SIC-to-Select-Sector-SPDR, or ticker-to-sector crosswalk.
+## Gate 3 - historical regime calibration: ACCEPTED
 
-## Gate 3 - historical regime calibration: CURRENT
-
-A single accepted session is not enough evidence for regime cutoffs. Before market, sector-proxy, or ticker regime labels are locked, Phase 09 measures the historical distributions already present in the permanent Phase 06 1d feature lake.
+Current contract: `regime-calibration-v2-historical-continuous-proxy-distributions`.
 
 Diagnostic:
 
@@ -105,41 +56,113 @@ Diagnostic:
 .\.venv\Scripts\python.exe scripts\calibrate_regimes.py --start 2021-08-16 --end 2026-08-14
 ```
 
-Contract:
+The accepted target-machine calibration produced:
 
-`regime-calibration-v1-historical-activity-floor-proxy-distributions`
+- 1,255 XNYS sessions
+- 1,255 1d feature manifests
+- 1,056 fully warmed sessions from 2022-05-31 through 2026-08-14
+- the 199-session warm-up gap expected from EMA200
+- complete 1,056-observation history for all 4 market proxies and all 11 sector proxies
+- historical broad participation at the accepted Phase 08 `$250,000` daily-dollar-volume floor
+- normalized continuous proxy trend evidence from existing Phase 06 `price_distance_ema_20` and `ema_20_slope_1`
+- market- and sector-basket p10/p25/p50/p75/p90 distributions
+- explicit end-date market and sector basket snapshots
 
-The calibration pass measures:
+The calibration preserves Phase 06 source/feature separation by exact `(symbol, timestamp_utc)` joins between canonical 1d close and derived 1d features.
 
-- historical broad participation using complete 1d feature rows at the accepted Phase 08 `$250,000` daily-dollar-volume floor
-- distributions for close above EMA20/50/200, EMA20 above EMA50, EMA50 above EMA200, positive one-day return, RSI above 50, and positive MACD histogram
-- exact historical evidence for `SPY`, `QQQ`, `IWM`, `DIA`
-- exact historical evidence for all eleven sector proxy ETFs
-- market-basket and sector-basket participation/trend/momentum/volatility distributions
-- exact 1d feature-manifest coverage and an aggregate lineage fingerprint
+### Accepted 2026-08-14 interpretation
 
-The historical activity-floor population is calibration evidence, not a claim that ATLAS has reconstructed a Phase 07 reference universe for every old session. This distinction prevents hidden survivorship/reference assumptions.
+The calibration population contained 7,411 instruments. Breadth was structurally constructive:
 
-Report path:
+- 68.60% above EMA20
+- 65.74% above EMA50
+- 62.77% above EMA200
+- 58.67% EMA20 above EMA50
+- 60.55% EMA50 above EMA200
+- 67.59% RSI above 50
+- 69.90% positive MACD histogram
 
-```text
-data/derived/regimes/calibration/YYYY/YYYY-MM-DD.json
+Immediate one-day participation was mixed at 47.83% positive return.
+
+The market proxy basket was also constructive but not a uniformly positive day:
+
+- 100% above EMA50 and EMA200
+- 25% positive on the day
+- 100% RSI above 50
+- 100% positive MACD histogram
+- median EMA20 distance `0.020810`, above the historical p75 `0.019084`
+- median EMA20 slope `0.002195`, above the historical p75 `0.002013`
+- median NATR14 `0.011141`, below the historical p25 `0.011529`
+
+The sector basket showed broad constructive participation:
+
+- 90.91% above EMA50
+- 72.73% above EMA200
+- 63.64% positive on the day
+- 90.91% RSI above 50
+- 72.73% positive MACD histogram
+- median EMA20 distance `0.015898`, above historical p75 `0.015327`
+- median EMA20 slope `0.001676`, above historical p75 `0.001616`
+
+Interpretation: market structure/trend, momentum, immediate participation, volatility, and directional efficiency must remain separate dimensions. A single bullish/bearish threshold would discard useful information.
+
+The historical activity-floor population is calibration evidence, not a reconstructed historical Phase 07 universe. No survivorship-safe historical universe is claimed.
+
+Report path: `data/derived/regimes/calibration/YYYY/YYYY-MM-DD.json`.
+
+## Gate 4 - candidate regime policy stability probe: CURRENT
+
+Contract: `regime-policy-probe-v1-quartile-dimensional-no-hysteresis`.
+
+Diagnostic:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\probe_regime_policy.py --start 2021-08-16 --end 2026-08-14
 ```
 
-Regime thresholds remain **unlocked** until this historical distribution evidence is reviewed.
+This is deliberately a **candidate-only** diagnostic. It uses retrospective full-window p25/p75 bands to evaluate state balance and raw transition behavior; it is not a point-in-time trading-performance backtest and its thresholds are not production thresholds.
+
+### Candidate market dimensions
+
+- **structure**: broad EMA50/EMA200 participation, EMA20>EMA50, EMA50>EMA200, plus continuous market-basket EMA20 distance and EMA20 slope
+- **momentum**: broad RSI>50 and MACD-positive participation plus market-basket median RSI
+- **participation**: broad one-day positive-return participation
+- **volatility**: market-basket median NATR14 and realized volatility
+- **efficiency**: market-basket median directional efficiency
+
+The composite directional state is conservative: trend and momentum must agree before stronger bullish/bearish labels are emitted. Volatility remains an independent risk dimension rather than being forced into direction.
+
+### Candidate sector-proxy dimensions
+
+Each of the eleven sector ETFs is classified from its own historical distributions using direct price/EMA structure, normalized EMA20 distance/slope, return/RSI/MACD momentum evidence, NATR/realized-volatility risk, and directional efficiency. SIC is not used and no stock-to-sector mapping is assumed.
+
+### Stability evidence to review
+
+The raw policy intentionally has **no hysteresis**. The probe reports:
+
+- state counts and percentages
+- market dimensional state counts
+- transition count/rate
+- run count and median run length
+- one-day run count/share
+- end-date market state
+- aggregate sector state distribution
+- per-sector end state and transition behavior
+
+Only after this raw stability evidence is reviewed will Phase 09 decide whether thresholds, state definitions, or persistence/hysteresis need adjustment.
+
+Report path: `data/derived/regimes/policy_probe/YYYY/YYYY-MM-DD.json`.
 
 ## Why classification remains separate
 
-The current Phase 04/07 reference and universe contracts intentionally preserve provider facts needed for identity/routing; they do not claim a sector mapping. Phase 09 therefore refuses to infer a security's sector from its ticker/name.
+Sector proxy ETFs can be measured directly because they are traded instruments with their own canonical bars/features. Mapping individual stocks to those sectors is a separate taxonomy problem and will not be fabricated. Raw SIC remains optional industry evidence where authoritative provider facts exist.
 
-Sector proxy ETFs may still be used to measure sector-level market regimes because they are directly traded instruments with their own canonical bars/features. Mapping individual stocks to those sectors is a separate taxonomy problem and will not be fabricated.
+## Remaining Phase 09 work
 
-## Planned regime outputs after calibration acceptance
+1. Evaluate the Gate 4 candidate market/sector policy distribution and raw transition stability.
+2. Refine or accept raw market and sector-proxy state definitions.
+3. Design persistence/hysteresis only if the evidence demonstrates chatter.
+4. Build ticker-regime evidence/state on the accepted market context, with optional authoritative industry context where available.
+5. Validate the final market -> sector -> ticker context hierarchy before Phase 09 acceptance.
 
-The next contracts will separate three levels:
-
-1. **Market regime** — trend, breadth, volatility, participation, and directional/risk state from broad breadth plus multiple market proxies rather than a single-index oracle.
-2. **Sector regime** — direct sector-proxy trend/momentum/volatility/relative behavior. Any stock-to-sector mapping remains optional and separately versioned rather than being required to measure sector ETF regimes.
-3. **Ticker regime** — per-security trend/volatility/participation/structure state, augmented by market context and by authoritative industry/sector context only where that context actually exists.
-
-Labels, scoring weights, persistence/hysteresis, and strategy-routing semantics remain intentionally unlocked until Gate 3 historical calibration is reviewed.
+Strategy-router semantics remain outside the regime evidence contract until the regime states themselves are accepted.
