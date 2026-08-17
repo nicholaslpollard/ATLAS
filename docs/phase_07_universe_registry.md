@@ -57,6 +57,35 @@ reason_codes = [reference_inactive, position_override]
 
 This preserves the locked ATLAS rule that open positions bypass discovery and the watchlist is guaranteed rather than silently dropped by broad-market filters.
 
+## Real reference inventory gate
+
+Phase 4's accepted 2026-08-14 reference snapshot contains more provider rows than stable instrument identities (36,417 reference rows versus 31,540 stable instruments). Phase 7 therefore must not assume that one source row or one provider ticker always maps one-to-one with `instrument_id`.
+
+Before the final universe builder chooses a canonical point-in-time routing representation, ATLAS inventories the exact Phase 4 snapshot and reports:
+
+- real `market`, `locale`, `security_type`, `primary_exchange`, identity-quality, and active-state distributions;
+- missing reference metadata;
+- repeated stable-identity row count;
+- number of duplicate `instrument_id` groups;
+- duplicate groups with more than one exact provider ticker;
+- market/locale/exchange/security-type/active conflicts inside a stable identity;
+- representative duplicate-identity and security-type examples;
+- SHA-256 of the exact source reference Parquet used for the audit.
+
+The command is:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\inventory_universe_reference.py --date YYYY-MM-DD
+```
+
+The report is persisted under:
+
+```text
+data/derived/universe/reference_inventory/YYYY/YYYY-MM-DD.json
+```
+
+This gate prevents Phase 7 from silently collapsing simultaneous aliases/listings or locking guessed provider security-type labels. The single-ticker `UniverseMember` contract remains provisional until the real duplicate-identity inventory confirms whether that representation is valid.
+
 ## Initial reason-code contract
 
 Blocking/reference/data reasons include inactive/delisted reference state, non-US locale, unsupported market/security type, missing reference metadata, unavailable/quarantined market data, and explicit manual exclusion.
@@ -65,15 +94,32 @@ Override reasons include position, watchlist, and custom-scope inclusion.
 
 Eligibility rules will be implemented from observed Massive reference metadata rather than guessed security-type labels. The builder must first inventory real reference values before the final allow/deny mapping is locked.
 
+## Planned persisted universe artifacts
+
+Point-in-time universe snapshots will live under:
+
+```text
+data/derived/universe/snapshots/year=YYYY/date=YYYY-MM-DD/part-000.parquet
+```
+
+with manifests under:
+
+```text
+data/manifests/universe/YYYY/YYYY-MM-DD.json
+```
+
+The manifest will bind the snapshot to its source reference SHA, universe contract/policy version, semantic fingerprint, and row/instrument counts so repeated builds are idempotent and historical research cannot silently consume a different reference state.
+
 ## Phase 07 acceptance targets
 
 1. Stable `UniverseMember` / `UniverseSnapshot` schemas and deterministic fingerprinting.
 2. Provider-native ticker case preserved.
-3. One universe decision per stable instrument ID.
-4. Explicit auditable eligibility/exclusion reasons.
-5. Position/watchlist/custom bypass semantics separated from discovery eligibility.
-6. Builder uses Phase 4 reference/instrument artifacts without future-data leakage.
-7. Persisted point-in-time snapshots are idempotent and fingerprinted.
-8. Real current-universe build is audited against source reference metadata.
-9. Representative historical universe snapshot proves point-in-time behavior.
-10. Performance is cheap enough to precede the Phase 8 5K+ discovery funnel.
+3. Real reference metadata and duplicate stable-identity structure inventoried before policy is locked.
+4. One auditable universe decision per stable instrument identity without silently dropping legitimate provider routing labels.
+5. Explicit auditable eligibility/exclusion reasons.
+6. Position/watchlist/custom bypass semantics separated from discovery eligibility.
+7. Builder uses Phase 4 reference/instrument artifacts without future-data leakage.
+8. Persisted point-in-time snapshots are idempotent and fingerprinted.
+9. Real current-universe build is audited against source reference metadata.
+10. Representative historical universe snapshot proves point-in-time behavior.
+11. Performance is cheap enough to precede the Phase 8 5K+ discovery funnel.
