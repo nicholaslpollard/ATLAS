@@ -108,6 +108,14 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
         return root / "discovery_scores" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
 
+    def discovery_state_file(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "discovery" / "states" / f"year={as_of_date.year:04d}" / f"date={as_of_date}" / "part-000.parquet"
+
+    def discovery_state_manifest(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.manifests)
+        return root / "discovery_states" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
     def ticker_events_file(self, instrument_id: str) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
         return root / "corporate_actions" / "massive" / "ticker_events" / f"instrument_id={instrument_id}" / "part-000.parquet"
