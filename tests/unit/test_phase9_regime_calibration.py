@@ -14,6 +14,7 @@ from packages.regimes.calibration import (
     REGIME_CALIBRATION_QUANTILES,
     RegimeCalibration,
     basket_daily,
+    end_date_metric_snapshot,
     metric_quantiles,
     quantile_label,
     quantile_summary,
@@ -22,7 +23,7 @@ from packages.regimes.calibration import (
 
 def test_regime_calibration_contract_and_quantiles_are_locked():
     assert REGIME_CALIBRATION_CONTRACT_VERSION == (
-        "regime-calibration-v1-historical-activity-floor-proxy-distributions"
+        "regime-calibration-v2-historical-continuous-proxy-distributions"
     )
     assert REGIME_CALIBRATION_QUANTILES == (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
     assert quantile_label(0.05) == "p05"
@@ -47,7 +48,7 @@ def test_quantile_summary_returns_none_for_empty_numeric_evidence():
     assert summary["max"] is None
 
 
-def test_basket_daily_builds_fraction_and_median_evidence():
+def test_basket_daily_builds_fraction_and_continuous_median_evidence():
     frame = pd.DataFrame(
         {
             "trading_date": ["2026-08-14", "2026-08-14"],
@@ -57,6 +58,8 @@ def test_basket_daily_builds_fraction_and_median_evidence():
             "ema_20": [100.0, 100.0],
             "ema_50": [95.0, 95.0],
             "ema_200": [90.0, 85.0],
+            "price_distance_ema_20": [0.10, -0.10],
+            "ema_20_slope_1": [0.02, -0.01],
             "rsi_14": [60.0, 40.0],
             "macd_hist_12_26_9": [1.0, -1.0],
             "natr_14": [0.01, 0.03],
@@ -71,8 +74,15 @@ def test_basket_daily_builds_fraction_and_median_evidence():
     assert row["fraction_above_ema_20"] == pytest.approx(0.5)
     assert row["fraction_above_ema_200"] == pytest.approx(1.0)
     assert row["fraction_positive_return_1"] == pytest.approx(0.5)
+    assert row["median_price_distance_ema_20"] == pytest.approx(0.0)
+    assert row["median_ema_20_slope_1"] == pytest.approx(0.005)
     assert row["median_rsi_14"] == pytest.approx(50.0)
     assert row["median_natr_14"] == pytest.approx(0.02)
+
+    snapshot = end_date_metric_snapshot(daily, date(2026, 8, 14), BASKET_METRICS)
+    assert snapshot["trading_date"] == "2026-08-14"
+    assert snapshot["median_price_distance_ema_20"] == pytest.approx(0.0)
+    assert snapshot["median_ema_20_slope_1"] == pytest.approx(0.005)
 
 
 def test_metric_quantiles_covers_every_requested_metric():
@@ -98,6 +108,8 @@ def test_calibration_joins_canonical_close_to_derived_features(tmp_path):
                     100.0::DOUBLE AS ema_20,
                     95.0::DOUBLE AS ema_50,
                     90.0::DOUBLE AS ema_200,
+                    0.10::DOUBLE AS price_distance_ema_20,
+                    0.02::DOUBLE AS ema_20_slope_1,
                     60.0::DOUBLE AS rsi_14,
                     1.0::DOUBLE AS macd_hist_12_26_9,
                     0.01::DOUBLE AS natr_14,
@@ -141,3 +153,5 @@ def test_calibration_joins_canonical_close_to_derived_features(tmp_path):
     assert len(proxies) == 1
     assert proxies.iloc[0]["symbol"] == "SPY"
     assert proxies.iloc[0]["close"] == pytest.approx(110.0)
+    assert proxies.iloc[0]["price_distance_ema_20"] == pytest.approx(0.10)
+    assert proxies.iloc[0]["ema_20_slope_1"] == pytest.approx(0.02)
