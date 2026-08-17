@@ -3,6 +3,10 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from packages.regimes.persistence_policy import (
+    REGIME_PERSISTENCE_POLICY_CONTRACT_VERSION,
+    REGIME_SELECTED_CONFIRMATION_SESSIONS as ACCEPTED_CONFIRMATION_SESSIONS,
+)
 from packages.regimes.threshold_probe import (
     REGIME_SELECTED_CONFIRMATION_SESSIONS,
     REGIME_THRESHOLD_POLICY_NAMES,
@@ -16,13 +20,16 @@ def test_threshold_probe_contract_and_grid_are_locked():
     assert REGIME_THRESHOLD_PROBE_CONTRACT_VERSION == (
         "regime-threshold-probe-v1-prior-only-252-policy-grid"
     )
+    assert REGIME_PERSISTENCE_POLICY_CONTRACT_VERSION == (
+        "regime-persistence-policy-v1-two-session-dimensional-confirmation"
+    )
     assert REGIME_THRESHOLD_TRAINING_SESSIONS == 252
     assert REGIME_THRESHOLD_POLICY_NAMES == (
         "frozen_252",
         "expanding_252",
         "rolling_252",
     )
-    assert REGIME_SELECTED_CONFIRMATION_SESSIONS == 2
+    assert REGIME_SELECTED_CONFIRMATION_SESSIONS == ACCEPTED_CONFIRMATION_SESSIONS == 2
 
 
 def test_frozen_252_uses_first_seed_window_and_never_moves():
