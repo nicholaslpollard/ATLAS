@@ -9,7 +9,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.data.paths import MarketDataPaths
-from packages.discovery.directional_score import DIRECTIONAL_SCORE_POLICY_VERSION, TIMEFRAME_WEIGHTS
+from packages.discovery.directional_score import (
+    DIRECTIONAL_SCORE_POLICY_VERSION,
+    RELATIVE_STRENGTH_TAIL_START,
+    TIMEFRAME_WEIGHTS,
+)
 from packages.discovery.filter_policy import (
     ACTIVE_DISCOVERY_FILTER_POLICY,
     DISCOVERY_FILTER_POLICY_VERSION,
@@ -19,7 +23,10 @@ from packages.discovery.input_inventory import (
     DiscoveryInputInventory,
 )
 from packages.discovery.scanner import DISCOVERY_FOUNDATION_MANIFEST_VERSION
-from packages.discovery.scoring import DISCOVERY_SCORE_MANIFEST_VERSION
+from packages.discovery.scoring import (
+    DISCOVERY_SCORE_MANIFEST_VERSION,
+    PRIORITY_CALIBRATION_THRESHOLDS,
+)
 from packages.discovery.setup_scores import SETUP_FAMILIES, SETUP_SCORE_POLICY_VERSION
 from packages.discovery.state_machine import (
     ACTIVE_DISCOVERY_STATE_POLICY,
@@ -50,17 +57,17 @@ def main() -> int:
         "discovery-foundation-manifest-v1-upstream-lineage-bound"
     )
     assert DISCOVERY_SCORE_CONTRACT_VERSION == (
-        "discovery-score-v1-vectorized-multitimeframe-evidence"
+        "discovery-score-v2-tail-strength-and-coverage-guard"
     )
     assert SETUP_SCORE_POLICY_VERSION == "setup-score-v1-volatility-normalized-multifamily"
     assert DIRECTIONAL_SCORE_POLICY_VERSION == (
-        "directional-score-v1-available-timeframe-weighted"
+        "directional-score-v2-cross-sectional-tail-strength"
     )
     assert DISCOVERY_STATE_POLICY_VERSION == (
-        "discovery-state-v1-provisional-absolute-evidence"
+        "discovery-state-v2-coverage-gated-provisional-absolute"
     )
     assert DISCOVERY_SCORE_MANIFEST_VERSION == (
-        "discovery-score-manifest-v1-foundation-feature-lineage"
+        "discovery-score-manifest-v2-calibration-diagnostics"
     )
     assert ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume == 250_000.0
     assert ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume < ACTIVE_DISCOVERY_FILTER_POLICY.active_dollar_volume
@@ -70,6 +77,7 @@ def main() -> int:
     assert _strictly_increasing(DiscoveryInputInventory.VOLUME_THRESHOLDS)
     assert _strictly_increasing(DiscoveryInputInventory.DOLLAR_VOLUME_THRESHOLDS)
     assert _strictly_increasing(DiscoveryInputInventory.RELATIVE_VOLUME_THRESHOLDS)
+    assert _strictly_increasing(PRIORITY_CALIBRATION_THRESHOLDS)
     assert set(DiscoveryInputInventory.DAILY_METRICS) == {
         "close",
         "volume",
@@ -81,6 +89,7 @@ def main() -> int:
     }
     assert set(TIMEFRAME_WEIGHTS) == {"1d", "4h", "1h"}
     assert abs(sum(TIMEFRAME_WEIGHTS.values()) - 1.0) < 1e-12
+    assert RELATIVE_STRENGTH_TAIL_START == 0.80
     assert set(SETUP_FAMILIES) == {
         "trend",
         "momentum",
@@ -123,7 +132,9 @@ def main() -> int:
     print("Mandatory-route bypass separation: PASS")
     print("Manifest-lineage production path: PASS")
     print("Vectorized multi-timeframe setup scoring contract: PASS")
-    print("Absolute NORMAL/WATCH/WARM/HOT thresholds: PROVISIONAL pending real-score calibration")
+    print("Cross-sectional relative-strength tail discriminator: PASS")
+    print("Sparse-timeframe promotion guard: PASS")
+    print("Absolute NORMAL/WATCH/WARM/HOT thresholds: PROVISIONAL pending calibrated rerun")
     print("Measured threshold bands: PASS (inventory only)")
     print("Instrument-agnostic discovery foundation: PASS")
     print("Phase 08 discovery foundation: PASS")
