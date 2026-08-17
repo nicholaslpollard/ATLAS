@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+from datetime import date
+
+import duckdb
 import pandas as pd
 import pytest
 
+from packages.core.enums import Timeframe
 from packages.regimes.calibration import (
     BASKET_METRICS,
     BREADTH_METRICS,
     REGIME_CALIBRATION_CONTRACT_VERSION,
     REGIME_CALIBRATION_QUANTILES,
+    RegimeCalibration,
     basket_daily,
     metric_quantiles,
     quantile_label,
@@ -76,3 +81,63 @@ def test_metric_quantiles_covers_every_requested_metric():
     assert tuple(summaries) == BREADTH_METRICS
     for metric in BREADTH_METRICS:
         assert summaries[metric]["p50"] == pytest.approx(0.50)
+
+
+def test_calibration_joins_canonical_close_to_derived_features(tmp_path):
+    feature_path = tmp_path / "features.parquet"
+    bar_path = tmp_path / "bars.parquet"
+    con = duckdb.connect(":memory:")
+    try:
+        con.execute(
+            f"""
+            COPY (
+                SELECT
+                    'SPY'::VARCHAR AS symbol,
+                    TIMESTAMPTZ '2026-08-14 20:00:00+00' AS timestamp_utc,
+                    0.01::DOUBLE AS return_1,
+                    100.0::DOUBLE AS ema_20,
+                    95.0::DOUBLE AS ema_50,
+                    90.0::DOUBLE AS ema_200,
+                    60.0::DOUBLE AS rsi_14,
+                    1.0::DOUBLE AS macd_hist_12_26_9,
+                    0.01::DOUBLE AS natr_14,
+                    0.20::DOUBLE AS realized_volatility_20,
+                    0.30::DOUBLE AS directional_efficiency_20,
+                    1000000.0::DOUBLE AS dollar_volume
+            ) TO '{feature_path.as_posix()}' (FORMAT PARQUET)
+            """
+        )
+        con.execute(
+            f"""
+            COPY (
+                SELECT
+                    'SPY'::VARCHAR AS symbol,
+                    TIMESTAMPTZ '2026-08-14 20:00:00+00' AS timestamp_utc,
+                    110.0::DOUBLE AS close
+            ) TO '{bar_path.as_posix()}' (FORMAT PARQUET)
+            """
+        )
+    finally:
+        con.close()
+
+    class FakePaths:
+        def feature_glob(self, timeframe: Timeframe) -> str:
+            assert timeframe == Timeframe.DAY_1
+            return feature_path.as_posix()
+
+        def glob_for_timeframe(self, timeframe: Timeframe) -> str:
+            assert timeframe == Timeframe.DAY_1
+            return bar_path.as_posix()
+
+    calibration = object.__new__(RegimeCalibration)
+    calibration.paths = FakePaths()
+
+    breadth = calibration._breadth_daily(date(2026, 8, 14), date(2026, 8, 14))
+    proxies = calibration._proxy_frame(date(2026, 8, 14), date(2026, 8, 14))
+
+    assert len(breadth) == 1
+    assert int(breadth.iloc[0]["participant_count"]) == 1
+    assert breadth.iloc[0]["close_above_ema_20"] == pytest.approx(1.0)
+    assert len(proxies) == 1
+    assert proxies.iloc[0]["symbol"] == "SPY"
+    assert proxies.iloc[0]["close"] == pytest.approx(110.0)
