@@ -31,7 +31,7 @@ def _legacy_medium_row(ticker: str, as_of_date: date) -> InstrumentReferenceObse
 def test_reference_rekey_splits_legacy_issuer_level_collision(tmp_path):
     settings = load_settings(ROOT, "development")
     settings.project_root = tmp_path
-    store = InstrumentRegistryStore(settings)
+    store = InstrumentRegistryStore(settings, provider=object())  # type: ignore[arg-type]
     as_of_date = date(2026, 8, 14)
     target = store.paths.reference_snapshot_file(as_of_date)
 
