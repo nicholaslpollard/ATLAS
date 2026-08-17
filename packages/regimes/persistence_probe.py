@@ -242,8 +242,10 @@ def _sector_agreement(
     raw: pd.DataFrame,
     persisted: pd.DataFrame,
 ) -> dict[str, float | int | None]:
-    raw_ordered = raw.sort_values(["symbol", "trading_date"]).reset_index(drop=True)
-    persisted_ordered = persisted.sort_values(["symbol", "trading_date"]).reset_index(drop=True)
+    raw_ordered = raw.sort_values(["symbol", "trading_date"]).reset_index(drop=True).copy()
+    persisted_ordered = persisted.sort_values(["symbol", "trading_date"]).reset_index(drop=True).copy()
+    raw_ordered["trading_date"] = pd.to_datetime(raw_ordered["trading_date"]).dt.date
+    persisted_ordered["trading_date"] = pd.to_datetime(persisted_ordered["trading_date"]).dt.date
     if not raw_ordered[["symbol", "trading_date"]].equals(
         persisted_ordered[["symbol", "trading_date"]]
     ):
