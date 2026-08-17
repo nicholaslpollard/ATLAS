@@ -30,11 +30,23 @@ from packages.regimes.persistence_probe import (
     REGIME_PERSISTENCE_PROBE_CONTRACT_VERSION,
 )
 from packages.regimes.policy_probe import REGIME_POLICY_PROBE_CONTRACT_VERSION
+from packages.regimes.state_engine import (
+    REGIME_STATE_MANIFEST_VERSION,
+    REGIME_STATE_POLICY_CONTRACT_VERSION,
+    REGIME_STATE_SNAPSHOT_CONTRACT_VERSION,
+)
+from packages.regimes.threshold_policy import (
+    REGIME_BREADTH_POPULATION_CONTRACT_VERSION,
+    REGIME_HISTORY_ORIGIN_DATE,
+    REGIME_THRESHOLD_POLICY_CONTRACT_VERSION,
+    REGIME_THRESHOLD_POLICY_NAME,
+    REGIME_THRESHOLD_TRAINING_SESSIONS,
+)
 from packages.regimes.threshold_probe import (
     REGIME_SELECTED_CONFIRMATION_SESSIONS as THRESHOLD_PROBE_CONFIRMATION_SESSIONS,
     REGIME_THRESHOLD_POLICY_NAMES,
     REGIME_THRESHOLD_PROBE_CONTRACT_VERSION,
-    REGIME_THRESHOLD_TRAINING_SESSIONS,
+    REGIME_THRESHOLD_TRAINING_SESSIONS as THRESHOLD_PROBE_TRAINING_SESSIONS,
 )
 
 
@@ -60,15 +72,31 @@ def main() -> int:
     assert REGIME_THRESHOLD_PROBE_CONTRACT_VERSION == (
         "regime-threshold-probe-v1-prior-only-252-policy-grid"
     )
+    assert REGIME_THRESHOLD_POLICY_CONTRACT_VERSION == (
+        "regime-threshold-policy-v1-expanding-252-prior-only"
+    )
+    assert REGIME_STATE_POLICY_CONTRACT_VERSION == (
+        "regime-state-policy-v1-expanding252-confirm2-dimensional"
+    )
+    assert REGIME_STATE_SNAPSHOT_CONTRACT_VERSION == (
+        "regime-state-snapshot-v1-market-sector-proxies"
+    )
+    assert REGIME_STATE_MANIFEST_VERSION == "regime-state-manifest-v1-policy-source-lineage"
+    assert REGIME_BREADTH_POPULATION_CONTRACT_VERSION == (
+        "regime-breadth-population-v1-250k-dollar-volume-complete-1d"
+    )
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert REGIME_SELECTED_CONFIRMATION_SESSIONS == 2
     assert THRESHOLD_PROBE_CONFIRMATION_SESSIONS == REGIME_SELECTED_CONFIRMATION_SESSIONS
     assert REGIME_THRESHOLD_TRAINING_SESSIONS == 252
+    assert THRESHOLD_PROBE_TRAINING_SESSIONS == REGIME_THRESHOLD_TRAINING_SESSIONS
+    assert REGIME_THRESHOLD_POLICY_NAME == "expanding_252"
     assert REGIME_THRESHOLD_POLICY_NAMES == (
         "frozen_252",
         "expanding_252",
         "rolling_252",
     )
+    assert REGIME_HISTORY_ORIGIN_DATE == date(2021, 8, 16)
     assert REGIME_CALIBRATION_QUANTILES == (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
     assert MARKET_PROXY_TICKERS == ("SPY", "QQQ", "IWM", "DIA")
     assert SECTOR_PROXY_TICKERS == (
@@ -96,13 +124,28 @@ def main() -> int:
     policy_probe = paths.regime_policy_probe_report(sample_date)
     persistence_probe = paths.regime_persistence_probe_report(sample_date)
     threshold_probe = paths.regime_threshold_probe_report(sample_date)
+    state_snapshot = paths.regime_state_snapshot(sample_date)
+    state_manifest = paths.regime_state_manifest(sample_date)
     assert "regimes" in inventory.parts and "input_inventory" in inventory.parts
     assert "regimes" in classification_probe.parts and "classification_probe" in classification_probe.parts
     assert "regimes" in calibration.parts and "calibration" in calibration.parts
     assert "regimes" in policy_probe.parts and "policy_probe" in policy_probe.parts
     assert "regimes" in persistence_probe.parts and "persistence_probe" in persistence_probe.parts
     assert "regimes" in threshold_probe.parts and "threshold_probe" in threshold_probe.parts
-    assert len({inventory, classification_probe, calibration, policy_probe, persistence_probe, threshold_probe}) == 6
+    assert "regimes" in state_snapshot.parts and "states" in state_snapshot.parts
+    assert "regimes" in state_manifest.parts and state_manifest != state_snapshot
+    assert len(
+        {
+            inventory,
+            classification_probe,
+            calibration,
+            policy_probe,
+            persistence_probe,
+            threshold_probe,
+            state_snapshot,
+            state_manifest,
+        }
+    ) == 8
 
     print(f"Regime input inventory contract: {REGIME_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Classification probe contract: {REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION}")
@@ -111,19 +154,24 @@ def main() -> int:
     print(f"Persistence probe contract: {REGIME_PERSISTENCE_PROBE_CONTRACT_VERSION}")
     print(f"Persistence policy contract: {REGIME_PERSISTENCE_POLICY_CONTRACT_VERSION}")
     print(f"Threshold probe contract: {REGIME_THRESHOLD_PROBE_CONTRACT_VERSION}")
-    print(f"Persistence confirmation grid: {', '.join(str(v) for v in REGIME_PERSISTENCE_CONFIRMATION_WINDOWS)} sessions")
+    print(f"Threshold policy contract: {REGIME_THRESHOLD_POLICY_CONTRACT_VERSION}")
+    print(f"State policy contract: {REGIME_STATE_POLICY_CONTRACT_VERSION}")
+    print(f"State snapshot contract: {REGIME_STATE_SNAPSHOT_CONTRACT_VERSION}")
+    print(f"Breadth population contract: {REGIME_BREADTH_POPULATION_CONTRACT_VERSION}")
     print(f"Selected persistence: {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session dimensional confirmation")
-    print(f"Point-in-time threshold grid: {', '.join(REGIME_THRESHOLD_POLICY_NAMES)}")
+    print(f"Selected point-in-time thresholds: {REGIME_THRESHOLD_POLICY_NAME}")
     print(f"Point-in-time threshold seed: {REGIME_THRESHOLD_TRAINING_SESSIONS} prior sessions")
+    print(f"Regime history origin: {REGIME_HISTORY_ORIGIN_DATE}")
     print(f"Market proxy basket: {', '.join(MARKET_PROXY_TICKERS)}")
     print(f"Sector proxy basket: {', '.join(SECTOR_PROXY_TICKERS)}")
     print("Point-in-time classification source: Massive Ticker Overview SIC industry facts")
     print("SIC-to-sector/GICS mapping: NOT LOCKED; no guessed crosswalk")
     print("Historical calibration evidence: ACCEPTED")
-    print("Raw regime definitions: ACCEPTED FOR POINT-IN-TIME THRESHOLD VALIDATION")
+    print("Raw regime definitions: ACCEPTED")
     print("Persistence policy: ACCEPTED; 2-session confirmation")
-    print("Point-in-time threshold policy status: DIAGNOSTIC GRID; no future observations")
-    print("Production market/sector/ticker regime policy: NOT YET LOCKED")
+    print("Point-in-time threshold policy: ACCEPTED; expanding prior-only after 252-session seed")
+    print("Market/sector regime state materialization: CURRENT ACCEPTANCE GATE")
+    print("Ticker regime policy: NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
