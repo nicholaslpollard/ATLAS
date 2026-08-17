@@ -8,6 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from packages.core.enums import Timeframe
 from packages.core.settings import load_settings
 from packages.data.paths import MarketDataPaths
 from packages.regimes.calibration import (
@@ -48,6 +49,11 @@ from packages.regimes.threshold_probe import (
     REGIME_THRESHOLD_PROBE_CONTRACT_VERSION,
     REGIME_THRESHOLD_TRAINING_SESSIONS as THRESHOLD_PROBE_TRAINING_SESSIONS,
 )
+from packages.regimes.ticker_probe import (
+    TICKER_REGIME_PROBE_CONTRACT_VERSION,
+    TICKER_REGIME_REQUIRED_HISTORY_SESSIONS,
+    TICKER_REGIME_TIMEFRAMES,
+)
 
 
 def main() -> int:
@@ -85,6 +91,9 @@ def main() -> int:
     assert REGIME_BREADTH_POPULATION_CONTRACT_VERSION == (
         "regime-breadth-population-v1-250k-dollar-volume-complete-1d"
     )
+    assert TICKER_REGIME_PROBE_CONTRACT_VERSION == (
+        "ticker-regime-probe-v1-routed-multitimeframe-identity-history-audit"
+    )
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert REGIME_SELECTED_CONFIRMATION_SESSIONS == 2
     assert THRESHOLD_PROBE_CONFIRMATION_SESSIONS == REGIME_SELECTED_CONFIRMATION_SESSIONS
@@ -98,6 +107,12 @@ def main() -> int:
     )
     assert REGIME_HISTORY_ORIGIN_DATE == date(2021, 8, 16)
     assert REGIME_CALIBRATION_QUANTILES == (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
+    assert TICKER_REGIME_REQUIRED_HISTORY_SESSIONS == 252
+    assert TICKER_REGIME_TIMEFRAMES == (
+        Timeframe.DAY_1,
+        Timeframe.HOUR_4,
+        Timeframe.HOUR_1,
+    )
     assert MARKET_PROXY_TICKERS == ("SPY", "QQQ", "IWM", "DIA")
     assert SECTOR_PROXY_TICKERS == (
         "XLB",
@@ -126,6 +141,7 @@ def main() -> int:
     threshold_probe = paths.regime_threshold_probe_report(sample_date)
     state_snapshot = paths.regime_state_snapshot(sample_date)
     state_manifest = paths.regime_state_manifest(sample_date)
+    ticker_probe = paths.ticker_regime_probe_report(sample_date)
     assert "regimes" in inventory.parts and "input_inventory" in inventory.parts
     assert "regimes" in classification_probe.parts and "classification_probe" in classification_probe.parts
     assert "regimes" in calibration.parts and "calibration" in calibration.parts
@@ -134,6 +150,7 @@ def main() -> int:
     assert "regimes" in threshold_probe.parts and "threshold_probe" in threshold_probe.parts
     assert "regimes" in state_snapshot.parts and "states" in state_snapshot.parts
     assert "regimes" in state_manifest.parts and state_manifest != state_snapshot
+    assert "regimes" in ticker_probe.parts and "ticker_probe" in ticker_probe.parts
     assert len(
         {
             inventory,
@@ -144,8 +161,9 @@ def main() -> int:
             threshold_probe,
             state_snapshot,
             state_manifest,
+            ticker_probe,
         }
-    ) == 8
+    ) == 9
 
     print(f"Regime input inventory contract: {REGIME_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Classification probe contract: {REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION}")
@@ -158,20 +176,24 @@ def main() -> int:
     print(f"State policy contract: {REGIME_STATE_POLICY_CONTRACT_VERSION}")
     print(f"State snapshot contract: {REGIME_STATE_SNAPSHOT_CONTRACT_VERSION}")
     print(f"Breadth population contract: {REGIME_BREADTH_POPULATION_CONTRACT_VERSION}")
+    print(f"Ticker regime probe contract: {TICKER_REGIME_PROBE_CONTRACT_VERSION}")
     print(f"Selected persistence: {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session dimensional confirmation")
     print(f"Selected point-in-time thresholds: {REGIME_THRESHOLD_POLICY_NAME}")
     print(f"Point-in-time threshold seed: {REGIME_THRESHOLD_TRAINING_SESSIONS} prior sessions")
     print(f"Regime history origin: {REGIME_HISTORY_ORIGIN_DATE}")
+    print(f"Ticker self-history target: {TICKER_REGIME_REQUIRED_HISTORY_SESSIONS} complete 1d sessions")
+    print("Ticker regime timeframes: 1d + regular 4h + regular 1h")
     print(f"Market proxy basket: {', '.join(MARKET_PROXY_TICKERS)}")
     print(f"Sector proxy basket: {', '.join(SECTOR_PROXY_TICKERS)}")
     print("Point-in-time classification source: Massive Ticker Overview SIC industry facts")
     print("SIC-to-sector/GICS mapping: NOT LOCKED; no guessed crosswalk")
     print("Historical calibration evidence: ACCEPTED")
-    print("Raw regime definitions: ACCEPTED")
+    print("Raw market/sector regime definitions: ACCEPTED")
     print("Persistence policy: ACCEPTED; 2-session confirmation")
     print("Point-in-time threshold policy: ACCEPTED; expanding prior-only after 252-session seed")
-    print("Market/sector regime state materialization: CURRENT ACCEPTANCE GATE")
-    print("Ticker regime policy: NOT YET LOCKED")
+    print("Market/sector regime state materialization: ACCEPTED; deterministic replay CURRENT")
+    print("Ticker regime evidence: CURRENT ACCEPTANCE GATE; semantics candidate-only")
+    print("Ticker multi-alias history: MEASURE FIRST; no guessed symbol splice")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
