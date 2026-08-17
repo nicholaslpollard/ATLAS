@@ -1,8 +1,15 @@
 """Accepted Phase 9 market/sector persistence policy.
 
-The raw Gate 4 state definitions remain unchanged. Gate 5 target-machine evidence
-selected two-session dimensional confirmation as the stability/lag trade-off to carry
-into point-in-time threshold validation.
+Gate 5 target-machine evidence selected two-session dimensional confirmation:
+- market transition rate 15.07% (51.67% reduction from raw)
+- market family agreement 86.27%
+- market opposite-direction lag 0.47%
+- sector mean transition rate 15.94% (58.34% reduction from raw)
+- sector family agreement 75.61%
+- sector opposite-direction lag 2.16%
+
+Three-session confirmation reduced chatter further but materially increased divergence
+and opposite-direction lag, so it was not selected.
 """
 
 REGIME_PERSISTENCE_POLICY_CONTRACT_VERSION = (
