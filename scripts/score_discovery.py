@@ -12,6 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from packages.core.settings import load_settings
 from packages.discovery.scoring import DiscoverySetupScanner
 
+_QUANTILE_ORDER = ("p50", "p75", "p90", "p95", "p97.5", "p99", "p99.5", "p99.9", "max")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Score the Phase 8 broad discovery population")
@@ -37,14 +39,14 @@ def main() -> int:
     for key, value in sorted(result.top_setup_counts.items(), key=lambda item: (-item[1], item[0])):
         print(f"    {key:<24} {value:>8,}")
     print("  priority distribution:")
-    for key, value in result.priority_quantiles.items():
-        print(f"    {key:<5} {value:.6f}")
+    for key in _QUANTILE_ORDER:
+        print(f"    {key:<5} {result.priority_quantiles[key]:.6f}")
     print("  dominant directional evidence distribution:")
-    for key, value in result.dominant_evidence_quantiles.items():
-        print(f"    {key:<5} {value:.6f}")
-    print("  absolute priority threshold populations (calibration only):")
-    for key, value in result.priority_threshold_counts.items():
-        print(f"    {key:<6} {value:>8,}")
+    for key in _QUANTILE_ORDER:
+        print(f"    {key:<5} {result.dominant_evidence_quantiles[key]:.6f}")
+    print("  absolute priority threshold populations (diagnostic):")
+    for key in sorted(result.priority_threshold_counts, key=lambda item: float(item.removeprefix(">="))):
+        print(f"    {key:<6} {result.priority_threshold_counts[key]:>8,}")
     print(f"  dependency fingerprint: {result.dependency_fingerprint}")
     print(f"  snapshot SHA-256:       {result.snapshot_sha256}")
     print(f"  snapshot:               {result.snapshot_path}")
