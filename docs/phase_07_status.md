@@ -67,7 +67,7 @@ Artifacts:
 
 ## Automated acceptance
 
-Latest Phase 7 head passes all Phase 1/3/4/5/6/7 validators and the complete **148-test** regression suite on both Ubuntu and Windows Python 3.14.
+The latest code-bearing Phase 7 head passes all Phase 1/3/4/5/6/7 validators and the complete **148-test** regression suite on both Ubuntu and Windows Python 3.14. Subsequent status/documentation-only commits do not change runtime code.
 
 Coverage includes the observed metadata policy, fallback-identity exclusion, special-wrapper exclusion, one-active-alias routing, ambiguous-active exclusion, position override semantics, exact historical snapshot behavior, idempotent persistence, and cross-snapshot reference Parquet schema normalization.
 
