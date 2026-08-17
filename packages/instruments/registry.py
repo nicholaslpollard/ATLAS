@@ -15,7 +15,7 @@ from packages.data.paths import MarketDataPaths
 from packages.providers.massive.reference_data import MassiveReferenceProvider
 from packages.schemas.instrument import InstrumentReferenceObservation, ReferenceSnapshotResult
 
-from .identity import InstrumentIdentityResolver
+from .identity import IDENTITY_CONTRACT_VERSION, InstrumentIdentityResolver
 
 try:
     import duckdb  # noqa: F401
@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
     duckdb = None
 
 
-REFERENCE_CONTRACT_VERSION = "reference-v3-provider-native-ticker-case"
+REFERENCE_CONTRACT_VERSION = "reference-v4-security-safe-medium-identity"
 
 
 def _parse_optional_datetime(value: object) -> datetime | None:
@@ -169,6 +169,7 @@ class InstrumentRegistryStore:
             if (
                 bool(meta.get("include_inactive")) == include_inactive
                 and meta.get("contract_version") == REFERENCE_CONTRACT_VERSION
+                and meta.get("identity_contract_version") == IDENTITY_CONTRACT_VERSION
             ):
                 rows, instruments, quality = self._snapshot_counts(target)
                 self.rebuild_registry()
@@ -199,6 +200,7 @@ class InstrumentRegistryStore:
                     "as_of_date": as_of_date.isoformat(),
                     "include_inactive": include_inactive,
                     "contract_version": REFERENCE_CONTRACT_VERSION,
+                    "identity_contract_version": IDENTITY_CONTRACT_VERSION,
                     "row_count": row_count,
                     "instrument_count": instrument_count,
                     "fetched_at_utc": datetime.now(UTC).isoformat(),
