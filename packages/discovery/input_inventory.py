@@ -82,7 +82,15 @@ class DiscoveryInputInventory:
     )
 
     CLOSE_THRESHOLDS = (0.5, 1.0, 2.0, 5.0, 10.0, 20.0)
-    VOLUME_THRESHOLDS = (1_000.0, 10_000.0, 50_000.0, 100_000.0, 250_000.0, 500_000.0, 1_000_000.0)
+    VOLUME_THRESHOLDS = (
+        1_000.0,
+        10_000.0,
+        50_000.0,
+        100_000.0,
+        250_000.0,
+        500_000.0,
+        1_000_000.0,
+    )
     DOLLAR_VOLUME_THRESHOLDS = (
         100_000.0,
         250_000.0,
@@ -170,7 +178,12 @@ class DiscoveryInputInventory:
             return f">={value / 1_000:g}k"
         return f">={value:g}"
 
-    def _threshold_counts(self, con: Any, metric: str, thresholds: tuple[float, ...]) -> dict[str, int]:
+    def _threshold_counts(
+        self,
+        con: Any,
+        metric: str,
+        thresholds: tuple[float, ...],
+    ) -> dict[str, int]:
         result: dict[str, int] = {}
         for threshold in thresholds:
             value = con.execute(
@@ -186,25 +199,37 @@ class DiscoveryInputInventory:
             result[self._threshold_label(threshold)] = int(value)
         return result
 
-    def _coverage(self, con: Any, timeframe: Timeframe, feature_path: Path, universe_count: int) -> TimeframeCoverage:
+    def _coverage(
+        self,
+        con: Any,
+        timeframe: Timeframe,
+        feature_path: Path,
+        universe_count: int,
+    ) -> TimeframeCoverage:
         safe = self._safe(feature_path)
         if timeframe == Timeframe.DAY_1:
             row = con.execute(
                 f"""
-                SELECT
-                    count(*) AS feature_rows,
-                    count(DISTINCT symbol) AS feature_symbols,
-                    count(DISTINCT u.ticker) FILTER (WHERE f.symbol IS NOT NULL) AS matched
-                FROM atlas_universe u
-                LEFT JOIN read_parquet('{safe}') f ON f.symbol = u.ticker
+                WITH f AS (
+                    SELECT symbol FROM read_parquet('{safe}')
+                ), stats AS (
+                    SELECT count(*) AS feature_rows, count(DISTINCT symbol) AS feature_symbols FROM f
+                ), matched AS (
+                    SELECT count(DISTINCT u.ticker) AS matched
+                    FROM atlas_universe u
+                    INNER JOIN f ON f.symbol = u.ticker
+                )
+                SELECT stats.feature_rows, stats.feature_symbols, matched.matched
+                FROM stats CROSS JOIN matched
                 """
             ).fetchone()
+            matched = int(row[2])
             return TimeframeCoverage(
                 timeframe=timeframe.value,
                 total_feature_rows=int(row[0]),
                 distinct_feature_symbols=int(row[1]),
-                matched_universe_symbols=int(row[2]),
-                missing_universe_symbols=universe_count - int(row[2]),
+                matched_universe_symbols=matched,
+                missing_universe_symbols=universe_count - matched,
                 regular_session_symbols=None,
                 premarket_symbols=None,
                 after_hours_symbols=None,
@@ -315,10 +340,19 @@ class DiscoveryInputInventory:
                     count(*) FILTER (WHERE feature_symbol IS NULL) AS missing,
                     count(*) FILTER (WHERE close IS NULL OR NOT isfinite(close) OR close <= 0) AS invalid_close,
                     count(*) FILTER (WHERE feature_symbol IS NOT NULL AND volume = 0) AS zero_volume,
-                    count(*) FILTER (WHERE feature_symbol IS NOT NULL AND (dollar_volume IS NULL OR NOT isfinite(dollar_volume) OR dollar_volume <= 0)) AS nonpositive_dollar_volume,
-                    count(*) FILTER (WHERE feature_symbol IS NOT NULL AND relative_volume_20 IS NULL) AS relative_volume_warmup,
-                    count(*) FILTER (WHERE feature_symbol IS NOT NULL AND natr_14 IS NULL) AS natr_warmup,
-                    count(*) FILTER (WHERE feature_symbol IS NOT NULL AND realized_volatility_20 IS NULL) AS realized_volatility_warmup
+                    count(*) FILTER (
+                        WHERE feature_symbol IS NOT NULL
+                          AND (dollar_volume IS NULL OR NOT isfinite(dollar_volume) OR dollar_volume <= 0)
+                    ) AS nonpositive_dollar_volume,
+                    count(*) FILTER (
+                        WHERE feature_symbol IS NOT NULL AND relative_volume_20 IS NULL
+                    ) AS relative_volume_warmup,
+                    count(*) FILTER (
+                        WHERE feature_symbol IS NOT NULL AND natr_14 IS NULL
+                    ) AS natr_warmup,
+                    count(*) FILTER (
+                        WHERE feature_symbol IS NOT NULL AND realized_volatility_20 IS NULL
+                    ) AS realized_volatility_warmup
                 FROM atlas_daily_join
                 """
             ).fetchone()
@@ -338,23 +372,36 @@ class DiscoveryInputInventory:
                 "close": self._threshold_counts(con, "close", self.CLOSE_THRESHOLDS),
                 "volume": self._threshold_counts(con, "volume", self.VOLUME_THRESHOLDS),
                 "dollar_volume": self._threshold_counts(
-                    con, "dollar_volume", self.DOLLAR_VOLUME_THRESHOLDS
+                    con,
+                    "dollar_volume",
+                    self.DOLLAR_VOLUME_THRESHOLDS,
                 ),
                 "relative_volume_20": self._threshold_counts(
-                    con, "relative_volume_20", self.RELATIVE_VOLUME_THRESHOLDS
+                    con,
+                    "relative_volume_20",
+                    self.RELATIVE_VOLUME_THRESHOLDS,
                 ),
             }
 
             combined: dict[str, int] = {}
             for minimum_close in (0.5, 1.0, 2.0, 5.0):
-                for minimum_dollar_volume in (250_000.0, 500_000.0, 1_000_000.0, 2_000_000.0, 5_000_000.0, 10_000_000.0):
+                for minimum_dollar_volume in (
+                    250_000.0,
+                    500_000.0,
+                    1_000_000.0,
+                    2_000_000.0,
+                    5_000_000.0,
+                    10_000_000.0,
+                ):
                     count = con.execute(
                         """
                         SELECT count(*)
                         FROM atlas_daily_join
                         WHERE feature_symbol IS NOT NULL
                           AND close IS NOT NULL AND isfinite(close) AND close >= ?
-                          AND dollar_volume IS NOT NULL AND isfinite(dollar_volume) AND dollar_volume >= ?
+                          AND dollar_volume IS NOT NULL
+                          AND isfinite(dollar_volume)
+                          AND dollar_volume >= ?
                         """,
                         [minimum_close, minimum_dollar_volume],
                     ).fetchone()[0]
@@ -365,9 +412,24 @@ class DiscoveryInputInventory:
                     combined[label] = int(count)
 
             coverage = {
-                "1d": self._coverage(con, Timeframe.DAY_1, paths["features_1d"], universe_count),
-                "4h": self._coverage(con, Timeframe.HOUR_4, paths["features_4h"], universe_count),
-                "1h": self._coverage(con, Timeframe.HOUR_1, paths["features_1h"], universe_count),
+                "1d": self._coverage(
+                    con,
+                    Timeframe.DAY_1,
+                    paths["features_1d"],
+                    universe_count,
+                ),
+                "4h": self._coverage(
+                    con,
+                    Timeframe.HOUR_4,
+                    paths["features_4h"],
+                    universe_count,
+                ),
+                "1h": self._coverage(
+                    con,
+                    Timeframe.HOUR_1,
+                    paths["features_1h"],
+                    universe_count,
+                ),
             }
         finally:
             con.close()
@@ -387,5 +449,8 @@ class DiscoveryInputInventory:
             combined_activity_counts=dict(sorted(combined.items())),
             report_path=str(report_path),
         )
-        atomic_write_text(report_path, json.dumps(asdict(report), indent=2, sort_keys=True) + "\n")
+        atomic_write_text(
+            report_path,
+            json.dumps(asdict(report), indent=2, sort_keys=True) + "\n",
+        )
         return report
