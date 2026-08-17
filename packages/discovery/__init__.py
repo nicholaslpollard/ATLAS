@@ -16,16 +16,24 @@ from .scanner import (
     DiscoveryFoundationBuildResult,
     DiscoveryFoundationScanner,
 )
+from .scoring import (
+    DISCOVERY_SCORE_MANIFEST_VERSION,
+    DiscoveryScoreBuildResult,
+    DiscoverySetupScanner,
+)
 
 __all__ = [
     "ACTIVE_DISCOVERY_FILTER_POLICY",
     "DISCOVERY_FILTER_POLICY_VERSION",
     "DISCOVERY_FOUNDATION_MANIFEST_VERSION",
     "DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION",
+    "DISCOVERY_SCORE_MANIFEST_VERSION",
     "DiscoveryFilterDecision",
     "DiscoveryFilterPolicy",
     "DiscoveryFoundationBuildResult",
     "DiscoveryFoundationScanner",
     "DiscoveryInputInventory",
     "DiscoveryInputInventoryReport",
+    "DiscoveryScoreBuildResult",
+    "DiscoverySetupScanner",
 ]
