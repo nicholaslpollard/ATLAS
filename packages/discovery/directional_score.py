@@ -4,9 +4,10 @@ import numpy as np
 import pandas as pd
 
 
-DIRECTIONAL_SCORE_POLICY_VERSION = "directional-score-v1-available-timeframe-weighted"
+DIRECTIONAL_SCORE_POLICY_VERSION = "directional-score-v2-cross-sectional-tail-strength"
 TIMEFRAME_WEIGHTS = {"1d": 0.30, "4h": 0.40, "1h": 0.30}
 DIRECTION_MARGIN = 0.08
+RELATIVE_STRENGTH_TAIL_START = 0.80
 
 _DIRECTIONAL_COLUMNS = (
     "trend_bull",
@@ -46,10 +47,28 @@ def weighted_available(
     return (numerator / denominator.where(denominator > 0.0)).clip(0.0, 1.0)
 
 
-def _positive_percentile(values: pd.Series) -> pd.Series:
-    positive = values.where(values > 0.0)
-    ranked = positive.rank(method="average", pct=True)
-    return ranked.fillna(0.0).clip(0.0, 1.0)
+def cross_sectional_tail_strength(
+    signed_strength: pd.Series,
+    *,
+    tail_start: float = RELATIVE_STRENGTH_TAIL_START,
+) -> tuple[pd.Series, pd.Series]:
+    """Return bullish/bearish cross-sectional tail strength in [0, 1].
+
+    Relative strength is a *discriminator*, not a universal setup. Values inside the
+    central cross-section receive zero relative-strength evidence. Only the strongest
+    bullish and bearish tails ramp toward 1.0. This prevents percentile rank itself from
+    becoming the top setup for most of the market.
+    """
+
+    if not 0.50 < tail_start < 1.0:
+        raise ValueError("tail_start must be between 0.50 and 1.0")
+    values = pd.to_numeric(signed_strength, errors="coerce")
+    ranks = values.rank(method="average", pct=True)
+    lower = 1.0 - tail_start
+    bull = ((ranks - tail_start) / (1.0 - tail_start)).clip(0.0, 1.0)
+    bear = ((lower - ranks) / lower).clip(0.0, 1.0)
+    valid = values.notna()
+    return bull.where(valid, 0.0), bear.where(valid, 0.0)
 
 
 def aggregate_multitimeframe(timeframe_scores: dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -71,8 +90,9 @@ def aggregate_multitimeframe(timeframe_scores: dict[str, pd.DataFrame]) -> pd.Da
         + 0.40 * out["momentum_bear"].fillna(0.0)
     )
     signed_strength = bull_base - bear_base
-    out["relative_strength_bull"] = _positive_percentile(signed_strength)
-    out["relative_strength_bear"] = _positive_percentile(-signed_strength)
+    relative_bull, relative_bear = cross_sectional_tail_strength(signed_strength)
+    out["relative_strength_bull"] = relative_bull
+    out["relative_strength_bear"] = relative_bear
 
     out["trend_score"] = out[["trend_bull", "trend_bear"]].max(axis=1).fillna(0.0)
     out["momentum_score"] = out[["momentum_bull", "momentum_bear"]].max(axis=1).fillna(0.0)
