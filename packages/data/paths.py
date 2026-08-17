@@ -152,6 +152,10 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
         return root / "regimes" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
 
+    def ticker_regime_probe_report(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "regimes" / "ticker_probe" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
     def ticker_events_file(self, instrument_id: str) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
         return root / "corporate_actions" / "massive" / "ticker_events" / f"instrument_id={instrument_id}" / "part-000.parquet"
@@ -162,7 +166,7 @@ class MarketDataPaths:
 
     def ticker_events_glob(self) -> str:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
-        return (root / "corporate_actions" / "massive" / "ticker_events" / "instrument_id=*" / "*.parquet").as_posix()
+        return (root / "corporate_actions" / "massive" / "stocks" / "instrument_id=*" / "*.parquet").as_posix()
 
     def instrument_registry_file(self) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
