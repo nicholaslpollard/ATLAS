@@ -4,50 +4,164 @@
 
 Phase 07 converts ATLAS's stable instrument identity/reference layer into a deterministic, auditable point-in-time market universe for broad discovery, watchlist processing, position monitoring, custom scopes, research, and backtesting.
 
-The universe registry answers **which instruments ATLAS must consider and why**. It does not score setups, select strategies, or make trading decisions.
-
-## Separation of responsibilities
+The universe registry answers **which instruments ATLAS must consider and why**. It does not score setups, rank activity, select strategies, or make trading decisions.
 
 ```text
 Phase 4 instrument identity/reference
         ↓
-Phase 7 universe eligibility + routing
+Phase 7 metadata eligibility + routing + exclusion audit
         ↓
-Phase 8 cheap data-health/activity/setup discovery funnel
+Phase 8 data health + activity + cheap vector setup discovery
         ↓
 Regime / ML / strategies / simulation / options / AI
 ```
 
-Universe membership is keyed by stable ATLAS `instrument_id`; provider-native ticker is retained as point-in-time routing/market-data metadata and is never globally uppercased.
+Universe membership is keyed by stable ATLAS `instrument_id`. Provider-native ticker case is retained exactly as point-in-time routing/market-data metadata.
 
-## Point-in-time requirements
+## Identity correction accepted
 
-A universe snapshot must be reproducible for a specific `as_of_date` and reference snapshot date. This prevents future listing status or ticker changes from leaking into historical research/backtests.
+The first real 2026-08-14 reference inventory found 36,417 rows but only 31,540 stable instrument IDs. All 2,587 duplicate identity groups were multi-ticker groups. Representative collisions included distinct preferred-share series and other separate listed securities.
 
-The semantic snapshot fingerprint intentionally excludes generation time and includes:
+The legacy medium key was:
 
-- universe contract version
-- as-of date
-- reference snapshot date
-- stable instrument IDs
-- exact provider-native tickers
-- identity quality
-- reference/listing metadata
-- discovery eligibility
-- explicit reason codes
-- processing routes
+```text
+CIK + primary_exchange + security_type
+```
 
-## Discovery eligibility versus processing routes
+CIK is issuer-level rather than security-level, so that key could collapse multiple securities from one issuer.
 
-Broad-discovery eligibility and mandatory processing are separate concepts.
+The accepted identity contract is now:
 
-An instrument may be ineligible for broad discovery but still require processing because it is:
+```text
+STRONG:
+  Composite FIGI
+  or Share Class FIGI
 
-- an open position
-- on the user's watchlist
-- explicitly included in a custom scope
+MEDIUM:
+  CIK + exact provider-native ticker + primary_exchange + security_type
 
-Those bypasses are explicit and auditable. For example, an inactive instrument that is still an open position can have:
+FALLBACK:
+  exact provider-native ticker + snapshot date
+```
+
+Contracts:
+
+```text
+reference-v4-security-safe-medium-identity
+instrument-identity-v4-no-issuer-level-medium-collapse
+```
+
+All three locally stored reference snapshots were re-keyed offline with zero strong-FIGI identity changes.
+
+For 2026-08-14 the correction changed:
+
+```text
+stable instruments:       31,540 → 35,226
+duplicate identity groups: 2,587 → 1,110
+multi-ticker groups:       2,587 → 1,110
+```
+
+The remaining duplicate groups are security-level alias/continuity observations, primarily strong identities observed under multiple historical tickers.
+
+The decisive current-routing result is:
+
+```text
+active rows:                    13,110
+active stable instruments:      13,110
+multi-active-ticker groups:           0
+maximum active tickers per ID:        1
+```
+
+Therefore one point-in-time provider ticker per stable identity is accepted for Phase 7. Any future snapshot with more than one active ticker for one stable identity is explicitly blocked as `ambiguous_active_ticker`; ATLAS does not guess.
+
+## Locked initial discovery metadata policy
+
+Policy contract:
+
+```text
+universe-eligibility-v1-us-listed-core-and-income-securities
+```
+
+The policy is based on the corrected real 2026-08-14 active reference inventory.
+
+### Required market/locale
+
+```text
+market = stocks
+locale = us
+```
+
+### Accepted active exchanges
+
+```text
+ARCX
+BATS
+XASE
+XNAS
+XNYS
+```
+
+These are the five exchanges observed across all 13,110 active reference rows.
+
+### Broad-discovery security types
+
+```text
+ADRC
+CS
+ETF
+ETN
+ETS
+ETV
+FUND
+PFD
+```
+
+These keep ordinary equities, ADR common shares, exchange-traded products, closed-end/income funds, and preferred shares available to the later data-health/activity/liquidity funnel instead of prematurely narrowing the opportunity set.
+
+### Special-situation types excluded from broad discovery
+
+```text
+WARRANT
+RIGHT
+UNIT
+SP
+```
+
+These are not deleted from ATLAS. They are simply excluded from the default broad-discovery route because corporate-action, expiry, redemption, unit-composition, and structured-product behavior requires specialized handling. Position/watchlist/custom routes can still force deterministic processing with explicit override reasons.
+
+### Identity-quality requirement
+
+Broad discovery accepts:
+
+```text
+strong
+medium
+```
+
+The 25 active fallback identities observed on 2026-08-14 are excluded from broad discovery. Fallback identity is intentionally snapshot-scoped and is therefore not stable enough for longitudinal discovery/research. Forced routes remain possible when an exact provider-native ticker is supplied.
+
+## Point-in-time contract
+
+Current universe contract:
+
+```text
+universe-v2-point-in-time-routing-and-exclusion-audit
+```
+
+A production build currently requires an exact corrected reference snapshot for the requested `as_of_date`. The builder does not substitute a later reference file, which prevents future ticker/listing state from leaking into historical research.
+
+Within a stable identity group:
+
+1. exactly one active row → use its exact provider ticker;
+2. more than one active row → exclude from discovery as ambiguous;
+3. no active row → exclude from discovery as inactive;
+4. a forced position/watchlist/custom route may bypass discovery ineligibility only when an unambiguous exact routing ticker is available.
+
+## Eligibility versus mandatory routing
+
+Broad-discovery eligibility and mandatory processing are separate.
+
+Example:
 
 ```text
 discovery_eligible = false
@@ -55,95 +169,106 @@ routes = [position]
 reason_codes = [reference_inactive, position_override]
 ```
 
-This preserves the locked ATLAS rule that open positions bypass discovery and the watchlist is guaranteed rather than silently dropped by broad-market filters.
+An open position therefore cannot disappear merely because it fails broad-market discovery rules. The same contract applies to watchlist and custom-scope overrides.
 
-## Real reference inventory finding — identity correction gate
+## Explicit reason codes
 
-The first real 2026-08-14 inventory found 36,417 reference rows but only 31,540 stable instrument IDs. There were 2,587 duplicate stable-identity groups, and every reported duplicate group contained multiple provider tickers. Representative collisions included many distinct preferred-share series, ETF/index products, and structured products grouped under one ATLAS identity.
+Blocking reasons include:
 
-The root cause is the legacy medium identity key:
-
-```text
-CIK + primary_exchange + security_type
-```
-
-CIK is issuer-level rather than security-level. One issuer can legitimately have many preferred shares, warrants, units, notes, funds, or other listed lines with the same exchange and security type. That key is therefore not sufficient evidence to merge securities.
-
-Phase 7 corrects the medium identity contract to:
-
-```text
-CIK + exact provider-native ticker + primary_exchange + security_type
-```
-
-Strong Composite FIGI / Share Class FIGI identity remains unchanged. Fallback identity remains point-in-time conservative. When FIGI is absent, ATLAS deliberately prefers a false split over a false merge; authoritative ticker-event evidence may establish continuity later.
-
-The existing canonical provider facts do not need to be downloaded again. `scripts/repair_reference_identity.py` atomically re-keys an existing reference snapshot from its stored provider metadata, refuses to alter any strong FIGI identity, rebuilds the derived registry, and records the new identity contract in the snapshot manifest. The repair is offline-only and does not instantiate a Massive REST client.
-
-No universe snapshot may be accepted from a reference snapshot that has not passed this identity-repair/audit gate.
-
-## Real reference inventory gate
-
-After repair, ATLAS reruns the exact same inventory against the corrected snapshot. Residual duplicate identities are treated separately from the now-invalid issuer-level medium collisions. Any remaining multi-ticker stable identity must be supported by strong security-level identity evidence and still must produce one unambiguous active routing ticker before it can enter broad discovery.
-
-The corrected inventory reports:
-
-- real `market`, `locale`, `security_type`, `primary_exchange`, identity-quality, and active-state distributions;
+- inactive or delisted reference state;
+- non-US locale;
+- unsupported market;
+- unsupported exchange;
+- unsupported security type;
+- unsupported identity quality;
 - missing reference metadata;
-- repeated stable-identity row count;
-- number of duplicate `instrument_id` groups;
-- duplicate groups with more than one exact provider ticker;
-- market/locale/exchange/security-type/active conflicts inside a stable identity;
-- representative duplicate-identity and security-type examples;
-- SHA-256 of the exact source reference Parquet used for the audit.
+- ambiguous active ticker;
+- unavailable market data;
+- quarantined data;
+- explicit manual exclusion.
 
-Commands:
+Override reasons are recorded for position, watchlist, and custom routing when they bypass discovery ineligibility.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\repair_reference_identity.py --date YYYY-MM-DD
-.\.venv\Scripts\python.exe scripts\inventory_universe_reference.py --date YYYY-MM-DD
-```
+## Data-health hooks
 
-The inventory report is persisted under:
+Phase 7 exposes deterministic hooks for:
 
-```text
-data/derived/universe/reference_inventory/YYYY/YYYY-MM-DD.json
-```
+- `data_unavailable`;
+- `data_quarantined`;
+- `manual_exclude`.
 
-## Initial reason-code contract
+The actual broad data-health/activity calculations remain Phase 8 responsibility. This keeps metadata eligibility separate from market-data quality and setup ranking.
 
-Blocking/reference/data reasons include inactive/delisted reference state, non-US locale, unsupported market/security type, missing reference metadata, unavailable/quarantined market data, and explicit manual exclusion.
+## Persisted artifacts
 
-Override reasons include position, watchlist, and custom-scope inclusion.
-
-Eligibility rules are implemented from observed Massive reference metadata rather than guessed security-type labels.
-
-## Planned persisted universe artifacts
-
-Point-in-time universe snapshots will live under:
+Routed universe members:
 
 ```text
 data/derived/universe/snapshots/year=YYYY/date=YYYY-MM-DD/part-000.parquet
 ```
 
-with manifests under:
+Per-instrument exclusion audit:
+
+```text
+data/derived/universe/exclusions/year=YYYY/date=YYYY-MM-DD/part-000.parquet
+```
+
+Manifest:
 
 ```text
 data/manifests/universe/YYYY/YYYY-MM-DD.json
 ```
 
-The manifest will bind the snapshot to its source reference SHA, universe contract/policy version, semantic fingerprint, and row/instrument counts so repeated builds are idempotent and historical research cannot silently consume a different reference state.
+Manifest contract:
 
-## Phase 07 acceptance targets
+```text
+universe-manifest-v1-source-policy-routing-bound
+```
 
-1. Stable `UniverseMember` / `UniverseSnapshot` schemas and deterministic fingerprinting.
-2. Provider-native ticker case preserved.
-3. No issuer-level medium-identity collapse; distinct listed lines remain distinct absent security-level continuity evidence.
-4. Real reference metadata and residual strong-identity alias structure inventoried after the correction.
-5. One unambiguous current routing ticker per accepted discovery member, or an explicit ambiguity exclusion.
-6. Explicit auditable eligibility/exclusion reasons.
-7. Position/watchlist/custom bypass semantics separated from discovery eligibility.
-8. Builder uses corrected Phase 4 reference/instrument artifacts without future-data leakage.
-9. Persisted point-in-time snapshots are idempotent and fingerprinted.
-10. Real current-universe build is audited against source reference metadata.
-11. Representative historical universe snapshot proves point-in-time behavior.
-12. Performance is cheap enough to precede the Phase 8 5K+ discovery funnel.
+The manifest binds the persisted output to:
+
+- universe contract version;
+- identity/reference contract versions;
+- exact source reference Parquet SHA-256;
+- eligibility-policy version and fingerprint;
+- dynamic routing/data-health input fingerprint;
+- semantic universe fingerprint;
+- routed/excluded counts;
+- reason counts;
+- discovery security-type counts;
+- output Parquet SHA-256 values.
+
+A repeated build is skipped only when all dependencies and persisted hashes still match.
+
+## Build command
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_universe.py --date YYYY-MM-DD
+```
+
+The CLI reports source/routed/excluded counts, discovery type distribution, reason counts, wall time, artifact sizes, semantic fingerprint, and whether the build was an idempotent skip.
+
+## Automated acceptance coverage
+
+Tests cover:
+
+- exact provider-native ticker case;
+- security-safe medium identity separation;
+- strong-identity ticker continuity;
+- metadata security-type/exchange policy;
+- fallback identity exclusion;
+- one active routing alias selection;
+- explicit multi-active ambiguity exclusion;
+- persisted exclusion audit;
+- inactive position override semantics;
+- source/policy/routing-bound idempotency;
+- exact historical snapshot behavior with no future ticker leakage;
+- normalized reference Parquet string schemas across snapshots, including optional all-null metadata fields.
+
+## Remaining Phase 07 real-data gates
+
+1. Build the real corrected 2026-08-14 universe snapshot.
+2. Confirm a second identical build is idempotently skipped.
+3. Inspect real discovery count, security-type distribution, reason counts, runtime, and artifact sizes.
+4. Build 2021-08-16 from the exact historical reference snapshot and confirm point-in-time behavior.
+5. If real acceptance passes, close Phase 7 and proceed to the Phase 8 broad-discovery/data-health/activity performance funnel.
