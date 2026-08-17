@@ -13,7 +13,7 @@ market regime
 
 The regime engine must remain point-in-time safe, deterministic for finalized/as-of data, and independently auditable. Position/watchlist/custom routes remain eligible for context even when they are outside normal broad discovery.
 
-## Gate 1 - local evidence inventory
+## Gate 1 - local evidence inventory: ACCEPTED
 
 No regime labels or thresholds are locked from assumptions. `scripts/inventory_regime_inputs.py` measures what ATLAS already has locally for the requested session:
 
@@ -47,9 +47,9 @@ The target-machine run completed successfully with:
 
 The absence of classification is an evidence result, not a reason to fabricate a mapping.
 
-## Gate 2 - point-in-time classification probe
+## Gate 2 - point-in-time classification probe: ACCEPTED
 
-Because the local Phase 04/07 artifacts do not contain classification, Phase 09 next measures an explicit provider classification source before designing a permanent ticker-to-sector contract.
+Because the local Phase 04/07 artifacts do not contain classification, Phase 09 measured an explicit provider classification source before designing any permanent ticker-to-sector contract.
 
 `scripts/probe_regime_classification.py` takes a deterministic sample from the exact Phase 08 discovery population and queries the Massive point-in-time Ticker Overview endpoint for raw SIC facts. The probe records:
 
@@ -72,20 +72,74 @@ Report path:
 data/derived/regimes/classification_probe/YYYY/YYYY-MM-DD.json
 ```
 
-This probe deliberately does **not** create a SIC-to-GICS, SIC-to-Select-Sector-SPDR, or ticker-to-sector crosswalk. SIC is being measured first as a raw point-in-time classification fact. Any permanent sector mapping will require its own explicit versioned policy and acceptance evidence.
+### Accepted 2026-08-14 classification evidence
+
+The target-machine 250-instrument deterministic probe returned:
+
+- 250 / 250 provider responses
+- 250 / 250 exact provider-native ticker matches
+- 120 SIC codes and descriptions
+- 130 missing SIC observations
+- 0 provider errors
+- 48.00% overall SIC coverage
+
+The security-type split is the important evidence:
+
+- common stock (`CS`): 108 / 122 SIC-covered = 88.52%
+- preferred (`PFD`): 7 / 7 SIC-covered
+- ETF: 4 / 100 SIC-covered
+- ADR common (`ADRC`): 0 / 8 SIC-covered
+- fund (`FUND`): 0 / 11 SIC-covered
+- ETN: 0 / 1 SIC-covered
+- ETV: 1 / 1 SIC-covered, too small to generalize
+
+Decision: raw SIC remains valid point-in-time **industry** evidence when present, especially for company-like securities, but SIC is not a universal ATLAS security classification. ETF/fund/ETN context remains on a separate security-type/proxy path. Phase 09 does **not** invent a SIC-to-GICS, SIC-to-Select-Sector-SPDR, or ticker-to-sector crosswalk.
+
+## Gate 3 - historical regime calibration: CURRENT
+
+A single accepted session is not enough evidence for regime cutoffs. Before market, sector-proxy, or ticker regime labels are locked, Phase 09 measures the historical distributions already present in the permanent Phase 06 1d feature lake.
+
+Diagnostic:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\calibrate_regimes.py --start 2021-08-16 --end 2026-08-14
+```
+
+Contract:
+
+`regime-calibration-v1-historical-activity-floor-proxy-distributions`
+
+The calibration pass measures:
+
+- historical broad participation using complete 1d feature rows at the accepted Phase 08 `$250,000` daily-dollar-volume floor
+- distributions for close above EMA20/50/200, EMA20 above EMA50, EMA50 above EMA200, positive one-day return, RSI above 50, and positive MACD histogram
+- exact historical evidence for `SPY`, `QQQ`, `IWM`, `DIA`
+- exact historical evidence for all eleven sector proxy ETFs
+- market-basket and sector-basket participation/trend/momentum/volatility distributions
+- exact 1d feature-manifest coverage and an aggregate lineage fingerprint
+
+The historical activity-floor population is calibration evidence, not a claim that ATLAS has reconstructed a Phase 07 reference universe for every old session. This distinction prevents hidden survivorship/reference assumptions.
+
+Report path:
+
+```text
+data/derived/regimes/calibration/YYYY/YYYY-MM-DD.json
+```
+
+Regime thresholds remain **unlocked** until this historical distribution evidence is reviewed.
 
 ## Why classification remains separate
 
 The current Phase 04/07 reference and universe contracts intentionally preserve provider facts needed for identity/routing; they do not claim a sector mapping. Phase 09 therefore refuses to infer a security's sector from its ticker/name.
 
-Sector proxy ETFs may still be used to measure sector-level market regimes because they are directly traded instruments with their own canonical bars/features. Mapping individual stocks to those sectors is a separate evidence problem and will not be fabricated.
+Sector proxy ETFs may still be used to measure sector-level market regimes because they are directly traded instruments with their own canonical bars/features. Mapping individual stocks to those sectors is a separate taxonomy problem and will not be fabricated.
 
-## Planned regime outputs after classification evidence is accepted
+## Planned regime outputs after calibration acceptance
 
 The next contracts will separate three levels:
 
 1. **Market regime** — trend, breadth, volatility, participation, and directional/risk state from broad breadth plus multiple market proxies rather than a single-index oracle.
-2. **Sector regime** — sector-proxy trend/momentum/volatility/relative behavior, with point-in-time stock-to-sector mapping only after an authoritative classification source and crosswalk policy are established.
-3. **Ticker regime** — per-security trend/volatility/participation/structure state, later augmented by market/sector-relative context.
+2. **Sector regime** — direct sector-proxy trend/momentum/volatility/relative behavior. Any stock-to-sector mapping remains optional and separately versioned rather than being required to measure sector ETF regimes.
+3. **Ticker regime** — per-security trend/volatility/participation/structure state, augmented by market context and by authoritative industry/sector context only where that context actually exists.
 
-Labels, scoring weights, persistence/hysteresis, strategy-routing semantics, and sector crosswalk policy remain intentionally unlocked until the real classification probe is reviewed.
+Labels, scoring weights, persistence/hysteresis, and strategy-routing semantics remain intentionally unlocked until Gate 3 historical calibration is reviewed.
