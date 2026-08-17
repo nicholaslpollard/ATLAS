@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.data.paths import MarketDataPaths
+from packages.discovery.directional_score import DIRECTIONAL_SCORE_POLICY_VERSION, TIMEFRAME_WEIGHTS
 from packages.discovery.filter_policy import (
     ACTIVE_DISCOVERY_FILTER_POLICY,
     DISCOVERY_FILTER_POLICY_VERSION,
@@ -18,7 +19,14 @@ from packages.discovery.input_inventory import (
     DiscoveryInputInventory,
 )
 from packages.discovery.scanner import DISCOVERY_FOUNDATION_MANIFEST_VERSION
+from packages.discovery.scoring import DISCOVERY_SCORE_MANIFEST_VERSION
+from packages.discovery.setup_scores import SETUP_FAMILIES, SETUP_SCORE_POLICY_VERSION
+from packages.discovery.state_machine import (
+    ACTIVE_DISCOVERY_STATE_POLICY,
+    DISCOVERY_STATE_POLICY_VERSION,
+)
 from packages.schemas.candidate import DISCOVERY_CANDIDATE_CONTRACT_VERSION
+from packages.schemas.discovery_score import DISCOVERY_SCORE_CONTRACT_VERSION
 
 
 def _strictly_increasing(values: tuple[float, ...]) -> bool:
@@ -41,6 +49,19 @@ def main() -> int:
     assert DISCOVERY_FOUNDATION_MANIFEST_VERSION == (
         "discovery-foundation-manifest-v1-upstream-lineage-bound"
     )
+    assert DISCOVERY_SCORE_CONTRACT_VERSION == (
+        "discovery-score-v1-vectorized-multitimeframe-evidence"
+    )
+    assert SETUP_SCORE_POLICY_VERSION == "setup-score-v1-volatility-normalized-multifamily"
+    assert DIRECTIONAL_SCORE_POLICY_VERSION == (
+        "directional-score-v1-available-timeframe-weighted"
+    )
+    assert DISCOVERY_STATE_POLICY_VERSION == (
+        "discovery-state-v1-provisional-absolute-evidence"
+    )
+    assert DISCOVERY_SCORE_MANIFEST_VERSION == (
+        "discovery-score-manifest-v1-foundation-feature-lineage"
+    )
     assert ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume == 250_000.0
     assert ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume < ACTIVE_DISCOVERY_FILTER_POLICY.active_dollar_volume
     assert ACTIVE_DISCOVERY_FILTER_POLICY.active_dollar_volume < ACTIVE_DISCOVERY_FILTER_POLICY.liquid_dollar_volume
@@ -58,24 +79,51 @@ def main() -> int:
         "natr_14",
         "realized_volatility_20",
     }
+    assert set(TIMEFRAME_WEIGHTS) == {"1d", "4h", "1h"}
+    assert abs(sum(TIMEFRAME_WEIGHTS.values()) - 1.0) < 1e-12
+    assert set(SETUP_FAMILIES) == {
+        "trend",
+        "momentum",
+        "breakout",
+        "pullback",
+        "reversal",
+        "mean_reversion",
+        "unusual_volume",
+        "volatility_expansion",
+        "breakdown",
+    }
+    assert 0.0 < ACTIVE_DISCOVERY_STATE_POLICY.watch_priority
+    assert ACTIVE_DISCOVERY_STATE_POLICY.watch_priority < ACTIVE_DISCOVERY_STATE_POLICY.warm_priority
+    assert ACTIVE_DISCOVERY_STATE_POLICY.warm_priority < ACTIVE_DISCOVERY_STATE_POLICY.hot_priority < 1.0
 
     sample_date = __import__("datetime").date(2026, 8, 14)
     inventory = paths.discovery_input_inventory_report(sample_date)
     snapshot = paths.discovery_snapshot_file(sample_date)
     manifest = paths.discovery_snapshot_manifest(sample_date)
+    score_snapshot = paths.discovery_score_file(sample_date)
+    score_manifest = paths.discovery_score_manifest(sample_date)
     assert "discovery" in inventory.parts and "input_inventory" in inventory.parts
     assert "discovery" in snapshot.parts and "snapshots" in snapshot.parts
     assert "discovery" in manifest.parts
+    assert "discovery" in score_snapshot.parts and "scores" in score_snapshot.parts
+    assert "discovery_scores" in score_manifest.parts
 
     print(f"Discovery input inventory contract: {DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Discovery candidate contract: {DISCOVERY_CANDIDATE_CONTRACT_VERSION}")
     print(f"Discovery filter policy: {DISCOVERY_FILTER_POLICY_VERSION}")
     print(f"Discovery policy fingerprint: {ACTIVE_DISCOVERY_FILTER_POLICY.fingerprint}")
     print(f"Discovery foundation manifest: {DISCOVERY_FOUNDATION_MANIFEST_VERSION}")
+    print(f"Discovery score contract: {DISCOVERY_SCORE_CONTRACT_VERSION}")
+    print(f"Setup score policy: {SETUP_SCORE_POLICY_VERSION}")
+    print(f"Directional score policy: {DIRECTIONAL_SCORE_POLICY_VERSION}")
+    print(f"Raw state policy: {DISCOVERY_STATE_POLICY_VERSION}")
+    print(f"Discovery score manifest: {DISCOVERY_SCORE_MANIFEST_VERSION}")
     print("Canonical 1d bars + derived feature separation: PASS")
     print("$250K dollar-volume floor / no share-price floor: PASS")
     print("Mandatory-route bypass separation: PASS")
     print("Manifest-lineage production path: PASS")
+    print("Vectorized multi-timeframe setup scoring contract: PASS")
+    print("Absolute NORMAL/WATCH/WARM/HOT thresholds: PROVISIONAL pending real-score calibration")
     print("Measured threshold bands: PASS (inventory only)")
     print("Instrument-agnostic discovery foundation: PASS")
     print("Phase 08 discovery foundation: PASS")
