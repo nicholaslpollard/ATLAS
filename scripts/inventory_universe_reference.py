@@ -50,14 +50,18 @@ def main(argv: list[str] | None = None) -> int:
     duplicate = report["duplicate_identity"]
     missing = report["missing"]
     distributions = report["distributions"]
+    active_distributions = report["active_distributions"]
 
     print("ATLAS Phase 7 Reference Universe Inventory")
-    print(f"  as-of date:          {report['as_of_date']}")
-    print(f"  reference rows:      {report['row_count']:,}")
-    print(f"  stable instruments:  {report['instrument_count']:,}")
-    print(f"  repeated ID rows:    {report['repeated_identity_rows']:,}")
-    print(f"  inactive rows:       {report['inactive_rows']:,}")
-    print(f"  delisted timestamps: {report['rows_with_delisted_timestamp']:,}")
+    print(f"  inventory contract:   {report['inventory_version']}")
+    print(f"  as-of date:           {report['as_of_date']}")
+    print(f"  reference rows:       {report['row_count']:,}")
+    print(f"  stable instruments:   {report['instrument_count']:,}")
+    print(f"  repeated ID rows:     {report['repeated_identity_rows']:,}")
+    print(f"  active rows:          {report['active_rows']:,}")
+    print(f"  active instruments:   {report['active_instrument_count']:,}")
+    print(f"  inactive rows:        {report['inactive_rows']:,}")
+    print(f"  delisted timestamps:  {report['rows_with_delisted_timestamp']:,}")
     print("  missing metadata:")
     for key in ("instrument_id", "ticker", "market", "locale", "security_type", "primary_exchange"):
         print(f"    {key:<18} {missing[key]:>8,}")
@@ -66,17 +70,26 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  duplicate groups:              {duplicate['groups']:,}")
     print(f"  rows in duplicate groups:      {duplicate['rows']:,}")
     print(f"  multi-ticker groups:           {duplicate['multi_ticker_groups']:,}")
+    print(f"  multi-active-ticker groups:    {duplicate['multi_active_ticker_groups']:,}")
+    print(f"  max active tickers per ID:     {duplicate['max_active_tickers_per_identity']:,}")
     print(f"  conflicting market groups:     {duplicate['conflicting_market_groups']:,}")
     print(f"  conflicting locale groups:     {duplicate['conflicting_locale_groups']:,}")
     print(f"  conflicting exchange groups:   {duplicate['conflicting_exchange_groups']:,}")
     print(f"  conflicting security groups:   {duplicate['conflicting_security_type_groups']:,}")
     print(f"  conflicting active groups:     {duplicate['conflicting_active_groups']:,}")
 
-    print("Reference value distributions")
+    print("Reference value distributions — all rows")
     _print_distribution("market", distributions["market"])
     _print_distribution("locale", distributions["locale"])
     _print_distribution("security_type", distributions["security_type"])
     _print_distribution("identity_quality", distributions["identity_quality"])
+
+    print("Reference value distributions — active rows only")
+    _print_distribution("market", active_distributions["market"])
+    _print_distribution("locale", active_distributions["locale"])
+    _print_distribution("security_type", active_distributions["security_type"])
+    _print_distribution("primary_exchange", active_distributions["primary_exchange"])
+    _print_distribution("identity_quality", active_distributions["identity_quality"])
 
     examples = duplicate["examples"]
     if examples:
@@ -85,8 +98,9 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 "  "
                 f"{row['instrument_id']} rows={row['row_count']} "
-                f"tickers={row['tickers']} types={row['security_types']} "
-                f"exchanges={row['exchanges']} active={row['active_values']}"
+                f"tickers={row['tickers']} active_tickers={row['active_tickers']} "
+                f"types={row['security_types']} exchanges={row['exchanges']} "
+                f"active={row['active_values']}"
             )
 
     security_examples = report["security_type_examples"]
@@ -102,8 +116,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"name={row['name']}"
             )
 
-    print(f"  source SHA-256:      {report['source_sha256']}")
-    print(f"  report:              {Path(str(report['report_path'])).resolve()}")
+    print(f"  source SHA-256:       {report['source_sha256']}")
+    print(f"  report:               {Path(str(report['report_path'])).resolve()}")
     return 0
 
 
