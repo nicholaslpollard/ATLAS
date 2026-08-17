@@ -161,7 +161,10 @@ def rekey_reference_snapshot(settings: AtlasSettings, as_of_date: date) -> Refer
     old_duplicate_groups, old_multi_ticker_groups = _collision_counts(old_rows, "instrument_id")
     new_duplicate_groups, new_multi_ticker_groups = _collision_counts(audit_rows, "instrument_id")
 
-    store = InstrumentRegistryStore(settings)
+    # This operation is intentionally offline-only. InstrumentRegistryStore's
+    # provider is never used for a re-key, so pass a sentinel to avoid constructing
+    # a REST client and resolving provider credentials.
+    store = InstrumentRegistryStore(settings, provider=object())  # type: ignore[arg-type]
     store._write_snapshot(observations, target)  # noqa: SLF001 - controlled identity migration
 
     manifest_path = paths.reference_snapshot_manifest(as_of_date)
