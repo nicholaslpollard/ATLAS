@@ -110,6 +110,17 @@ class MarketDataPaths:
             / "part-000.parquet"
         )
 
+    def universe_exclusion_file(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return (
+            root
+            / "universe"
+            / "exclusions"
+            / f"year={as_of_date.year:04d}"
+            / f"date={as_of_date}"
+            / "part-000.parquet"
+        )
+
     def universe_snapshot_manifest(self, as_of_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
         return root / "universe" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
