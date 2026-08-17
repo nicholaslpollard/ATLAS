@@ -120,6 +120,10 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "regimes" / "input_inventory" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
 
+    def regime_classification_probe_report(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "regimes" / "classification_probe" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
     def ticker_events_file(self, instrument_id: str) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
         return root / "corporate_actions" / "massive" / "ticker_events" / f"instrument_id={instrument_id}" / "part-000.parquet"
