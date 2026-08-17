@@ -4,6 +4,7 @@ import argparse
 import sys
 from datetime import date
 from pathlib import Path
+from time import perf_counter
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -27,10 +28,16 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _mib(path: Path) -> float:
+    return path.stat().st_size / (1024 * 1024)
+
+
 def main() -> int:
     args = parse_args()
     settings = load_settings(PROJECT_ROOT, "development")
+    started = perf_counter()
     result = UniverseManager(settings).build(args.as_of_date, force=args.force)
+    wall_seconds = perf_counter() - started
 
     print("ATLAS Phase 7 Universe Build")
     print(f"  as-of date:                  {result.as_of_date}")
@@ -47,6 +54,9 @@ def main() -> int:
     print(f"  watchlist routes:            {result.watchlist_count:,}")
     print(f"  custom routes:               {result.custom_count:,}")
     print(f"  idempotent skip:             {result.skipped}")
+    print(f"  wall time:                   {wall_seconds:.3f}s")
+    print(f"  routed Parquet:              {_mib(result.snapshot_path):.2f} MiB")
+    print(f"  exclusion Parquet:           {_mib(result.exclusion_path):.2f} MiB")
     print("  discovery security types:")
     for security_type, count in sorted(
         result.discovery_security_type_counts.items(), key=lambda item: (-item[1], item[0])
