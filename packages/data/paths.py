@@ -166,7 +166,7 @@ class MarketDataPaths:
 
     def ticker_events_glob(self) -> str:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
-        return (root / "corporate_actions" / "massive" / "stocks" / "instrument_id=*" / "*.parquet").as_posix()
+        return (root / "corporate_actions" / "massive" / "ticker_events" / "instrument_id=*" / "*.parquet").as_posix()
 
     def instrument_registry_file(self) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
