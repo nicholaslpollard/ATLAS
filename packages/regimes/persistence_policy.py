@@ -9,7 +9,8 @@ Gate 5 target-machine evidence selected two-session dimensional confirmation:
 - sector opposite-direction lag 2.16%
 
 Three-session confirmation reduced chatter further but materially increased divergence
-and opposite-direction lag, so it was not selected.
+and opposite-direction lag, so it was not selected.  The selected confirmation is
+applied independently to regime dimensions before the composite state is recomputed.
 """
 
 REGIME_PERSISTENCE_POLICY_CONTRACT_VERSION = (
