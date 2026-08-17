@@ -144,6 +144,14 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "regimes" / "threshold_probe" / f"{end_date.year:04d}" / f"{end_date}.json"
 
+    def regime_state_snapshot(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "regimes" / "states" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
+    def regime_state_manifest(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.manifests)
+        return root / "regimes" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
     def ticker_events_file(self, instrument_id: str) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
         return root / "corporate_actions" / "massive" / "ticker_events" / f"instrument_id={instrument_id}" / "part-000.parquet"
