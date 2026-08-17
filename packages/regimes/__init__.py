@@ -60,6 +60,15 @@ from .policy_probe import (
     sector_structure_state,
     volatility_state,
 )
+from .threshold_probe import (
+    REGIME_SELECTED_CONFIRMATION_SESSIONS,
+    REGIME_THRESHOLD_POLICY_NAMES,
+    REGIME_THRESHOLD_PROBE_CONTRACT_VERSION,
+    REGIME_THRESHOLD_TRAINING_SESSIONS,
+    RegimeThresholdProbe,
+    RegimeThresholdProbeReport,
+    threshold_series,
+)
 
 __all__ = [
     "BASKET_METRICS",
@@ -79,6 +88,10 @@ __all__ = [
     "REGIME_PERSISTENCE_CONFIRMATION_WINDOWS",
     "REGIME_PERSISTENCE_PROBE_CONTRACT_VERSION",
     "REGIME_POLICY_PROBE_CONTRACT_VERSION",
+    "REGIME_SELECTED_CONFIRMATION_SESSIONS",
+    "REGIME_THRESHOLD_POLICY_NAMES",
+    "REGIME_THRESHOLD_PROBE_CONTRACT_VERSION",
+    "REGIME_THRESHOLD_TRAINING_SESSIONS",
     "RegimeCalibration",
     "RegimeCalibrationReport",
     "RegimeClassificationProbe",
@@ -89,6 +102,8 @@ __all__ = [
     "RegimePersistenceProbeReport",
     "RegimePolicyProbe",
     "RegimePolicyProbeReport",
+    "RegimeThresholdProbe",
+    "RegimeThresholdProbeReport",
     "SECTOR_PERSISTED_DIMENSIONS",
     "SECTOR_PROXY_TICKERS",
     "agreement_diagnostics",
@@ -111,5 +126,6 @@ __all__ = [
     "run_diagnostics",
     "sector_structure_state",
     "state_population",
+    "threshold_series",
     "volatility_state",
 ]
