@@ -77,13 +77,15 @@ CIK + exact provider-native ticker + primary_exchange + security_type
 
 Strong Composite FIGI / Share Class FIGI identity remains unchanged. Fallback identity remains point-in-time conservative. When FIGI is absent, ATLAS deliberately prefers a false split over a false merge; authoritative ticker-event evidence may establish continuity later.
 
-The existing canonical provider facts do not need to be downloaded again. `scripts/repair_reference_identity.py` atomically re-keys an existing reference snapshot from its stored provider metadata, refuses to alter any strong FIGI identity, rebuilds the derived registry, and records the new identity contract in the snapshot manifest.
+The existing canonical provider facts do not need to be downloaded again. `scripts/repair_reference_identity.py` atomically re-keys an existing reference snapshot from its stored provider metadata, refuses to alter any strong FIGI identity, rebuilds the derived registry, and records the new identity contract in the snapshot manifest. The repair is offline-only and does not instantiate a Massive REST client.
 
 No universe snapshot may be accepted from a reference snapshot that has not passed this identity-repair/audit gate.
 
 ## Real reference inventory gate
 
-Before the final universe builder chooses a canonical point-in-time routing representation, ATLAS inventories the corrected Phase 4 snapshot and reports:
+After repair, ATLAS reruns the exact same inventory against the corrected snapshot. Residual duplicate identities are treated separately from the now-invalid issuer-level medium collisions. Any remaining multi-ticker stable identity must be supported by strong security-level identity evidence and still must produce one unambiguous active routing ticker before it can enter broad discovery.
+
+The corrected inventory reports:
 
 - real `market`, `locale`, `security_type`, `primary_exchange`, identity-quality, and active-state distributions;
 - missing reference metadata;
@@ -94,13 +96,14 @@ Before the final universe builder chooses a canonical point-in-time routing repr
 - representative duplicate-identity and security-type examples;
 - SHA-256 of the exact source reference Parquet used for the audit.
 
-The command is:
+Commands:
 
 ```powershell
+.\.venv\Scripts\python.exe scripts\repair_reference_identity.py --date YYYY-MM-DD
 .\.venv\Scripts\python.exe scripts\inventory_universe_reference.py --date YYYY-MM-DD
 ```
 
-The report is persisted under:
+The inventory report is persisted under:
 
 ```text
 data/derived/universe/reference_inventory/YYYY/YYYY-MM-DD.json
