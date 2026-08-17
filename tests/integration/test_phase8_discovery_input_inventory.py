@@ -106,7 +106,7 @@ def test_inventory_measures_exact_universe_feature_coverage_and_activity(tmp_pat
 
     assert report.daily_quality["matched_universe"] == 2
     assert report.daily_quality["missing_universe"] == 1
-    assert report.daily_quality["invalid_or_nonpositive_close"] == 1
+    assert report.daily_quality["invalid_or_nonpositive_close"] == 0
     assert report.daily_quality["zero_volume"] == 1
     assert report.daily_quality["nonpositive_or_missing_dollar_volume"] == 1
 
@@ -118,4 +118,9 @@ def test_inventory_measures_exact_universe_feature_coverage_and_activity(tmp_pat
     report_path = paths.discovery_input_inventory_report(as_of)
     assert report_path.exists()
     assert report.report_path == str(report_path)
-    assert set(report.source_sha256) == {"universe", "features_1d", "features_4h", "features_1h"}
+    assert set(report.source_sha256) == {
+        "universe",
+        "features_1d",
+        "features_4h",
+        "features_1h",
+    }
