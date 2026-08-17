@@ -38,7 +38,13 @@ def main() -> int:
         print(f"    {key:<24} {value:>8,}")
     print("  priority distribution:")
     for key, value in result.priority_quantiles.items():
-        print(f"    {key:<4} {value:.6f}")
+        print(f"    {key:<5} {value:.6f}")
+    print("  dominant directional evidence distribution:")
+    for key, value in result.dominant_evidence_quantiles.items():
+        print(f"    {key:<5} {value:.6f}")
+    print("  absolute priority threshold populations (calibration only):")
+    for key, value in result.priority_threshold_counts.items():
+        print(f"    {key:<6} {value:>8,}")
     print(f"  dependency fingerprint: {result.dependency_fingerprint}")
     print(f"  snapshot SHA-256:       {result.snapshot_sha256}")
     print(f"  snapshot:               {result.snapshot_path}")
