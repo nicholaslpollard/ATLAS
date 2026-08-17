@@ -33,7 +33,7 @@ def _write_rows(path: Path, ddl: str, rows: list[tuple[object, ...]]) -> None:
         con.close()
 
 
-def test_inventory_measures_exact_universe_feature_coverage_and_activity(tmp_path: Path):
+def test_inventory_measures_exact_universe_bar_feature_coverage_and_activity(tmp_path: Path):
     settings = _settings(tmp_path)
     paths = MarketDataPaths(settings)
     as_of = date(2026, 8, 14)
@@ -49,14 +49,23 @@ def test_inventory_measures_exact_universe_feature_coverage_and_activity(tmp_pat
         ],
     )
     _write_rows(
+        paths.canonical_file(Timeframe.DAY_1, as_of),
+        "symbol VARCHAR, timestamp_utc TIMESTAMPTZ, close DOUBLE, volume DOUBLE",
+        [
+            ("AAPL", ts, 100.0, 1_000_000.0),
+            ("ETF1", ts, 20.0, 0.0),
+            ("OUTSIDE", ts, 5.0, 10_000.0),
+        ],
+    )
+    _write_rows(
         paths.feature_file(Timeframe.DAY_1, as_of),
-        "symbol VARCHAR, timestamp_utc TIMESTAMPTZ, close DOUBLE, volume DOUBLE, "
-        "dollar_volume DOUBLE, relative_volume_20 DOUBLE, relative_dollar_volume_20 DOUBLE, "
+        "symbol VARCHAR, timestamp_utc TIMESTAMPTZ, dollar_volume DOUBLE, "
+        "relative_volume_20 DOUBLE, relative_dollar_volume_20 DOUBLE, "
         "natr_14 DOUBLE, realized_volatility_20 DOUBLE",
         [
-            ("AAPL", ts, 100.0, 1_000_000.0, 100_000_000.0, 1.2, 1.3, 0.02, 0.01),
-            ("ETF1", ts, 20.0, 0.0, 0.0, 0.8, 0.7, 0.03, 0.015),
-            ("OUTSIDE", ts, 5.0, 10_000.0, 50_000.0, 1.0, 1.0, 0.04, 0.02),
+            ("AAPL", ts, 100_000_000.0, 1.2, 1.3, 0.02, 0.01),
+            ("ETF1", ts, 0.0, 0.8, 0.7, 0.03, 0.015),
+            ("OUTSIDE", ts, 50_000.0, 1.0, 1.0, 0.04, 0.02),
         ],
     )
     _write_rows(
@@ -106,6 +115,11 @@ def test_inventory_measures_exact_universe_feature_coverage_and_activity(tmp_pat
 
     assert report.daily_quality["matched_universe"] == 2
     assert report.daily_quality["missing_universe"] == 1
+    assert report.daily_quality["matched_daily_bars"] == 2
+    assert report.daily_quality["missing_daily_bars"] == 1
+    assert report.daily_quality["matched_daily_features"] == 2
+    assert report.daily_quality["missing_daily_features"] == 1
+    assert report.daily_quality["bar_feature_key_mismatch"] == 0
     assert report.daily_quality["invalid_or_nonpositive_close"] == 0
     assert report.daily_quality["zero_volume"] == 1
     assert report.daily_quality["nonpositive_or_missing_dollar_volume"] == 1
@@ -120,6 +134,7 @@ def test_inventory_measures_exact_universe_feature_coverage_and_activity(tmp_pat
     assert report.report_path == str(report_path)
     assert set(report.source_sha256) == {
         "universe",
+        "bars_1d",
         "features_1d",
         "features_4h",
         "features_1h",
