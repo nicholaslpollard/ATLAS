@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Iterable
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -13,7 +12,7 @@ from packages.data.duckdb_connection import connect_utc
 from packages.data.paths import MarketDataPaths
 
 
-REFERENCE_UNIVERSE_INVENTORY_VERSION = "universe-reference-inventory-v1"
+REFERENCE_UNIVERSE_INVENTORY_VERSION = "universe-reference-inventory-v2-active-routing"
 
 
 def _safe(path: Path | str) -> str:
@@ -34,11 +33,19 @@ def _json_value(value: object) -> object:
     return value
 
 
-def _value_counts(con: Any, source: str, column: str) -> list[dict[str, object]]:
+def _value_counts(
+    con: Any,
+    source: str,
+    column: str,
+    *,
+    where: str | None = None,
+) -> list[dict[str, object]]:
+    clause = f"WHERE {where}" if where else ""
     rows = con.execute(
         f"""
         SELECT {column}, count(*) AS row_count
         FROM read_parquet('{source}')
+        {clause}
         GROUP BY {column}
         ORDER BY row_count DESC, {column} NULLS LAST
         """
@@ -57,12 +64,15 @@ def _duplicate_examples(con: Any, source: str, *, limit: int) -> list[dict[str, 
                 instrument_id,
                 count(*) AS row_count,
                 count(DISTINCT ticker) AS ticker_count,
+                count(DISTINCT ticker) FILTER (WHERE active) AS active_ticker_count,
+                count(*) FILTER (WHERE active) AS active_row_count,
                 count(DISTINCT market) AS market_count,
                 count(DISTINCT locale) AS locale_count,
                 count(DISTINCT primary_exchange) AS exchange_count,
                 count(DISTINCT security_type) AS security_type_count,
                 count(DISTINCT active) AS active_count,
                 list_sort(list(DISTINCT ticker)) AS tickers,
+                list_sort(list(DISTINCT ticker) FILTER (WHERE active)) AS active_tickers,
                 list_sort(list(DISTINCT market) FILTER (WHERE market IS NOT NULL)) AS markets,
                 list_sort(list(DISTINCT locale) FILTER (WHERE locale IS NOT NULL)) AS locales,
                 list_sort(list(DISTINCT primary_exchange) FILTER (WHERE primary_exchange IS NOT NULL)) AS exchanges,
@@ -74,7 +84,7 @@ def _duplicate_examples(con: Any, source: str, *, limit: int) -> list[dict[str, 
         )
         SELECT *
         FROM grouped
-        ORDER BY ticker_count DESC, row_count DESC, instrument_id
+        ORDER BY active_ticker_count DESC, ticker_count DESC, row_count DESC, instrument_id
         LIMIT ?
         """,
         [int(limit)],
@@ -83,12 +93,15 @@ def _duplicate_examples(con: Any, source: str, *, limit: int) -> list[dict[str, 
         "instrument_id",
         "row_count",
         "ticker_count",
+        "active_ticker_count",
+        "active_row_count",
         "market_count",
         "locale_count",
         "exchange_count",
         "security_type_count",
         "active_count",
         "tickers",
+        "active_tickers",
         "markets",
         "locales",
         "exchanges",
@@ -117,14 +130,14 @@ def _security_type_examples(
                 active,
                 row_number() OVER (
                     PARTITION BY security_type
-                    ORDER BY ticker, instrument_id
+                    ORDER BY active DESC, ticker, instrument_id
                 ) AS rn
             FROM read_parquet('{source}')
         )
         SELECT security_type, ticker, name, market, locale, primary_exchange, active
         FROM ranked
         WHERE rn <= ?
-        ORDER BY security_type NULLS LAST, ticker
+        ORDER BY security_type NULLS LAST, active DESC, ticker
         """,
         [int(samples_per_type)],
     ).fetchall()
@@ -171,6 +184,8 @@ class UniverseReferenceInventory:
                     count(*) AS row_count,
                     count(DISTINCT instrument_id) AS instrument_count,
                     count(*) - count(DISTINCT instrument_id) AS repeated_identity_rows,
+                    count(*) FILTER (WHERE active) AS active_rows,
+                    count(DISTINCT instrument_id) FILTER (WHERE active) AS active_instrument_count,
                     count(*) FILTER (WHERE instrument_id IS NULL OR trim(instrument_id)='') AS missing_instrument_id,
                     count(*) FILTER (WHERE ticker IS NULL OR trim(ticker)='') AS missing_ticker,
                     count(*) FILTER (WHERE market IS NULL OR trim(market)='') AS missing_market,
@@ -190,6 +205,7 @@ class UniverseReferenceInventory:
                         instrument_id,
                         count(*) AS row_count,
                         count(DISTINCT ticker) AS ticker_count,
+                        count(DISTINCT ticker) FILTER (WHERE active) AS active_ticker_count,
                         count(DISTINCT market) AS market_count,
                         count(DISTINCT locale) AS locale_count,
                         count(DISTINCT primary_exchange) AS exchange_count,
@@ -203,6 +219,8 @@ class UniverseReferenceInventory:
                     count(*) AS duplicate_identity_groups,
                     coalesce(sum(row_count), 0) AS rows_in_duplicate_groups,
                     count(*) FILTER (WHERE ticker_count > 1) AS multi_ticker_groups,
+                    count(*) FILTER (WHERE active_ticker_count > 1) AS multi_active_ticker_groups,
+                    max(active_ticker_count) AS max_active_tickers_per_identity,
                     count(*) FILTER (WHERE market_count > 1) AS conflicting_market_groups,
                     count(*) FILTER (WHERE locale_count > 1) AS conflicting_locale_groups,
                     count(*) FILTER (WHERE exchange_count > 1) AS conflicting_exchange_groups,
@@ -221,25 +239,29 @@ class UniverseReferenceInventory:
                 "row_count": int(totals[0]),
                 "instrument_count": int(totals[1]),
                 "repeated_identity_rows": int(totals[2]),
+                "active_rows": int(totals[3]),
+                "active_instrument_count": int(totals[4]),
                 "missing": {
-                    "instrument_id": int(totals[3]),
-                    "ticker": int(totals[4]),
-                    "market": int(totals[5]),
-                    "locale": int(totals[6]),
-                    "security_type": int(totals[7]),
-                    "primary_exchange": int(totals[8]),
+                    "instrument_id": int(totals[5]),
+                    "ticker": int(totals[6]),
+                    "market": int(totals[7]),
+                    "locale": int(totals[8]),
+                    "security_type": int(totals[9]),
+                    "primary_exchange": int(totals[10]),
                 },
-                "inactive_rows": int(totals[9]),
-                "rows_with_delisted_timestamp": int(totals[10]),
+                "inactive_rows": int(totals[11]),
+                "rows_with_delisted_timestamp": int(totals[12]),
                 "duplicate_identity": {
                     "groups": int(duplicate_stats[0]),
                     "rows": int(duplicate_stats[1]),
                     "multi_ticker_groups": int(duplicate_stats[2]),
-                    "conflicting_market_groups": int(duplicate_stats[3]),
-                    "conflicting_locale_groups": int(duplicate_stats[4]),
-                    "conflicting_exchange_groups": int(duplicate_stats[5]),
-                    "conflicting_security_type_groups": int(duplicate_stats[6]),
-                    "conflicting_active_groups": int(duplicate_stats[7]),
+                    "multi_active_ticker_groups": int(duplicate_stats[3]),
+                    "max_active_tickers_per_identity": int(duplicate_stats[4] or 0),
+                    "conflicting_market_groups": int(duplicate_stats[5]),
+                    "conflicting_locale_groups": int(duplicate_stats[6]),
+                    "conflicting_exchange_groups": int(duplicate_stats[7]),
+                    "conflicting_security_type_groups": int(duplicate_stats[8]),
+                    "conflicting_active_groups": int(duplicate_stats[9]),
                     "examples": _duplicate_examples(
                         con,
                         source,
@@ -253,6 +275,23 @@ class UniverseReferenceInventory:
                     "primary_exchange": _value_counts(con, source, "primary_exchange"),
                     "identity_quality": _value_counts(con, source, "identity_quality"),
                     "active": _value_counts(con, source, "active"),
+                },
+                "active_distributions": {
+                    "market": _value_counts(con, source, "market", where="active"),
+                    "locale": _value_counts(con, source, "locale", where="active"),
+                    "security_type": _value_counts(con, source, "security_type", where="active"),
+                    "primary_exchange": _value_counts(
+                        con,
+                        source,
+                        "primary_exchange",
+                        where="active",
+                    ),
+                    "identity_quality": _value_counts(
+                        con,
+                        source,
+                        "identity_quality",
+                        where="active",
+                    ),
                 },
                 "security_type_examples": _security_type_examples(
                     con,
