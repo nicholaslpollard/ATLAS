@@ -35,6 +35,10 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "features" / timeframe.value / f"year={trading_date.year:04d}" / f"month={trading_date.month:02d}" / f"date={trading_date}" / "part-000.parquet"
 
+    def feature_glob(self, timeframe: Timeframe) -> str:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return (root / "features" / timeframe.value / "**" / "*.parquet").as_posix()
+
     def feature_manifest_file(self, timeframe: Timeframe, trading_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.manifests)
         return root / "features" / timeframe.value / f"{trading_date.year:04d}" / f"{trading_date}.json"
@@ -123,6 +127,10 @@ class MarketDataPaths:
     def regime_classification_probe_report(self, as_of_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "regimes" / "classification_probe" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
+    def regime_calibration_report(self, end_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "regimes" / "calibration" / f"{end_date.year:04d}" / f"{end_date}.json"
 
     def ticker_events_file(self, instrument_id: str) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.canonical)
