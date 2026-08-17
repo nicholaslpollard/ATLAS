@@ -4,7 +4,7 @@
 
 **ACTIVE — reference identity correction gate in progress.**
 
-Phase 7's initial schema/route/fingerprint foundation is implemented, but no production universe snapshot will be accepted until the real Phase 4 reference snapshot has been re-keyed under the corrected security-safe identity contract and re-inventoried.
+Phase 7's initial schema/route/fingerprint foundation is implemented, but no production universe snapshot will be accepted until the real Phase 4 reference snapshots have been re-keyed under the corrected security-safe identity contract and the 2026-08-14 snapshot has been re-inventoried.
 
 ## Real-data finding
 
@@ -30,7 +30,7 @@ Representative groups contained clearly distinct preferred-share series, ETFs, i
 - offline local re-key tool refuses any strong-FIGI ID change
 - repair can process one date or all local reference snapshots without calling Massive
 - Phase 4 and Phase 7 validators both assert issuer-security separation
-- inventory v2 adds active-only security/exchange distributions and explicit multi-active-ticker collision metrics
+- inventory v2 adds active-only security/exchange/identity distributions, active instrument counts, and explicit multi-active-ticker collision metrics
 
 ## Next real-data gate
 
