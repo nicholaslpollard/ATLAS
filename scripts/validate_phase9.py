@@ -21,6 +21,7 @@ from packages.regimes.input_inventory import (
     REGIME_INPUT_INVENTORY_CONTRACT_VERSION,
     SECTOR_PROXY_TICKERS,
 )
+from packages.regimes.policy_probe import REGIME_POLICY_PROBE_CONTRACT_VERSION
 
 
 def main() -> int:
@@ -32,6 +33,9 @@ def main() -> int:
     )
     assert REGIME_CALIBRATION_CONTRACT_VERSION == (
         "regime-calibration-v2-historical-continuous-proxy-distributions"
+    )
+    assert REGIME_POLICY_PROBE_CONTRACT_VERSION == (
+        "regime-policy-probe-v1-quartile-dimensional-no-hysteresis"
     )
     assert REGIME_CALIBRATION_QUANTILES == (0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95)
     assert MARKET_PROXY_TICKERS == ("SPY", "QQQ", "IWM", "DIA")
@@ -55,23 +59,27 @@ def main() -> int:
     paths = MarketDataPaths(settings)
     sample_date = date(2026, 8, 14)
     inventory = paths.regime_input_inventory_report(sample_date)
-    probe = paths.regime_classification_probe_report(sample_date)
+    classification_probe = paths.regime_classification_probe_report(sample_date)
     calibration = paths.regime_calibration_report(sample_date)
+    policy_probe = paths.regime_policy_probe_report(sample_date)
     assert "regimes" in inventory.parts and "input_inventory" in inventory.parts
-    assert "regimes" in probe.parts and "classification_probe" in probe.parts
+    assert "regimes" in classification_probe.parts and "classification_probe" in classification_probe.parts
     assert "regimes" in calibration.parts and "calibration" in calibration.parts
-    assert len({inventory, probe, calibration}) == 3
+    assert "regimes" in policy_probe.parts and "policy_probe" in policy_probe.parts
+    assert len({inventory, classification_probe, calibration, policy_probe}) == 4
 
     print(f"Regime input inventory contract: {REGIME_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Classification probe contract: {REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION}")
     print(f"Calibration contract: {REGIME_CALIBRATION_CONTRACT_VERSION}")
+    print(f"Candidate policy probe contract: {REGIME_POLICY_PROBE_CONTRACT_VERSION}")
     print(f"Market proxy basket: {', '.join(MARKET_PROXY_TICKERS)}")
     print(f"Sector proxy basket: {', '.join(SECTOR_PROXY_TICKERS)}")
     print("Point-in-time classification source: Massive Ticker Overview SIC industry facts")
     print("SIC-to-sector/GICS mapping: NOT LOCKED; no guessed crosswalk")
-    print("Historical regime thresholds: CALIBRATION FIRST")
+    print("Historical calibration evidence: ACCEPTED FOR POLICY PROBING")
     print("Continuous proxy trend evidence: EMA20 distance + EMA20 slope")
-    print("Market/sector/ticker regime labels: NOT YET LOCKED")
+    print("Candidate policy status: DIAGNOSTIC ONLY; no hysteresis")
+    print("Production market/sector/ticker regime policy: NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
