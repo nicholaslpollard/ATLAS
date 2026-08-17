@@ -92,6 +92,7 @@ class RegimeCalibrationReport:
     sector_proxy_observation_counts: dict[str, int]
     sector_proxy_quantiles: dict[str, dict[str, dict[str, float | None]]]
     sector_basket_metric_quantiles: dict[str, dict[str, float | None]]
+    source_daily_bar_glob: str
     source_feature_glob: str
     report_path: str
 
@@ -155,6 +156,11 @@ class RegimeCalibration:
     dollar-volume floor, but it is not called the production universe because ATLAS
     does not have a daily Phase 7 reference snapshot for every historical session.
     Proxy calibration is exact for the named market/sector ETF baskets.
+
+    Phase 6 deliberately separates canonical OHLCV facts from derived features.
+    Calibration therefore joins canonical 1d close to the 1d feature lake on the exact
+    ``(symbol, timestamp_utc)`` market key rather than assuming source OHLCV is stored
+    inside feature Parquet.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -191,27 +197,40 @@ class RegimeCalibration:
         return f"DATE '{value.isoformat()}'"
 
     def _breadth_daily(self, start_date: date, end_date: date) -> pd.DataFrame:
-        glob = self.paths.feature_glob(Timeframe.DAY_1)
+        feature_glob = self.paths.feature_glob(Timeframe.DAY_1)
+        bar_glob = self.paths.glob_for_timeframe(Timeframe.DAY_1)
         floor = float(ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume)
         con = connect_utc(":memory:")
         try:
             return con.execute(
                 f"""
-                WITH eligible AS (
+                WITH feat AS (
                     SELECT
-                        CAST(timestamp_utc AS DATE) AS trading_date,
-                        close, return_1, ema_20, ema_50, ema_200, rsi_14,
-                        macd_hist_12_26_9, dollar_volume
-                    FROM read_parquet({sql_string(glob)}, union_by_name=true)
+                        symbol, timestamp_utc, return_1, ema_20, ema_50, ema_200,
+                        rsi_14, macd_hist_12_26_9, dollar_volume
+                    FROM read_parquet({sql_string(feature_glob)}, union_by_name=true)
                     WHERE CAST(timestamp_utc AS DATE) BETWEEN {self._date_sql(start_date)} AND {self._date_sql(end_date)}
                       AND dollar_volume >= {floor}
-                      AND close > 0
                       AND ema_20 IS NOT NULL
                       AND ema_50 IS NOT NULL
                       AND ema_200 IS NOT NULL
                       AND return_1 IS NOT NULL
                       AND rsi_14 IS NOT NULL
                       AND macd_hist_12_26_9 IS NOT NULL
+                ), bars AS (
+                    SELECT symbol, timestamp_utc, close
+                    FROM read_parquet({sql_string(bar_glob)}, union_by_name=true)
+                    WHERE CAST(timestamp_utc AS DATE) BETWEEN {self._date_sql(start_date)} AND {self._date_sql(end_date)}
+                      AND close > 0
+                ), eligible AS (
+                    SELECT
+                        CAST(f.timestamp_utc AS DATE) AS trading_date,
+                        b.close, f.return_1, f.ema_20, f.ema_50, f.ema_200,
+                        f.rsi_14, f.macd_hist_12_26_9, f.dollar_volume
+                    FROM feat AS f
+                    INNER JOIN bars AS b
+                      ON b.symbol = f.symbol
+                     AND b.timestamp_utc = f.timestamp_utc
                 )
                 SELECT
                     trading_date,
@@ -233,35 +252,51 @@ class RegimeCalibration:
             con.close()
 
     def _proxy_frame(self, start_date: date, end_date: date) -> pd.DataFrame:
-        glob = self.paths.feature_glob(Timeframe.DAY_1)
+        feature_glob = self.paths.feature_glob(Timeframe.DAY_1)
+        bar_glob = self.paths.glob_for_timeframe(Timeframe.DAY_1)
         tickers = MARKET_PROXY_TICKERS + SECTOR_PROXY_TICKERS
         placeholders = ", ".join("?" for _ in tickers)
         con = connect_utc(":memory:")
         try:
             return con.execute(
                 f"""
+                WITH feat AS (
+                    SELECT
+                        symbol, timestamp_utc, return_1, ema_20, ema_50, ema_200,
+                        rsi_14, macd_hist_12_26_9, natr_14,
+                        realized_volatility_20, directional_efficiency_20
+                    FROM read_parquet({sql_string(feature_glob)}, union_by_name=true)
+                    WHERE CAST(timestamp_utc AS DATE) BETWEEN {self._date_sql(start_date)} AND {self._date_sql(end_date)}
+                      AND symbol IN ({placeholders})
+                      AND return_1 IS NOT NULL
+                      AND ema_20 IS NOT NULL
+                      AND ema_50 IS NOT NULL
+                      AND ema_200 IS NOT NULL
+                      AND rsi_14 IS NOT NULL
+                      AND macd_hist_12_26_9 IS NOT NULL
+                      AND natr_14 IS NOT NULL
+                      AND realized_volatility_20 IS NOT NULL
+                      AND directional_efficiency_20 IS NOT NULL
+                ), bars AS (
+                    SELECT symbol, timestamp_utc, close
+                    FROM read_parquet({sql_string(bar_glob)}, union_by_name=true)
+                    WHERE CAST(timestamp_utc AS DATE) BETWEEN {self._date_sql(start_date)} AND {self._date_sql(end_date)}
+                      AND symbol IN ({placeholders})
+                      AND close > 0
+                )
                 SELECT
-                    CAST(timestamp_utc AS DATE) AS trading_date,
-                    symbol,
-                    close, return_1, ema_20, ema_50, ema_200, rsi_14,
-                    macd_hist_12_26_9, natr_14, realized_volatility_20,
-                    directional_efficiency_20
-                FROM read_parquet({sql_string(glob)}, union_by_name=true)
-                WHERE CAST(timestamp_utc AS DATE) BETWEEN {self._date_sql(start_date)} AND {self._date_sql(end_date)}
-                  AND symbol IN ({placeholders})
-                  AND close IS NOT NULL
-                  AND return_1 IS NOT NULL
-                  AND ema_20 IS NOT NULL
-                  AND ema_50 IS NOT NULL
-                  AND ema_200 IS NOT NULL
-                  AND rsi_14 IS NOT NULL
-                  AND macd_hist_12_26_9 IS NOT NULL
-                  AND natr_14 IS NOT NULL
-                  AND realized_volatility_20 IS NOT NULL
-                  AND directional_efficiency_20 IS NOT NULL
-                ORDER BY trading_date, symbol
+                    CAST(f.timestamp_utc AS DATE) AS trading_date,
+                    f.symbol,
+                    b.close, f.return_1, f.ema_20, f.ema_50, f.ema_200, f.rsi_14,
+                    f.macd_hist_12_26_9, f.natr_14, f.realized_volatility_20,
+                    f.directional_efficiency_20
+                FROM feat AS f
+                INNER JOIN bars AS b
+                  ON b.symbol = f.symbol
+                 AND b.timestamp_utc = f.timestamp_utc
+                ORDER BY trading_date, f.symbol
                 """,
-                list(tickers),
+                list(tickers) + list(tickers),
             ).fetchdf()
         finally:
             con.close()
@@ -330,7 +365,8 @@ class RegimeCalibration:
             minimum_dollar_volume=float(ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume),
             breadth_population_note=(
                 "Historical calibration population uses complete 1d feature rows at or above the accepted "
-                "Phase 8 dollar-volume floor. It is calibration evidence, not a reconstructed daily Phase 7 universe."
+                "Phase 8 dollar-volume floor and exact-key canonical 1d closes. It is calibration evidence, "
+                "not a reconstructed daily Phase 7 universe."
             ),
             usable_breadth_session_count=int(len(breadth)),
             first_usable_breadth_date=first_date,
@@ -344,6 +380,7 @@ class RegimeCalibration:
             sector_proxy_observation_counts=sector_counts,
             sector_proxy_quantiles=sector_quantiles,
             sector_basket_metric_quantiles=metric_quantiles(sector_basket, BASKET_METRICS),
+            source_daily_bar_glob=self.paths.glob_for_timeframe(Timeframe.DAY_1),
             source_feature_glob=self.paths.feature_glob(Timeframe.DAY_1),
             report_path=str(target),
         )
