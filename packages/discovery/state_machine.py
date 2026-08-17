@@ -5,23 +5,25 @@ from dataclasses import dataclass
 from packages.schemas.discovery_score import DiscoveryDirection, DiscoveryState
 
 
-DISCOVERY_STATE_POLICY_VERSION = "discovery-state-v2-coverage-gated-provisional-absolute"
+DISCOVERY_STATE_POLICY_VERSION = "discovery-state-v3-locked-absolute-evidence"
 
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryStatePolicy:
-    """Absolute-evidence thresholds with deterministic timeframe-coverage guards.
+    """Locked absolute-evidence thresholds with deterministic coverage guards.
 
-    Threshold values remain provisional until real-score calibration is accepted. Coverage
-    guards are not percentile caps: they prevent sparse evidence from escalating farther
-    than its context can support. Zero scored timeframes stay NORMAL, one timeframe can
-    reach WATCH, two can reach WARM, and HOT requires all three configured timeframes.
+    These are absolute score thresholds, not percentile or population caps. The values were
+    calibrated against the real 2026-08-14 8,034-instrument discovery population after the
+    cross-sectional relative-strength tail correction. Coverage guards prevent sparse
+    evidence from escalating farther than its context can support: zero scored timeframes
+    stay NORMAL, one timeframe can reach WATCH, two can reach WARM, and HOT requires all
+    three configured timeframes plus non-neutral directional conviction.
     """
 
-    watch_priority: float = 0.42
-    warm_priority: float = 0.58
-    hot_priority: float = 0.72
-    hot_directional_evidence: float = 0.65
+    watch_priority: float = 0.35
+    warm_priority: float = 0.50
+    hot_priority: float = 0.60
+    hot_directional_evidence: float = 0.50
 
     def classify(
         self,
