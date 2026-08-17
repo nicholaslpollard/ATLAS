@@ -40,7 +40,8 @@ from .state_machine import (
 )
 
 
-DISCOVERY_SCORE_MANIFEST_VERSION = "discovery-score-manifest-v1-foundation-feature-lineage"
+DISCOVERY_SCORE_MANIFEST_VERSION = "discovery-score-manifest-v2-calibration-diagnostics"
+PRIORITY_CALIBRATION_THRESHOLDS = (0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65, 0.70)
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +53,8 @@ class DiscoveryScoreBuildResult:
     top_setup_counts: dict[str, int]
     timeframe_coverage_counts: dict[str, int]
     priority_quantiles: dict[str, float]
+    dominant_evidence_quantiles: dict[str, float]
+    priority_threshold_counts: dict[str, int]
     dependency_fingerprint: str
     snapshot_sha256: str
     snapshot_path: Path
@@ -168,6 +171,7 @@ class DiscoverySetupScanner:
                     "warm": self.state_policy.warm_priority,
                     "hot": self.state_policy.hot_priority,
                     "hot_directional": self.state_policy.hot_directional_evidence,
+                    "coverage_gates": {"normal": 0, "watch": 1, "warm": 2, "hot": 3},
                 },
                 "as_of_date": as_of_date.isoformat(),
                 "lineage": lineage,
@@ -281,6 +285,12 @@ class DiscoverySetupScanner:
                 str(k): int(v) for k, v in manifest["timeframe_coverage_counts"].items()
             },
             priority_quantiles={str(k): float(v) for k, v in manifest["priority_quantiles"].items()},
+            dominant_evidence_quantiles={
+                str(k): float(v) for k, v in manifest["dominant_evidence_quantiles"].items()
+            },
+            priority_threshold_counts={
+                str(k): int(v) for k, v in manifest["priority_threshold_counts"].items()
+            },
             dependency_fingerprint=str(manifest["dependency_fingerprint"]),
             snapshot_sha256=str(manifest["snapshot_sha256"]),
             snapshot_path=snapshot_path,
@@ -288,6 +298,26 @@ class DiscoverySetupScanner:
             wall_seconds=wall_seconds,
             skipped=skipped,
         )
+
+    @staticmethod
+    def _quantiles(values: pd.Series) -> dict[str, float]:
+        if values.empty:
+            return {key: 0.0 for key in ("p50", "p75", "p90", "p95", "p97.5", "p99", "p99.5", "p99.9", "max")}
+        result = {
+            key: float(values.quantile(q))
+            for key, q in (
+                ("p50", 0.50),
+                ("p75", 0.75),
+                ("p90", 0.90),
+                ("p95", 0.95),
+                ("p97.5", 0.975),
+                ("p99", 0.99),
+                ("p99.5", 0.995),
+                ("p99.9", 0.999),
+            )
+        }
+        result["max"] = float(values.max())
+        return result
 
     def build(self, as_of_date: date) -> DiscoveryScoreBuildResult:
         started = perf_counter()
@@ -336,6 +366,7 @@ class DiscoverySetupScanner:
                 bull_evidence=bull,
                 bear_evidence=bear,
                 direction=direction,
+                scored_timeframes=scored_timeframes,
             )
             record = DiscoveryScoreRecord(
                 instrument_id=str(row["instrument_id"]),
@@ -403,9 +434,16 @@ class DiscoverySetupScanner:
 
         snapshot_sha = sha256_file(snapshot_path)
         priorities = output["priority_score"] if not output.empty else pd.Series(dtype="float64")
-        quantiles = {
-            key: float(priorities.quantile(q)) if not priorities.empty else 0.0
-            for key, q in (("p50", 0.50), ("p75", 0.75), ("p90", 0.90), ("p95", 0.95), ("p99", 0.99))
+        dominant_evidence = (
+            output[["bull_evidence", "bear_evidence"]].max(axis=1)
+            if not output.empty
+            else pd.Series(dtype="float64")
+        )
+        quantiles = self._quantiles(priorities)
+        dominant_quantiles = self._quantiles(dominant_evidence)
+        threshold_counts = {
+            f">={threshold:.2f}": int((priorities >= threshold).sum())
+            for threshold in PRIORITY_CALIBRATION_THRESHOLDS
         }
         manifest = {
             "manifest_version": DISCOVERY_SCORE_MANIFEST_VERSION,
@@ -418,6 +456,7 @@ class DiscoverySetupScanner:
                 "warm": self.state_policy.warm_priority,
                 "hot": self.state_policy.hot_priority,
                 "hot_directional": self.state_policy.hot_directional_evidence,
+                "coverage_gates": {"normal": 0, "watch": 1, "warm": 2, "hot": 3},
             },
             "as_of_date": as_of_date.isoformat(),
             "dependency_fingerprint": dependency,
@@ -428,6 +467,8 @@ class DiscoverySetupScanner:
             "top_setup_counts": dict(sorted(top_setup_counts.items())),
             "timeframe_coverage_counts": dict(sorted(coverage_counts.items())),
             "priority_quantiles": quantiles,
+            "dominant_evidence_quantiles": dominant_quantiles,
+            "priority_threshold_counts": threshold_counts,
             "snapshot_path": str(snapshot_path.resolve()),
             "snapshot_sha256": snapshot_sha,
             "generated_at_utc": datetime.now(UTC).isoformat(),
