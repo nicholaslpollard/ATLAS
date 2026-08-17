@@ -338,7 +338,10 @@ class DiscoveryInputInventory:
                 SELECT
                     count(*) FILTER (WHERE feature_symbol IS NOT NULL) AS matched,
                     count(*) FILTER (WHERE feature_symbol IS NULL) AS missing,
-                    count(*) FILTER (WHERE close IS NULL OR NOT isfinite(close) OR close <= 0) AS invalid_close,
+                    count(*) FILTER (
+                        WHERE feature_symbol IS NOT NULL
+                          AND (close IS NULL OR NOT isfinite(close) OR close <= 0)
+                    ) AS invalid_close,
                     count(*) FILTER (WHERE feature_symbol IS NOT NULL AND volume = 0) AS zero_volume,
                     count(*) FILTER (
                         WHERE feature_symbol IS NOT NULL
@@ -434,14 +437,16 @@ class DiscoveryInputInventory:
         finally:
             con.close()
 
+        source_sha256 = {name: self._sha256(path) for name, path in paths.items()}
+        wall_seconds = perf_counter() - started
         report = DiscoveryInputInventoryReport(
             contract_version=DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION,
             as_of_date=as_of_date.isoformat(),
             generated_at_utc=datetime.now(UTC).isoformat(),
-            wall_seconds=perf_counter() - started,
+            wall_seconds=wall_seconds,
             universe_count=universe_count,
             duplicate_universe_tickers=duplicate_tickers,
-            source_sha256={name: self._sha256(path) for name, path in paths.items()},
+            source_sha256=source_sha256,
             coverage=coverage,
             daily_quality=daily_quality,
             quantiles=quantiles,
