@@ -9,10 +9,16 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.data.paths import MarketDataPaths
+from packages.discovery.filter_policy import (
+    ACTIVE_DISCOVERY_FILTER_POLICY,
+    DISCOVERY_FILTER_POLICY_VERSION,
+)
 from packages.discovery.input_inventory import (
     DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION,
     DiscoveryInputInventory,
 )
+from packages.discovery.scanner import DISCOVERY_FOUNDATION_MANIFEST_VERSION
+from packages.schemas.candidate import DISCOVERY_CANDIDATE_CONTRACT_VERSION
 
 
 def _strictly_increasing(values: tuple[float, ...]) -> bool:
@@ -26,6 +32,19 @@ def main() -> int:
     assert DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION == (
         "discovery-input-inventory-v2-canonical-bars-plus-derived-features"
     )
+    assert DISCOVERY_CANDIDATE_CONTRACT_VERSION == (
+        "discovery-candidate-v1-health-activity-routing"
+    )
+    assert DISCOVERY_FILTER_POLICY_VERSION == (
+        "discovery-filter-v1-250k-dollar-volume-no-price-floor"
+    )
+    assert DISCOVERY_FOUNDATION_MANIFEST_VERSION == (
+        "discovery-foundation-manifest-v1-upstream-lineage-bound"
+    )
+    assert ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume == 250_000.0
+    assert ACTIVE_DISCOVERY_FILTER_POLICY.minimum_dollar_volume < ACTIVE_DISCOVERY_FILTER_POLICY.active_dollar_volume
+    assert ACTIVE_DISCOVERY_FILTER_POLICY.active_dollar_volume < ACTIVE_DISCOVERY_FILTER_POLICY.liquid_dollar_volume
+    assert ACTIVE_DISCOVERY_FILTER_POLICY.liquid_dollar_volume < ACTIVE_DISCOVERY_FILTER_POLICY.deep_dollar_volume
     assert _strictly_increasing(DiscoveryInputInventory.CLOSE_THRESHOLDS)
     assert _strictly_increasing(DiscoveryInputInventory.VOLUME_THRESHOLDS)
     assert _strictly_increasing(DiscoveryInputInventory.DOLLAR_VOLUME_THRESHOLDS)
@@ -40,13 +59,24 @@ def main() -> int:
         "realized_volatility_20",
     }
 
-    sample = paths.discovery_input_inventory_report(__import__("datetime").date(2026, 8, 14))
-    assert "discovery" in sample.parts
-    assert "input_inventory" in sample.parts
+    sample_date = __import__("datetime").date(2026, 8, 14)
+    inventory = paths.discovery_input_inventory_report(sample_date)
+    snapshot = paths.discovery_snapshot_file(sample_date)
+    manifest = paths.discovery_snapshot_manifest(sample_date)
+    assert "discovery" in inventory.parts and "input_inventory" in inventory.parts
+    assert "discovery" in snapshot.parts and "snapshots" in snapshot.parts
+    assert "discovery" in manifest.parts
 
     print(f"Discovery input inventory contract: {DISCOVERY_INPUT_INVENTORY_CONTRACT_VERSION}")
+    print(f"Discovery candidate contract: {DISCOVERY_CANDIDATE_CONTRACT_VERSION}")
+    print(f"Discovery filter policy: {DISCOVERY_FILTER_POLICY_VERSION}")
+    print(f"Discovery policy fingerprint: {ACTIVE_DISCOVERY_FILTER_POLICY.fingerprint}")
+    print(f"Discovery foundation manifest: {DISCOVERY_FOUNDATION_MANIFEST_VERSION}")
     print("Canonical 1d bars + derived feature separation: PASS")
-    print("Measured threshold bands: PASS (informational, not policy)")
+    print("$250K dollar-volume floor / no share-price floor: PASS")
+    print("Mandatory-route bypass separation: PASS")
+    print("Manifest-lineage production path: PASS")
+    print("Measured threshold bands: PASS (inventory only)")
     print("Instrument-agnostic discovery foundation: PASS")
     print("Phase 08 discovery foundation: PASS")
     return 0
