@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import UTC, date, datetime
+from datetime import date
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from packages.core.enums import InstrumentIdentityQuality
+from packages.instruments.identity import IDENTITY_CONTRACT_VERSION, InstrumentIdentityResolver
 from packages.schemas.universe import (
     UNIVERSE_CONTRACT_VERSION,
     UniverseMember,
@@ -67,10 +68,29 @@ def main() -> int:
     if override.discovery_eligible:
         raise RuntimeError("position override incorrectly became discovery eligible")
 
+    resolver = InstrumentIdentityResolver()
+    medium_base = {
+        "cik": "0000070858",
+        "primary_exchange": "XNYS",
+        "type": "PFD",
+    }
+    bac_a, _, quality_a = resolver.resolve(
+        {**medium_base, "ticker": "BACpA"}, date(2026, 8, 14)
+    )
+    bac_b, _, quality_b = resolver.resolve(
+        {**medium_base, "ticker": "BACpB"}, date(2026, 8, 14)
+    )
+    if quality_a != InstrumentIdentityQuality.MEDIUM or quality_b != InstrumentIdentityQuality.MEDIUM:
+        raise RuntimeError("medium identity validation did not use medium-quality path")
+    if bac_a == bac_b:
+        raise RuntimeError("distinct issuer securities collapsed into one medium identity")
+
     print(f"Universe contract: {UNIVERSE_CONTRACT_VERSION}")
+    print(f"Instrument identity contract: {IDENTITY_CONTRACT_VERSION}")
     print(f"Reference inventory contract: {REFERENCE_UNIVERSE_INVENTORY_VERSION}")
     print(f"Semantic fingerprint: {forward}")
     print("Provider-native ticker case: PASS")
+    print("Medium issuer-security separation: PASS")
     print("Discovery/override separation: PASS")
     print("Deterministic universe fingerprint: PASS")
     print("Phase 07 universe foundation: PASS")
