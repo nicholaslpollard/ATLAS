@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from packages.regimes.ticker_authority_probe import (
     AMBIGUOUS_AUTHORITATIVE_INTERVAL,
+    CACHED_AUTHORITATIVE_UNRESOLVED,
     NEEDS_COMPOSITE_FIGI_EVENT,
     NOT_REQUIRED,
     RESOLVED_AUTHORITATIVE_INTERVAL,
@@ -16,6 +17,7 @@ def test_ticker_authority_contract() -> None:
     assert TICKER_AUTHORITY_PROBE_CONTRACT_VERSION == (
         "ticker-authority-probe-v1-unresolved-composite-figi-cache-audit"
     )
+    assert CACHED_AUTHORITATIVE_UNRESOLVED == "CACHED_AUTHORITATIVE_UNRESOLVED"
 
 
 def test_authority_status_accepts_one_exact_current_interval() -> None:
