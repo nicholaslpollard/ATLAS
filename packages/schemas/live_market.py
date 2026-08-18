@@ -104,6 +104,37 @@ class LiveQuote(BaseModel):
         return to_utc(value)
 
 
+class LiveTransportGap(BaseModel):
+    """One observed interval where a previously subscribed socket was unavailable.
+
+    The interval is an audit fact about transport availability, not proof that any
+    provider market events were actually missed. Finalized-session reconciliation
+    determines the concrete live-vs-canonical data gap after the provider flat file
+    becomes authoritative.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    started_at_utc: datetime
+    ended_at_utc: datetime
+    reason: str = Field(default="websocket_reconnect", min_length=1)
+
+    @field_validator("started_at_utc", "ended_at_utc")
+    @classmethod
+    def normalize_timestamp(cls, value: datetime) -> datetime:
+        return to_utc(value)
+
+    @model_validator(mode="after")
+    def validate_interval(self) -> "LiveTransportGap":
+        if self.ended_at_utc < self.started_at_utc:
+            raise ValueError("transport gap ended_at_utc cannot precede started_at_utc")
+        return self
+
+    @property
+    def duration_seconds(self) -> float:
+        return (self.ended_at_utc - self.started_at_utc).total_seconds()
+
+
 class LiveSymbolState(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -160,9 +191,15 @@ class LiveStateSnapshot(BaseModel):
     restored_symbol_count: int = Field(default=0, ge=0)
     observed_symbol_count: int = Field(default=0, ge=0)
     last_received_at_utc: datetime | None = None
+    transport_gaps: tuple[LiveTransportGap, ...] = ()
+    open_transport_gap_started_at_utc: datetime | None = None
     symbols: tuple[LiveSymbolState, ...] = ()
 
-    @field_validator("generated_at_utc", "last_received_at_utc")
+    @field_validator(
+        "generated_at_utc",
+        "last_received_at_utc",
+        "open_transport_gap_started_at_utc",
+    )
     @classmethod
     def normalize_snapshot_timestamp(cls, value: datetime | None) -> datetime | None:
         return to_utc(value) if value is not None else None
@@ -170,6 +207,14 @@ class LiveStateSnapshot(BaseModel):
     @property
     def symbol_count(self) -> int:
         return len(self.symbols)
+
+    @property
+    def transport_gap_count(self) -> int:
+        return len(self.transport_gaps)
+
+    @property
+    def transport_gap_total_seconds(self) -> float:
+        return sum(gap.duration_seconds for gap in self.transport_gaps)
 
 
 class LiveReconciliationSummary(BaseModel):
