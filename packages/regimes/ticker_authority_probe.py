@@ -87,6 +87,10 @@ class TickerAuthorityProbe:
     def _safe(path: Path | str) -> str:
         return str(path).replace("\\", "/").replace("'", "''")
 
+    def report_path(self, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "regimes" / "ticker_authority_probe" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+
     def _required_paths(self, as_of_date: date) -> dict[str, Path]:
         result = {
             "universe": self.paths.universe_snapshot_file(as_of_date),
@@ -257,7 +261,7 @@ class TickerAuthorityProbe:
     def run(self, as_of_date: date) -> TickerAuthorityProbeReport:
         started = perf_counter()
         paths = self._required_paths(as_of_date)
-        target = self.paths.ticker_authority_probe_report(as_of_date)
+        target = self.report_path(as_of_date)
         target.parent.mkdir(parents=True, exist_ok=True)
 
         con = connect_utc(":memory:")
