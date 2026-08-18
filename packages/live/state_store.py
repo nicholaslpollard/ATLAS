@@ -14,6 +14,7 @@ from packages.schemas.live_market import (
     LiveQuote,
     LiveStateSnapshot,
     LiveSymbolState,
+    LiveTransportGap,
 )
 
 from .freshness import FreshnessPolicy
@@ -28,6 +29,10 @@ class LiveStateStore:
     this cache. On restart, the last persisted provisional values are restored when
     they were produced by the same feed mode; freshness is always recalculated at the
     new snapshot time.
+
+    Reconnect transport gaps are run-local audit facts. They are not restored into a
+    new process, because the finalized canonical session later determines whether any
+    provider bars were actually missed during those wall-clock intervals.
     """
 
     def __init__(
@@ -62,6 +67,8 @@ class LiveStateStore:
         self._parse_errors = 0
         self._reconnects = 0
         self._last_received_at_utc: datetime | None = None
+        self._transport_gaps: list[LiveTransportGap] = []
+        self._open_transport_gap_started_at_utc: datetime | None = None
         self._restore_latest_values()
 
     @property
@@ -105,6 +112,28 @@ class LiveStateStore:
     def record_reconnect(self) -> None:
         with self._lock:
             self._reconnects += 1
+
+    def record_transport_gap_start(self, started_at_utc: datetime | None = None) -> None:
+        started = to_utc(started_at_utc or datetime.now(UTC))
+        with self._lock:
+            if self._open_transport_gap_started_at_utc is None:
+                self._open_transport_gap_started_at_utc = started
+
+    def record_transport_gap_end(self, ended_at_utc: datetime | None = None) -> None:
+        ended = to_utc(ended_at_utc or datetime.now(UTC))
+        with self._lock:
+            started = self._open_transport_gap_started_at_utc
+            if started is None:
+                return
+            if ended < started:
+                ended = started
+            self._transport_gaps.append(
+                LiveTransportGap(
+                    started_at_utc=started,
+                    ended_at_utc=ended,
+                )
+            )
+            self._open_transport_gap_started_at_utc = None
 
     def record_received(self, received_at_utc: datetime) -> None:
         received = to_utc(received_at_utc)
@@ -197,6 +226,8 @@ class LiveStateStore:
                 restored_symbol_count=len(self._restored_symbols),
                 observed_symbol_count=len(self._observed_symbols),
                 last_received_at_utc=self._last_received_at_utc,
+                transport_gaps=tuple(self._transport_gaps),
+                open_transport_gap_started_at_utc=self._open_transport_gap_started_at_utc,
                 symbols=tuple(symbol_states),
             )
 
