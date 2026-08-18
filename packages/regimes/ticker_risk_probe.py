@@ -51,6 +51,7 @@ class TickerRiskProbeReport:
     identity_safe_history_instrument_count: int
     identity_blocked_history_instrument_count: int
     current_metric_instrument_count: int
+    missing_current_metric_instrument_count: int
     lookback_windows: tuple[int, ...]
     coverage_by_window: dict[str, int]
     insufficient_for_shortest_window_count: int
@@ -242,6 +243,7 @@ class TickerRiskProbe:
             SELECT *
             FROM scored
             WHERE current_rank = 1
+              AND trading_date = DATE '{as_of}'
             ORDER BY instrument_id
             """
             return con.execute(query).fetch_df()
@@ -359,9 +361,10 @@ class TickerRiskProbe:
             identity_safe_history_instrument_count=int(len(population)),
             identity_blocked_history_instrument_count=int(route_population - len(population)),
             current_metric_instrument_count=int(len(frame)),
+            missing_current_metric_instrument_count=int(len(population) - len(frame)),
             lookback_windows=TICKER_RISK_LOOKBACK_WINDOWS,
             coverage_by_window=coverage,
-            insufficient_for_shortest_window_count=int(len(population) - shortest_coverage),
+            insufficient_for_shortest_window_count=int(len(frame) - shortest_coverage),
             candidate_windows=candidates,
             report_path=str(target),
         )
