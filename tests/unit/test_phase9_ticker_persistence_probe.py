@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from datetime import date
 
+import pandas as pd
 import pytest
 
 from packages.regimes.ticker_persistence_probe import (
     TICKER_PERSISTENCE_CONFIRMATION_WINDOWS,
     TICKER_PERSISTENCE_POLICY_NAMES,
+    TickerPersistenceProbe,
     agreement_diagnostics,
     dimensional_confirmed_states,
     sequence_diagnostics,
@@ -68,6 +70,44 @@ def test_split_contiguous_sequences_resets_across_missing_exchange_session() -> 
         sessions,
     )
     assert sequences == [["UPTREND", "PULLBACK_UP"], ["UPTREND"]]
+
+
+def test_segments_pairs_adjacent_split_boundaries_without_strict_zip_failure() -> None:
+    class _Calendar:
+        @staticmethod
+        def sessions_in_range(start_date: date, end_date: date) -> list[date]:
+            assert start_date == date(2026, 8, 10)
+            assert end_date == date(2026, 8, 13)
+            return [
+                date(2026, 8, 10),
+                date(2026, 8, 11),
+                date(2026, 8, 12),
+                date(2026, 8, 13),
+            ]
+
+    probe = TickerPersistenceProbe.__new__(TickerPersistenceProbe)
+    probe.calendar = _Calendar()
+    frame = pd.DataFrame(
+        {
+            "instrument_id": ["ins_a", "ins_a", "ins_a"],
+            "trading_date": [
+                date(2026, 8, 10),
+                date(2026, 8, 11),
+                date(2026, 8, 13),
+            ],
+            "candidate_state": ["UPTREND", "PULLBACK_UP", "UPTREND"],
+            "daily_structure": ["UP", "UP", "UP"],
+            "short_alignment": ["MIXED", "ALIGNED_DOWN", "MIXED"],
+            "momentum": ["POSITIVE", "POSITIVE", "POSITIVE"],
+        }
+    )
+
+    segments = probe._segments(frame)
+
+    assert [segment["candidate_state"] for segment in segments] == [
+        ["UPTREND", "PULLBACK_UP"],
+        ["UPTREND"],
+    ]
 
 
 def test_gate10_candidate_grid_is_explicit_and_bounded() -> None:
