@@ -49,6 +49,10 @@ from packages.regimes.threshold_probe import (
     REGIME_THRESHOLD_PROBE_CONTRACT_VERSION,
     REGIME_THRESHOLD_TRAINING_SESSIONS as THRESHOLD_PROBE_TRAINING_SESSIONS,
 )
+from packages.regimes.ticker_authority_gap_probe import (
+    TICKER_AUTHORITY_GAP_PROBE_CONTRACT_VERSION,
+    TickerAuthorityGapProbe,
+)
 from packages.regimes.ticker_authority_probe import (
     TICKER_AUTHORITY_PROBE_CONTRACT_VERSION,
     TickerAuthorityProbe,
@@ -109,6 +113,9 @@ def main() -> int:
     assert TICKER_AUTHORITY_PROBE_CONTRACT_VERSION == (
         "ticker-authority-probe-v1-unresolved-composite-figi-cache-audit"
     )
+    assert TICKER_AUTHORITY_GAP_PROBE_CONTRACT_VERSION == (
+        "ticker-authority-gap-probe-v1-cached-unresolved-event-timeline-audit"
+    )
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert REGIME_SELECTED_CONFIRMATION_SESSIONS == 2
     assert THRESHOLD_PROBE_CONFIRMATION_SESSIONS == REGIME_SELECTED_CONFIRMATION_SESSIONS
@@ -160,6 +167,7 @@ def main() -> int:
     ticker_probe = paths.ticker_regime_probe_report(sample_date)
     ticker_history_probe = TickerHistoryProbe(settings).report_path(sample_date)
     ticker_authority_probe = TickerAuthorityProbe(settings).report_path(sample_date)
+    ticker_authority_gap_probe = TickerAuthorityGapProbe(settings).report_path(sample_date)
     assert "regimes" in inventory.parts and "input_inventory" in inventory.parts
     assert "regimes" in classification_probe.parts and "classification_probe" in classification_probe.parts
     assert "regimes" in calibration.parts and "calibration" in calibration.parts
@@ -171,6 +179,7 @@ def main() -> int:
     assert "regimes" in ticker_probe.parts and "ticker_probe" in ticker_probe.parts
     assert "regimes" in ticker_history_probe.parts and "ticker_history_probe" in ticker_history_probe.parts
     assert "regimes" in ticker_authority_probe.parts and "ticker_authority_probe" in ticker_authority_probe.parts
+    assert "regimes" in ticker_authority_gap_probe.parts and "ticker_authority_gap_probe" in ticker_authority_gap_probe.parts
     assert len(
         {
             inventory,
@@ -184,8 +193,9 @@ def main() -> int:
             ticker_probe,
             ticker_history_probe,
             ticker_authority_probe,
+            ticker_authority_gap_probe,
         }
-    ) == 11
+    ) == 12
 
     print(f"Regime input inventory contract: {REGIME_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Classification probe contract: {REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION}")
@@ -201,6 +211,7 @@ def main() -> int:
     print(f"Ticker regime probe contract: {TICKER_REGIME_PROBE_CONTRACT_VERSION}")
     print(f"Ticker history probe contract: {TICKER_HISTORY_PROBE_CONTRACT_VERSION}")
     print(f"Ticker authority probe contract: {TICKER_AUTHORITY_PROBE_CONTRACT_VERSION}")
+    print(f"Ticker authority gap probe contract: {TICKER_AUTHORITY_GAP_PROBE_CONTRACT_VERSION}")
     print(f"Selected persistence: {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session dimensional confirmation")
     print(f"Selected point-in-time thresholds: {REGIME_THRESHOLD_POLICY_NAME}")
     print(f"Point-in-time threshold seed: {REGIME_THRESHOLD_TRAINING_SESSIONS} prior sessions")
@@ -220,6 +231,7 @@ def main() -> int:
     print("Ticker regime evidence: ACCEPTED FOR HISTORY-SAFETY PROBING; current semantics non-collapsed")
     print("Ticker history safety: CURRENT GATE 9; first sparse-reference bound rejected as production eligibility")
     print("Ticker authority inventory: CURRENT GATE 9 REFINEMENT; Composite-FIGI events are authoritative")
+    print("Ticker authority gaps: DIAGNOSE CACHED UNRESOLVED BEFORE FURTHER ENRICHMENT")
     print("Ticker persistence policy: NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
