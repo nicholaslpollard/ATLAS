@@ -17,6 +17,8 @@ dependencies = [
     "duckdb>=1.5.5,<1.6",
     "pytz>=2026.2,<2027",
     "websockets>=17,<18",
+    "numpy>=2.5,<3",
+    "pandas>=3.0,<4",
 ]
 
 [project.optional-dependencies]

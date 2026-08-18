@@ -31,6 +31,50 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "bars" / timeframe.value / f"year={trading_date.year:04d}" / f"month={trading_date.month:02d}" / f"date={trading_date}" / "part-000.parquet"
 
+    def feature_file(self, timeframe: Timeframe, trading_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return (
+            root
+            / "features"
+            / timeframe.value
+            / f"year={trading_date.year:04d}"
+            / f"month={trading_date.month:02d}"
+            / f"date={trading_date}"
+            / "part-000.parquet"
+        )
+
+    def feature_manifest_file(self, timeframe: Timeframe, trading_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.manifests)
+        return root / "features" / timeframe.value / f"{trading_date.year:04d}" / f"{trading_date}.json"
+
+    def feature_current_state_file(self, timeframe: Timeframe) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return root / "features" / "_state" / timeframe.value / "current.json.gz"
+
+    def feature_monthly_state_file(self, timeframe: Timeframe, as_of_date: date) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        return (
+            root
+            / "features"
+            / "_state"
+            / timeframe.value
+            / "monthly"
+            / f"{as_of_date.year:04d}"
+            / f"{as_of_date}.json.gz"
+        )
+
+    def feature_benchmark_report(self, generated_at_utc: datetime) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.derived)
+        stamp = generated_at_utc.strftime("%Y-%m-%dT%H%M%SZ")
+        return (
+            root
+            / "features"
+            / "_benchmarks"
+            / f"{generated_at_utc.year:04d}"
+            / f"{generated_at_utc.date()}"
+            / f"{stamp}.json"
+        )
+
     def quality_report(self, timeframe: Timeframe, trading_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
         return root / "quality" / timeframe.value / f"{trading_date.year:04d}" / f"{trading_date}.json"

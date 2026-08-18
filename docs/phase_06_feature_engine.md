@@ -1,0 +1,276 @@
+# Phase 06 — Feature Engine
+
+Phase 06 converts trusted ATLAS bars into reproducible quantitative features while
+keeping provider facts and derived calculations strictly separated.
+
+## Core guarantees
+
+1. Canonical/provider bars are never mutated by feature computation.
+2. Provider-native ticker case is preserved; `TPC` and `TpC` are distinct symbols.
+3. Feature calculations are grouped by exact symbol before any rolling/recursive math.
+4. Warm-up is explicit. A feature is NaN until its mathematical initialization is valid.
+5. Recursive indicators use documented ATLAS initialization rules rather than library defaults.
+6. Feature definitions are versioned and fingerprinted for downstream invalidation/provenance.
+7. Missing/non-numeric OHLCV input is rejected rather than silently interpolated.
+8. Historical batch math and incremental/live math must be equivalent bar-for-bar.
+9. Full-market historical persistence is benchmark-driven; ATLAS does not blindly multiply the lake by every feature column.
+10. Persisted recursive feature partitions depend on both their own source bars and the exact recursive state entering the partition.
+
+## Phase 6A mathematical contract
+
+### EMA
+
+ATLAS EMA is seeded with the arithmetic mean of the first complete `period` inputs,
+then follows:
+
+```text
+alpha = 2 / (period + 1)
+EMA_t = EMA_(t-1) + alpha * (x_t - EMA_(t-1))
+```
+
+This differs from pandas `ewm(adjust=False)` initialization and is intentional.
+
+### Wilder smoothing
+
+Wilder-recursive averages use an arithmetic-mean seed and then:
+
+```text
+W_t = (W_(t-1) * (period - 1) + x_t) / period
+```
+
+### RSI
+
+RSI14 requires 14 price changes / 15 contiguous observed closes. Gains and losses are Wilder-smoothed.
+Flat gain/loss windows are defined as RSI=50; gain-only windows are 100; loss-only windows are 0.
+
+### True Range / ATR
+
+```text
+TR_t = max(
+  high_t - low_t,
+  abs(high_t - close_(t-1)),
+  abs(low_t - close_(t-1))
+)
+```
+
+The first true range uses high-low because no previous close exists. ATR is the Wilder average of TR.
+
+### MACD
+
+All MACD EMA legs use the same ATLAS SMA-seeded EMA convention. With 12/26/9 parameters,
+the MACD line first becomes available at bar 26 and its signal/histogram at bar 34.
+
+### Bollinger Bands
+
+ATLAS uses a 20-bar SMA and population standard deviation (`ddof=0`) by contract.
+
+## Core feature registry
+
+The first production registry contains 33 features across:
+
+- momentum / returns;
+- trend averages, slopes, distance, efficiency;
+- volatility / ATR / Bollinger / realized volatility;
+- volume / OBV / relative volume / dollar volume;
+- structure / prior levels / breakout/breakdown / drawdown.
+
+Each definition records:
+
+```text
+name
+family
+version
+minimum_history_bars
+dependencies
+recursive
+```
+
+The sorted registry is SHA-256 fingerprinted. State checkpoints and persisted feature
+artifacts carry the calculation contract/fingerprint so stale derived data is detectable.
+
+## Phase 6B session and benchmark-relative context
+
+Session-aware helpers are separate from continuous technical-series math. Regular-session
+context currently includes:
+
+- session bar index;
+- session open;
+- previous completed regular-session close;
+- overnight gap;
+- return from session open;
+- session high/low to date;
+- session range position to date.
+
+Non-regular rows do not become regular-session state. Exact provider-native symbols own
+independent state. Benchmark-relative primitives include aligned price ratio, relative
+return, and relative-strength change; they require explicitly aligned asset/benchmark bars.
+
+## Phase 6C exact incremental state and durable partitions
+
+ATLAS does not approximate recursive indicators by loading an arbitrary recent window.
+`IncrementalFeatureEngine` carries the exact state needed by EMA20/50/200, MACD 12/26/9,
+Wilder RSI14, Wilder ATR14, OBV, and bounded rolling features.
+
+A deterministic equivalence test feeds the same generated market sequence through:
+
+```text
+historical batch engine
+        versus
+one-bar-at-a-time incremental engine
+```
+
+and requires every registered core feature to match at each bar within floating-point
+tolerance. This test caught and corrected a real semantic discrepancy: incremental
+`drawdown_20` initially used rolling intrabar high while the batch contract correctly used
+rolling close high.
+
+Exact incremental state can be saved as portable deterministic gzip-JSON. Checkpoints carry:
+
+- checkpoint schema version;
+- feature calculation contract;
+- registry fingerprint;
+- timeframe;
+- as-of date;
+- exact per-symbol recursive state and bounded rolling buffers;
+- a SHA-256 content fingerprint.
+
+Feature Parquet partitions use a state-dependent manifest contract. A partition's
+dependency fingerprint includes:
+
+```text
+feature partition contract
+feature calculation contract
+feature registry fingerprint
+source bar SHA-256
+incoming recursive-state fingerprint
+```
+
+The manifest also records the outgoing state fingerprint and feature-file SHA-256. This is
+critical for corrected historical data: a session can become stale even if its own bar file
+never changed, because an earlier correction can alter the EMA/RSI/ATR/OBV state entering it.
+
+`HistoricalFeatureMaterializer` processes source sessions chronologically through the same
+incremental engine intended for live use. A first historical build requires an explicit
+empty-state bootstrap at the ATLAS history origin. Subsequent runs resume from the current
+exact checkpoint. Month-end state snapshots are retained as replay anchors. A corrected
+historical source replays from the latest valid month-end anchor strictly before the
+correction (or genesis if none exists), replacing every downstream feature partition through
+the requested end rather than patching one recursive day in isolation.
+
+## Phase 6D measured persistence architecture
+
+Target-machine benchmarks ran on 2026-08-16 against the production ATLAS historical lake.
+
+### 4h benchmark
+
+```text
+sample sessions:        20
+sample range:           2026-07-20 -> 2026-08-14
+rows:                   714,562
+symbols:                13,110
+registered features:    33
+source Parquet:         16.1 MiB
+wall/process CPU:       ~6.8 minutes
+CPU one-core equiv:     99.6%
+rows/second:            1,746
+feature RAM frame:      221.3 MiB
+feature Parquet:        100.2 MiB
+compressed bytes/row:   147.1
+output/source ratio:    6.23x
+projected 1,255 rows:   44,838,766
+projected Parquet:      6,289.8 MiB (~6.14 GiB)
+projected compute:      427.9 minutes (~7.13 hours)
+```
+
+### 1h benchmark
+
+```text
+sample sessions:        20
+sample range:           2026-07-20 -> 2026-08-14
+rows:                   1,903,874
+symbols:                13,110
+registered features:    33
+source Parquet:         40.1 MiB
+wall/process CPU:       ~7.1 minutes
+CPU one-core equiv:     100.7%
+rows/second:            4,490
+peak process RSS:       2,419.6 MiB
+feature RAM frame:      589.6 MiB
+feature Parquet:        336.1 MiB
+compressed bytes/row:   185.1
+output/source ratio:    8.39x
+projected 1,255 rows:   119,468,094
+projected Parquet:      21,088.6 MiB (~20.59 GiB)
+projected compute:      443.4 minutes (~7.39 hours)
+```
+
+The target machine had approximately 206 GiB free after the benchmarks and 24 GiB of RAM.
+Storage and peak memory are therefore acceptable for both 1h and 4h durable feature history.
+The controlling cost is full recomputation time, which is why normal maintenance uses exact
+state checkpoints, state-dependent manifests, and month-end replay anchors.
+
+### Final active persistence policy
+
+```text
+1d   permanent full historical core features
+4h   permanent full historical core features
+1h   permanent full historical core features
+15m  on-demand / cache history
+1m   live/current feature state only
+```
+
+The 1d dataset is materially smaller than 4h and strategically important for regime,
+trend, research, and walk-forward work. 15m is intentionally not promoted to a full
+33-column historical matrix because its row volume/rebuild cost is materially larger. 1m
+remains state/current only. There are no remaining benchmark-candidate timeframes in the
+Phase 6 persistence policy.
+
+## Historical materialization
+
+The first persistent feature build must begin at the actual provider-backed ATLAS history
+origin (`2021-08-16`). Starting at a recent date with empty recursive state would produce
+mathematically different EMA/RSI/ATR/MACD/OBV histories and is not allowed as an accepted
+production build.
+
+A controlled 4h pilot should therefore begin with the first 20 exchange sessions:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_features.py `
+  --timeframe 4h `
+  --start 2021-08-16 `
+  --end 2021-09-13 `
+  --bootstrap-from-empty
+```
+
+After the pilot is inspected, an identical command with `--end 2026-08-14` resumes from the
+exact checkpoint instead of recomputing the pilot sessions. 1h and 1d maintain independent
+state/checkpoint streams and are bootstrapped separately from the same history origin.
+
+## Validation
+
+Run:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\validate_phase6.py
+```
+
+The validator checks a classic Wilder RSI reference vector, a hand-calculated Wilder ATR
+recurrence, provider-native ticker separation, feature contract metadata, the registry
+fingerprint, final measured persistence tiers, and state-dependent feature partition
+fingerprints.
+
+The pytest suite covers exact EMA/Wilder initialization, RSI/ATR/MACD warm-up, Bollinger
+population standard deviation, OBV, structure levels, session isolation, exact symbol case,
+batch-vs-incremental equivalence, state checkpoint continuation, benchmark projections,
+measured persistence tiers, state-dependent partition invalidation, exact historical resume,
+and monthly-anchor corrected-history replay.
+
+## Remaining Phase 06 acceptance
+
+1. Run the controlled real 4h historical materialization pilot from `2021-08-16`.
+2. Validate selected persisted real historical feature values against the source bars and independent calculations.
+3. Prove persisted current state can feed the Phase 5 live path without numerical discontinuity.
+4. Backfill permanent 4h, 1h, and 1d feature histories across the provider-backed range.
+5. Audit all permanent feature partitions/manifests and accept Phase 6.
+
+Phase 05's market-hours WebSocket throughput/finalization gates remain separate and may be completed while Phase 06 proceeds.
