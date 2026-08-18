@@ -80,6 +80,12 @@ from packages.regimes.ticker_probe import (
     TICKER_REGIME_REQUIRED_HISTORY_SESSIONS,
     TICKER_REGIME_TIMEFRAMES,
 )
+from packages.regimes.ticker_risk_probe import (
+    TICKER_RISK_LOOKBACK_WINDOWS,
+    TICKER_RISK_PROBE_CONTRACT_VERSION,
+    TICKER_RISK_REFERENCE_WINDOW,
+    TickerRiskProbe,
+)
 
 
 def main() -> int:
@@ -135,6 +141,9 @@ def main() -> int:
     assert TICKER_PERSISTENCE_POLICY_CONTRACT_VERSION == (
         "ticker-persistence-policy-v1-two-session-dimensional-confirmation"
     )
+    assert TICKER_RISK_PROBE_CONTRACT_VERSION == (
+        "ticker-risk-probe-v1-safe-self-relative-prior-only-lookback-grid"
+    )
     assert CACHED_AUTHORITATIVE_UNRESOLVED == "CACHED_AUTHORITATIVE_UNRESOLVED"
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert TICKER_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
@@ -144,6 +153,8 @@ def main() -> int:
         "dimensional_confirm_2",
         "dimensional_confirm_3",
     )
+    assert TICKER_RISK_LOOKBACK_WINDOWS == (20, 60, 126, 252)
+    assert TICKER_RISK_REFERENCE_WINDOW == 252
     assert REGIME_SELECTED_CONFIRMATION_SESSIONS == 2
     assert TICKER_SELECTED_CONFIRMATION_SESSIONS == 2
     assert TICKER_SELECTED_PERSISTENCE_MODE == "dimensional"
@@ -199,6 +210,7 @@ def main() -> int:
     ticker_authority_probe = TickerAuthorityProbe(settings).report_path(sample_date)
     ticker_authority_gap_probe = TickerAuthorityGapProbe(settings).report_path(sample_date)
     ticker_persistence_probe = TickerPersistenceProbe(settings).report_path(sample_date)
+    ticker_risk_probe = TickerRiskProbe(settings).report_path(sample_date)
     assert "regimes" in inventory.parts and "input_inventory" in inventory.parts
     assert "regimes" in classification_probe.parts and "classification_probe" in classification_probe.parts
     assert "regimes" in calibration.parts and "calibration" in calibration.parts
@@ -212,6 +224,7 @@ def main() -> int:
     assert "regimes" in ticker_authority_probe.parts and "ticker_authority_probe" in ticker_authority_probe.parts
     assert "regimes" in ticker_authority_gap_probe.parts and "ticker_authority_gap_probe" in ticker_authority_gap_probe.parts
     assert "regimes" in ticker_persistence_probe.parts and "ticker_persistence_probe" in ticker_persistence_probe.parts
+    assert "regimes" in ticker_risk_probe.parts and "ticker_risk_probe" in ticker_risk_probe.parts
     assert len(
         {
             inventory,
@@ -227,8 +240,9 @@ def main() -> int:
             ticker_authority_probe,
             ticker_authority_gap_probe,
             ticker_persistence_probe,
+            ticker_risk_probe,
         }
-    ) == 13
+    ) == 14
 
     print(f"Regime input inventory contract: {REGIME_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Classification probe contract: {REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION}")
@@ -247,6 +261,7 @@ def main() -> int:
     print(f"Ticker authority gap probe contract: {TICKER_AUTHORITY_GAP_PROBE_CONTRACT_VERSION}")
     print(f"Ticker persistence probe contract: {TICKER_PERSISTENCE_PROBE_CONTRACT_VERSION}")
     print(f"Ticker persistence policy contract: {TICKER_PERSISTENCE_POLICY_CONTRACT_VERSION}")
+    print(f"Ticker risk probe contract: {TICKER_RISK_PROBE_CONTRACT_VERSION}")
     print(f"Selected persistence: {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session dimensional confirmation")
     print(f"Selected ticker persistence: {TICKER_SELECTED_PERSISTENCE_POLICY_NAME}")
     print(f"Selected point-in-time thresholds: {REGIME_THRESHOLD_POLICY_NAME}")
@@ -255,6 +270,7 @@ def main() -> int:
     print(f"Ticker self-history diagnostic target: {TICKER_REGIME_REQUIRED_HISTORY_SESSIONS} complete 1d sessions")
     print("Ticker history depth grid: 2, 5, 20, 60, 126, 252 sessions")
     print("Ticker persistence candidates: composite/dimensional x 2/3-session confirmation")
+    print("Ticker risk lookbacks: 20, 60, 126, 252 prior sessions; 252 reference")
     print("Ticker regime timeframes: 1d + regular 4h + regular 1h")
     print(f"Market proxy basket: {', '.join(MARKET_PROXY_TICKERS)}")
     print(f"Sector proxy basket: {', '.join(SECTOR_PROXY_TICKERS)}")
@@ -271,7 +287,8 @@ def main() -> int:
     print("Ticker authority gaps: CACHED AUTHORITATIVE UNRESOLVED IS A CONSERVATIVE RESIDUAL CLASS")
     print("Ticker persistence evidence: ACCEPTED GATE 10; 1,713,049 safe state observations")
     print("Ticker persistence policy: ACCEPTED; 2-session dimensional confirmation")
-    print("Ticker risk/volatility policy: CURRENT GATE 11; NOT YET LOCKED")
+    print("Ticker risk evidence: CURRENT GATE 11; self-relative prior-only lookback grid")
+    print("Ticker risk/volatility policy: NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
