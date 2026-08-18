@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from statistics import median
 from time import perf_counter
-from typing import Any, Iterable
+from typing import Iterable
 
 import pandas as pd
 
@@ -55,8 +55,10 @@ class TickerPersistenceProbeReport:
     max_history_sessions: int
     confirmation_windows: tuple[int, ...]
     route_population_count: int
-    safe_history_instrument_count: int
-    blocked_history_instrument_count: int
+    identity_safe_history_instrument_count: int
+    identity_blocked_history_instrument_count: int
+    analyzable_history_instrument_count: int
+    insufficient_depth_instrument_count: int
     state_observation_count: int
     state_instrument_count: int
     state_depth_counts: dict[str, int]
@@ -129,7 +131,7 @@ def sequence_diagnostics(sequences: Iterable[list[str]]) -> dict[str, float | in
     transitions = 0
     flipbacks = 0
     run_lengths: list[int] = []
-    instrument_rates: list[float] = []
+    sequence_rates: list[float] = []
     one_day_shares: list[float] = []
 
     for states in sequences:
@@ -146,7 +148,7 @@ def sequence_diagnostics(sequences: Iterable[list[str]]) -> dict[str, float | in
             for index in range(1, len(states) - 1)
         )
         if len(states) > 1:
-            instrument_rates.append(local_transitions / (len(states) - 1))
+            sequence_rates.append(local_transitions / (len(states) - 1))
         if local_runs:
             one_day_shares.append(sum(length == 1 for length in local_runs) / len(local_runs))
 
@@ -156,7 +158,7 @@ def sequence_diagnostics(sequences: Iterable[list[str]]) -> dict[str, float | in
         "transition_opportunity_count": opportunities,
         "transition_count": transitions,
         "transition_rate": None if opportunities == 0 else transitions / opportunities,
-        "median_sequence_transition_rate": None if not instrument_rates else float(median(instrument_rates)),
+        "median_sequence_transition_rate": None if not sequence_rates else float(median(sequence_rates)),
         "run_count": len(run_lengths),
         "median_run_length": None if not run_lengths else float(median(run_lengths)),
         "p25_run_length": None if run_series.empty else float(run_series.quantile(0.25)),
@@ -290,8 +292,7 @@ class TickerPersistenceProbe:
         frame["operational_depth"] = depths
         frame["safe_start_date"] = starts
         safe = frame.loc[
-            frame["history_status"].isin({CURRENT_ALIAS_NO_CONFLICT, AUTHORITATIVE_CURRENT_INTERVAL})
-            & (frame["operational_depth"] >= 2),
+            frame["history_status"].isin({CURRENT_ALIAS_NO_CONFLICT, AUTHORITATIVE_CURRENT_INTERVAL}),
             ["instrument_id", "ticker", "history_status", "operational_depth", "safe_start_date"],
         ].copy()
         safe["safe_start_date"] = pd.to_datetime(safe["safe_start_date"]).dt.date
@@ -548,8 +549,11 @@ class TickerPersistenceProbe:
 
     def run(self, as_of_date: date) -> TickerPersistenceProbeReport:
         started = perf_counter()
-        safe_population, route_population = self._safe_population(as_of_date)
-        frame = self._state_frame(safe_population, as_of_date)
+        identity_safe_population, route_population = self._safe_population(as_of_date)
+        analyzable_population = identity_safe_population.loc[
+            pd.to_numeric(identity_safe_population["operational_depth"], errors="coerce").fillna(0) >= 2
+        ].copy()
+        frame = self._state_frame(analyzable_population, as_of_date)
         target = self.report_path(as_of_date)
         target.parent.mkdir(parents=True, exist_ok=True)
 
@@ -606,7 +610,7 @@ class TickerPersistenceProbe:
             wall_seconds=perf_counter() - started,
             probe_status="EVIDENCE_ONLY",
             history_safety_note=(
-                "Only Gate-9 operationally safe current-alias history is analyzed. Exact authoritative current intervals bound reused/multi-alias tickers; unresolved histories are excluded. No ticker-text splice."
+                "Gate-9 identity safety is reported separately from minimum analysis depth. Exact authoritative current intervals bound reused/multi-alias tickers; unresolved identities are excluded. No ticker-text splice."
             ),
             gap_policy_note=(
                 "Persistence and transition diagnostics reset across missing XNYS sessions; non-consecutive observations are never treated as a confirmation streak."
@@ -614,8 +618,10 @@ class TickerPersistenceProbe:
             max_history_sessions=TICKER_PERSISTENCE_MAX_HISTORY_SESSIONS,
             confirmation_windows=TICKER_PERSISTENCE_CONFIRMATION_WINDOWS,
             route_population_count=route_population,
-            safe_history_instrument_count=int(len(safe_population)),
-            blocked_history_instrument_count=int(route_population - len(safe_population)),
+            identity_safe_history_instrument_count=int(len(identity_safe_population)),
+            identity_blocked_history_instrument_count=int(route_population - len(identity_safe_population)),
+            analyzable_history_instrument_count=int(len(analyzable_population)),
+            insufficient_depth_instrument_count=int(len(identity_safe_population) - len(analyzable_population)),
             state_observation_count=int(len(frame)),
             state_instrument_count=int(frame["instrument_id"].nunique()) if not frame.empty else 0,
             state_depth_counts=_depth_counts(depth_by_instrument.tolist()),
