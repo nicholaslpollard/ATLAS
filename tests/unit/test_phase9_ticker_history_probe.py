@@ -4,76 +4,90 @@ import pandas as pd
 
 from packages.regimes.ticker_history_probe import (
     AUTHORITATIVE_CURRENT_INTERVAL,
-    SINGLE_ALIAS_UNREUSED,
+    CURRENT_ALIAS_NO_CONFLICT,
     TICKER_HISTORY_DEPTH_GRID,
     TICKER_HISTORY_PROBE_CONTRACT_VERSION,
     UNRESOLVED_MULTI_ALIAS,
     UNRESOLVED_TICKER_REUSE,
-    _safe_depth_summary,
+    _depth_summary,
+    authoritative_history_depth,
     depth_grid_counts,
-    history_safety_status,
-    identity_safe_depth,
+    history_status,
+    operational_history_depth,
 )
 
 
 def test_ticker_history_contract_and_depth_grid() -> None:
     assert TICKER_HISTORY_PROBE_CONTRACT_VERSION == (
-        "ticker-history-probe-v1-current-alias-depth-reuse-continuity"
+        "ticker-history-probe-v2-operational-current-alias-authoritative-interval-depth"
     )
     assert TICKER_HISTORY_DEPTH_GRID == (2, 5, 20, 60, 126, 252)
 
 
-def test_ticker_history_safety_status_prefers_reuse_block() -> None:
-    assert history_safety_status(
-        alias_count=1,
-        reuse_identity_count=2,
-        authoritative_current_interval_count=0,
-    ) == UNRESOLVED_TICKER_REUSE
-    assert history_safety_status(
+def test_authoritative_interval_takes_precedence_over_reuse() -> None:
+    assert history_status(
         alias_count=3,
         reuse_identity_count=2,
         authoritative_current_interval_count=1,
-    ) == UNRESOLVED_TICKER_REUSE
+    ) == AUTHORITATIVE_CURRENT_INTERVAL
 
 
-def test_ticker_history_safety_status_distinguishes_single_and_authoritative_aliases() -> None:
-    assert history_safety_status(
+def test_history_status_distinguishes_operational_and_unresolved_cases() -> None:
+    assert history_status(
         alias_count=1,
         reuse_identity_count=1,
         authoritative_current_interval_count=0,
-    ) == SINGLE_ALIAS_UNREUSED
-    assert history_safety_status(
-        alias_count=2,
-        reuse_identity_count=1,
-        authoritative_current_interval_count=1,
-    ) == AUTHORITATIVE_CURRENT_INTERVAL
-    assert history_safety_status(
+    ) == CURRENT_ALIAS_NO_CONFLICT
+    assert history_status(
         alias_count=2,
         reuse_identity_count=1,
         authoritative_current_interval_count=0,
     ) == UNRESOLVED_MULTI_ALIAS
+    assert history_status(
+        alias_count=1,
+        reuse_identity_count=2,
+        authoritative_current_interval_count=0,
+    ) == UNRESOLVED_TICKER_REUSE
 
 
-def test_identity_safe_depth_uses_only_status_approved_lower_bound() -> None:
-    assert identity_safe_depth(
-        status=SINGLE_ALIAS_UNREUSED,
-        observation_bounded_depth=126,
+def test_operational_depth_does_not_use_sparse_reference_bound() -> None:
+    assert operational_history_depth(
+        status=CURRENT_ALIAS_NO_CONFLICT,
+        raw_current_alias_depth=252,
         authoritative_interval_depth=20,
-    ) == 126
-    assert identity_safe_depth(
+    ) == 252
+    assert operational_history_depth(
         status=AUTHORITATIVE_CURRENT_INTERVAL,
-        observation_bounded_depth=252,
+        raw_current_alias_depth=500,
         authoritative_interval_depth=60,
     ) == 60
-    assert identity_safe_depth(
+
+
+def test_unresolved_history_is_not_spliced() -> None:
+    assert operational_history_depth(
         status=UNRESOLVED_MULTI_ALIAS,
-        observation_bounded_depth=252,
-        authoritative_interval_depth=252,
+        raw_current_alias_depth=500,
+        authoritative_interval_depth=500,
     ) == 0
-    assert identity_safe_depth(
+    assert operational_history_depth(
         status=UNRESOLVED_TICKER_REUSE,
-        observation_bounded_depth=252,
-        authoritative_interval_depth=252,
+        raw_current_alias_depth=500,
+        authoritative_interval_depth=500,
+    ) == 0
+    assert authoritative_history_depth(
+        status=CURRENT_ALIAS_NO_CONFLICT,
+        authoritative_interval_depth=500,
+    ) == 0
+
+
+def test_authoritative_depth_is_current_interval_only() -> None:
+    assert authoritative_history_depth(
+        status=AUTHORITATIVE_CURRENT_INTERVAL,
+        authoritative_interval_depth=126,
+    ) == 126
+    assert authoritative_history_depth(
+        status=UNRESOLVED_TICKER_REUSE,
+        authoritative_interval_depth=126,
     ) == 0
 
 
@@ -88,18 +102,20 @@ def test_depth_grid_and_status_summary_are_deterministic() -> None:
     }
     frame = pd.DataFrame(
         {
-            "safety_status": [
-                SINGLE_ALIAS_UNREUSED,
-                SINGLE_ALIAS_UNREUSED,
+            "history_status": [
+                CURRENT_ALIAS_NO_CONFLICT,
+                CURRENT_ALIAS_NO_CONFLICT,
                 AUTHORITATIVE_CURRENT_INTERVAL,
                 UNRESOLVED_MULTI_ALIAS,
             ],
-            "safe_depth": [300, 20, 60, 0],
+            "operational_depth": [300, 20, 60, 0],
+            "authoritative_depth": [0, 0, 60, 0],
         }
     )
-    summary = _safe_depth_summary(frame)
-    assert summary[SINGLE_ALIAS_UNREUSED]["instrument_count"] == 2
-    assert summary[SINGLE_ALIAS_UNREUSED][">=20"] == 2
-    assert summary[SINGLE_ALIAS_UNREUSED][">=252"] == 1
-    assert summary[AUTHORITATIVE_CURRENT_INTERVAL][">=60"] == 1
-    assert summary[UNRESOLVED_MULTI_ALIAS][">=2"] == 0
+    summary = _depth_summary(frame)
+    assert summary[CURRENT_ALIAS_NO_CONFLICT]["instrument_count"] == 2
+    assert summary[CURRENT_ALIAS_NO_CONFLICT]["operational"][">=20"] == 2
+    assert summary[CURRENT_ALIAS_NO_CONFLICT]["authoritative"][">=2"] == 0
+    assert summary[AUTHORITATIVE_CURRENT_INTERVAL]["operational"][">=60"] == 1
+    assert summary[AUTHORITATIVE_CURRENT_INTERVAL]["authoritative"][">=60"] == 1
+    assert summary[UNRESOLVED_MULTI_ALIAS]["operational"][">=2"] == 0
