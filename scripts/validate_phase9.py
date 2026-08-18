@@ -54,6 +54,7 @@ from packages.regimes.ticker_authority_gap_probe import (
     TickerAuthorityGapProbe,
 )
 from packages.regimes.ticker_authority_probe import (
+    CACHED_AUTHORITATIVE_UNRESOLVED,
     TICKER_AUTHORITY_PROBE_CONTRACT_VERSION,
     TickerAuthorityProbe,
 )
@@ -116,6 +117,7 @@ def main() -> int:
     assert TICKER_AUTHORITY_GAP_PROBE_CONTRACT_VERSION == (
         "ticker-authority-gap-probe-v1-cached-unresolved-event-timeline-audit"
     )
+    assert CACHED_AUTHORITATIVE_UNRESOLVED == "CACHED_AUTHORITATIVE_UNRESOLVED"
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert REGIME_SELECTED_CONFIRMATION_SESSIONS == 2
     assert THRESHOLD_PROBE_CONFIRMATION_SESSIONS == REGIME_SELECTED_CONFIRMATION_SESSIONS
@@ -231,7 +233,7 @@ def main() -> int:
     print("Ticker regime evidence: ACCEPTED FOR HISTORY-SAFETY PROBING; current semantics non-collapsed")
     print("Ticker history safety: CURRENT GATE 9; first sparse-reference bound rejected as production eligibility")
     print("Ticker authority inventory: CURRENT GATE 9 REFINEMENT; Composite-FIGI events are authoritative")
-    print("Ticker authority gaps: DIAGNOSE CACHED UNRESOLVED BEFORE FURTHER ENRICHMENT")
+    print("Ticker authority gaps: CACHED AUTHORITATIVE UNRESOLVED IS A CONSERVATIVE RESIDUAL CLASS")
     print("Ticker persistence policy: NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
