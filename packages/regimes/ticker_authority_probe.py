@@ -22,6 +22,7 @@ NOT_REQUIRED = "NOT_REQUIRED"
 RESOLVED_AUTHORITATIVE_INTERVAL = "RESOLVED_AUTHORITATIVE_INTERVAL"
 AMBIGUOUS_AUTHORITATIVE_INTERVAL = "AMBIGUOUS_AUTHORITATIVE_INTERVAL"
 NEEDS_COMPOSITE_FIGI_EVENT = "NEEDS_COMPOSITE_FIGI_EVENT"
+CACHED_AUTHORITATIVE_UNRESOLVED = "CACHED_AUTHORITATIVE_UNRESOLVED"
 UNRESOLVED_NO_COMPOSITE_FIGI = "UNRESOLVED_NO_COMPOSITE_FIGI"
 
 
@@ -290,20 +291,24 @@ class TickerAuthorityProbe:
         statuses: list[str] = []
         for row in rows:
             composite_figi = str(row.get("composite_figi") or "").strip()
+            event_file_cached = self.paths.ticker_events_file(str(row["instrument_id"])).is_file()
             status = authority_status(
                 alias_count=int(row["alias_count"]),
                 reuse_identity_count=int(row["reuse_identity_count"]),
                 authoritative_current_interval_count=int(row["authoritative_current_interval_count"]),
                 has_composite_figi=bool(composite_figi),
             )
+            if status == NEEDS_COMPOSITE_FIGI_EVENT and event_file_cached:
+                status = CACHED_AUTHORITATIVE_UNRESOLVED
             row["authority_status"] = status
-            row["event_file_cached"] = self.paths.ticker_events_file(str(row["instrument_id"])).is_file()
+            row["event_file_cached"] = event_file_cached
             statuses.append(status)
 
         status_counts = dict(sorted(Counter(statuses).items()))
         unresolved_statuses = {
             AMBIGUOUS_AUTHORITATIVE_INTERVAL,
             NEEDS_COMPOSITE_FIGI_EVENT,
+            CACHED_AUTHORITATIVE_UNRESOLVED,
             UNRESOLVED_NO_COMPOSITE_FIGI,
         }
         unresolved = [row for row in rows if row["authority_status"] in unresolved_statuses]
@@ -327,7 +332,8 @@ class TickerAuthorityProbe:
             authority_status_counts=status_counts,
             unresolved_identity_count=len(unresolved),
             unresolved_with_composite_figi_count=sum(
-                row["authority_status"] == NEEDS_COMPOSITE_FIGI_EVENT for row in rows
+                row["authority_status"] in {NEEDS_COMPOSITE_FIGI_EVENT, CACHED_AUTHORITATIVE_UNRESOLVED}
+                for row in rows
             ),
             unresolved_without_composite_figi_count=sum(
                 row["authority_status"] == UNRESOLVED_NO_COMPOSITE_FIGI for row in rows
@@ -340,9 +346,7 @@ class TickerAuthorityProbe:
             ),
             cached_event_file_count=cached_event_count,
             provider_sync_candidate_count=sum(
-                row["authority_status"] == NEEDS_COMPOSITE_FIGI_EVENT
-                and not bool(row["event_file_cached"])
-                for row in rows
+                row["authority_status"] == NEEDS_COMPOSITE_FIGI_EVENT for row in rows
             ),
             provider_sync_candidate_examples=self._examples(
                 rows,
