@@ -34,7 +34,7 @@ def process_peak_rss_bytes() -> int | None:
         if os.name == "nt":
             from ctypes import wintypes
 
-            class ProcessMemoryCounters(ctypes.Structure):
+            class ProcessMemoryCountersEx(ctypes.Structure):
                 _fields_ = [
                     ("cb", wintypes.DWORD),
                     ("PageFaultCount", wintypes.DWORD),
@@ -46,17 +46,27 @@ def process_peak_rss_bytes() -> int | None:
                     ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
                     ("PagefileUsage", ctypes.c_size_t),
                     ("PeakPagefileUsage", ctypes.c_size_t),
+                    ("PrivateUsage", ctypes.c_size_t),
                 ]
 
-            counters = ProcessMemoryCounters()
+            kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+            psapi = ctypes.WinDLL("psapi", use_last_error=True)
+            kernel32.GetCurrentProcess.argtypes = []
+            kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+            psapi.GetProcessMemoryInfo.argtypes = [
+                wintypes.HANDLE,
+                ctypes.POINTER(ProcessMemoryCountersEx),
+                wintypes.DWORD,
+            ]
+            psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+
+            counters = ProcessMemoryCountersEx()
             counters.cb = ctypes.sizeof(counters)
-            handle = ctypes.windll.kernel32.GetCurrentProcess()
-            ok = ctypes.windll.psapi.GetProcessMemoryInfo(
-                handle,
-                ctypes.byref(counters),
-                counters.cb,
-            )
-            return int(counters.PeakWorkingSetSize) if ok else None
+            handle = kernel32.GetCurrentProcess()
+            ok = psapi.GetProcessMemoryInfo(handle, ctypes.byref(counters), counters.cb)
+            if not ok:
+                return None
+            return int(counters.PeakWorkingSetSize)
 
         import resource
 
@@ -118,6 +128,7 @@ def build_benchmark_summary(
     baseline_healthy = (
         snapshot.parse_errors == 0
         and snapshot.reconnects == 0
+        and snapshot.open_transport_gap_started_at_utc is None
         and queue_utilization < 0.80
     )
 
@@ -140,6 +151,14 @@ def build_benchmark_summary(
         "ignored_out_of_order_events": snapshot.ignored_out_of_order_events,
         "parse_errors": snapshot.parse_errors,
         "reconnects": snapshot.reconnects,
+        "transport_gap_count": snapshot.transport_gap_count,
+        "transport_gap_total_seconds": snapshot.transport_gap_total_seconds,
+        "open_transport_gap_started_at_utc": (
+            snapshot.open_transport_gap_started_at_utc.isoformat()
+            if snapshot.open_transport_gap_started_at_utc is not None
+            else None
+        ),
+        "transport_gaps": [gap.model_dump(mode="json") for gap in snapshot.transport_gaps],
         "symbol_count": snapshot.symbol_count,
         "restored_symbol_count": snapshot.restored_symbol_count,
         "observed_symbol_count": snapshot.observed_symbol_count,
