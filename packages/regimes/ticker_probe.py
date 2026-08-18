@@ -357,6 +357,7 @@ class TickerRegimeProbe:
 
     def _history_counts(self, con: Any, as_of_date: date) -> None:
         feature_glob = self.paths.feature_glob(Timeframe.DAY_1)
+        as_of_literal = as_of_date.isoformat()
         con.execute(
             f"""
             CREATE TEMP VIEW atlas_daily_history_counts AS
@@ -378,10 +379,9 @@ class TickerRegimeProbe:
                 FROM atlas_ticker_population
                 WHERE current_ticker_identity_count = 1
             ) p ON p.ticker = f.symbol
-            WHERE CAST(f.timestamp_utc AS DATE) <= ?
+            WHERE CAST(f.timestamp_utc AS DATE) <= DATE '{as_of_literal}'
             GROUP BY f.symbol
-            """,
-            [as_of_date],
+            """
         )
 
     def _candidate_frame(self, con: Any) -> pd.DataFrame:
