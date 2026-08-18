@@ -63,6 +63,12 @@ from packages.regimes.ticker_history_probe import (
     TICKER_HISTORY_PROBE_CONTRACT_VERSION,
     TickerHistoryProbe,
 )
+from packages.regimes.ticker_persistence_policy import (
+    TICKER_PERSISTENCE_POLICY_CONTRACT_VERSION,
+    TICKER_SELECTED_CONFIRMATION_SESSIONS,
+    TICKER_SELECTED_PERSISTENCE_MODE,
+    TICKER_SELECTED_PERSISTENCE_POLICY_NAME,
+)
 from packages.regimes.ticker_persistence_probe import (
     TICKER_PERSISTENCE_CONFIRMATION_WINDOWS,
     TICKER_PERSISTENCE_POLICY_NAMES,
@@ -126,6 +132,9 @@ def main() -> int:
     assert TICKER_PERSISTENCE_PROBE_CONTRACT_VERSION == (
         "ticker-persistence-probe-v1-safe-history-composite-vs-dimensional-confirmation"
     )
+    assert TICKER_PERSISTENCE_POLICY_CONTRACT_VERSION == (
+        "ticker-persistence-policy-v1-two-session-dimensional-confirmation"
+    )
     assert CACHED_AUTHORITATIVE_UNRESOLVED == "CACHED_AUTHORITATIVE_UNRESOLVED"
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert TICKER_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
@@ -136,6 +145,9 @@ def main() -> int:
         "dimensional_confirm_3",
     )
     assert REGIME_SELECTED_CONFIRMATION_SESSIONS == 2
+    assert TICKER_SELECTED_CONFIRMATION_SESSIONS == 2
+    assert TICKER_SELECTED_PERSISTENCE_MODE == "dimensional"
+    assert TICKER_SELECTED_PERSISTENCE_POLICY_NAME == "dimensional_confirm_2"
     assert THRESHOLD_PROBE_CONFIRMATION_SESSIONS == REGIME_SELECTED_CONFIRMATION_SESSIONS
     assert REGIME_THRESHOLD_TRAINING_SESSIONS == 252
     assert THRESHOLD_PROBE_TRAINING_SESSIONS == REGIME_THRESHOLD_TRAINING_SESSIONS
@@ -234,7 +246,9 @@ def main() -> int:
     print(f"Ticker authority probe contract: {TICKER_AUTHORITY_PROBE_CONTRACT_VERSION}")
     print(f"Ticker authority gap probe contract: {TICKER_AUTHORITY_GAP_PROBE_CONTRACT_VERSION}")
     print(f"Ticker persistence probe contract: {TICKER_PERSISTENCE_PROBE_CONTRACT_VERSION}")
+    print(f"Ticker persistence policy contract: {TICKER_PERSISTENCE_POLICY_CONTRACT_VERSION}")
     print(f"Selected persistence: {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session dimensional confirmation")
+    print(f"Selected ticker persistence: {TICKER_SELECTED_PERSISTENCE_POLICY_NAME}")
     print(f"Selected point-in-time thresholds: {REGIME_THRESHOLD_POLICY_NAME}")
     print(f"Point-in-time threshold seed: {REGIME_THRESHOLD_TRAINING_SESSIONS} prior sessions")
     print(f"Regime history origin: {REGIME_HISTORY_ORIGIN_DATE}")
@@ -255,8 +269,9 @@ def main() -> int:
     print("Ticker history depth: ACCEPTED GATE 9 V2; sparse reference bound retired; exact authority wins")
     print("Ticker authority inventory: PROVIDER ENRICHMENT COMPLETE; Composite-FIGI events authoritative")
     print("Ticker authority gaps: CACHED AUTHORITATIVE UNRESOLVED IS A CONSERVATIVE RESIDUAL CLASS")
-    print("Ticker persistence evidence: CURRENT GATE 10; safe-history composite vs dimensional grid")
-    print("Ticker persistence policy: NOT YET LOCKED")
+    print("Ticker persistence evidence: ACCEPTED GATE 10; 1,713,049 safe state observations")
+    print("Ticker persistence policy: ACCEPTED; 2-session dimensional confirmation")
+    print("Ticker risk/volatility policy: CURRENT GATE 11; NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
