@@ -15,7 +15,7 @@ from packages.data.paths import MarketDataPaths
 from packages.providers.massive.reference_data import MassiveReferenceProvider
 from packages.schemas.instrument import InstrumentReferenceObservation, ReferenceSnapshotResult
 
-from .identity import InstrumentIdentityResolver
+from .identity import IDENTITY_CONTRACT_VERSION, InstrumentIdentityResolver
 
 try:
     import duckdb  # noqa: F401
@@ -23,7 +23,7 @@ except ImportError:  # pragma: no cover
     duckdb = None
 
 
-REFERENCE_CONTRACT_VERSION = "reference-v3-provider-native-ticker-case"
+REFERENCE_CONTRACT_VERSION = "reference-v4-security-safe-medium-identity"
 
 
 def _parse_optional_datetime(value: object) -> datetime | None:
@@ -104,22 +104,22 @@ class InstrumentRegistryStore:
                 f"""
                 COPY (
                     SELECT
-                        instrument_id,
-                        identity_key,
-                        identity_quality,
-                        provider,
+                        CAST(instrument_id AS VARCHAR) AS instrument_id,
+                        CAST(identity_key AS VARCHAR) AS identity_key,
+                        CAST(identity_quality AS VARCHAR) AS identity_quality,
+                        CAST(provider AS VARCHAR) AS provider,
                         CAST(as_of_date AS DATE) AS as_of_date,
-                        trim(ticker) AS ticker,
-                        name,
-                        market,
-                        locale,
-                        currency_name,
-                        primary_exchange,
-                        security_type,
-                        active,
-                        composite_figi,
-                        share_class_figi,
-                        cik,
+                        trim(CAST(ticker AS VARCHAR)) AS ticker,
+                        CAST(name AS VARCHAR) AS name,
+                        CAST(market AS VARCHAR) AS market,
+                        CAST(locale AS VARCHAR) AS locale,
+                        CAST(currency_name AS VARCHAR) AS currency_name,
+                        CAST(primary_exchange AS VARCHAR) AS primary_exchange,
+                        CAST(security_type AS VARCHAR) AS security_type,
+                        CAST(active AS BOOLEAN) AS active,
+                        CAST(composite_figi AS VARCHAR) AS composite_figi,
+                        CAST(share_class_figi AS VARCHAR) AS share_class_figi,
+                        CAST(cik AS VARCHAR) AS cik,
                         CAST(delisted_utc AS TIMESTAMPTZ) AS delisted_utc,
                         CAST(provider_last_updated_utc AS TIMESTAMPTZ) AS provider_last_updated_utc
                     FROM read_json_auto('{source}', format='newline_delimited')
@@ -169,6 +169,7 @@ class InstrumentRegistryStore:
             if (
                 bool(meta.get("include_inactive")) == include_inactive
                 and meta.get("contract_version") == REFERENCE_CONTRACT_VERSION
+                and meta.get("identity_contract_version") == IDENTITY_CONTRACT_VERSION
             ):
                 rows, instruments, quality = self._snapshot_counts(target)
                 self.rebuild_registry()
@@ -199,6 +200,7 @@ class InstrumentRegistryStore:
                     "as_of_date": as_of_date.isoformat(),
                     "include_inactive": include_inactive,
                     "contract_version": REFERENCE_CONTRACT_VERSION,
+                    "identity_contract_version": IDENTITY_CONTRACT_VERSION,
                     "row_count": row_count,
                     "instrument_count": instrument_count,
                     "fetched_at_utc": datetime.now(UTC).isoformat(),
