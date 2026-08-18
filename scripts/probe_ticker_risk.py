@@ -36,11 +36,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  routed population:              {report.route_population_count:,}")
     print(f"  identity-safe history:          {report.identity_safe_history_instrument_count:,}")
     print(f"  identity-blocked history:       {report.identity_blocked_history_instrument_count:,}")
-    print(f"  current risk metrics:           {report.current_metric_instrument_count:,}")
+    print(f"  exact as-of risk metrics:       {report.current_metric_instrument_count:,}")
+    print(f"  missing exact as-of metrics:    {report.missing_current_metric_instrument_count:,}")
     print("  prior-only lookback coverage:")
     for window in report.lookback_windows:
         print(f"    {window:>3} sessions:                {report.coverage_by_window[str(window)]:,}")
-    print(f"  identity-safe but <{report.lookback_windows[0]} prior: {report.insufficient_for_shortest_window_count:,}")
+    print(
+        f"  current metrics but <{report.lookback_windows[0]} prior: "
+        f"{report.insufficient_for_shortest_window_count:,}"
+    )
 
     print("  candidate self-relative windows:")
     for window in report.lookback_windows:
@@ -52,8 +56,18 @@ def main(argv: list[str] | None = None) -> int:
         if window != 252:
             risk = candidate["risk_agreement_vs_252"]
             efficiency = candidate["efficiency_agreement_vs_252"]
-            print(f"      risk vs 252:                n={int(risk['comparison_count']):,} exact={_pct(risk['exact_agreement_rate'])} within1={_pct(risk['within_one_level_rate'])} distance>=2={_pct(risk['two_or_more_level_mismatch_rate'])}")
-            print(f"      efficiency vs 252:          n={int(efficiency['comparison_count']):,} exact={_pct(efficiency['exact_agreement_rate'])} within1={_pct(efficiency['within_one_level_rate'])} distance>=2={_pct(efficiency['two_or_more_level_mismatch_rate'])}")
+            print(
+                f"      risk vs 252:                n={int(risk['comparison_count']):,} "
+                f"exact={_pct(risk['exact_agreement_rate'])} "
+                f"within1={_pct(risk['within_one_level_rate'])} "
+                f"distance>=2={_pct(risk['two_or_more_level_mismatch_rate'])}"
+            )
+            print(
+                f"      efficiency vs 252:          n={int(efficiency['comparison_count']):,} "
+                f"exact={_pct(efficiency['exact_agreement_rate'])} "
+                f"within1={_pct(efficiency['within_one_level_rate'])} "
+                f"distance>=2={_pct(efficiency['two_or_more_level_mismatch_rate'])}"
+            )
             print(f"      combined exact vs 252:      {_pct(candidate['combined_exact_agreement_vs_252'])}")
 
     print("  threshold basis:                TICKER-SELF-RELATIVE / PRIOR-ONLY")
