@@ -18,11 +18,11 @@ from packages.data.paths import MarketDataPaths
 
 
 TICKER_HISTORY_PROBE_CONTRACT_VERSION = (
-    "ticker-history-probe-v1-current-alias-depth-reuse-continuity"
+    "ticker-history-probe-v2-operational-current-alias-authoritative-interval-depth"
 )
 TICKER_HISTORY_DEPTH_GRID = (2, 5, 20, 60, 126, 252)
 
-SINGLE_ALIAS_UNREUSED = "SINGLE_ALIAS_UNREUSED"
+CURRENT_ALIAS_NO_CONFLICT = "CURRENT_ALIAS_NO_CONFLICT"
 AUTHORITATIVE_CURRENT_INTERVAL = "AUTHORITATIVE_CURRENT_INTERVAL"
 UNRESOLVED_MULTI_ALIAS = "UNRESOLVED_MULTI_ALIAS"
 UNRESOLVED_TICKER_REUSE = "UNRESOLVED_TICKER_REUSE"
@@ -48,40 +48,63 @@ class TickerHistoryProbeReport:
     current_ticker_reuse_count: int
     authoritative_current_interval_count: int
     ambiguous_authoritative_current_interval_count: int
-    safety_status_counts: dict[str, int]
+    history_status_counts: dict[str, int]
     raw_current_alias_depth_counts: dict[str, int]
-    identity_safe_depth_counts: dict[str, int]
-    safe_depth_by_status: dict[str, dict[str, int]]
+    operational_current_alias_depth_counts: dict[str, int]
+    authoritative_interval_depth_counts: dict[str, int]
+    depth_by_status: dict[str, dict[str, object]]
     unresolved_multi_alias_examples: tuple[dict[str, object], ...]
     unresolved_ticker_reuse_examples: tuple[dict[str, object], ...]
     report_path: str
 
 
-def history_safety_status(
+def history_status(
     *,
     alias_count: int,
     reuse_identity_count: int,
     authoritative_current_interval_count: int,
 ) -> str:
-    """Classify how much historical ticker continuity ATLAS may safely claim."""
+    """Classify which current-ticker history ATLAS may use.
 
-    if reuse_identity_count > 1:
-        return UNRESOLVED_TICKER_REUSE
-    if alias_count <= 1:
-        return SINGLE_ALIAS_UNREUSED
+    One exact provider-authoritative interval takes precedence over ticker reuse or
+    multiple observed aliases because the interval is keyed to the stable instrument
+    and explicitly bounds the current ticker. Without that evidence, reuse and
+    multiple aliases remain blocked. A single, unreused current alias may use its raw
+    current-ticker history for short operational analysis, but that history is not
+    promoted to provider-authoritative continuity.
+    """
+
     if authoritative_current_interval_count == 1:
         return AUTHORITATIVE_CURRENT_INTERVAL
-    return UNRESOLVED_MULTI_ALIAS
+    if reuse_identity_count > 1:
+        return UNRESOLVED_TICKER_REUSE
+    if alias_count > 1:
+        return UNRESOLVED_MULTI_ALIAS
+    return CURRENT_ALIAS_NO_CONFLICT
 
 
-def identity_safe_depth(
+def operational_history_depth(
     *,
     status: str,
-    observation_bounded_depth: int,
+    raw_current_alias_depth: int,
     authoritative_interval_depth: int,
 ) -> int:
-    if status == SINGLE_ALIAS_UNREUSED:
-        return max(0, int(observation_bounded_depth))
+    """Return history usable for short operational ticker-state calculations."""
+
+    if status == AUTHORITATIVE_CURRENT_INTERVAL:
+        return max(0, int(authoritative_interval_depth))
+    if status == CURRENT_ALIAS_NO_CONFLICT:
+        return max(0, int(raw_current_alias_depth))
+    return 0
+
+
+def authoritative_history_depth(
+    *,
+    status: str,
+    authoritative_interval_depth: int,
+) -> int:
+    """Return only Composite-FIGI-backed current-interval history depth."""
+
     if status == AUTHORITATIVE_CURRENT_INTERVAL:
         return max(0, int(authoritative_interval_depth))
     return 0
@@ -95,30 +118,34 @@ def depth_grid_counts(depths: pd.Series | list[int] | tuple[int, ...]) -> dict[s
     }
 
 
-def _safe_depth_summary(frame: pd.DataFrame) -> dict[str, dict[str, int]]:
-    result: dict[str, dict[str, int]] = {}
-    for status, subset in frame.groupby("safety_status", sort=True, observed=True):
+def _depth_summary(frame: pd.DataFrame) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for status, subset in frame.groupby("history_status", sort=True, observed=True):
         result[str(status)] = {
             "instrument_count": int(len(subset)),
-            **depth_grid_counts(subset["safe_depth"]),
+            "operational": depth_grid_counts(subset["operational_depth"]),
+            "authoritative": depth_grid_counts(subset["authoritative_depth"]),
         }
     return result
 
 
 class TickerHistoryProbe:
-    """Measure identity-safe current-alias history before ticker persistence is locked.
+    """Measure operational and authoritative current-ticker history depth.
 
-    Raw current-symbol depth is diagnostic only because ticker text can be renamed or
-    reused. Safe depth is deliberately conservative:
+    The original Gate 9 probe bounded single-alias history at the first sparse
+    point-in-time reference observation. That produced a pathological flat depth
+    distribution and is explicitly retired here.
 
-    * a single observed, unreused alias is counted only from its first reference
-      observation onward;
-    * a multi-alias identity is counted only inside one exact provider-authoritative
-      current validity interval;
-    * reused tickers and unresolved multi-alias identities receive no claimed safe
-      historical depth until stronger continuity evidence exists.
+    v2 separates two claims:
 
-    No old/new ticker series are spliced in this probe.
+    * operational current-alias depth: raw current-ticker feature history is usable
+      only when no alias/reuse conflict is observed, or inside one exact
+      provider-authoritative current interval;
+    * authoritative interval depth: only feature history inside one exact
+      Composite-FIGI-backed current validity interval is counted.
+
+    Reused or multi-alias ticker text without an exact current interval receives zero
+    operational history. No old/new ticker series are spliced.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -131,7 +158,13 @@ class TickerHistoryProbe:
 
     def report_path(self, as_of_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
-        return root / "regimes" / "ticker_history_probe" / f"{as_of_date.year:04d}" / f"{as_of_date}.json"
+        return (
+            root
+            / "regimes"
+            / "ticker_history_probe"
+            / f"{as_of_date.year:04d}"
+            / f"{as_of_date}.json"
+        )
 
     def _required_paths(self, as_of_date: date) -> dict[str, Path]:
         result = {
@@ -142,7 +175,7 @@ class TickerHistoryProbe:
         missing = [f"{name}: {path}" for name, path in result.items() if not path.is_file()]
         if missing:
             raise FileNotFoundError(
-                "Ticker history safety probe inputs are missing:\n  " + "\n  ".join(missing)
+                "Ticker history probe inputs are missing:\n  " + "\n  ".join(missing)
             )
         return result
 
@@ -297,10 +330,6 @@ class TickerHistoryProbe:
                 ai.current_interval_from,
                 count(f.trading_date) AS raw_current_alias_depth,
                 count(f.trading_date) FILTER (
-                    WHERE c.first_observed_date IS NOT NULL
-                      AND f.trading_date >= c.first_observed_date
-                ) AS observation_bounded_depth,
-                count(f.trading_date) FILTER (
                     WHERE ai.current_interval_count = 1
                       AND ai.current_interval_from IS NOT NULL
                       AND f.trading_date >= ai.current_interval_from
@@ -327,8 +356,12 @@ class TickerHistoryProbe:
         ).fetch_df()
 
     @staticmethod
-    def _example_rows(frame: pd.DataFrame, status: str, limit: int = 20) -> tuple[dict[str, object], ...]:
-        subset = frame.loc[frame["safety_status"] == status].head(limit)
+    def _example_rows(
+        frame: pd.DataFrame,
+        status: str,
+        limit: int = 20,
+    ) -> tuple[dict[str, object], ...]:
+        subset = frame.loc[frame["history_status"] == status].head(limit)
         result: list[dict[str, object]] = []
         for _, row in subset.iterrows():
             result.append(
@@ -360,26 +393,44 @@ class TickerHistoryProbe:
             raise ValueError("ticker history audit frame does not match routed population")
 
         statuses: list[str] = []
-        safe_depths: list[int] = []
+        operational_depths: list[int] = []
+        authoritative_depths: list[int] = []
         for _, row in frame.iterrows():
-            status = history_safety_status(
+            status = history_status(
                 alias_count=int(row["alias_count"]),
                 reuse_identity_count=int(row["reuse_identity_count"]),
-                authoritative_current_interval_count=int(row["authoritative_current_interval_count"]),
+                authoritative_current_interval_count=int(
+                    row["authoritative_current_interval_count"]
+                ),
             )
             statuses.append(status)
-            safe_depths.append(
-                identity_safe_depth(
+            operational_depths.append(
+                operational_history_depth(
                     status=status,
-                    observation_bounded_depth=int(row["observation_bounded_depth"]),
+                    raw_current_alias_depth=int(row["raw_current_alias_depth"]),
                     authoritative_interval_depth=int(row["authoritative_interval_depth"]),
                 )
             )
-        frame["safety_status"] = statuses
-        frame["safe_depth"] = safe_depths
+            authoritative_depths.append(
+                authoritative_history_depth(
+                    status=status,
+                    authoritative_interval_depth=int(row["authoritative_interval_depth"]),
+                )
+            )
+
+        frame["history_status"] = statuses
+        frame["operational_depth"] = operational_depths
+        frame["authoritative_depth"] = authoritative_depths
 
         status_counts = dict(sorted(Counter(statuses).items()))
         alias_numeric = pd.to_numeric(frame["alias_count"], errors="coerce").fillna(0)
+        reuse_numeric = pd.to_numeric(
+            frame["reuse_identity_count"], errors="coerce"
+        ).fillna(0)
+        interval_numeric = pd.to_numeric(
+            frame["authoritative_current_interval_count"], errors="coerce"
+        ).fillna(0)
+
         report = TickerHistoryProbeReport(
             contract_version=TICKER_HISTORY_PROBE_CONTRACT_VERSION,
             as_of_date=as_of_date.isoformat(),
@@ -387,12 +438,13 @@ class TickerHistoryProbe:
             wall_seconds=perf_counter() - started,
             probe_status="EVIDENCE_ONLY",
             population_note=(
-                "Phase 8 discovery-state instruments plus Phase 7 POSITION/WATCHLIST/CUSTOM routed overrides."
+                "Phase 8 discovery-state instruments plus Phase 7 "
+                "POSITION/WATCHLIST/CUSTOM routed overrides."
             ),
             safety_note=(
-                "Raw ticker-text history is diagnostic only. Identity-safe depth is bounded by first exact reference "
-                "observation for single unreused aliases or by one exact authoritative current validity interval; "
-                "unresolved alias/reuse cases are not spliced."
+                "Sparse reference observation dates are not history bounds. Operational depth uses raw current-ticker "
+                "history only when there is no observed alias/reuse conflict, or uses history inside one exact "
+                "Composite-FIGI-backed current interval. Authoritative depth counts only the latter. No ticker-text splice."
             ),
             route_population_count=routes["population"],
             discovery_count=routes["discovery"],
@@ -402,16 +454,24 @@ class TickerHistoryProbe:
             identity_single_alias_count=int((alias_numeric <= 1).sum()),
             identity_multi_alias_count=int((alias_numeric > 1).sum()),
             current_alias_observation_count=int(frame["first_observed_date"].notna().sum()),
-            current_ticker_reuse_count=int((pd.to_numeric(frame["reuse_identity_count"], errors="coerce").fillna(0) > 1).sum()),
-            authoritative_current_interval_count=int((pd.to_numeric(frame["authoritative_current_interval_count"], errors="coerce").fillna(0) == 1).sum()),
-            ambiguous_authoritative_current_interval_count=int((pd.to_numeric(frame["authoritative_current_interval_count"], errors="coerce").fillna(0) > 1).sum()),
-            safety_status_counts=status_counts,
+            current_ticker_reuse_count=int((reuse_numeric > 1).sum()),
+            authoritative_current_interval_count=int((interval_numeric == 1).sum()),
+            ambiguous_authoritative_current_interval_count=int((interval_numeric > 1).sum()),
+            history_status_counts=status_counts,
             raw_current_alias_depth_counts=depth_grid_counts(frame["raw_current_alias_depth"]),
-            identity_safe_depth_counts=depth_grid_counts(frame["safe_depth"]),
-            safe_depth_by_status=_safe_depth_summary(frame),
-            unresolved_multi_alias_examples=self._example_rows(frame, UNRESOLVED_MULTI_ALIAS),
-            unresolved_ticker_reuse_examples=self._example_rows(frame, UNRESOLVED_TICKER_REUSE),
+            operational_current_alias_depth_counts=depth_grid_counts(frame["operational_depth"]),
+            authoritative_interval_depth_counts=depth_grid_counts(frame["authoritative_depth"]),
+            depth_by_status=_depth_summary(frame),
+            unresolved_multi_alias_examples=self._example_rows(
+                frame, UNRESOLVED_MULTI_ALIAS
+            ),
+            unresolved_ticker_reuse_examples=self._example_rows(
+                frame, UNRESOLVED_TICKER_REUSE
+            ),
             report_path=str(target),
         )
-        atomic_write_text(target, json.dumps(asdict(report), indent=2, sort_keys=True) + "\n")
+        atomic_write_text(
+            target,
+            json.dumps(asdict(report), indent=2, sort_keys=True) + "\n",
+        )
         return report
