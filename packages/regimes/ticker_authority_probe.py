@@ -172,8 +172,12 @@ class TickerAuthorityProbe:
         con.execute(
             f"""
             CREATE TEMP VIEW atlas_ticker_authority_reference AS
-            SELECT instrument_id, ticker, composite_figi
+            SELECT
+                instrument_id,
+                ticker,
+                max(composite_figi) AS composite_figi
             FROM read_parquet('{reference}')
+            GROUP BY instrument_id, ticker
             """
         )
 
