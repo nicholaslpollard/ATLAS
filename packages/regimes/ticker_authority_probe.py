@@ -243,10 +243,18 @@ class TickerAuthorityProbe:
         return [dict(zip(columns, row)) for row in rows]
 
     @staticmethod
-    def _examples(rows: list[dict[str, object]], status: str, limit: int = 20) -> tuple[dict[str, object], ...]:
+    def _examples(
+        rows: list[dict[str, object]],
+        status: str,
+        limit: int = 20,
+        *,
+        uncached_only: bool = False,
+    ) -> tuple[dict[str, object], ...]:
         selected: list[dict[str, object]] = []
         for row in rows:
             if row["authority_status"] != status:
+                continue
+            if uncached_only and bool(row["event_file_cached"]):
                 continue
             selected.append(
                 {
@@ -336,7 +344,11 @@ class TickerAuthorityProbe:
                 and not bool(row["event_file_cached"])
                 for row in rows
             ),
-            provider_sync_candidate_examples=self._examples(rows, NEEDS_COMPOSITE_FIGI_EVENT),
+            provider_sync_candidate_examples=self._examples(
+                rows,
+                NEEDS_COMPOSITE_FIGI_EVENT,
+                uncached_only=True,
+            ),
             unresolved_no_figi_examples=self._examples(rows, UNRESOLVED_NO_COMPOSITE_FIGI),
             report_path=str(target),
         )
