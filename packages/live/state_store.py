@@ -1,0 +1,240 @@
+from __future__ import annotations
+
+import json
+from datetime import UTC, datetime
+from threading import RLock
+
+from packages.core.atomic_io import atomic_write_text
+from packages.core.enums import LiveConnectionState, LiveFeedMode
+from packages.core.settings import AtlasSettings
+from packages.core.timestamps import to_utc
+from packages.data.paths import MarketDataPaths
+from packages.schemas.live_market import (
+    LiveMinuteAggregate,
+    LiveQuote,
+    LiveStateSnapshot,
+    LiveSymbolState,
+    LiveTransportGap,
+)
+
+from .freshness import FreshnessPolicy
+from .session_clock import LiveSessionClock
+
+
+class LiveStateStore:
+    """Thread-safe latest-value state for discovery, monitoring, and the future API.
+
+    Only the latest minute bar and latest quote per symbol are retained in memory.
+    Full provisional event history belongs in the append-only live journal, not in
+    this cache. On restart, the last persisted provisional values are restored when
+    they were produced by the same feed mode; freshness is always recalculated at the
+    new snapshot time.
+
+    Reconnect transport gaps are run-local audit facts. They are not restored into a
+    new process, because the finalized canonical session later determines whether any
+    provider bars were actually missed during those wall-clock intervals.
+    """
+
+    def __init__(
+        self,
+        settings: AtlasSettings,
+        *,
+        feed_mode: LiveFeedMode,
+        expected_delay_seconds: int,
+        subscriptions: tuple[str, ...] = (),
+    ) -> None:
+        self.settings = settings
+        self.paths = MarketDataPaths(settings)
+        self.feed_mode = feed_mode
+        self.expected_delay_seconds = expected_delay_seconds
+        self.subscriptions = tuple(subscriptions)
+        cfg = settings.massive.stocks
+        self.freshness = FreshnessPolicy(
+            fresh_seconds=cfg.freshness_fresh_seconds,
+            aging_seconds=cfg.freshness_aging_seconds,
+        )
+        self.clock = LiveSessionClock(settings)
+        self._lock = RLock()
+        self._minutes: dict[str, LiveMinuteAggregate] = {}
+        self._quotes: dict[str, LiveQuote] = {}
+        self._restored_symbols: set[str] = set()
+        self._observed_symbols: set[str] = set()
+        self._restore_warning: str | None = None
+        self._connection_state = LiveConnectionState.DISCONNECTED
+        self._received_events = 0
+        self._accepted_events = 0
+        self._ignored_out_of_order_events = 0
+        self._parse_errors = 0
+        self._reconnects = 0
+        self._last_received_at_utc: datetime | None = None
+        self._transport_gaps: list[LiveTransportGap] = []
+        self._open_transport_gap_started_at_utc: datetime | None = None
+        self._restore_latest_values()
+
+    @property
+    def restored_symbol_count(self) -> int:
+        with self._lock:
+            return len(self._restored_symbols)
+
+    @property
+    def observed_symbol_count(self) -> int:
+        with self._lock:
+            return len(self._observed_symbols)
+
+    @property
+    def restore_warning(self) -> str | None:
+        return self._restore_warning
+
+    def _restore_latest_values(self) -> None:
+        path = self.paths.live_state_file()
+        if not path.exists():
+            return
+        try:
+            prior = LiveStateSnapshot.model_validate_json(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            self._restore_warning = (
+                f"Could not restore provisional live state from {path}: {type(exc).__name__}"
+            )
+            return
+        if prior.feed_mode != self.feed_mode:
+            return
+        for state in prior.symbols:
+            if state.minute is not None:
+                self._minutes[state.symbol] = state.minute
+            if state.quote is not None:
+                self._quotes[state.symbol] = state.quote
+        self._restored_symbols = set(self._minutes) | set(self._quotes)
+
+    def set_connection_state(self, state: LiveConnectionState) -> None:
+        with self._lock:
+            self._connection_state = state
+
+    def record_reconnect(self) -> None:
+        with self._lock:
+            self._reconnects += 1
+
+    def record_transport_gap_start(self, started_at_utc: datetime | None = None) -> None:
+        started = to_utc(started_at_utc or datetime.now(UTC))
+        with self._lock:
+            if self._open_transport_gap_started_at_utc is None:
+                self._open_transport_gap_started_at_utc = started
+
+    def record_transport_gap_end(self, ended_at_utc: datetime | None = None) -> None:
+        ended = to_utc(ended_at_utc or datetime.now(UTC))
+        with self._lock:
+            started = self._open_transport_gap_started_at_utc
+            if started is None:
+                return
+            if ended < started:
+                ended = started
+            self._transport_gaps.append(
+                LiveTransportGap(
+                    started_at_utc=started,
+                    ended_at_utc=ended,
+                )
+            )
+            self._open_transport_gap_started_at_utc = None
+
+    def record_received(self, received_at_utc: datetime) -> None:
+        received = to_utc(received_at_utc)
+        with self._lock:
+            self._received_events += 1
+            if self._last_received_at_utc is None or received > self._last_received_at_utc:
+                self._last_received_at_utc = received
+
+    def record_parse_error(self) -> None:
+        with self._lock:
+            self._parse_errors += 1
+
+    def apply_minute(self, event: LiveMinuteAggregate) -> bool:
+        with self._lock:
+            self._observed_symbols.add(event.symbol)
+            current = self._minutes.get(event.symbol)
+            if current is not None:
+                if event.bar_start_utc < current.bar_start_utc:
+                    self._ignored_out_of_order_events += 1
+                    return False
+                if (
+                    event.bar_start_utc == current.bar_start_utc
+                    and event.received_at_utc <= current.received_at_utc
+                ):
+                    self._ignored_out_of_order_events += 1
+                    return False
+            self._minutes[event.symbol] = event
+            self._accepted_events += 1
+            return True
+
+    def apply_quote(self, event: LiveQuote) -> bool:
+        with self._lock:
+            self._observed_symbols.add(event.symbol)
+            current = self._quotes.get(event.symbol)
+            if current is not None:
+                current_key = (current.provider_timestamp_utc, current.sequence)
+                event_key = (event.provider_timestamp_utc, event.sequence)
+                if event_key <= current_key:
+                    self._ignored_out_of_order_events += 1
+                    return False
+            self._quotes[event.symbol] = event
+            self._accepted_events += 1
+            return True
+
+    def apply(self, event: LiveMinuteAggregate | LiveQuote) -> bool:
+        if isinstance(event, LiveMinuteAggregate):
+            return self.apply_minute(event)
+        if isinstance(event, LiveQuote):
+            return self.apply_quote(event)
+        raise TypeError(f"Unsupported live event type: {type(event).__name__}")
+
+    def snapshot(self, as_of_utc: datetime | None = None) -> LiveStateSnapshot:
+        now = to_utc(as_of_utc or datetime.now(UTC))
+        with self._lock:
+            symbols = sorted(set(self._minutes) | set(self._quotes))
+            symbol_states: list[LiveSymbolState] = []
+            for symbol in symbols:
+                minute = self._minutes.get(symbol)
+                quote = self._quotes.get(symbol)
+                symbol_states.append(
+                    LiveSymbolState(
+                        symbol=symbol,
+                        as_of_utc=now,
+                        minute=minute,
+                        minute_freshness=self.freshness.classify(
+                            minute.bar_end_utc if minute else None,
+                            now,
+                            expected_delay_seconds=minute.expected_delay_seconds if minute else self.expected_delay_seconds,
+                        ),
+                        quote=quote,
+                        quote_freshness=self.freshness.classify(
+                            quote.provider_timestamp_utc if quote else None,
+                            now,
+                            expected_delay_seconds=quote.expected_delay_seconds if quote else self.expected_delay_seconds,
+                        ),
+                    )
+                )
+            return LiveStateSnapshot(
+                generated_at_utc=now,
+                feed_mode=self.feed_mode,
+                expected_delay_seconds=self.expected_delay_seconds,
+                connection_state=self._connection_state,
+                subscriptions=self.subscriptions,
+                session=self.clock.status(now),
+                received_events=self._received_events,
+                accepted_events=self._accepted_events,
+                ignored_out_of_order_events=self._ignored_out_of_order_events,
+                parse_errors=self._parse_errors,
+                reconnects=self._reconnects,
+                restored_symbol_count=len(self._restored_symbols),
+                observed_symbol_count=len(self._observed_symbols),
+                last_received_at_utc=self._last_received_at_utc,
+                transport_gaps=tuple(self._transport_gaps),
+                open_transport_gap_started_at_utc=self._open_transport_gap_started_at_utc,
+                symbols=tuple(symbol_states),
+            )
+
+    def persist_snapshot(self, as_of_utc: datetime | None = None) -> LiveStateSnapshot:
+        snapshot = self.snapshot(as_of_utc)
+        atomic_write_text(
+            self.paths.live_state_file(),
+            json.dumps(snapshot.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+        )
+        return snapshot

@@ -47,5 +47,8 @@ jobs:
       - name: Validate Phase 4
         run: python scripts/validate_phase4.py
 
+      - name: Validate Phase 5
+        run: python scripts/validate_phase5.py
+
       - name: Run tests
         run: python -m pytest -q

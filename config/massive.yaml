@@ -14,8 +14,19 @@ massive:
 
   stocks:
     websocket_minute_channel: AM
+    websocket_quote_channel: Q
     websocket_default_subscription: "*"
     use_delayed_feed_initially: true
+    delayed_feed_expected_delay_seconds: 900
+    realtime_feed_expected_delay_seconds: 0
+    websocket_open_timeout_seconds: 10.0
+    websocket_auth_timeout_seconds: 10.0
+    websocket_ping_interval_seconds: 20.0
+    websocket_ping_timeout_seconds: 20.0
+    websocket_ingress_queue_size: 10000
+    live_state_snapshot_interval_seconds: 5.0
+    freshness_fresh_seconds: 90
+    freshness_aging_seconds: 300
 
   flat_files:
     datasets:

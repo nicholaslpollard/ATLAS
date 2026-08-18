@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv>=1.1,<2",
     "duckdb>=1.5.5,<1.6",
     "pytz>=2026.2,<2027",
+    "websockets>=17,<18",
 ]
 
 [project.optional-dependencies]
