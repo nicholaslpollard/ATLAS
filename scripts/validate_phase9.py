@@ -109,7 +109,7 @@ def main() -> int:
         "ticker-regime-probe-v1-routed-multitimeframe-identity-history-audit"
     )
     assert TICKER_HISTORY_PROBE_CONTRACT_VERSION == (
-        "ticker-history-probe-v1-current-alias-depth-reuse-continuity"
+        "ticker-history-probe-v2-operational-current-alias-authoritative-interval-depth"
     )
     assert TICKER_AUTHORITY_PROBE_CONTRACT_VERSION == (
         "ticker-authority-probe-v1-unresolved-composite-figi-cache-audit"
@@ -219,7 +219,7 @@ def main() -> int:
     print(f"Point-in-time threshold seed: {REGIME_THRESHOLD_TRAINING_SESSIONS} prior sessions")
     print(f"Regime history origin: {REGIME_HISTORY_ORIGIN_DATE}")
     print(f"Ticker self-history diagnostic target: {TICKER_REGIME_REQUIRED_HISTORY_SESSIONS} complete 1d sessions")
-    print("Ticker history safety depth grid: 2, 5, 20, 60, 126, 252 sessions")
+    print("Ticker history depth grid: 2, 5, 20, 60, 126, 252 sessions")
     print("Ticker regime timeframes: 1d + regular 4h + regular 1h")
     print(f"Market proxy basket: {', '.join(MARKET_PROXY_TICKERS)}")
     print(f"Sector proxy basket: {', '.join(SECTOR_PROXY_TICKERS)}")
@@ -231,8 +231,8 @@ def main() -> int:
     print("Point-in-time threshold policy: ACCEPTED; expanding prior-only after 252-session seed")
     print("Market/sector regime state materialization: ACCEPTED; deterministic replay CURRENT")
     print("Ticker regime evidence: ACCEPTED FOR HISTORY-SAFETY PROBING; current semantics non-collapsed")
-    print("Ticker history safety: CURRENT GATE 9; first sparse-reference bound rejected as production eligibility")
-    print("Ticker authority inventory: CURRENT GATE 9 REFINEMENT; Composite-FIGI events are authoritative")
+    print("Ticker history depth: CURRENT GATE 9 V2; sparse reference bound retired; exact authority wins")
+    print("Ticker authority inventory: PROVIDER ENRICHMENT COMPLETE; Composite-FIGI events authoritative")
     print("Ticker authority gaps: CACHED AUTHORITATIVE UNRESOLVED IS A CONSERVATIVE RESIDUAL CLASS")
     print("Ticker persistence policy: NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
