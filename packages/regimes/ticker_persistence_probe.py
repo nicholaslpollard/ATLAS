@@ -522,7 +522,7 @@ class TickerPersistenceProbe:
                     split_points.append(index)
                 previous = ordinal
             split_points.append(len(data))
-            for left, right in zip(split_points, split_points[1:], strict=True):
+            for left, right in zip(split_points[:-1], split_points[1:], strict=True):
                 if right <= left:
                     continue
                 piece = data.iloc[left:right]
