@@ -231,10 +231,10 @@ def main() -> int:
     print("Point-in-time threshold policy: ACCEPTED; expanding prior-only after 252-session seed")
     print("Market/sector regime state materialization: ACCEPTED; deterministic replay CURRENT")
     print("Ticker regime evidence: ACCEPTED FOR HISTORY-SAFETY PROBING; current semantics non-collapsed")
-    print("Ticker history depth: CURRENT GATE 9 V2; sparse reference bound retired; exact authority wins")
+    print("Ticker history depth: ACCEPTED GATE 9 V2; sparse reference bound retired; exact authority wins")
     print("Ticker authority inventory: PROVIDER ENRICHMENT COMPLETE; Composite-FIGI events authoritative")
     print("Ticker authority gaps: CACHED AUTHORITATIVE UNRESOLVED IS A CONSERVATIVE RESIDUAL CLASS")
-    print("Ticker persistence policy: NOT YET LOCKED")
+    print("Ticker persistence policy: CURRENT GATE 10; NOT YET LOCKED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
