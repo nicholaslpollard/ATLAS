@@ -66,7 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Return nonzero for parse errors, reconnects, or >=80%% peak ingress queue use.",
+        help="Return nonzero for parse errors, reconnects/open gaps, or >=80%% peak ingress queue use.",
     )
     parser.add_argument("--no-journal", action="store_true")
     return parser
@@ -154,6 +154,13 @@ async def _run(args: argparse.Namespace) -> int:
     print(f"  ignored old:         {summary['ignored_out_of_order_events']:,}")
     print(f"  parse errors:        {summary['parse_errors']:,}")
     print(f"  reconnects:          {summary['reconnects']:,}")
+    print(
+        "  transport gaps:      "
+        f"{summary['transport_gap_count']:,} closed / "
+        f"{summary['transport_gap_total_seconds']:,.2f}s total"
+    )
+    if summary["open_transport_gap_started_at_utc"] is not None:
+        print(f"  open transport gap:  {summary['open_transport_gap_started_at_utc']}")
     print(f"  baseline health:     {'PASS' if summary['baseline_healthy'] else 'REVIEW'}")
     print(f"  report:              {report_path.resolve()}")
 

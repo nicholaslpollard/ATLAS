@@ -43,12 +43,24 @@ class LiveMarketService:
         self._stop_event = asyncio.Event()
         self._fatal_error: Exception | None = None
         self._has_connected_once = False
+        self._has_subscribed_once = False
 
     async def _state_changed(self, state: LiveConnectionState) -> None:
+        now = datetime.now(UTC)
         if state == LiveConnectionState.CONNECTING:
             if self._has_connected_once:
                 self.state.record_reconnect()
             self._has_connected_once = True
+        elif state == LiveConnectionState.DEGRADED:
+            # Only a socket that had already reached SUBSCRIBED can create a
+            # market-data transport gap. Initial auth/entitlement failure is a
+            # startup failure, not a reconnect gap.
+            if self._has_subscribed_once:
+                self.state.record_transport_gap_start(now)
+        elif state == LiveConnectionState.SUBSCRIBED:
+            if self._has_subscribed_once:
+                self.state.record_transport_gap_end(now)
+            self._has_subscribed_once = True
         self.state.set_connection_state(state)
 
     async def _handle_event(self, raw_event: dict[str, object], received_at_utc: datetime) -> None:
