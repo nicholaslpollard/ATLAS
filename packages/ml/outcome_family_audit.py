@@ -22,11 +22,36 @@ from packages.ml.universe_probe import ML_HISTORY_ORIGIN_DATE
 
 
 ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION = (
-    "ml-outcome-family-audit-v1-natr14-sqrt-horizon-split-censored-grid"
+    "ml-outcome-family-audit-v2-natr14-schema-reconciled-split-censored-grid"
 )
 ML_VOLATILITY_FEATURE = "natr_14"
 ML_VOLATILITY_THRESHOLD_GRID = (0.5, 1.0, 1.5, 2.0)
 ML_VOLATILITY_HORIZON_SCALING = "sqrt_sessions"
+ML_FEATURE_PARQUET_READ_MODE = "union_by_name"
+ML_NATR_ABS_TOLERANCE = 1e-10
+ML_NATR_REL_TOLERANCE = 1e-8
+
+
+@dataclass(frozen=True, slots=True)
+class VolatilityFeatureIntegrityEvidence:
+    base_candidate_rows: int
+    base_candidate_symbols: int
+    feature_join_rows: int
+    feature_join_symbols: int
+    stored_natr_finite_rows: int
+    stored_natr_positive_rows: int
+    stored_natr_zero_rows: int
+    stored_natr_negative_rows: int
+    derived_natr_positive_rows: int
+    comparable_rows: int
+    mismatched_rows: int
+    mismatch_fraction: float
+    median_stored_natr: float | None
+    median_derived_natr: float | None
+    max_abs_difference: float | None
+    parquet_read_mode: str
+    full_population_reconciled: bool
+    stored_vs_derived_reconciled: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +91,9 @@ class MLOutcomeFamilyAuditReport:
     wall_seconds: float
     candidate_rows: int
     candidate_symbols: int
+    volatility_eligible_rows: int
+    volatility_eligible_symbols: int
+    feature_integrity: VolatilityFeatureIntegrityEvidence
     volatility_feature: str
     volatility_horizon_scaling: str
     threshold_grid: tuple[float, ...]
@@ -83,6 +111,16 @@ class MLOutcomeFamilyAuditReport:
 
 def _fraction(numerator: int, denominator: int) -> float:
     return 0.0 if denominator <= 0 else float(numerator) / float(denominator)
+
+
+def _optional_float(value: object) -> float | None:
+    return None if value is None else float(value)
+
+
+def natr_values_match(stored: float, derived: float) -> bool:
+    difference = abs(float(stored) - float(derived))
+    tolerance = ML_NATR_ABS_TOLERANCE + ML_NATR_REL_TOLERANCE * abs(float(derived))
+    return difference <= tolerance
 
 
 def scaled_move_threshold(*, natr_14: float, horizon_sessions: int, multiplier: float) -> float:
@@ -117,14 +155,11 @@ def classify_scaled_return(
 class MLOutcomeFamilyAudit:
     """Compare split-safe endpoint label families before Gate 4 locks a target.
 
-    The audit deliberately stays strategy-neutral. It uses the point-in-time daily
-    NATR(14) feature at the observation timestamp and scales it by sqrt(horizon).
-    Corporate-action crossing windows are censored because Gate 3 established that
-    the canonical daily close history behaves overwhelmingly like unadjusted data.
-
-    Daily OHLC path barriers are not selected here: if both barriers are touched in
-    one daily bar, their ordering is unknowable without intraday path data. Endpoint
-    outcomes avoid importing strategy/execution semantics into the ML target layer.
+    The v2 audit treats the permanent feature lake as a multi-file Parquet dataset
+    whose early warm-up partitions can have weaker physical schemas than later
+    partitions. Feature files are therefore unified by name, and NATR(14) is checked
+    against its defining identity ATR(14) / current close over the exact accepted
+    Gate 2 population before any outcome-family statistics are trusted.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -162,27 +197,145 @@ class MLOutcomeFamilyAudit:
                     result.append(normalized)
         return result, path
 
-    def _prepare_scaled_candidates(self, con: Any) -> None:
+    def _prepare_scaled_candidates(self, con: Any) -> VolatilityFeatureIntegrityEvidence:
         feature_glob = self.paths.feature_glob(Timeframe.DAY_1)
+        base = con.execute(
+            "SELECT count(*), count(DISTINCT symbol) FROM ml_gate3_candidates"
+        ).fetchone()
+        base_rows = int(base[0])
+        base_symbols = int(base[1])
+
         con.execute(
             f"""
-            CREATE TEMP TABLE ml_gate3_scaled_candidates AS
+            CREATE TEMP TABLE ml_gate3_feature_join AS
             SELECT
                 c.symbol,
                 c.session_date,
                 c.instrument_id,
                 c.close,
                 c.session_seq,
-                CAST(f.{ML_VOLATILITY_FEATURE} AS DOUBLE) AS natr_14
+                CAST(f.{ML_VOLATILITY_FEATURE} AS DOUBLE) AS stored_natr_14,
+                CAST(f.atr_14 AS DOUBLE) AS atr_14,
+                CASE
+                    WHEN c.close > 0
+                     AND f.atr_14 IS NOT NULL
+                     AND isfinite(CAST(f.atr_14 AS DOUBLE))
+                    THEN CAST(f.atr_14 AS DOUBLE) / c.close
+                    ELSE NULL
+                END AS derived_natr_14
             FROM ml_gate3_candidates c
-            INNER JOIN read_parquet({sql_string(feature_glob)}, hive_partitioning=true) f
+            INNER JOIN read_parquet(
+                {sql_string(feature_glob)},
+                hive_partitioning=true,
+                union_by_name=true
+            ) f
               ON f.symbol = c.symbol
              AND CAST(f.timestamp_utc AS DATE) = c.session_date
-            WHERE f.{ML_VOLATILITY_FEATURE} IS NOT NULL
-              AND isfinite(f.{ML_VOLATILITY_FEATURE})
-              AND f.{ML_VOLATILITY_FEATURE} > 0
             """
         )
+
+        joined = con.execute(
+            "SELECT count(*), count(DISTINCT symbol) FROM ml_gate3_feature_join"
+        ).fetchone()
+        join_rows = int(joined[0])
+        join_symbols = int(joined[1])
+        if join_rows != base_rows or join_symbols != base_symbols:
+            raise RuntimeError(
+                "Gate 3 volatility audit feature join failed full-population reconciliation: "
+                f"base={base_rows:,}/{base_symbols:,} joined={join_rows:,}/{join_symbols:,}"
+            )
+
+        integrity = con.execute(
+            f"""
+            SELECT
+                count(*) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                ) AS stored_finite,
+                count(*) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                      AND stored_natr_14 > 0
+                ) AS stored_positive,
+                count(*) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                      AND stored_natr_14 = 0
+                ) AS stored_zero,
+                count(*) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                      AND stored_natr_14 < 0
+                ) AS stored_negative,
+                count(*) FILTER (
+                    WHERE derived_natr_14 IS NOT NULL AND isfinite(derived_natr_14)
+                      AND derived_natr_14 > 0
+                ) AS derived_positive,
+                count(*) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                      AND derived_natr_14 IS NOT NULL AND isfinite(derived_natr_14)
+                ) AS comparable,
+                count(*) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                      AND derived_natr_14 IS NOT NULL AND isfinite(derived_natr_14)
+                      AND abs(stored_natr_14 - derived_natr_14)
+                          > {ML_NATR_ABS_TOLERANCE}
+                            + {ML_NATR_REL_TOLERANCE} * abs(derived_natr_14)
+                ) AS mismatched,
+                median(stored_natr_14) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                ) AS median_stored,
+                median(derived_natr_14) FILTER (
+                    WHERE derived_natr_14 IS NOT NULL AND isfinite(derived_natr_14)
+                ) AS median_derived,
+                max(abs(stored_natr_14 - derived_natr_14)) FILTER (
+                    WHERE stored_natr_14 IS NOT NULL AND isfinite(stored_natr_14)
+                      AND derived_natr_14 IS NOT NULL AND isfinite(derived_natr_14)
+                ) AS max_difference
+            FROM ml_gate3_feature_join
+            """
+        ).fetchone()
+
+        comparable = int(integrity[5])
+        mismatched = int(integrity[6])
+        evidence = VolatilityFeatureIntegrityEvidence(
+            base_candidate_rows=base_rows,
+            base_candidate_symbols=base_symbols,
+            feature_join_rows=join_rows,
+            feature_join_symbols=join_symbols,
+            stored_natr_finite_rows=int(integrity[0]),
+            stored_natr_positive_rows=int(integrity[1]),
+            stored_natr_zero_rows=int(integrity[2]),
+            stored_natr_negative_rows=int(integrity[3]),
+            derived_natr_positive_rows=int(integrity[4]),
+            comparable_rows=comparable,
+            mismatched_rows=mismatched,
+            mismatch_fraction=_fraction(mismatched, comparable),
+            median_stored_natr=_optional_float(integrity[7]),
+            median_derived_natr=_optional_float(integrity[8]),
+            max_abs_difference=_optional_float(integrity[9]),
+            parquet_read_mode=ML_FEATURE_PARQUET_READ_MODE,
+            full_population_reconciled=True,
+            stored_vs_derived_reconciled=(comparable == base_rows and mismatched == 0),
+        )
+        if comparable != base_rows or mismatched != 0:
+            raise RuntimeError(
+                "Gate 3 volatility feature integrity failed: stored natr_14 does not "
+                "reconcile exactly to atr_14 / close over the accepted population; "
+                f"comparable={comparable:,}/{base_rows:,} mismatched={mismatched:,}."
+            )
+
+        con.execute(
+            """
+            CREATE TEMP TABLE ml_gate3_scaled_candidates AS
+            SELECT
+                symbol,
+                session_date,
+                instrument_id,
+                close,
+                session_seq,
+                stored_natr_14 AS natr_14
+            FROM ml_gate3_feature_join
+            WHERE stored_natr_14 > 0
+            """
+        )
+        return evidence
 
     def _horizon_evidence(self, con: Any, horizon: int) -> VolatilityHorizonEvidence:
         clean_valid = "future_date IS NOT NULL AND future_close > 0 AND NOT split_crossing"
@@ -271,8 +424,8 @@ class MLOutcomeFamilyAudit:
             usable_rows=usable_rows,
             usable_fraction=_fraction(usable_rows, candidate_rows),
             adjacent_label_overlap_sessions=max(0, horizon - 1),
-            median_start_natr=None if row[4] is None else float(row[4]),
-            median_scaled_move=None if row[5] is None else float(row[5]),
+            median_start_natr=_optional_float(row[4]),
+            median_scaled_move=_optional_float(row[5]),
             thresholds=tuple(thresholds),
         )
 
@@ -285,7 +438,7 @@ class MLOutcomeFamilyAudit:
         con = connect_utc(":memory:")
         try:
             self.base._prepare_label_views(con, end_date, splits)
-            self._prepare_scaled_candidates(con)
+            feature_integrity = self._prepare_scaled_candidates(con)
             candidate = con.execute(
                 "SELECT count(*), count(DISTINCT symbol) FROM ml_gate3_scaled_candidates"
             ).fetchone()
@@ -302,8 +455,11 @@ class MLOutcomeFamilyAudit:
             history_start=ML_HISTORY_ORIGIN_DATE.isoformat(),
             history_end=end_date.isoformat(),
             wall_seconds=perf_counter() - started,
-            candidate_rows=int(candidate[0]),
-            candidate_symbols=int(candidate[1]),
+            candidate_rows=feature_integrity.base_candidate_rows,
+            candidate_symbols=feature_integrity.base_candidate_symbols,
+            volatility_eligible_rows=int(candidate[0]),
+            volatility_eligible_symbols=int(candidate[1]),
+            feature_integrity=feature_integrity,
             volatility_feature=ML_VOLATILITY_FEATURE,
             volatility_horizon_scaling=ML_VOLATILITY_HORIZON_SCALING,
             threshold_grid=ML_VOLATILITY_THRESHOLD_GRID,
