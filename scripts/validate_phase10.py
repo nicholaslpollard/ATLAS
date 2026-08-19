@@ -22,6 +22,7 @@ from packages.ml.identity_probe import (
     MLHistoricalIdentityProbe,
 )
 from packages.ml.outcome_probe import (
+    ML_GATE3_QUERY_PLAN_VERSION,
     ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION,
     ML_OUTCOME_HORIZONS,
     MLOutcomeFeasibilityProbe,
@@ -60,6 +61,9 @@ def main() -> int:
     assert ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION == (
         "ml-outcome-feasibility-probe-v1-contiguous-horizons-provider-split-adjustment-audit"
     )
+    assert ML_GATE3_QUERY_PLAN_VERSION == (
+        "ml-gate3-query-plan-v2-materialized-candidates-direct-session-lookups"
+    )
     assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
     assert MASSIVE_SPLITS_ENDPOINT == "/stocks/v1/splits"
     assert CURRENT_ROUTE_FILTER_USED is False
@@ -88,6 +92,7 @@ def main() -> int:
     print(f"ML ticker-reuse audit contract: {ML_TICKER_REUSE_AUDIT_CONTRACT_VERSION}")
     print(f"ML historical-identity policy contract: {ML_HISTORICAL_IDENTITY_POLICY_CONTRACT_VERSION}")
     print(f"ML outcome-feasibility probe contract: {ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION}")
+    print(f"ML Gate 3 query plan: {ML_GATE3_QUERY_PLAN_VERSION}")
     print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
     print(f"ML history origin: {ML_HISTORY_ORIGIN_DATE}")
@@ -102,7 +107,7 @@ def main() -> int:
     print("Gate 2 historical identity/eligibility evidence: ACCEPTED; 93.34% structurally eligible")
     print("Gate 2 ticker-reuse sub-audit: ACCEPTED; multi-stable ambiguity dominates blocked rows")
     print("Gate 2 historical identity/eligibility policy: ACCEPTED; authoritative or unique/no-reuse only")
-    print("Gate 3 outcome-label feasibility: CURRENT; 1/3/5/10/20-session + split adjustment evidence")
+    print("Gate 3 outcome-label feasibility: CURRENT; direct-session query plan + split adjustment evidence")
     print("Gate 4 prediction-label policy: NOT YET LOCKED")
     print("Gate 5 point-in-time ML feature/leakage contract: NOT YET LOCKED")
     print("Gate 6 training-dataset materialization: NOT YET BUILT")
