@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Iterator
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -15,8 +15,8 @@ from packages.core.settings import AtlasSettings
 @dataclass(frozen=True, slots=True)
 class AlpacaCredentialProfile:
     name: str
-    api_key: str
-    api_secret: str
+    api_key: str = field(repr=False)
+    api_secret: str = field(repr=False)
     trading_base_url: str
 
 
