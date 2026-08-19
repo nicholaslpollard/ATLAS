@@ -17,9 +17,10 @@ from packages.ml.baseline_benchmark import (
 
 def main() -> int:
     settings = load_settings(PROJECT_ROOT)
+    print("ATLAS Phase 10 Gate 8 Baseline Probability Benchmark")
+    print("  running accepted 10-fold OOS baseline benchmark...")
     report = MLBaselineBenchmark(settings).run()
 
-    print("ATLAS Phase 10 Gate 8 Baseline Probability Benchmark")
     print(f"  contract:                    {report.contract_version}")
     print(f"  status:                      {report.status}")
     print(f"  dataset:                     {report.dataset_id}")
