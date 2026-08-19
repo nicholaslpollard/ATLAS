@@ -13,6 +13,7 @@ ML_PROBABILITY_EVALUATION_CONTRACT_VERSION = (
 )
 ML_PROBABILITY_ECE_BINS = 15
 ML_MULTICLASS_BRIER_NORMALIZATION = "SUM_OVER_CLASSES_MEAN_OVER_ROWS"
+ML_PROBABILITY_ROW_SUM_TOLERANCE = 1e-6
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,9 +48,21 @@ def validate_probabilities(probabilities: np.ndarray) -> np.ndarray:
     if bool((values < 0.0).any()) or bool((values > 1.0).any()):
         raise ValueError("probabilities must lie in [0, 1]")
     row_sums = values.sum(axis=1)
-    if not bool(np.allclose(row_sums, 1.0, atol=1e-10, rtol=1e-10)):
+    if not bool(
+        np.allclose(
+            row_sums,
+            1.0,
+            atol=ML_PROBABILITY_ROW_SUM_TOLERANCE,
+            rtol=ML_PROBABILITY_ROW_SUM_TOLERANCE,
+        )
+    ):
         raise ValueError("probability rows must sum to 1")
-    return values
+
+    # Multiclass probability estimators can accumulate tiny floating-point row-sum
+    # error, especially when their inputs were standardized in float32. Once a row
+    # has passed the strict numerical-validity tolerance above, normalize it exactly
+    # before metrics or persisted prediction artifacts consume it.
+    return values / row_sums[:, np.newaxis]
 
 
 def _macro_ece(y_index: np.ndarray, probabilities: np.ndarray, *, bins: int) -> float:
