@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, Iterable
 
 import duckdb
@@ -27,12 +27,13 @@ from packages.providers.alpaca import AlpacaMarketDataClient
 
 
 ALPACA_BACKFILL_INVENTORY_CONTRACT_VERSION = (
-    "historical-backfill-inventory-v1-active-inactive-massive-corporate-actions-pilot"
+    "historical-backfill-inventory-v2-reference-only-inactive-identifiers"
 )
 PILOT_START = "2016-01-04"
 PILOT_END = "2016-02-01"
 PILOT_TARGET_SYMBOLS = 100
 KNOWN_OTC_EXCHANGES = {"OTC"}
+_CUSIP_LIKE_RE = re.compile(r"^[A-Za-z0-9]{9}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +53,7 @@ class AlpacaBackfillInventoryReport:
     inventory_rows: int
     sip_candidate_symbols: int
     known_otc_only_excluded: int
+    inactive_reference_only_identifier_excluded: int
     provenance_combination_counts: dict[str, int]
     corporate_action_pages: int
     raw_discovery_payloads: int
@@ -70,6 +72,12 @@ def _clean_symbol(value: object) -> str | None:
     if not symbol or "," in symbol or any(ch.isspace() for ch in symbol):
         return None
     return symbol
+
+
+def _cusip_like_identifier_shape(value: object) -> bool:
+    """Lexical shape diagnostic only; this never maps or proves a CUSIP identity."""
+    symbol = _clean_symbol(value)
+    return bool(symbol and _CUSIP_LIKE_RE.fullmatch(symbol))
 
 
 def _asset_records(payload: Any) -> list[dict[str, object]]:
@@ -150,12 +158,30 @@ def _deterministic_sample(symbols: Iterable[str], count: int) -> list[str]:
     return ranked[: min(count, len(ranked))]
 
 
+def _is_inactive_reference_only_identifier(record: dict[str, object], symbol: str) -> bool:
+    """Keep inactive-only 9-char identifiers as evidence, but do not treat them as bar symbols.
+
+    This rule was introduced after the target-machine Gate 3 probe showed Alpaca rejecting
+    100/100 lexicographically first inactive-only 9-character alphanumeric identifiers as
+    invalid stock-bar symbols. Any independent ticker corroboration keeps the literal eligible.
+    """
+    return bool(
+        record.get("from_inactive_assets")
+        and not record.get("from_active_assets")
+        and not record.get("from_massive_observed")
+        and not record.get("from_corporate_actions")
+        and _cusip_like_identifier_shape(symbol)
+    )
+
+
 class AlpacaBackfillInventoryBuilder:
     """Build a broad candidate symbol surface before downloading historical bars.
 
     Current active/inactive asset state is discovery evidence only. Historical population
     membership is established later only by actually observed raw-SIP bars and identity
-    segmentation; no current status is projected backward.
+    segmentation; no current status is projected backward. Inactive-only 9-character
+    alphanumeric identifiers remain reference evidence but are not presumed to be stock-bar
+    symbols unless another discovery source independently corroborates the literal ticker.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -273,6 +299,7 @@ class AlpacaBackfillInventoryBuilder:
 
         combination_counts: Counter[str] = Counter()
         known_otc_only_excluded = 0
+        inactive_reference_only_identifier_excluded = 0
         sip_candidates: list[str] = []
         inventory_rows: list[dict[str, object]] = []
         for symbol in sorted(records):
@@ -293,16 +320,21 @@ class AlpacaBackfillInventoryBuilder:
                 record["from_massive_observed"] or record["from_corporate_actions"]
             )
             known_otc_only = exchange in KNOWN_OTC_EXCHANGES and not independent_listed_evidence
-            sip_candidate = not known_otc_only
+            inactive_reference_only_identifier = _is_inactive_reference_only_identifier(record, symbol)
+            sip_candidate = not known_otc_only and not inactive_reference_only_identifier
             if sip_candidate:
                 sip_candidates.append(symbol)
             else:
-                known_otc_only_excluded += 1
+                if known_otc_only:
+                    known_otc_only_excluded += 1
+                if inactive_reference_only_identifier:
+                    inactive_reference_only_identifier_excluded += 1
             inventory_rows.append(
                 {
                     **record,
                     "discovery_sources": ",".join(sources),
                     "known_otc_only": known_otc_only,
+                    "inactive_reference_only_identifier": inactive_reference_only_identifier,
                     "sip_acquisition_candidate": sip_candidate,
                 }
             )
@@ -348,6 +380,7 @@ class AlpacaBackfillInventoryBuilder:
             inventory_rows=len(inventory_rows),
             sip_candidate_symbols=len(sip_candidates),
             known_otc_only_excluded=known_otc_only_excluded,
+            inactive_reference_only_identifier_excluded=inactive_reference_only_identifier_excluded,
             provenance_combination_counts=dict(sorted(combination_counts.items())),
             corporate_action_pages=ca_pages,
             raw_discovery_payloads=len(raw_records),
