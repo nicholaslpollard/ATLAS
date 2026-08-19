@@ -21,6 +21,13 @@ from packages.ml.identity_probe import (
     ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION,
     MLHistoricalIdentityProbe,
 )
+from packages.ml.outcome_family_audit import (
+    ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION,
+    ML_VOLATILITY_FEATURE,
+    ML_VOLATILITY_HORIZON_SCALING,
+    ML_VOLATILITY_THRESHOLD_GRID,
+    MLOutcomeFamilyAudit,
+)
 from packages.ml.outcome_probe import (
     ML_GATE3_QUERY_PLAN_VERSION,
     ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION,
@@ -64,7 +71,13 @@ def main() -> int:
     assert ML_GATE3_QUERY_PLAN_VERSION == (
         "ml-gate3-query-plan-v2-materialized-candidates-direct-session-lookups"
     )
+    assert ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION == (
+        "ml-outcome-family-audit-v1-natr14-sqrt-horizon-split-censored-grid"
+    )
     assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
+    assert ML_VOLATILITY_FEATURE == "natr_14"
+    assert ML_VOLATILITY_HORIZON_SCALING == "sqrt_sessions"
+    assert ML_VOLATILITY_THRESHOLD_GRID == (0.5, 1.0, 1.5, 2.0)
     assert MASSIVE_SPLITS_ENDPOINT == "/stocks/v1/splits"
     assert CURRENT_ROUTE_FILTER_USED is False
     assert CURRENT_ACTIVE_FILTER_USED is False
@@ -81,11 +94,13 @@ def main() -> int:
     identity_report = MLHistoricalIdentityProbe(settings).report_path(sample_date)
     reuse_report = MLTickerReuseAudit(settings).report_path(sample_date)
     outcome_report = MLOutcomeFeasibilityProbe(settings).report_path(sample_date)
+    family_report = MLOutcomeFamilyAudit(settings).report_path(sample_date)
     assert "ml" in universe_report.parts and "training_universe_probe" in universe_report.parts
     assert "ml" in identity_report.parts and "historical_identity_probe" in identity_report.parts
     assert "ml" in reuse_report.parts and "ticker_reuse_audit" in reuse_report.parts
     assert "ml" in outcome_report.parts and "outcome_feasibility_probe" in outcome_report.parts
-    assert len({universe_report, identity_report, reuse_report, outcome_report}) == 4
+    assert "ml" in family_report.parts and "outcome_family_audit" in family_report.parts
+    assert len({universe_report, identity_report, reuse_report, outcome_report, family_report}) == 5
 
     print(f"ML training-universe probe contract: {ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION}")
     print(f"ML historical-identity probe contract: {ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION}")
@@ -93,6 +108,8 @@ def main() -> int:
     print(f"ML historical-identity policy contract: {ML_HISTORICAL_IDENTITY_POLICY_CONTRACT_VERSION}")
     print(f"ML outcome-feasibility probe contract: {ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION}")
     print(f"ML Gate 3 query plan: {ML_GATE3_QUERY_PLAN_VERSION}")
+    print(f"ML outcome-family audit contract: {ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION}")
+    print(f"ML outcome-family thresholds: {ML_VOLATILITY_THRESHOLD_GRID} x {ML_VOLATILITY_FEATURE} * sqrt(horizon)")
     print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
     print(f"ML history origin: {ML_HISTORY_ORIGIN_DATE}")
@@ -107,7 +124,9 @@ def main() -> int:
     print("Gate 2 historical identity/eligibility evidence: ACCEPTED; 93.34% structurally eligible")
     print("Gate 2 ticker-reuse sub-audit: ACCEPTED; multi-stable ambiguity dominates blocked rows")
     print("Gate 2 historical identity/eligibility policy: ACCEPTED; authoritative or unique/no-reuse only")
-    print("Gate 3 outcome-label feasibility: CURRENT; direct-session query plan + split adjustment evidence")
+    print("Gate 3 fixed-horizon/split evidence: CAPTURED; canonical daily prices predominantly unadjusted")
+    print("Gate 3 volatility-scaled outcome families: CURRENT SUB-AUDIT")
+    print("Gate 3 outcome-label feasibility policy: NOT YET LOCKED")
     print("Gate 4 prediction-label policy: NOT YET LOCKED")
     print("Gate 5 point-in-time ML feature/leakage contract: NOT YET LOCKED")
     print("Gate 6 training-dataset materialization: NOT YET BUILT")
