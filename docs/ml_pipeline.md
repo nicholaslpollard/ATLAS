@@ -23,30 +23,54 @@ The ML layer does **not** select a strategy, trade instrument, position size, or
 
 Phase 10 is locked at 13 gates.
 
-### Gate 1 - historical training-universe / survivorship / data-adjustment audit: CURRENT
+### Gate 1 - historical training-universe / survivorship / data-adjustment audit: ACCEPTED
 
 Contract:
 
 `ml-training-universe-probe-v1-historical-observation-survivorship-identity-audit`
 
-Measure the real permanent 1d historical lake from 2021-08-16 through the selected end date and compare it against the current reference/universe snapshots.
+Accepted 2026-08-14 target-machine evidence:
 
-Evidence includes:
+- historical 1d bars/features: 13,856,199 / 13,856,199
+- historical provider symbols: 20,655
+- current inclusive reference symbols: 36,417
+- current routed-universe symbols: 12,066
+- historical symbols absent current reference: 215
+- historical symbols absent current routed universe: 8,592
+- historical rows absent current reference: 48,486 (0.35%)
+- fully warmed 33-feature rows: 10,244,060
+- fully warmed rows at >=$250k daily dollar volume: 7,058,860
+- liquid complete rows absent current reference: 9,993 (0.14%)
+- canonical `is_adjusted`: NULL for all 13,856,199 rows
+- provider-symbol histories with >=30 calendar-day gaps: 1,193 symbols / 2,789 gaps
+- adjacent-observation close moves >=50%: 28,268
+- adjacent-observation close moves >=100%: 8,047
 
-- historical daily bar/feature rows and unique provider symbols
-- current reference and routed-universe symbol counts
-- historical symbols/rows absent from the current reference and current routed universe
-- the same survivorship gap for fully warmed 33-feature observations at the existing $250k daily-dollar-volume benchmark floor
-- yearly survivorship-gap shares
-- provider `is_adjusted` state counts
-- large adjacent-observation price discontinuities
-- long provider-symbol history gaps that may require segmentation/identity investigation
+Accepted conclusions:
 
-Gate 1 does **not** choose a historical identity policy, training population, or prediction label.
+- the current Phase 07/08 routed universe is **rejected** as a retrospective training population
+- historical training population must be observation-driven
+- the current inclusive reference is useful identity/metadata evidence but is not itself a historical membership filter
+- current `active` / `delisted` status must not be projected backward as historical eligibility
+- adjustment/corporate-action safety remains unresolved and moves to outcome-label feasibility before labels are locked
 
-### Gate 2 - historical identity and eligibility policy
+### Gate 2 - historical identity and eligibility: CURRENT
 
-Use Gate 1 evidence to define safe historical observation identity/segmentation and an anti-survivorship training population. The policy must allow securities that later disappeared while preventing ticker reuse/rename contamination.
+Evidence contract:
+
+`ml-historical-identity-probe-v1-authority-unique-reference-structural-eligibility`
+
+The probe starts from fully warmed historical observations at the existing $250k daily-dollar-volume evidence floor and measures how much can be assigned conservatively to a stable identity.
+
+Identity evidence classes:
+
+- `AUTHORITATIVE_INTERVAL`: one provider-authoritative ticker validity interval covers the observation date
+- `UNIQUE_REFERENCE_NO_REUSE`: exact provider ticker maps to one strong/medium stable identity and no ticker-reuse conflict is observed
+- unresolved ticker reuse, multiple reference identities, fallback-only identity, metadata conflict, or unmapped reference remain blocked
+
+Historical structural eligibility reuses only lifetime-structural Phase 07 fields: supported market, locale, exchange, security type, and stable identity quality. It deliberately ignores **current** active/delisted status and current routing. Authoritative date-bounded identity evidence takes precedence over ticker reuse. No old/new ticker series are spliced by ticker text.
+
+Gate 2 remains evidence-only until target-machine coverage is measured.
 
 ### Gate 3 - outcome-label feasibility
 
