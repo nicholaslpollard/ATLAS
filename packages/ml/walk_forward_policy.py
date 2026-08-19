@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+from packages.ml.dataset_policy import (
+    ML_TRAINING_DATASET_ACCEPTED_ID,
+    ML_TRAINING_DATASET_ACCEPTED_LINEAGE_SHA256,
+)
+from packages.ml.label_policy import ML_PREDICTION_LABEL_HORIZON_SESSIONS
+from packages.ml.walk_forward_probe import (
+    ML_WALK_FORWARD_FINAL_HOLDOUT_ROLE,
+    ML_WALK_FORWARD_SPLIT_UNIT,
+)
+
+
+ML_WALK_FORWARD_POLICY_CONTRACT_VERSION = (
+    "ml-walk-forward-policy-v1-expanding-quarterly-252train-purge3-holdout63"
+)
+ML_WALK_FORWARD_POLICY_ACCEPTED = True
+ML_WALK_FORWARD_DATASET_ID = ML_TRAINING_DATASET_ACCEPTED_ID
+ML_WALK_FORWARD_DATASET_LINEAGE_SHA256 = ML_TRAINING_DATASET_ACCEPTED_LINEAGE_SHA256
+
+# Production chronological split contract.
+ML_WALK_FORWARD_EXPANDING_TRAIN = True
+ML_WALK_FORWARD_MINIMUM_TRAIN_SESSIONS = 252
+ML_WALK_FORWARD_VALIDATION_SESSIONS = 63
+ML_WALK_FORWARD_TEST_SESSIONS = 63
+ML_WALK_FORWARD_STEP_SESSIONS = 63
+ML_WALK_FORWARD_PURGE_SESSIONS = ML_PREDICTION_LABEL_HORIZON_SESSIONS
+ML_WALK_FORWARD_ADDITIONAL_EMBARGO_SESSIONS = 0
+ML_WALK_FORWARD_RANDOM_ROW_SPLIT_ALLOWED = False
+ML_WALK_FORWARD_ACCEPTED_SPLIT_UNIT = ML_WALK_FORWARD_SPLIT_UNIT
+
+# The final holdout is not available for Gate 8-12 model family selection, tuning,
+# calibration, or promotion. It is reserved for the final Gate 13 acceptance test.
+ML_WALK_FORWARD_FINAL_HOLDOUT_SESSIONS = 63
+ML_WALK_FORWARD_ACCEPTED_FINAL_HOLDOUT_ROLE = ML_WALK_FORWARD_FINAL_HOLDOUT_ROLE
+ML_WALK_FORWARD_FINAL_HOLDOUT_START = "2026-05-12"
+ML_WALK_FORWARD_FINAL_HOLDOUT_END = "2026-08-11"
+ML_WALK_FORWARD_FINAL_HOLDOUT_ROWS = 454_773
+ML_WALK_FORWARD_FINAL_HOLDOUT_DOWN_PCT = 19.00
+ML_WALK_FORWARD_FINAL_HOLDOUT_NEUTRAL_PCT = 58.62
+ML_WALK_FORWARD_FINAL_HOLDOUT_UP_PCT = 22.38
+
+# Accepted target-machine evidence for quarterly-train252.
+ML_WALK_FORWARD_ACCEPTED_CANDIDATE = "quarterly-train252"
+ML_WALK_FORWARD_ACCEPTED_FOLD_COUNT = 10
+ML_WALK_FORWARD_ACCEPTED_FIRST_TEST_DATE = "2023-09-11"
+ML_WALK_FORWARD_ACCEPTED_LAST_TEST_DATE = "2026-03-16"
+ML_WALK_FORWARD_ACCEPTED_DISTINCT_TEST_SESSIONS = 630
+ML_WALK_FORWARD_ACCEPTED_TOTAL_TEST_ROWS = 3_978_577
+ML_WALK_FORWARD_ACCEPTED_MINIMUM_TRAIN_ROWS = 1_448_662
+ML_WALK_FORWARD_ACCEPTED_MAXIMUM_TRAIN_ROWS = 4_905_554
+ML_WALK_FORWARD_ACCEPTED_TEST_DOWN_RANGE_PCT = 8.79
+ML_WALK_FORWARD_ACCEPTED_TEST_NEUTRAL_RANGE_PCT = 7.38
+ML_WALK_FORWARD_ACCEPTED_TEST_UP_RANGE_PCT = 6.23
+
+# Selection rationale:
+# - 252 sessions already provides ~1.45M rows in fold 1 and covers a full trading year.
+# - It preserves 10 quarterly OOS folds and 630 distinct OOS sessions.
+# - 378/504-session minimums discard 2/4 OOS folds without a compensating class-stability gain.
+# - Half-year windows smooth class prevalence mechanically by aggregation and reduce temporal
+#   diagnostic resolution to only four OOS folds.
+# - A full three-session purge is required because the t+3 endpoint of a training row must
+#   never land inside the following validation/test window.
+# - No extra embargo is added because every fold is strictly forward and expanding.
+
+assert ML_WALK_FORWARD_PURGE_SESSIONS == 3
+assert ML_WALK_FORWARD_RANDOM_ROW_SPLIT_ALLOWED is False
+assert ML_WALK_FORWARD_ACCEPTED_SPLIT_UNIT == "EXCHANGE_SESSION_CROSS_SECTION"
