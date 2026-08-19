@@ -145,6 +145,7 @@ class AlpacaMarketDataConfig(BaseModel):
     timeframe: str = "1Day"
     page_limit: int = Field(default=10_000, ge=1, le=10_000)
     symbol_batch_size: int = Field(default=100, ge=1, le=500)
+    requests_per_minute: int = Field(default=180, ge=1, le=10_000)
     request_timeout_seconds: float = Field(default=60.0, gt=0)
     max_attempts: int = Field(default=5, ge=1, le=20)
     initial_retry_seconds: float = Field(default=1.0, ge=0)
