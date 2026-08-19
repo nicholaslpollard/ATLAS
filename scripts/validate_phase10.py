@@ -21,6 +21,13 @@ from packages.ml.identity_probe import (
     ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION,
     MLHistoricalIdentityProbe,
 )
+from packages.ml.label_policy_probe import (
+    ML_LABEL_POLICY_CANDIDATE_HORIZONS,
+    ML_LABEL_POLICY_CANDIDATE_MULTIPLIERS,
+    ML_LABEL_POLICY_PRIMARY_CANDIDATE_MULTIPLIER,
+    ML_LABEL_POLICY_PROBE_CONTRACT_VERSION,
+    MLLabelPolicyProbe,
+)
 from packages.ml.outcome_family_audit import (
     ML_FEATURE_PARQUET_READ_MODE,
     ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION,
@@ -90,12 +97,18 @@ def main() -> int:
     assert ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION == (
         "ml-outcome-feasibility-policy-v1-split-censored-endpoint-natr-feasible"
     )
+    assert ML_LABEL_POLICY_PROBE_CONTRACT_VERSION == (
+        "ml-label-policy-probe-v1-annual-stability-3-5-10-natr-grid"
+    )
     assert ML_FEATURE_PARQUET_READ_MODE == "union_by_name"
     assert ML_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED is True
     assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
     assert ML_VOLATILITY_FEATURE == "natr_14"
     assert ML_VOLATILITY_HORIZON_SCALING == "sqrt_sessions"
     assert ML_VOLATILITY_THRESHOLD_GRID == (0.5, 1.0, 1.5, 2.0)
+    assert ML_LABEL_POLICY_CANDIDATE_HORIZONS == (3, 5, 10)
+    assert ML_LABEL_POLICY_CANDIDATE_MULTIPLIERS == (0.5, 1.0)
+    assert ML_LABEL_POLICY_PRIMARY_CANDIDATE_MULTIPLIER == 0.5
     assert ML_OUTCOME_FEASIBILITY_ACCEPTED is True
     assert ML_SPLIT_CROSSING_LABELS_CENSORED is True
     assert ML_VOLATILITY_FEATURE_INTEGRITY_RECONCILED is True
@@ -121,12 +134,14 @@ def main() -> int:
     reuse_report = MLTickerReuseAudit(settings).report_path(sample_date)
     outcome_report = MLOutcomeFeasibilityProbe(settings).report_path(sample_date)
     family_report = MLOutcomeFamilyAudit(settings).report_path(sample_date)
+    label_report = MLLabelPolicyProbe(settings).report_path(sample_date)
     assert "ml" in universe_report.parts and "training_universe_probe" in universe_report.parts
     assert "ml" in identity_report.parts and "historical_identity_probe" in identity_report.parts
     assert "ml" in reuse_report.parts and "ticker_reuse_audit" in reuse_report.parts
     assert "ml" in outcome_report.parts and "outcome_feasibility_probe" in outcome_report.parts
     assert "ml" in family_report.parts and "outcome_family_audit" in family_report.parts
-    assert len({universe_report, identity_report, reuse_report, outcome_report, family_report}) == 5
+    assert "ml" in label_report.parts and "label_policy_probe" in label_report.parts
+    assert len({universe_report, identity_report, reuse_report, outcome_report, family_report, label_report}) == 6
 
     print(f"ML training-universe probe contract: {ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION}")
     print(f"ML historical-identity probe contract: {ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION}")
@@ -136,8 +151,10 @@ def main() -> int:
     print(f"ML Gate 3 query plan: {ML_GATE3_QUERY_PLAN_VERSION}")
     print(f"ML outcome-family audit contract: {ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION}")
     print(f"ML outcome-feasibility policy contract: {ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION}")
+    print(f"ML Gate 4 label-policy probe contract: {ML_LABEL_POLICY_PROBE_CONTRACT_VERSION}")
     print(f"ML feature Parquet read mode: {ML_FEATURE_PARQUET_READ_MODE}")
     print(f"ML outcome-family thresholds: {ML_VOLATILITY_THRESHOLD_GRID} x {ML_VOLATILITY_FEATURE} * sqrt(horizon)")
+    print(f"ML Gate 4 candidate grid: horizons={ML_LABEL_POLICY_CANDIDATE_HORIZONS} multipliers={ML_LABEL_POLICY_CANDIDATE_MULTIPLIERS}")
     print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
     print(f"ML history origin: {ML_HISTORY_ORIGIN_DATE}")
@@ -155,7 +172,7 @@ def main() -> int:
     print("Gate 3 fixed-horizon/split evidence: ACCEPTED; split crossings censored")
     print("Gate 3 volatility-scaled outcome families: ACCEPTED; full population + NATR integrity reconciled")
     print("Gate 3 outcome-label feasibility policy: ACCEPTED; endpoint/NATR families feasible")
-    print("Gate 4 prediction-label policy: CURRENT; production horizon/threshold/neutral handling not yet locked")
+    print("Gate 4 prediction-label policy: CURRENT; annual stability probe ready")
     print("Gate 5 point-in-time ML feature/leakage contract: NOT YET LOCKED")
     print("Gate 6 training-dataset materialization: NOT YET BUILT")
     print("Gate 7 walk-forward/embargo policy: NOT YET LOCKED")
