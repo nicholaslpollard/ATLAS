@@ -23,6 +23,9 @@ from packages.providers.massive.corporate_actions import MassiveCorporateActions
 ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION = (
     "ml-outcome-feasibility-probe-v1-contiguous-horizons-provider-split-adjustment-audit"
 )
+ML_GATE3_QUERY_PLAN_VERSION = (
+    "ml-gate3-query-plan-v2-materialized-candidates-direct-session-lookups"
+)
 ML_OUTCOME_HORIZONS = (1, 3, 5, 10, 20)
 ML_NEAR_ZERO_RETURN = 0.005
 ML_MATERIAL_SPLIT_RATIO_CHANGE = 0.20
@@ -64,6 +67,7 @@ class SplitAdjustmentEvidence:
 @dataclass(frozen=True, slots=True)
 class MLOutcomeFeasibilityProbeReport:
     contract_version: str
+    query_plan_version: str
     generated_at_utc: str
     history_start: str
     history_end: str
@@ -114,12 +118,20 @@ def _normalized_split(item: dict[str, Any]) -> dict[str, object] | None:
         "adjustment_type": str(item.get("adjustment_type") or "") or None,
         "split_from": _optional_float(item.get("split_from")),
         "split_to": _optional_float(item.get("split_to")),
-        "historical_adjustment_factor": _optional_float(item.get("historical_adjustment_factor")),
+        "historical_adjustment_factor": _optional_float(
+            item.get("historical_adjustment_factor")
+        ),
     }
 
 
 class MLOutcomeFeasibilityProbe:
-    """Measure strategy-neutral forward-label feasibility before a target is locked."""
+    """Measure strategy-neutral forward-label feasibility before a target is locked.
+
+    Gate 3 materializes only the accepted Gate 2 observation keys/current closes.
+    Future outcomes are looked up against exact exchange-session dates one horizon
+    at a time. This avoids full-history multi-horizon window materialization and
+    prevents the split diagnostic from self-joining that expanded state.
+    """
 
     def __init__(
         self,
@@ -136,13 +148,27 @@ class MLOutcomeFeasibilityProbe:
 
     def report_path(self, end_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
-        return root / "ml" / "outcome_feasibility_probe" / f"{end_date.year:04d}" / f"{end_date}.json"
+        return (
+            root
+            / "ml"
+            / "outcome_feasibility_probe"
+            / f"{end_date.year:04d}"
+            / f"{end_date}.json"
+        )
 
     def split_evidence_path(self, end_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
-        return root / "ml" / "outcome_feasibility_probe" / f"{end_date.year:04d}" / f"{end_date}-splits.jsonl"
+        return (
+            root
+            / "ml"
+            / "outcome_feasibility_probe"
+            / f"{end_date.year:04d}"
+            / f"{end_date}-splits.jsonl"
+        )
 
-    def _fetch_splits(self, end_date: date) -> tuple[list[dict[str, object]], Path, str]:
+    def _fetch_splits(
+        self, end_date: date
+    ) -> tuple[list[dict[str, object]], Path, str]:
         provider = self.corporate_actions or MassiveCorporateActionsProvider(self.settings)
         normalized = [
             row
@@ -152,7 +178,13 @@ class MLOutcomeFeasibilityProbe:
             )
             if (row := _normalized_split(item)) is not None
         ]
-        normalized.sort(key=lambda row: (str(row["execution_date"]), str(row["ticker"]), str(row["id"] or "")))
+        normalized.sort(
+            key=lambda row: (
+                str(row["execution_date"]),
+                str(row["ticker"]),
+                str(row["id"] or ""),
+            )
+        )
         payload = "".join(
             json.dumps(
                 {
@@ -176,23 +208,31 @@ class MLOutcomeFeasibilityProbe:
         end_date: date,
         splits: list[dict[str, object]],
     ) -> None:
+        # The previous implementation built a per-symbol LEAD() matrix for every
+        # horizon and then self-joined it for split diagnostics. A full target-machine
+        # run exhausted 159.6 GiB of DuckDB temp spill. Keep insertion-order
+        # preservation off and materialize only compact accepted observations.
+        con.execute("SET preserve_insertion_order=false")
+
         identity_paths = self.identity._required_paths(end_date)
         self.identity._prepare_views(con, end_date, identity_paths)
         eligible = self.identity._eligibility_sql()
-        safe = "identity_status IN ('AUTHORITATIVE_INTERVAL', 'UNIQUE_REFERENCE_NO_REUSE')"
+        safe = (
+            "identity_status IN "
+            "('AUTHORITATIVE_INTERVAL', 'UNIQUE_REFERENCE_NO_REUSE')"
+        )
 
         bar_glob = self.paths.glob_for_timeframe(Timeframe.DAY_1)
         start = ML_HISTORY_ORIGIN_DATE.isoformat()
         end = end_date.isoformat()
+
         con.execute(
             f"""
             CREATE TEMP VIEW ml_label_bars AS
             SELECT
                 symbol,
                 CAST(session_date AS DATE) AS session_date,
-                close,
-                high,
-                low
+                close
             FROM read_parquet({sql_string(bar_glob)}, hive_partitioning=true)
             WHERE CAST(session_date AS DATE) BETWEEN DATE '{start}' AND DATE '{end}'
               AND close > 0
@@ -200,49 +240,31 @@ class MLOutcomeFeasibilityProbe:
         )
         con.execute(
             """
-            CREATE TEMP VIEW ml_label_sessions AS
+            CREATE TEMP TABLE ml_label_sessions AS
             SELECT
                 session_date,
                 row_number() OVER (ORDER BY session_date) AS session_seq
             FROM (SELECT DISTINCT session_date FROM ml_label_bars)
             """
         )
-        lead_columns = []
-        for horizon in ML_OUTCOME_HORIZONS:
-            lead_columns.extend(
-                [
-                    f"lead(s.session_seq, {horizon}) OVER w AS future_seq_{horizon}",
-                    f"lead(b.session_date, {horizon}) OVER w AS future_date_{horizon}",
-                    f"lead(b.close, {horizon}) OVER w AS future_close_{horizon}",
-                ]
-            )
+
+        # Execute the expensive Gate 2 identity/eligibility views exactly once. The
+        # compact materialized table becomes the driver for every horizon.
         con.execute(
             f"""
-            CREATE TEMP VIEW ml_label_indexed AS
-            SELECT
-                b.symbol,
-                b.session_date,
-                b.close,
-                b.high,
-                b.low,
-                s.session_seq,
-                {', '.join(lead_columns)}
-            FROM ml_label_bars b
-            INNER JOIN ml_label_sessions s USING (session_date)
-            WINDOW w AS (PARTITION BY b.symbol ORDER BY s.session_seq)
-            """
-        )
-        con.execute(
-            f"""
-            CREATE TEMP VIEW ml_gate3_candidates AS
+            CREATE TEMP TABLE ml_gate3_candidates AS
             SELECT
                 e.symbol,
                 e.session_date,
                 e.selected_instrument_id AS instrument_id,
-                b.* EXCLUDE (symbol, session_date)
+                b.close,
+                s.session_seq
             FROM ml_identity_evidence e
-            INNER JOIN ml_label_indexed b
-              ON b.symbol = e.symbol AND b.session_date = e.session_date
+            INNER JOIN ml_label_bars b
+              ON b.symbol = e.symbol
+             AND b.session_date = e.session_date
+            INNER JOIN ml_label_sessions s
+              ON s.session_date = e.session_date
             WHERE {safe} AND ({eligible})
             """
         )
@@ -274,7 +296,7 @@ class MLOutcomeFeasibilityProbe:
         con.register("ml_split_events_input", split_frame)
         con.execute(
             """
-            CREATE TEMP VIEW ml_split_events AS
+            CREATE TEMP TABLE ml_split_events AS
             SELECT
                 CAST(id AS VARCHAR) AS id,
                 CAST(ticker AS VARCHAR) AS ticker,
@@ -282,31 +304,58 @@ class MLOutcomeFeasibilityProbe:
                 CAST(adjustment_type AS VARCHAR) AS adjustment_type,
                 CAST(split_from AS DOUBLE) AS split_from,
                 CAST(split_to AS DOUBLE) AS split_to,
-                CAST(historical_adjustment_factor AS DOUBLE) AS historical_adjustment_factor
+                CAST(historical_adjustment_factor AS DOUBLE)
+                    AS historical_adjustment_factor
             FROM ml_split_events_input
             """
         )
 
     def _horizon_evidence(self, con: Any, horizon: int) -> HorizonOutcomeEvidence:
-        valid = f"future_seq_{horizon} = session_seq + {horizon} AND future_close_{horizon} > 0"
-        ret = f"(future_close_{horizon} / close) - 1.0"
+        # candidate session_seq + H -> exact exchange date -> exact same-ticker bar.
+        # Missing/suspended/renamed observations remain censored.
+        valid = "future_date IS NOT NULL AND future_close > 0"
+        ret = "(future_close / close) - 1.0"
         split_exists = (
-            f"EXISTS (SELECT 1 FROM ml_split_events s WHERE s.ticker = c.symbol "
-            f"AND s.execution_date > c.session_date AND s.execution_date <= c.future_date_{horizon})"
+            "EXISTS (SELECT 1 FROM ml_split_events s "
+            "WHERE s.ticker = c.symbol "
+            "AND s.execution_date > c.session_date "
+            "AND s.execution_date <= c.future_date)"
         )
         row = con.execute(
             f"""
+            WITH outcome AS (
+                SELECT
+                    c.symbol,
+                    c.session_date,
+                    c.close,
+                    fs.session_date AS future_date,
+                    fb.close AS future_close
+                FROM ml_gate3_candidates c
+                LEFT JOIN ml_label_sessions fs
+                  ON fs.session_seq = c.session_seq + {int(horizon)}
+                LEFT JOIN ml_label_bars fb
+                  ON fb.symbol = c.symbol
+                 AND fb.session_date = fs.session_date
+            )
             SELECT
                 count(*) AS candidate_rows,
                 count(*) FILTER (WHERE {valid}) AS labelable_rows,
-                count(*) FILTER (WHERE {valid} AND {split_exists}) AS split_crossing_rows,
+                count(*) FILTER (
+                    WHERE {valid} AND {split_exists}
+                ) AS split_crossing_rows,
                 count(*) FILTER (WHERE {valid} AND {ret} > 0) AS positive_rows,
                 count(*) FILTER (WHERE {valid} AND {ret} < 0) AS negative_rows,
-                count(*) FILTER (WHERE {valid} AND abs({ret}) < {ML_NEAR_ZERO_RETURN}) AS near_zero_rows,
+                count(*) FILTER (
+                    WHERE {valid} AND abs({ret}) < {ML_NEAR_ZERO_RETURN}
+                ) AS near_zero_rows,
                 count(*) FILTER (WHERE {valid} AND abs({ret}) >= 0.25) AS abs_ge_25,
                 count(*) FILTER (WHERE {valid} AND abs({ret}) >= 0.50) AS abs_ge_50,
                 count(*) FILTER (WHERE {valid} AND abs({ret}) >= 1.00) AS abs_ge_100,
-                count(*) FILTER (WHERE {valid} AND abs({ret}) >= 0.50 AND NOT {split_exists}) AS nonsplit_abs_ge_50,
+                count(*) FILTER (
+                    WHERE {valid}
+                      AND abs({ret}) >= 0.50
+                      AND NOT {split_exists}
+                ) AS nonsplit_abs_ge_50,
                 quantile_cont({ret}, 0.01) FILTER (WHERE {valid}) AS q01,
                 quantile_cont({ret}, 0.05) FILTER (WHERE {valid}) AS q05,
                 quantile_cont({ret}, 0.25) FILTER (WHERE {valid}) AS q25,
@@ -314,9 +363,10 @@ class MLOutcomeFeasibilityProbe:
                 quantile_cont({ret}, 0.75) FILTER (WHERE {valid}) AS q75,
                 quantile_cont({ret}, 0.95) FILTER (WHERE {valid}) AS q95,
                 quantile_cont({ret}, 0.99) FILTER (WHERE {valid}) AS q99
-            FROM ml_gate3_candidates c
+            FROM outcome c
             """
         ).fetchone()
+
         candidate_rows = int(row[0])
         labelable_rows = int(row[1])
         split_crossing_rows = int(row[2])
@@ -328,7 +378,9 @@ class MLOutcomeFeasibilityProbe:
             labelable_fraction=_fraction(labelable_rows, candidate_rows),
             censored_rows=candidate_rows - labelable_rows,
             split_crossing_rows=split_crossing_rows,
-            split_crossing_fraction_of_labelable=_fraction(split_crossing_rows, labelable_rows),
+            split_crossing_fraction_of_labelable=_fraction(
+                split_crossing_rows, labelable_rows
+            ),
             positive_rows=int(row[3]),
             negative_rows=int(row[4]),
             near_zero_rows=int(row[5]),
@@ -347,18 +399,25 @@ class MLOutcomeFeasibilityProbe:
         con: Any,
         splits: list[dict[str, object]],
     ) -> SplitAdjustmentEvidence:
+        # Drive the diagnostic from the small corporate-action table. Resolve the
+        # exact previous exchange session, then look up only previous/execution bars.
         con.execute(
             f"""
             CREATE TEMP VIEW ml_material_split_diagnostic AS
             WITH material AS (
                 SELECT
                     s.*,
-                    ss.session_seq
+                    exec_session.session_seq,
+                    prev_session.session_date AS previous_session_date
                 FROM ml_split_events s
-                INNER JOIN ml_label_sessions ss ON ss.session_date = s.execution_date
+                INNER JOIN ml_label_sessions exec_session
+                  ON exec_session.session_date = s.execution_date
+                INNER JOIN ml_label_sessions prev_session
+                  ON prev_session.session_seq = exec_session.session_seq - 1
                 WHERE s.split_from > 0
                   AND s.split_to > 0
-                  AND abs((s.split_to / s.split_from) - 1.0) >= {ML_MATERIAL_SPLIT_RATIO_CHANGE}
+                  AND abs((s.split_to / s.split_from) - 1.0)
+                        >= {ML_MATERIAL_SPLIT_RATIO_CHANGE}
             )
             SELECT
                 m.ticker,
@@ -369,12 +428,17 @@ class MLOutcomeFeasibilityProbe:
                 prev.close AS previous_close,
                 curr.close AS execution_close,
                 (curr.close / prev.close) - 1.0 AS raw_return,
-                (curr.close / (prev.close * (m.split_from / m.split_to))) - 1.0 AS expected_ratio_residual
+                (
+                    curr.close
+                    / (prev.close * (m.split_from / m.split_to))
+                ) - 1.0 AS expected_ratio_residual
             FROM material m
-            INNER JOIN ml_label_indexed curr
-              ON curr.symbol = m.ticker AND curr.session_seq = m.session_seq
-            INNER JOIN ml_label_indexed prev
-              ON prev.symbol = m.ticker AND prev.session_seq = m.session_seq - 1
+            INNER JOIN ml_label_bars curr
+              ON curr.symbol = m.ticker
+             AND curr.session_date = m.execution_date
+            INNER JOIN ml_label_bars prev
+              ON prev.symbol = m.ticker
+             AND prev.session_date = m.previous_session_date
             WHERE prev.close > 0 AND curr.close > 0
             """
         )
@@ -383,15 +447,19 @@ class MLOutcomeFeasibilityProbe:
             SELECT
                 count(*),
                 count(*) FILTER (
-                    WHERE abs(expected_ratio_residual) <= {ML_SPLIT_RESIDUAL_TOLERANCE}
+                    WHERE abs(expected_ratio_residual)
+                            <= {ML_SPLIT_RESIDUAL_TOLERANCE}
                       AND abs(raw_return) > {ML_SPLIT_RESIDUAL_TOLERANCE}
                 ),
-                count(*) FILTER (WHERE abs(raw_return) <= {ML_SPLIT_RESIDUAL_TOLERANCE}),
+                count(*) FILTER (
+                    WHERE abs(raw_return) <= {ML_SPLIT_RESIDUAL_TOLERANCE}
+                ),
                 median(abs(raw_return)),
                 median(abs(expected_ratio_residual))
             FROM ml_material_split_diagnostic
             """
         ).fetchone()
+
         diagnostic = int(row[0])
         unadjusted_like = int(row[1])
         adjusted_like = int(row[2])
@@ -403,7 +471,8 @@ class MLOutcomeFeasibilityProbe:
             and _optional_float(item.get("split_to"))
             and abs(
                 float(item["split_to"]) / float(item["split_from"]) - 1.0
-            ) >= ML_MATERIAL_SPLIT_RATIO_CHANGE
+            )
+            >= ML_MATERIAL_SPLIT_RATIO_CHANGE
         )
         return SplitAdjustmentEvidence(
             fetched_split_events=len(splits),
@@ -421,6 +490,7 @@ class MLOutcomeFeasibilityProbe:
         started = perf_counter()
         if end_date < ML_HISTORY_ORIGIN_DATE:
             raise ValueError("end_date predates the Phase 10 ML history origin")
+
         splits, split_path, split_sha = self._fetch_splits(end_date)
         con = connect_utc(":memory:")
         try:
@@ -429,7 +499,8 @@ class MLOutcomeFeasibilityProbe:
                 "SELECT count(*), count(DISTINCT symbol) FROM ml_gate3_candidates"
             ).fetchone()
             horizons = tuple(
-                self._horizon_evidence(con, horizon) for horizon in ML_OUTCOME_HORIZONS
+                self._horizon_evidence(con, horizon)
+                for horizon in ML_OUTCOME_HORIZONS
             )
             split_adjustment = self._split_adjustment_evidence(con, splits)
         finally:
@@ -438,6 +509,7 @@ class MLOutcomeFeasibilityProbe:
         target = self.report_path(end_date)
         report = MLOutcomeFeasibilityProbeReport(
             contract_version=ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION,
+            query_plan_version=ML_GATE3_QUERY_PLAN_VERSION,
             generated_at_utc=datetime.now(UTC).isoformat(),
             history_start=ML_HISTORY_ORIGIN_DATE.isoformat(),
             history_end=end_date.isoformat(),
@@ -455,5 +527,8 @@ class MLOutcomeFeasibilityProbe:
             split_evidence_sha256=split_sha,
             report_path=str(target),
         )
-        atomic_write_text(target, json.dumps(asdict(report), indent=2, sort_keys=True) + "\n")
+        atomic_write_text(
+            target,
+            json.dumps(asdict(report), indent=2, sort_keys=True) + "\n",
+        )
         return report
