@@ -32,6 +32,29 @@ class AlpacaApiPage:
     next_page_token: str | None = None
 
 
+class AlpacaInvalidSymbolError(RuntimeError):
+    """Provider rejection for one literal ticker in a multi-symbol bars request."""
+
+    def __init__(self, symbol: str, page: AlpacaApiPage, message: str) -> None:
+        super().__init__(f"Alpaca historical_bars rejected literal symbol {symbol!r}: {message}")
+        self.symbol = symbol
+        self.page = page
+        self.provider_message = message
+
+
+def _invalid_symbol_from_message(message: object) -> str | None:
+    if not isinstance(message, str):
+        return None
+    prefix = "invalid symbol:"
+    stripped = message.strip()
+    if not stripped.lower().startswith(prefix):
+        return None
+    symbol = stripped[len(prefix) :].strip()
+    if not symbol or "," in symbol or any(ch.isspace() for ch in symbol):
+        return None
+    return symbol
+
+
 class AlpacaMarketDataClient:
     """Small dependency-free Alpaca client for deterministic historical backfill work.
 
@@ -147,6 +170,7 @@ class AlpacaMarketDataClient:
                     raise RuntimeError(f"Alpaca {request_name} access denied with HTTP {status}") from exc
                 last_error = exc
                 if status != 429 and status < 500:
+                    payload: Any = None
                     message = None
                     try:
                         payload = self._decode_json(body)
@@ -154,6 +178,29 @@ class AlpacaMarketDataClient:
                             message = payload.get("message")
                     except RuntimeError:
                         pass
+                    if status == 400 and request_name == "historical_bars":
+                        invalid_symbol = _invalid_symbol_from_message(message)
+                        if invalid_symbol is not None:
+                            headers = (
+                                {str(k): str(v) for k, v in exc.headers.items()}
+                                if exc.headers is not None
+                                else {}
+                            )
+                            error_page = AlpacaApiPage(
+                                request_name=request_name,
+                                url=url,
+                                http_status=status,
+                                raw_body=body,
+                                payload=payload,
+                                response_headers=headers,
+                                page_token_used=page_token_used,
+                                next_page_token=None,
+                            )
+                            raise AlpacaInvalidSymbolError(
+                                invalid_symbol,
+                                error_page,
+                                str(message),
+                            ) from exc
                     suffix = f": {message}" if message else ""
                     raise RuntimeError(f"Alpaca {request_name} failed with HTTP {status}{suffix}") from exc
                 if attempt < self.cfg.max_attempts:
