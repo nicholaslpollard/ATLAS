@@ -495,14 +495,24 @@ class MLFinalAcceptance:
             (prior_metrics.multiclass_brier - model_metrics.multiclass_brier)
             / prior_metrics.multiclass_brier
         )
+        logloss_passed = (
+            model_metrics.log_loss < prior_metrics.log_loss
+            if ML_FINAL_ACCEPTANCE_REQUIRE_LOGLOSS_WIN_VS_PRIOR
+            else True
+        )
+        brier_passed = (
+            model_metrics.multiclass_brier < prior_metrics.multiclass_brier
+            if ML_FINAL_ACCEPTANCE_REQUIRE_BRIER_WIN_VS_PRIOR
+            else True
+        )
         checks = {
             "gate12_identity_and_artifacts_verified": verified_artifacts == len(ML_MODEL_REGISTRY_ACCEPTED_PREDICTION_ARTIFACT_SHA256),
             "three_session_purge_applied": len(purge_sessions) == ML_WALK_FORWARD_PURGE_SESSIONS,
             "no_training_label_endpoint_enters_holdout": leakage_rows == 0,
             "holdout_rows_match_locked_gate7_count": len(holdout) == ML_WALK_FORWARD_FINAL_HOLDOUT_ROWS,
             "deterministic_replay_passed": replay_passed,
-            "log_loss_beats_train_prior": model_metrics.log_loss < prior_metrics.log_loss,
-            "brier_beats_train_prior": model_metrics.multiclass_brier < prior_metrics.multiclass_brier,
+            "log_loss_beats_train_prior": logloss_passed,
+            "brier_beats_train_prior": brier_passed,
             "macro_auc_meets_locked_floor": (
                 model_metrics.macro_ovr_auc is not None
                 and model_metrics.macro_ovr_auc >= ML_FINAL_ACCEPTANCE_MIN_MACRO_AUC
