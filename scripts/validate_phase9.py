@@ -328,7 +328,8 @@ def main() -> int:
     print("Ticker risk evidence: ACCEPTED GATE 11; 126 primary / 60 provisional / prior-only")
     print("Ticker risk/volatility policy: ACCEPTED; <60 insufficient, 252 audit-only")
     print("Ticker regime materialization: ACCEPTED GATE 12; deterministic one-row-per-routed-instrument snapshot")
-    print("Regime hierarchy integrity: CURRENT GATE 13; market + sector proxies + optional SIC + ticker")
+    print("Regime hierarchy integrity: ACCEPTED GATE 13; market + sector proxies + optional SIC + ticker")
+    print("Phase 09 gates: 13/13 ACCEPTED")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
