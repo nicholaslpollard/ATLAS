@@ -1,0 +1,102 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from packages.ml.dataset_policy import (
+    ML_TRAINING_DATASET_ACCEPTED,
+    ML_TRAINING_DATASET_ACCEPTED_ID,
+    ML_TRAINING_DATASET_ACCEPTED_LINEAGE_SHA256,
+)
+from packages.ml.label_policy import ML_PREDICTION_LABEL_HORIZON_SESSIONS
+from packages.ml.walk_forward_policy import (
+    ML_WALK_FORWARD_ACCEPTED_CANDIDATE,
+    ML_WALK_FORWARD_ACCEPTED_DISTINCT_TEST_SESSIONS,
+    ML_WALK_FORWARD_ACCEPTED_FINAL_HOLDOUT_ROLE,
+    ML_WALK_FORWARD_ACCEPTED_FOLD_COUNT,
+    ML_WALK_FORWARD_ACCEPTED_SPLIT_UNIT,
+    ML_WALK_FORWARD_ACCEPTED_TOTAL_TEST_ROWS,
+    ML_WALK_FORWARD_ADDITIONAL_EMBARGO_SESSIONS,
+    ML_WALK_FORWARD_DATASET_ID,
+    ML_WALK_FORWARD_DATASET_LINEAGE_SHA256,
+    ML_WALK_FORWARD_EXPANDING_TRAIN,
+    ML_WALK_FORWARD_FINAL_HOLDOUT_ROWS,
+    ML_WALK_FORWARD_FINAL_HOLDOUT_SESSIONS,
+    ML_WALK_FORWARD_MINIMUM_TRAIN_SESSIONS,
+    ML_WALK_FORWARD_POLICY_ACCEPTED,
+    ML_WALK_FORWARD_POLICY_CONTRACT_VERSION,
+    ML_WALK_FORWARD_PURGE_SESSIONS,
+    ML_WALK_FORWARD_RANDOM_ROW_SPLIT_ALLOWED,
+    ML_WALK_FORWARD_STEP_SESSIONS,
+    ML_WALK_FORWARD_TEST_SESSIONS,
+    ML_WALK_FORWARD_VALIDATION_SESSIONS,
+)
+from packages.ml.walk_forward_probe import ML_WALK_FORWARD_PROBE_CONTRACT_VERSION
+
+
+def main() -> int:
+    assert ML_TRAINING_DATASET_ACCEPTED is True
+    assert ML_WALK_FORWARD_POLICY_ACCEPTED is True
+    assert ML_WALK_FORWARD_POLICY_CONTRACT_VERSION == (
+        "ml-walk-forward-policy-v1-expanding-quarterly-252train-purge3-holdout63"
+    )
+    assert ML_WALK_FORWARD_PROBE_CONTRACT_VERSION == (
+        "ml-walk-forward-probe-v1-expanding-session-folds-purged-final-holdout"
+    )
+    assert ML_WALK_FORWARD_DATASET_ID == ML_TRAINING_DATASET_ACCEPTED_ID
+    assert ML_WALK_FORWARD_DATASET_LINEAGE_SHA256 == ML_TRAINING_DATASET_ACCEPTED_LINEAGE_SHA256
+    assert ML_WALK_FORWARD_ACCEPTED_CANDIDATE == "quarterly-train252"
+    assert ML_WALK_FORWARD_EXPANDING_TRAIN is True
+    assert ML_WALK_FORWARD_MINIMUM_TRAIN_SESSIONS == 252
+    assert ML_WALK_FORWARD_VALIDATION_SESSIONS == 63
+    assert ML_WALK_FORWARD_TEST_SESSIONS == 63
+    assert ML_WALK_FORWARD_STEP_SESSIONS == 63
+    assert ML_WALK_FORWARD_PURGE_SESSIONS == ML_PREDICTION_LABEL_HORIZON_SESSIONS == 3
+    assert ML_WALK_FORWARD_ADDITIONAL_EMBARGO_SESSIONS == 0
+    assert ML_WALK_FORWARD_RANDOM_ROW_SPLIT_ALLOWED is False
+    assert ML_WALK_FORWARD_ACCEPTED_SPLIT_UNIT == "EXCHANGE_SESSION_CROSS_SECTION"
+    assert ML_WALK_FORWARD_ACCEPTED_FOLD_COUNT == 10
+    assert ML_WALK_FORWARD_ACCEPTED_DISTINCT_TEST_SESSIONS == 630
+    assert ML_WALK_FORWARD_ACCEPTED_TOTAL_TEST_ROWS == 3_978_577
+    assert ML_WALK_FORWARD_FINAL_HOLDOUT_SESSIONS == 63
+    assert ML_WALK_FORWARD_FINAL_HOLDOUT_ROWS == 454_773
+    assert ML_WALK_FORWARD_ACCEPTED_FINAL_HOLDOUT_ROLE == "UNTOUCHED_GATE13_ACCEPTANCE"
+
+    print(f"ML Gate 7 walk-forward policy: {ML_WALK_FORWARD_POLICY_CONTRACT_VERSION}")
+    print(f"ML Gate 7 evidence probe: {ML_WALK_FORWARD_PROBE_CONTRACT_VERSION}")
+    print(f"ML Gate 7 accepted dataset: {ML_WALK_FORWARD_DATASET_ID}")
+    print(f"ML Gate 7 candidate: {ML_WALK_FORWARD_ACCEPTED_CANDIDATE}")
+    print(
+        "ML Gate 7 schedule: "
+        f"expanding train>={ML_WALK_FORWARD_MINIMUM_TRAIN_SESSIONS} / "
+        f"validation={ML_WALK_FORWARD_VALIDATION_SESSIONS} / "
+        f"test={ML_WALK_FORWARD_TEST_SESSIONS} / step={ML_WALK_FORWARD_STEP_SESSIONS} sessions"
+    )
+    print(
+        "ML Gate 7 leakage boundary: "
+        f"purge={ML_WALK_FORWARD_PURGE_SESSIONS} / "
+        f"additional_embargo={ML_WALK_FORWARD_ADDITIONAL_EMBARGO_SESSIONS} / random_rows=False"
+    )
+    print(
+        "ML Gate 7 OOS evidence: "
+        f"folds={ML_WALK_FORWARD_ACCEPTED_FOLD_COUNT} / "
+        f"distinct_test_sessions={ML_WALK_FORWARD_ACCEPTED_DISTINCT_TEST_SESSIONS} / "
+        f"test_rows={ML_WALK_FORWARD_ACCEPTED_TOTAL_TEST_ROWS:,}"
+    )
+    print(
+        "ML Gate 7 final holdout: "
+        f"{ML_WALK_FORWARD_FINAL_HOLDOUT_SESSIONS} sessions / "
+        f"{ML_WALK_FORWARD_FINAL_HOLDOUT_ROWS:,} rows / "
+        f"role={ML_WALK_FORWARD_ACCEPTED_FINAL_HOLDOUT_ROLE}"
+    )
+    print("ML Gate 7 walk-forward / purge policy: ACCEPTED")
+    print("ML Gate 8 baseline probability models: CURRENT")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
