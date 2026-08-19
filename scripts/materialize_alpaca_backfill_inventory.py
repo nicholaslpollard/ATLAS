@@ -24,6 +24,7 @@ def main() -> None:
     print(f"  inventory rows:              {report.inventory_rows:,}")
     print(f"  SIP acquisition candidates: {report.sip_candidate_symbols:,}")
     print(f"  known OTC-only excluded:     {report.known_otc_only_excluded:,}")
+    print(f"  inactive reference-only:     {report.inactive_reference_only_identifier_excluded:,} excluded from SIP")
     print(f"  corporate-action pages:      {report.corporate_action_pages:,}")
     print(f"  raw discovery payloads:      {report.raw_discovery_payloads:,}")
     print("  provenance combinations:")
