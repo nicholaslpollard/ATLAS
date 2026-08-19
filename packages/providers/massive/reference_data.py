@@ -31,6 +31,15 @@ class MassiveReferenceProvider:
                 out[key] = value.upper() if value else None
         return out
 
+    @staticmethod
+    def _normalize_classification_text(item: dict[str, Any]) -> dict[str, Any]:
+        out = dict(item)
+        for key in ("name", "sic_code", "sic_description"):
+            if out.get(key) is not None:
+                value = str(out[key]).strip()
+                out[key] = value or None
+        return out
+
     def stock_snapshot(self, as_of_date: date, *, include_inactive: bool = True) -> list[dict[str, Any]]:
         states = (True, False) if include_inactive else (True,)
         rows: list[dict[str, Any]] = []
@@ -54,6 +63,10 @@ class MassiveReferenceProvider:
                 rows.append(row)
         rows.sort(key=lambda item: (str(item.get("ticker", "")), str(item.get("composite_figi", ""))))
         return rows
+
+    def ticker_overview(self, ticker: str, as_of_date: date) -> dict[str, Any]:
+        row = self.client.ticker_overview(ticker, as_of_date=as_of_date.isoformat())
+        return self._normalize_classification_text(self._normalize(row))
 
     def ticker_events(self, identifier: str) -> list[dict[str, Any]]:
         return self.client.ticker_events(identifier)
