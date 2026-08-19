@@ -62,5 +62,8 @@ jobs:
       - name: Validate Phase 9
         run: python scripts/validate_phase9.py
 
+      - name: Validate Phase 10
+        run: python scripts/validate_phase10.py
+
       - name: Run tests
         run: python -m pytest -q
