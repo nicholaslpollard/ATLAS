@@ -51,6 +51,7 @@ def main() -> None:
     else:
         print("  execution scope:             complete locked range")
     print("  resume behavior:             completed compatible unit manifests are skipped")
+    print("  invalid-symbol behavior:     provider rejection is persisted, isolated, and never remapped")
 
     def progress(done, total, unit, payload, skipped):
         if skipped and (done % 25 != 0 and done != total):
@@ -63,7 +64,8 @@ def main() -> None:
             f"batch={unit.batch_index:04d} symbols={len(unit.symbols):3d} "
             f"pages={int(payload.get('page_count', 0)):2d} "
             f"bars={int(payload.get('bar_rows', 0)):6d} "
-            f"observed={int(payload.get('observed_symbol_count', 0)):3d}"
+            f"observed={int(payload.get('observed_symbol_count', 0)):3d} "
+            f"rejected={int(payload.get('provider_rejected_symbol_count', 0)):2d}"
         )
 
     report = acquirer.run(
@@ -77,6 +79,8 @@ def main() -> None:
     print(f"    missing units:             {report.missing_units:,}")
     print(f"    raw payload pages:         {report.raw_payload_pages:,}")
     print(f"    observed symbols:          {report.observed_symbols:,}/{report.candidate_symbols:,}")
+    print(f"    provider-rejected symbols: {report.provider_rejected_symbols:,}")
+    print(f"    rejection conflicts:       {report.provider_rejection_conflicts:,}")
     print(f"    zero-bar symbols:          {report.zero_bar_symbols:,}")
     print(f"    bar rows:                  {report.bar_rows:,}")
     print(f"    executed this run:         {report.executed_units_this_run:,}")
