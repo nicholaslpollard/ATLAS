@@ -10,9 +10,21 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
+from packages.ml.identity_policy import (
+    CURRENT_ACTIVE_FILTER_USED,
+    CURRENT_DELISTED_FILTER_USED,
+    CURRENT_ROUTE_FILTER_USED,
+    ML_HISTORICAL_IDENTITY_POLICY_CONTRACT_VERSION,
+    TICKER_TEXT_SPLICING_ALLOWED,
+)
 from packages.ml.identity_probe import (
     ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION,
     MLHistoricalIdentityProbe,
+)
+from packages.ml.outcome_probe import (
+    ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION,
+    ML_OUTCOME_HORIZONS,
+    MLOutcomeFeasibilityProbe,
 )
 from packages.ml.reuse_audit import (
     ML_TICKER_REUSE_AUDIT_CONTRACT_VERSION,
@@ -25,6 +37,7 @@ from packages.ml.universe_probe import (
     ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION,
     MLTrainingUniverseProbe,
 )
+from packages.providers.massive.corporate_actions import MASSIVE_SPLITS_ENDPOINT
 
 
 PHASE10_GATE_COUNT = 13
@@ -41,6 +54,18 @@ def main() -> int:
     assert ML_TICKER_REUSE_AUDIT_CONTRACT_VERSION == (
         "ml-ticker-reuse-audit-v1-stable-vs-weak-identity-authority-enrichment"
     )
+    assert ML_HISTORICAL_IDENTITY_POLICY_CONTRACT_VERSION == (
+        "ml-historical-identity-policy-v1-authoritative-or-unique-no-reuse-structural"
+    )
+    assert ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION == (
+        "ml-outcome-feasibility-probe-v1-contiguous-horizons-provider-split-adjustment-audit"
+    )
+    assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
+    assert MASSIVE_SPLITS_ENDPOINT == "/stocks/v1/splits"
+    assert CURRENT_ROUTE_FILTER_USED is False
+    assert CURRENT_ACTIVE_FILTER_USED is False
+    assert CURRENT_DELISTED_FILTER_USED is False
+    assert TICKER_TEXT_SPLICING_ALLOWED is False
     assert ML_HISTORY_ORIGIN_DATE == date(2021, 8, 16)
     assert ML_CANDIDATE_ACTIVITY_FLOOR_DOLLARS == 250_000.0
     assert ML_LONG_GAP_CALENDAR_DAYS == 30
@@ -51,14 +76,19 @@ def main() -> int:
     universe_report = MLTrainingUniverseProbe(settings).report_path(sample_date)
     identity_report = MLHistoricalIdentityProbe(settings).report_path(sample_date)
     reuse_report = MLTickerReuseAudit(settings).report_path(sample_date)
+    outcome_report = MLOutcomeFeasibilityProbe(settings).report_path(sample_date)
     assert "ml" in universe_report.parts and "training_universe_probe" in universe_report.parts
     assert "ml" in identity_report.parts and "historical_identity_probe" in identity_report.parts
     assert "ml" in reuse_report.parts and "ticker_reuse_audit" in reuse_report.parts
-    assert len({universe_report, identity_report, reuse_report}) == 3
+    assert "ml" in outcome_report.parts and "outcome_feasibility_probe" in outcome_report.parts
+    assert len({universe_report, identity_report, reuse_report, outcome_report}) == 4
 
     print(f"ML training-universe probe contract: {ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION}")
     print(f"ML historical-identity probe contract: {ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION}")
     print(f"ML ticker-reuse audit contract: {ML_TICKER_REUSE_AUDIT_CONTRACT_VERSION}")
+    print(f"ML historical-identity policy contract: {ML_HISTORICAL_IDENTITY_POLICY_CONTRACT_VERSION}")
+    print(f"ML outcome-feasibility probe contract: {ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION}")
+    print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
     print(f"ML history origin: {ML_HISTORY_ORIGIN_DATE}")
     print(f"Core quantitative feature count: {len(CORE_FEATURE_REGISTRY.all())}")
@@ -69,10 +99,10 @@ def main() -> int:
     print("Historical ticker-text splicing: FORBIDDEN")
     print("Current active/delisted status as retrospective eligibility: FORBIDDEN")
     print("Gate 1 historical training-universe audit: ACCEPTED; survivorship/selection gap measured")
-    print("Gate 2 historical identity/eligibility evidence: CURRENT")
-    print("Gate 2 unresolved ticker reuse composition: CURRENT SUB-AUDIT")
-    print("Gate 2 historical identity/eligibility policy: NOT YET LOCKED")
-    print("Gate 3 outcome-label feasibility: NOT YET MEASURED")
+    print("Gate 2 historical identity/eligibility evidence: ACCEPTED; 93.34% structurally eligible")
+    print("Gate 2 ticker-reuse sub-audit: ACCEPTED; multi-stable ambiguity dominates blocked rows")
+    print("Gate 2 historical identity/eligibility policy: ACCEPTED; authoritative or unique/no-reuse only")
+    print("Gate 3 outcome-label feasibility: CURRENT; 1/3/5/10/20-session + split adjustment evidence")
     print("Gate 4 prediction-label policy: NOT YET LOCKED")
     print("Gate 5 point-in-time ML feature/leakage contract: NOT YET LOCKED")
     print("Gate 6 training-dataset materialization: NOT YET BUILT")
