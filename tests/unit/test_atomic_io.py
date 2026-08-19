@@ -90,6 +90,16 @@ def test_unique_temp_paths_do_not_collide_within_same_process(tmp_path: Path):
     assert second.parent == target.parent
 
 
+def test_unique_temp_path_bounds_long_content_addressed_filename(tmp_path: Path):
+    target = tmp_path / ("a" * 64 + ".json.gz")
+    temp = atomic_io.unique_temp_path(target)
+
+    assert temp.parent == target.parent
+    assert temp.name.startswith("a" * atomic_io._TEMP_NAME_PREFIX_MAX + ".")
+    assert temp.name.endswith(".tmp")
+    assert len(temp.name) < len(target.name) + 20
+
+
 def test_persistently_locked_checkpoint_warns_once_then_disables_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     calls = 0
 
