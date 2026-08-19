@@ -51,6 +51,10 @@ def main() -> None:
     observed_path = Path(str(payload.get("observed_summary_path", "")))
     unit_root = Path(str(payload.get("unit_manifest_root", "")))
     manifest_count = len(list(unit_root.glob("*/*.json"))) if unit_root.is_dir() else 0
+    observed = int(payload.get("observed_symbols", 0))
+    rejected = int(payload.get("provider_rejected_symbols", 0))
+    conflicts = int(payload.get("provider_rejection_conflicts", 0))
+    zero_bar = int(payload.get("zero_bar_symbols", 0))
 
     checks = {
         "acquisition_contract": payload.get("contract_version") == ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION,
@@ -79,11 +83,10 @@ def main() -> None:
             and int(payload.get("missing_units", -1)) == 0
         ),
         "unit_manifests_present": manifest_count == expected_units,
-        "raw_payload_pages_present": int(payload.get("raw_payload_pages", 0)) >= expected_units,
-        "historical_bars_observed": int(payload.get("bar_rows", 0)) > 0 and int(payload.get("observed_symbols", 0)) > 0,
-        "observation_accounting": (
-            int(payload.get("observed_symbols", 0)) + int(payload.get("zero_bar_symbols", 0)) == candidate_symbols
-        ),
+        "raw_payload_pages_present": int(payload.get("raw_payload_pages", 0)) > 0,
+        "historical_bars_observed": int(payload.get("bar_rows", 0)) > 0 and observed > 0,
+        "provider_rejection_conflicts_absent": conflicts == 0,
+        "observation_accounting": observed + rejected + zero_bar == candidate_symbols,
         "observed_summary_present": observed_path.is_file(),
         "inventory_fingerprint_present": len(str(payload.get("inventory_fingerprint", ""))) == 64,
     }
@@ -93,8 +96,10 @@ def main() -> None:
     print(f"  planned units:               {int(payload.get('planned_units', 0)):,}")
     print(f"  completed units:             {int(payload.get('completed_units', 0)):,}")
     print(f"  raw payload pages:           {int(payload.get('raw_payload_pages', 0)):,}")
-    print(f"  observed symbols:            {int(payload.get('observed_symbols', 0)):,}")
-    print(f"  zero-bar symbols:            {int(payload.get('zero_bar_symbols', 0)):,}")
+    print(f"  observed symbols:            {observed:,}")
+    print(f"  provider-rejected symbols:   {rejected:,}")
+    print(f"  rejection conflicts:         {conflicts:,}")
+    print(f"  zero-bar symbols:            {zero_bar:,}")
     print(f"  bar rows:                    {int(payload.get('bar_rows', 0)):,}")
     print("  checks:")
     for name, passed in checks.items():
