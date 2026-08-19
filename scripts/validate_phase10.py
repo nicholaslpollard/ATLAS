@@ -21,6 +21,20 @@ from packages.ml.identity_probe import (
     ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION,
     MLHistoricalIdentityProbe,
 )
+from packages.ml.label_policy import (
+    ML_GATE4_ACCEPTED_DOWN_ROWS,
+    ML_GATE4_ACCEPTED_NEUTRAL_ROWS,
+    ML_GATE4_ACCEPTED_UP_ROWS,
+    ML_GATE4_ACCEPTED_USABLE_ROWS,
+    ML_PREDICTION_LABEL_ADJACENT_OVERLAP_SESSIONS,
+    ML_PREDICTION_LABEL_CLASSES,
+    ML_PREDICTION_LABEL_HORIZON_SESSIONS,
+    ML_PREDICTION_LABEL_NEUTRAL_RETAINED,
+    ML_PREDICTION_LABEL_POLICY_ACCEPTED,
+    ML_PREDICTION_LABEL_POLICY_CONTRACT_VERSION,
+    ML_PREDICTION_LABEL_PROBABILITY_FIELDS,
+    ML_PREDICTION_LABEL_THRESHOLD_MULTIPLIER,
+)
 from packages.ml.label_policy_probe import (
     ML_LABEL_POLICY_CANDIDATE_HORIZONS,
     ML_LABEL_POLICY_CANDIDATE_MULTIPLIERS,
@@ -100,6 +114,9 @@ def main() -> int:
     assert ML_LABEL_POLICY_PROBE_CONTRACT_VERSION == (
         "ml-label-policy-probe-v1-annual-stability-3-5-10-natr-grid"
     )
+    assert ML_PREDICTION_LABEL_POLICY_CONTRACT_VERSION == (
+        "ml-prediction-label-policy-v1-3session-0.5natr-three-class-endpoint"
+    )
     assert ML_FEATURE_PARQUET_READ_MODE == "union_by_name"
     assert ML_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED is True
     assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
@@ -116,7 +133,18 @@ def main() -> int:
     assert ML_GATE3_ACCEPTED_CANDIDATE_SYMBOLS == 12_596
     assert ML_GATE3_PRIMARY_CANDIDATE_THRESHOLD_MULTIPLIER == 0.5
     assert ML_GATE3_PRIMARY_CANDIDATE_IS_PRODUCTION_LOCK is False
-    assert ML_PREDICTION_LABEL_POLICY_LOCKED is False
+    assert ML_PREDICTION_LABEL_POLICY_LOCKED is True
+    assert ML_PREDICTION_LABEL_POLICY_ACCEPTED is True
+    assert ML_PREDICTION_LABEL_HORIZON_SESSIONS == 3
+    assert ML_PREDICTION_LABEL_THRESHOLD_MULTIPLIER == 0.5
+    assert ML_PREDICTION_LABEL_CLASSES == ("DOWN", "NEUTRAL", "UP")
+    assert ML_PREDICTION_LABEL_PROBABILITY_FIELDS == ("p_down", "p_neutral", "p_up")
+    assert ML_PREDICTION_LABEL_NEUTRAL_RETAINED is True
+    assert ML_PREDICTION_LABEL_ADJACENT_OVERLAP_SESSIONS == 2
+    assert ML_GATE4_ACCEPTED_USABLE_ROWS == 6_553_856
+    assert ML_GATE4_ACCEPTED_UP_ROWS == 1_466_456
+    assert ML_GATE4_ACCEPTED_DOWN_ROWS == 1_329_898
+    assert ML_GATE4_ACCEPTED_NEUTRAL_ROWS == 3_757_502
     assert MASSIVE_SPLITS_ENDPOINT == "/stocks/v1/splits"
     assert CURRENT_ROUTE_FILTER_USED is False
     assert CURRENT_ACTIVE_FILTER_USED is False
@@ -152,9 +180,16 @@ def main() -> int:
     print(f"ML outcome-family audit contract: {ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION}")
     print(f"ML outcome-feasibility policy contract: {ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION}")
     print(f"ML Gate 4 label-policy probe contract: {ML_LABEL_POLICY_PROBE_CONTRACT_VERSION}")
+    print(f"ML prediction-label policy contract: {ML_PREDICTION_LABEL_POLICY_CONTRACT_VERSION}")
     print(f"ML feature Parquet read mode: {ML_FEATURE_PARQUET_READ_MODE}")
     print(f"ML outcome-family thresholds: {ML_VOLATILITY_THRESHOLD_GRID} x {ML_VOLATILITY_FEATURE} * sqrt(horizon)")
     print(f"ML Gate 4 candidate grid: horizons={ML_LABEL_POLICY_CANDIDATE_HORIZONS} multipliers={ML_LABEL_POLICY_CANDIDATE_MULTIPLIERS}")
+    print(
+        "ML production prediction label: "
+        f"{ML_PREDICTION_LABEL_HORIZON_SESSIONS} sessions / "
+        f"{ML_PREDICTION_LABEL_THRESHOLD_MULTIPLIER}x natr_14 * sqrt(horizon) / "
+        f"classes={ML_PREDICTION_LABEL_CLASSES}"
+    )
     print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
     print(f"ML history origin: {ML_HISTORY_ORIGIN_DATE}")
@@ -172,8 +207,8 @@ def main() -> int:
     print("Gate 3 fixed-horizon/split evidence: ACCEPTED; split crossings censored")
     print("Gate 3 volatility-scaled outcome families: ACCEPTED; full population + NATR integrity reconciled")
     print("Gate 3 outcome-label feasibility policy: ACCEPTED; endpoint/NATR families feasible")
-    print("Gate 4 prediction-label policy: CURRENT; annual stability probe ready")
-    print("Gate 5 point-in-time ML feature/leakage contract: NOT YET LOCKED")
+    print("Gate 4 prediction-label policy: ACCEPTED; 3-session / 0.5x NATR / three-class endpoint")
+    print("Gate 5 point-in-time ML feature/leakage contract: CURRENT; evidence audit not yet accepted")
     print("Gate 6 training-dataset materialization: NOT YET BUILT")
     print("Gate 7 walk-forward/embargo policy: NOT YET LOCKED")
     print("Gate 8 baseline probability models: NOT YET TRAINED")
