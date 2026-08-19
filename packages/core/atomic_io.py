@@ -8,20 +8,24 @@ from pathlib import Path
 
 
 _TRANSIENT_WINDOWS_ERRORS = {5, 32, 33}
+_TEMP_NAME_PREFIX_MAX = 24
 
 
 def unique_temp_path(final_path: Path) -> Path:
     """Return a unique temporary path beside *final_path*.
 
     Keeping the temporary file in the destination directory preserves same-volume
-    atomic rename semantics. UUID suffixes avoid collisions between repeated writes
-    from the same PID and between concurrent ATLAS processes.
+    atomic rename semantics. The visible filename prefix is bounded so long
+    content-addressed destination names do not push Windows paths past the legacy
+    MAX_PATH boundary. A full UUID plus PID preserves collision resistance between
+    repeated writes and concurrent ATLAS processes.
     """
 
     final_path = Path(final_path)
     final_path.parent.mkdir(parents=True, exist_ok=True)
     token = uuid.uuid4().hex
-    return final_path.with_name(f"{final_path.name}.{os.getpid()}.{token}.tmp")
+    prefix = final_path.name[:_TEMP_NAME_PREFIX_MAX]
+    return final_path.with_name(f"{prefix}.{os.getpid()}.{token}.tmp")
 
 
 def _is_transient_replace_error(exc: OSError) -> bool:
