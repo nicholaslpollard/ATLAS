@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -88,6 +87,10 @@ def _fraction(numerator: int, denominator: int) -> float:
     return 0.0 if denominator <= 0 else float(numerator) / float(denominator)
 
 
+def _sql_values(values: tuple[str, ...]) -> str:
+    return ", ".join("'" + item.replace("'", "''") + "'" for item in values)
+
+
 def identity_status(
     *,
     authoritative_interval_count: int,
@@ -96,13 +99,7 @@ def identity_status(
     identity_quality: str | None,
     metadata_conflict: bool,
 ) -> str:
-    """Classify one historical ticker observation without ticker-text splicing.
-
-    Exact authoritative validity evidence wins. Without it, a historical provider
-    ticker may map operationally only when the current inclusive reference inventory
-    resolves that exact ticker to one strong/medium stable identity and the accumulated
-    ticker-observation registry contains no evidence of reuse by another identity.
-    """
+    """Classify a historical exact-ticker observation conservatively."""
 
     if authoritative_interval_count == 1:
         return AUTHORITATIVE_INTERVAL
@@ -129,11 +126,7 @@ def structural_eligibility_reasons(
     primary_exchange: str | None,
     security_type: str | None,
 ) -> tuple[str, ...]:
-    """Apply only lifetime-structural Phase 7 metadata rules.
-
-    Current active/delisted state is intentionally excluded because using a 2026
-    status to remove earlier observations would introduce survivorship bias.
-    """
+    """Apply lifetime-structural Phase 7 rules, not current active/delisted state."""
 
     policy = ACTIVE_UNIVERSE_ELIGIBILITY_POLICY
     reasons: list[str] = []
@@ -156,13 +149,7 @@ def structural_eligibility_reasons(
 
 
 class MLHistoricalIdentityProbe:
-    """Measure identity-safe, observation-driven historical ML coverage.
-
-    This probe deliberately does not use the current routed universe, current active
-    flag, or current delisted flag. It asks how much fully-warmed/liquid historical
-    evidence can be assigned conservatively to stable identities using exact
-    authoritative intervals or a unique unreused strong/medium reference identity.
-    """
+    """Measure anti-survivorship historical identity/eligibility coverage in DuckDB."""
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
@@ -190,15 +177,16 @@ class MLHistoricalIdentityProbe:
         feature_glob = self.paths.feature_glob(Timeframe.DAY_1)
         start = ML_HISTORY_ORIGIN_DATE.isoformat()
         end = end_date.isoformat()
-        complete = " AND ".join(f"f.{name} IS NOT NULL" for name in self.feature_names)
+        complete = " AND ".join(
+            f"f.{name} IS NOT NULL AND isfinite(f.{name})" for name in self.feature_names
+        )
 
         con.execute(
             f"""
             CREATE TEMP VIEW ml_identity_candidates AS
             SELECT
                 b.symbol,
-                CAST(b.session_date AS DATE) AS session_date,
-                b.close * b.volume AS source_dollar_volume
+                CAST(b.session_date AS DATE) AS session_date
             FROM read_parquet({sql_string(bar_glob)}, hive_partitioning=true) b
             INNER JOIN read_parquet({sql_string(feature_glob)}, hive_partitioning=true) f
               ON f.symbol = b.symbol
@@ -209,13 +197,24 @@ class MLHistoricalIdentityProbe:
             """
         )
 
+        reference = sql_string(paths["reference"])
         con.execute(
             f"""
-            CREATE TEMP VIEW ml_reference_by_ticker AS
+            CREATE TEMP VIEW ml_reference_ticker AS
             SELECT
                 ticker,
                 count(DISTINCT instrument_id) AS reference_identity_count,
-                min(instrument_id) AS reference_instrument_id,
+                min(instrument_id) AS reference_instrument_id
+            FROM read_parquet({reference})
+            WHERE ticker IS NOT NULL
+            GROUP BY ticker
+            """
+        )
+        con.execute(
+            f"""
+            CREATE TEMP VIEW ml_reference_instrument AS
+            SELECT
+                instrument_id,
                 count(DISTINCT identity_quality) AS identity_quality_count,
                 min(identity_quality) AS identity_quality,
                 count(DISTINCT coalesce(market, '<NULL>')) AS market_count,
@@ -226,9 +225,8 @@ class MLHistoricalIdentityProbe:
                 min(primary_exchange) AS primary_exchange,
                 count(DISTINCT coalesce(security_type, '<NULL>')) AS security_type_count,
                 min(security_type) AS security_type
-            FROM read_parquet({sql_string(paths['reference'])})
-            WHERE ticker IS NOT NULL
-            GROUP BY ticker
+            FROM read_parquet({reference})
+            GROUP BY instrument_id
             """
         )
 
@@ -244,12 +242,11 @@ class MLHistoricalIdentityProbe:
 
         intervals = self.paths.authoritative_ticker_intervals_file()
         if intervals.is_file():
-            interval_source = sql_string(intervals)
             con.execute(
                 f"""
                 CREATE TEMP VIEW ml_authoritative_intervals AS
                 SELECT instrument_id, ticker, valid_from_date, valid_to_date_exclusive
-                FROM read_parquet({interval_source})
+                FROM read_parquet({sql_string(intervals)})
                 WHERE coalesce(continuity_authority, TRUE)
                 """
             )
@@ -268,49 +265,92 @@ class MLHistoricalIdentityProbe:
 
         con.execute(
             """
-            CREATE TEMP VIEW ml_identity_evidence AS
+            CREATE TEMP VIEW ml_identity_base AS
             SELECT
                 c.symbol,
                 c.session_date,
                 coalesce(r.reference_identity_count, 0) AS reference_identity_count,
                 r.reference_instrument_id,
-                r.identity_quality,
                 coalesce(t.reuse_identity_count, 0) AS reuse_identity_count,
-                r.market,
-                r.locale,
-                r.primary_exchange,
-                r.security_type,
-                (
-                    coalesce(r.identity_quality_count, 0) > 1
-                    OR coalesce(r.market_count, 0) > 1
-                    OR coalesce(r.locale_count, 0) > 1
-                    OR coalesce(r.exchange_count, 0) > 1
-                    OR coalesce(r.security_type_count, 0) > 1
-                ) AS metadata_conflict,
-                count(a.instrument_id) FILTER (
-                    WHERE a.valid_from_date <= c.session_date
-                      AND (a.valid_to_date_exclusive IS NULL OR c.session_date < a.valid_to_date_exclusive)
-                ) AS authoritative_interval_count
+                count(DISTINCT a.instrument_id) AS authoritative_interval_count,
+                min(a.instrument_id) AS authoritative_instrument_id
             FROM ml_identity_candidates c
-            LEFT JOIN ml_reference_by_ticker r ON r.ticker = c.symbol
+            LEFT JOIN ml_reference_ticker r ON r.ticker = c.symbol
             LEFT JOIN ml_ticker_reuse t ON t.ticker = c.symbol
             LEFT JOIN ml_authoritative_intervals a
               ON a.ticker = c.symbol
-             AND a.instrument_id = r.reference_instrument_id
              AND a.valid_from_date <= c.session_date
              AND (a.valid_to_date_exclusive IS NULL OR c.session_date < a.valid_to_date_exclusive)
             GROUP BY ALL
             """
         )
 
+        con.execute(
+            """
+            CREATE TEMP VIEW ml_identity_evidence_pre AS
+            SELECT
+                b.*,
+                CASE
+                    WHEN b.authoritative_interval_count = 1 THEN b.authoritative_instrument_id
+                    WHEN b.reference_identity_count = 1 THEN b.reference_instrument_id
+                    ELSE NULL
+                END AS selected_instrument_id
+            FROM ml_identity_base b
+            """
+        )
+        con.execute(
+            """
+            CREATE TEMP VIEW ml_identity_evidence AS
+            SELECT
+                e.*,
+                i.identity_quality,
+                i.market,
+                i.locale,
+                i.primary_exchange,
+                i.security_type,
+                (
+                    coalesce(i.identity_quality_count, 0) > 1
+                    OR coalesce(i.market_count, 0) > 1
+                    OR coalesce(i.locale_count, 0) > 1
+                    OR coalesce(i.exchange_count, 0) > 1
+                    OR coalesce(i.security_type_count, 0) > 1
+                ) AS metadata_conflict,
+                CASE
+                    WHEN e.authoritative_interval_count = 1 THEN 'AUTHORITATIVE_INTERVAL'
+                    WHEN e.authoritative_interval_count > 1 OR (
+                        coalesce(i.identity_quality_count, 0) > 1
+                        OR coalesce(i.market_count, 0) > 1
+                        OR coalesce(i.locale_count, 0) > 1
+                        OR coalesce(i.exchange_count, 0) > 1
+                        OR coalesce(i.security_type_count, 0) > 1
+                    ) THEN 'UNRESOLVED_METADATA_CONFLICT'
+                    WHEN e.reference_identity_count > 1 THEN 'UNRESOLVED_MULTI_REFERENCE'
+                    WHEN e.reuse_identity_count > 1 THEN 'UNRESOLVED_TICKER_REUSE'
+                    WHEN e.reference_identity_count = 0 THEN 'UNMAPPED_REFERENCE'
+                    WHEN lower(coalesce(i.identity_quality, '')) NOT IN ('strong', 'medium')
+                        THEN 'UNRESOLVED_FALLBACK_IDENTITY'
+                    ELSE 'UNIQUE_REFERENCE_NO_REUSE'
+                END AS identity_status
+            FROM ml_identity_evidence_pre e
+            LEFT JOIN ml_reference_instrument i
+              ON i.instrument_id = e.selected_instrument_id
+            """
+        )
+
     @staticmethod
-    def _status_for_row(row: tuple[object, ...]) -> str:
-        return identity_status(
-            authoritative_interval_count=int(row[2]),
-            reference_identity_count=int(row[3]),
-            reuse_identity_count=int(row[4]),
-            identity_quality=None if row[5] is None else str(row[5]),
-            metadata_conflict=bool(row[10]),
+    def _eligibility_sql() -> str:
+        policy = ACTIVE_UNIVERSE_ELIGIBILITY_POLICY
+        markets = _sql_values(tuple(item.lower() for item in policy.allowed_markets))
+        locales = _sql_values(tuple(item.lower() for item in policy.allowed_locales))
+        exchanges = _sql_values(tuple(item.upper() for item in policy.allowed_exchanges))
+        security_types = _sql_values(tuple(item.upper() for item in policy.allowed_security_types))
+        return (
+            "market IS NOT NULL AND locale IS NOT NULL AND primary_exchange IS NOT NULL "
+            "AND security_type IS NOT NULL "
+            f"AND lower(market) IN ({markets}) "
+            f"AND lower(locale) IN ({locales}) "
+            f"AND upper(primary_exchange) IN ({exchanges}) "
+            f"AND upper(security_type) IN ({security_types})"
         )
 
     def run(self, end_date: date) -> MLHistoricalIdentityProbeReport:
@@ -318,83 +358,89 @@ class MLHistoricalIdentityProbe:
         if end_date < ML_HISTORY_ORIGIN_DATE:
             raise ValueError("end_date predates the Phase 10 ML history origin")
         paths = self._required_paths(end_date)
+        eligible = self._eligibility_sql()
+        safe = "identity_status IN ('AUTHORITATIVE_INTERVAL', 'UNIQUE_REFERENCE_NO_REUSE')"
+
         con = connect_utc(":memory:")
         try:
             self._prepare_views(con, end_date, paths)
-            rows = con.execute(
-                """
+            candidate = con.execute(
+                "SELECT count(*), count(DISTINCT symbol) FROM ml_identity_evidence"
+            ).fetchone()
+            status_rows = {
+                str(key): int(value)
+                for key, value in con.execute(
+                    "SELECT identity_status, count(*) FROM ml_identity_evidence GROUP BY 1 ORDER BY 1"
+                ).fetchall()
+            }
+            status_symbols = {
+                str(key): int(value)
+                for key, value in con.execute(
+                    "SELECT identity_status, count(DISTINCT symbol) FROM ml_identity_evidence GROUP BY 1 ORDER BY 1"
+                ).fetchall()
+            }
+            summary = con.execute(
+                f"""
                 SELECT
-                    symbol,
-                    session_date,
-                    authoritative_interval_count,
-                    reference_identity_count,
-                    reuse_identity_count,
-                    identity_quality,
-                    market,
-                    locale,
-                    primary_exchange,
-                    security_type,
-                    metadata_conflict
+                    count(*) FILTER (WHERE {safe}),
+                    count(DISTINCT symbol) FILTER (WHERE {safe}),
+                    count(*) FILTER (WHERE {safe} AND ({eligible})),
+                    count(DISTINCT symbol) FILTER (WHERE {safe} AND ({eligible}))
                 FROM ml_identity_evidence
-                ORDER BY session_date, symbol
+                """
+            ).fetchone()
+            reasons = con.execute(
+                f"""
+                SELECT
+                    count(*) FILTER (WHERE {safe} AND (
+                        market IS NULL OR locale IS NULL OR primary_exchange IS NULL OR security_type IS NULL
+                    )),
+                    count(*) FILTER (WHERE {safe} AND market IS NOT NULL AND lower(market) NOT IN ({_sql_values(tuple(item.lower() for item in ACTIVE_UNIVERSE_ELIGIBILITY_POLICY.allowed_markets))})),
+                    count(*) FILTER (WHERE {safe} AND locale IS NOT NULL AND lower(locale) NOT IN ({_sql_values(tuple(item.lower() for item in ACTIVE_UNIVERSE_ELIGIBILITY_POLICY.allowed_locales))})),
+                    count(*) FILTER (WHERE {safe} AND primary_exchange IS NOT NULL AND upper(primary_exchange) NOT IN ({_sql_values(tuple(item.upper() for item in ACTIVE_UNIVERSE_ELIGIBILITY_POLICY.allowed_exchanges))})),
+                    count(*) FILTER (WHERE {safe} AND security_type IS NOT NULL AND upper(security_type) NOT IN ({_sql_values(tuple(item.upper() for item in ACTIVE_UNIVERSE_ELIGIBILITY_POLICY.allowed_security_types))}))
+                FROM ml_identity_evidence
+                """
+            ).fetchone()
+            annual_rows = con.execute(
+                f"""
+                SELECT
+                    year(session_date),
+                    count(*),
+                    count(*) FILTER (WHERE {safe}),
+                    count(*) FILTER (WHERE {safe} AND ({eligible})),
+                    count(*) FILTER (WHERE NOT ({safe}))
+                FROM ml_identity_evidence
+                GROUP BY 1
+                ORDER BY 1
                 """
             ).fetchall()
         finally:
             con.close()
 
-        status_rows: Counter[str] = Counter()
-        status_symbols: dict[str, set[str]] = {}
-        reason_rows: Counter[str] = Counter()
-        safe_symbols: set[str] = set()
-        eligible_symbols: set[str] = set()
-        annual: dict[int, Counter[str]] = {}
-
-        for row in rows:
-            symbol = str(row[0])
-            session_date = row[1]
-            status = self._status_for_row(row)
-            status_rows[status] += 1
-            status_symbols.setdefault(status, set()).add(symbol)
-            year = int(session_date.year)
-            year_counts = annual.setdefault(year, Counter())
-            year_counts["candidate"] += 1
-
-            if status not in SAFE_IDENTITY_STATUSES:
-                year_counts["unresolved"] += 1
-                continue
-
-            safe_symbols.add(symbol)
-            year_counts["safe"] += 1
-            reasons = structural_eligibility_reasons(
-                market=None if row[6] is None else str(row[6]),
-                locale=None if row[7] is None else str(row[7]),
-                primary_exchange=None if row[8] is None else str(row[8]),
-                security_type=None if row[9] is None else str(row[9]),
-            )
-            if reasons:
-                for reason in reasons:
-                    reason_rows[reason] += 1
-                continue
-            eligible_symbols.add(symbol)
-            year_counts["eligible"] += 1
-
-        candidate_rows = len(rows)
-        identity_safe_rows = sum(status_rows[name] for name in SAFE_IDENTITY_STATUSES)
-        structurally_eligible_rows = sum(item["eligible"] for item in annual.values())
-        structurally_ineligible_rows = identity_safe_rows - structurally_eligible_rows
-        unresolved_rows = candidate_rows - identity_safe_rows
-        annual_evidence = tuple(
+        candidate_rows = int(candidate[0])
+        identity_safe_rows = int(summary[0])
+        structurally_eligible_rows = int(summary[2])
+        reason_names = (
+            "MISSING_REFERENCE_METADATA",
+            "UNSUPPORTED_MARKET",
+            "NON_US_LOCALE",
+            "UNSUPPORTED_EXCHANGE",
+            "UNSUPPORTED_SECURITY_TYPE",
+        )
+        reason_counts = {
+            name: int(value) for name, value in zip(reason_names, reasons, strict=True) if int(value) > 0
+        }
+        annual = tuple(
             AnnualHistoricalIdentityEvidence(
-                year=year,
-                candidate_rows=int(counts["candidate"]),
-                identity_safe_rows=int(counts["safe"]),
-                structurally_eligible_rows=int(counts["eligible"]),
-                unresolved_rows=int(counts["unresolved"]),
-                structurally_eligible_fraction=_fraction(
-                    int(counts["eligible"]), int(counts["candidate"])
-                ),
+                year=int(row[0]),
+                candidate_rows=int(row[1]),
+                identity_safe_rows=int(row[2]),
+                structurally_eligible_rows=int(row[3]),
+                unresolved_rows=int(row[4]),
+                structurally_eligible_fraction=_fraction(int(row[3]), int(row[1])),
             )
-            for year, counts in sorted(annual.items())
+            for row in annual_rows
         )
 
         target = self.report_path(end_date)
@@ -406,32 +452,30 @@ class MLHistoricalIdentityProbe:
             history_end=end_date.isoformat(),
             wall_seconds=perf_counter() - started,
             candidate_rows=candidate_rows,
-            candidate_symbols=len({str(row[0]) for row in rows}),
-            identity_status_row_counts=dict(sorted(status_rows.items())),
-            identity_status_symbol_counts={
-                key: len(value) for key, value in sorted(status_symbols.items())
-            },
+            candidate_symbols=int(candidate[1]),
+            identity_status_row_counts=status_rows,
+            identity_status_symbol_counts=status_symbols,
             identity_safe_rows=identity_safe_rows,
-            identity_safe_symbols=len(safe_symbols),
+            identity_safe_symbols=int(summary[1]),
             structurally_eligible_rows=structurally_eligible_rows,
-            structurally_eligible_symbols=len(eligible_symbols),
-            structurally_ineligible_rows=structurally_ineligible_rows,
-            unresolved_rows=unresolved_rows,
+            structurally_eligible_symbols=int(summary[3]),
+            structurally_ineligible_rows=identity_safe_rows - structurally_eligible_rows,
+            unresolved_rows=candidate_rows - identity_safe_rows,
             identity_safe_fraction=_fraction(identity_safe_rows, candidate_rows),
             structurally_eligible_fraction=_fraction(structurally_eligible_rows, candidate_rows),
-            structural_ineligibility_reason_rows=dict(sorted(reason_rows.items())),
+            structural_ineligibility_reason_rows=reason_counts,
             current_active_filter_used=False,
             current_delisted_filter_used=False,
             current_route_filter_used=False,
             ticker_text_splicing_used=False,
-            authoritative_interval_rows=int(status_rows[AUTHORITATIVE_INTERVAL]),
-            unique_reference_no_reuse_rows=int(status_rows[UNIQUE_REFERENCE_NO_REUSE]),
-            unresolved_ticker_reuse_rows=int(status_rows[UNRESOLVED_TICKER_REUSE]),
-            unresolved_multi_reference_rows=int(status_rows[UNRESOLVED_MULTI_REFERENCE]),
-            unresolved_fallback_identity_rows=int(status_rows[UNRESOLVED_FALLBACK_IDENTITY]),
-            unresolved_metadata_conflict_rows=int(status_rows[UNRESOLVED_METADATA_CONFLICT]),
-            unmapped_reference_rows=int(status_rows[UNMAPPED_REFERENCE]),
-            annual_evidence=annual_evidence,
+            authoritative_interval_rows=status_rows.get(AUTHORITATIVE_INTERVAL, 0),
+            unique_reference_no_reuse_rows=status_rows.get(UNIQUE_REFERENCE_NO_REUSE, 0),
+            unresolved_ticker_reuse_rows=status_rows.get(UNRESOLVED_TICKER_REUSE, 0),
+            unresolved_multi_reference_rows=status_rows.get(UNRESOLVED_MULTI_REFERENCE, 0),
+            unresolved_fallback_identity_rows=status_rows.get(UNRESOLVED_FALLBACK_IDENTITY, 0),
+            unresolved_metadata_conflict_rows=status_rows.get(UNRESOLVED_METADATA_CONFLICT, 0),
+            unmapped_reference_rows=status_rows.get(UNMAPPED_REFERENCE, 0),
+            annual_evidence=annual,
             historical_identity_policy_locked=False,
             prediction_label_policy_locked=False,
             report_path=str(target),
