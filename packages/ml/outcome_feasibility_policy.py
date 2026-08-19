@@ -5,8 +5,9 @@ ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION = (
     "ml-outcome-feasibility-policy-v1-split-censored-endpoint-natr-feasible"
 )
 
-# Gate 3 accepts feasibility and data-safety conclusions only. Gate 4 still owns the
-# production prediction-label choice (exact horizon, threshold, and neutral handling).
+# Gate 3 accepts feasibility and data-safety conclusions only. Gate 4 owns the
+# production prediction-label choice. The compatibility flag below now mirrors the
+# accepted Gate 4 state; the authoritative label definition lives in label_policy.py.
 ML_OUTCOME_FEASIBILITY_ACCEPTED = True
 ML_OUTCOME_ACCEPTED_HORIZONS = (1, 3, 5, 10, 20)
 ML_SPLIT_CROSSING_LABELS_CENSORED = True
@@ -19,7 +20,7 @@ ML_VOLATILITY_FEATURE_INTEGRITY_RECONCILED = True
 ML_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED = True
 ML_FEASIBLE_VOLATILITY_THRESHOLD_GRID = (0.5, 1.0, 1.5, 2.0)
 ML_PLAIN_RETURN_SIGN_PRODUCTION_TARGET_ACCEPTED = False
-ML_PREDICTION_LABEL_POLICY_LOCKED = False
+ML_PREDICTION_LABEL_POLICY_LOCKED = True
 
 # Evidence summary captured on the target machine for 2026-08-14. These are
 # documentary acceptance anchors, not runtime filters.
@@ -31,7 +32,7 @@ ML_GATE3_SPLIT_EVIDENCE_SHA256 = (
 
 # The 0.5x NATR family remained large and roughly direction-balanced across all five
 # tested horizons (~41-46% directional). The 1.0x family remained feasible but much
-# sparser (~14-16% directional); 1.5x/2.0x are diagnostic tails. Gate 4 chooses the
-# production target from this evidence and must not infer that 0.5x is already locked.
+# sparser (~14-16% directional); 1.5x/2.0x are diagnostic tails. Gate 4 subsequently
+# selected the 3-session / 0.5x family; this Gate 3 module does not define that label.
 ML_GATE3_PRIMARY_CANDIDATE_THRESHOLD_MULTIPLIER = 0.5
 ML_GATE3_PRIMARY_CANDIDATE_IS_PRODUCTION_LOCK = False
