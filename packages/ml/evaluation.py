@@ -108,18 +108,28 @@ def probability_metrics(
     one_hot = np.eye(probs.shape[1], dtype=np.float64)[y_index]
     brier = float(np.square(probs - one_hot).sum(axis=1).mean())
     accuracy = float((np.argmax(probs, axis=1) == y_index).mean())
-    try:
-        auc = float(
-            roc_auc_score(
-                y_index,
-                probs,
-                labels=np.arange(probs.shape[1]),
-                multi_class="ovr",
-                average="macro",
-            )
-        )
-    except ValueError:
+
+    # Multiclass OVR AUC is undefined unless every locked class is represented in
+    # the slice. Gate 11 deliberately creates one-class segments such as
+    # actual_class=DOWN; treat their AUC as unavailable instead of allowing sklearn
+    # to emit warnings/NaN into persisted evidence.
+    if np.unique(y_index).size != probs.shape[1]:
         auc = None
+    else:
+        try:
+            raw_auc = float(
+                roc_auc_score(
+                    y_index,
+                    probs,
+                    labels=np.arange(probs.shape[1]),
+                    multi_class="ovr",
+                    average="macro",
+                )
+            )
+            auc = raw_auc if np.isfinite(raw_auc) else None
+        except ValueError:
+            auc = None
+
     ece = _macro_ece(y_index, probs, bins=ece_bins)
     return ProbabilityMetrics(
         rows=rows,
