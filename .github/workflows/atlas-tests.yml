@@ -65,5 +65,8 @@ jobs:
       - name: Validate Phase 10
         run: python scripts/validate_phase10.py
 
+      - name: Validate Phase 10 final acceptance
+        run: python scripts/validate_phase10_final.py
+
       - name: Run tests
         run: python -m pytest -q
