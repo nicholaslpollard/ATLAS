@@ -54,13 +54,21 @@ Accepted conclusions:
 - current `active` / `delisted` status must not be projected backward as historical eligibility
 - adjustment/corporate-action safety remains unresolved and moves to outcome-label feasibility before labels are locked
 
-### Gate 2 - historical identity and eligibility: CURRENT
+### Gate 2 - historical identity and eligibility: ACCEPTED
 
-Primary evidence contract:
+Evidence contract:
 
 `ml-historical-identity-probe-v1-authority-unique-reference-structural-eligibility`
 
-Initial 2026-08-14 target-machine evidence:
+Reuse sub-audit contract:
+
+`ml-ticker-reuse-audit-v1-stable-vs-weak-identity-authority-enrichment`
+
+Production policy contract:
+
+`ml-historical-identity-policy-v1-authoritative-or-unique-no-reuse-structural`
+
+Accepted 2026-08-14 target-machine evidence:
 
 - liquid/complete candidate rows: 7,058,860 across 14,626 symbols
 - `AUTHORITATIVE_INTERVAL`: 584,692 rows
@@ -70,33 +78,46 @@ Initial 2026-08-14 target-machine evidence:
 - structurally ineligible: 52,625 rows, dominated by unsupported security types (51,913)
 - unresolved identity rows: 417,656
 - `UNRESOLVED_TICKER_REUSE`: 379,355 rows across 1,467 symbols
-- current active, current delisted, and current routing filters are not used
 
-Identity evidence classes:
+Reuse composition:
 
-- `AUTHORITATIVE_INTERVAL`: one provider-authoritative ticker validity interval covers the observation date
-- `UNIQUE_REFERENCE_NO_REUSE`: exact provider ticker maps to one strong/medium stable identity and no ticker-reuse conflict is observed
-- unresolved ticker reuse, multiple reference identities, fallback-only identity, metadata conflict, or unmapped reference remain blocked
+- `MULTI_STABLE_IDENTITIES`: 343,901 rows / 1,234 symbols (90.65% of reuse-blocked rows)
+- `ONE_STABLE_PLUS_WEAK`: 28,803 rows / 219 symbols (7.59%)
+- `WEAK_IDENTITIES_ONLY`: 6,651 rows / 14 symbols (1.75%)
+- only 15 `ONE_STABLE_PLUS_WEAK` symbols already had any dated authority
 
-Historical structural eligibility reuses only lifetime-structural Phase 07 fields: supported market, locale, exchange, security type, and stable identity quality. It deliberately ignores **current** active/delisted status and current routing. Authoritative date-bounded identity evidence takes precedence over ticker reuse. No old/new ticker series are spliced by ticker text.
+Accepted policy:
 
-Because Phase 07 fallback identities are deliberately date-scoped, a ticker can have more than one observed `instrument_id` without proving that multiple stable securities actually reused it. The 379,355-row reuse block is therefore large enough to require one bounded sub-audit before the Gate 2 policy is locked.
+- a historical row is identity-safe only when its observation date is covered by one exact provider-authoritative ticker interval, or when its exact provider ticker maps to one strong/medium stable identity with no observed reuse conflict
+- after identity safety, the row must pass the structural market/locale/exchange/security-type family gate
+- current routed membership is never a historical training filter
+- current active/delisted state is never projected backward
+- unresolved multi-stable ticker reuse stays blocked
+- current Composite FIGI alone does not retroactively prove historical ticker ownership
+- sparse reference observation dates are not continuity bounds
+- ticker-text history splicing is forbidden
 
-Reuse sub-audit contract:
+A targeted provider-enrichment campaign was rejected at this gate. Even recovering every `ONE_STABLE_PLUS_WEAK` row would add only about 0.41 percentage points of candidate coverage, while dated authority existed for only 15 of those symbols. The accepted 93.34% population is therefore preferred to a lower-integrity recovery attempt.
 
-`ml-ticker-reuse-audit-v1-stable-vs-weak-identity-authority-enrichment`
+### Gate 3 - outcome-label feasibility: CURRENT
 
-The sub-audit separates blocked reuse tickers into:
+Evidence contract:
 
-- `MULTI_STABLE_IDENTITIES`: two or more strong/medium identities have used the ticker
-- `ONE_STABLE_PLUS_WEAK`: one strong/medium identity plus one or more weak/date-scoped identities
-- `WEAK_IDENTITIES_ONLY`: no stable identity evidence
+`ml-outcome-feasibility-probe-v1-contiguous-horizons-provider-split-adjustment-audit`
 
-It also measures current Composite-FIGI availability and any already-cached authoritative ticker interval for each reuse ticker. This is diagnostic only: no blocked row becomes safe from category membership, sparse reference bounds, or a current FIGI. Recovery requires a date-bounded authoritative interval covering the historical observation date. Ticker-text splicing remains forbidden.
+Gate 3 measures strategy-neutral fixed-horizon outcomes before any prediction target is selected. Evidence horizons are 1, 3, 5, 10, and 20 exchange sessions.
 
-### Gate 3 - outcome-label feasibility
+Rules for the evidence probe:
 
-Measure strategy-neutral future outcomes before choosing a target. Candidate families may include fixed-horizon forward returns and volatility-scaled path/barrier outcomes. Measure class balance, censoring, ambiguous path ordering, corporate-action distortion, and horizon overlap.
+- starts only from the accepted Gate 2 historical population
+- a forward outcome is labelable only when the same exact provider ticker has the exact future exchange-session observation; missing sessions, suspensions, or ticker changes censor the row instead of being bridged
+- no ticker-text splicing is used
+- return distributions, sign balance, extreme-return frequency, and censoring are measured separately for every horizon
+- windows crossing a provider-reported split are identified explicitly
+- Massive `/stocks/v1/splits` is the corporate-action evidence source; the exact fetched split evidence is persisted locally with a SHA-256 fingerprint
+- known material split execution dates are compared with canonical adjacent closes to determine whether the local price history behaves as adjusted or unadjusted data
+
+Gate 3 remains evidence-only. Fixed-horizon return labels, volatility scaling, barrier labels, censoring rules, and the production horizon remain unlocked until the target-machine evidence is reviewed.
 
 ### Gate 4 - prediction-label policy
 
