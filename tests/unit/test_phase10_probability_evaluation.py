@@ -44,6 +44,24 @@ def test_phase10_probability_metrics_reward_perfect_predictions() -> None:
     assert metrics.macro_ece == pytest.approx(0.0, abs=1e-12)
 
 
+def test_phase10_probability_metrics_marks_incomplete_class_auc_unavailable() -> None:
+    labels = np.asarray(["DOWN", "DOWN", "DOWN"], dtype=object)
+    probabilities = np.asarray(
+        [
+            [0.50, 0.30, 0.20],
+            [0.45, 0.35, 0.20],
+            [0.55, 0.25, 0.20],
+        ],
+        dtype=np.float64,
+    )
+    metrics = probability_metrics(labels, probabilities)
+    assert metrics.rows == 3
+    assert metrics.macro_ovr_auc is None
+    assert np.isfinite(metrics.log_loss)
+    assert np.isfinite(metrics.multiclass_brier)
+    assert np.isfinite(metrics.macro_ece)
+
+
 def test_phase10_probability_validation_normalizes_valid_float_roundoff() -> None:
     probabilities = np.asarray(
         [
