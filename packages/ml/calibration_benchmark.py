@@ -8,6 +8,7 @@ from time import perf_counter
 
 import duckdb
 import numpy as np
+import pandas as pd
 import sklearn
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
@@ -64,12 +65,11 @@ class CalibrationFoldEvidence:
     validation_rows: int
     test_rows: int
     fit_seconds: float
-    predict_seconds: float
     test_metrics: ProbabilityMetrics
     platt_coefficients: tuple[float, ...] | None
     platt_intercepts: tuple[float, ...] | None
     isotonic_knot_counts: tuple[int, ...] | None
-    prediction_artifact: CalibrationPredictionArtifact
+    prediction_artifact: CalibrationPredictionArtifact | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,13 +133,7 @@ def _normalize_scores(scores: np.ndarray) -> np.ndarray:
 
 
 class MLCalibrationBenchmark:
-    """Fit point-in-time calibrators on Gate 9 validation predictions and score test.
-
-    The accepted nonlinear model is never retrained here. Each fold's calibrator sees
-    only that fold's validation predictions and labels, then transforms the already
-    frozen test predictions. The final Gate 13 holdout is not present in Gate 9
-    artifacts and is never queried by this benchmark.
-    """
+    """Fit calibrators on each Gate 9 validation window and score its frozen test window."""
 
     def __init__(self, settings: AtlasSettings) -> None:
         if not ML_CANDIDATE_MODEL_POLICY_ACCEPTED:
@@ -171,25 +165,23 @@ class MLCalibrationBenchmark:
             raise RuntimeError("Gate 10 Gate 9 OOS row count mismatch")
         return payload
 
-    def _fold_item(self, payload: dict[str, object], fold_index: int) -> dict[str, object]:
+    @staticmethod
+    def _fold_item(payload: dict[str, object], fold_index: int) -> dict[str, object]:
         items = payload.get("fold_evidence")
         if not isinstance(items, list):
             raise RuntimeError("Gate 9 report has no fold evidence")
         matches = [
-            item for item in items
+            item
+            for item in items
             if isinstance(item, dict)
             and item.get("model_name") == ML_CANDIDATE_MODEL_ACCEPTED_MODEL
             and int(item.get("fold_index", -1)) == fold_index
         ]
         if len(matches) != 1:
-            raise RuntimeError(f"Gate 10 expected exactly one Gate 9 fold item for {fold_index}")
+            raise RuntimeError(f"Gate 10 expected one Gate 9 fold item for {fold_index}")
         return matches[0]
 
-    def _read_prediction_artifact(
-        self,
-        item: dict[str, object],
-        role: str,
-    ) -> tuple[np.ndarray, np.ndarray, dict[str, object]]:
+    def _read_artifact(self, item: dict[str, object], role: str) -> tuple[pd.DataFrame, dict[str, object]]:
         artifact = item.get(f"{role}_artifact")
         if not isinstance(artifact, dict):
             raise RuntimeError(f"Gate 9 fold item missing {role} artifact")
@@ -198,26 +190,24 @@ class MLCalibrationBenchmark:
             raise FileNotFoundError(path)
         if sha256_file(path) != str(artifact["sha256"]):
             raise RuntimeError(f"Gate 10 {role} artifact hash mismatch: {path}")
-
         con = connect_utc(":memory:")
         try:
-            fields = ", ".join(ML_PREDICTION_LABEL_PROBABILITY_FIELDS)
             frame = con.execute(
-                f"""
-                SELECT actual_label, {fields}
-                FROM read_parquet({sql_string(path.as_posix())})
-                ORDER BY session_date, symbol, instrument_id
-                """
+                f"SELECT * FROM read_parquet({sql_string(path.as_posix())}) ORDER BY session_date, symbol, instrument_id"
             ).fetch_df()
         finally:
             con.close()
         if len(frame) != int(artifact["row_count"]):
             raise RuntimeError(f"Gate 10 {role} artifact row count mismatch")
+        return frame, artifact
+
+    @staticmethod
+    def _labels_probabilities(frame: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
         labels = frame["actual_label"].to_numpy()
         probabilities = validate_probabilities(
             frame.loc[:, list(ML_PREDICTION_LABEL_PROBABILITY_FIELDS)].to_numpy(dtype=np.float64)
         )
-        return labels, probabilities, artifact
+        return labels, probabilities
 
     @staticmethod
     def _platt(
@@ -270,48 +260,32 @@ class MLCalibrationBenchmark:
         *,
         method: str,
         fold_index: int,
-        item: dict[str, object],
+        source_frame: pd.DataFrame,
         probabilities: np.ndarray,
     ) -> CalibrationPredictionArtifact:
-        test_artifact = item["test_artifact"]
-        source = self.gate9.report_path().parent / str(test_artifact["relative_path"])
-        target = (
-            self.prediction_root()
-            / f"method={method}"
-            / f"fold={fold_index:02d}"
-            / "part-000.parquet"
-        )
+        probabilities = validate_probabilities(probabilities)
+        if len(source_frame) != len(probabilities):
+            raise RuntimeError("Gate 10 calibrated prediction/source row mismatch")
+        out = source_frame.loc[
+            :, ["fold_index", "model_name", "observation_key", "session_date", "symbol", "instrument_id", "actual_label"]
+        ].copy()
+        out.insert(2, "calibration_method", method)
+        for index, field in enumerate(ML_PREDICTION_LABEL_PROBABILITY_FIELDS):
+            out[field] = probabilities[:, index].astype(np.float32)
+
+        target = self.prediction_root() / f"method={method}" / f"fold={fold_index:02d}" / "part-000.parquet"
         target.parent.mkdir(parents=True, exist_ok=True)
         temp = atomic_target(target)
         con = connect_utc(":memory:")
         try:
-            con.execute(
-                f"CREATE TEMP TABLE source AS SELECT * FROM read_parquet({sql_string(source.as_posix())}) ORDER BY session_date, symbol, instrument_id"
-            )
-            if int(con.execute("SELECT count(*) FROM source").fetchone()[0]) != len(probabilities):
-                raise RuntimeError("Gate 10 calibrated prediction/source row mismatch")
-            con.register("calibrated", probabilities)
-            fields = list(ML_PREDICTION_LABEL_PROBABILITY_FIELDS)
+            con.register("gate10_predictions", out)
             compression = self.settings.data.parquet.compression.upper()
             row_group_size = int(self.settings.data.parquet.row_group_size)
             con.execute(
                 f"""
                 COPY (
-                    SELECT
-                        s.fold_index,
-                        {sql_string(method)} AS calibration_method,
-                        s.model_name,
-                        s.observation_key,
-                        s.session_date,
-                        s.symbol,
-                        s.instrument_id,
-                        s.actual_label,
-                        c.column0 AS {fields[0]},
-                        c.column1 AS {fields[1]},
-                        c.column2 AS {fields[2]}
-                    FROM source AS s
-                    JOIN calibrated AS c ON c.rowid = s.rowid
-                    ORDER BY s.session_date, s.symbol, s.instrument_id
+                    SELECT * FROM gate10_predictions
+                    ORDER BY session_date, symbol, instrument_id
                 )
                 TO {sql_string(temp)}
                 (FORMAT PARQUET, COMPRESSION {compression}, ROW_GROUP_SIZE {row_group_size})
@@ -325,7 +299,7 @@ class MLCalibrationBenchmark:
             fold_index=int(fold_index),
             relative_path=str(target.relative_to(self.report_path().parent)),
             sha256=sha256_file(target),
-            row_count=int(len(probabilities)),
+            row_count=int(len(out)),
         )
 
     @staticmethod
@@ -340,16 +314,17 @@ class MLCalibrationBenchmark:
         rows = sum(item.test_rows for item in selected)
         auc_values = [
             (item.test_metrics.macro_ovr_auc, item.test_rows)
-            for item in selected if item.test_metrics.macro_ovr_auc is not None
+            for item in selected
+            if item.test_metrics.macro_ovr_auc is not None
         ]
         logloss = _weighted([(item.test_metrics.log_loss, item.test_rows) for item in selected])
         brier = _weighted([(item.test_metrics.multiclass_brier, item.test_rows) for item in selected])
-        raw_logloss = _weighted([
-            (raw_by_fold[item.fold_index].test_metrics.log_loss, item.test_rows) for item in selected
-        ])
-        raw_brier = _weighted([
-            (raw_by_fold[item.fold_index].test_metrics.multiclass_brier, item.test_rows) for item in selected
-        ])
+        raw_logloss = _weighted(
+            [(raw_by_fold[item.fold_index].test_metrics.log_loss, item.test_rows) for item in selected]
+        )
+        raw_brier = _weighted(
+            [(raw_by_fold[item.fold_index].test_metrics.multiclass_brier, item.test_rows) for item in selected]
+        )
         return CalibrationAggregateEvidence(
             method=method,
             folds=len(selected),
@@ -357,7 +332,9 @@ class MLCalibrationBenchmark:
             weighted_log_loss=logloss,
             weighted_multiclass_brier=brier,
             weighted_accuracy=_weighted([(item.test_metrics.accuracy, item.test_rows) for item in selected]),
-            weighted_macro_ovr_auc=(None if not auc_values else _weighted([(float(v), r) for v, r in auc_values])),
+            weighted_macro_ovr_auc=(
+                None if not auc_values else _weighted([(float(value), rows_) for value, rows_ in auc_values])
+            ),
             weighted_macro_ece=_weighted([(item.test_metrics.macro_ece, item.test_rows) for item in selected]),
             relative_log_loss_improvement_vs_raw=(raw_logloss - logloss) / raw_logloss,
             relative_brier_improvement_vs_raw=(raw_brier - brier) / raw_brier,
@@ -378,33 +355,28 @@ class MLCalibrationBenchmark:
 
         for fold_index in range(1, ML_CANDIDATE_MODEL_ACCEPTED_FOLDS + 1):
             item = self._fold_item(payload, fold_index)
-            validation_labels, validation_probs, _ = self._read_prediction_artifact(item, "validation")
-            test_labels, test_probs, _ = self._read_prediction_artifact(item, "test")
+            validation_frame, _ = self._read_artifact(item, "validation")
+            test_frame, _ = self._read_artifact(item, "test")
+            validation_labels, validation_probs = self._labels_probabilities(validation_frame)
+            test_labels, test_probs = self._labels_probabilities(test_frame)
             if progress is not None:
                 progress(
                     f"fold {fold_index}/{ML_CANDIDATE_MODEL_ACCEPTED_FOLDS}: "
-                    f"validation={len(validation_labels):,} test={len(test_labels):,}"
+                    f"validation={len(validation_frame):,} test={len(test_frame):,}"
                 )
 
-            raw_started = perf_counter()
-            raw = validate_probabilities(test_probs)
-            raw_seconds = perf_counter() - raw_started
-            raw_metrics = probability_metrics(test_labels, raw)
-            raw_artifact = self._write_predictions(
-                method="raw", fold_index=fold_index, item=item, probabilities=raw
-            )
+            raw_metrics = probability_metrics(test_labels, test_probs)
             raw_item = CalibrationFoldEvidence(
                 method="raw",
                 fold_index=fold_index,
-                validation_rows=len(validation_labels),
-                test_rows=len(test_labels),
+                validation_rows=len(validation_frame),
+                test_rows=len(test_frame),
                 fit_seconds=0.0,
-                predict_seconds=raw_seconds,
                 test_metrics=raw_metrics,
                 platt_coefficients=None,
                 platt_intercepts=None,
                 isotonic_knot_counts=None,
-                prediction_artifact=raw_artifact,
+                prediction_artifact=None,
             )
             evidence.append(raw_item)
 
@@ -413,16 +385,15 @@ class MLCalibrationBenchmark:
             platt_seconds = perf_counter() - platt_started
             platt_metrics = probability_metrics(test_labels, platt)
             platt_artifact = self._write_predictions(
-                method="ovr_platt", fold_index=fold_index, item=item, probabilities=platt
+                method="ovr_platt", fold_index=fold_index, source_frame=test_frame, probabilities=platt
             )
             evidence.append(
                 CalibrationFoldEvidence(
                     method="ovr_platt",
                     fold_index=fold_index,
-                    validation_rows=len(validation_labels),
-                    test_rows=len(test_labels),
+                    validation_rows=len(validation_frame),
+                    test_rows=len(test_frame),
                     fit_seconds=platt_seconds,
-                    predict_seconds=0.0,
                     test_metrics=platt_metrics,
                     platt_coefficients=coefficients,
                     platt_intercepts=intercepts,
@@ -436,16 +407,15 @@ class MLCalibrationBenchmark:
             isotonic_seconds = perf_counter() - isotonic_started
             isotonic_metrics = probability_metrics(test_labels, isotonic)
             isotonic_artifact = self._write_predictions(
-                method="ovr_isotonic", fold_index=fold_index, item=item, probabilities=isotonic
+                method="ovr_isotonic", fold_index=fold_index, source_frame=test_frame, probabilities=isotonic
             )
             evidence.append(
                 CalibrationFoldEvidence(
                     method="ovr_isotonic",
                     fold_index=fold_index,
-                    validation_rows=len(validation_labels),
-                    test_rows=len(test_labels),
+                    validation_rows=len(validation_frame),
+                    test_rows=len(test_frame),
                     fit_seconds=isotonic_seconds,
-                    predict_seconds=0.0,
                     test_metrics=isotonic_metrics,
                     platt_coefficients=None,
                     platt_intercepts=None,
@@ -469,9 +439,7 @@ class MLCalibrationBenchmark:
                 )
 
         raw_by_fold = {item.fold_index: item for item in evidence if item.method == "raw"}
-        aggregates = tuple(
-            self._aggregate(method, evidence, raw_by_fold) for method in ML_CALIBRATION_METHODS
-        )
+        aggregates = tuple(self._aggregate(method, evidence, raw_by_fold) for method in ML_CALIBRATION_METHODS)
         if any(item.test_rows != ML_CANDIDATE_MODEL_ACCEPTED_OOS_ROWS for item in aggregates):
             raise RuntimeError("Gate 10 aggregate OOS rows do not reconcile")
 
