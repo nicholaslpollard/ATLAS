@@ -101,23 +101,52 @@ A targeted provider-enrichment campaign was rejected at this gate. Even recoveri
 
 ### Gate 3 - outcome-label feasibility: CURRENT
 
-Evidence contract:
+Primary evidence contract:
 
 `ml-outcome-feasibility-probe-v1-contiguous-horizons-provider-split-adjustment-audit`
 
-Gate 3 measures strategy-neutral fixed-horizon outcomes before any prediction target is selected. Evidence horizons are 1, 3, 5, 10, and 20 exchange sessions.
+Query-plan contract:
 
-Rules for the evidence probe:
+`ml-gate3-query-plan-v2-materialized-candidates-direct-session-lookups`
 
-- starts only from the accepted Gate 2 historical population
-- a forward outcome is labelable only when the same exact provider ticker has the exact future exchange-session observation; missing sessions, suspensions, or ticker changes censor the row instead of being bridged
-- no ticker-text splicing is used
-- return distributions, sign balance, extreme-return frequency, and censoring are measured separately for every horizon
-- windows crossing a provider-reported split are identified explicitly
-- Massive `/stocks/v1/splits` is the corporate-action evidence source; the exact fetched split evidence is persisted locally with a SHA-256 fingerprint
-- known material split execution dates are compared with canonical adjacent closes to determine whether the local price history behaves as adjusted or unadjusted data
+Volatility-scaled family sub-audit contract:
 
-Gate 3 remains evidence-only. Fixed-horizon return labels, volatility scaling, barrier labels, censoring rules, and the production horizon remain unlocked until the target-machine evidence is reviewed.
+`ml-outcome-family-audit-v1-natr14-sqrt-horizon-split-censored-grid`
+
+The primary probe measures strategy-neutral fixed-horizon outcomes at 1, 3, 5, 10, and 20 exchange sessions. A forward outcome is labelable only when the same exact provider ticker has the exact future exchange-session observation; missing sessions, suspensions, or ticker changes censor the row instead of being bridged.
+
+Captured 2026-08-14 target-machine evidence:
+
+- accepted Gate 2 population: 6,588,579 rows / 12,596 symbols
+- 1-session labelable: 6,576,166 (99.81%)
+- 3-session labelable: 6,557,686 (99.53%)
+- 5-session labelable: 6,539,838 (99.26%)
+- 10-session labelable: 6,495,739 (98.59%)
+- 20-session labelable: 6,410,184 (97.29%)
+- fetched provider split events: 6,334 across 4,540 symbols
+- material split events: 5,320
+- diagnostic material split events with exact adjacent local bars: 2,647
+- unadjusted-like material split events: 1,964
+- adjusted-like material split events: 21
+- ambiguous material split events: 662
+- median absolute raw return across diagnostic material split dates: 9.2932
+- median absolute split-ratio residual: 0.0719
+- split evidence SHA-256: `4c67e22d8e611ce805640dddb31f335ecefec97c955d08a6284319ee034c179c`
+
+Gate 3 conclusions already established:
+
+- the canonical daily price history behaves overwhelmingly like **unadjusted** data around known material stock splits
+- split-crossing windows therefore cannot be used as ordinary forward-return labels
+- split-crossing windows are small relative to the full population and can be censored without materially reducing label coverage
+- those windows disproportionately populate the extreme-return tail, so leaving them in would materially distort label distributions
+- exact exchange-session continuity is feasible at all candidate horizons
+- a plain return-sign target is near-balanced but treats many economically trivial moves as directional outcomes; this is insufficient evidence for a production label
+
+The bounded Gate 3 sub-audit therefore compares endpoint returns against point-in-time `natr_14 * sqrt(horizon)` thresholds at 0.5x, 1.0x, 1.5x, and 2.0x after censoring split-crossing windows. `natr_14` is the accepted Phase 6 feature available at the observation timestamp, so no future volatility enters the target threshold.
+
+Daily OHLC path/barrier labels are not selected for this sub-audit. A daily bar can touch both an upper and lower barrier without revealing touch order, and resolving that would require intraday path semantics that belong closer to strategy/backtest evaluation. Endpoint outcomes remain strategy-neutral and avoid importing execution assumptions into the ML target layer.
+
+Gate 3 remains open until the volatility-scaled family evidence is reviewed. Gate 4 will then lock the production horizon, threshold/target family, split censoring, exact timestamp semantics, and any neutral-class handling.
 
 ### Gate 4 - prediction-label policy
 
