@@ -137,6 +137,38 @@ class MassiveConfig(BaseModel):
     reference: MassiveReferenceConfig = Field(default_factory=MassiveReferenceConfig)
 
 
+class AlpacaMarketDataConfig(BaseModel):
+    base_url: str = "https://data.alpaca.markets"
+    feed: str = "sip"
+    adjustment: str = "raw"
+    asof: str = "-"
+    timeframe: str = "1Day"
+    page_limit: int = Field(default=10_000, ge=1, le=10_000)
+    symbol_batch_size: int = Field(default=100, ge=1, le=500)
+    request_timeout_seconds: float = Field(default=60.0, gt=0)
+    max_attempts: int = Field(default=5, ge=1, le=20)
+    initial_retry_seconds: float = Field(default=1.0, ge=0)
+    max_retry_seconds: float = Field(default=30.0, ge=0)
+    backfill_start: str = "2016-01-04"
+    backfill_end: str = "2021-08-15"
+
+
+class AlpacaCredentialsConfig(BaseModel):
+    preferred_profile: str = "paper"
+    paper_api_key_env: str = "ALPACA_PAPER_API_KEY"
+    paper_api_secret_env: str = "ALPACA_PAPER_API_SECRET"
+    paper_endpoint_env: str = "ALPACA_PAPER_ENDPOINT"
+    live_api_key_env: str = "ALPACA_LIVE_API_KEY"
+    live_api_secret_env: str = "ALPACA_LIVE_API_SECRET"
+    live_endpoint_env: str = "ALPACA_LIVE_ENDPOINT"
+
+
+class AlpacaBackfillConfig(BaseModel):
+    provider_name: str = "alpaca"
+    market_data: AlpacaMarketDataConfig = Field(default_factory=AlpacaMarketDataConfig)
+    credentials: AlpacaCredentialsConfig = Field(default_factory=AlpacaCredentialsConfig)
+
+
 class LoggingConfig(BaseModel):
     level: str = "INFO"
     format: str
@@ -152,6 +184,7 @@ class AtlasSettings(BaseModel):
     app: AppConfig
     data: DataConfig
     massive: MassiveConfig
+    alpaca: AlpacaBackfillConfig
     logging: LoggingConfig
 
     def resolved_path(self, relative: Path | str) -> Path:
@@ -205,6 +238,7 @@ def load_settings(project_root: Path | None = None, environment: str | Environme
     app_doc = _load_yaml(config_dir / "app.yaml")
     data_doc = _load_yaml(config_dir / "data.yaml")
     massive_doc = _load_yaml(config_dir / "massive.yaml")
+    alpaca_doc = _load_yaml(config_dir / "alpaca.yaml")
     logging_doc = _load_yaml(config_dir / "logging.yaml")
 
     env_name = str(environment or os.getenv("ATLAS_ENV") or app_doc.get("app", {}).get("environment", "development"))
@@ -212,7 +246,7 @@ def load_settings(project_root: Path | None = None, environment: str | Environme
     overlay = _load_yaml(env_path)
 
     merged: dict[str, Any] = {}
-    for doc in (app_doc, data_doc, massive_doc, logging_doc):
+    for doc in (app_doc, data_doc, massive_doc, alpaca_doc, logging_doc):
         merged = _deep_merge(merged, doc)
     merged = _deep_merge(merged, overlay)
     merged["project_root"] = root
