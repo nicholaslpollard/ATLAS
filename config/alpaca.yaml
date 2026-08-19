@@ -9,6 +9,7 @@ alpaca:
     timeframe: 1Day
     page_limit: 10000
     symbol_batch_size: 100
+    requests_per_minute: 180
     request_timeout_seconds: 60.0
     max_attempts: 5
     initial_retry_seconds: 1.0
