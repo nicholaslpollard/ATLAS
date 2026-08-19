@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from pathlib import Path
 
 import duckdb
 import pandas as pd
@@ -9,6 +10,7 @@ import pytest
 
 from packages.core.settings import load_settings
 from packages.data.alpaca_backfill_acquisition import (
+    AcquisitionUnit,
     AlpacaBackfillAcquirer,
     _bar_stats,
     _chunks,
@@ -16,7 +18,8 @@ from packages.data.alpaca_backfill_acquisition import (
     _year_windows,
 )
 from packages.data.alpaca_backfill_inventory import ALPACA_BACKFILL_INVENTORY_CONTRACT_VERSION
-from packages.providers.alpaca import AlpacaMarketDataClient
+from packages.providers.alpaca import AlpacaApiPage, AlpacaInvalidSymbolError, AlpacaMarketDataClient
+from packages.providers.alpaca.client import _invalid_symbol_from_message
 
 
 def _configure_alpaca(monkeypatch) -> None:
@@ -130,3 +133,84 @@ def test_alpaca_client_paces_requests_at_locked_180_per_minute(monkeypatch) -> N
     now[0] += 0.1
     client._pace_request()
     assert sleeps == [pytest.approx((60.0 / 180.0) - 0.1)]
+
+
+def test_invalid_symbol_message_parser_is_exact_and_literal() -> None:
+    assert _invalid_symbol_from_message("invalid symbol: 0029900E0") == "0029900E0"
+    assert _invalid_symbol_from_message("INVALID SYMBOL: BrK.B") == "BrK.B"
+    assert _invalid_symbol_from_message("bad request") is None
+    assert _invalid_symbol_from_message("invalid symbol: BAD SYMBOL") is None
+
+
+def test_gate3_isolates_provider_rejected_symbol_and_reuses_evidence(tmp_path, monkeypatch) -> None:
+    _configure_alpaca(monkeypatch)
+    settings = load_settings().model_copy(update={"project_root": tmp_path})
+    acquirer = AlpacaBackfillAcquirer(settings)
+    calls: list[tuple[str, ...]] = []
+
+    class FakeClient:
+        credential_profile_name = "paper"
+
+        def historical_bar_pages(self, *, symbols, start, end):
+            submitted = tuple(symbols)
+            calls.append(submitted)
+            if "0029900E0" in submitted:
+                body = b'{"message":"invalid symbol: 0029900E0"}'
+                page = AlpacaApiPage(
+                    request_name="historical_bars",
+                    url="https://data.alpaca.markets/v2/stocks/bars?symbols=AAPL%2C0029900E0%2CMSFT",
+                    http_status=400,
+                    raw_body=body,
+                    payload={"message": "invalid symbol: 0029900E0"},
+                    response_headers={},
+                )
+                raise AlpacaInvalidSymbolError(
+                    "0029900E0", page, "invalid symbol: 0029900E0"
+                )
+            yield AlpacaApiPage(
+                request_name="historical_bars",
+                url="https://data.alpaca.markets/v2/stocks/bars?symbols=AAPL%2CMSFT",
+                http_status=200,
+                raw_body=b'{"bars":{"AAPL":[{"t":"2016-01-04T05:00:00Z"}]},"next_page_token":null}',
+                payload={
+                    "bars": {"AAPL": [{"t": "2016-01-04T05:00:00Z"}]},
+                    "next_page_token": None,
+                },
+                response_headers={},
+            )
+
+    acquirer.client = FakeClient()
+    known: dict[str, dict[str, object]] = {}
+    first = AcquisitionUnit(
+        year=2016,
+        batch_index=0,
+        start="2016-01-04",
+        end="2016-12-31",
+        symbols=("AAPL", "0029900E0", "MSFT"),
+        inventory_fingerprint="f" * 64,
+        unit_id="1" * 64,
+    )
+    manifest = acquirer._acquire_unit(first, known)
+    assert calls == [("AAPL", "0029900E0", "MSFT"), ("AAPL", "MSFT")]
+    assert manifest["provider_rejected_symbol_count"] == 1
+    assert manifest["submitted_symbol_count"] == 2
+    assert manifest["provider_rejections"][0]["symbol"] == "0029900E0"
+    assert manifest["observed_symbol_count"] == 1
+    assert "0029900E0" in known
+    assert Path(manifest["provider_rejections"][0]["payload_path"]).is_file()
+    assert Path(manifest["provider_rejections"][0]["metadata_path"]).is_file()
+
+    calls.clear()
+    second = AcquisitionUnit(
+        year=2017,
+        batch_index=0,
+        start="2017-01-01",
+        end="2017-12-31",
+        symbols=("AAPL", "0029900E0", "MSFT"),
+        inventory_fingerprint="f" * 64,
+        unit_id="2" * 64,
+    )
+    manifest2 = acquirer._acquire_unit(second, known)
+    assert calls == [("AAPL", "MSFT")]
+    assert manifest2["provider_rejected_symbol_count"] == 1
+    assert manifest2["provider_rejections"][0]["sha256"] == manifest["provider_rejections"][0]["sha256"]
