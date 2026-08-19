@@ -29,6 +29,18 @@ from packages.ml.outcome_family_audit import (
     ML_VOLATILITY_THRESHOLD_GRID,
     MLOutcomeFamilyAudit,
 )
+from packages.ml.outcome_feasibility_policy import (
+    ML_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED,
+    ML_GATE3_ACCEPTED_CANDIDATE_ROWS,
+    ML_GATE3_ACCEPTED_CANDIDATE_SYMBOLS,
+    ML_GATE3_PRIMARY_CANDIDATE_IS_PRODUCTION_LOCK,
+    ML_GATE3_PRIMARY_CANDIDATE_THRESHOLD_MULTIPLIER,
+    ML_OUTCOME_FEASIBILITY_ACCEPTED,
+    ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION,
+    ML_PREDICTION_LABEL_POLICY_LOCKED,
+    ML_SPLIT_CROSSING_LABELS_CENSORED,
+    ML_VOLATILITY_FEATURE_INTEGRITY_RECONCILED,
+)
 from packages.ml.outcome_probe import (
     ML_GATE3_QUERY_PLAN_VERSION,
     ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION,
@@ -75,11 +87,23 @@ def main() -> int:
     assert ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION == (
         "ml-outcome-family-audit-v2-natr14-schema-reconciled-split-censored-grid"
     )
+    assert ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION == (
+        "ml-outcome-feasibility-policy-v1-split-censored-endpoint-natr-feasible"
+    )
     assert ML_FEATURE_PARQUET_READ_MODE == "union_by_name"
+    assert ML_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED is True
     assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
     assert ML_VOLATILITY_FEATURE == "natr_14"
     assert ML_VOLATILITY_HORIZON_SCALING == "sqrt_sessions"
     assert ML_VOLATILITY_THRESHOLD_GRID == (0.5, 1.0, 1.5, 2.0)
+    assert ML_OUTCOME_FEASIBILITY_ACCEPTED is True
+    assert ML_SPLIT_CROSSING_LABELS_CENSORED is True
+    assert ML_VOLATILITY_FEATURE_INTEGRITY_RECONCILED is True
+    assert ML_GATE3_ACCEPTED_CANDIDATE_ROWS == 6_588_579
+    assert ML_GATE3_ACCEPTED_CANDIDATE_SYMBOLS == 12_596
+    assert ML_GATE3_PRIMARY_CANDIDATE_THRESHOLD_MULTIPLIER == 0.5
+    assert ML_GATE3_PRIMARY_CANDIDATE_IS_PRODUCTION_LOCK is False
+    assert ML_PREDICTION_LABEL_POLICY_LOCKED is False
     assert MASSIVE_SPLITS_ENDPOINT == "/stocks/v1/splits"
     assert CURRENT_ROUTE_FILTER_USED is False
     assert CURRENT_ACTIVE_FILTER_USED is False
@@ -111,6 +135,7 @@ def main() -> int:
     print(f"ML outcome-feasibility probe contract: {ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION}")
     print(f"ML Gate 3 query plan: {ML_GATE3_QUERY_PLAN_VERSION}")
     print(f"ML outcome-family audit contract: {ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION}")
+    print(f"ML outcome-feasibility policy contract: {ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION}")
     print(f"ML feature Parquet read mode: {ML_FEATURE_PARQUET_READ_MODE}")
     print(f"ML outcome-family thresholds: {ML_VOLATILITY_THRESHOLD_GRID} x {ML_VOLATILITY_FEATURE} * sqrt(horizon)")
     print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
@@ -127,10 +152,10 @@ def main() -> int:
     print("Gate 2 historical identity/eligibility evidence: ACCEPTED; 93.34% structurally eligible")
     print("Gate 2 ticker-reuse sub-audit: ACCEPTED; multi-stable ambiguity dominates blocked rows")
     print("Gate 2 historical identity/eligibility policy: ACCEPTED; authoritative or unique/no-reuse only")
-    print("Gate 3 fixed-horizon/split evidence: CAPTURED; canonical daily prices predominantly unadjusted")
-    print("Gate 3 volatility-scaled outcome families: CURRENT; schema reconciliation required")
-    print("Gate 3 outcome-label feasibility policy: NOT YET LOCKED")
-    print("Gate 4 prediction-label policy: NOT YET LOCKED")
+    print("Gate 3 fixed-horizon/split evidence: ACCEPTED; split crossings censored")
+    print("Gate 3 volatility-scaled outcome families: ACCEPTED; full population + NATR integrity reconciled")
+    print("Gate 3 outcome-label feasibility policy: ACCEPTED; endpoint/NATR families feasible")
+    print("Gate 4 prediction-label policy: CURRENT; production horizon/threshold/neutral handling not yet locked")
     print("Gate 5 point-in-time ML feature/leakage contract: NOT YET LOCKED")
     print("Gate 6 training-dataset materialization: NOT YET BUILT")
     print("Gate 7 walk-forward/embargo policy: NOT YET LOCKED")
