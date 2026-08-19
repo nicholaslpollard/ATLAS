@@ -1,3 +1,5 @@
+import pytest
+
 from packages.ml.label_policy_probe import (
     ML_LABEL_POLICY_CANDIDATE_HORIZONS,
     ML_LABEL_POLICY_CANDIDATE_MULTIPLIERS,
@@ -18,4 +20,4 @@ def test_phase10_gate4_label_policy_probe_grid_is_bounded() -> None:
 
 def test_phase10_gate4_stability_range_is_deterministic() -> None:
     assert stability_range([]) == 0.0
-    assert stability_range([0.41, 0.46, 0.43]) == 0.05
+    assert stability_range([0.41, 0.46, 0.43]) == pytest.approx(0.05)
