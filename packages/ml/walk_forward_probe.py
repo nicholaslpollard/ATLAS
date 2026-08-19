@@ -32,6 +32,7 @@ ML_WALK_FORWARD_PURGE_SESSIONS = ML_PREDICTION_LABEL_HORIZON_SESSIONS
 ML_WALK_FORWARD_ADDITIONAL_EMBARGO_SESSIONS = 0
 ML_WALK_FORWARD_FINAL_HOLDOUT_SESSIONS = 63
 ML_WALK_FORWARD_FINAL_HOLDOUT_ROLE = "UNTOUCHED_GATE13_ACCEPTANCE"
+ML_WALK_FORWARD_POLICY_LOCKED = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -375,7 +376,7 @@ class MLWalkForwardProbe:
             final_holdout_neutral_fraction=_fraction(holdout_neutral, holdout_rows),
             final_holdout_up_fraction=_fraction(holdout_up, holdout_rows),
             candidates=candidates,
-            walk_forward_policy_locked=False,
+            walk_forward_policy_locked=ML_WALK_FORWARD_POLICY_LOCKED,
             report_path=str(target),
         )
         atomic_write_text(target, json.dumps(asdict(report), indent=2, sort_keys=True) + "\n")
