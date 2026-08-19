@@ -130,7 +130,9 @@ class MLOutcomeFeasibilityProbe:
         self.settings = settings
         self.identity = MLHistoricalIdentityProbe(settings)
         self.paths = self.identity.paths
-        self.corporate_actions = corporate_actions or MassiveCorporateActionsProvider(settings)
+        # Keep validation/path inspection credential-free. The real REST adapter is
+        # created only when Gate 3 actually fetches provider split evidence.
+        self.corporate_actions = corporate_actions
 
     def report_path(self, end_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.derived)
@@ -141,9 +143,10 @@ class MLOutcomeFeasibilityProbe:
         return root / "ml" / "outcome_feasibility_probe" / f"{end_date.year:04d}" / f"{end_date}-splits.jsonl"
 
     def _fetch_splits(self, end_date: date) -> tuple[list[dict[str, object]], Path, str]:
+        provider = self.corporate_actions or MassiveCorporateActionsProvider(self.settings)
         normalized = [
             row
-            for item in self.corporate_actions.splits(
+            for item in provider.splits(
                 start_date=ML_HISTORY_ORIGIN_DATE,
                 end_date=end_date,
             )
