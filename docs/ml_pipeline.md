@@ -56,11 +56,21 @@ Accepted conclusions:
 
 ### Gate 2 - historical identity and eligibility: CURRENT
 
-Evidence contract:
+Primary evidence contract:
 
 `ml-historical-identity-probe-v1-authority-unique-reference-structural-eligibility`
 
-The probe starts from fully warmed historical observations at the existing $250k daily-dollar-volume evidence floor and measures how much can be assigned conservatively to a stable identity.
+Initial 2026-08-14 target-machine evidence:
+
+- liquid/complete candidate rows: 7,058,860 across 14,626 symbols
+- `AUTHORITATIVE_INTERVAL`: 584,692 rows
+- `UNIQUE_REFERENCE_NO_REUSE`: 6,056,512 rows
+- identity-safe total: 6,641,204 rows (94.08%)
+- structurally eligible: 6,588,579 rows (93.34%) across 12,596 symbols
+- structurally ineligible: 52,625 rows, dominated by unsupported security types (51,913)
+- unresolved identity rows: 417,656
+- `UNRESOLVED_TICKER_REUSE`: 379,355 rows across 1,467 symbols
+- current active, current delisted, and current routing filters are not used
 
 Identity evidence classes:
 
@@ -70,7 +80,19 @@ Identity evidence classes:
 
 Historical structural eligibility reuses only lifetime-structural Phase 07 fields: supported market, locale, exchange, security type, and stable identity quality. It deliberately ignores **current** active/delisted status and current routing. Authoritative date-bounded identity evidence takes precedence over ticker reuse. No old/new ticker series are spliced by ticker text.
 
-Gate 2 remains evidence-only until target-machine coverage is measured.
+Because Phase 07 fallback identities are deliberately date-scoped, a ticker can have more than one observed `instrument_id` without proving that multiple stable securities actually reused it. The 379,355-row reuse block is therefore large enough to require one bounded sub-audit before the Gate 2 policy is locked.
+
+Reuse sub-audit contract:
+
+`ml-ticker-reuse-audit-v1-stable-vs-weak-identity-authority-enrichment`
+
+The sub-audit separates blocked reuse tickers into:
+
+- `MULTI_STABLE_IDENTITIES`: two or more strong/medium identities have used the ticker
+- `ONE_STABLE_PLUS_WEAK`: one strong/medium identity plus one or more weak/date-scoped identities
+- `WEAK_IDENTITIES_ONLY`: no stable identity evidence
+
+It also measures current Composite-FIGI availability and any already-cached authoritative ticker interval for each reuse ticker. This is diagnostic only: no blocked row becomes safe from category membership, sparse reference bounds, or a current FIGI. Recovery requires a date-bounded authoritative interval covering the historical observation date. Ticker-text splicing remains forbidden.
 
 ### Gate 3 - outcome-label feasibility
 
