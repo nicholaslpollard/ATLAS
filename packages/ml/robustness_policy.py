@@ -1,0 +1,64 @@
+from __future__ import annotations
+
+
+ML_ROBUSTNESS_POLICY_CONTRACT_VERSION = (
+    "ml-robustness-policy-v1-accepted-probability-role-with-segment-caveats"
+)
+ML_ROBUSTNESS_POLICY_ACCEPTED = True
+ML_ROBUSTNESS_AUDIT_TARGET_DATE = "2026-08-14"
+ML_ROBUSTNESS_ACCEPTED_MODEL = "hgb_leaf15_iter100"
+ML_ROBUSTNESS_ACCEPTED_CALIBRATION_METHOD = "raw"
+ML_ROBUSTNESS_ACCEPTED_OOS_ROWS = 3_978_577
+ML_ROBUSTNESS_ACCEPTED_FOLDS = 10
+ML_ROBUSTNESS_MARKET_CONTEXT_ROWS = 3_978_577
+ML_ROBUSTNESS_MARKET_CONTEXT_FRACTION = 1.0
+ML_ROBUSTNESS_FINAL_HOLDOUT_ACCESSED = False
+
+# Gate 11 acceptance is for a probability-ranking/evaluation layer. Argmax class is
+# diagnostic only and must not be promoted into a standalone trading/classification
+# decision. Natural class imbalance makes NEUTRAL the argmax for almost all OOS rows.
+ML_ROBUSTNESS_ARGMAX_NEUTRAL_ROWS = 3_945_641
+ML_ROBUSTNESS_ARGMAX_DOWN_ROWS = 17_032
+ML_ROBUSTNESS_ARGMAX_UP_ROWS = 15_904
+ML_ROBUSTNESS_ARGMAX_NEUTRAL_FRACTION = 0.9917216632982094
+ML_ROBUSTNESS_ARGMAX_IS_PRODUCTION_SIGNAL = False
+ML_ROBUSTNESS_PROBABILITY_SURFACE_IS_PRODUCTION_EVIDENCE = True
+
+# Supported multi-class segments remained above chance on macro OVR AUC. The values
+# below lock the most important weaknesses so downstream routing/risk logic cannot
+# treat all segments as equally reliable.
+ML_ROBUSTNESS_WEAKEST_SUPPORTED_AUC_FAMILY = "volatility_bucket"
+ML_ROBUSTNESS_WEAKEST_SUPPORTED_AUC_VALUE = "2_TO_4PCT"
+ML_ROBUSTNESS_WEAKEST_SUPPORTED_AUC = 0.527412
+ML_ROBUSTNESS_WEAKEST_SUPPORTED_AUC_LOG_LOSS = 0.978532
+ML_ROBUSTNESS_WEAKEST_SUPPORTED_AUC_BRIER = 0.580231
+
+ML_ROBUSTNESS_HIGH_LIQUIDITY_AUC = 0.546479
+ML_ROBUSTNESS_HIGH_LIQUIDITY_LOG_LOSS = 0.986855
+ML_ROBUSTNESS_HIGH_LIQUIDITY_BRIER = 0.586681
+
+ML_ROBUSTNESS_HIGHEST_SUPPORTED_ECE_FAMILY = "market_regime_structure"
+ML_ROBUSTNESS_HIGHEST_SUPPORTED_ECE_VALUE = "DOWN"
+ML_ROBUSTNESS_HIGHEST_SUPPORTED_ECE = 0.089148
+ML_ROBUSTNESS_BEAR_ECE = 0.074254
+ML_ROBUSTNESS_NEGATIVE_MOMENTUM_ECE = 0.071301
+
+# Time robustness: all fully supported calendar years remain discriminative.
+ML_ROBUSTNESS_2023_AUC = 0.561760
+ML_ROBUSTNESS_2024_AUC = 0.558321
+ML_ROBUSTNESS_2025_AUC = 0.572789
+ML_ROBUSTNESS_2026_LOW_SUPPORT = True
+
+# Snapshot-only fields are deliberately not retroactively attached.
+ML_ROBUSTNESS_UNAVAILABLE_SEGMENTS = (
+    "sector_regime",
+    "ticker_regime",
+    "risk_mode",
+    "security_type",
+)
+ML_ROBUSTNESS_UNAVAILABLE_SEGMENT_REASON = (
+    "NOT_PRESENT_IN_ACCEPTED_GATE6_POINT_IN_TIME_EVALUATION_METADATA"
+)
+
+# Gate 12 must preserve these caveats in model-registry metadata.
+ML_GATE12_MODEL_REGISTRY_CURRENT = True
