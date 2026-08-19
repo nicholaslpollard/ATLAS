@@ -184,29 +184,43 @@ Accepted 2026-08-14 target-machine materialization:
 
 The materializer persists exactly one row per routed stable identity. Identity-blocked and shallow histories may retain current-only regime context, but historical claims remain explicitly limited. No provider history is spliced by ticker text.
 
-## Gate 13 - final hierarchy/integrity validation: CURRENT
+## Gate 13 - final hierarchy/integrity validation: ACCEPTED
 
 Audit contract:
 
 `regime-hierarchy-integrity-v1-market-sector-proxy-optional-sic-ticker`
 
-The final audit validates:
+Accepted 2026-08-14 target-machine audit:
 
-- accepted market snapshot contract, exact as-of date, and snapshot SHA
-- exact 11-member sector-proxy set with an effective state for every proxy
-- one ticker-state row per expected routed stable identity
-- exact current ticker match between universe routing and ticker-state snapshot
-- no missing or extra routed identities
-- market context can be attached to every routed ticker record
-- Gate 9 history status, Gate 10 persistence status, and Gate 11 risk mode accounting remain intact
-- industry policy remains `OPTIONAL_AUTHORITATIVE_SIC_ONLY`
-- sector assignment policy remains `NO_GUESSED_CROSSWALK`
-- the accepted 250-name Massive classification probe remains evidence that provider-native SIC can be attached when available; missing SIC is allowed and never fabricated
+- full suite: 265 passed
+- hierarchy ready: `True`
+- market snapshot valid: `True`
+- effective market state: `BULL`
+- sector proxies expected/present/effective: 11 / 11 / 11
+- routed expected: 8,034
+- ticker-state records: 8,034
+- unique stable identities: 8,034
+- unique current tickers: 8,034
+- exact route/current-ticker matches: 8,034
+- missing routed instruments: 0
+- extra ticker-state instruments: 0
+- current ticker mismatches: 0
+- effective ticker states: 7,338
+- no current ticker state: 696
+- market context attachable: 8,034
+- accepted Gate 9 history-status accounting preserved
+- accepted Gate 10 persistence-status accounting preserved
+- accepted Gate 11 risk-mode accounting preserved
+- local classification columns remain absent in accepted universe/reference snapshots
+- classification probe: 250 sampled / 250 exact ticker matches / 120 SIC facts / 130 missing SIC / 0 provider errors
+- industry policy: `OPTIONAL_AUTHORITATIVE_SIC_ONLY`
+- sector assignment policy: `NO_GUESSED_CROSSWALK`
+- missing SIC remains explicit absence and is never fabricated
+- market snapshot SHA-256: `165fb8abb78e5bd8c388a76b896da2e4f47f2383d239331893f4bb0037e95b44`
+- ticker snapshot SHA-256: `b516165225847e583c9073b5333232765f69fd332aa8208a79c93b2b9e1049d9`
 
-Audit command:
+## Phase 09 acceptance
 
-```powershell
-.\.venv\Scripts\python.exe scripts\audit_regime_hierarchy.py --as-of 2026-08-14
-```
+All 13 Phase 09 gates are accepted. The resulting hierarchy is deterministic, point-in-time safe, identity-safe, and explicitly conservative where classification or history evidence is incomplete.
 
-Phase 09 remains open until Gate 13 passes on the target machine and the full suite remains green.
+Phase 09 provides context only. Strategy selection, ML probability estimation, analogue search, simulation, news/event interpretation, instrument choice, portfolio risk, and execution remain downstream phases.
