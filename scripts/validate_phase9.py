@@ -16,6 +16,12 @@ from packages.regimes.calibration import (
     REGIME_CALIBRATION_QUANTILES,
 )
 from packages.regimes.classification_probe import REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION
+from packages.regimes.hierarchy_audit import (
+    REGIME_HIERARCHY_AUDIT_CONTRACT_VERSION,
+    REGIME_HIERARCHY_INDUSTRY_POLICY,
+    REGIME_HIERARCHY_SECTOR_ASSIGNMENT_POLICY,
+    RegimeHierarchyAudit,
+)
 from packages.regimes.input_inventory import (
     CLASSIFICATION_FIELD_CANDIDATES,
     MARKET_PROXY_TICKERS,
@@ -172,6 +178,11 @@ def main() -> int:
         "ticker-state-snapshot-v1-routed-identity-persistence-risk"
     )
     assert TICKER_STATE_MANIFEST_VERSION == "ticker-state-manifest-v1-policy-lineage"
+    assert REGIME_HIERARCHY_AUDIT_CONTRACT_VERSION == (
+        "regime-hierarchy-integrity-v1-market-sector-proxy-optional-sic-ticker"
+    )
+    assert REGIME_HIERARCHY_INDUSTRY_POLICY == "OPTIONAL_AUTHORITATIVE_SIC_ONLY"
+    assert REGIME_HIERARCHY_SECTOR_ASSIGNMENT_POLICY == "NO_GUESSED_CROSSWALK"
     assert CACHED_AUTHORITATIVE_UNRESOLVED == "CACHED_AUTHORITATIVE_UNRESOLVED"
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert TICKER_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
@@ -245,6 +256,7 @@ def main() -> int:
     ticker_state_engine = TickerStateEngine(settings)
     ticker_state_snapshot = ticker_state_engine.snapshot_path(sample_date)
     ticker_state_manifest = ticker_state_engine.manifest_path(sample_date)
+    hierarchy_audit = RegimeHierarchyAudit(settings).report_path(sample_date)
     assert "regimes" in inventory.parts and "input_inventory" in inventory.parts
     assert "regimes" in classification_probe.parts and "classification_probe" in classification_probe.parts
     assert "regimes" in calibration.parts and "calibration" in calibration.parts
@@ -261,6 +273,7 @@ def main() -> int:
     assert "regimes" in ticker_risk_probe.parts and "ticker_risk_probe" in ticker_risk_probe.parts
     assert "regimes" in ticker_state_snapshot.parts and "ticker_states" in ticker_state_snapshot.parts
     assert "regimes" in ticker_state_manifest.parts and ticker_state_manifest != ticker_state_snapshot
+    assert "regimes" in hierarchy_audit.parts and "hierarchy_audit" in hierarchy_audit.parts
 
     print(f"Regime input inventory contract: {REGIME_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Classification probe contract: {REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION}")
@@ -284,6 +297,7 @@ def main() -> int:
     print(f"Ticker risk policy contract: {TICKER_RISK_POLICY_CONTRACT_VERSION}")
     print(f"Ticker state policy contract: {TICKER_STATE_POLICY_CONTRACT_VERSION}")
     print(f"Ticker state snapshot contract: {TICKER_STATE_SNAPSHOT_CONTRACT_VERSION}")
+    print(f"Hierarchy audit contract: {REGIME_HIERARCHY_AUDIT_CONTRACT_VERSION}")
     print(f"Selected persistence: {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session dimensional confirmation")
     print(f"Selected ticker persistence: {TICKER_SELECTED_PERSISTENCE_POLICY_NAME}")
     print(f"Selected ticker risk: {TICKER_RISK_PRIMARY_WINDOW}-session full / {TICKER_RISK_PROVISIONAL_WINDOW}-session provisional")
@@ -298,7 +312,8 @@ def main() -> int:
     print(f"Market proxy basket: {', '.join(MARKET_PROXY_TICKERS)}")
     print(f"Sector proxy basket: {', '.join(SECTOR_PROXY_TICKERS)}")
     print("Point-in-time classification source: Massive Ticker Overview SIC industry facts")
-    print("SIC-to-sector/GICS mapping: NOT LOCKED; no guessed crosswalk")
+    print("Ticker industry policy: OPTIONAL AUTHORITATIVE SIC ONLY")
+    print("Ticker sector assignment: NO GUESSED CROSSWALK")
     print("Historical calibration evidence: ACCEPTED")
     print("Raw market/sector regime definitions: ACCEPTED")
     print("Persistence policy: ACCEPTED; 2-session confirmation")
@@ -312,7 +327,8 @@ def main() -> int:
     print("Ticker persistence policy: ACCEPTED; 2-session dimensional confirmation")
     print("Ticker risk evidence: ACCEPTED GATE 11; 126 primary / 60 provisional / prior-only")
     print("Ticker risk/volatility policy: ACCEPTED; <60 insufficient, 252 audit-only")
-    print("Ticker regime materialization: CURRENT GATE 12; deterministic one-row-per-routed-instrument snapshot")
+    print("Ticker regime materialization: ACCEPTED GATE 12; deterministic one-row-per-routed-instrument snapshot")
+    print("Regime hierarchy integrity: CURRENT GATE 13; market + sector proxies + optional SIC + ticker")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
