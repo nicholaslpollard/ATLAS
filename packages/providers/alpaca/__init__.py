@@ -1,3 +1,13 @@
-from .client import AlpacaApiPage, AlpacaCredentialProfile, AlpacaMarketDataClient
+from .client import (
+    AlpacaApiPage,
+    AlpacaCredentialProfile,
+    AlpacaInvalidSymbolError,
+    AlpacaMarketDataClient,
+)
 
-__all__ = ["AlpacaApiPage", "AlpacaCredentialProfile", "AlpacaMarketDataClient"]
+__all__ = [
+    "AlpacaApiPage",
+    "AlpacaCredentialProfile",
+    "AlpacaInvalidSymbolError",
+    "AlpacaMarketDataClient",
+]
