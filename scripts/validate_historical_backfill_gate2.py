@@ -54,6 +54,7 @@ def main() -> None:
         "inventory_nonempty": int(payload.get("inventory_rows", 0)) > 0,
         "sip_candidates_nonempty": int(payload.get("sip_candidate_symbols", 0)) > 0,
         "otc_only_evidence_retained_but_excluded": int(payload.get("known_otc_only_excluded", 0)) > 0,
+        "inactive_reference_identifiers_retained_but_excluded": int(payload.get("inactive_reference_only_identifier_excluded", 0)) > 0,
         "corporate_action_pagination_completed": int(payload.get("corporate_action_pages", 0)) > 0,
         "raw_payloads_persisted": int(payload.get("raw_discovery_payloads", 0)) >= 4,
         "pilot_requested_100_symbols": int(payload.get("pilot_symbols", 0)) == 100,
@@ -66,6 +67,7 @@ def main() -> None:
     print(f"  inventory rows:              {int(payload.get('inventory_rows', 0)):,}")
     print(f"  SIP acquisition candidates: {int(payload.get('sip_candidate_symbols', 0)):,}")
     print(f"  known OTC-only excluded:     {int(payload.get('known_otc_only_excluded', 0)):,}")
+    print(f"  inactive reference-only:     {int(payload.get('inactive_reference_only_identifier_excluded', 0)):,} excluded from SIP")
     print(f"  pilot:                       symbols={int(payload.get('pilot_symbols', 0)):,} observed={int(payload.get('pilot_observed_symbols', 0)):,} bars={int(payload.get('pilot_bar_rows', 0)):,}")
     print("  checks:")
     for name, passed in checks.items():
