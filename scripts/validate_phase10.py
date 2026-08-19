@@ -17,6 +17,23 @@ from packages.ml.feature_leakage_audit import (
     ML_OBSERVATION_AVAILABILITY_RULE,
     MLFeatureLeakageAudit,
 )
+from packages.ml.feature_policy import (
+    ML_FEATURE_POLICY_ACCEPTED,
+    ML_FEATURE_POLICY_CONTRACT_VERSION,
+    ML_GATE5_ACCEPTED_CANDIDATE_ROWS,
+    ML_GATE5_ACCEPTED_CANDIDATE_SYMBOLS,
+    ML_GATE5_BAD_FEATURE_ROWS,
+    ML_GATE5_FEATURE_JOIN_ROWS,
+    ML_GATE5_MARKET_REGIME_COVERED_ROWS,
+    ML_MARKET_REGIME_EVALUATION_CONTEXT_ACCEPTED,
+    ML_MARKET_REGIME_MODEL_INPUT_ACCEPTED,
+    ML_PRODUCTION_CORE_FEATURE_COUNT,
+    ML_PRODUCTION_CORE_FEATURE_NAMES,
+    ML_PRODUCTION_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED,
+    ML_PRODUCTION_OBSERVATION_AVAILABILITY_RULE,
+    ML_SECTOR_REGIME_MODEL_INPUT_ACCEPTED,
+    ML_TICKER_REGIME_MODEL_INPUT_ACCEPTED,
+)
 from packages.ml.identity_policy import (
     CURRENT_ACTIVE_FILTER_USED,
     CURRENT_DELISTED_FILTER_USED,
@@ -127,12 +144,17 @@ def main() -> int:
     assert ML_FEATURE_LEAKAGE_AUDIT_CONTRACT_VERSION == (
         "ml-feature-leakage-audit-v1-core33-postclose-market-regime-availability"
     )
+    assert ML_FEATURE_POLICY_CONTRACT_VERSION == (
+        "ml-feature-policy-v1-core33-postclose-regime-context-not-predictor"
+    )
     assert ML_FEATURE_PARQUET_READ_MODE == "union_by_name"
     assert ML_FEATURE_PARQUET_READ_MODE_GATE5 == "union_by_name"
     assert ML_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED is True
+    assert ML_PRODUCTION_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED is True
     assert ML_OBSERVATION_AVAILABILITY_RULE == (
         "POST_SESSION_CLOSE_AFTER_DAILY_FEATURE_MATERIALIZATION"
     )
+    assert ML_PRODUCTION_OBSERVATION_AVAILABILITY_RULE == ML_OBSERVATION_AVAILABILITY_RULE
     assert ML_MARKET_REGIME_CANDIDATE_FIELDS == (
         "composite",
         "structure",
@@ -167,6 +189,20 @@ def main() -> int:
     assert ML_GATE4_ACCEPTED_UP_ROWS == 1_466_456
     assert ML_GATE4_ACCEPTED_DOWN_ROWS == 1_329_898
     assert ML_GATE4_ACCEPTED_NEUTRAL_ROWS == 3_757_502
+    assert ML_FEATURE_POLICY_ACCEPTED is True
+    assert ML_PRODUCTION_CORE_FEATURE_COUNT == 33
+    assert ML_PRODUCTION_CORE_FEATURE_NAMES == tuple(
+        definition.name for definition in CORE_FEATURE_REGISTRY.all()
+    )
+    assert ML_GATE5_ACCEPTED_CANDIDATE_ROWS == 6_588_579
+    assert ML_GATE5_ACCEPTED_CANDIDATE_SYMBOLS == 12_596
+    assert ML_GATE5_FEATURE_JOIN_ROWS == 6_588_579
+    assert ML_GATE5_BAD_FEATURE_ROWS == 0
+    assert ML_GATE5_MARKET_REGIME_COVERED_ROWS == 5_136_676
+    assert ML_MARKET_REGIME_EVALUATION_CONTEXT_ACCEPTED is True
+    assert ML_MARKET_REGIME_MODEL_INPUT_ACCEPTED is False
+    assert ML_SECTOR_REGIME_MODEL_INPUT_ACCEPTED is False
+    assert ML_TICKER_REGIME_MODEL_INPUT_ACCEPTED is False
     assert MASSIVE_SPLITS_ENDPOINT == "/stocks/v1/splits"
     assert CURRENT_ROUTE_FILTER_USED is False
     assert CURRENT_ACTIVE_FILTER_USED is False
@@ -216,6 +252,7 @@ def main() -> int:
     print(f"ML Gate 4 label-policy probe contract: {ML_LABEL_POLICY_PROBE_CONTRACT_VERSION}")
     print(f"ML prediction-label policy contract: {ML_PREDICTION_LABEL_POLICY_CONTRACT_VERSION}")
     print(f"ML Gate 5 feature/leakage audit contract: {ML_FEATURE_LEAKAGE_AUDIT_CONTRACT_VERSION}")
+    print(f"ML production feature policy contract: {ML_FEATURE_POLICY_CONTRACT_VERSION}")
     print(f"ML feature Parquet read mode: {ML_FEATURE_PARQUET_READ_MODE}")
     print(f"ML observation availability rule: {ML_OBSERVATION_AVAILABILITY_RULE}")
     print(f"ML outcome-family thresholds: {ML_VOLATILITY_THRESHOLD_GRID} x {ML_VOLATILITY_FEATURE} * sqrt(horizon)")
@@ -225,6 +262,10 @@ def main() -> int:
         f"{ML_PREDICTION_LABEL_HORIZON_SESSIONS} sessions / "
         f"{ML_PREDICTION_LABEL_THRESHOLD_MULTIPLIER}x natr_14 * sqrt(horizon) / "
         f"classes={ML_PREDICTION_LABEL_CLASSES}"
+    )
+    print(
+        "ML production predictor matrix: "
+        f"core_features={ML_PRODUCTION_CORE_FEATURE_COUNT} / market_regime=False / sector_regime=False / ticker_regime=False"
     )
     print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
@@ -244,8 +285,8 @@ def main() -> int:
     print("Gate 3 volatility-scaled outcome families: ACCEPTED; full population + NATR integrity reconciled")
     print("Gate 3 outcome-label feasibility policy: ACCEPTED; endpoint/NATR families feasible")
     print("Gate 4 prediction-label policy: ACCEPTED; 3-session / 0.5x NATR / three-class endpoint")
-    print("Gate 5 point-in-time ML feature/leakage contract: CURRENT; core33 + context availability audit ready")
-    print("Gate 6 training-dataset materialization: NOT YET BUILT")
+    print("Gate 5 point-in-time ML feature/leakage contract: ACCEPTED; core33 post-close predictor matrix")
+    print("Gate 6 training-dataset materialization: CURRENT; immutable lineage contract not yet built")
     print("Gate 7 walk-forward/embargo policy: NOT YET LOCKED")
     print("Gate 8 baseline probability models: NOT YET TRAINED")
     print("Gate 9 candidate model benchmark: NOT YET RUN")
