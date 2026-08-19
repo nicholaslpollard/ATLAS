@@ -19,12 +19,16 @@ from packages.ml.outcome_feasibility_policy import (
 )
 
 
-def test_phase10_gate3_feasibility_policy_is_locked_without_locking_gate4() -> None:
+def test_phase10_gate3_feasibility_policy_remains_locked_after_gate4_acceptance() -> None:
     assert ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION == (
         "ml-outcome-feasibility-policy-v1-split-censored-endpoint-natr-feasible"
     )
     assert ML_OUTCOME_FEASIBILITY_ACCEPTED is True
-    assert ML_PREDICTION_LABEL_POLICY_LOCKED is False
+    # Gate 4 is now accepted. This compatibility flag mirrors that current phase state;
+    # the authoritative production label definition lives in packages.ml.label_policy.
+    assert ML_PREDICTION_LABEL_POLICY_LOCKED is True
+    # Gate 3's 0.5x candidate evidence remains evidence-only and does not itself define
+    # the production horizon/label contract.
     assert ML_GATE3_PRIMARY_CANDIDATE_IS_PRODUCTION_LOCK is False
 
 
