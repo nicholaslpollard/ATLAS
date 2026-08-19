@@ -10,6 +10,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
+from packages.ml.identity_probe import (
+    ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION,
+    MLHistoricalIdentityProbe,
+)
 from packages.ml.universe_probe import (
     ML_CANDIDATE_ACTIVITY_FLOOR_DOLLARS,
     ML_HISTORY_ORIGIN_DATE,
@@ -27,24 +31,35 @@ def main() -> int:
     assert ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION == (
         "ml-training-universe-probe-v1-historical-observation-survivorship-identity-audit"
     )
+    assert ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION == (
+        "ml-historical-identity-probe-v1-authority-unique-reference-structural-eligibility"
+    )
     assert ML_HISTORY_ORIGIN_DATE == date(2021, 8, 16)
     assert ML_CANDIDATE_ACTIVITY_FLOOR_DOLLARS == 250_000.0
     assert ML_LONG_GAP_CALENDAR_DAYS == 30
     assert len(CORE_FEATURE_REGISTRY.all()) == 33
 
     settings = load_settings(PROJECT_ROOT, "development")
-    report = MLTrainingUniverseProbe(settings).report_path(date(2026, 8, 14))
-    assert "ml" in report.parts and "training_universe_probe" in report.parts
+    sample_date = date(2026, 8, 14)
+    universe_report = MLTrainingUniverseProbe(settings).report_path(sample_date)
+    identity_report = MLHistoricalIdentityProbe(settings).report_path(sample_date)
+    assert "ml" in universe_report.parts and "training_universe_probe" in universe_report.parts
+    assert "ml" in identity_report.parts and "historical_identity_probe" in identity_report.parts
+    assert universe_report != identity_report
 
     print(f"ML training-universe probe contract: {ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION}")
+    print(f"ML historical-identity probe contract: {ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
     print(f"ML history origin: {ML_HISTORY_ORIGIN_DATE}")
     print(f"Core quantitative feature count: {len(CORE_FEATURE_REGISTRY.all())}")
     print(f"Candidate activity audit floor: ${ML_CANDIDATE_ACTIVITY_FLOOR_DOLLARS:,.0f} daily dollar volume")
-    print("Current Phase 07/08 snapshot as historical ML population: NOT ASSUMED SAFE")
+    print("Current Phase 07/08 snapshot as historical ML population: REJECTED")
+    print("Historical population basis: OBSERVATION-DRIVEN / CURRENT ROUTE NOT USED")
     print("Historical provider-native ticker case: EXACT / CASE-SENSITIVE")
     print("Historical ticker-text splicing: FORBIDDEN")
-    print("Gate 1 historical training-universe audit: CURRENT")
+    print("Current active/delisted status as retrospective eligibility: FORBIDDEN")
+    print("Gate 1 historical training-universe audit: ACCEPTED; survivorship/selection gap measured")
+    print("Gate 2 historical identity/eligibility evidence: CURRENT")
     print("Gate 2 historical identity/eligibility policy: NOT YET LOCKED")
     print("Gate 3 outcome-label feasibility: NOT YET MEASURED")
     print("Gate 4 prediction-label policy: NOT YET LOCKED")
