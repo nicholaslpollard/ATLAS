@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+from pathlib import Path
 
 import pytest
 
@@ -20,7 +21,11 @@ from packages.data.alpaca_backfill_policy import (
     ALPACA_MASSIVE_SEAM_START,
     validate_backfill_contract,
 )
-from packages.data.alpaca_backfill_storage import AlpacaRawPayloadStore
+from packages.data.alpaca_backfill_storage import (
+    ALPACA_RAW_PROVENANCE_KEY_HEX_LENGTH,
+    ALPACA_RAW_STORAGE_LAYOUT_VERSION,
+    AlpacaRawPayloadStore,
+)
 from packages.providers.alpaca import AlpacaApiPage, AlpacaMarketDataClient
 
 
@@ -112,9 +117,40 @@ def test_raw_payload_store_is_content_addressed_and_idempotent(tmp_path) -> None
     )
     first = store.persist(page, category="test", partition="2016")
     second = store.persist(page, category="test", partition="2016")
+    payload_path = Path(first.payload_path)
     assert first.sha256 == second.sha256
     assert first.payload_path == second.payload_path
-    assert gzip.decompress((tmp_path / "data" / "provider" / "alpaca" / "historical_backfill" / "raw" / "test" / "2016" / f"{first.sha256}.json.gz").read_bytes()) == body
+    assert ALPACA_RAW_STORAGE_LAYOUT_VERSION == "alpaca-raw-store-v2-hashed-provenance-directory"
+    assert payload_path.parent.parent.name == "v2"
+    assert len(payload_path.parent.name) == ALPACA_RAW_PROVENANCE_KEY_HEX_LENGTH == 20
+    assert payload_path.name == f"{first.sha256}.json.gz"
+    assert gzip.decompress(payload_path.read_bytes()) == body
+
+
+def test_raw_payload_store_bounds_final_path_under_long_provenance(tmp_path) -> None:
+    settings = load_settings().model_copy(update={"project_root": tmp_path})
+    store = AlpacaRawPayloadStore(settings)
+    body = b'{"message":"invalid symbol: 0029900E0"}'
+    page = AlpacaApiPage(
+        request_name="historical_bars",
+        url="https://data.alpaca.markets/v2/stocks/bars?symbols=0029900E0",
+        http_status=400,
+        raw_body=body,
+        payload={"message": "invalid symbol: 0029900E0"},
+        response_headers={},
+    )
+    record = store.persist(
+        page,
+        category="bars_rejections",
+        partition="2016_batch_0000_reject_0000",
+    )
+    payload_path = Path(record.payload_path)
+    assert payload_path.is_file()
+    assert Path(record.metadata_path).is_file()
+    assert len(payload_path.parent.name) == 20
+    assert record.category == "bars_rejections"
+    assert record.partition == "2016_batch_0000_reject_0000"
+    assert gzip.decompress(payload_path.read_bytes()) == body
 
 
 def test_client_resolves_existing_paper_environment_without_echoing_secret(monkeypatch) -> None:
