@@ -11,248 +11,62 @@ market regime
             -> later strategy router / ML / analogue / simulation layers
 ```
 
-The regime engine must remain point-in-time safe, deterministic for finalized/as-of data, and independently auditable. Position/watchlist/custom routes remain eligible for context even when they are outside normal broad discovery.
+The regime engine is point-in-time safe, deterministic for finalized/as-of data, and independently auditable. Position/watchlist/custom routes remain eligible for context even when they are outside normal broad discovery.
 
-## Gate 1 - local evidence inventory: ACCEPTED
+## Gates 1-7 - market/sector foundation: ACCEPTED
 
-Contract: `regime-input-inventory-v1-local-breadth-benchmark-sector-proxy-audit`.
+Accepted contracts:
 
-Accepted 2026-08-14 target-machine evidence:
+- `regime-input-inventory-v1-local-breadth-benchmark-sector-proxy-audit`
+- `regime-classification-probe-v1-massive-sic-point-in-time`
+- `regime-calibration-v2-historical-continuous-proxy-distributions`
+- `regime-policy-probe-v1-quartile-dimensional-no-hysteresis`
+- `regime-persistence-policy-v1-two-session-dimensional-confirmation`
+- `regime-threshold-policy-v1-expanding-252-prior-only`
+- `regime-state-policy-v1-expanding252-confirm2-dimensional`
+- `regime-state-snapshot-v1-market-sector-proxies`
+- `regime-breadth-population-v1-250k-dollar-volume-complete-1d`
 
-- 8,034 Phase 08 discovery-state records
-- 8,034 / 8,034 exact daily breadth joins
-- 4 / 4 complete market proxies (`SPY`, `QQQ`, `IWM`, `DIA`)
-- 11 / 11 complete Select Sector SPDR proxies
-- no sector, industry, SIC, NAICS, or GICS mapping fields in the accepted local universe/reference snapshots
+Key accepted semantics:
 
-The absence of classification is evidence, not permission to fabricate a mapping.
+- broad market regime uses point-in-time breadth plus SPY/QQQ/IWM/DIA proxy evidence
+- 11 Select Sector SPDR proxies form the sector-context layer
+- raw SIC from Massive Ticker Overview is valid optional point-in-time **industry** evidence when present
+- Phase 09 does **not** invent a SIC-to-GICS, SIC-to-Select-Sector-SPDR, or ticker-to-sector crosswalk
+- market/sector persistence uses 2-session dimensional confirmation
+- thresholds use expanding prior-only history after a 252-session seed
+- history origin is 2021-08-16
+- current observations are excluded from their own threshold calculation
 
-## Gate 2 - point-in-time classification probe: ACCEPTED
-
-Contract: `regime-classification-probe-v1-massive-sic-point-in-time`.
-
-Accepted deterministic 250-instrument Massive Ticker Overview probe:
-
-- 250 / 250 provider responses
-- 250 / 250 exact provider-native ticker matches
-- 120 SIC codes/descriptions
-- 130 missing SIC observations
-- 0 provider errors
-- common stock (`CS`) SIC coverage: 108 / 122 = 88.52%
-- preferred (`PFD`) SIC coverage: 7 / 7
-- ETF SIC coverage: 4 / 100
-
-Decision: raw SIC is valid point-in-time **industry** evidence when present, especially for company-like securities. It is not a universal ATLAS taxonomy. ETF/fund/ETN context remains on its own security-type/proxy path. Phase 09 does **not** invent a SIC-to-GICS, SIC-to-Select-Sector-SPDR, or ticker-to-sector crosswalk.
-
-## Gate 3 - historical regime calibration: ACCEPTED
-
-Contract: `regime-calibration-v2-historical-continuous-proxy-distributions`.
-
-Accepted target-machine calibration:
-
-- 1,255 XNYS sessions and 1,255 1d feature manifests
-- 1,056 fully warmed sessions from 2022-05-31 through 2026-08-14
-- 199-session warm-up gap matching EMA200
-- complete 1,056-observation histories for all 4 market proxies and 11 sector proxies
-- 7,411 end-date calibration participants at the accepted `$250,000` daily-dollar-volume floor
-
-2026-08-14 breadth was structurally constructive while immediate one-day participation was mixed. Continuous market EMA20 distance and slope were above historical p75. This established separate structure/trend, momentum, participation, volatility, and efficiency dimensions.
-
-The broad regime population is intentionally defined by complete 1d feature evidence at/above the accepted `$250,000` activity floor plus exact canonical closes. This same population is used historically and for current market breadth so production thresholds and current observations are comparable. It is not presented as a reconstructed historical Phase 07 universe.
-
-## Gate 4 - raw candidate regime policy: ACCEPTED AS CHATTER BASELINE
-
-Contract: `regime-policy-probe-v1-quartile-dimensional-no-hysteresis`.
-
-Raw market distribution over 1,056 sessions was usable/non-collapsed:
-
-- BEAR 13.83%
-- BULL 24.34%
-- MIXED 38.26%
-- STRONG_BEAR 12.97%
-- STRONG_BULL 10.61%
-
-But temporal stability was not production-ready:
-
-- market transition rate 31.18%
-- market median run 2.0 sessions
-- market one-day-run share 36.67%
-- sector transition rates about 36%-42%, often with 1-session median runs
-
-Decision: retain the dimensional state definitions; solve chatter through explicit persistence rather than changing thresholds to force smoothness.
-
-## Gate 5 - persistence policy: ACCEPTED
-
-Probe contract: `regime-persistence-probe-v1-dimension-confirmation-grid`.
-
-Accepted production persistence contract:
-
-`regime-persistence-policy-v1-two-session-dimensional-confirmation`
-
-Two-session confirmation was selected over three-session confirmation.
-
-Two-session evidence:
-
-- market transition rate 15.07% = 51.67% reduction
-- market median run 5.0 sessions
-- market directional-family agreement 86.27%
-- market opposite-direction lag 0.47%
-- sector mean transition rate 15.94% = 58.34% reduction
-- sector median run 4.0 sessions
-- sector directional-family agreement 75.61%
-- sector opposite-direction lag 2.16%
-
-Three-session confirmation reduced transitions further but sector family agreement fell to 62.78% and sector opposite-direction lag rose to 5.17%. The extra smoothing was not worth the additional state delay.
-
-Persistence is applied to underlying dimensions independently; composite direction is recomputed from the persisted dimensions.
-
-## Gate 6 - point-in-time threshold memory: ACCEPTED
-
-Probe contract: `regime-threshold-probe-v1-prior-only-252-policy-grid`.
-
-Accepted production threshold contract:
-
-`regime-threshold-policy-v1-expanding-252-prior-only`
-
-All candidates used the same first 252 fully warmed observations as seed history and strictly excluded the current observation from its own threshold calculation. The comparison covered 804 market evaluation sessions from 2023-06-01 through 2026-08-14 and 8,844 sector observations.
-
-### Frozen 252
-
-Market:
-- transition rate 12.95%
-- retrospective exact agreement 31.59%
-- family agreement 52.61%
-- opposite-direction mismatch 2.49%
-
-Its end-date EMA200 p75 remained only 38.49%, demonstrating structural staleness relative to the later distribution.
-
-### Expanding 252 - SELECTED
-
-Market:
-- transition rate 15.94%
-- median run 5.0 sessions
-- retrospective exact agreement 78.23%
-- family agreement 86.69%
-- opposite-direction mismatch **0.00%**
-- 2026-08-14 effective state `BULL`
-
-Sectors:
-- mean transition rate 16.03%
-- median run 5.0 sessions
-- retrospective exact agreement 92.66%
-- family agreement 95.62%
-- opposite-direction mismatch 0.09%
-
-Expanding thresholds adapt gradually using every prior observation and preserve the long-memory purpose of market regime without the staleness of frozen thresholds.
-
-### Rolling 252
-
-Market:
-- transition rate 16.69%
-- median run 4.0 sessions
-- retrospective exact agreement 69.78%
-- family agreement 81.34%
-- opposite-direction mismatch 0.12%
-- 2026-08-14 effective state `MIXED`
-
-Rolling thresholds adapted more aggressively and materially changed end-date classification. They remain useful diagnostic evidence but were not selected.
-
-### Locked threshold semantics
-
-- policy: `expanding_252`
-- seed: 252 fully warmed observations
-- p25 / p75 state bands
-- p90 stress bands for volatility
-- current observation is always excluded
-- history origin: `2021-08-16`
-- changing the historical origin requires a versioned policy change; older-data backfills do not silently rewrite accepted semantics
-
-## Gate 7 - production market/sector state materialization: ACCEPTED
-
-State policy contract:
-
-`regime-state-policy-v1-expanding252-confirm2-dimensional`
-
-Snapshot contract:
-
-`regime-state-snapshot-v1-market-sector-proxies`
-
-Breadth population contract:
-
-`regime-breadth-population-v1-250k-dollar-volume-complete-1d`
-
-Accepted 2026-08-14 target-machine materialization:
+Accepted 2026-08-14 market/sector materialization:
 
 - 1,255 source 1d manifests
 - 1,056 usable breadth sessions
 - 804 point-in-time evaluation sessions
 - first evaluation session 2023-06-01
 - 8,844 sector evaluation observations
-- effective market state `BULL | UP | MIXED momentum | MIXED participation | NORMAL volatility | NORMAL efficiency`
+- effective market state `BULL`
 - sector state counts `BEAR=1, BULL=5, MIXED=3, STRONG_BULL=2`
-- dependency fingerprint `3be9ff57c7e734a43908822ef279a40b9fa0f02e1bc14f4f909bc672f8c44403`
-- deterministic snapshot SHA-256 `165fb8abb78e5bd8c388a76b896da2e4f47f2383d239331893f4bb0037e95b44`
+- deterministic replay produced identical dependency fingerprint and snapshot SHA on the immediate second run
 
-Replay acceptance passed: first run returned `MATERIALIZED`; the immediate second run returned `CURRENT` in under one second with the identical dependency fingerprint and snapshot SHA-256.
-
-Snapshot path:
-
-```text
-data/derived/regimes/states/YYYY/YYYY-MM-DD.json
-```
-
-Manifest path:
-
-```text
-data/manifests/regimes/YYYY/YYYY-MM-DD.json
-```
-
-Decision: the accepted market/sector policy is now production-materializable and deterministic for finalized as-of data.
-
-## Gate 8 - ticker regime evidence and identity/history audit: CURRENT
+## Gate 8 - ticker regime semantics/history-safety evidence: ACCEPTED
 
 Contract:
 
 `ticker-regime-probe-v1-routed-multitimeframe-identity-history-audit`
 
-Diagnostic:
+Ticker regime population is Phase 08 discovery-state instruments plus Phase 07 POSITION/WATCHLIST/CUSTOM routed overrides.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\probe_ticker_regimes.py --as-of 2026-08-14
-```
+Accepted ticker dimensions:
 
-### Population
+- 1d structure
+- regular-session 4h direction
+- regular-session 1h direction
+- 4h/1h short-horizon alignment
+- 1d momentum
+- self-relative risk/efficiency evidence handled separately
 
-Ticker regime is evaluated for:
-
-1. every instrument present in the Phase 08 discovery-state output; plus
-2. any Phase 07 `POSITION`, `WATCHLIST`, or `CUSTOM` routed instrument that needs context even when outside broad discovery.
-
-It does not spend ticker-regime work on Phase 07 discovery-eligible names already rejected by Phase 08.
-
-### Stable identity boundary
-
-The probe is keyed by stable `instrument_id`, not ticker text. Current point-in-time evidence uses the exact current provider ticker. Historical identity handling is deliberately conservative:
-
-- one observed alias: measure current-symbol history directly
-- multiple observed aliases: count the identity and inspect authoritative ticker-validity intervals
-- multi-alias historical series are **not spliced** during this gate
-- no ticker-history continuity is inferred from name similarity or symbol text
-
-This gate measures how large the rename/alias problem actually is before implementing historical identity stitching.
-
-### Candidate ticker dimensions
-
-The first candidate keeps ticker regime distinct from market regime:
-
-- **1d structure**: close vs EMA20/50/200, EMA20 vs EMA50, EMA50 vs EMA200, EMA20 slope
-- **4h direction**: regular-session close vs EMA20/50, RSI50, MACD histogram sign, EMA20 slope sign
-- **1h direction**: same regular-session evidence
-- **short-horizon alignment**: aligned up / aligned down / mixed across 4h + 1h
-- **1d momentum**: one-day return sign, RSI neutral band 45-55, MACD histogram sign
-- **risk/efficiency evidence**: NATR14, realized volatility 20, directional efficiency 20 are measured but not yet assigned universal ticker thresholds
-
-Candidate composite labels are descriptive context only:
+Accepted descriptive ticker states:
 
 - `STRONG_UPTREND`
 - `UPTREND`
@@ -264,38 +78,135 @@ Candidate composite labels are descriptive context only:
 - `DOWNTREND`
 - `STRONG_DOWNTREND`
 
-These labels do not select a strategy. For example, `PULLBACK_UP` describes an established positive daily structure with aligned negative short-horizon evidence; the later strategy router decides whether any pullback strategy is appropriate.
+These labels are context, not strategy selection.
 
-### History evidence
+## Gate 9 - authoritative ticker history/depth: ACCEPTED
 
-The probe measures how many single-alias routed instruments have at least **252 complete 1d observations after feature warm-up**. That determines whether per-instrument point-in-time volatility/efficiency bands are practical. Cross-sectional NATR/realized-volatility/efficiency quantiles are reported for evidence only and are not production thresholds.
+Accepted contract:
 
-### Gate 8 acceptance questions
+`ticker-history-probe-v2-operational-current-alias-authoritative-interval-depth`
 
-Before locking ticker semantics, review:
+2026-08-14 accepted evidence:
 
-- routed population size and route breakdown
-- duplicate current-ticker count
-- single- vs multi-alias identity counts
-- authoritative interval coverage among multi-alias identities
-- exact current 1d / regular 4h / regular 1h coverage
-- all-three-timeframe coverage
-- 252-session self-history coverage
-- candidate state balance and whether any state collapses or dominates
-- whether candidate labels preserve useful separation from Phase 08 setup evidence
-- observed risk/efficiency distributions before designing ticker-specific risk bands
+- routed population: 8,034
+- authoritative current interval: 1,090
+- current alias no conflict: 6,830
+- unresolved multi-alias: 17
+- unresolved ticker reuse: 97
+- unresolved/history-blocked residual: 114 / 8,034 = 1.42%
+- operational depth >=2/5/20/60/126/252: 7,231 / 7,215 / 7,172 / 7,010 / 6,786 / 6,415
+- authoritative interval depth >=2/5/20/60/126/252: 926 / 925 / 907 / 852 / 783 / 673
 
-Report path:
+Locked safety rules:
 
-```text
-data/derived/regimes/ticker_probe/YYYY/YYYY-MM-DD.json
+- sparse reference observation dates are not ownership bounds
+- exact stable-ID authority wins over ticker-text reuse
+- unresolved histories receive zero operational depth
+- no ticker-text history splice
+- 252 sessions are not a universal ticker prerequisite
+
+## Gate 10 - ticker-state persistence/stability: ACCEPTED
+
+Evidence contract:
+
+`ticker-persistence-probe-v1-safe-history-composite-vs-dimensional-confirmation`
+
+Selected policy:
+
+`ticker-persistence-policy-v1-two-session-dimensional-confirmation`
+
+2026-08-14 evidence across 1,713,049 state observations:
+
+- raw transition rate: 48.10%
+- raw one-session run share: 53.84%
+- raw A->B->A flipbacks: 268,095
+- selected dimensional-confirm-2 transition rate: 21.40% (55.50% reduction)
+- one-session run share: 15.75%
+- A->B->A flipbacks: 2,714 (~98.99% reduction)
+- directional-family agreement: 90.38%
+- opposite-direction mismatch: 7.71%
+
+Three-session candidates were rejected because directional lag increased materially. Confirmation resets across missing XNYS sessions.
+
+## Gate 11 - self-relative ticker risk/volatility: ACCEPTED
+
+Evidence contract:
+
+`ticker-risk-probe-v1-safe-self-relative-prior-only-lookback-grid`
+
+Fallback audit:
+
+`ticker-risk-fallback-audit-v1-current-severity-and-history-cohorts`
+
+Selected production policy:
+
+`ticker-risk-policy-v1-126-primary-60-provisional-prior-only`
+
+Production semantics:
+
+- >=126 prior sessions: `FULL_126`
+- 60-125 prior sessions: `PROVISIONAL_60`
+- <60 prior sessions: insufficient history; no self-relative risk/efficiency state
+- missing exact current metrics: no current self-relative state
+- identity-blocked history: no historical self-relative state
+- 252 sessions remain an audit/reference horizon, not a production prerequisite
+- all thresholds are prior-only; current observation excluded
+
+Safety evidence:
+
+- 126 vs 252: 99.70% within one risk level, 0.00% 2+ level understatements, 0/1,066 `STRESSED -> CALM/NORMAL`
+- 60 vs selected 126 target: 0.00% 2+ level understatements, 0/914 `STRESSED -> CALM/NORMAL`; remaining larger errors were conservative overstatements
+
+## Gate 12 - production ticker-regime materialization: ACCEPTED
+
+Contracts:
+
+- `ticker-state-policy-v1-confirm2-dimensional-risk126-60`
+- `ticker-state-snapshot-v1-routed-identity-persistence-risk`
+- `ticker-state-manifest-v1-policy-lineage`
+
+Accepted 2026-08-14 target-machine materialization:
+
+- records: 8,034
+- raw/effective current state available: 7,338
+- confirmed 2-session persistence: 7,231
+- current-only identity-blocked: 104
+- current-only shallow-history: 3
+- no current state: 696
+- history status: 1,090 authoritative / 6,830 current-alias-no-conflict / 17 unresolved multi-alias / 97 unresolved ticker reuse
+- risk modes: 7,340 `FULL_126` / 212 `PROVISIONAL_60` / 304 insufficient / 64 no-current-metrics / 114 identity-blocked
+- effective state counts sum exactly to 7,338
+- dependency fingerprint: `a4fa34175df4e3949e8972e1033651fea64e8f708c09c764f6bd19be2c396a95`
+- snapshot SHA-256: `b516165225847e583c9073b5333232765f69fd332aa8208a79c93b2b9e1049d9`
+- first build: `MATERIALIZED`, 146.956s
+- immediate second build: `CURRENT / SKIPPED`, 3.361s
+- second run preserved identical record counts, state/risk distributions, dependency fingerprint, and snapshot SHA
+
+The materializer persists exactly one row per routed stable identity. Identity-blocked and shallow histories may retain current-only regime context, but historical claims remain explicitly limited. No provider history is spliced by ticker text.
+
+## Gate 13 - final hierarchy/integrity validation: CURRENT
+
+Audit contract:
+
+`regime-hierarchy-integrity-v1-market-sector-proxy-optional-sic-ticker`
+
+The final audit validates:
+
+- accepted market snapshot contract, exact as-of date, and snapshot SHA
+- exact 11-member sector-proxy set with an effective state for every proxy
+- one ticker-state row per expected routed stable identity
+- exact current ticker match between universe routing and ticker-state snapshot
+- no missing or extra routed identities
+- market context can be attached to every routed ticker record
+- Gate 9 history status, Gate 10 persistence status, and Gate 11 risk mode accounting remain intact
+- industry policy remains `OPTIONAL_AUTHORITATIVE_SIC_ONLY`
+- sector assignment policy remains `NO_GUESSED_CROSSWALK`
+- the accepted 250-name Massive classification probe remains evidence that provider-native SIC can be attached when available; missing SIC is allowed and never fabricated
+
+Audit command:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\audit_regime_hierarchy.py --as-of 2026-08-14
 ```
 
-## Remaining Phase 09 work
-
-1. Accept/refine Gate 8 ticker-regime evidence and candidate state semantics.
-2. Implement authoritative identity-continuity stitching only where Gate 8 evidence requires it.
-3. Select point-in-time ticker risk/efficiency bands and persistence from measured history rather than universal guesses.
-4. Materialize ticker-regime state and attach accepted market context plus optional authoritative SIC industry facts.
-5. Validate the final market -> sector/industry -> ticker hierarchy and archive/operational contracts.
-6. Keep strategy-router semantics outside Phase 09 until regime context itself is accepted.
+Phase 09 remains open until Gate 13 passes on the target machine and the full suite remains green.
