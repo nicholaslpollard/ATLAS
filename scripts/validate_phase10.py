@@ -22,6 +22,7 @@ from packages.ml.identity_probe import (
     MLHistoricalIdentityProbe,
 )
 from packages.ml.outcome_family_audit import (
+    ML_FEATURE_PARQUET_READ_MODE,
     ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION,
     ML_VOLATILITY_FEATURE,
     ML_VOLATILITY_HORIZON_SCALING,
@@ -72,8 +73,9 @@ def main() -> int:
         "ml-gate3-query-plan-v2-materialized-candidates-direct-session-lookups"
     )
     assert ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION == (
-        "ml-outcome-family-audit-v1-natr14-sqrt-horizon-split-censored-grid"
+        "ml-outcome-family-audit-v2-natr14-schema-reconciled-split-censored-grid"
     )
+    assert ML_FEATURE_PARQUET_READ_MODE == "union_by_name"
     assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
     assert ML_VOLATILITY_FEATURE == "natr_14"
     assert ML_VOLATILITY_HORIZON_SCALING == "sqrt_sessions"
@@ -109,6 +111,7 @@ def main() -> int:
     print(f"ML outcome-feasibility probe contract: {ML_OUTCOME_FEASIBILITY_PROBE_CONTRACT_VERSION}")
     print(f"ML Gate 3 query plan: {ML_GATE3_QUERY_PLAN_VERSION}")
     print(f"ML outcome-family audit contract: {ML_OUTCOME_FAMILY_AUDIT_CONTRACT_VERSION}")
+    print(f"ML feature Parquet read mode: {ML_FEATURE_PARQUET_READ_MODE}")
     print(f"ML outcome-family thresholds: {ML_VOLATILITY_THRESHOLD_GRID} x {ML_VOLATILITY_FEATURE} * sqrt(horizon)")
     print(f"Massive split evidence endpoint: {MASSIVE_SPLITS_ENDPOINT}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
@@ -125,7 +128,7 @@ def main() -> int:
     print("Gate 2 ticker-reuse sub-audit: ACCEPTED; multi-stable ambiguity dominates blocked rows")
     print("Gate 2 historical identity/eligibility policy: ACCEPTED; authoritative or unique/no-reuse only")
     print("Gate 3 fixed-horizon/split evidence: CAPTURED; canonical daily prices predominantly unadjusted")
-    print("Gate 3 volatility-scaled outcome families: CURRENT SUB-AUDIT")
+    print("Gate 3 volatility-scaled outcome families: CURRENT; schema reconciliation required")
     print("Gate 3 outcome-label feasibility policy: NOT YET LOCKED")
     print("Gate 4 prediction-label policy: NOT YET LOCKED")
     print("Gate 5 point-in-time ML feature/leakage contract: NOT YET LOCKED")
