@@ -31,8 +31,36 @@ def main() -> int:
     print(f"  contract:                          {report.contract_version}")
     print(f"  history:                           {report.history_start} -> {report.history_end}")
     print("  audit status:                      EVIDENCE_ONLY")
-    print(f"  accepted candidate rows:           {report.candidate_rows:,}")
-    print(f"  accepted candidate symbols:        {report.candidate_symbols:,}")
+    print(f"  accepted Gate 2 candidate rows:    {report.candidate_rows:,}")
+    print(f"  accepted Gate 2 candidate symbols: {report.candidate_symbols:,}")
+    print(f"  volatility-eligible rows:          {report.volatility_eligible_rows:,}")
+    print(f"  volatility-eligible symbols:       {report.volatility_eligible_symbols:,}")
+    integrity = report.feature_integrity
+    print("  volatility-feature integrity:")
+    print(f"    Parquet read mode:                {integrity.parquet_read_mode}")
+    print(
+        f"    base/join rows:                   {integrity.base_candidate_rows:,} / "
+        f"{integrity.feature_join_rows:,}"
+    )
+    print(
+        f"    base/join symbols:                {integrity.base_candidate_symbols:,} / "
+        f"{integrity.feature_join_symbols:,}"
+    )
+    print(f"    stored natr finite rows:          {integrity.stored_natr_finite_rows:,}")
+    print(f"    stored natr positive rows:        {integrity.stored_natr_positive_rows:,}")
+    print(f"    stored natr zero rows:            {integrity.stored_natr_zero_rows:,}")
+    print(f"    stored natr negative rows:        {integrity.stored_natr_negative_rows:,}")
+    print(f"    derived natr positive rows:       {integrity.derived_natr_positive_rows:,}")
+    print(f"    stored/derived comparable rows:   {integrity.comparable_rows:,}")
+    print(
+        f"    stored/derived mismatched rows:   {integrity.mismatched_rows:,} "
+        f"({_pct(integrity.mismatch_fraction)})"
+    )
+    print(f"    median stored natr14:             {integrity.median_stored_natr}")
+    print(f"    median derived atr14/close:       {integrity.median_derived_natr}")
+    print(f"    max abs natr difference:          {integrity.max_abs_difference}")
+    print(f"    full population reconciled:       {integrity.full_population_reconciled}")
+    print(f"    stored vs derived reconciled:     {integrity.stored_vs_derived_reconciled}")
     print(f"  volatility feature:                {report.volatility_feature}")
     print(f"  horizon scaling:                   {report.volatility_horizon_scaling}")
     print(f"  threshold grid:                    {report.threshold_grid}")
