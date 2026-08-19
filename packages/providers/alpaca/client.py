@@ -37,14 +37,17 @@ class AlpacaMarketDataClient:
 
     Credentials are read from environment variables named in config. They are sent only
     as request headers and are never included in URLs, reprs, persisted payload metadata,
-    or exception messages.
+    or exception messages. Historical requests are deliberately paced below the Basic-plan
+    published request ceiling; server-provided 429 retry delays remain a second line of defense.
     """
 
-    def __init__(self, settings: AtlasSettings, *, sleeper=time.sleep) -> None:
+    def __init__(self, settings: AtlasSettings, *, sleeper=time.sleep, clock=time.monotonic) -> None:
         self.settings = settings
         self.cfg = settings.alpaca.market_data
         self.profile = self._resolve_profile()
         self.sleeper = sleeper
+        self.clock = clock
+        self._last_request_started_at: float | None = None
 
     def _resolve_profile(self) -> AlpacaCredentialProfile:
         cfg = self.settings.alpaca.credentials
@@ -90,6 +93,16 @@ class AlpacaMarketDataClient:
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise RuntimeError("Alpaca returned a non-JSON response") from exc
 
+    def _pace_request(self) -> None:
+        interval = 60.0 / float(self.cfg.requests_per_minute)
+        now = self.clock()
+        if self._last_request_started_at is not None:
+            remaining = interval - (now - self._last_request_started_at)
+            if remaining > 0:
+                self.sleeper(remaining)
+                now = self.clock()
+        self._last_request_started_at = now
+
     def _request_json(
         self,
         *,
@@ -108,6 +121,7 @@ class AlpacaMarketDataClient:
 
         last_error: Exception | None = None
         for attempt in range(1, self.cfg.max_attempts + 1):
+            self._pace_request()
             request = Request(url, headers=self._headers(), method="GET")
             try:
                 with urlopen(request, timeout=self.cfg.request_timeout_seconds) as response:
