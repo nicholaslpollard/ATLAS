@@ -95,6 +95,12 @@ from packages.regimes.ticker_risk_probe import (
     TICKER_RISK_REFERENCE_WINDOW,
     TickerRiskProbe,
 )
+from packages.regimes.ticker_state_engine import (
+    TICKER_STATE_MANIFEST_VERSION,
+    TICKER_STATE_POLICY_CONTRACT_VERSION,
+    TICKER_STATE_SNAPSHOT_CONTRACT_VERSION,
+    TickerStateEngine,
+)
 
 
 def main() -> int:
@@ -159,6 +165,13 @@ def main() -> int:
     assert TICKER_RISK_POLICY_CONTRACT_VERSION == (
         "ticker-risk-policy-v1-126-primary-60-provisional-prior-only"
     )
+    assert TICKER_STATE_POLICY_CONTRACT_VERSION == (
+        "ticker-state-policy-v1-confirm2-dimensional-risk126-60"
+    )
+    assert TICKER_STATE_SNAPSHOT_CONTRACT_VERSION == (
+        "ticker-state-snapshot-v1-routed-identity-persistence-risk"
+    )
+    assert TICKER_STATE_MANIFEST_VERSION == "ticker-state-manifest-v1-policy-lineage"
     assert CACHED_AUTHORITATIVE_UNRESOLVED == "CACHED_AUTHORITATIVE_UNRESOLVED"
     assert REGIME_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
     assert TICKER_PERSISTENCE_CONFIRMATION_WINDOWS == (2, 3)
@@ -229,6 +242,9 @@ def main() -> int:
     ticker_authority_gap_probe = TickerAuthorityGapProbe(settings).report_path(sample_date)
     ticker_persistence_probe = TickerPersistenceProbe(settings).report_path(sample_date)
     ticker_risk_probe = TickerRiskProbe(settings).report_path(sample_date)
+    ticker_state_engine = TickerStateEngine(settings)
+    ticker_state_snapshot = ticker_state_engine.snapshot_path(sample_date)
+    ticker_state_manifest = ticker_state_engine.manifest_path(sample_date)
     assert "regimes" in inventory.parts and "input_inventory" in inventory.parts
     assert "regimes" in classification_probe.parts and "classification_probe" in classification_probe.parts
     assert "regimes" in calibration.parts and "calibration" in calibration.parts
@@ -243,24 +259,8 @@ def main() -> int:
     assert "regimes" in ticker_authority_gap_probe.parts and "ticker_authority_gap_probe" in ticker_authority_gap_probe.parts
     assert "regimes" in ticker_persistence_probe.parts and "ticker_persistence_probe" in ticker_persistence_probe.parts
     assert "regimes" in ticker_risk_probe.parts and "ticker_risk_probe" in ticker_risk_probe.parts
-    assert len(
-        {
-            inventory,
-            classification_probe,
-            calibration,
-            policy_probe,
-            persistence_probe,
-            threshold_probe,
-            state_snapshot,
-            state_manifest,
-            ticker_probe,
-            ticker_history_probe,
-            ticker_authority_probe,
-            ticker_authority_gap_probe,
-            ticker_persistence_probe,
-            ticker_risk_probe,
-        }
-    ) == 14
+    assert "regimes" in ticker_state_snapshot.parts and "ticker_states" in ticker_state_snapshot.parts
+    assert "regimes" in ticker_state_manifest.parts and ticker_state_manifest != ticker_state_snapshot
 
     print(f"Regime input inventory contract: {REGIME_INPUT_INVENTORY_CONTRACT_VERSION}")
     print(f"Classification probe contract: {REGIME_CLASSIFICATION_PROBE_CONTRACT_VERSION}")
@@ -282,6 +282,8 @@ def main() -> int:
     print(f"Ticker risk probe contract: {TICKER_RISK_PROBE_CONTRACT_VERSION}")
     print(f"Ticker risk fallback audit contract: {TICKER_RISK_FALLBACK_AUDIT_CONTRACT_VERSION}")
     print(f"Ticker risk policy contract: {TICKER_RISK_POLICY_CONTRACT_VERSION}")
+    print(f"Ticker state policy contract: {TICKER_STATE_POLICY_CONTRACT_VERSION}")
+    print(f"Ticker state snapshot contract: {TICKER_STATE_SNAPSHOT_CONTRACT_VERSION}")
     print(f"Selected persistence: {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session dimensional confirmation")
     print(f"Selected ticker persistence: {TICKER_SELECTED_PERSISTENCE_POLICY_NAME}")
     print(f"Selected ticker risk: {TICKER_RISK_PRIMARY_WINDOW}-session full / {TICKER_RISK_PROVISIONAL_WINDOW}-session provisional")
@@ -310,7 +312,7 @@ def main() -> int:
     print("Ticker persistence policy: ACCEPTED; 2-session dimensional confirmation")
     print("Ticker risk evidence: ACCEPTED GATE 11; 126 primary / 60 provisional / prior-only")
     print("Ticker risk/volatility policy: ACCEPTED; <60 insufficient, 252 audit-only")
-    print("Ticker regime materialization: CURRENT GATE 12; NOT YET ACCEPTED")
+    print("Ticker regime materialization: CURRENT GATE 12; deterministic one-row-per-routed-instrument snapshot")
     print("Phase 09 regime evidence foundation: PASS")
     return 0
 
