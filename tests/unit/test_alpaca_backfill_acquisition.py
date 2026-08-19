@@ -9,7 +9,6 @@ import pytest
 
 from packages.core.settings import load_settings
 from packages.data.alpaca_backfill_acquisition import (
-    ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION,
     AlpacaBackfillAcquirer,
     _bar_stats,
     _chunks,
@@ -110,7 +109,7 @@ def test_gate3_plan_is_100_symbol_batches_crossed_with_six_years(tmp_path, monke
     assert units[0].year == 2016 and units[0].start == "2016-01-04" and len(units[0].symbols) == 100
     assert units[-1].year == 2021 and units[-1].end == "2021-08-15" and len(units[-1].symbols) == 1
     assert len({unit.unit_id for unit in units}) == len(units)
-    assert ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION in units[0].unit_id or len(units[0].unit_id) == 64
+    assert all(len(unit.unit_id) == 64 for unit in units)
 
 
 def test_alpaca_client_paces_requests_at_locked_180_per_minute(monkeypatch) -> None:
