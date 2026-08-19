@@ -15,6 +15,7 @@ from packages.data.alpaca_backfill_inventory import (
 from packages.data.alpaca_backfill_policy import (
     ALPACA_BACKFILL_CANONICAL_WRITE_ENABLED,
     ALPACA_BACKFILL_GATES,
+    ALPACA_BACKFILL_REQUESTS_PER_MINUTE,
     ALPACA_BACKFILL_START,
     ALPACA_MASSIVE_SEAM_START,
     validate_backfill_contract,
@@ -42,6 +43,7 @@ def test_settings_lock_raw_literal_sip_daily_semantics() -> None:
     assert cfg.asof == "-"
     assert cfg.timeframe == "1Day"
     assert cfg.page_limit == 10_000
+    assert cfg.requests_per_minute == ALPACA_BACKFILL_REQUESTS_PER_MINUTE == 180
     assert cfg.backfill_start == "2016-01-04"
     assert cfg.backfill_end == "2021-08-15"
 
