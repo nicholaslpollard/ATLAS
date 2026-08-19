@@ -26,11 +26,11 @@ from packages.data.alpaca_backfill_policy import (
     ALPACA_BACKFILL_TIMEFRAME,
 )
 from packages.data.alpaca_backfill_storage import AlpacaRawPayloadStore
-from packages.providers.alpaca import AlpacaMarketDataClient
+from packages.providers.alpaca import AlpacaInvalidSymbolError, AlpacaMarketDataClient
 
 
 ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION = (
-    "historical-backfill-acquisition-v1-year-batch-resumable-raw-sip"
+    "historical-backfill-acquisition-v2-year-batch-resumable-provider-rejection-evidence"
 )
 UNIT_STATUS_COMPLETE = "COMPLETE"
 
@@ -73,6 +73,8 @@ class AlpacaBackfillAcquisitionReport:
     raw_payload_pages: int
     bar_rows: int
     observed_symbols: int
+    provider_rejected_symbols: int
+    provider_rejection_conflicts: int
     zero_bar_symbols: int
     executed_units_this_run: int
     skipped_completed_units_this_run: int
@@ -184,7 +186,8 @@ class AlpacaBackfillAcquirer:
 
     Unit manifests are the restart boundary. A manifest is reusable only when its
     deterministic unit id, inventory fingerprint, source semantics, and raw payload files
-    still match. Production canonical history is never written by this class.
+    still match. Provider-rejected literal identifiers are retained as explicit evidence,
+    never remapped or silently dropped. Production canonical history is never written.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -277,39 +280,109 @@ class AlpacaBackfillAcquirer:
             metadata_path = Path(str(record.get("metadata_path", "")))
             if not raw_path.is_file() or not metadata_path.is_file():
                 raise RuntimeError(f"acquisition unit references missing raw payload evidence: {path}")
+        rejected = payload.get("provider_rejections") or []
+        rejected_symbols: set[str] = set()
+        for record in rejected:
+            symbol = _clean_symbol(record.get("symbol")) if isinstance(record, dict) else None
+            if symbol is None or symbol not in unit.symbols or symbol in rejected_symbols:
+                raise RuntimeError(f"invalid provider-rejection evidence in acquisition unit: {path}")
+            rejected_symbols.add(symbol)
+            raw_path = Path(str(record.get("payload_path", "")))
+            metadata_path = Path(str(record.get("metadata_path", "")))
+            if not raw_path.is_file() or not metadata_path.is_file():
+                raise RuntimeError(f"provider rejection references missing raw evidence: {path}")
         return payload
 
-    def _acquire_unit(self, unit: AcquisitionUnit) -> dict[str, Any]:
+    @staticmethod
+    def _remember_rejections(
+        known: dict[str, dict[str, object]], payload: dict[str, Any]
+    ) -> None:
+        for record in payload.get("provider_rejections") or []:
+            if not isinstance(record, dict):
+                continue
+            symbol = _clean_symbol(record.get("symbol"))
+            if symbol is not None:
+                known.setdefault(symbol, dict(record))
+
+    def _acquire_unit(
+        self,
+        unit: AcquisitionUnit,
+        known_rejections: dict[str, dict[str, object]],
+    ) -> dict[str, Any]:
         raw_pages: list[dict[str, object]] = []
         symbol_stats: dict[str, dict[str, object]] = {}
+        provider_rejections: dict[str, dict[str, object]] = {
+            symbol: dict(known_rejections[symbol])
+            for symbol in unit.symbols
+            if symbol in known_rejections
+        }
+        request_symbols = [symbol for symbol in unit.symbols if symbol not in provider_rejections]
         page_count = 0
-        for page_index, page in enumerate(
-            self.client.historical_bar_pages(
-                symbols=list(unit.symbols),
-                start=unit.start,
-                end=unit.end,
-            )
-        ):
-            page_count += 1
-            _merge_stats(symbol_stats, _bar_stats(page.payload))
-            raw_record = self.raw_store.persist(
-                page,
-                category="bars",
-                partition=f"{unit.year}_batch_{unit.batch_index:04d}_page_{page_index:04d}",
-            )
-            raw_pages.append(
-                {
-                    "page_index": page_index,
+
+        while request_symbols:
+            try:
+                for page_index, page in enumerate(
+                    self.client.historical_bar_pages(
+                        symbols=request_symbols,
+                        start=unit.start,
+                        end=unit.end,
+                    )
+                ):
+                    page_count += 1
+                    _merge_stats(symbol_stats, _bar_stats(page.payload))
+                    raw_record = self.raw_store.persist(
+                        page,
+                        category="bars",
+                        partition=(
+                            f"{unit.year}_batch_{unit.batch_index:04d}_page_{page_index:04d}"
+                        ),
+                    )
+                    raw_pages.append(
+                        {
+                            "page_index": page_index,
+                            "sha256": raw_record.sha256,
+                            "payload_path": raw_record.payload_path,
+                            "metadata_path": raw_record.metadata_path,
+                            "page_token_used": raw_record.page_token_used,
+                            "next_page_token": raw_record.next_page_token,
+                            "uncompressed_bytes": raw_record.uncompressed_bytes,
+                            "compressed_bytes": raw_record.compressed_bytes,
+                        }
+                    )
+                break
+            except AlpacaInvalidSymbolError as exc:
+                if page_count or raw_pages:
+                    raise RuntimeError(
+                        "Alpaca rejected a symbol after successful pages had already been returned; "
+                        "refusing to retry a partially paginated unit"
+                    ) from exc
+                invalid = exc.symbol
+                if invalid not in request_symbols:
+                    raise RuntimeError(
+                        f"Alpaca rejected symbol outside the submitted literal batch: {invalid}"
+                    ) from exc
+                raw_record = self.raw_store.persist(
+                    exc.page,
+                    category="bars_rejections",
+                    partition=(
+                        f"{unit.year}_batch_{unit.batch_index:04d}_reject_{len(provider_rejections):04d}"
+                    ),
+                )
+                evidence = {
+                    "symbol": invalid,
+                    "http_status": exc.page.http_status,
+                    "provider_message": exc.provider_message,
                     "sha256": raw_record.sha256,
                     "payload_path": raw_record.payload_path,
                     "metadata_path": raw_record.metadata_path,
-                    "page_token_used": raw_record.page_token_used,
-                    "next_page_token": raw_record.next_page_token,
                     "uncompressed_bytes": raw_record.uncompressed_bytes,
                     "compressed_bytes": raw_record.compressed_bytes,
                 }
-            )
+                provider_rejections[invalid] = evidence
+                known_rejections.setdefault(invalid, dict(evidence))
+                request_symbols = [symbol for symbol in request_symbols if symbol != invalid]
 
+        rejection_records = [provider_rejections[symbol] for symbol in sorted(provider_rejections)]
         manifest = {
             "contract_version": ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION,
             "parent_contract_version": ALPACA_BACKFILL_CONTRACT_VERSION,
@@ -325,6 +398,9 @@ class AlpacaBackfillAcquirer:
             "symbols": list(unit.symbols),
             "symbols_sha256": hashlib.sha256("\n".join(unit.symbols).encode("utf-8")).hexdigest(),
             "symbol_count": len(unit.symbols),
+            "submitted_symbol_count": len(unit.symbols) - len(rejection_records),
+            "provider_rejected_symbol_count": len(rejection_records),
+            "provider_rejections": rejection_records,
             "feed": ALPACA_BACKFILL_FEED,
             "adjustment": ALPACA_BACKFILL_ADJUSTMENT,
             "asof": ALPACA_BACKFILL_ASOF,
@@ -347,7 +423,7 @@ class AlpacaBackfillAcquirer:
         self,
         symbols: list[str],
         units: list[AcquisitionUnit],
-    ) -> tuple[int, int]:
+    ) -> tuple[int, int, int, int]:
         aggregate: dict[str, dict[str, object]] = {
             symbol: {
                 "symbol": symbol,
@@ -356,6 +432,8 @@ class AlpacaBackfillAcquirer:
                 "last_timestamp": None,
                 "years_observed": set(),
                 "units_observed": 0,
+                "provider_rejection_events": 0,
+                "provider_rejection_evidence_sha256": set(),
             }
             for symbol in symbols
         }
@@ -363,6 +441,21 @@ class AlpacaBackfillAcquirer:
             payload = self._load_completed_manifest(unit)
             if payload is None:
                 continue
+            for rejection in payload.get("provider_rejections") or []:
+                if not isinstance(rejection, dict):
+                    continue
+                symbol = _clean_symbol(rejection.get("symbol"))
+                if symbol is None or symbol not in aggregate:
+                    raise RuntimeError(
+                        f"unit manifest contains provider rejection outside locked inventory: {symbol}"
+                    )
+                item = aggregate[symbol]
+                item["provider_rejection_events"] = int(item["provider_rejection_events"]) + 1
+                hashes = item["provider_rejection_evidence_sha256"]
+                assert isinstance(hashes, set)
+                sha = str(rejection.get("sha256") or "")
+                if sha:
+                    hashes.add(sha)
             for symbol, stats in (payload.get("symbol_stats") or {}).items():
                 if symbol not in aggregate:
                     raise RuntimeError(f"unit manifest contains symbol outside locked inventory: {symbol}")
@@ -390,11 +483,19 @@ class AlpacaBackfillAcquirer:
         for symbol in symbols:
             item = aggregate[symbol]
             years = item.pop("years_observed")
+            hashes = item.pop("provider_rejection_evidence_sha256")
             assert isinstance(years, set)
+            assert isinstance(hashes, set)
+            observed = int(item["bar_rows"]) > 0
+            rejection_seen = int(item["provider_rejection_events"]) > 0
             rows.append(
                 {
                     **item,
-                    "observed": int(item["bar_rows"]) > 0,
+                    "observed": observed,
+                    "provider_rejected": rejection_seen and not observed,
+                    "provider_rejection_conflict": rejection_seen and observed,
+                    "zero_bar": not observed and not rejection_seen,
+                    "provider_rejection_evidence_sha256": ",".join(sorted(hashes)),
                     "years_observed": ",".join(str(value) for value in sorted(years)),
                     "year_count": len(years),
                 }
@@ -414,9 +515,11 @@ class AlpacaBackfillAcquirer:
         finally:
             con.close()
         replace_with_retry(temp, self.observed_summary_path)
-        observed = sum(1 for row in rows if bool(row["observed"]))
+        observed_count = sum(1 for row in rows if bool(row["observed"]))
+        rejected_count = sum(1 for row in rows if bool(row["provider_rejected"]))
+        conflict_count = sum(1 for row in rows if bool(row["provider_rejection_conflict"]))
         bar_rows = sum(int(row["bar_rows"]) for row in rows)
-        return observed, bar_rows
+        return observed_count, bar_rows, rejected_count, conflict_count
 
     def run(
         self,
@@ -433,12 +536,20 @@ class AlpacaBackfillAcquirer:
         target_units = [unit for unit in units if year is None or unit.year == year]
         if year is not None and year not in {unit.year for unit in units}:
             raise ValueError(f"year {year} is outside the locked backfill range")
+
+        known_rejections: dict[str, dict[str, object]] = {}
+        for unit in units:
+            existing = self._load_completed_manifest(unit)
+            if existing is not None:
+                self._remember_rejections(known_rejections, existing)
+
         executed = 0
         skipped = 0
         selected_seen = 0
         for unit in target_units:
             existing = self._load_completed_manifest(unit)
             if existing is not None:
+                self._remember_rejections(known_rejections, existing)
                 skipped += 1
                 selected_seen += 1
                 if progress is not None:
@@ -446,7 +557,8 @@ class AlpacaBackfillAcquirer:
                 continue
             if max_units is not None and executed >= max_units:
                 break
-            payload = self._acquire_unit(unit)
+            payload = self._acquire_unit(unit, known_rejections)
+            self._remember_rejections(known_rejections, payload)
             executed += 1
             selected_seen += 1
             if progress is not None:
@@ -461,8 +573,13 @@ class AlpacaBackfillAcquirer:
             else:
                 completed_manifests.append(payload)
 
-        observed_symbols, bar_rows = self._persist_observed_summary(symbols, units)
+        observed_symbols, bar_rows, provider_rejected, rejection_conflicts = (
+            self._persist_observed_summary(symbols, units)
+        )
         raw_pages = sum(int(item.get("page_count", 0)) for item in completed_manifests)
+        zero_bar_symbols = len(symbols) - observed_symbols - provider_rejected
+        if zero_bar_symbols < 0:
+            raise RuntimeError("Gate 3 observation accounting became negative")
         report = AlpacaBackfillAcquisitionReport(
             contract_version=ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION,
             parent_contract_version=ALPACA_BACKFILL_CONTRACT_VERSION,
@@ -489,7 +606,9 @@ class AlpacaBackfillAcquirer:
             raw_payload_pages=raw_pages,
             bar_rows=bar_rows,
             observed_symbols=observed_symbols,
-            zero_bar_symbols=len(symbols) - observed_symbols,
+            provider_rejected_symbols=provider_rejected,
+            provider_rejection_conflicts=rejection_conflicts,
+            zero_bar_symbols=zero_bar_symbols,
             executed_units_this_run=executed,
             skipped_completed_units_this_run=skipped,
             inventory_path=str(self.inventory_path),
