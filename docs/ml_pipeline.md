@@ -166,21 +166,70 @@ Gate 3 policy:
 - endpoint outcomes are feasible
 - daily path/barrier labels are not selected because daily OHLC cannot order same-bar dual touches without intraday path data
 - plain return-sign labels are not accepted as a production target because they classify economically trivial moves as directional
-- production horizon, threshold, and neutral handling remain Gate 4 decisions
 
-### Gate 4 - prediction-label policy: CURRENT
+### Gate 4 - prediction-label policy: ACCEPTED
 
 Evidence contract:
 
 `ml-label-policy-probe-v1-annual-stability-3-5-10-natr-grid`
 
-Gate 4 narrows the plausible production candidates to 3, 5, and 10 exchange sessions. The 0.5x NATR threshold is the primary candidate; 1.0x is retained as a sensitivity reference. The probe measures annual usable coverage, UP/DOWN/NEUTRAL class balance, directional support, and directional skew before the production target is locked.
+Production policy contract:
 
-The intended production form remains a strategy-neutral endpoint classification using only information strictly after the feature timestamp. Gate 4 must explicitly lock the horizon, NATR multiplier, neutral-class treatment, split censoring, exact timestamp semantics, and the overlap length that later informs Gate 7 purge/embargo.
+`ml-prediction-label-policy-v1-3session-0.5natr-three-class-endpoint`
 
-### Gate 5 - point-in-time ML feature and leakage contract
+Gate 4 compared 3, 5, and 10 exchange-session horizons at 0.5x NATR, with 1.0x NATR retained as a sensitivity reference. The production target is **3 sessions / 0.5x observation-time NATR / three-class endpoint**.
 
-Define the model input matrix from accepted Phase 6 quantitative features plus only historical Phase 9 context that can be reproduced point-in-time. Audit nulls, availability timestamps, regime lineage, categorical handling, scaling, and prohibited future-derived fields.
+Locked target definition:
+
+- `forward_return_3 = close[t+3] / close[t] - 1`
+- `threshold = 0.5 * natr_14[t] * sqrt(3)`
+- `UP` when `forward_return_3 >= threshold`
+- `DOWN` when `forward_return_3 <= -threshold`
+- `NEUTRAL` otherwise
+- probability fields are `p_down`, `p_neutral`, and `p_up`
+- all three natural classes are retained; Gate 4 performs no class downsampling, oversampling, or reweighting
+- exact third exchange-session continuity is required
+- same exact provider ticker is required
+- ticker-text splicing is forbidden
+- any provider split crossing the observation-to-endpoint window censors the label
+- the threshold uses only `natr_14` known at the observation timestamp
+- endpoint semantics are used; no intraday/path-barrier ordering is implied
+- adjacent 3-session labels overlap by two sessions; Gate 7 must account for this explicitly with purge/embargo
+
+Accepted 3-session / 0.5x target-machine evidence:
+
+- usable rows: 6,553,856
+- UP: 1,466,456
+- DOWN: 1,329,898
+- NEUTRAL: 3,757,502
+- directional share: 42.67%
+- UP among directional: 52.44%
+- annual directional-share range: 2.66 percentage points
+- annual UP-among-directional range: 7.05 percentage points
+
+Annual class evidence:
+
+- 2022: 43.95% directional; 47.15% UP among directional
+- 2023: 43.14% directional; 52.33% UP among directional
+- 2024: 43.37% directional; 53.03% UP among directional
+- 2025: 41.29% directional; 53.72% UP among directional
+- 2026 through 2026-08-14: 42.13% directional; 54.19% UP among directional
+
+Why 3 sessions was selected over 5 or 10:
+
+- 3-session / 0.5x had the smallest annual directional-share range: 2.66% versus 2.73% at 5 sessions and 4.21% at 10
+- it also had the smallest annual directional-balance range: 7.05% versus 7.65% and 8.72%
+- it retained the largest usable population: 6,553,856 versus 6,533,861 and 6,484,594
+- its adjacent-label overlap is only two sessions, lower than the four- and nine-session overlap of the longer candidates
+- the longer candidates did not provide compensating stability or coverage evidence sufficient to justify their additional latency and overlap
+
+The 1.0x sensitivity family remained much sparser, with roughly 14-16% directional support, and showed larger annual directional-balance drift. It is not the primary production target.
+
+### Gate 5 - point-in-time ML feature and leakage contract: CURRENT
+
+Define the model input matrix from accepted Phase 6 quantitative features plus only historical Phase 9 context that can be reproduced point-in-time. The Gate 5 audit must reconcile all 33 core features to the exact observation timestamp, verify feature-lake schema integrity with `union_by_name`, inventory null/finite behavior and transformations, and reject any forward-derived field.
+
+Phase 9 context is not automatically admitted merely because it exists in the current system. Market/sector/ticker context must be attached historically with the same as-of semantics used in production. Current universe, current sector assignment, current ticker state, or any other snapshot-only mapping cannot be projected backward. Context that cannot be reproduced safely remains excluded from the ML input contract until proven.
 
 ### Gate 6 - training-dataset materialization
 
@@ -188,7 +237,7 @@ Persist an immutable feature/label dataset with stable observation keys, source 
 
 ### Gate 7 - walk-forward and embargo policy
 
-Select expanding/rolling chronological folds, minimum training history, validation/test windows, and purge/embargo lengths appropriate to the locked forward-label horizon. No random row-level split is permitted.
+Select expanding/rolling chronological folds, minimum training history, validation/test windows, and purge/embargo lengths appropriate to the locked 3-session forward label. No random row-level split is permitted. The locked label has two sessions of adjacent overlap, which must be incorporated explicitly into the purge/embargo design.
 
 ### Gate 8 - baseline probability models
 
