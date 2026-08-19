@@ -20,6 +20,7 @@ from packages.data.alpaca_backfill_policy import (
     ALPACA_BACKFILL_END,
     ALPACA_BACKFILL_FEED,
     ALPACA_BACKFILL_PAGE_LIMIT,
+    ALPACA_BACKFILL_REQUESTS_PER_MINUTE,
     ALPACA_BACKFILL_START,
     ALPACA_BACKFILL_SYMBOL_BATCH_SIZE,
     ALPACA_BACKFILL_TIMEFRAME,
@@ -31,7 +32,6 @@ from packages.providers.alpaca import AlpacaMarketDataClient
 ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION = (
     "historical-backfill-acquisition-v1-year-batch-resumable-raw-sip"
 )
-ALPACA_BACKFILL_REQUESTS_PER_MINUTE = 180
 UNIT_STATUS_COMPLETE = "COMPLETE"
 
 
