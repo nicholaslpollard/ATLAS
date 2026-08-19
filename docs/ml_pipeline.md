@@ -52,7 +52,7 @@ Accepted conclusions:
 - historical training population must be observation-driven
 - the current inclusive reference is useful identity/metadata evidence but is not itself a historical membership filter
 - current `active` / `delisted` status must not be projected backward as historical eligibility
-- adjustment/corporate-action safety remains unresolved and moves to outcome-label feasibility before labels are locked
+- adjustment/corporate-action safety moves to outcome-label feasibility before labels are locked
 
 ### Gate 2 - historical identity and eligibility: ACCEPTED
 
@@ -99,7 +99,7 @@ Accepted policy:
 
 A targeted provider-enrichment campaign was rejected at this gate. Even recovering every `ONE_STABLE_PLUS_WEAK` row would add only about 0.41 percentage points of candidate coverage, while dated authority existed for only 15 of those symbols. The accepted 93.34% population is therefore preferred to a lower-integrity recovery attempt.
 
-### Gate 3 - outcome-label feasibility: CURRENT
+### Gate 3 - outcome-label feasibility: ACCEPTED
 
 Primary evidence contract:
 
@@ -109,20 +109,18 @@ Query-plan contract:
 
 `ml-gate3-query-plan-v2-materialized-candidates-direct-session-lookups`
 
-Volatility-scaled family sub-audit contract:
+Volatility-family evidence contract:
 
 `ml-outcome-family-audit-v2-natr14-schema-reconciled-split-censored-grid`
 
-The primary probe measures strategy-neutral fixed-horizon outcomes at 1, 3, 5, 10, and 20 exchange sessions. A forward outcome is labelable only when the same exact provider ticker has the exact future exchange-session observation; missing sessions, suspensions, or ticker changes censor the row instead of being bridged.
+Accepted feasibility policy contract:
 
-Captured 2026-08-14 target-machine evidence:
+`ml-outcome-feasibility-policy-v1-split-censored-endpoint-natr-feasible`
+
+Primary 2026-08-14 target-machine evidence:
 
 - accepted Gate 2 population: 6,588,579 rows / 12,596 symbols
-- 1-session labelable: 6,576,166 (99.81%)
-- 3-session labelable: 6,557,686 (99.53%)
-- 5-session labelable: 6,539,838 (99.26%)
-- 10-session labelable: 6,495,739 (98.59%)
-- 20-session labelable: 6,410,184 (97.29%)
+- labelable coverage: 99.81% at 1 session, 99.53% at 3, 99.26% at 5, 98.59% at 10, 97.29% at 20
 - fetched provider split events: 6,334 across 4,540 symbols
 - material split events: 5,320
 - diagnostic material split events with exact adjacent local bars: 2,647
@@ -133,28 +131,52 @@ Captured 2026-08-14 target-machine evidence:
 - median absolute split-ratio residual: 0.0719
 - split evidence SHA-256: `4c67e22d8e611ce805640dddb31f335ecefec97c955d08a6284319ee034c179c`
 
-Gate 3 conclusions already established:
+The canonical daily history therefore behaves overwhelmingly like **unadjusted** prices around known material stock splits. Split-crossing windows are rare relative to the full population but disproportionately populate the extreme-return tail, so Gate 3 requires those windows to be censored rather than treated as ordinary outcomes.
 
-- the canonical daily price history behaves overwhelmingly like **unadjusted** data around known material stock splits
-- split-crossing windows therefore cannot be used as ordinary forward-return labels
-- split-crossing windows are small relative to the full population and can be censored without materially reducing label coverage
-- those windows disproportionately populate the extreme-return tail, so leaving them in would materially distort label distributions
-- exact exchange-session continuity is feasible at all candidate horizons
-- a plain return-sign target is near-balanced but treats many economically trivial moves as directional outcomes; this is insufficient evidence for a production label
+The first volatility-family run was rejected as invalid because it returned only 7,253 rows / 590 symbols and an implausible exact median `natr_14` of 1.0. The defect was a heterogeneous multi-file Parquet read without schema unification. The v2 audit reads the permanent feature lake with `union_by_name=true` and hard-fails unless feature integrity reconciles before label evidence is emitted.
 
-The first volatility-family target-machine run was **rejected as invalid evidence**. It returned only 7,253 rows / 590 symbols instead of the accepted 6,588,579 / 12,596 population, and reported an exact median `natr_14` of 1.0 with almost no DOWN labels. Those results are not interpreted as market evidence.
+Accepted v2 feature-integrity evidence:
 
-The likely boundary is multi-file Parquet schema reconciliation across early feature warm-up partitions. Early partitions can contain all-NULL feature columns while later partitions contain floating-point values. The v2 sub-audit therefore reads the feature lake with `union_by_name=true`, requires the feature join to reconcile exactly to the accepted Gate 2 population, and checks persisted `natr_14` against its defining point-in-time identity `atr_14 / close` before any outcome-family statistics are emitted. If either reconciliation fails, the audit raises an error instead of producing label evidence.
+- base population: 6,588,579 rows / 12,596 symbols
+- feature join: 6,588,579 rows / 12,596 symbols
+- stored finite/positive `natr_14`: 6,588,579 / 6,588,579
+- stored/derived comparable rows: 6,588,579
+- stored `natr_14` vs `atr_14 / close` mismatches: 0
+- median stored and derived `natr_14`: 0.02599449612787421
+- maximum absolute difference: 0.0
 
-After feature integrity passes, the bounded sub-audit compares endpoint returns against point-in-time `natr_14 * sqrt(horizon)` thresholds at 0.5x, 1.0x, 1.5x, and 2.0x after censoring split-crossing windows. No future volatility enters the target threshold.
+The schema-read issue does not invalidate Phase 8/9. Phase 8 production discovery reads individual date partitions, while Phase 9 historical feature-glob consumers already use `union_by_name=true`.
 
-Daily OHLC path/barrier labels are not selected for this sub-audit. A daily bar can touch both an upper and lower barrier without revealing touch order, and resolving that would require intraday path semantics that belong closer to strategy/backtest evaluation. Endpoint outcomes remain strategy-neutral and avoid importing execution assumptions into the ML target layer.
+Volatility-scaled endpoint evidence uses `natr_14 * sqrt(horizon)` and censors split-crossing windows. At 0.5x NATR, the directional population remains large and roughly balanced across every tested horizon:
 
-Gate 3 remains open until the schema-reconciled volatility-family evidence is reviewed. Gate 4 will then lock the production horizon, threshold/target family, split censoring, exact timestamp semantics, and any neutral-class handling.
+- 1 session: 41.36% directional; 51.73% UP among directional
+- 3 sessions: 42.67% directional; 52.44% UP among directional
+- 5 sessions: 43.60% directional; 52.91% UP among directional
+- 10 sessions: 44.62% directional; 53.85% UP among directional
+- 20 sessions: 45.62% directional; 55.27% UP among directional
 
-### Gate 4 - prediction-label policy
+At 1.0x NATR, only about 14-16% of rows remain directional; 1.5x and 2.0x are much sparser tail families. Gate 3 therefore accepts volatility-scaled endpoint labels as feasible and carries **0.5x NATR as the leading Gate 4 candidate**, but does not lock it as the production threshold.
 
-Lock the production target(s), horizon(s), censoring rules, label timestamp semantics, and any volatility scaling from Gate 3 evidence. Labels must use information strictly after the feature timestamp.
+Gate 3 policy:
+
+- exact future exchange-session continuity required
+- same exact provider ticker required
+- ticker-text splicing forbidden
+- split-crossing labels censored
+- endpoint outcomes are feasible
+- daily path/barrier labels are not selected because daily OHLC cannot order same-bar dual touches without intraday path data
+- plain return-sign labels are not accepted as a production target because they classify economically trivial moves as directional
+- production horizon, threshold, and neutral handling remain Gate 4 decisions
+
+### Gate 4 - prediction-label policy: CURRENT
+
+Evidence contract:
+
+`ml-label-policy-probe-v1-annual-stability-3-5-10-natr-grid`
+
+Gate 4 narrows the plausible production candidates to 3, 5, and 10 exchange sessions. The 0.5x NATR threshold is the primary candidate; 1.0x is retained as a sensitivity reference. The probe measures annual usable coverage, UP/DOWN/NEUTRAL class balance, directional support, and directional skew before the production target is locked.
+
+The intended production form remains a strategy-neutral endpoint classification using only information strictly after the feature timestamp. Gate 4 must explicitly lock the horizon, NATR multiplier, neutral-class treatment, split censoring, exact timestamp semantics, and the overlap length that later informs Gate 7 purge/embargo.
 
 ### Gate 5 - point-in-time ML feature and leakage contract
 
