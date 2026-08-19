@@ -14,6 +14,10 @@ from packages.ml.identity_probe import (
     ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION,
     MLHistoricalIdentityProbe,
 )
+from packages.ml.reuse_audit import (
+    ML_TICKER_REUSE_AUDIT_CONTRACT_VERSION,
+    MLTickerReuseAudit,
+)
 from packages.ml.universe_probe import (
     ML_CANDIDATE_ACTIVITY_FLOOR_DOLLARS,
     ML_HISTORY_ORIGIN_DATE,
@@ -34,6 +38,9 @@ def main() -> int:
     assert ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION == (
         "ml-historical-identity-probe-v1-authority-unique-reference-structural-eligibility"
     )
+    assert ML_TICKER_REUSE_AUDIT_CONTRACT_VERSION == (
+        "ml-ticker-reuse-audit-v1-stable-vs-weak-identity-authority-enrichment"
+    )
     assert ML_HISTORY_ORIGIN_DATE == date(2021, 8, 16)
     assert ML_CANDIDATE_ACTIVITY_FLOOR_DOLLARS == 250_000.0
     assert ML_LONG_GAP_CALENDAR_DAYS == 30
@@ -43,12 +50,15 @@ def main() -> int:
     sample_date = date(2026, 8, 14)
     universe_report = MLTrainingUniverseProbe(settings).report_path(sample_date)
     identity_report = MLHistoricalIdentityProbe(settings).report_path(sample_date)
+    reuse_report = MLTickerReuseAudit(settings).report_path(sample_date)
     assert "ml" in universe_report.parts and "training_universe_probe" in universe_report.parts
     assert "ml" in identity_report.parts and "historical_identity_probe" in identity_report.parts
-    assert universe_report != identity_report
+    assert "ml" in reuse_report.parts and "ticker_reuse_audit" in reuse_report.parts
+    assert len({universe_report, identity_report, reuse_report}) == 3
 
     print(f"ML training-universe probe contract: {ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION}")
     print(f"ML historical-identity probe contract: {ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION}")
+    print(f"ML ticker-reuse audit contract: {ML_TICKER_REUSE_AUDIT_CONTRACT_VERSION}")
     print(f"Phase 10 gate count: {PHASE10_GATE_COUNT}")
     print(f"ML history origin: {ML_HISTORY_ORIGIN_DATE}")
     print(f"Core quantitative feature count: {len(CORE_FEATURE_REGISTRY.all())}")
@@ -60,6 +70,7 @@ def main() -> int:
     print("Current active/delisted status as retrospective eligibility: FORBIDDEN")
     print("Gate 1 historical training-universe audit: ACCEPTED; survivorship/selection gap measured")
     print("Gate 2 historical identity/eligibility evidence: CURRENT")
+    print("Gate 2 unresolved ticker reuse composition: CURRENT SUB-AUDIT")
     print("Gate 2 historical identity/eligibility policy: NOT YET LOCKED")
     print("Gate 3 outcome-label feasibility: NOT YET MEASURED")
     print("Gate 4 prediction-label policy: NOT YET LOCKED")
