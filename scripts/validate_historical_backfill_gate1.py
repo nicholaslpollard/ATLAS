@@ -11,6 +11,7 @@ from packages.data.alpaca_backfill_policy import (
     ALPACA_BACKFILL_FEED,
     ALPACA_BACKFILL_GATES,
     ALPACA_BACKFILL_PAGE_LIMIT,
+    ALPACA_BACKFILL_REQUESTS_PER_MINUTE,
     ALPACA_BACKFILL_START,
     ALPACA_BACKFILL_TIMEFRAME,
     validate_backfill_contract,
@@ -29,6 +30,7 @@ def main() -> None:
         "literal_symbol_mapping_disabled": cfg.asof == ALPACA_BACKFILL_ASOF == "-",
         "timeframe_is_daily": cfg.timeframe == ALPACA_BACKFILL_TIMEFRAME == "1Day",
         "page_limit_locked": cfg.page_limit == ALPACA_BACKFILL_PAGE_LIMIT == 10_000,
+        "request_rate_locked": cfg.requests_per_minute == ALPACA_BACKFILL_REQUESTS_PER_MINUTE == 180,
         "backfill_start_locked": cfg.backfill_start == ALPACA_BACKFILL_START.isoformat(),
         "backfill_end_locked": cfg.backfill_end == ALPACA_BACKFILL_END.isoformat(),
         "canonical_write_disabled": not ALPACA_BACKFILL_CANONICAL_WRITE_ENABLED,
@@ -40,6 +42,7 @@ def main() -> None:
     print(f"  range:                       {ALPACA_BACKFILL_START}->{ALPACA_BACKFILL_END}")
     print(f"  source semantics:            feed={cfg.feed} adjustment={cfg.adjustment} asof={cfg.asof} timeframe={cfg.timeframe}")
     print(f"  paging:                      limit={cfg.page_limit} symbol_batch_size={cfg.symbol_batch_size}")
+    print(f"  request safety cap:          {cfg.requests_per_minute}/min")
     print(f"  canonical writes enabled:    {ALPACA_BACKFILL_CANONICAL_WRITE_ENABLED}")
     print(f"  gates locked:                {len(ALPACA_BACKFILL_GATES)}")
     print("  checks:")
