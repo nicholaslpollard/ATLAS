@@ -13,6 +13,10 @@ from packages.core.settings import AtlasSettings
 from packages.providers.alpaca import AlpacaApiPage
 
 
+ALPACA_RAW_STORAGE_LAYOUT_VERSION = "alpaca-raw-store-v2-hashed-provenance-directory"
+ALPACA_RAW_PROVENANCE_KEY_HEX_LENGTH = 20
+
+
 @dataclass(frozen=True, slots=True)
 class AlpacaRawPayloadRecord:
     category: str
@@ -31,7 +35,13 @@ class AlpacaRawPayloadRecord:
 
 
 class AlpacaRawPayloadStore:
-    """Content-addressed immutable storage for exact Alpaca JSON response bytes."""
+    """Content-addressed immutable storage for exact Alpaca JSON response bytes.
+
+    The final payload filename always retains the full response SHA-256. To preserve
+    Windows path budget under long checkout/temp roots, category+partition provenance
+    is represented in the directory layout by a deterministic 80-bit key; the full
+    human-readable category and partition remain in the sidecar metadata record.
+    """
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
@@ -45,6 +55,11 @@ class AlpacaRawPayloadStore:
             raise ValueError("invalid Alpaca raw-store path component")
         return clean
 
+    @staticmethod
+    def _provenance_key(category: str, partition: str) -> str:
+        payload = f"{category}\0{partition}".encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()[:ALPACA_RAW_PROVENANCE_KEY_HEX_LENGTH]
+
     def persist(
         self,
         page: AlpacaApiPage,
@@ -55,7 +70,8 @@ class AlpacaRawPayloadStore:
         category = self._clean_component(category)
         partition = self._clean_component(partition)
         digest = hashlib.sha256(page.raw_body).hexdigest()
-        directory = self.root / category / partition
+        provenance_key = self._provenance_key(category, partition)
+        directory = self.root / "v2" / provenance_key
         payload_path = directory / f"{digest}.json.gz"
         metadata_path = directory / f"{digest}.meta.json"
         compressed = gzip.compress(page.raw_body, compresslevel=6, mtime=0)
