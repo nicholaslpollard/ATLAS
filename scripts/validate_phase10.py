@@ -10,6 +10,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
+from packages.ml.feature_leakage_audit import (
+    ML_FEATURE_LEAKAGE_AUDIT_CONTRACT_VERSION,
+    ML_FEATURE_PARQUET_READ_MODE_GATE5,
+    ML_MARKET_REGIME_CANDIDATE_FIELDS,
+    ML_OBSERVATION_AVAILABILITY_RULE,
+    MLFeatureLeakageAudit,
+)
 from packages.ml.identity_policy import (
     CURRENT_ACTIVE_FILTER_USED,
     CURRENT_DELISTED_FILTER_USED,
@@ -117,8 +124,23 @@ def main() -> int:
     assert ML_PREDICTION_LABEL_POLICY_CONTRACT_VERSION == (
         "ml-prediction-label-policy-v1-3session-0.5natr-three-class-endpoint"
     )
+    assert ML_FEATURE_LEAKAGE_AUDIT_CONTRACT_VERSION == (
+        "ml-feature-leakage-audit-v1-core33-postclose-market-regime-availability"
+    )
     assert ML_FEATURE_PARQUET_READ_MODE == "union_by_name"
+    assert ML_FEATURE_PARQUET_READ_MODE_GATE5 == "union_by_name"
     assert ML_FEATURE_PARQUET_UNION_BY_NAME_REQUIRED is True
+    assert ML_OBSERVATION_AVAILABILITY_RULE == (
+        "POST_SESSION_CLOSE_AFTER_DAILY_FEATURE_MATERIALIZATION"
+    )
+    assert ML_MARKET_REGIME_CANDIDATE_FIELDS == (
+        "composite",
+        "structure",
+        "momentum",
+        "volatility",
+        "efficiency",
+        "participation",
+    )
     assert ML_OUTCOME_HORIZONS == (1, 3, 5, 10, 20)
     assert ML_VOLATILITY_FEATURE == "natr_14"
     assert ML_VOLATILITY_HORIZON_SCALING == "sqrt_sessions"
@@ -163,13 +185,25 @@ def main() -> int:
     outcome_report = MLOutcomeFeasibilityProbe(settings).report_path(sample_date)
     family_report = MLOutcomeFamilyAudit(settings).report_path(sample_date)
     label_report = MLLabelPolicyProbe(settings).report_path(sample_date)
+    feature_report = MLFeatureLeakageAudit(settings).report_path(sample_date)
     assert "ml" in universe_report.parts and "training_universe_probe" in universe_report.parts
     assert "ml" in identity_report.parts and "historical_identity_probe" in identity_report.parts
     assert "ml" in reuse_report.parts and "ticker_reuse_audit" in reuse_report.parts
     assert "ml" in outcome_report.parts and "outcome_feasibility_probe" in outcome_report.parts
     assert "ml" in family_report.parts and "outcome_family_audit" in family_report.parts
     assert "ml" in label_report.parts and "label_policy_probe" in label_report.parts
-    assert len({universe_report, identity_report, reuse_report, outcome_report, family_report, label_report}) == 6
+    assert "ml" in feature_report.parts and "feature_leakage_audit" in feature_report.parts
+    assert len(
+        {
+            universe_report,
+            identity_report,
+            reuse_report,
+            outcome_report,
+            family_report,
+            label_report,
+            feature_report,
+        }
+    ) == 7
 
     print(f"ML training-universe probe contract: {ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION}")
     print(f"ML historical-identity probe contract: {ML_HISTORICAL_IDENTITY_PROBE_CONTRACT_VERSION}")
@@ -181,7 +215,9 @@ def main() -> int:
     print(f"ML outcome-feasibility policy contract: {ML_OUTCOME_FEASIBILITY_POLICY_CONTRACT_VERSION}")
     print(f"ML Gate 4 label-policy probe contract: {ML_LABEL_POLICY_PROBE_CONTRACT_VERSION}")
     print(f"ML prediction-label policy contract: {ML_PREDICTION_LABEL_POLICY_CONTRACT_VERSION}")
+    print(f"ML Gate 5 feature/leakage audit contract: {ML_FEATURE_LEAKAGE_AUDIT_CONTRACT_VERSION}")
     print(f"ML feature Parquet read mode: {ML_FEATURE_PARQUET_READ_MODE}")
+    print(f"ML observation availability rule: {ML_OBSERVATION_AVAILABILITY_RULE}")
     print(f"ML outcome-family thresholds: {ML_VOLATILITY_THRESHOLD_GRID} x {ML_VOLATILITY_FEATURE} * sqrt(horizon)")
     print(f"ML Gate 4 candidate grid: horizons={ML_LABEL_POLICY_CANDIDATE_HORIZONS} multipliers={ML_LABEL_POLICY_CANDIDATE_MULTIPLIERS}")
     print(
@@ -208,7 +244,7 @@ def main() -> int:
     print("Gate 3 volatility-scaled outcome families: ACCEPTED; full population + NATR integrity reconciled")
     print("Gate 3 outcome-label feasibility policy: ACCEPTED; endpoint/NATR families feasible")
     print("Gate 4 prediction-label policy: ACCEPTED; 3-session / 0.5x NATR / three-class endpoint")
-    print("Gate 5 point-in-time ML feature/leakage contract: CURRENT; evidence audit not yet accepted")
+    print("Gate 5 point-in-time ML feature/leakage contract: CURRENT; core33 + context availability audit ready")
     print("Gate 6 training-dataset materialization: NOT YET BUILT")
     print("Gate 7 walk-forward/embargo policy: NOT YET LOCKED")
     print("Gate 8 baseline probability models: NOT YET TRAINED")
