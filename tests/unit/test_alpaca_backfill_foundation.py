@@ -11,7 +11,9 @@ from packages.data.alpaca_backfill_inventory import (
     _asset_records,
     _bar_counts,
     _corporate_action_symbols,
+    _cusip_like_identifier_shape,
     _deterministic_sample,
+    _is_inactive_reference_only_identifier,
 )
 from packages.data.alpaca_backfill_policy import (
     ALPACA_BACKFILL_CANONICAL_WRITE_ENABLED,
@@ -101,6 +103,21 @@ def test_deterministic_sample_is_case_sensitive_and_repeatable() -> None:
     assert first == second
     assert len(first) == 4
     assert len(set(first)) == 4
+
+
+def test_inactive_only_cusip_like_identifier_is_reference_only_without_ticker_corroboration() -> None:
+    assert _cusip_like_identifier_shape("0029900E0") is True
+    assert _cusip_like_identifier_shape("AAPL") is False
+    base = {
+        "from_active_assets": False,
+        "from_inactive_assets": True,
+        "from_massive_observed": False,
+        "from_corporate_actions": False,
+    }
+    assert _is_inactive_reference_only_identifier(base, "0029900E0") is True
+    assert _is_inactive_reference_only_identifier({**base, "from_massive_observed": True}, "0029900E0") is False
+    assert _is_inactive_reference_only_identifier({**base, "from_corporate_actions": True}, "0029900E0") is False
+    assert _is_inactive_reference_only_identifier(base, "LNKD") is False
 
 
 def test_raw_payload_store_is_content_addressed_and_idempotent(tmp_path) -> None:
