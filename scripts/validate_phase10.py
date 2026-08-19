@@ -8,6 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from packages.core.settings import load_settings
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
 from packages.ml.universe_probe import (
     ML_CANDIDATE_ACTIVITY_FLOOR_DOLLARS,
@@ -31,11 +32,8 @@ def main() -> int:
     assert ML_LONG_GAP_CALENDAR_DAYS == 30
     assert len(CORE_FEATURE_REGISTRY.all()) == 33
 
-    report = MLTrainingUniverseProbe(
-        __import__("packages.core.settings", fromlist=["load_settings"]).load_settings(
-            PROJECT_ROOT, "development"
-        )
-    ).report_path(date(2026, 8, 14))
+    settings = load_settings(PROJECT_ROOT, "development")
+    report = MLTrainingUniverseProbe(settings).report_path(date(2026, 8, 14))
     assert "ml" in report.parts and "training_universe_probe" in report.parts
 
     print(f"ML training-universe probe contract: {ML_TRAINING_UNIVERSE_PROBE_CONTRACT_VERSION}")
