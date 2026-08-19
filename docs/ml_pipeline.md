@@ -111,7 +111,7 @@ Query-plan contract:
 
 Volatility-scaled family sub-audit contract:
 
-`ml-outcome-family-audit-v1-natr14-sqrt-horizon-split-censored-grid`
+`ml-outcome-family-audit-v2-natr14-schema-reconciled-split-censored-grid`
 
 The primary probe measures strategy-neutral fixed-horizon outcomes at 1, 3, 5, 10, and 20 exchange sessions. A forward outcome is labelable only when the same exact provider ticker has the exact future exchange-session observation; missing sessions, suspensions, or ticker changes censor the row instead of being bridged.
 
@@ -142,11 +142,15 @@ Gate 3 conclusions already established:
 - exact exchange-session continuity is feasible at all candidate horizons
 - a plain return-sign target is near-balanced but treats many economically trivial moves as directional outcomes; this is insufficient evidence for a production label
 
-The bounded Gate 3 sub-audit therefore compares endpoint returns against point-in-time `natr_14 * sqrt(horizon)` thresholds at 0.5x, 1.0x, 1.5x, and 2.0x after censoring split-crossing windows. `natr_14` is the accepted Phase 6 feature available at the observation timestamp, so no future volatility enters the target threshold.
+The first volatility-family target-machine run was **rejected as invalid evidence**. It returned only 7,253 rows / 590 symbols instead of the accepted 6,588,579 / 12,596 population, and reported an exact median `natr_14` of 1.0 with almost no DOWN labels. Those results are not interpreted as market evidence.
+
+The likely boundary is multi-file Parquet schema reconciliation across early feature warm-up partitions. Early partitions can contain all-NULL feature columns while later partitions contain floating-point values. The v2 sub-audit therefore reads the feature lake with `union_by_name=true`, requires the feature join to reconcile exactly to the accepted Gate 2 population, and checks persisted `natr_14` against its defining point-in-time identity `atr_14 / close` before any outcome-family statistics are emitted. If either reconciliation fails, the audit raises an error instead of producing label evidence.
+
+After feature integrity passes, the bounded sub-audit compares endpoint returns against point-in-time `natr_14 * sqrt(horizon)` thresholds at 0.5x, 1.0x, 1.5x, and 2.0x after censoring split-crossing windows. No future volatility enters the target threshold.
 
 Daily OHLC path/barrier labels are not selected for this sub-audit. A daily bar can touch both an upper and lower barrier without revealing touch order, and resolving that would require intraday path semantics that belong closer to strategy/backtest evaluation. Endpoint outcomes remain strategy-neutral and avoid importing execution assumptions into the ML target layer.
 
-Gate 3 remains open until the volatility-scaled family evidence is reviewed. Gate 4 will then lock the production horizon, threshold/target family, split censoring, exact timestamp semantics, and any neutral-class handling.
+Gate 3 remains open until the schema-reconciled volatility-family evidence is reviewed. Gate 4 will then lock the production horizon, threshold/target family, split censoring, exact timestamp semantics, and any neutral-class handling.
 
 ### Gate 4 - prediction-label policy
 
