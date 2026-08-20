@@ -214,3 +214,129 @@ def test_gate3_isolates_provider_rejected_symbol_and_reuses_evidence(tmp_path, m
     assert calls == [("AAPL", "MSFT")]
     assert manifest2["provider_rejected_symbol_count"] == 1
     assert manifest2["provider_rejections"][0]["sha256"] == manifest["provider_rejections"][0]["sha256"]
+
+
+def test_gate3_quarantines_nonexact_response_symbols_without_double_credit(
+    tmp_path, monkeypatch
+) -> None:
+    _configure_alpaca(monkeypatch)
+    settings = load_settings().model_copy(update={"project_root": tmp_path})
+    acquirer = AlpacaBackfillAcquirer(settings)
+
+    collision = AcquisitionUnit(
+        year=2016,
+        batch_index=0,
+        start="2016-01-04",
+        end="2016-12-31",
+        symbols=("BCpC",),
+        inventory_fingerprint="f" * 64,
+        unit_id="1" * 64,
+    )
+    exact_upper = AcquisitionUnit(
+        year=2016,
+        batch_index=1,
+        start="2016-01-04",
+        end="2016-12-31",
+        symbols=("BCPC",),
+        inventory_fingerprint="f" * 64,
+        unit_id="2" * 64,
+    )
+    casefold_only = AcquisitionUnit(
+        year=2016,
+        batch_index=2,
+        start="2016-01-04",
+        end="2016-12-31",
+        symbols=("CpN",),
+        inventory_fingerprint="f" * 64,
+        unit_id="3" * 64,
+    )
+    unrelated = AcquisitionUnit(
+        year=2016,
+        batch_index=3,
+        start="2016-01-04",
+        end="2016-12-31",
+        symbols=("AAPL",),
+        inventory_fingerprint="f" * 64,
+        unit_id="4" * 64,
+    )
+
+    manifests = {
+        collision.unit_id: {
+            "provider_rejections": [],
+            "raw_pages": [{"sha256": "a" * 64}],
+            "symbol_stats": {
+                "BCPC": {
+                    "bar_rows": 2,
+                    "first_timestamp": "2016-01-04T05:00:00Z",
+                    "last_timestamp": "2016-01-05T05:00:00Z",
+                }
+            },
+        },
+        exact_upper.unit_id: {
+            "provider_rejections": [],
+            "raw_pages": [{"sha256": "b" * 64}],
+            "symbol_stats": {
+                "BCPC": {
+                    "bar_rows": 2,
+                    "first_timestamp": "2016-01-04T05:00:00Z",
+                    "last_timestamp": "2016-01-05T05:00:00Z",
+                }
+            },
+        },
+        casefold_only.unit_id: {
+            "provider_rejections": [],
+            "raw_pages": [{"sha256": "c" * 64}],
+            "symbol_stats": {
+                "CPN": {
+                    "bar_rows": 1,
+                    "first_timestamp": "2016-01-04T05:00:00Z",
+                    "last_timestamp": "2016-01-04T05:00:00Z",
+                }
+            },
+        },
+        unrelated.unit_id: {
+            "provider_rejections": [],
+            "raw_pages": [{"sha256": "d" * 64}],
+            "symbol_stats": {
+                "ZZZ": {
+                    "bar_rows": 1,
+                    "first_timestamp": "2016-01-04T05:00:00Z",
+                    "last_timestamp": "2016-01-04T05:00:00Z",
+                }
+            },
+        },
+    }
+
+    acquirer._load_completed_manifest = lambda unit: manifests[unit.unit_id]  # type: ignore[method-assign]
+
+    result = acquirer._persist_observed_summary(
+        ["AAPL", "BCPC", "BCpC", "CpN"],
+        [collision, exact_upper, casefold_only, unrelated],
+    )
+    assert result == (1, 2, 0, 0, 3, 4, 1, 1, 1)
+
+    con = duckdb.connect(":memory:")
+    try:
+        observed_rows = con.execute(
+            "SELECT symbol, bar_rows, observed, zero_bar FROM read_parquet(?) ORDER BY symbol",
+            [str(acquirer.observed_summary_path)],
+        ).fetchall()
+        anomaly_rows = con.execute(
+            "SELECT classification, requested_symbol, returned_symbol, bar_rows "
+            "FROM read_parquet(?) ORDER BY batch_index",
+            [str(acquirer.response_symbol_anomalies_path)],
+        ).fetchall()
+    finally:
+        con.close()
+
+    assert observed_rows == [
+        ("AAPL", 0, False, True),
+        ("BCPC", 2, True, False),
+        ("BCpC", 0, False, True),
+        ("CpN", 0, False, True),
+    ]
+    assert anomaly_rows == [
+        ("CASE_FOLD_IDENTITY_COLLISION", "BCpC", "BCPC", 2),
+        ("CASE_FOLD_RESPONSE", "CpN", "CPN", 1),
+        ("UNREQUESTED_RESPONSE_SYMBOL", None, "ZZZ", 1),
+    ]
