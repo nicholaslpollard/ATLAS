@@ -177,7 +177,10 @@ def analyze_asset_id_reference_risk(
     reference_rows: list[dict[str, object]] = []
     for symbol in sorted(observed_reused):
         records = observed_reused[symbol]
-        values = sorted(records.values(), key=lambda row: (str(row.get("partition")), str(row.get("asset_id"))))
+        values = sorted(
+            records.values(),
+            key=lambda row: (str(row.get("partition")), str(row.get("asset_id"))),
+        )
         reference_rows.append(
             {
                 "symbol": symbol,
@@ -243,6 +246,7 @@ class AlpacaBackfillIdentityAssetRiskBuilder:
     def _load_raw_asset_rows(self) -> tuple[list[dict[str, object]], int]:
         rows: list[dict[str, object]] = []
         retained_payloads = 0
+        seen_partitions: set[str] = set()
         root = self.raw_store.root / "v2"
         for meta_path in root.glob("*/*.meta.json"):
             try:
@@ -261,9 +265,10 @@ class AlpacaBackfillIdentityAssetRiskBuilder:
                 payload = json.load(handle)
             rows.extend(asset_records_from_payload(payload, partition))
             retained_payloads += 1
-        if retained_payloads != len(ASSET_PARTITIONS):
+            seen_partitions.add(partition)
+        if seen_partitions != ASSET_PARTITIONS:
             raise RuntimeError(
-                "Gate 4-D requires exactly one retained active and inactive asset discovery payload"
+                "Gate 4-D requires retained active and inactive asset discovery evidence"
             )
         return rows, retained_payloads
 
@@ -305,6 +310,7 @@ class AlpacaBackfillIdentityAssetRiskBuilder:
             segment_rows,
         )
         reference_by_symbol = {str(row["symbol"]): row for row in analysis.reference_rows}
+        segment_by_symbol = {str(row["symbol"]): row for row in segment_rows}
 
         annotated_segments, segment_annotations = annotate_asset_id_reference(
             segment_rows,
@@ -314,7 +320,7 @@ class AlpacaBackfillIdentityAssetRiskBuilder:
         singleton_reference = {
             symbol: row
             for symbol, row in reference_by_symbol.items()
-            if int(next(item for item in segment_rows if str(item["symbol"]) == symbol)["chain_length"]) == 1
+            if int(segment_by_symbol[symbol]["chain_length"]) == 1
         }
         annotated_chains, chain_annotations = annotate_asset_id_reference(
             chain_rows,
