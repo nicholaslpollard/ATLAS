@@ -42,6 +42,38 @@ def test_replace_with_retry_recovers_from_transient_permission_error(tmp_path: P
     assert not source.exists()
 
 
+def test_replace_with_retry_recovers_for_directory_promotion(tmp_path: Path):
+    source = tmp_path / ".year=2019.building"
+    target = tmp_path / "year=2019"
+    source.mkdir()
+    (source / "marker.txt").write_text("complete", encoding="utf-8")
+
+    calls = 0
+    sleeps: list[float] = []
+
+    def flaky_replace(src, dst):
+        nonlocal calls
+        calls += 1
+        if calls <= 2:
+            raise PermissionError(5, "temporarily locked", str(dst))
+        Path(src).replace(dst)
+
+    atomic_io.replace_with_retry(
+        source,
+        target,
+        max_attempts=4,
+        initial_delay_seconds=0.01,
+        sleeper=sleeps.append,
+        replace_func=flaky_replace,
+    )
+
+    assert calls == 3
+    assert sleeps == [0.01, 0.02]
+    assert target.is_dir()
+    assert (target / "marker.txt").read_text(encoding="utf-8") == "complete"
+    assert not source.exists()
+
+
 def test_replace_with_retry_does_not_retry_unrelated_os_error(tmp_path: Path):
     source = tmp_path / "state.tmp"
     target = tmp_path / "state.json"
