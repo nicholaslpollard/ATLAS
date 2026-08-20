@@ -197,9 +197,9 @@ class AlpacaBackfillAcquirer:
     Unit manifests are the restart boundary. A manifest is reusable only when its
     deterministic unit id, inventory fingerprint, source semantics, and raw payload files
     still match. Provider-rejected literal identifiers are retained as explicit evidence,
-    never remapped or silently dropped. Provider response symbols that do not exactly match
-    a submitted unit literal are quarantined from identity-safe observation accounting.
-    Production canonical history is never written.
+    never remapped or silently dropped. Provider response symbols that do not resolve to one
+    unambiguous exact submitted literal are quarantined from identity-safe observation
+    accounting. Production canonical history is never written.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -502,18 +502,19 @@ class AlpacaBackfillAcquirer:
 
             for symbol, stats in (payload.get("symbol_stats") or {}).items():
                 rows = int(stats.get("bar_rows", 0))
-                if symbol not in unit_symbols:
-                    casefold_matches = casefold_map.get(str(symbol).casefold(), [])
+                casefold_matches = casefold_map.get(str(symbol).casefold(), [])
+                exact_unambiguous = symbol in unit_symbols and casefold_matches == [symbol]
+                if not exact_unambiguous:
                     requested_symbol: str | None = None
-                    if len(casefold_matches) == 1:
+                    if len(casefold_matches) > 1:
+                        classification = "AMBIGUOUS_CASE_FOLD_RESPONSE"
+                    elif len(casefold_matches) == 1:
                         requested_symbol = casefold_matches[0]
                         classification = (
                             "CASE_FOLD_IDENTITY_COLLISION"
                             if symbol in locked_symbols
                             else "CASE_FOLD_RESPONSE"
                         )
-                    elif len(casefold_matches) > 1:
-                        classification = "AMBIGUOUS_CASE_FOLD_RESPONSE"
                     else:
                         classification = "UNREQUESTED_RESPONSE_SYMBOL"
                     anomalies.append(
