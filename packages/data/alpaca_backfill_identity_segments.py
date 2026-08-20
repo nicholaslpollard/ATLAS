@@ -59,12 +59,19 @@ class AlpacaBackfillIdentitySegmentReport:
 
 
 def _text(value: object) -> str | None:
+    """Return exact text without applying dataframe-style NA token semantics.
+
+    Gate 4 identity work operates on provider-native literals. Strings such as
+    ``NAN`` are valid ticker text and must never be interpreted as missing just
+    because a dataframe library commonly uses similar display tokens for nulls.
+    Native DuckDB rows represent SQL NULL as ``None``, so only actual ``None``
+    and empty/whitespace text are treated as missing here.
+    """
+
     if value is None:
         return None
     text = str(value).strip()
-    if not text or text.lower() in {"nan", "nat", "none"}:
-        return None
-    return text
+    return text or None
 
 
 def _as_date(value: object) -> date | None:
@@ -429,18 +436,29 @@ class AlpacaBackfillIdentitySegmentBuilder:
         return acquisition, identity
 
     @staticmethod
-    def _read_rows(path: Path, order_by: str) -> list[dict[str, object]]:
+    def _read_rows(
+        path: Path,
+        order_by: str,
+        *,
+        where: str | None = None,
+    ) -> list[dict[str, object]]:
+        """Read Parquet rows as native DuckDB values, never via pandas coercion."""
+
         if not path.is_file():
             raise RuntimeError(f"Gate 4-C required artifact is missing: {path}")
+        query = "SELECT * FROM read_parquet(?)"
+        if where:
+            query += f" WHERE {where}"
+        query += f" ORDER BY {order_by}"
+
         con = duckdb.connect(":memory:")
         try:
-            frame = con.execute(
-                f"SELECT * FROM read_parquet(?) ORDER BY {order_by}",
-                [str(path)],
-            ).fetchdf()
+            cursor = con.execute(query, [str(path)])
+            columns = [column[0] for column in cursor.description]
+            values = cursor.fetchall()
         finally:
             con.close()
-        return frame.to_dict(orient="records")
+        return [dict(zip(columns, row)) for row in values]
 
     @staticmethod
     def _write_parquet(path: Path, rows: list[dict[str, object]], order_by: str) -> None:
@@ -461,14 +479,18 @@ class AlpacaBackfillIdentitySegmentBuilder:
 
     def run(self) -> AlpacaBackfillIdentitySegmentReport:
         _acquisition, identity = self._load_parent_reports()
-        observed_rows = self._read_rows(self.observed_summary_path, "symbol")
+        observed_rows = self._read_rows(
+            self.observed_summary_path,
+            "symbol",
+            where="observed = TRUE",
+        )
         rename_rows = self._read_rows(
             self.rename_candidate_path,
             "event_date NULLS LAST, old_symbol NULLS LAST, new_symbol NULLS LAST, event_key",
         )
 
         result = build_identity_segments(observed_rows, rename_rows)
-        observed_count = sum(1 for row in observed_rows if bool(row.get("observed")))
+        observed_count = len(observed_rows)
         unique_edges = len(result.edge_rows)
         expected_chains = observed_count - unique_edges
         chain_count = len(result.chain_rows)
