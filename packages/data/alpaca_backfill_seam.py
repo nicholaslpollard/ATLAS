@@ -35,7 +35,6 @@ ALPACA_BACKFILL_SEAM_RESPONSE_POLICY = (
     "exact-requested-literal-with-unique-casefold-or-quarantine"
 )
 
-
 SAFE_BAR_COLUMNS = (
     "symbol",
     "session_date",
@@ -61,6 +60,34 @@ ANOMALY_COLUMNS = (
     "target_session_bar_rows",
     "raw_page_sha256",
 )
+PROVIDER_COMPARISON_COLUMNS = (
+    "symbol",
+    "alpaca_open",
+    "massive_open",
+    "alpaca_high",
+    "massive_high",
+    "alpaca_low",
+    "massive_low",
+    "alpaca_close",
+    "massive_close",
+    "alpaca_volume",
+    "massive_volume",
+    "max_ohlc_relative_diff",
+    "close_relative_diff",
+    "volume_relative_diff",
+    "exact_ohlc",
+    "exact_close",
+)
+BOUNDARY_STATUS_COLUMNS = (
+    "symbol",
+    "candidate_friday_present",
+    "massive_monday_present",
+    "candidate_friday_close",
+    "massive_monday_open",
+    "massive_monday_close",
+    "friday_close_to_monday_open_relative_move",
+    "friday_close_to_monday_close_relative_move",
+)
 
 
 def _clean_symbol(value: object) -> str | None:
@@ -73,8 +100,14 @@ def _clean_symbol(value: object) -> str | None:
 
 
 def _chunks(values: list[str], size: int) -> Iterable[tuple[str, ...]]:
+    if size < 1:
+        raise ValueError("chunk size must be positive")
     for index in range(0, len(values), size):
         yield tuple(values[index : index + size])
+
+
+def _sql_string(value: str | Path) -> str:
+    return "'" + str(value).replace("\\", "/").replace("'", "''") + "'"
 
 
 def classify_seam_response_symbol(
@@ -82,12 +115,7 @@ def classify_seam_response_symbol(
     requested_symbols: tuple[str, ...],
     locked_symbols: set[str],
 ) -> tuple[str | None, str | None, int]:
-    """Apply Gate-3-equivalent exact-case response safety to one seam symbol.
-
-    A response is identity-safe only when the returned literal was submitted exactly
-    and no second submitted literal shares its case-folded form. Any provider case
-    folding or unexpected literal is quarantined rather than remapped.
-    """
+    """Apply Gate-3-equivalent exact-case response safety to one seam symbol."""
 
     casefold_matches = [
         symbol for symbol in requested_symbols if symbol.casefold() == returned_symbol.casefold()
@@ -169,8 +197,8 @@ def _write_parquet(path: Path, rows: list[dict[str, object]], columns: tuple[str
     try:
         con.register("frame", frame)
         con.execute(
-            "COPY (SELECT * FROM frame) TO ? (FORMAT PARQUET, COMPRESSION ZSTD)",
-            [str(temp)],
+            f"COPY (SELECT * FROM frame) TO {_sql_string(temp)} "
+            "(FORMAT PARQUET, COMPRESSION ZSTD)"
         )
     finally:
         con.close()
@@ -193,14 +221,7 @@ def _quantile(values: list[float], q: float) -> float | None:
 
 
 class AlpacaBackfillSeamProbe:
-    """Gate 7-A cached same-session Alpaca-vs-Massive seam evidence.
-
-    The 2016-2021 candidate remains unchanged. This probe acquires only the first
-    Massive production session (2021-08-16) for the union of Friday candidate and
-    Monday Massive symbols, stores exact raw responses, quarantines response-symbol
-    ambiguity with Gate-3-equivalent semantics, and compares safe Alpaca rows to the
-    already-canonical Massive rows. Production canonical data is read-only.
-    """
+    """Gate 7-A cached same-session Alpaca-vs-Massive seam evidence."""
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
@@ -238,7 +259,9 @@ class AlpacaBackfillSeamProbe:
             return False
         con = duckdb.connect(":memory:")
         try:
-            description = con.execute("DESCRIBE SELECT * FROM read_parquet(?)", [str(path)]).fetchall()
+            description = con.execute(
+                "DESCRIBE SELECT * FROM read_parquet(?)", [str(path)]
+            ).fetchall()
         finally:
             con.close()
         return canonical_stock_daily_schema_matches(description)
@@ -341,8 +364,12 @@ class AlpacaBackfillSeamProbe:
         )
         if not locked:
             return None
-        records = list(payload.get("raw_pages") or []) + list(payload.get("provider_rejections") or [])
-        if not all(self._raw_record_valid(record) for record in records if isinstance(record, dict)):
+        records = list(payload.get("raw_pages") or []) + list(
+            payload.get("provider_rejections") or []
+        )
+        if not all(
+            self._raw_record_valid(record) for record in records if isinstance(record, dict)
+        ):
             return None
         return payload
 
@@ -397,7 +424,9 @@ class AlpacaBackfillSeamProbe:
                 raw = self.raw_store.persist(
                     exc.page,
                     category="seam_validation_rejections",
-                    partition=f"2021-08-16_batch_{batch_index:04d}_reject_{len(rejections):04d}",
+                    partition=(
+                        f"2021-08-16_batch_{batch_index:04d}_reject_{len(rejections):04d}"
+                    ),
                 )
                 rejections[invalid] = {
                     "symbol": invalid,
@@ -510,24 +539,27 @@ class AlpacaBackfillSeamProbe:
         return {
             "safe_rows": len(safe_rows),
             "anomaly_records": len(anomalies),
-            "anomaly_target_rows": sum(int(row["target_session_bar_rows"]) for row in anomalies),
+            "anomaly_target_rows": sum(
+                int(row["target_session_bar_rows"]) for row in anomalies
+            ),
             "raw_hash_failures": raw_hash_failures,
         }
 
     def _comparison(self, parents: dict[str, object]) -> dict[str, object]:
         con = duckdb.connect(":memory:")
         try:
-            con.execute("CREATE VIEW a AS SELECT * FROM read_parquet(?)", [str(self.safe_bars_path)])
-            con.execute("CREATE VIEW m AS SELECT * FROM read_parquet(?)", [str(self.massive_boundary_path)])
-            con.execute("CREATE VIEW f AS SELECT * FROM read_parquet(?)", [str(self.candidate_boundary_path)])
+            con.read_parquet(str(self.safe_bars_path)).create_view("a")
+            con.read_parquet(str(self.massive_boundary_path)).create_view("m")
             duplicate_alpaca = int(
                 con.execute(
-                    "SELECT coalesce(sum(n-1),0) FROM (SELECT symbol,count(*) n FROM a GROUP BY symbol HAVING count(*)>1)"
+                    "SELECT coalesce(sum(n-1),0) FROM "
+                    "(SELECT symbol,count(*) n FROM a GROUP BY symbol HAVING count(*)>1)"
                 ).fetchone()[0]
             )
             duplicate_massive = int(
                 con.execute(
-                    "SELECT coalesce(sum(n-1),0) FROM (SELECT symbol,count(*) n FROM m GROUP BY symbol HAVING count(*)>1)"
+                    "SELECT coalesce(sum(n-1),0) FROM "
+                    "(SELECT symbol,count(*) n FROM m GROUP BY symbol HAVING count(*)>1)"
                 ).fetchone()[0]
             )
             comparison_rows = con.execute(
@@ -591,37 +623,25 @@ class AlpacaBackfillSeamProbe:
                 }
             )
 
-        comparison_columns = tuple(comparison[0].keys()) if comparison else (
-            "symbol",
-            "alpaca_open",
-            "massive_open",
-            "alpaca_high",
-            "massive_high",
-            "alpaca_low",
-            "massive_low",
-            "alpaca_close",
-            "massive_close",
-            "alpaca_volume",
-            "massive_volume",
-            "max_ohlc_relative_diff",
-            "close_relative_diff",
-            "volume_relative_diff",
-            "exact_ohlc",
-            "exact_close",
+        _write_parquet(
+            self.provider_comparison_path,
+            comparison,
+            PROVIDER_COMPARISON_COLUMNS,
         )
-        _write_parquet(self.provider_comparison_path, comparison, comparison_columns)
 
         con = duckdb.connect(":memory:")
         try:
             candidate_only = int(
                 con.execute(
-                    "SELECT count(*) FROM read_parquet(?) f LEFT JOIN read_parquet(?) m USING(symbol) WHERE m.symbol IS NULL",
+                    "SELECT count(*) FROM read_parquet(?) f "
+                    "LEFT JOIN read_parquet(?) m USING(symbol) WHERE m.symbol IS NULL",
                     [str(self.candidate_boundary_path), str(self.massive_boundary_path)],
                 ).fetchone()[0]
             )
             massive_only = int(
                 con.execute(
-                    "SELECT count(*) FROM read_parquet(?) m LEFT JOIN read_parquet(?) f USING(symbol) WHERE f.symbol IS NULL",
+                    "SELECT count(*) FROM read_parquet(?) m "
+                    "LEFT JOIN read_parquet(?) f USING(symbol) WHERE f.symbol IS NULL",
                     [str(self.massive_boundary_path), str(self.candidate_boundary_path)],
                 ).fetchone()[0]
             )
@@ -672,19 +692,13 @@ class AlpacaBackfillSeamProbe:
                     "friday_close_to_monday_close_relative_move": gap_close,
                 }
             )
-        status_columns = tuple(status_rows[0].keys()) if status_rows else (
-            "symbol",
-            "candidate_friday_present",
-            "massive_monday_present",
-            "candidate_friday_close",
-            "massive_monday_open",
-            "massive_monday_close",
-            "friday_close_to_monday_open_relative_move",
-            "friday_close_to_monday_close_relative_move",
+        _write_parquet(
+            self.boundary_status_path,
+            status_rows,
+            BOUNDARY_STATUS_COLUMNS,
         )
-        _write_parquet(self.boundary_status_path, status_rows, status_columns)
 
-        safe_symbols = {str(row["symbol"]) for row in comparison}
+        matched_symbols = {str(row["symbol"]) for row in comparison}
         all_alpaca_safe = set(self._symbols(self.safe_bars_path))
         massive_symbols = set(parents["massive_symbols"])
         return {
@@ -692,7 +706,7 @@ class AlpacaBackfillSeamProbe:
             "duplicate_massive_target_rows": duplicate_massive,
             "alpaca_safe_target_symbols": len(all_alpaca_safe),
             "massive_target_symbols": len(massive_symbols),
-            "matched_exact_symbols": len(safe_symbols),
+            "matched_exact_symbols": len(matched_symbols),
             "alpaca_safe_only_symbols": len(all_alpaca_safe - massive_symbols),
             "massive_only_vs_safe_alpaca_symbols": len(massive_symbols - all_alpaca_safe),
             "exact_ohlc_symbols": exact_ohlc,
@@ -749,7 +763,8 @@ class AlpacaBackfillSeamProbe:
         )
         comparison = self._comparison(parents)
         rejection_count = sum(
-            len(manifest.get("provider_rejections") or []) for _index, _batch, manifest in units
+            len(manifest.get("provider_rejections") or [])
+            for _index, _batch, manifest in units
         )
         report = {
             "contract_version": ALPACA_BACKFILL_SEAM_PROBE_CONTRACT_VERSION,
