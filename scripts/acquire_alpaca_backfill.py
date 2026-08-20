@@ -52,6 +52,7 @@ def main() -> None:
         print("  execution scope:             complete locked range")
     print("  resume behavior:             completed compatible unit manifests are skipped")
     print("  invalid-symbol behavior:     provider rejection is persisted, isolated, and never remapped")
+    print("  response-symbol behavior:    non-exact returned symbols are quarantined, never remapped")
 
     def progress(done, total, unit, payload, skipped):
         if skipped and (done % 25 != 0 and done != total):
@@ -82,11 +83,17 @@ def main() -> None:
     print(f"    provider-rejected symbols: {report.provider_rejected_symbols:,}")
     print(f"    rejection conflicts:       {report.provider_rejection_conflicts:,}")
     print(f"    zero-bar symbols:          {report.zero_bar_symbols:,}")
-    print(f"    bar rows:                  {report.bar_rows:,}")
+    print(f"    identity-safe bar rows:    {report.bar_rows:,}")
+    print(f"    response-symbol anomalies: {report.response_symbol_anomalies:,}")
+    print(f"      identity collisions:     {report.response_symbol_identity_collisions:,}")
+    print(f"      case-fold only:          {report.response_symbol_casefold_only:,}")
+    print(f"      unresolved:              {report.response_symbol_unresolved:,}")
+    print(f"      quarantined bar rows:    {report.response_symbol_anomaly_bar_rows:,}")
     print(f"    executed this run:         {report.executed_units_this_run:,}")
     print(f"    skipped this run:          {report.skipped_completed_units_this_run:,}")
     print(f"    complete:                  {report.complete}")
     print(f"  observed summary:            {report.observed_summary_path}")
+    print(f"  response anomaly evidence:   {report.response_symbol_anomalies_path}")
     print(f"  unit manifests:              {report.unit_manifest_root}")
     print(f"  report:                      {report.report_path}")
     print("  canonical data modified:     False")
