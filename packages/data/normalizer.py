@@ -8,6 +8,7 @@ from packages.core.enums import DatasetType, Timeframe
 from packages.data.atomic import atomic_target, promote
 from packages.data.duckdb_connection import connect_utc
 from packages.data.sql import sql_string
+from packages.schemas.canonical_market import canonical_stock_daily_schema_matches
 
 try:
     import duckdb
@@ -114,6 +115,12 @@ class MassiveStockNormalizer:
                 f"COPY ({query}) TO {out} "
                 f"(FORMAT PARQUET, COMPRESSION {self.compression}, ROW_GROUP_SIZE {self.row_group_size})"
             )
+            if dataset == DatasetType.STOCK_DAILY_AGGREGATES:
+                description = con.execute(f"DESCRIBE SELECT * FROM read_parquet({out})").fetchall()
+                if not canonical_stock_daily_schema_matches(description):
+                    raise RuntimeError(
+                        "Massive daily normalizer output does not match the canonical 1d storage schema"
+                    )
             count = int(con.execute(f"SELECT count(*) FROM read_parquet({out})").fetchone()[0])
         finally:
             con.close()
