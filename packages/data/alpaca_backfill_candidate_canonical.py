@@ -27,6 +27,11 @@ from packages.data.alpaca_backfill_validated_evidence import (
     stable_source_fingerprint,
 )
 from packages.data.materializer import MATERIALIZATION_CONTRACT_VERSION
+from packages.schemas.canonical_market import (
+    CANONICAL_STOCK_DAILY_COLUMNS as CANONICAL_DAILY_COLUMNS,
+    CANONICAL_STOCK_DAILY_SCHEMA_VERSION,
+    CANONICAL_STOCK_DAILY_TYPES as CANONICAL_DAILY_TYPES,
+)
 
 
 ALPACA_BACKFILL_CANDIDATE_CANONICAL_CONTRACT_VERSION = (
@@ -41,45 +46,6 @@ CANDIDATE_SESSION_SEGMENT = "regular"
 CANDIDATE_ADJUSTMENT = "raw"
 CANDIDATE_ASOF = "-"
 TRADE_BACKED_CLASS = "TRADE_BACKED"
-
-CANONICAL_DAILY_COLUMNS = (
-    "symbol",
-    "timestamp_utc",
-    "session_date",
-    "timeframe",
-    "session_segment",
-    "open",
-    "high",
-    "low",
-    "close",
-    "volume",
-    "vwap",
-    "transaction_count",
-    "provider",
-    "dataset",
-    "source_id",
-    "is_adjusted",
-    "provider_timestamp_utc",
-)
-CANONICAL_DAILY_TYPES = (
-    "VARCHAR",
-    "TIMESTAMP WITH TIME ZONE",
-    "DATE",
-    "VARCHAR",
-    "VARCHAR",
-    "DOUBLE",
-    "DOUBLE",
-    "DOUBLE",
-    "DOUBLE",
-    "DOUBLE",
-    "DOUBLE",
-    "BIGINT",
-    "VARCHAR",
-    "VARCHAR",
-    "VARCHAR",
-    "BOOLEAN",
-    "TIMESTAMP WITH TIME ZONE",
-)
 
 
 def candidate_daily_relative_path(trading_date: date) -> Path:
@@ -108,6 +74,7 @@ def candidate_source_fingerprint(
         {
             "contract_version": ALPACA_BACKFILL_CANDIDATE_CANONICAL_CONTRACT_VERSION,
             "production_materialization_contract_version": MATERIALIZATION_CONTRACT_VERSION,
+            "canonical_daily_schema_contract_version": CANONICAL_STOCK_DAILY_SCHEMA_VERSION,
             "validated_evidence_contract_version": ALPACA_BACKFILL_VALIDATED_EVIDENCE_CONTRACT_VERSION,
             "identity_contract_version": ALPACA_BACKFILL_IDENTITY_ASSET_RISK_CONTRACT_VERSION,
             "validated_evidence_fingerprint": validated_evidence_fingerprint,
@@ -581,6 +548,7 @@ class AlpacaBackfillCandidateCanonicalBuilder:
         report = {
             "contract_version": ALPACA_BACKFILL_CANDIDATE_CANONICAL_CONTRACT_VERSION,
             "production_materialization_contract_version": MATERIALIZATION_CONTRACT_VERSION,
+            "canonical_daily_schema_contract_version": CANONICAL_STOCK_DAILY_SCHEMA_VERSION,
             "validated_evidence_contract_version": ALPACA_BACKFILL_VALIDATED_EVIDENCE_CONTRACT_VERSION,
             "identity_contract_version": ALPACA_BACKFILL_IDENTITY_ASSET_RISK_CONTRACT_VERSION,
             "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -696,7 +664,7 @@ class AlpacaBackfillCandidateCanonicalValidator:
                     """
                     SELECT count(*), count(DISTINCT symbol), count(DISTINCT session_date),
                            count(*) FILTER (WHERE provider_timestamp_utc IS NULL),
-                           count(*) FILTER (WHERE volume <= 0 OR transaction_count <= 0 OR vwap <= 0),
+                           count(*) FILTER (WHERE volume <= 0 OR transaction_count < 0 OR vwap <= 0),
                            count(*) FILTER (
                                WHERE timeframe != ? OR session_segment != ?
                                   OR provider != ? OR dataset != ?
@@ -780,6 +748,7 @@ class AlpacaBackfillCandidateCanonicalValidator:
 
         checks = {
             "candidate_contract": report.get("contract_version") == ALPACA_BACKFILL_CANDIDATE_CANONICAL_CONTRACT_VERSION,
+            "canonical_daily_schema_contract": report.get("canonical_daily_schema_contract_version") == CANONICAL_STOCK_DAILY_SCHEMA_VERSION,
             "candidate_role_isolated": report.get("candidate_role") == CANDIDATE_ROLE,
             "candidate_source_fingerprint_exact": report.get("source_fingerprint") == current_fingerprint,
             "validated_evidence_source_fingerprint_exact": report.get("validated_evidence_source_fingerprint") == cache_report.get("source_fingerprint"),
@@ -795,7 +764,7 @@ class AlpacaBackfillCandidateCanonicalValidator:
             "candidate_duplicate_keys_zero": counts["duplicates"] == 0,
             "candidate_semantic_timestamps_exact": counts["semantic_timestamp_mismatches"] == 0,
             "candidate_provider_timestamps_present": counts["provider_timestamp_nulls"] == 0,
-            "candidate_trade_backed_fields_positive": counts["nonpositive_trade_fields"] == 0,
+            "candidate_trade_backed_fields_valid": counts["nonpositive_trade_fields"] == 0,
             "candidate_constant_semantics_exact": counts["constant_semantic_mismatches"] == 0,
             "candidate_identity_mapping_exact": counts["identity_mapping_failures"] == 0 and counts["identity_interval_failures"] == 0,
             "identity_segment_count_exact": counts["identity_sidecar_rows"] == int(identity_report.get("resulting_identity_segments", -1)),
