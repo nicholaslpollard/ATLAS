@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import duckdb
+
 from packages.data.alpaca_backfill_seam import (
     ALPACA_BACKFILL_CANDIDATE_BOUNDARY_SESSION,
     ALPACA_BACKFILL_SEAM_PROBE_CONTRACT_VERSION,
@@ -7,6 +11,30 @@ from packages.data.alpaca_backfill_seam import (
     classify_seam_response_symbol,
     seam_source_fingerprint,
 )
+from packages.data.alpaca_backfill_seam_runtime import (
+    AlpacaBackfillSeamRuntimeProbe,
+    canonical_daily_physical_schema_exact,
+)
+from packages.schemas.canonical_market import CANONICAL_STOCK_DAILY_SCHEMA
+
+
+def _write_schema_only_parquet(path: Path, *, extra_column: bool = False) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    expressions = [
+        f"CAST(NULL AS {column.duckdb_type}) AS {column.name}"
+        for column in CANONICAL_STOCK_DAILY_SCHEMA
+    ]
+    if extra_column:
+        expressions.append("CAST(NULL AS VARCHAR) AS unexpected_physical_column")
+    target = str(path).replace("\\", "/").replace("'", "''")
+    con = duckdb.connect(":memory:")
+    try:
+        con.execute(
+            f"COPY (SELECT {', '.join(expressions)} WHERE FALSE) "
+            f"TO '{target}' (FORMAT PARQUET, COMPRESSION ZSTD)"
+        )
+    finally:
+        con.close()
 
 
 def test_gate7a_boundary_is_adjacent_friday_to_monday() -> None:
@@ -93,3 +121,33 @@ def test_gate7a_contract_is_explicitly_same_session_provider_probe() -> None:
         "historical-backfill-seam-v1"
     )
     assert "same-session-provider-probe" in ALPACA_BACKFILL_SEAM_PROBE_CONTRACT_VERSION
+
+
+def test_gate7a_physical_schema_ignores_hive_path_virtual_columns(tmp_path: Path) -> None:
+    path = (
+        tmp_path
+        / "stocks"
+        / "1d"
+        / "year=2021"
+        / "date=2021-08-13"
+        / "part-000.parquet"
+    )
+    _write_schema_only_parquet(path)
+
+    assert canonical_daily_physical_schema_exact(path) is True
+    assert AlpacaBackfillSeamRuntimeProbe._schema_exact(path) is True
+
+
+def test_gate7a_physical_schema_still_rejects_real_extra_columns(tmp_path: Path) -> None:
+    path = (
+        tmp_path
+        / "stocks"
+        / "1d"
+        / "year=2021"
+        / "date=2021-08-13"
+        / "part-000.parquet"
+    )
+    _write_schema_only_parquet(path, extra_column=True)
+
+    assert canonical_daily_physical_schema_exact(path) is False
+    assert AlpacaBackfillSeamRuntimeProbe._schema_exact(path) is False
