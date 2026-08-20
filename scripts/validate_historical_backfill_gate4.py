@@ -28,8 +28,13 @@ def _read_json(path: Path, label: str) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _scalar(con: duckdb.DuckDBPyConnection, sql: str, path: Path) -> int:
-    row = con.execute(sql, [str(path)]).fetchone()
+def _scalar(
+    con: duckdb.DuckDBPyConnection,
+    sql: str,
+    path: Path,
+    *params: object,
+) -> int:
+    row = con.execute(sql, [str(path), *params]).fetchone()
     return int(row[0]) if row is not None else -1
 
 
@@ -68,6 +73,11 @@ def main() -> None:
         "asset_id_reference": reference_path,
     }
     missing_artifacts = [name for name, path in required_paths.items() if not path.is_file()]
+    if missing_artifacts:
+        raise SystemExit(
+            "Historical Backfill Gate 4: FAIL; missing artifacts: "
+            + ", ".join(missing_artifacts)
+        )
 
     con = duckdb.connect(":memory:")
     try:
@@ -104,7 +114,8 @@ def main() -> None:
             "SELECT count(*) FROM read_parquet(?) WHERE identity_ambiguity_reason <> ? "
             "OR automatic_continuity_forbidden <> TRUE",
             cusip_ambiguous_path,
-        ) if cusip_ambiguous_path.is_file() else -1
+            CUSIP_AMBIGUITY_REASON,
+        )
         chain_count = _scalar(con, "SELECT count(*) FROM read_parquet(?)", chain_path)
         segment_count = _scalar(con, "SELECT count(*) FROM read_parquet(?)", segment_path)
         segment_ambiguous = _scalar(
@@ -120,7 +131,10 @@ def main() -> None:
             "OR automatic_continuity_forbidden <> FALSE "
             "OR historical_identity_ambiguous_from_uuid_alone <> FALSE",
             reference_path,
-        ) if reference_path.is_file() else -1
+            ASSET_ID_MULTIPLICITY_REFERENCE,
+            ASSET_ID_REFERENCE_POLICY,
+            ASSET_ID_HISTORICAL_EFFECT,
+        )
         segment_reference_count = _scalar(
             con,
             "SELECT count(*) FROM read_parquet(?) WHERE asset_id_multiplicity_reference=TRUE",
