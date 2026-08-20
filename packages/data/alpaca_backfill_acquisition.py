@@ -32,6 +32,9 @@ from packages.providers.alpaca import AlpacaInvalidSymbolError, AlpacaMarketData
 ALPACA_BACKFILL_ACQUISITION_CONTRACT_VERSION = (
     "historical-backfill-acquisition-v2-year-batch-resumable-provider-rejection-evidence"
 )
+ALPACA_RESPONSE_SYMBOL_ANOMALY_POLICY = (
+    "alpaca-response-symbol-policy-v1-exact-unit-literal-or-quarantine"
+)
 UNIT_STATUS_COMPLETE = "COMPLETE"
 
 
@@ -76,10 +79,17 @@ class AlpacaBackfillAcquisitionReport:
     provider_rejected_symbols: int
     provider_rejection_conflicts: int
     zero_bar_symbols: int
+    response_symbol_anomaly_policy: str
+    response_symbol_anomalies: int
+    response_symbol_anomaly_bar_rows: int
+    response_symbol_identity_collisions: int
+    response_symbol_casefold_only: int
+    response_symbol_unresolved: int
     executed_units_this_run: int
     skipped_completed_units_this_run: int
     inventory_path: str
     observed_summary_path: str
+    response_symbol_anomalies_path: str
     unit_manifest_root: str
     report_path: str
 
@@ -187,7 +197,9 @@ class AlpacaBackfillAcquirer:
     Unit manifests are the restart boundary. A manifest is reusable only when its
     deterministic unit id, inventory fingerprint, source semantics, and raw payload files
     still match. Provider-rejected literal identifiers are retained as explicit evidence,
-    never remapped or silently dropped. Production canonical history is never written.
+    never remapped or silently dropped. Provider response symbols that do not exactly match
+    a submitted unit literal are quarantined from identity-safe observation accounting.
+    Production canonical history is never written.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -200,6 +212,9 @@ class AlpacaBackfillAcquirer:
         self.acquisition_root = root / "acquisition"
         self.unit_manifest_root = self.acquisition_root / "units"
         self.observed_summary_path = self.acquisition_root / "observed_symbols.parquet"
+        self.response_symbol_anomalies_path = (
+            self.acquisition_root / "response_symbol_anomalies.parquet"
+        )
         self.report_path = self.acquisition_root / "acquisition_report.json"
 
     def _load_candidates(self) -> list[str]:
@@ -423,7 +438,7 @@ class AlpacaBackfillAcquirer:
         self,
         symbols: list[str],
         units: list[AcquisitionUnit],
-    ) -> tuple[int, int, int, int]:
+    ) -> tuple[int, int, int, int, int, int, int, int, int]:
         aggregate: dict[str, dict[str, object]] = {
             symbol: {
                 "symbol": symbol,
@@ -437,6 +452,22 @@ class AlpacaBackfillAcquirer:
             }
             for symbol in symbols
         }
+        locked_symbols = set(symbols)
+        anomaly_columns = [
+            "classification",
+            "year",
+            "batch_index",
+            "requested_symbol",
+            "returned_symbol",
+            "returned_is_locked_candidate",
+            "casefold_match_count",
+            "bar_rows",
+            "first_timestamp",
+            "last_timestamp",
+            "raw_page_sha256",
+        ]
+        anomalies: list[dict[str, object]] = []
+
         for unit in units:
             payload = self._load_completed_manifest(unit)
             if payload is None:
@@ -456,10 +487,55 @@ class AlpacaBackfillAcquirer:
                 sha = str(rejection.get("sha256") or "")
                 if sha:
                     hashes.add(sha)
+
+            unit_symbols = set(unit.symbols)
+            casefold_map: dict[str, list[str]] = {}
+            for submitted_symbol in unit.symbols:
+                casefold_map.setdefault(submitted_symbol.casefold(), []).append(submitted_symbol)
+            raw_page_sha256 = ",".join(
+                sorted(
+                    str(record.get("sha256") or "")
+                    for record in (payload.get("raw_pages") or [])
+                    if isinstance(record, dict) and record.get("sha256")
+                )
+            )
+
             for symbol, stats in (payload.get("symbol_stats") or {}).items():
-                if symbol not in aggregate:
-                    raise RuntimeError(f"unit manifest contains symbol outside locked inventory: {symbol}")
                 rows = int(stats.get("bar_rows", 0))
+                if symbol not in unit_symbols:
+                    casefold_matches = casefold_map.get(str(symbol).casefold(), [])
+                    requested_symbol: str | None = None
+                    if len(casefold_matches) == 1:
+                        requested_symbol = casefold_matches[0]
+                        classification = (
+                            "CASE_FOLD_IDENTITY_COLLISION"
+                            if symbol in locked_symbols
+                            else "CASE_FOLD_RESPONSE"
+                        )
+                    elif len(casefold_matches) > 1:
+                        classification = "AMBIGUOUS_CASE_FOLD_RESPONSE"
+                    else:
+                        classification = "UNREQUESTED_RESPONSE_SYMBOL"
+                    anomalies.append(
+                        {
+                            "classification": classification,
+                            "year": unit.year,
+                            "batch_index": unit.batch_index,
+                            "requested_symbol": requested_symbol,
+                            "returned_symbol": str(symbol),
+                            "returned_is_locked_candidate": symbol in locked_symbols,
+                            "casefold_match_count": len(casefold_matches),
+                            "bar_rows": rows,
+                            "first_timestamp": stats.get("first_timestamp"),
+                            "last_timestamp": stats.get("last_timestamp"),
+                            "raw_page_sha256": raw_page_sha256,
+                        }
+                    )
+                    continue
+                if symbol not in aggregate:
+                    raise RuntimeError(
+                        f"unit manifest exact submitted symbol is outside locked inventory: {symbol}"
+                    )
                 if rows <= 0:
                     continue
                 item = aggregate[symbol]
@@ -515,11 +591,45 @@ class AlpacaBackfillAcquirer:
         finally:
             con.close()
         replace_with_retry(temp, self.observed_summary_path)
+
+        anomaly_frame = pd.DataFrame(anomalies, columns=anomaly_columns)
+        anomaly_temp = unique_temp_path(self.response_symbol_anomalies_path)
+        con = duckdb.connect(":memory:")
+        try:
+            con.register("anomaly_df", anomaly_frame)
+            con.execute(
+                "COPY (SELECT * FROM anomaly_df ORDER BY year, batch_index, returned_symbol) TO ? "
+                "(FORMAT PARQUET, COMPRESSION ZSTD)",
+                [str(anomaly_temp)],
+            )
+        finally:
+            con.close()
+        replace_with_retry(anomaly_temp, self.response_symbol_anomalies_path)
+
         observed_count = sum(1 for row in rows if bool(row["observed"]))
         rejected_count = sum(1 for row in rows if bool(row["provider_rejected"]))
         conflict_count = sum(1 for row in rows if bool(row["provider_rejection_conflict"]))
         bar_rows = sum(int(row["bar_rows"]) for row in rows)
-        return observed_count, bar_rows, rejected_count, conflict_count
+        anomaly_count = len(anomalies)
+        anomaly_bar_rows = sum(int(row["bar_rows"]) for row in anomalies)
+        collision_count = sum(
+            1 for row in anomalies if row["classification"] == "CASE_FOLD_IDENTITY_COLLISION"
+        )
+        casefold_only_count = sum(
+            1 for row in anomalies if row["classification"] == "CASE_FOLD_RESPONSE"
+        )
+        unresolved_count = anomaly_count - collision_count - casefold_only_count
+        return (
+            observed_count,
+            bar_rows,
+            rejected_count,
+            conflict_count,
+            anomaly_count,
+            anomaly_bar_rows,
+            collision_count,
+            casefold_only_count,
+            unresolved_count,
+        )
 
     def run(
         self,
@@ -573,9 +683,17 @@ class AlpacaBackfillAcquirer:
             else:
                 completed_manifests.append(payload)
 
-        observed_symbols, bar_rows, provider_rejected, rejection_conflicts = (
-            self._persist_observed_summary(symbols, units)
-        )
+        (
+            observed_symbols,
+            bar_rows,
+            provider_rejected,
+            rejection_conflicts,
+            response_symbol_anomalies,
+            response_symbol_anomaly_bar_rows,
+            response_symbol_identity_collisions,
+            response_symbol_casefold_only,
+            response_symbol_unresolved,
+        ) = self._persist_observed_summary(symbols, units)
         raw_pages = sum(int(item.get("page_count", 0)) for item in completed_manifests)
         zero_bar_symbols = len(symbols) - observed_symbols - provider_rejected
         if zero_bar_symbols < 0:
@@ -609,10 +727,17 @@ class AlpacaBackfillAcquirer:
             provider_rejected_symbols=provider_rejected,
             provider_rejection_conflicts=rejection_conflicts,
             zero_bar_symbols=zero_bar_symbols,
+            response_symbol_anomaly_policy=ALPACA_RESPONSE_SYMBOL_ANOMALY_POLICY,
+            response_symbol_anomalies=response_symbol_anomalies,
+            response_symbol_anomaly_bar_rows=response_symbol_anomaly_bar_rows,
+            response_symbol_identity_collisions=response_symbol_identity_collisions,
+            response_symbol_casefold_only=response_symbol_casefold_only,
+            response_symbol_unresolved=response_symbol_unresolved,
             executed_units_this_run=executed,
             skipped_completed_units_this_run=skipped,
             inventory_path=str(self.inventory_path),
             observed_summary_path=str(self.observed_summary_path),
+            response_symbol_anomalies_path=str(self.response_symbol_anomalies_path),
             unit_manifest_root=str(self.unit_manifest_root),
             report_path=str(self.report_path),
         )
