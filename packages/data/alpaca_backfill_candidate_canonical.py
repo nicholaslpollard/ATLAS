@@ -11,7 +11,7 @@ from typing import Any
 import duckdb
 import pandas as pd
 
-from packages.core.atomic_io import atomic_write_text
+from packages.core.atomic_io import atomic_write_text, replace_with_retry
 from packages.core.enums import DatasetType, Timeframe
 from packages.core.market_calendar import MarketCalendar
 from packages.core.settings import AtlasSettings
@@ -137,7 +137,7 @@ def _replace_candidate_year(temp_year: Path, final_year: Path) -> None:
     final_year.parent.mkdir(parents=True, exist_ok=True)
     if final_year.exists():
         shutil.rmtree(final_year)
-    os.replace(temp_year, final_year)
+    replace_with_retry(temp_year, final_year)
 
 
 class AlpacaBackfillCandidateCanonicalBuilder:
@@ -377,7 +377,7 @@ class AlpacaBackfillCandidateCanonicalBuilder:
             source_file = files[0]
             final_name = directory / "part-000.parquet"
             if source_file != final_name:
-                os.replace(source_file, final_name)
+                replace_with_retry(source_file, final_name)
             con = duckdb.connect(":memory:")
             try:
                 count = int(con.execute("SELECT count(*) FROM read_parquet(?)", [str(final_name)]).fetchone()[0])
@@ -442,7 +442,7 @@ class AlpacaBackfillCandidateCanonicalBuilder:
                 TO {_sql_string(temp_segments)} (FORMAT PARQUET, COMPRESSION ZSTD)
                 """
             )
-            os.replace(temp_segments, self.identity_segment_output_path)
+            replace_with_retry(temp_segments, self.identity_segment_output_path)
 
             temp_chains = self.identity_chain_output_path.with_name(
                 f".{self.identity_chain_output_path.name}.{uuid.uuid4().hex}.tmp"
@@ -467,7 +467,7 @@ class AlpacaBackfillCandidateCanonicalBuilder:
                 TO {_sql_string(temp_chains)} (FORMAT PARQUET, COMPRESSION ZSTD)
                 """
             )
-            os.replace(temp_chains, self.identity_chain_output_path)
+            replace_with_retry(temp_chains, self.identity_chain_output_path)
 
             segment_stats = con.execute(
                 f"""
