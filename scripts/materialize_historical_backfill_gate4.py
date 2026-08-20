@@ -1,15 +1,26 @@
 from __future__ import annotations
 
 from packages.core.settings import load_settings
-from packages.data.alpaca_backfill_identity import AlpacaBackfillIdentityBuilder
+from packages.data.alpaca_backfill_identity_policy import (
+    ALPACA_BACKFILL_IDENTITY_POLICY_CONTRACT_VERSION,
+    MAX_SAFE_RENAME_HANDOFF_CALENDAR_DAYS,
+    AlpacaBackfillIdentityPolicyBuilder,
+)
 
 
 def main() -> None:
     settings = load_settings()
-    report = AlpacaBackfillIdentityBuilder(settings).run()
+    report = AlpacaBackfillIdentityPolicyBuilder(settings).run()
 
     print("ATLAS Historical Backfill Gate 4 Identity Evidence Materialization")
     print("  safety: retained raw evidence only; no provider fetch; canonical history untouched")
+    print(f"  identity policy contract:          {ALPACA_BACKFILL_IDENTITY_POLICY_CONTRACT_VERSION}")
+    print("  rename boundary policy:            observed old-last/new-first")
+    print(
+        "  max safe observed handoff:         "
+        f"{MAX_SAFE_RENAME_HANDOFF_CALENDAR_DAYS} calendar days"
+    )
+    print("  provider event date role:          corroborating evidence, not exact bar boundary")
     print(f"  retained corporate-action pages: {report.retained_corporate_action_pages:,}")
     print(f"  corporate-action events:         {report.corporate_action_events:,}")
     print(f"  identity relationship rows:      {report.identity_relationship_rows:,}")
