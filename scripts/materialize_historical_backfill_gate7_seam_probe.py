@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from packages.core.settings import load_settings
-from packages.data.alpaca_backfill_seam import (
-    ALPACA_BACKFILL_SEAM_PROBE_CONTRACT_VERSION,
-    AlpacaBackfillSeamProbe,
-)
+from packages.data.alpaca_backfill_seam import ALPACA_BACKFILL_SEAM_PROBE_CONTRACT_VERSION
+from packages.data.alpaca_backfill_seam_runtime import AlpacaBackfillSeamRuntimeProbe
 
 
 def _fmt(value: object, digits: int = 8) -> str:
@@ -17,7 +15,7 @@ def _fmt(value: object, digits: int = 8) -> str:
 
 def main() -> None:
     settings = load_settings()
-    report = AlpacaBackfillSeamProbe(settings).run()
+    report = AlpacaBackfillSeamRuntimeProbe(settings).run()
 
     print("ATLAS Historical Backfill Gate 7-A Same-Session Provider Bridge")
     print("  safety: one-session Alpaca validation probe only; candidate/production canonical untouched")
