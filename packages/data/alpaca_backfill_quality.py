@@ -4,7 +4,7 @@ import gzip
 import hashlib
 import json
 import math
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -23,8 +23,10 @@ from packages.data.alpaca_backfill_policy import ALPACA_BACKFILL_END, ALPACA_BAC
 
 
 ALPACA_BACKFILL_QUALITY_BASELINE_CONTRACT_VERSION = (
-    "historical-backfill-quality-v1-retained-raw-bar-baseline"
+    "historical-backfill-quality-v2-zero-activity-placeholder-evidence"
 )
+ZERO_ACTIVITY_PLACEHOLDER_CLASS = "ZERO_ACTIVITY_PLACEHOLDER"
+ZERO_ACTIVITY_CANDIDATE_POLICY = "PRESERVE_RAW_EXCLUDE_FROM_TRADE_BACKED_CANDIDATE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,10 +41,12 @@ class BarInspection:
     nonpositive_ohlc: bool
     invalid_ohlc_geometry: bool
     invalid_volume: bool
+    zero_volume_nonplaceholder: bool
     missing_trade_count: bool
     invalid_trade_count: bool
     missing_vwap: bool
     invalid_vwap: bool
+    zero_activity_placeholder: bool
     weekend_session: bool
 
     @property
@@ -55,6 +59,7 @@ class BarInspection:
             or self.nonpositive_ohlc
             or self.invalid_ohlc_geometry
             or self.invalid_volume
+            or self.zero_volume_nonplaceholder
             or self.invalid_trade_count
             or self.invalid_vwap
         )
@@ -67,6 +72,8 @@ class AlpacaBackfillQualityBaselineReport:
     identity_asset_risk_contract_version: str
     generated_at_utc: str
     canonical_data_modified: bool
+    zero_activity_placeholder_class: str
+    zero_activity_candidate_policy: str
     retained_unit_manifests: int
     retained_raw_bar_pages: int
     raw_payload_hash_failures: int
@@ -77,6 +84,8 @@ class AlpacaBackfillQualityBaselineReport:
     observed_symbols: int
     symbol_summary_reconciliation_failures: int
     definite_invalid_rows: int
+    zero_activity_placeholder_rows: int
+    trade_backed_usable_rows: int
     missing_required_rows: int
     invalid_timestamp_rows: int
     out_of_unit_range_rows: int
@@ -84,17 +93,20 @@ class AlpacaBackfillQualityBaselineReport:
     nonpositive_ohlc_rows: int
     invalid_ohlc_geometry_rows: int
     invalid_volume_rows: int
+    zero_volume_nonplaceholder_rows: int
     missing_trade_count_rows: int
     invalid_trade_count_rows: int
     missing_vwap_rows: int
     invalid_vwap_rows: int
     weekend_session_rows: int
     year_row_counts: dict[str, int]
+    zero_activity_year_row_counts: dict[str, int]
     utc_time_counts: dict[str, int]
     bar_key_pattern_counts: dict[str, int]
     row_accounting_exact: bool
     quarantine_accounting_exact: bool
     symbol_summary_reconciliation_exact: bool
+    trade_backed_accounting_exact: bool
     symbol_summary_path: str
     report_path: str
 
@@ -117,7 +129,13 @@ def _finite_number(value: object) -> float | None:
 
 
 def inspect_daily_bar(record: object, *, unit_start: date, unit_end: date) -> BarInspection:
-    """Classify definite raw daily-bar quality defects without provider assumptions."""
+    """Classify retained stock daily bars without discarding historical provider evidence.
+
+    Alpaca's retained 2016-2021 SIP payloads contain an observed historical pattern where
+    ``v=0``, ``n=0``, ``vw=0`` and ``o=h=l=c``. Those records are preserved as raw evidence
+    but classified as zero-activity placeholders rather than malformed traded bars. A zero
+    volume record that does not match the complete placeholder pattern fails closed.
+    """
 
     if not isinstance(record, dict):
         return BarInspection(
@@ -131,10 +149,12 @@ def inspect_daily_bar(record: object, *, unit_start: date, unit_end: date) -> Ba
             nonpositive_ohlc=False,
             invalid_ohlc_geometry=False,
             invalid_volume=True,
+            zero_volume_nonplaceholder=False,
             missing_trade_count=True,
             invalid_trade_count=False,
             missing_vwap=True,
             invalid_vwap=False,
+            zero_activity_placeholder=False,
             weekend_session=False,
         )
 
@@ -166,10 +186,12 @@ def inspect_daily_bar(record: object, *, unit_start: date, unit_end: date) -> Ba
     invalid_ohlc_numeric = any(value is None for value in (o, h, l, c))
     nonpositive_ohlc = False
     invalid_ohlc_geometry = False
+    flat_ohlc = False
     if not invalid_ohlc_numeric:
         assert o is not None and h is not None and l is not None and c is not None
         nonpositive_ohlc = min(o, h, l, c) <= 0.0
         invalid_ohlc_geometry = bool(h < max(o, l, c) or l > min(o, h, c))
+        flat_ohlc = o == h == l == c
 
     volume = _finite_number(record.get("v"))
     invalid_volume = volume is None or volume < 0.0
@@ -180,7 +202,30 @@ def inspect_daily_bar(record: object, *, unit_start: date, unit_end: date) -> Ba
 
     missing_vwap = record.get("vw") is None
     vwap = _finite_number(record.get("vw")) if not missing_vwap else None
-    invalid_vwap = bool(not missing_vwap and (vwap is None or vwap <= 0.0))
+
+    zero_activity_placeholder = bool(
+        not invalid_ohlc_numeric
+        and not nonpositive_ohlc
+        and not invalid_volume
+        and volume == 0.0
+        and not missing_trade_count
+        and not invalid_trade_count
+        and trade_count == 0.0
+        and not missing_vwap
+        and vwap == 0.0
+        and flat_ohlc
+    )
+    zero_volume_nonplaceholder = bool(
+        volume == 0.0 and not zero_activity_placeholder
+    )
+    invalid_vwap = bool(
+        not missing_vwap
+        and (
+            vwap is None
+            or vwap < 0.0
+            or (vwap == 0.0 and not zero_activity_placeholder)
+        )
+    )
 
     return BarInspection(
         timestamp_text=timestamp_text,
@@ -193,10 +238,12 @@ def inspect_daily_bar(record: object, *, unit_start: date, unit_end: date) -> Ba
         nonpositive_ohlc=nonpositive_ohlc,
         invalid_ohlc_geometry=invalid_ohlc_geometry,
         invalid_volume=invalid_volume,
+        zero_volume_nonplaceholder=zero_volume_nonplaceholder,
         missing_trade_count=missing_trade_count,
         invalid_trade_count=invalid_trade_count,
         missing_vwap=missing_vwap,
         invalid_vwap=invalid_vwap,
+        zero_activity_placeholder=zero_activity_placeholder,
         weekend_session=weekend_session,
     )
 
@@ -277,10 +324,19 @@ class AlpacaBackfillQualityBaselineBuilder:
             raise RuntimeError("Gate 5-A requires the Gate 3 response-symbol anomaly artifact")
         con = duckdb.connect(":memory:")
         try:
-            schema = {row[0] for row in con.execute("DESCRIBE SELECT * FROM read_parquet(?)", [str(self.anomaly_path)]).fetchall()}
+            schema = {
+                row[0]
+                for row in con.execute(
+                    "DESCRIBE SELECT * FROM read_parquet(?)",
+                    [str(self.anomaly_path)],
+                ).fetchall()
+            }
             required = {"year", "batch_index", "returned_symbol", "bar_rows"}
             if not required.issubset(schema):
-                raise RuntimeError(f"Gate 5-A anomaly artifact lacks unit identity columns: {sorted(required - schema)}")
+                raise RuntimeError(
+                    "Gate 5-A anomaly artifact lacks unit identity columns: "
+                    f"{sorted(required - schema)}"
+                )
             rows = con.execute(
                 "SELECT year, batch_index, returned_symbol, sum(bar_rows) "
                 "FROM read_parquet(?) WHERE returned_symbol IS NOT NULL "
@@ -289,11 +345,14 @@ class AlpacaBackfillQualityBaselineBuilder:
             ).fetchall()
         finally:
             con.close()
-        mapping = {(int(year), int(batch), str(symbol)): int(count) for year, batch, symbol, count in rows}
+        mapping = {
+            (int(year), int(batch), str(symbol)): int(count)
+            for year, batch, symbol, count in rows
+        }
         return mapping, sum(mapping.values())
 
     def run(self) -> AlpacaBackfillQualityBaselineReport:
-        acquisition, gate4 = self._load_parent_reports()
+        acquisition, _gate4 = self._load_parent_reports()
         observed = self._load_observed()
         anomaly_keys, anomaly_expected_rows = self._load_anomaly_keys()
 
@@ -304,6 +363,8 @@ class AlpacaBackfillQualityBaselineBuilder:
                 "first_timestamp": None,
                 "last_timestamp": None,
                 "definite_invalid_rows": 0,
+                "zero_activity_placeholder_rows": 0,
+                "trade_backed_usable_rows": 0,
                 "weekend_session_rows": 0,
                 "missing_trade_count_rows": 0,
                 "missing_vwap_rows": 0,
@@ -312,6 +373,7 @@ class AlpacaBackfillQualityBaselineBuilder:
         }
         issue_counts: Counter[str] = Counter()
         year_counts: Counter[int] = Counter()
+        zero_activity_year_counts: Counter[int] = Counter()
         utc_time_counts: Counter[str] = Counter()
         key_patterns: Counter[str] = Counter()
         quarantined_seen: Counter[tuple[int, int, str]] = Counter()
@@ -378,7 +440,11 @@ class AlpacaBackfillQualityBaselineBuilder:
                             key_patterns[",".join(sorted(str(key) for key in record))] += 1
                         else:
                             key_patterns["<non-dict>"] += 1
-                        inspected = inspect_daily_bar(record, unit_start=unit_start, unit_end=unit_end)
+                        inspected = inspect_daily_bar(
+                            record,
+                            unit_start=unit_start,
+                            unit_end=unit_end,
+                        )
                         stats = symbol_stats[symbol]
                         stats["bar_rows"] = int(stats["bar_rows"]) + 1
                         if inspected.timestamp_text is not None and not inspected.invalid_timestamp:
@@ -393,6 +459,15 @@ class AlpacaBackfillQualityBaselineBuilder:
                         if inspected.definite_invalid:
                             stats["definite_invalid_rows"] = int(stats["definite_invalid_rows"]) + 1
                             issue_counts["definite_invalid_rows"] += 1
+                        elif not inspected.zero_activity_placeholder:
+                            stats["trade_backed_usable_rows"] = int(stats["trade_backed_usable_rows"]) + 1
+                            issue_counts["trade_backed_usable_rows"] += 1
+                        if inspected.zero_activity_placeholder:
+                            stats["zero_activity_placeholder_rows"] = (
+                                int(stats["zero_activity_placeholder_rows"]) + 1
+                            )
+                            issue_counts["zero_activity_placeholder_rows"] += 1
+                            zero_activity_year_counts[year] += 1
                         if inspected.weekend_session:
                             stats["weekend_session_rows"] = int(stats["weekend_session_rows"]) + 1
                             issue_counts["weekend_session_rows"] += 1
@@ -410,6 +485,7 @@ class AlpacaBackfillQualityBaselineBuilder:
                             "nonpositive_ohlc",
                             "invalid_ohlc_geometry",
                             "invalid_volume",
+                            "zero_volume_nonplaceholder",
                             "invalid_trade_count",
                             "invalid_vwap",
                         ):
@@ -456,12 +532,27 @@ class AlpacaBackfillQualityBaselineBuilder:
             quarantine_rows == anomaly_expected_rows
             == int(acquisition.get("response_symbol_anomaly_bar_rows", -1))
         )
-        symbol_summary_exact = reconciliation_failures == 0 and len(output_rows) == int(acquisition.get("observed_symbols", -1))
-        if not row_accounting_exact or not quarantine_accounting_exact or not symbol_summary_exact:
+        symbol_summary_exact = bool(
+            reconciliation_failures == 0
+            and len(output_rows) == int(acquisition.get("observed_symbols", -1))
+        )
+        trade_backed_rows = int(issue_counts["trade_backed_usable_rows"])
+        placeholder_rows = int(issue_counts["zero_activity_placeholder_rows"])
+        definite_invalid_rows = int(issue_counts["definite_invalid_rows"])
+        trade_backed_accounting_exact = bool(
+            identity_safe_rows
+            == trade_backed_rows + placeholder_rows + definite_invalid_rows
+        )
+        if not (
+            row_accounting_exact
+            and quarantine_accounting_exact
+            and symbol_summary_exact
+            and trade_backed_accounting_exact
+        ):
             raise RuntimeError(
                 "Gate 5-A baseline accounting invariant failed: "
                 f"rows={row_accounting_exact} quarantine={quarantine_accounting_exact} "
-                f"symbols={symbol_summary_exact}"
+                f"symbols={symbol_summary_exact} trade_backed={trade_backed_accounting_exact}"
             )
 
         self._write_parquet(self.symbol_summary_path, output_rows, "symbol")
@@ -471,16 +562,22 @@ class AlpacaBackfillQualityBaselineBuilder:
             identity_asset_risk_contract_version=ALPACA_BACKFILL_IDENTITY_ASSET_RISK_CONTRACT_VERSION,
             generated_at_utc=datetime.now(UTC).isoformat(),
             canonical_data_modified=False,
+            zero_activity_placeholder_class=ZERO_ACTIVITY_PLACEHOLDER_CLASS,
+            zero_activity_candidate_policy=ZERO_ACTIVITY_CANDIDATE_POLICY,
             retained_unit_manifests=len(manifests),
             retained_raw_bar_pages=raw_pages,
             raw_payload_hash_failures=hash_failures,
             identity_safe_bar_rows=identity_safe_rows,
             gate3_reported_identity_safe_bar_rows=int(acquisition.get("bar_rows", -1)),
             quarantined_response_bar_rows=quarantine_rows,
-            gate3_reported_quarantined_response_bar_rows=int(acquisition.get("response_symbol_anomaly_bar_rows", -1)),
+            gate3_reported_quarantined_response_bar_rows=int(
+                acquisition.get("response_symbol_anomaly_bar_rows", -1)
+            ),
             observed_symbols=len(output_rows),
             symbol_summary_reconciliation_failures=reconciliation_failures,
-            definite_invalid_rows=int(issue_counts["definite_invalid_rows"]),
+            definite_invalid_rows=definite_invalid_rows,
+            zero_activity_placeholder_rows=placeholder_rows,
+            trade_backed_usable_rows=trade_backed_rows,
             missing_required_rows=int(issue_counts["missing_required_rows"]),
             invalid_timestamp_rows=int(issue_counts["invalid_timestamp_rows"]),
             out_of_unit_range_rows=int(issue_counts["out_of_unit_range_rows"]),
@@ -488,19 +585,30 @@ class AlpacaBackfillQualityBaselineBuilder:
             nonpositive_ohlc_rows=int(issue_counts["nonpositive_ohlc_rows"]),
             invalid_ohlc_geometry_rows=int(issue_counts["invalid_ohlc_geometry_rows"]),
             invalid_volume_rows=int(issue_counts["invalid_volume_rows"]),
+            zero_volume_nonplaceholder_rows=int(
+                issue_counts["zero_volume_nonplaceholder_rows"]
+            ),
             missing_trade_count_rows=int(issue_counts["missing_trade_count_rows"]),
             invalid_trade_count_rows=int(issue_counts["invalid_trade_count_rows"]),
             missing_vwap_rows=int(issue_counts["missing_vwap_rows"]),
             invalid_vwap_rows=int(issue_counts["invalid_vwap_rows"]),
             weekend_session_rows=int(issue_counts["weekend_session_rows"]),
             year_row_counts={str(year): int(count) for year, count in sorted(year_counts.items())},
+            zero_activity_year_row_counts={
+                str(year): int(count)
+                for year, count in sorted(zero_activity_year_counts.items())
+            },
             utc_time_counts={key: int(value) for key, value in sorted(utc_time_counts.items())},
             bar_key_pattern_counts={key: int(value) for key, value in key_patterns.most_common()},
             row_accounting_exact=row_accounting_exact,
             quarantine_accounting_exact=quarantine_accounting_exact,
             symbol_summary_reconciliation_exact=symbol_summary_exact,
+            trade_backed_accounting_exact=trade_backed_accounting_exact,
             symbol_summary_path=str(self.symbol_summary_path),
             report_path=str(self.report_path),
         )
-        atomic_write_text(self.report_path, json.dumps(asdict(report), indent=2, sort_keys=True) + "\n")
+        atomic_write_text(
+            self.report_path,
+            json.dumps(asdict(report), indent=2, sort_keys=True) + "\n",
+        )
         return report
