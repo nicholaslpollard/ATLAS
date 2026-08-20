@@ -74,6 +74,17 @@ def test_gate4c_keeps_unrelated_observed_symbol_as_singleton() -> None:
     assert singleton["continuity_basis"] == "OBSERVED_LITERAL_SINGLETON"
 
 
+def test_gate4c_preserves_literal_nan_ticker_as_exact_symbol() -> None:
+    observed = [_observed("NAN", "2019-01-02", "2021-08-13")]
+
+    result = build_identity_segments(observed, [])
+
+    assert len(result.chain_rows) == 1
+    assert len(result.segment_rows) == 1
+    assert result.chain_rows[0]["first_symbol"] == "NAN"
+    assert result.segment_rows[0]["symbol"] == "NAN"
+
+
 def test_gate4c_consolidates_duplicate_safe_evidence_for_same_pair() -> None:
     observed = [
         _observed("AAA", "2020-01-02", "2020-06-12"),
