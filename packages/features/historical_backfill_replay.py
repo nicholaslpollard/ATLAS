@@ -41,7 +41,7 @@ from packages.schemas.canonical_market import canonical_stock_daily_schema_match
 
 
 GATE9_FEATURE_REPLAY_PREFLIGHT_CONTRACT_VERSION = (
-    "historical-backfill-feature-replay-preflight-v1-daily-identity-lifecycle"
+    "historical-backfill-feature-replay-preflight-v2-daily-identity-lifecycle-fresh-postseam"
 )
 GATE9_FEATURE_REPLAY_ROLE = "ISOLATED_DAILY_FEATURE_REPLAY_NOT_PRODUCTION"
 TRANSFER_IDENTITY_STATE = "TRANSFER_IDENTITY_STATE"
@@ -62,6 +62,7 @@ def seam_requires_state_drop(decision: str) -> bool:
         RESET_AT_PROVIDER_SEAM,
         TERMINATE_PRESEAM_CONTINUITY,
         QUARANTINE_SEAM_CONTINUITY,
+        POSTSEAM_ONLY,
     }
 
 
@@ -443,6 +444,7 @@ class HistoricalBackfillFeatureReplayPreflight:
             int(gate7["coverage_reset_symbols"])
             + int(gate7["terminal_preseam_symbols"])
             + int(gate7["quarantined_seam_symbols"])
+            + int(gate7["postseam_only_symbols"])
         )
 
         checks = {
