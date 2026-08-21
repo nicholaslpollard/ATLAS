@@ -307,13 +307,18 @@ class IncrementalFeatureEngine:
     def __init__(self) -> None:
         self._states: dict[str, IncrementalSymbolFeatureState] = {}
 
-    def state_for(self, symbol: str, *, state_key: str | None = None) -> IncrementalSymbolFeatureState:
+    @staticmethod
+    def _resolved_state_key(symbol: str, state_key: str | None) -> tuple[str, str]:
         clean_symbol = str(symbol).strip()
         if not clean_symbol:
             raise IncrementalFeatureError("symbol cannot be blank")
-        key = feature_stream_key(clean_symbol) if state_key is None else str(state_key)
+        key = feature_stream_key(clean_symbol) if state_key is None else str(state_key).strip()
         if not key:
             raise IncrementalFeatureError("state_key cannot be blank")
+        return clean_symbol, key
+
+    def state_for(self, symbol: str, *, state_key: str | None = None) -> IncrementalSymbolFeatureState:
+        clean_symbol, key = self._resolved_state_key(symbol, state_key)
         state = self._states.get(key)
         if state is None:
             state = IncrementalSymbolFeatureState(symbol=clean_symbol)
@@ -321,6 +326,72 @@ class IncrementalFeatureEngine:
         elif state.symbol != clean_symbol:
             raise IncrementalFeatureError("state_key is already bound to a different symbol")
         return state
+
+    def has_state(self, symbol: str, *, state_key: str | None = None) -> bool:
+        """Return whether an exact symbol/state-key stream currently has persisted state."""
+
+        clean_symbol, key = self._resolved_state_key(symbol, state_key)
+        state = self._states.get(key)
+        if state is None:
+            return False
+        if state.symbol != clean_symbol:
+            raise IncrementalFeatureError("state_key is already bound to a different symbol")
+        return True
+
+    def drop_state(self, symbol: str, *, state_key: str | None = None) -> bool:
+        """Remove one exact stream so its next observation starts from genesis.
+
+        A missing stream is an idempotent no-op. A custom state key bound to a
+        different exact provider symbol still fails closed.
+        """
+
+        clean_symbol, key = self._resolved_state_key(symbol, state_key)
+        state = self._states.get(key)
+        if state is None:
+            return False
+        if state.symbol != clean_symbol:
+            raise IncrementalFeatureError("state_key is already bound to a different symbol")
+        del self._states[key]
+        return True
+
+    def transfer_state(
+        self,
+        source_symbol: str,
+        target_symbol: str,
+        *,
+        source_state_key: str | None = None,
+        target_state_key: str | None = None,
+    ) -> None:
+        """Move one exact recursive stream to a proven successor identity.
+
+        This primitive intentionally does not infer why two symbols are continuous.
+        Callers must supply already-accepted identity evidence. Missing source state,
+        an occupied target key, or a same-key move fails closed.
+        """
+
+        source_symbol_clean, source_key = self._resolved_state_key(
+            source_symbol, source_state_key
+        )
+        target_symbol_clean, target_key = self._resolved_state_key(
+            target_symbol, target_state_key
+        )
+        if source_key == target_key:
+            raise IncrementalFeatureError("feature-state transfer source and target keys are identical")
+        source = self._states.get(source_key)
+        if source is None:
+            raise IncrementalFeatureError(
+                f"feature-state transfer source is missing: {source_symbol_clean!r}"
+            )
+        if source.symbol != source_symbol_clean:
+            raise IncrementalFeatureError("source state_key is bound to a different symbol")
+        if target_key in self._states:
+            raise IncrementalFeatureError(
+                f"feature-state transfer target already exists: {target_symbol_clean!r}"
+            )
+
+        del self._states[source_key]
+        source.symbol = target_symbol_clean
+        self._states[target_key] = source
 
     def update(
         self,
