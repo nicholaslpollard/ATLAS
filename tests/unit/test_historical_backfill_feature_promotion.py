@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from packages.features.historical_backfill_feature_promotion import (
     COPY_NEW,
     FAIL_UNMANAGED_TARGET,
@@ -8,6 +12,7 @@ from packages.features.historical_backfill_feature_promotion import (
     feature_inventory_fingerprint,
     feature_promotion_action,
     feature_promotion_source_fingerprint,
+    rollback_feature_path,
 )
 
 
@@ -95,3 +100,20 @@ def test_gate9c_source_fingerprint_binds_candidate_baseline_and_state() -> None:
         changed = dict(values)
         changed[field] = f"changed-{field}"
         assert feature_promotion_source_fingerprint(**changed) != baseline
+
+
+def test_gate9c_rollback_feature_path_uses_frozen_relative_path(tmp_path: Path) -> None:
+    row = {"relative_path": "features/1d/year=2021/month=08/date=2021-08-16/part-000.parquet"}
+    assert rollback_feature_path(derived_root=tmp_path, baseline_row=row) == (
+        tmp_path / "features/1d/year=2021/month=08/date=2021-08-16/part-000.parquet"
+    )
+
+
+def test_gate9c_rollback_feature_path_rejects_missing_or_absolute_path(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="lacks relative_path"):
+        rollback_feature_path(derived_root=tmp_path, baseline_row={})
+    with pytest.raises(ValueError, match="must be relative"):
+        rollback_feature_path(
+            derived_root=tmp_path,
+            baseline_row={"relative_path": str((tmp_path / "escape.parquet").resolve())},
+        )
