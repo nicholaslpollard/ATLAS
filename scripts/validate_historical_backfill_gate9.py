@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from packages.core.settings import load_settings
-from packages.features.historical_backfill_replay_validation import (
-    HistoricalBackfillDailyFeatureReplayValidator,
+from packages.features.historical_backfill_replay_validation_v2 import (
+    HistoricalBackfillDailyFeatureReplayValidatorV2,
 )
 
 
 def main() -> None:
-    report = HistoricalBackfillDailyFeatureReplayValidator(load_settings()).run()
+    report = HistoricalBackfillDailyFeatureReplayValidatorV2(load_settings()).run()
     candidate = report["candidate"]
     transfer = report["identity_transfer_proof"]
     sentinel = report["liquid_sentinel_proof"]
@@ -39,8 +39,33 @@ def main() -> None:
     print(f"    sentinels:                      {int(sentinel['sentinels']):,}")
     print(f"    rows:                           {int(sentinel['rows']):,}")
     print(f"    keys exact:                     {sentinel['keys_exact']}")
-    print(f"    feature mismatches:             {int(sentinel['feature_mismatches']):,}")
+    print(
+        f"    strict 1e-12 mismatches:        "
+        f"{int(sentinel['strict_feature_mismatches']):,}"
+    )
+    print(f"    acceptance mismatches:          {int(sentinel['feature_mismatches']):,}")
+    print(f"    NaN-mask mismatches:            {int(sentinel['nan_mask_mismatches']):,}")
+    print(f"    expected infinities:            {int(sentinel['expected_infinite_values']):,}")
+    print(f"    actual infinities:              {int(sentinel['actual_infinite_values']):,}")
+    print(
+        f"    acceptance atol / rtol:         "
+        f"{sentinel['acceptance_atol']} / {sentinel['acceptance_rtol']}"
+    )
     print(f"    max abs feature error:          {sentinel['max_abs_error']}")
+    print(f"    max relative feature error:     {sentinel['max_relative_error']}")
+    strict_features = [
+        row
+        for row in sentinel.get("per_feature", [])
+        if int(row.get("strict_mismatches", 0)) > 0
+    ]
+    if strict_features:
+        print("    strict-difference features:")
+        for row in strict_features:
+            print(
+                f"      {row['feature']}: strict={int(row['strict_mismatches']):,}, "
+                f"acceptance={int(row['acceptance_mismatches']):,}, "
+                f"max_abs={row['max_abs_error']}"
+            )
     print("  provider-seam state proof:")
     print(f"    bridge rows:                    {int(seam['bridge_rows']):,}")
     print(f"    bridge null returns:            {int(seam['bridge_null_returns']):,}")
