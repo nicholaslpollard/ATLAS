@@ -30,18 +30,18 @@ def _fingerprint(**overrides: str) -> str:
 
 def test_gate9_preflight_contract_is_isolated_daily_replay() -> None:
     assert GATE9_FEATURE_REPLAY_PREFLIGHT_CONTRACT_VERSION.startswith(
-        "historical-backfill-feature-replay-preflight-v1"
+        "historical-backfill-feature-replay-preflight-v2"
     )
-    assert "daily-identity-lifecycle" in GATE9_FEATURE_REPLAY_PREFLIGHT_CONTRACT_VERSION
+    assert "daily-identity-lifecycle-fresh-postseam" in GATE9_FEATURE_REPLAY_PREFLIGHT_CONTRACT_VERSION
     assert GATE9_FEATURE_REPLAY_ROLE == "ISOLATED_DAILY_FEATURE_REPLAY_NOT_PRODUCTION"
 
 
-def test_gate9_seam_policy_drops_only_noncontinuity_preseam_state() -> None:
+def test_gate9_seam_policy_drops_every_nonbridge_identity_at_seam() -> None:
     assert seam_requires_state_drop(RESET_AT_PROVIDER_SEAM) is True
     assert seam_requires_state_drop(TERMINATE_PRESEAM_CONTINUITY) is True
     assert seam_requires_state_drop(QUARANTINE_SEAM_CONTINUITY) is True
+    assert seam_requires_state_drop(POSTSEAM_ONLY) is True
     assert seam_requires_state_drop(BRIDGE_EXACT_LITERAL) is False
-    assert seam_requires_state_drop(POSTSEAM_ONLY) is False
 
 
 def test_gate9_preflight_fingerprint_is_deterministic() -> None:
