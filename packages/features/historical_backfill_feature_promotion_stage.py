@@ -327,6 +327,7 @@ class HistoricalBackfillDailyFeaturePromotionStage:
         self,
         *,
         year: int,
+        first_year: int,
         stage_source_fingerprint: str,
         canonical_rows: list[dict[str, object]],
         candidate_rows: list[dict[str, object]],
@@ -337,7 +338,7 @@ class HistoricalBackfillDailyFeaturePromotionStage:
         candidate_by_date = {
             date.fromisoformat(str(row["session_date"])): row for row in candidate_rows
         }
-        if year == min(date.fromisoformat(str(row["session_date"])).year for row in canonical_rows):
+        if year == first_year:
             engine = IncrementalFeatureEngine()
             input_as_of = "genesis"
         else:
@@ -526,6 +527,7 @@ class HistoricalBackfillDailyFeaturePromotionStage:
         copied_features = 0
         reused_features = 0
         monthly_checkpoints = 0
+        first_year = min(grouped_canonical)
 
         for year, canonical_rows in grouped_canonical.items():
             candidate_year_rows = candidate_by_year.get(year, [])
@@ -557,6 +559,7 @@ class HistoricalBackfillDailyFeaturePromotionStage:
             else:
                 payload = self._build_year(
                     year=year,
+                    first_year=first_year,
                     stage_source_fingerprint=stage_fp,
                     canonical_rows=canonical_rows,
                     candidate_rows=candidate_year_rows,
