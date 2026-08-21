@@ -18,6 +18,7 @@ from packages.features.feature_registry import CORE_FEATURE_REGISTRY
 from packages.features.historical_backfill_replay_build import (
     GATE9_DAILY_REPLAY_CONTRACT_VERSION,
     GATE9_DAILY_REPLAY_VALIDATION_CONTRACT_VERSION,
+    GATE9_DAILY_REPLAY_YEAR_CONTRACT_VERSION,
     HistoricalBackfillDailyFeatureReplay,
     _sql_path_list,
     _sql_string,
@@ -85,8 +86,7 @@ class HistoricalBackfillDailyFeatureReplayValidator:
                 lifecycle_events=year_events,
             )
             if (
-                payload.get("contract_version")
-                != "historical-backfill-feature-replay-year-v1-state-checkpoint-chain"
+                payload.get("contract_version") != GATE9_DAILY_REPLAY_YEAR_CONTRACT_VERSION
                 or payload.get("replay_source_fingerprint") != replay_fp
                 or payload.get("year_source_fingerprint") != expected_year_fp
                 or payload.get("input_state_fingerprint") != input_state_fp
@@ -509,7 +509,12 @@ class HistoricalBackfillDailyFeatureReplayValidator:
         transfer = (
             self._transfer_semantics(candidate_paths, canonical_paths)
             if years_current
-            else {"transfers": -1, "missing": -1, "mismatches": -1, "max_abs_error": None}
+            else {
+                "transfers": -1,
+                "missing": -1,
+                "mismatches": -1,
+                "max_abs_error": None,
+            }
         )
         sentinel = (
             self._sentinel_feature_equivalence(candidate_paths, canonical_paths)
