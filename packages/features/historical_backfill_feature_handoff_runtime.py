@@ -1,27 +1,50 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from packages.core.atomic_io import atomic_write_text
+from packages.core.atomic_io import atomic_write_text, replace_with_retry
 from packages.core.settings import AtlasSettings
+from packages.data.alpaca_backfill_validated_evidence import sha256_file
 from packages.features.historical_backfill_feature_handoff import (
     COMPONENT_FEATURES,
     COMPONENT_MANIFESTS,
     COMPONENT_ORDER,
     COMPONENT_STATE,
     GATE9_FEATURE_HANDOFF_CONTRACT_VERSION,
+    Gate9FeatureHandoffError,
     HistoricalBackfillDailyFeatureHandoff,
     HistoricalBackfillDailyFeatureHandoffValidator,
+    STATE_INITIAL,
+    STATE_OLD_MOVED,
     STATE_PROMOTED,
     _inventory_matches,
+    handoff_source_fingerprint,
 )
 
 
 class HistoricalBackfillDailyFeatureHandoffRuntime(HistoricalBackfillDailyFeatureHandoff):
     """Runtime-hardened Gate 9-C handoff using the v1 journal/data contract."""
+
+    @staticmethod
+    def _move_with_retry(source: Path, target: Path) -> None:
+        """Same-filesystem atomic directory rename with bounded Windows lock retries."""
+
+        source = Path(source)
+        target = Path(target)
+        if not source.exists():
+            raise Gate9FeatureHandoffError(f"handoff source is missing: {source}")
+        if target.exists():
+            raise Gate9FeatureHandoffError(f"handoff target already exists: {target}")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if os.stat(source).st_dev != os.stat(target.parent).st_dev:
+            raise Gate9FeatureHandoffError(
+                f"handoff directory rename crosses filesystems: {source} -> {target}"
+            )
+        replace_with_retry(source, target)
 
     def _prepare_manifests(self, journal: dict[str, Any]) -> None:
         component = journal["components"][COMPONENT_MANIFESTS]
@@ -43,6 +66,64 @@ class HistoricalBackfillDailyFeatureHandoffRuntime(HistoricalBackfillDailyFeatur
             self._write_journal(journal)
             return
         super()._prepare_manifests(journal)
+
+    def _promote_component(self, journal: dict[str, Any], component_name: str) -> None:
+        component = journal["components"][component_name]
+        live = Path(str(component["live"]))
+        rollback = Path(str(component["rollback"]))
+        source = Path(str(component["source"]))
+
+        state = self._disk_state(journal, component_name)
+        if state == STATE_INITIAL:
+            self._move_with_retry(live, rollback)
+            state = self._disk_state(journal, component_name)
+        if state == STATE_OLD_MOVED:
+            self._move_with_retry(source, live)
+            state = self._disk_state(journal, component_name)
+        if state != STATE_PROMOTED:
+            raise Gate9FeatureHandoffError(
+                f"Gate 9-C {component_name} filesystem state is invalid: {state}"
+            )
+        journal["steps"][component_name] = True
+        self._write_journal(journal)
+
+    def _rollback_component(self, journal: dict[str, Any], component_name: str) -> None:
+        component = journal["components"][component_name]
+        live = Path(str(component["live"]))
+        rollback = Path(str(component["rollback"]))
+        source = Path(str(component["source"]))
+        pattern = str(component["pattern"])
+        old = list(journal["rollback_inventory"][component_name])
+        new = list(journal["promotion_inventory"][component_name])
+
+        state = self._disk_state(journal, component_name)
+        if state == STATE_INITIAL:
+            journal["steps"][component_name] = False
+            self._write_journal(journal)
+            return
+        if state == STATE_OLD_MOVED:
+            self._move_with_retry(rollback, live)
+        elif state == STATE_PROMOTED:
+            if source.exists():
+                raise Gate9FeatureHandoffError(
+                    f"Gate 9-C rollback source target already exists: {source}"
+                )
+            self._move_with_retry(live, source)
+            if not _inventory_matches(source, pattern, new):
+                raise Gate9FeatureHandoffError(
+                    f"Gate 9-C rollback failed to preserve promoted {component_name}"
+                )
+            self._move_with_retry(rollback, live)
+        else:
+            raise Gate9FeatureHandoffError(
+                f"Gate 9-C cannot rollback invalid {component_name} filesystem state: {state}"
+            )
+        if not _inventory_matches(live, pattern, old):
+            raise Gate9FeatureHandoffError(
+                f"Gate 9-C rollback did not restore original {component_name}"
+            )
+        journal["steps"][component_name] = False
+        self._write_journal(journal)
 
     def _finalize_report(
         self,
@@ -135,7 +216,7 @@ class HistoricalBackfillDailyFeatureHandoffRuntime(HistoricalBackfillDailyFeatur
 class HistoricalBackfillDailyFeatureHandoffRuntimeValidator(
     HistoricalBackfillDailyFeatureHandoffValidator
 ):
-    """Use the runtime-hardened handoff while retaining the independent v1 proof."""
+    """Independent production proof plus recomputation of handoff provenance."""
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
@@ -144,3 +225,69 @@ class HistoricalBackfillDailyFeatureHandoffRuntimeValidator(
         self.report_path = (
             self.handoff.promotion_root / "gate9c_handoff_validation_report.json"
         )
+
+    def run(self) -> dict[str, object]:
+        report = super().run()
+        journal = self.handoff._load_json(
+            self.handoff.journal_path,
+            "Gate 9-C handoff journal",
+        )
+
+        parent_report_hashes_exact = (
+            sha256_file(Path(str(journal["stage_report_path"])))
+            == journal["stage_report_sha256"]
+            and sha256_file(Path(str(journal["stage_validation_path"])))
+            == journal["stage_validation_sha256"]
+        )
+        preflight_payload = self.handoff._load_json(
+            Path(str(journal["preflight_report_path"])),
+            "Gate 9-C frozen preflight report",
+        )
+        preflight_fingerprint_exact = (
+            preflight_payload.get("source_fingerprint")
+            == journal["preflight_source_fingerprint"]
+        )
+        rollback_inventory_fp = self.handoff._component_inventory_fingerprint(
+            journal["rollback_inventory"]
+        )
+        promotion_inventory_fp = self.handoff._component_inventory_fingerprint(
+            journal["promotion_inventory"]
+        )
+        inventory_fingerprints_exact = (
+            rollback_inventory_fp == journal["rollback_inventory_fingerprint"]
+            and promotion_inventory_fp == journal["promotion_inventory_fingerprint"]
+        )
+        expected_source_fp = handoff_source_fingerprint(
+            stage_source_fingerprint=str(journal["stage_source_fingerprint"]),
+            stage_report_sha256=str(journal["stage_report_sha256"]),
+            stage_validation_sha256=str(journal["stage_validation_sha256"]),
+            preflight_source_fingerprint=str(journal["preflight_source_fingerprint"]),
+            production_baseline_fingerprint=str(
+                journal["production_baseline_fingerprint"]
+            ),
+            rollback_inventory_fingerprint=rollback_inventory_fp,
+            promotion_inventory_fingerprint=promotion_inventory_fp,
+        )
+        handoff_source_fingerprint_exact = (
+            expected_source_fp == journal["source_fingerprint"]
+        )
+
+        checks = dict(report["checks"])
+        checks.update(
+            {
+                "parent_report_hashes_exact": parent_report_hashes_exact,
+                "frozen_preflight_fingerprint_exact": preflight_fingerprint_exact,
+                "inventory_fingerprints_exact": inventory_fingerprints_exact,
+                "handoff_source_fingerprint_recomputed": handoff_source_fingerprint_exact,
+            }
+        )
+        report["checks"] = checks
+        report["rollback_inventory_fingerprint"] = rollback_inventory_fp
+        report["promotion_inventory_fingerprint"] = promotion_inventory_fp
+        report["recomputed_handoff_source_fingerprint"] = expected_source_fp
+        report["pass"] = all(checks.values())
+        atomic_write_text(
+            self.report_path,
+            json.dumps(report, indent=2, sort_keys=True) + "\n",
+        )
+        return report
