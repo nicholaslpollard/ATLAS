@@ -93,6 +93,22 @@ def feature_promotion_source_fingerprint(
     )
 
 
+def rollback_feature_path(
+    *,
+    derived_root: Path,
+    baseline_row: dict[str, object],
+) -> Path:
+    """Resolve a frozen production feature row without assuming an absolute path field."""
+
+    relative = baseline_row.get("relative_path")
+    if relative is None or not str(relative).strip():
+        raise ValueError("Gate 9-C rollback baseline row lacks relative_path")
+    relative_path = Path(str(relative))
+    if relative_path.is_absolute():
+        raise ValueError("Gate 9-C rollback baseline relative_path must be relative")
+    return Path(derived_root) / relative_path
+
+
 class HistoricalBackfillDailyFeaturePromotionPreflight:
     """Read-only Gate 9-C promotion planning over the accepted Gate 9-B replay.
 
@@ -272,10 +288,13 @@ class HistoricalBackfillDailyFeaturePromotionPreflight:
             date.fromisoformat(str(row["session_date"])): row for row in baseline_rows
         }
         production_state_rows, production_state_bytes = self._production_state_inventory()
-        baseline_feature_bytes = sum(
-            Path(str(row["path"])).stat().st_size
+        derived_root = self.settings.resolved_path(self.settings.data.paths.derived)
+        baseline_feature_paths = [
+            rollback_feature_path(derived_root=derived_root, baseline_row=row)
             for row in baseline_rows
-            if Path(str(row["path"])).is_file()
+        ]
+        baseline_feature_bytes = sum(
+            path.stat().st_size for path in baseline_feature_paths if path.is_file()
         )
         baseline_manifest_bytes = sum(
             Path(str(row["manifest_path"])).stat().st_size
