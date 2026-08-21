@@ -7,6 +7,7 @@ from typing import Any
 
 import duckdb
 import numpy as np
+import pandas as pd
 
 from packages.core.atomic_io import atomic_write_text
 from packages.core.enums import Timeframe
@@ -29,6 +30,27 @@ from packages.features.historical_backfill_replay_build import (
 from packages.features.incremental import IncrementalFeatureEngine
 from packages.features.state_checkpoint import feature_state_fingerprint
 from packages.schemas.feature import core_feature_storage_schema_matches
+
+
+def feature_keys_equal_after_utc_normalization(
+    expected: pd.DataFrame,
+    actual: pd.DataFrame,
+) -> bool:
+    """Compare exact feature keys without timezone-alias dtype false negatives."""
+
+    if len(expected) != len(actual):
+        return False
+    expected_symbols = expected["symbol"].astype(str).to_numpy()
+    actual_symbols = actual["symbol"].astype(str).to_numpy()
+    if not np.array_equal(expected_symbols, actual_symbols):
+        return False
+    expected_ns = pd.to_datetime(expected["timestamp_utc"], utc=True, errors="raise").astype(
+        "int64"
+    ).to_numpy()
+    actual_ns = pd.to_datetime(actual["timestamp_utc"], utc=True, errors="raise").astype(
+        "int64"
+    ).to_numpy()
+    return bool(np.array_equal(expected_ns, actual_ns))
 
 
 class HistoricalBackfillDailyFeatureReplayValidator:
@@ -352,11 +374,7 @@ class HistoricalBackfillDailyFeatureReplayValidator:
         expected = compute_core_features(source)
         expected = expected[["symbol", "timestamp_utc", *feature_names]].reset_index(drop=True)
         actual = actual[["symbol", "timestamp_utc", *feature_names]].reset_index(drop=True)
-        keys_exact = (
-            len(expected) == len(actual)
-            and expected["symbol"].astype(str).equals(actual["symbol"].astype(str))
-            and expected["timestamp_utc"].equals(actual["timestamp_utc"])
-        )
+        keys_exact = feature_keys_equal_after_utc_normalization(expected, actual)
         if not keys_exact:
             return {
                 "sentinels": len(sentinels),
