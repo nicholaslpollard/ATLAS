@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from packages.execution.phase15_closeout import PHASE15_CLOSEOUT_CONTRACT_VERSION, PHASE15_NEXT_PHASE
+from packages.execution.phase15_foundation import (
+    PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
+    PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END,
+    PHASE15_ACCEPTED_CUMULATIVE_POLICY_FINGERPRINT,
+    PHASE15_CUMULATIVE_FOUNDATION_BINDING_CONTRACT_VERSION,
+)
 from packages.execution.phase15_policy import (
     PHASE15_AI_DISPOSITION_IS_EXECUTION_AUTHORITY,
     PHASE15_ALLOWED_BROKERS,
@@ -11,6 +18,7 @@ from packages.execution.phase15_policy import (
     PHASE15_MAX_QUOTE_AGE_SECONDS,
     PHASE15_MIN_EXECUTABLE_REWARD_TO_RISK,
     PHASE15_PRIMARY_BROKER,
+    PHASE15_REQUIRE_ACCEPTED_CUMULATIVE_FOUNDATION,
     PHASE15_REQUIRE_BROKER_PREFLIGHT,
     PHASE15_REQUIRE_BROKER_RECONCILIATION_BEFORE_SUBMIT,
     PHASE15_REQUIRE_CURRENT_BROKER_RISK_REVALIDATION,
@@ -27,6 +35,7 @@ from packages.execution.phase15_policy import (
 )
 from packages.execution.phase15_run import PHASE15_RUN_MANIFEST_CONTRACT_VERSION
 from packages.execution.phase15_source import PHASE15_INPUT_CONTRACT_VERSION
+from packages.execution.phase15_validation import PHASE15_VALIDATION_CONTRACT_VERSION
 from packages.schemas.broker_switch import BROKER_SWITCH_AUTHORIZATION_CONTRACT_VERSION
 from packages.schemas.execution import (
     BROKER_ACCOUNT_CONTRACT_VERSION,
@@ -62,6 +71,13 @@ def main() -> None:
     outcome_fields = set(ExecutionOutcome.model_fields)
     order_plan_schema = BrokerOrderPlan.model_json_schema()["properties"]
     checks = {
+        "cumulative_foundation_required": PHASE15_REQUIRE_ACCEPTED_CUMULATIVE_FOUNDATION is True,
+        "cumulative_foundation_fingerprint_locked": PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT
+        == "6a3ff7ad3b6fc7dff95df42ec3cc89bfc38ab66f93bc4a125d4d1d87c85a63f6",
+        "cumulative_policy_fingerprint_locked": PHASE15_ACCEPTED_CUMULATIVE_POLICY_FINGERPRINT
+        == "ad3039c63aceedab5176d674bcab5b7203cbb22b9440295a7a76bca7b9750375",
+        "cumulative_history_end_locked": PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END.isoformat()
+        == "2026-08-14",
         "webull_primary": PHASE15_PRIMARY_BROKER == "webull",
         "alpaca_secondary": PHASE15_SECONDARY_BROKER == "alpaca",
         "allowed_brokers_exact": PHASE15_ALLOWED_BROKERS == ("webull", "alpaca"),
@@ -93,8 +109,11 @@ def main() -> None:
             "can_change_strategy_support",
             "can_change_thresholds",
         }.issubset(outcome_fields),
+        "phase16_is_control_plane_not_live_promotion": PHASE15_NEXT_PHASE
+        == "PHASE_16_BROWSER_CONTROL_PLANE_PRODUCTION_OPERATIONS",
         "policy_fingerprint_present": len(phase15_policy_fingerprint()) == 64,
     }
+    print(f"Phase 15 cumulative binding contract: {PHASE15_CUMULATIVE_FOUNDATION_BINDING_CONTRACT_VERSION}")
     print(f"Phase 15 input contract: {PHASE15_INPUT_CONTRACT_VERSION}")
     print(f"Phase 15 intent contract: {EXECUTION_INTENT_CONTRACT_VERSION}")
     print(f"Phase 15 order-plan contract: {BROKER_ORDER_PLAN_CONTRACT_VERSION}")
@@ -109,6 +128,9 @@ def main() -> None:
     print(f"Phase 15 broker switch contract: {BROKER_SWITCH_AUTHORIZATION_CONTRACT_VERSION}")
     print(f"Phase 15 outcome contract: {EXECUTION_OUTCOME_CONTRACT_VERSION}")
     print(f"Phase 15 run manifest contract: {PHASE15_RUN_MANIFEST_CONTRACT_VERSION}")
+    print(f"Phase 15 independent validation contract: {PHASE15_VALIDATION_CONTRACT_VERSION}")
+    print(f"Phase 15 closeout contract: {PHASE15_CLOSEOUT_CONTRACT_VERSION}")
+    print(f"Phase 15 accepted cumulative foundation: {PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT}")
     print(f"Phase 15 policy fingerprint: {phase15_policy_fingerprint()}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
