@@ -41,13 +41,18 @@ from .cleanup_planner import (
     ControlPlaneCleanupPlannerError,
     Phase16CleanupPlanner,
 )
+from .cleanup_processor import (
+    ControlPlaneCleanupProcessorBlocked,
+    ControlPlaneCleanupProcessorError,
+    Phase16CleanupProcessor,
+)
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .session import ControlPlaneSessionGuard
 from .status import ControlPlaneStatusError, Phase16StatusService
 
 
 CONTROL_PLANE_HTTP_CONTRACT_VERSION = (
-    "control-plane-http-v5-loopback-browser-switch-cleanup-plan-review-no-provider-writes"
+    "control-plane-http-v6-loopback-browser-cleanup-review-close-no-provider-writes"
 )
 DEFAULT_CONTROL_PLANE_PORT = 8765
 MAX_JSON_BODY_BYTES = 64 * 1024
@@ -115,6 +120,7 @@ class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
         broker_switch_processor: Phase16BrokerSwitchProcessor | None = None,
         cleanup_planner: Phase16CleanupPlanner | None = None,
         cleanup_plan_ledger: ControlPlaneCleanupPlanLedger | None = None,
+        cleanup_review_processor: Phase16CleanupProcessor | None = None,
         web_root: Path | None = None,
     ) -> None:
         self.service = service
@@ -133,6 +139,12 @@ class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
             service.settings,
             status_service=service,
             ledger=self.action_ledger,
+        )
+        self.cleanup_review_processor = cleanup_review_processor or Phase16CleanupProcessor(
+            service.settings,
+            status_service=service,
+            action_ledger=self.action_ledger,
+            cleanup_plan_ledger=self.cleanup_plan_ledger,
         )
         self.web_root = (
             web_root.resolve()
@@ -293,6 +305,8 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 else None
             ),
             "provider_write_authorized": False,
+            "cleanup_provider_processor_exposed": False,
+            "cleanup_review_close_present": True,
             "provider_write_endpoints_present": False,
         }
 
@@ -319,6 +333,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                         "runtime_state_valid": status.runtime_state_valid,
                         "action_ledger_valid": status.action_ledger_valid,
                         "provider_write_uncertain": status.provider_write_uncertain,
+                        "cleanup_provider_processor_exposed": False,
                         "provider_write_endpoints_present": False,
                         "live_execution_promoted": False,
                     },
@@ -456,9 +471,11 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             return
         path = urlsplit(self.path).path.rstrip("/") or "/"
         action_request = path == "/api/v1/actions/request"
-        action_confirm = path.startswith("/api/v1/actions/") and path.endswith(
-            "/confirm"
-        ) and not path.endswith("/cleanup-plan/confirm")
+        action_confirm = (
+            path.startswith("/api/v1/actions/")
+            and path.endswith("/confirm")
+            and not path.endswith("/cleanup-plan/confirm")
+        )
         action_process = path.startswith("/api/v1/actions/") and path.endswith(
             "/process"
         )
@@ -468,6 +485,9 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
         cleanup_plan_confirm = path.startswith("/api/v1/actions/") and path.endswith(
             "/cleanup-plan/confirm"
         )
+        cleanup_review_close = path.startswith("/api/v1/actions/") and path.endswith(
+            "/cleanup-plan/close-review"
+        )
         if not any(
             (
                 action_request,
@@ -475,6 +495,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 action_process,
                 cleanup_plan_build,
                 cleanup_plan_confirm,
+                cleanup_review_close,
             )
         ):
             self._method_not_allowed()
@@ -524,6 +545,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                         "cleanup_plan_confirmed": False,
                         "provider_write_authorized": False,
                         "provider_write_endpoint_invoked": False,
+                        "cleanup_provider_processor_exposed": False,
                         "provider_write_endpoints_present": False,
                         "live_execution_promoted": False,
                     },
@@ -545,6 +567,37 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                         "cleanup_plan_confirmed": True,
                         "provider_write_authorized": False,
                         "provider_write_endpoint_invoked": False,
+                        "cleanup_provider_processor_exposed": False,
+                        "provider_write_endpoints_present": False,
+                        "live_execution_promoted": False,
+                    },
+                )
+                return
+            elif cleanup_review_close:
+                parts = path.split("/")
+                if len(parts) != 7 or parts[:4] != ["", "api", "v1", "actions"]:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
+                    return
+                if payload != {"close_review": True}:
+                    raise ValueError("CLOSE_REVIEW_TRUE_REQUIRED")
+                action_id = parts[4]
+                existing = self.atlas_server.action_ledger.get(action_id)
+                if not _is_cleanup_action(existing.request.action_kind):
+                    self._send_json(
+                        HTTPStatus.CONFLICT,
+                        {"error": "CLEANUP_REVIEW_CLOSE_NOT_AVAILABLE_FOR_ACTION"},
+                    )
+                    return
+                record = self.atlas_server.cleanup_review_processor.process(action_id)
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "record": record.model_dump(mode="json"),
+                        "review_closed": record.state.value
+                        in {"BLOCKED", "COMPLETED", "FAILED"},
+                        "provider_write_attempted": record.provider_write_attempted,
+                        "provider_write_endpoint_invoked": False,
+                        "cleanup_provider_processor_exposed": False,
                         "provider_write_endpoints_present": False,
                         "live_execution_promoted": False,
                     },
@@ -595,6 +648,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except (
             ControlPlaneCleanupPlanConflict,
             ControlPlaneCleanupPlannerBlocked,
+            ControlPlaneCleanupProcessorBlocked,
         ) as exc:
             self._send_json(
                 HTTPStatus.CONFLICT,
@@ -609,6 +663,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             ControlPlaneActionLedgerError,
             ControlPlaneCleanupPlanLedgerError,
             ControlPlaneCleanupPlannerError,
+            ControlPlaneCleanupProcessorError,
             ValueError,
             json.JSONDecodeError,
         ):
@@ -631,6 +686,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 "action_request_endpoints_present": True,
                 "broker_switch_local_routing_processor_present": True,
                 "cleanup_plan_review_endpoints_present": True,
+                "cleanup_review_close_present": True,
                 "cleanup_provider_processor_exposed": False,
                 "provider_write_endpoints_present": False,
             },
@@ -653,6 +709,7 @@ def create_status_server(
     broker_switch_processor: Phase16BrokerSwitchProcessor | None = None,
     cleanup_planner: Phase16CleanupPlanner | None = None,
     cleanup_plan_ledger: ControlPlaneCleanupPlanLedger | None = None,
+    cleanup_review_processor: Phase16CleanupProcessor | None = None,
     web_root: Path | None = None,
 ) -> AtlasControlPlaneHTTPServer:
     if not is_loopback_host(host):
@@ -667,6 +724,7 @@ def create_status_server(
         broker_switch_processor=broker_switch_processor,
         cleanup_planner=cleanup_planner,
         cleanup_plan_ledger=cleanup_plan_ledger,
+        cleanup_review_processor=cleanup_review_processor,
         web_root=web_root,
     )
 
@@ -689,6 +747,7 @@ def main() -> None:
     print("  audited request/confirmation endpoints: enabled")
     print("  broker-switch local routing processor: enabled")
     print("  cleanup exact-plan review/confirmation: enabled")
+    print("  cleanup review close: enabled (read/reconcile/local terminal state only)")
     print("  cleanup provider processor: not exposed")
     print("  provider write endpoints: disabled")
     print("  live execution promotion: disabled")
