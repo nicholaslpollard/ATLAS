@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import json
+import threading
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Callable
 
+from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
 from packages.schemas.control_plane_runtime import (
     CONTROL_PLANE_RUNTIME_CONTRACT_VERSION,
@@ -16,13 +17,16 @@ class ControlPlaneRuntimeStateError(RuntimeError):
     pass
 
 
-class ControlPlaneRuntimeStateStore:
-    """Read the Phase 16 operational state without creating or mutating it.
+class ControlPlaneRuntimeStateConflict(ControlPlaneRuntimeStateError):
+    pass
 
-    A missing state file means no explicit selection has ever been made and returns an
-    in-memory synthetic default. Invalid/tampered state fails closed; it is never replaced
-    with a default. Mutation methods are intentionally absent until the audited action
-    ledger is implemented.
+
+class ControlPlaneRuntimeStateStore:
+    """Revision-checked operational state store.
+
+    Missing state is an in-memory unselected default and is never written implicitly.
+    Persisted transitions must already be bound to an audit event hash; writes are atomic,
+    fsynced, and compare the expected prior revision before promotion.
     """
 
     def __init__(
@@ -35,6 +39,7 @@ class ControlPlaneRuntimeStateStore:
         derived = settings.resolved_path(settings.data.paths.derived)
         self.root = derived / "control_plane" / "v1"
         self.state_path = self.root / "runtime_state.json"
+        self._lock = threading.RLock()
 
     def load(self) -> ControlPlaneRuntimeState:
         if not self.state_path.exists():
@@ -46,7 +51,9 @@ class ControlPlaneRuntimeStateStore:
         try:
             raw = json.loads(self.state_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            raise ControlPlaneRuntimeStateError("runtime state is unreadable or invalid JSON") from exc
+            raise ControlPlaneRuntimeStateError(
+                "runtime state is unreadable or invalid JSON"
+            ) from exc
         if not isinstance(raw, dict):
             raise ControlPlaneRuntimeStateError("runtime state root must be a JSON object")
         if raw.get("contract_version") != CONTROL_PLANE_RUNTIME_CONTRACT_VERSION:
@@ -58,4 +65,47 @@ class ControlPlaneRuntimeStateStore:
         try:
             return ControlPlaneRuntimeState.model_validate(raw)
         except Exception as exc:
-            raise ControlPlaneRuntimeStateError("runtime state contract validation failed") from exc
+            raise ControlPlaneRuntimeStateError(
+                "runtime state contract validation failed"
+            ) from exc
+
+    def persist_transition(
+        self,
+        state: ControlPlaneRuntimeState,
+        *,
+        expected_prior_revision: int,
+    ) -> ControlPlaneRuntimeState:
+        with self._lock:
+            current = self.load()
+            if current.revision != expected_prior_revision:
+                raise ControlPlaneRuntimeStateConflict(
+                    f"runtime revision changed: expected {expected_prior_revision}, found {current.revision}"
+                )
+            if state.source != "persisted":
+                raise ControlPlaneRuntimeStateError(
+                    "runtime persistence requires a persisted-source state"
+                )
+            if state.revision != expected_prior_revision + 1:
+                raise ControlPlaneRuntimeStateError(
+                    "runtime transition revision must increment exactly once"
+                )
+            if state.updated_at_utc < current.updated_at_utc:
+                raise ControlPlaneRuntimeStateError(
+                    "runtime transition timestamp cannot move backward"
+                )
+            if state.last_transition_action_id is None or state.last_transition_audit_hash is None:
+                raise ControlPlaneRuntimeStateError(
+                    "runtime transition must be bound to an action and audit hash"
+                )
+            payload = json.dumps(
+                state.model_dump(mode="json"),
+                sort_keys=True,
+                separators=(",", ":"),
+            ) + "\n"
+            atomic_write_text(self.state_path, payload, fsync=True)
+            reloaded = self.load()
+            if reloaded != state:
+                raise ControlPlaneRuntimeStateError(
+                    "runtime state re-read differs after atomic persistence"
+                )
+            return reloaded
