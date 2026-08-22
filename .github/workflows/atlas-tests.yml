@@ -90,5 +90,8 @@ jobs:
       - name: Validate Phase 15 contracts
         run: python scripts/validate_phase15.py
 
+      - name: Validate Phase 16 contracts
+        run: python scripts/validate_phase16.py
+
       - name: Run tests
         run: python -m pytest -q
