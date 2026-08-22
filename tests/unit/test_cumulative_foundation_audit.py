@@ -8,9 +8,21 @@ import pandas as pd
 
 from packages.data.duckdb_connection import connect_utc
 from packages.features.engine import compute_core_features
-from packages.features.feature_registry import CORE_FEATURE_REGISTRY
+from packages.features.feature_registry import (
+    CORE_FEATURE_CONTRACT_VERSION,
+    CORE_FEATURE_REGISTRY,
+)
+from packages.features.partition_store import (
+    FEATURE_PARTITION_CONTRACT_VERSION,
+    FEATURE_PARTITION_SCHEMA_VERSION,
+    FeaturePartitionManifest,
+)
 from packages.validation.cumulative_foundation import _deterministic_take, _partition_date
 from packages.validation.cumulative_integrity import _daily_integrity_sql, _yearly_diagnostics_sql
+from packages.validation.cumulative_lifecycle_integrity import (
+    _identity_v2_report_checks,
+    _state_chain_value_checks,
+)
 from packages.validation.cumulative_policy import (
     CUMULATIVE_ALPACA_AUTHORITY_END,
     CUMULATIVE_AUDIT_BROKER_WRITES,
@@ -51,6 +63,27 @@ def _bars(rows: int = 360) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(data)
+
+
+def _manifest() -> FeaturePartitionManifest:
+    return FeaturePartitionManifest(
+        schema_version=FEATURE_PARTITION_SCHEMA_VERSION,
+        partition_contract_version=FEATURE_PARTITION_CONTRACT_VERSION,
+        feature_contract_version=CORE_FEATURE_CONTRACT_VERSION,
+        feature_registry_fingerprint=CORE_FEATURE_REGISTRY.fingerprint(),
+        timeframe="1d",
+        trading_date="2021-01-04",
+        source_path="source.parquet",
+        source_sha256="source-sha",
+        input_state_fingerprint="input-state",
+        output_state_fingerprint="output-state",
+        dependency_fingerprint="dependency",
+        feature_path="feature.parquet",
+        feature_sha256="feature-sha",
+        row_count=123,
+        symbol_count=45,
+        created_at_utc="2026-08-22T00:00:00+00:00",
+    )
 
 
 def test_cumulative_policy_locks_split_provider_and_regime_origins() -> None:
@@ -132,6 +165,43 @@ def test_yearly_diagnostics_sql_avoids_reserved_aliases() -> None:
         (2025, 2, 2, 2, 1500.0, 105.0),
         (2026, 1, 1, 1, 3000.0, 120.0),
     ]
+
+
+def test_daily_manifest_is_checked_against_gate9c_lifecycle_state_chain() -> None:
+    manifest = _manifest()
+    chain = {
+        "input_state_fingerprint": "input-state",
+        "output_state_fingerprint": "output-state",
+        "source_sha256": "source-sha",
+        "candidate_feature_sha256": "feature-sha",
+        "row_count": 123,
+        "symbol_count": 45,
+    }
+    assert all(_state_chain_value_checks(manifest, chain).values())
+    chain["input_state_fingerprint"] = "lifecycle-transition-state"
+    checks = _state_chain_value_checks(manifest, chain)
+    assert checks["input_state_exact"] is False
+    assert all(value for name, value in checks.items() if name != "input_state_exact")
+
+
+def test_identity_audit_accepts_gate4c_v2_quarantine_contract() -> None:
+    report = {
+        "contract_version": "historical-backfill-identity-segments-v2-cusip-ambiguous-node-quarantine",
+        "parent_segment_contract_version": "historical-backfill-identity-segments-v1-safe-rename-linear-chains",
+        "identity_policy_contract_version": "historical-backfill-identity-policy-v1-corporate-action-evidence-only",
+        "canonical_data_modified": False,
+        "edge_component_accounting": True,
+        "chain_coverage_exact": True,
+        "eligible_safe_edges_consumed_exact": True,
+        "quarantine_accounting_exact": True,
+    }
+    checks = _identity_v2_report_checks(report)
+    # Use the live constants instead of hard-coding acceptance in the auditor itself.
+    assert checks["segment_policy_contract"] is True
+    assert checks["parent_segment_contract"] is True
+    assert checks["segment_canonical_unchanged"] is True
+    assert checks["eligible_safe_edges_consumed_exact"] is True
+    assert checks["quarantine_accounting_exact"] is True
 
 
 def test_independent_replay_matches_production_core33_on_synthetic_stream() -> None:
