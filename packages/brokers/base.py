@@ -29,12 +29,22 @@ class BrokerSubmissionUncertain(BrokerAdapterError):
     """Submission may have reached the broker; callers must reconcile, never retry blindly."""
 
 
+class BrokerMutationUncertain(BrokerAdapterError):
+    """A non-submission broker mutation may have taken effect.
+
+    This includes cancellation/close requests that encounter a transport exception or an
+    acknowledgement followed by failed reconciliation. Callers must stop, mark provider
+    state uncertain, and reconcile before considering any further mutation. Blind retry is
+    forbidden because the original request may already have changed broker state.
+    """
+
+
 class BrokerAdapter(ABC):
     """Narrow execution adapter used by the Phase 15 orchestration layer.
 
     Implementations normalize provider-specific account/order semantics into immutable
     ATLAS schemas. They must never choose a different broker, alter an order plan, or
-    silently retry a submission with a new client order id.
+    silently retry a submission/mutation whose provider outcome may be uncertain.
     """
 
     broker: BrokerName
@@ -67,4 +77,5 @@ class BrokerAdapter(ABC):
 
     @abstractmethod
     def cancel(self, client_order_id: str) -> BrokerOrderSnapshot:
+        """Cancel exact order or raise BrokerMutationUncertain when outcome is ambiguous."""
         raise NotImplementedError

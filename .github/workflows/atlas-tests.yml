@@ -39,6 +39,9 @@ jobs:
       - name: Compile
         run: python -m compileall -q packages apps scripts tests
 
+      - name: Validate browser JavaScript syntax
+        run: node --check apps/web/app.js
+
       - name: Validate foundation
         run: python scripts/validate_foundation.py
 
@@ -89,6 +92,12 @@ jobs:
 
       - name: Validate Phase 15 contracts
         run: python scripts/validate_phase15.py
+
+      - name: Validate Phase 16 contracts
+        run: python scripts/validate_phase16.py
+
+      - name: Validate Phase 16 closeout contracts
+        run: python scripts/validate_phase16_closeout.py
 
       - name: Run tests
         run: python -m pytest -q
