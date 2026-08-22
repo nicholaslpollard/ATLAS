@@ -25,11 +25,11 @@ def _history_row(
 ) -> dict[str, object]:
     row: dict[str, object] = {
         "observation_key": key,
-        "session_date": session,
+        "session_date": date.fromisoformat(session),
         "symbol": key,
         "instrument_id": instrument,
         "observation_close": 100.0,
-        "future_date": future,
+        "future_date": date.fromisoformat(future),
         "future_close": 100.0 * (1.0 + value / 100.0),
         "forward_return": value / 100.0,
         "market_regime_available": True,
