@@ -8,7 +8,7 @@ from pathlib import Path
 from packages.core.settings import load_settings
 from packages.validation.cumulative_acceptance import CumulativeFoundationIndependentValidator
 from packages.validation.cumulative_foundation import CumulativeFoundationAuditError
-from packages.validation.cumulative_integrity import CumulativeFoundationIntegrityAuditor
+from packages.validation.cumulative_lifecycle_integrity import CumulativeFoundationLifecycleAwareAuditor
 from packages.validation.cumulative_policy import cumulative_policy_fingerprint
 
 
@@ -55,12 +55,20 @@ def _print_component_summary(root: Path) -> None:
         print("  feature manifest/hash lineage:")
         for tf in ("1d", "1h", "4h"):
             item = dict(manifests.get(tf) or {})
+            extra = ""
+            if tf == "1d":
+                extra = (
+                    f" lifecycle={int(item.get('lifecycle_event_session_count', 0)):,}"
+                    f" state-transitions={int(item.get('adjacent_state_transition_count', 0)):,}"
+                )
             print(
                 f"    {tf}: checked={int(item.get('checked_manifest_count', 0)):,} "
                 f"failures={int(item.get('failure_count', 0)):,} "
-                f"pre-origin={int(item.get('forbidden_pre_origin_manifest_count', 0)):,} "
+                f"pre-origin={int(item.get('forbidden_pre_origin_manifest_count', 0)):,}{extra} "
                 f"pass={item.get('pass')}"
             )
+            if item.get("failure_samples"):
+                print(f"      first failure: {list(item['failure_samples'])[0]}")
 
     bars = _load(root / "05_intraday_reconciliation.json")
     if bars:
@@ -95,8 +103,10 @@ def _print_component_summary(root: Path) -> None:
     if historical:
         print("  historical identity / extension evidence:")
         identity_checks = dict(historical.get("identity_checks") or {})
+        false_identity = [name for name, value in identity_checks.items() if not value]
         print(f"    identity rows:                  {int(historical.get('identity_rows', 0)):,}")
         print(f"    identity checks all pass:       {bool(identity_checks) and all(identity_checks.values())}")
+        print(f"    identity failed checks:         {false_identity}")
         print(f"    extension accepted:             {historical.get('accepted')}")
         print(f"    Phase 10 authority preserved:   {historical.get('phase10_authority_reference_present')}")
         print(f"    pass:                           {historical.get('pass')}")
@@ -114,7 +124,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     settings = load_settings()
-    auditor = CumulativeFoundationIntegrityAuditor(settings)
+    auditor = CumulativeFoundationLifecycleAwareAuditor(settings)
 
     print("ATLAS Cumulative Data & Lineage Integrity Audit v1")
     print(
