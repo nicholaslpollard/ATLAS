@@ -9,7 +9,11 @@ from packages.brokers.base import (
     BrokerSubmissionUncertain,
 )
 from packages.execution.order_builder import build_broker_order_plan
-from packages.execution.validator import reconcile_broker, validate_submission_gate
+from packages.execution.validator import (
+    reconcile_broker,
+    revalidate_execution_risk,
+    validate_submission_gate,
+)
 from packages.schemas.execution import (
     BrokerPreflightResult,
     ExecutionEnvironment,
@@ -35,6 +39,7 @@ class ExecutionEngine:
         intent: ExecutionIntent,
         adapter: BrokerAdapter,
         *,
+        max_abs_correlation: float | None = None,
         now_utc: datetime | None = None,
     ) -> ExecutionAttemptRecord:
         now = (now_utc or datetime.now(UTC)).astimezone(UTC)
@@ -55,6 +60,12 @@ class ExecutionEngine:
         if existing is not None:
             if existing.broker != intent.broker:
                 raise ExecutionEngineError("existing idempotent order belongs to a different broker")
+            risk_revalidation = revalidate_execution_risk(
+                intent,
+                reconciliation,
+                new_submission=False,
+                now_utc=now,
+            )
             preflight = BrokerPreflightResult(
                 broker=intent.broker,
                 intent_id=intent.intent_id,
@@ -64,18 +75,12 @@ class ExecutionEngine:
                 provider_message="Existing deterministic client order id reused; no new submission.",
                 reason_codes=("EXISTING_CLIENT_ORDER_ID_REUSED", "NO_NEW_BROKER_WRITE"),
             )
-            validate_submission_gate(
-                intent,
-                plan,
-                adapter=adapter,
-                reconciliation=reconciliation,
-                preflight=preflight,
-            )
             return ExecutionAttemptRecord(
                 attempted_at_utc=now,
                 intent=intent,
                 order_plan=plan,
                 reconciliation_before=reconciliation,
+                risk_revalidation=risk_revalidation,
                 preflight=preflight,
                 order_snapshot=existing,
                 existing_order_reused=True,
@@ -85,6 +90,15 @@ class ExecutionEngine:
                 live_submission_performed=False,
             )
 
+        risk_revalidation = revalidate_execution_risk(
+            intent,
+            reconciliation,
+            max_abs_correlation=max_abs_correlation,
+            new_submission=True,
+            now_utc=now,
+        )
+        if not risk_revalidation.admissible:
+            raise ExecutionEngineError("current broker risk envelope rejected new submission")
         try:
             preflight = adapter.preview(plan)
         except BrokerAdapterError as exc:
@@ -94,6 +108,7 @@ class ExecutionEngine:
             plan,
             adapter=adapter,
             reconciliation=reconciliation,
+            risk_revalidation=risk_revalidation,
             preflight=preflight,
         )
 
@@ -117,6 +132,7 @@ class ExecutionEngine:
             intent=intent,
             order_plan=plan,
             reconciliation_before=reconciliation,
+            risk_revalidation=risk_revalidation,
             preflight=preflight,
             order_snapshot=submitted,
             existing_order_reused=False,
