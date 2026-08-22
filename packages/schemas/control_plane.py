@@ -31,6 +31,7 @@ class ControlPlaneActionState(StrEnum):
     REQUESTED = "REQUESTED"
     AWAITING_CONFIRMATION = "AWAITING_CONFIRMATION"
     AUTHORIZED = "AUTHORIZED"
+    EXECUTING = "EXECUTING"
     BLOCKED = "BLOCKED"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
@@ -69,8 +70,8 @@ class ControlPlaneActionRequest(BaseModel):
         if self.action_kind == ControlPlaneActionKind.BROKER_SWITCH:
             if self.target_broker not in {BrokerName.WEBULL, BrokerName.ALPACA}:
                 raise ValueError("broker switch target must be Webull or Alpaca")
-            if self.environment not in {ExecutionEnvironment.SHADOW, ExecutionEnvironment.PAPER}:
-                raise ValueError("broker switch environment must be shadow or paper")
+            if self.environment != ExecutionEnvironment.PAPER:
+                raise ValueError("Webull/Alpaca broker switching is paper-only in Phase 16")
         elif self.action_kind in {
             ControlPlaneActionKind.CANCEL_OPEN_ORDERS,
             ControlPlaneActionKind.FLATTEN_POSITIONS,
