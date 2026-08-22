@@ -132,7 +132,7 @@ def main() -> None:
         "flatten_provider_writes_disabled": PHASE16_FLATTEN_PROVIDER_WRITES_ENABLED is False,
         "flatten_close_method_unaccepted": PHASE16_FLATTEN_CLOSE_ORDER_METHOD_ACCEPTED is False,
         "http_contract_locked": CONTROL_PLANE_HTTP_CONTRACT_VERSION
-        == "control-plane-http-v5-loopback-browser-switch-cleanup-plan-review-no-provider-writes",
+        == "control-plane-http-v6-loopback-browser-cleanup-review-close-no-provider-writes",
         "http_json_body_cap_locked": MAX_JSON_BODY_BYTES == 64 * 1024,
         "http_static_asset_cap_locked": MAX_STATIC_ASSET_BYTES == 1024 * 1024,
         "http_default_port_locked": DEFAULT_CONTROL_PLANE_PORT == 8765,
