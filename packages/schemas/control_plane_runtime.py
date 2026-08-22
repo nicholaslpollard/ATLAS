@@ -11,7 +11,7 @@ from packages.schemas.execution import BrokerName, ExecutionEnvironment
 
 
 CONTROL_PLANE_RUNTIME_CONTRACT_VERSION = (
-    "control-plane-runtime-v1-explicit-selection-uncertainty-fail-closed"
+    "control-plane-runtime-v2-explicit-selection-audit-bound-uncertainty-fail-closed"
 )
 
 
@@ -28,6 +28,8 @@ class ControlPlaneRuntimeState(BaseModel):
     provider_write_uncertain: bool = False
     active_action_id: str | None = Field(default=None, min_length=1, max_length=64)
     uncertain_action_id: str | None = Field(default=None, min_length=1, max_length=64)
+    last_transition_action_id: str | None = Field(default=None, min_length=1, max_length=64)
+    last_transition_audit_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     source: Literal["synthetic_default", "persisted"]
 
     @model_validator(mode="after")
@@ -50,6 +52,10 @@ class ControlPlaneRuntimeState(BaseModel):
             )
         if self.uncertain_action_id is not None and self.active_action_id is not None:
             raise ValueError("uncertain runtime state cannot also claim an active action")
+        if (self.last_transition_action_id is None) != (
+            self.last_transition_audit_hash is None
+        ):
+            raise ValueError("runtime transition action/hash must be set or unset together")
         if self.source == "synthetic_default":
             if self.revision != 0:
                 raise ValueError("synthetic default runtime state must have revision zero")
@@ -59,6 +65,13 @@ class ControlPlaneRuntimeState(BaseModel):
                 raise ValueError("synthetic default cannot contain action state")
             if self.provider_write_uncertain:
                 raise ValueError("synthetic default cannot contain provider uncertainty")
+            if self.last_transition_action_id is not None:
+                raise ValueError("synthetic default cannot claim an audit-bound transition")
+        else:
+            if self.revision < 1:
+                raise ValueError("persisted runtime state must have revision at least one")
+            if self.last_transition_action_id is None:
+                raise ValueError("persisted runtime state must be audit-bound")
         return self
 
     def authority_fingerprint(self) -> str:
@@ -77,5 +90,7 @@ class ControlPlaneRuntimeState(BaseModel):
             provider_write_uncertain=False,
             active_action_id=None,
             uncertain_action_id=None,
+            last_transition_action_id=None,
+            last_transition_audit_hash=None,
             source="synthetic_default",
         )
