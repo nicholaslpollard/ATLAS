@@ -40,8 +40,8 @@ class ExecutionCaseDispositionRecord(BaseModel):
     broker_initialized: bool
     provider_submission_attempted: bool
     provider_submission_uncertain: bool
-    broker_write_count: int = Field(ge=0)
-    order_write_count: int = Field(ge=0)
+    broker_write_count: int | None = Field(default=0, ge=0)
+    order_write_count: int | None = Field(default=0, ge=0)
     live_write_count: int = Field(ge=0)
     reason_codes: tuple[str, ...]
 
@@ -52,15 +52,19 @@ class ExecutionCaseDispositionRecord(BaseModel):
         if (self.attempt_path is None) != (self.attempt_sha256 is None):
             raise ValueError("attempt path/hash must be supplied together")
         if self.disposition == ExecutionCaseDisposition.BLOCKED:
-            if self.attempt_path is not None or self.provider_submission_attempted:
+            if self.attempt_path is not None:
                 raise ValueError("blocked case cannot carry a completed execution attempt")
-            if self.broker_write_count or self.order_write_count or self.live_write_count:
-                raise ValueError("blocked case cannot claim writes")
+            if self.broker_write_count != 0 or self.order_write_count != 0 or self.live_write_count != 0:
+                raise ValueError("definitively blocked case must have zero writes")
+            if self.provider_submission_uncertain:
+                raise ValueError("blocked case cannot remain provider-uncertain")
         elif self.disposition == ExecutionCaseDisposition.PROVIDER_UNCERTAIN:
             if not self.provider_submission_attempted or not self.provider_submission_uncertain:
                 raise ValueError("uncertain disposition must follow an uncertain provider submission")
             if self.attempt_path is not None:
                 raise ValueError("uncertain submission cannot claim a completed attempt record")
+            if self.broker_write_count is not None or self.order_write_count is not None:
+                raise ValueError("uncertain provider submission must leave broker/order write count unknown")
             if self.live_write_count:
                 raise ValueError("Phase 15 uncertain submission cannot be live")
         else:
@@ -68,6 +72,8 @@ class ExecutionCaseDispositionRecord(BaseModel):
                 raise ValueError("completed/reconciled disposition requires an attempt artifact")
             if self.provider_submission_uncertain:
                 raise ValueError("completed disposition cannot remain provider-uncertain")
+            if self.broker_write_count is None or self.order_write_count is None:
+                raise ValueError("completed disposition requires known write counts")
         if self.disposition == ExecutionCaseDisposition.PAPER_SUBMITTED:
             if not self.provider_submission_attempted or self.broker_write_count != 1 or self.order_write_count != 1:
                 raise ValueError("paper submission must record one broker/order write")
