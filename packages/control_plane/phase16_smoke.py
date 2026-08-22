@@ -4,6 +4,7 @@ import json
 import threading
 import urllib.request
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Callable
 
 from packages.brokers.base import BrokerAdapter
@@ -32,6 +33,10 @@ class Phase16OperationalSmoke:
     By default, a broker factory that raises on construction is installed so an accidental
     provider read causes the smoke to fail immediately. Read-only broker reconciliation is
     available only when the caller explicitly requests it.
+
+    The accepted zero-provider smoke artifact and the optional provider-readonly artifact
+    are deliberately stored at different paths. A later read-only reconciliation must never
+    overwrite the evidence hash-bound into Phase 16 final acceptance.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -39,6 +44,10 @@ class Phase16OperationalSmoke:
         derived = settings.resolved_path(settings.data.paths.derived)
         self.root = derived / "control_plane" / "phase16" / "v1"
         self.report_path = self.root / "phase16_operational_smoke.json"
+        self.readonly_report_path = self.root / "phase16_provider_readonly_smoke.json"
+
+    def output_path(self, *, refresh_brokers: bool) -> Path:
+        return self.readonly_report_path if refresh_brokers else self.report_path
 
     @staticmethod
     def _get_json(base: str, path: str) -> dict[str, object]:
@@ -182,10 +191,11 @@ class Phase16OperationalSmoke:
                 "Phase 16 operational smoke failed: " + ", ".join(failed)
             )
         if write_report:
+            output_path = self.output_path(refresh_brokers=refresh_brokers)
             self.root.mkdir(parents=True, exist_ok=True)
             atomic_write_text(
-                self.report_path,
+                output_path,
                 json.dumps(report, indent=2, sort_keys=True, default=str) + "\n",
             )
-            report["report_path"] = str(self.report_path.resolve())
+            report["report_path"] = str(output_path.resolve())
         return report
