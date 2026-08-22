@@ -15,6 +15,9 @@ from packages.schemas.control_plane import (
     ControlPlaneActionRequest,
     ControlPlaneConfirmationGrant,
 )
+from packages.schemas.control_plane_cleanup import (
+    ControlPlaneCleanupPlanConfirmationGrant,
+)
 from packages.schemas.execution import BrokerName
 
 from .action_ledger import (
@@ -27,13 +30,24 @@ from .broker_switch_processor import (
     ControlPlaneBrokerSwitchError,
     Phase16BrokerSwitchProcessor,
 )
+from .cleanup_plan_ledger import (
+    ControlPlaneCleanupPlanConflict,
+    ControlPlaneCleanupPlanLedger,
+    ControlPlaneCleanupPlanLedgerError,
+    ControlPlaneCleanupPlanNotFound,
+)
+from .cleanup_planner import (
+    ControlPlaneCleanupPlannerBlocked,
+    ControlPlaneCleanupPlannerError,
+    Phase16CleanupPlanner,
+)
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .session import ControlPlaneSessionGuard
 from .status import ControlPlaneStatusError, Phase16StatusService
 
 
 CONTROL_PLANE_HTTP_CONTRACT_VERSION = (
-    "control-plane-http-v4-loopback-browser-switch-local-routing-no-provider-writes"
+    "control-plane-http-v5-loopback-browser-switch-cleanup-plan-review-no-provider-writes"
 )
 DEFAULT_CONTROL_PLANE_PORT = 8765
 MAX_JSON_BODY_BYTES = 64 * 1024
@@ -80,6 +94,13 @@ def _truthy(value: str | None) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _is_cleanup_action(kind: ControlPlaneActionKind) -> bool:
+    return kind in {
+        ControlPlaneActionKind.CANCEL_OPEN_ORDERS,
+        ControlPlaneActionKind.FLATTEN_POSITIONS,
+    }
+
+
 class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -92,6 +113,8 @@ class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
         session_guard: ControlPlaneSessionGuard | None = None,
         action_ledger: ControlPlaneActionLedger | None = None,
         broker_switch_processor: Phase16BrokerSwitchProcessor | None = None,
+        cleanup_planner: Phase16CleanupPlanner | None = None,
+        cleanup_plan_ledger: ControlPlaneCleanupPlanLedger | None = None,
         web_root: Path | None = None,
     ) -> None:
         self.service = service
@@ -102,6 +125,14 @@ class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
             status_service=service,
             ledger=self.action_ledger,
             runtime_store=service.runtime_store,
+        )
+        self.cleanup_plan_ledger = cleanup_plan_ledger or ControlPlaneCleanupPlanLedger(
+            self.action_ledger
+        )
+        self.cleanup_planner = cleanup_planner or Phase16CleanupPlanner(
+            service.settings,
+            status_service=service,
+            ledger=self.action_ledger,
         )
         self.web_root = (
             web_root.resolve()
@@ -241,6 +272,30 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             return False
         return True
 
+    def _cleanup_plan_payload(self, action_id: str) -> dict[str, Any]:
+        record = self.atlas_server.action_ledger.get(action_id)
+        if not _is_cleanup_action(record.request.action_kind):
+            raise ControlPlaneCleanupPlanNotFound(action_id)
+        state = self.atlas_server.cleanup_plan_ledger.state(action_id)
+        latest = state.latest_plan
+        return {
+            "action_id": action_id,
+            "action_state": record.state.value,
+            "cleanup_plan": latest.model_dump(mode="json") if latest is not None else None,
+            "cleanup_plan_fingerprint": (
+                latest.plan_fingerprint() if latest is not None else None
+            ),
+            "cleanup_plan_confirmed": state.confirmation is not None,
+            "confirmed_plan_fingerprint": state.confirmed_plan_fingerprint,
+            "cleanup_plan_confirmation": (
+                state.confirmation.model_dump(mode="json")
+                if state.confirmation is not None
+                else None
+            ),
+            "provider_write_authorized": False,
+            "provider_write_endpoints_present": False,
+        }
+
     def _dispatch_get(self) -> None:
         if not self._authorized_local_request():
             self._send_json(HTTPStatus.FORBIDDEN, {"error": "LOCAL_HOST_REQUIRED"})
@@ -288,6 +343,16 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                             for key in sorted(records)
                         ]
                     },
+                )
+                return
+            if path.startswith("/api/v1/actions/") and path.endswith("/cleanup-plan"):
+                parts = path.split("/")
+                if len(parts) != 7 or parts[:4] != ["", "api", "v1", "actions"]:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
+                    return
+                self._send_json(
+                    HTTPStatus.OK,
+                    self._cleanup_plan_payload(parts[4]),
                 )
                 return
             if path.startswith("/api/v1/actions/"):
@@ -356,7 +421,13 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     row.model_dump(mode="json"),
                 )
                 return
-        except ControlPlaneActionLedgerError:
+        except ControlPlaneActionNotFound:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "ACTION_NOT_FOUND"})
+            return
+        except ControlPlaneCleanupPlanNotFound:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "CLEANUP_PLAN_NOT_FOUND"})
+            return
+        except (ControlPlaneActionLedgerError, ControlPlaneCleanupPlanLedgerError):
             self._send_json(
                 HTTPStatus.CONFLICT, {"error": "ACTION_LEDGER_INVALID"}
             )
@@ -387,11 +458,25 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
         action_request = path == "/api/v1/actions/request"
         action_confirm = path.startswith("/api/v1/actions/") and path.endswith(
             "/confirm"
-        )
+        ) and not path.endswith("/cleanup-plan/confirm")
         action_process = path.startswith("/api/v1/actions/") and path.endswith(
             "/process"
         )
-        if not action_request and not action_confirm and not action_process:
+        cleanup_plan_build = path.startswith("/api/v1/actions/") and path.endswith(
+            "/cleanup-plan"
+        )
+        cleanup_plan_confirm = path.startswith("/api/v1/actions/") and path.endswith(
+            "/cleanup-plan/confirm"
+        )
+        if not any(
+            (
+                action_request,
+                action_confirm,
+                action_process,
+                cleanup_plan_build,
+                cleanup_plan_confirm,
+            )
+        ):
             self._method_not_allowed()
             return
         authorization = self.atlas_server.session_guard.authorize_write(
@@ -414,6 +499,57 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             if action_request:
                 request = ControlPlaneActionRequest.model_validate(payload)
                 record = self.atlas_server.action_ledger.create_request(request)
+            elif cleanup_plan_build:
+                parts = path.split("/")
+                if len(parts) != 7 or parts[:4] != ["", "api", "v1", "actions"]:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
+                    return
+                if payload != {"plan": True}:
+                    raise ValueError("PLAN_TRUE_REQUIRED")
+                action_id = parts[4]
+                existing = self.atlas_server.action_ledger.get(action_id)
+                if not _is_cleanup_action(existing.request.action_kind):
+                    self._send_json(
+                        HTTPStatus.CONFLICT,
+                        {"error": "CLEANUP_PLAN_NOT_AVAILABLE_FOR_ACTION"},
+                    )
+                    return
+                plan = self.atlas_server.cleanup_planner.build(action_id)
+                plan = self.atlas_server.cleanup_plan_ledger.record_plan(plan)
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "cleanup_plan": plan.model_dump(mode="json"),
+                        "cleanup_plan_fingerprint": plan.plan_fingerprint(),
+                        "cleanup_plan_confirmed": False,
+                        "provider_write_authorized": False,
+                        "provider_write_endpoint_invoked": False,
+                        "provider_write_endpoints_present": False,
+                        "live_execution_promoted": False,
+                    },
+                )
+                return
+            elif cleanup_plan_confirm:
+                parts = path.split("/")
+                if len(parts) != 8 or parts[:4] != ["", "api", "v1", "actions"]:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
+                    return
+                action_id = parts[4]
+                grant = ControlPlaneCleanupPlanConfirmationGrant.model_validate(payload)
+                plan = self.atlas_server.cleanup_plan_ledger.confirm_latest(action_id, grant)
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "cleanup_plan": plan.model_dump(mode="json"),
+                        "cleanup_plan_fingerprint": plan.plan_fingerprint(),
+                        "cleanup_plan_confirmed": True,
+                        "provider_write_authorized": False,
+                        "provider_write_endpoint_invoked": False,
+                        "provider_write_endpoints_present": False,
+                        "live_execution_promoted": False,
+                    },
+                )
+                return
             else:
                 parts = path.split("/")
                 if len(parts) != 6 or parts[:4] != ["", "api", "v1", "actions"]:
@@ -452,12 +588,30 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_json(
                 HTTPStatus.NOT_FOUND, {"error": "ACTION_NOT_FOUND"}
             )
+        except ControlPlaneCleanupPlanNotFound:
+            self._send_json(
+                HTTPStatus.NOT_FOUND, {"error": "CLEANUP_PLAN_NOT_FOUND"}
+            )
+        except (
+            ControlPlaneCleanupPlanConflict,
+            ControlPlaneCleanupPlannerBlocked,
+        ) as exc:
+            self._send_json(
+                HTTPStatus.CONFLICT,
+                {"error": "CLEANUP_PLAN_CONFLICT", "detail": str(exc)},
+            )
         except (ControlPlaneActionConflict, ControlPlaneBrokerSwitchError) as exc:
             self._send_json(
                 HTTPStatus.CONFLICT,
                 {"error": "ACTION_CONFLICT", "detail": str(exc)},
             )
-        except (ControlPlaneActionLedgerError, ValueError, json.JSONDecodeError):
+        except (
+            ControlPlaneActionLedgerError,
+            ControlPlaneCleanupPlanLedgerError,
+            ControlPlaneCleanupPlannerError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
             self._send_json(
                 HTTPStatus.BAD_REQUEST, {"error": "ACTION_REQUEST_INVALID"}
             )
@@ -476,6 +630,8 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 "error": "METHOD_NOT_ALLOWED",
                 "action_request_endpoints_present": True,
                 "broker_switch_local_routing_processor_present": True,
+                "cleanup_plan_review_endpoints_present": True,
+                "cleanup_provider_processor_exposed": False,
                 "provider_write_endpoints_present": False,
             },
             allow="GET, HEAD, POST",
@@ -495,6 +651,8 @@ def create_status_server(
     session_guard: ControlPlaneSessionGuard | None = None,
     action_ledger: ControlPlaneActionLedger | None = None,
     broker_switch_processor: Phase16BrokerSwitchProcessor | None = None,
+    cleanup_planner: Phase16CleanupPlanner | None = None,
+    cleanup_plan_ledger: ControlPlaneCleanupPlanLedger | None = None,
     web_root: Path | None = None,
 ) -> AtlasControlPlaneHTTPServer:
     if not is_loopback_host(host):
@@ -507,6 +665,8 @@ def create_status_server(
         session_guard=session_guard,
         action_ledger=action_ledger,
         broker_switch_processor=broker_switch_processor,
+        cleanup_planner=cleanup_planner,
+        cleanup_plan_ledger=cleanup_plan_ledger,
         web_root=web_root,
     )
 
@@ -528,6 +688,8 @@ def main() -> None:
     print("  browser dashboard: enabled")
     print("  audited request/confirmation endpoints: enabled")
     print("  broker-switch local routing processor: enabled")
+    print("  cleanup exact-plan review/confirmation: enabled")
+    print("  cleanup provider processor: not exposed")
     print("  provider write endpoints: disabled")
     print("  live execution promotion: disabled")
     print("  broker polling: lazy; dashboard refresh is explicit")
