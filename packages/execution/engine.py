@@ -23,7 +23,16 @@ from packages.schemas.execution_attempt import ExecutionAttemptRecord
 
 
 class ExecutionEngineError(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        stage: str,
+        provider_submission_attempted: bool = False,
+    ) -> None:
+        super().__init__(message)
+        self.stage = stage
+        self.provider_submission_attempted = provider_submission_attempted
 
 
 class ExecutionEngine:
@@ -51,15 +60,17 @@ class ExecutionEngine:
         except BrokerOrderNotFound:
             existing = None
         except BrokerAdapterError as exc:
-            # If ATLAS cannot prove the deterministic id is absent, submitting a new
-            # order could duplicate exposure. Fail closed before preview/submission.
             raise ExecutionEngineError(
-                "cannot prove deterministic client order id is absent; submission blocked"
+                "cannot prove deterministic client order id is absent; submission blocked",
+                stage="idempotency_query",
             ) from exc
 
         if existing is not None:
             if existing.broker != intent.broker:
-                raise ExecutionEngineError("existing idempotent order belongs to a different broker")
+                raise ExecutionEngineError(
+                    "existing idempotent order belongs to a different broker",
+                    stage="idempotency_query",
+                )
             risk_revalidation = revalidate_execution_risk(
                 intent,
                 reconciliation,
@@ -98,11 +109,17 @@ class ExecutionEngine:
             now_utc=now,
         )
         if not risk_revalidation.admissible:
-            raise ExecutionEngineError("current broker risk envelope rejected new submission")
+            raise ExecutionEngineError(
+                "current broker risk envelope rejected new submission",
+                stage="risk_revalidation",
+            )
         try:
             preflight = adapter.preview(plan)
         except BrokerAdapterError as exc:
-            raise ExecutionEngineError("broker preflight failed closed") from exc
+            raise ExecutionEngineError(
+                "broker preflight failed closed",
+                stage="preflight",
+            ) from exc
         validate_submission_gate(
             intent,
             plan,
@@ -115,16 +132,22 @@ class ExecutionEngine:
         try:
             submitted = adapter.submit(plan)
         except BrokerSubmissionUncertain:
-            # The provider may already hold the order. The only safe next action is
-            # reconciliation by deterministic client id; never call submit again here.
             raise
         except BrokerAdapterError as exc:
-            raise ExecutionEngineError("broker submission failed") from exc
+            raise ExecutionEngineError(
+                "broker submission was definitively rejected/failed",
+                stage="submit",
+                provider_submission_attempted=True,
+            ) from exc
 
         if submitted.client_order_id != plan.client_order_id:
-            raise ExecutionEngineError("broker acknowledgement changed deterministic client order id")
+            raise BrokerSubmissionUncertain(
+                "provider acknowledgement changed deterministic client order id; reconcile before retry"
+            )
         if submitted.broker != intent.broker:
-            raise ExecutionEngineError("broker acknowledgement changed explicit broker identity")
+            raise BrokerSubmissionUncertain(
+                "provider acknowledgement changed explicit broker identity; reconcile before retry"
+            )
 
         provider_submission = intent.environment == ExecutionEnvironment.PAPER
         return ExecutionAttemptRecord(
