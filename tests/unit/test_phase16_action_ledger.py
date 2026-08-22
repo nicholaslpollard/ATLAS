@@ -171,3 +171,62 @@ def test_corrupt_audit_chain_blocks_action_recovery(tmp_path) -> None:
     ledger.audit_log.path.write_text("{broken\n", encoding="utf-8")
     with pytest.raises(ControlPlaneActionLedgerError, match="verification"):
         ledger.records()
+
+
+def test_prewrite_action_abandon_is_audited_idempotent_and_recoverable(tmp_path) -> None:
+    settings = _settings_with_derived(tmp_path)
+    ledger = ControlPlaneActionLedger(settings, clock=lambda: NOW)
+    request = _switch_request(action_id="switch-abandon-1", idempotency_key="idem-abandon-1")
+    requested = ledger.create_request(request)
+    assert requested.state == ControlPlaneActionState.AWAITING_CONFIRMATION
+
+    abandoned = ledger.abandon(request.action_id)
+    assert abandoned.state == ControlPlaneActionState.BLOCKED
+    assert abandoned.error_code == "ACTION_ABANDONED_BY_USER"
+    assert abandoned.result_reference == "abandoned:local_user"
+    assert abandoned.provider_write_attempted is False
+    assert abandoned.provider_write_uncertain is False
+    assert abandoned.revision == 2
+
+    duplicate = ledger.abandon(request.action_id)
+    assert duplicate == abandoned
+    assert ledger.verify()["active_action_count"] == 0
+    assert ledger.verify()["event_count"] == 2
+
+    reopened = ControlPlaneActionLedger(settings, clock=lambda: NOW)
+    recovered = reopened.get(request.action_id)
+    assert recovered == abandoned
+    assert reopened.verify()["hash_chain_valid"] is True
+
+    next_request = _switch_request(action_id="switch-after-abandon", idempotency_key="idem-after-abandon")
+    assert reopened.create_request(next_request).state == ControlPlaneActionState.AWAITING_CONFIRMATION
+
+
+def test_authorized_action_can_be_abandoned_only_before_provider_activity(tmp_path) -> None:
+    ledger = ControlPlaneActionLedger(_settings_with_derived(tmp_path), clock=lambda: NOW)
+    request = _switch_request(action_id="switch-abandon-authorized", idempotency_key="idem-abandon-authorized")
+    ledger.create_request(request)
+    ledger.confirm(request.action_id, _grant(request, grant_id="grant-abandon-authorized"))
+
+    abandoned = ledger.abandon(request.action_id)
+    assert abandoned.state == ControlPlaneActionState.BLOCKED
+    assert abandoned.error_code == "ACTION_ABANDONED_BY_USER"
+    assert abandoned.provider_write_attempted is False
+
+
+def test_executing_or_uncertain_action_cannot_be_abandoned(tmp_path) -> None:
+    ledger = ControlPlaneActionLedger(_settings_with_derived(tmp_path), clock=lambda: NOW)
+    request = _switch_request(action_id="switch-executing", idempotency_key="idem-executing")
+    ledger.create_request(request)
+    ledger.confirm(request.action_id, _grant(request, grant_id="grant-executing"))
+    ledger.transition(request.action_id, ControlPlaneActionState.EXECUTING)
+
+    with pytest.raises(ControlPlaneActionConflict, match="cannot be abandoned"):
+        ledger.abandon(request.action_id)
+
+    ledger.transition(request.action_id, ControlPlaneActionState.UNCERTAIN)
+    uncertain = ledger.get(request.action_id)
+    assert uncertain.provider_write_attempted is True
+    assert uncertain.provider_write_uncertain is True
+    with pytest.raises(ControlPlaneActionConflict, match="cannot be abandoned"):
+        ledger.abandon(request.action_id)
