@@ -18,23 +18,31 @@ from packages.discovery.persistence import DISCOVERY_STATE_MANIFEST_VERSION
 from packages.features.partition_store import FeaturePartitionManifest, sha256_file
 from packages.ml.current_probability import AcceptedProductionProbabilityProvider
 from packages.ml.feature_policy import ML_PRODUCTION_CORE_FEATURE_NAMES
-from packages.schemas.candidate_promotion import CandidatePromotionRecord
-from packages.schemas.discovery_score import DiscoveryDirection, DiscoveryState
-from packages.schemas.discovery_state import DISCOVERY_STATE_SNAPSHOT_CONTRACT_VERSION, DiscoveryStateRecord
-from packages.schemas.strategy import MLProbabilityEvidence
-from packages.strategies.registry import DEFAULT_STRATEGY_REGISTRY
-from packages.regimes.state_engine import REGIME_STATE_MANIFEST_VERSION, REGIME_STATE_SNAPSHOT_CONTRACT_VERSION
+from packages.regimes.split_origin_policy import (
+    MARKET_SECTOR_HISTORY_ORIGIN_DATE,
+    MARKET_SECTOR_MANIFEST_VERSION,
+    MARKET_SECTOR_POLICY_GENESIS_FINGERPRINT,
+    MARKET_SECTOR_SNAPSHOT_CONTRACT_VERSION,
+    MARKET_SECTOR_STATE_POLICY_CONTRACT_VERSION,
+    SPLIT_ORIGIN_POLICY_VERSION,
+    TICKER_HISTORY_ORIGIN_DATE,
+)
 from packages.regimes.ticker_state_engine import (
     TICKER_STATE_MANIFEST_VERSION,
     TICKER_STATE_SNAPSHOT_CONTRACT_VERSION,
     TickerStateEngine,
 )
+from packages.schemas.candidate_promotion import CandidatePromotionRecord
+from packages.schemas.discovery_score import DiscoveryDirection, DiscoveryState
+from packages.schemas.discovery_state import DISCOVERY_STATE_SNAPSHOT_CONTRACT_VERSION, DiscoveryStateRecord
+from packages.schemas.strategy import MLProbabilityEvidence
+from packages.strategies.registry import DEFAULT_STRATEGY_REGISTRY
 
 from .promotion import CandidatePromotionEngine, support_mapping_from_study
 
 
 CURRENT_CANDIDATE_MATERIALIZATION_CONTRACT_VERSION = (
-    "current-candidates-v1-hash-bound-supported-strategy-evidence"
+    "current-candidates-v2-split-origin-regime-hash-bound-supported-strategy-evidence"
 )
 CURRENT_CANDIDATE_SECTOR_POLICY = "UNAVAILABLE_NO_AUTHORITATIVE_TICKER_TO_SECTOR_MAPPING"
 
@@ -55,6 +63,41 @@ def _read_json(path: Path, label: str) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise CurrentCandidateMaterializationError(f"invalid JSON for {label}: {path}") from exc
+
+
+def _validate_split_origin_market_manifest(manifest: dict[str, Any], as_of_date: date) -> None:
+    """Require the accepted production v2 split-origin market/sector regime lineage."""
+    expected = {
+        "manifest_version": MARKET_SECTOR_MANIFEST_VERSION,
+        "snapshot_contract_version": MARKET_SECTOR_SNAPSHOT_CONTRACT_VERSION,
+        "state_policy_contract_version": MARKET_SECTOR_STATE_POLICY_CONTRACT_VERSION,
+        "split_origin_policy_version": SPLIT_ORIGIN_POLICY_VERSION,
+        "history_origin_date": MARKET_SECTOR_HISTORY_ORIGIN_DATE.isoformat(),
+        "ticker_history_origin_date": TICKER_HISTORY_ORIGIN_DATE.isoformat(),
+        "gate10a_source_fingerprint": MARKET_SECTOR_POLICY_GENESIS_FINGERPRINT,
+        "as_of_date": as_of_date.isoformat(),
+    }
+    changed = [key for key, value in expected.items() if manifest.get(key) != value]
+    if changed:
+        raise CurrentCandidateMaterializationError(
+            "market regime split-origin contract changed: " + ", ".join(changed)
+        )
+
+
+def _validate_split_origin_market_snapshot(payload: dict[str, Any], as_of_date: date) -> None:
+    expected = {
+        "snapshot_contract_version": MARKET_SECTOR_SNAPSHOT_CONTRACT_VERSION,
+        "state_policy_contract_version": MARKET_SECTOR_STATE_POLICY_CONTRACT_VERSION,
+        "split_origin_policy_version": SPLIT_ORIGIN_POLICY_VERSION,
+        "history_origin_date": MARKET_SECTOR_HISTORY_ORIGIN_DATE.isoformat(),
+        "ticker_history_origin_date": TICKER_HISTORY_ORIGIN_DATE.isoformat(),
+        "as_of_date": as_of_date.isoformat(),
+    }
+    changed = [key for key, value in expected.items() if payload.get(key) != value]
+    if changed:
+        raise CurrentCandidateMaterializationError(
+            "market regime split-origin snapshot changed: " + ", ".join(changed)
+        )
 
 
 class CurrentCandidateMaterializer:
@@ -133,16 +176,12 @@ class CurrentCandidateMaterializer:
         snapshot = self.paths.regime_state_snapshot(as_of_date)
         manifest_path = self.paths.regime_state_manifest(as_of_date)
         manifest = _read_json(manifest_path, "market regime manifest")
-        if manifest.get("manifest_version") != REGIME_STATE_MANIFEST_VERSION:
-            raise CurrentCandidateMaterializationError("market regime manifest contract changed")
-        if manifest.get("snapshot_contract_version") != REGIME_STATE_SNAPSHOT_CONTRACT_VERSION:
-            raise CurrentCandidateMaterializationError("market regime snapshot contract changed")
+        _validate_split_origin_market_manifest(manifest, as_of_date)
         digest = sha256_file(snapshot)
         if manifest.get("snapshot_sha256") != digest:
             raise CurrentCandidateMaterializationError("market regime snapshot hash changed")
         payload = _read_json(snapshot, "market regime snapshot")
-        if payload.get("as_of_date") != as_of_date.isoformat():
-            raise CurrentCandidateMaterializationError("market regime snapshot date changed")
+        _validate_split_origin_market_snapshot(payload, as_of_date)
         return payload, digest
 
     def _verify_ticker_regime(self, as_of_date: date) -> tuple[Path, str]:
@@ -276,6 +315,8 @@ class CurrentCandidateMaterializer:
             "discovery_state_sha256": discovery_sha,
             "feature_1d_sha256": feature_sha,
             "market_regime_sha256": market_sha,
+            "market_regime_manifest_version": MARKET_SECTOR_MANIFEST_VERSION,
+            "market_regime_split_origin_policy": SPLIT_ORIGIN_POLICY_VERSION,
             "ticker_regime_sha256": ticker_sha,
             "historical_strategy_study_sha256": sha256_file(historical_study_path),
             "strategy_registry_fingerprint": DEFAULT_STRATEGY_REGISTRY.fingerprint(),
