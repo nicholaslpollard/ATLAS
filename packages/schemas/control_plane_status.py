@@ -80,6 +80,12 @@ class PublicBrokerPositionStatus(BaseModel):
     average_entry_price: float | None = None
     as_of_utc: datetime
 
+    @model_validator(mode="after")
+    def _validate_timestamp(self) -> "PublicBrokerPositionStatus":
+        if self.as_of_utc.tzinfo is None:
+            raise ValueError("position as_of_utc must be timezone-aware")
+        return self
+
 
 class PublicBrokerOrderStatus(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -91,8 +97,16 @@ class PublicBrokerOrderStatus(BaseModel):
     requested_quantity: float
     filled_quantity: float
     average_fill_price: float | None = None
-    submitted_at_utc: datetime
+    submitted_at_utc: datetime | None = None
     updated_at_utc: datetime
+
+    @model_validator(mode="after")
+    def _validate_timestamps(self) -> "PublicBrokerOrderStatus":
+        if self.submitted_at_utc is not None and self.submitted_at_utc.tzinfo is None:
+            raise ValueError("submitted_at_utc must be timezone-aware")
+        if self.updated_at_utc.tzinfo is None:
+            raise ValueError("updated_at_utc must be timezone-aware")
+        return self
 
 
 class BrokerReadStatus(BaseModel):
@@ -161,7 +175,7 @@ class ControlPlaneSystemStatus(BaseModel):
     primary_broker: Literal["webull"] = "webull"
     secondary_broker: Literal["alpaca"] = "alpaca"
     selected_broker: BrokerName | None = None
-    allowed_execution_environments: tuple[Literal["shadow", "paper"], Literal["shadow", "paper"]]
+    allowed_execution_environments: tuple[str, str]
     live_execution_promoted: Literal[False] = False
     automatic_cross_broker_failover_allowed: Literal[False] = False
     browser_is_execution_authority: Literal[False] = False
@@ -169,6 +183,12 @@ class ControlPlaneSystemStatus(BaseModel):
     write_actions_enabled: bool = False
     bind_host_default: Literal["127.0.0.1"] = "127.0.0.1"
     phase15: Phase15AcceptanceStatus
+
+    @model_validator(mode="after")
+    def _validate_environments(self) -> "ControlPlaneSystemStatus":
+        if self.allowed_execution_environments != ("shadow", "paper"):
+            raise ValueError("Phase 16 allowed environments must remain shadow/paper")
+        return self
 
 
 class ControlPlaneExecutionStatus(BaseModel):
