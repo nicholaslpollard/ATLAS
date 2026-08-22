@@ -123,6 +123,10 @@ class BrokerReadStatus(BaseModel):
     account: PublicBrokerAccountStatus | None = None
     positions: tuple[PublicBrokerPositionStatus, ...] = ()
     open_orders: tuple[PublicBrokerOrderStatus, ...] = ()
+    reconciled: bool | None = None
+    zero_open_orders: bool | None = None
+    zero_positions: bool | None = None
+    safe_to_switch_broker: bool | None = None
     error_code: str | None = None
     read_only: Literal[True] = True
 
@@ -137,8 +141,28 @@ class BrokerReadStatus(BaseModel):
                 raise ValueError("available broker state requires poll time and account")
             if self.error_code is not None:
                 raise ValueError("available broker state cannot carry an error")
-        elif self.account is not None or self.positions or self.open_orders:
-            raise ValueError("non-available broker state cannot expose partial provider state")
+            if self.reconciled is not True:
+                raise ValueError("available broker state must be reconciled")
+            if self.zero_open_orders != (len(self.open_orders) == 0):
+                raise ValueError("zero_open_orders must match open order snapshot")
+            if self.zero_positions != (len(self.positions) == 0):
+                raise ValueError("zero_positions must match position snapshot")
+            expected_safe = bool(self.reconciled and self.zero_open_orders and self.zero_positions)
+            if self.safe_to_switch_broker != expected_safe:
+                raise ValueError("safe_to_switch_broker must match reconciliation state")
+        else:
+            if self.account is not None or self.positions or self.open_orders:
+                raise ValueError("non-available broker state cannot expose partial provider state")
+            if any(
+                value is not None
+                for value in (
+                    self.reconciled,
+                    self.zero_open_orders,
+                    self.zero_positions,
+                    self.safe_to_switch_broker,
+                )
+            ):
+                raise ValueError("non-available broker state cannot claim reconciliation state")
         if self.polled_at_utc is not None and self.polled_at_utc.tzinfo is None:
             raise ValueError("polled_at_utc must be timezone-aware")
         return self
