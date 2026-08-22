@@ -8,8 +8,8 @@ from pathlib import Path
 from packages.core.settings import load_settings
 from packages.validation.cumulative_acceptance import CumulativeFoundationIndependentValidator
 from packages.validation.cumulative_foundation import CumulativeFoundationAuditError
-from packages.validation.cumulative_lifecycle_integrity import CumulativeFoundationLifecycleAwareAuditor
 from packages.validation.cumulative_policy import cumulative_policy_fingerprint
+from packages.validation.cumulative_stage_lineage import CumulativeFoundationRetainedStageAuditor
 
 
 def _load(path: Path) -> dict[str, object]:
@@ -124,7 +124,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     settings = load_settings()
-    auditor = CumulativeFoundationLifecycleAwareAuditor(settings)
+    auditor = CumulativeFoundationRetainedStageAuditor(settings)
 
     print("ATLAS Cumulative Data & Lineage Integrity Audit v1")
     print(
