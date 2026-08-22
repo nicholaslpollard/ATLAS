@@ -41,9 +41,9 @@ def _daily_integrity_sql(transaction_column: str = "transaction_count") -> str:
         )
     return f"""
         SELECT
-            count(*) AS rows,
-            count(DISTINCT symbol) AS symbols,
-            count(DISTINCT CAST(timestamp_utc AS DATE)) AS sessions,
+            count(*) AS row_count,
+            count(DISTINCT symbol) AS symbol_count,
+            count(DISTINCT CAST(timestamp_utc AS DATE)) AS session_count,
             count(*) FILTER (WHERE symbol IS NULL OR trim(symbol)='') AS blank_symbol,
             count(*) FILTER (WHERE timestamp_utc IS NULL) AS null_timestamp,
             count(*) FILTER (
@@ -60,6 +60,23 @@ def _daily_integrity_sql(transaction_column: str = "transaction_count") -> str:
                    <> TRY_CAST(regexp_extract(filename, 'date=([0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}})', 1) AS DATE)
             ) AS partition_date_mismatch
         FROM daily
+    """
+
+
+def _yearly_diagnostics_sql() -> str:
+    """Return the yearly population-diagnostic query using non-reserved aliases."""
+
+    return """
+        SELECT
+            year(CAST(timestamp_utc AS DATE)) AS calendar_year,
+            count(*) AS row_count,
+            count(DISTINCT symbol) AS symbol_count,
+            count(DISTINCT CAST(timestamp_utc AS DATE)) AS session_count,
+            median(volume) AS median_volume,
+            quantile_cont(close, 0.5) AS median_close
+        FROM daily
+        GROUP BY 1
+        ORDER BY 1
     """
 
 
@@ -113,23 +130,15 @@ class CumulativeFoundationIntegrityAuditor(CumulativeFoundationAuditor):
                 con.execute(
                     """
                     SELECT count(*) FROM (
-                        SELECT symbol, timestamp_utc, count(*) n
-                        FROM daily GROUP BY 1,2 HAVING n > 1
+                        SELECT symbol, timestamp_utc, count(*) AS duplicate_count
+                        FROM daily
+                        GROUP BY 1,2
+                        HAVING count(*) > 1
                     )
                     """
                 ).fetchone()[0]
             )
-            yearly = con.execute(
-                """
-                SELECT year(CAST(timestamp_utc AS DATE)) y,
-                       count(*) rows,
-                       count(DISTINCT symbol) symbols,
-                       count(DISTINCT CAST(timestamp_utc AS DATE)) sessions,
-                       median(volume) median_volume,
-                       quantile_cont(close, 0.5) median_close
-                FROM daily GROUP BY 1 ORDER BY 1
-                """
-            ).fetchall()
+            yearly = con.execute(_yearly_diagnostics_sql()).fetchall()
         finally:
             con.close()
 
@@ -378,16 +387,19 @@ class CumulativeFoundationIntegrityAuditor(CumulativeFoundationAuditor):
                 con.execute(
                     f"""
                     SELECT count(*) FROM (
-                        SELECT identity_chain_id,
-                               count(*) n,
-                               min(chain_position) min_pos,
-                               max(chain_position) max_pos,
-                               max(chain_length) chain_length,
-                               count(DISTINCT chain_length) chain_length_versions
+                        SELECT
+                            identity_chain_id,
+                            count(*) AS segment_count,
+                            min(chain_position) AS min_position,
+                            max(chain_position) AS max_position,
+                            max(chain_length) AS expected_chain_length,
+                            count(DISTINCT chain_length) AS chain_length_versions
                         FROM read_parquet({_sql(identity_segments_parquet)})
                         GROUP BY identity_chain_id
-                        HAVING min_pos <> 0 OR max_pos <> chain_length - 1
-                           OR n <> chain_length OR chain_length_versions <> 1
+                        HAVING min(chain_position) <> 0
+                           OR max(chain_position) <> max(chain_length) - 1
+                           OR count(*) <> max(chain_length)
+                           OR count(DISTINCT chain_length) <> 1
                     )
                     """
                 ).fetchone()[0]
