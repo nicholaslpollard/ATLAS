@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from packages.control_plane.broker_switch_processor import (
+    BROKER_SWITCH_PROCESSOR_CONTRACT_VERSION,
+)
 from packages.control_plane.http_server import (
     CONTROL_PLANE_HTTP_CONTRACT_VERSION,
     DEFAULT_CONTROL_PLANE_PORT,
@@ -77,8 +80,10 @@ def main() -> None:
         == "control-plane-audit-event-v1-hash-chain-append-only",
         "session_contract_locked": CONTROL_PLANE_SESSION_CONTRACT_VERSION
         == "control-plane-session-v1-same-origin-double-submit-csrf",
+        "broker_switch_processor_locked": BROKER_SWITCH_PROCESSOR_CONTRACT_VERSION
+        == "control-plane-broker-switch-v1-phase15-reconciled-flat-local-routing-only",
         "http_contract_locked": CONTROL_PLANE_HTTP_CONTRACT_VERSION
-        == "control-plane-http-v3-loopback-browser-ui-session-audit-only-no-provider-writes",
+        == "control-plane-http-v4-loopback-browser-switch-local-routing-no-provider-writes",
         "http_json_body_cap_locked": MAX_JSON_BODY_BYTES == 64 * 1024,
         "http_static_asset_cap_locked": MAX_STATIC_ASSET_BYTES == 1024 * 1024,
         "http_default_port_locked": DEFAULT_CONTROL_PLANE_PORT == 8765,
@@ -96,13 +101,14 @@ def main() -> None:
     print(f"Phase 16 action record contract: {CONTROL_PLANE_ACTION_RECORD_CONTRACT_VERSION}")
     print(f"Phase 16 audit event contract: {CONTROL_PLANE_AUDIT_EVENT_CONTRACT_VERSION}")
     print(f"Phase 16 session contract: {CONTROL_PLANE_SESSION_CONTRACT_VERSION}")
+    print(f"Phase 16 broker switch processor: {BROKER_SWITCH_PROCESSOR_CONTRACT_VERSION}")
     print(f"Phase 16 HTTP contract: {CONTROL_PLANE_HTTP_CONTRACT_VERSION}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
     if not all(checks.values()):
         failed = sorted(name for name, value in checks.items() if not value)
         raise SystemExit("Phase 16 static validation failed: " + ", ".join(failed))
-    print("Phase 16 Browser Control Plane authority/status/runtime/audit/session/UI contracts: PASS")
+    print("Phase 16 Browser Control Plane authority/status/runtime/audit/session/UI/switch contracts: PASS")
 
 
 if __name__ == "__main__":
