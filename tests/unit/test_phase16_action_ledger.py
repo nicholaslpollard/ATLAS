@@ -94,7 +94,8 @@ def test_action_request_is_idempotent_and_recoverable_from_audit(tmp_path) -> No
     reopened = ControlPlaneActionLedger(settings, clock=lambda: NOW)
     recovered = reopened.get(request.action_id)
     assert recovered == first
-    assert reopened.verify()["hash_chain_valid"] is True
+    assert reopened.verify()["event_count"] == 1
+    assert len(reopened.audit_log.read_verified()) == 1
 
 
 def test_idempotency_key_cannot_authorize_different_request(tmp_path) -> None:
@@ -196,7 +197,8 @@ def test_prewrite_action_abandon_is_audited_idempotent_and_recoverable(tmp_path)
     reopened = ControlPlaneActionLedger(settings, clock=lambda: NOW)
     recovered = reopened.get(request.action_id)
     assert recovered == abandoned
-    assert reopened.verify()["hash_chain_valid"] is True
+    assert reopened.verify()["event_count"] == 2
+    assert len(reopened.audit_log.read_verified()) == 2
 
     next_request = _switch_request(action_id="switch-after-abandon", idempotency_key="idem-after-abandon")
     assert reopened.create_request(next_request).state == ControlPlaneActionState.AWAITING_CONFIRMATION
