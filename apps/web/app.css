@@ -151,6 +151,17 @@ main {
 }
 .stat .value { font-weight: 720; margin-top: 3px; overflow-wrap: anywhere; }
 
+.broker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.broker-actions .muted { margin: 0; }
+
 .table-card { padding: 0; overflow: hidden; }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 760px; }
@@ -163,6 +174,37 @@ tbody tr:last-child td { border-bottom: 0; }
 .lineage-card dl > div { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 18px; }
 .lineage-card dt { color: var(--muted); }
 .lineage-card dd { margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+
+dialog {
+  width: min(620px, calc(100% - 28px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
+.dialog-shell { padding: 22px; }
+.dialog-shell h2 { margin-top: 4px; }
+.dialog-lead { color: var(--muted); margin: 12px 0 16px; }
+.dialog-warning { margin: 0 0 18px; font-size: 0.92rem; }
+.dialog-details { margin: 0; display: grid; gap: 10px; }
+.dialog-details > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 180px) 1fr;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.dialog-details dt { color: var(--muted); }
+.dialog-details dd { margin: 0; font-weight: 680; overflow-wrap: anywhere; }
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
 
 footer {
   border-top: 1px solid var(--line);
@@ -185,5 +227,9 @@ footer {
   .summary-grid { grid-template-columns: 1fr; }
   .section-head { align-items: start; flex-direction: column; gap: 8px; }
   .section-head p { text-align: left; }
-  .lineage-card dl > div { grid-template-columns: 1fr; gap: 3px; }
+  .lineage-card dl > div,
+  .dialog-details > div { grid-template-columns: 1fr; gap: 3px; }
+  .broker-actions { align-items: stretch; flex-direction: column; }
+  .dialog-actions { flex-direction: column-reverse; }
+  .dialog-actions button { width: 100%; }
 }
