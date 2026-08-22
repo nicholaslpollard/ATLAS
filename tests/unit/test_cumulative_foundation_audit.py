@@ -10,7 +10,7 @@ from packages.data.duckdb_connection import connect_utc
 from packages.features.engine import compute_core_features
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
 from packages.validation.cumulative_foundation import _deterministic_take, _partition_date
-from packages.validation.cumulative_integrity import _daily_integrity_sql
+from packages.validation.cumulative_integrity import _daily_integrity_sql, _yearly_diagnostics_sql
 from packages.validation.cumulative_policy import (
     CUMULATIVE_ALPACA_AUTHORITY_END,
     CUMULATIVE_AUDIT_BROKER_WRITES,
@@ -109,6 +109,29 @@ def test_daily_integrity_sql_executes_against_canonical_transaction_count_schema
     assert int(row[0]) == 1
     assert int(row[7]) == 0
     assert int(row[8]) == 0
+
+
+def test_yearly_diagnostics_sql_avoids_reserved_aliases() -> None:
+    con = connect_utc(":memory:")
+    try:
+        con.execute(
+            """
+            CREATE TEMP VIEW daily AS
+            SELECT * FROM (
+                VALUES
+                    ('AAA', TIMESTAMPTZ '2025-01-02 20:00:00+00', 100.0, 1000.0),
+                    ('BBB', TIMESTAMPTZ '2025-01-03 20:00:00+00', 110.0, 2000.0),
+                    ('AAA', TIMESTAMPTZ '2026-01-02 20:00:00+00', 120.0, 3000.0)
+            ) AS t(symbol, timestamp_utc, close, volume)
+            """
+        )
+        rows = con.execute(_yearly_diagnostics_sql()).fetchall()
+    finally:
+        con.close()
+    assert rows == [
+        (2025, 2, 2, 2, 1500.0, 105.0),
+        (2026, 1, 1, 1, 3000.0, 120.0),
+    ]
 
 
 def test_independent_replay_matches_production_core33_on_synthetic_stream() -> None:
