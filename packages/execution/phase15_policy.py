@@ -3,6 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 
+from packages.execution.phase15_foundation import (
+    PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
+    PHASE15_ACCEPTED_CUMULATIVE_POLICY_FINGERPRINT,
+)
+
 
 PHASE15_POLICY_CONTRACT_VERSION = (
     "phase15-policy-v1-shadow-paper-broker-neutral-no-live-promotion"
@@ -19,7 +24,10 @@ PHASE15_LIVE_EXECUTION_ENABLED = False
 PHASE15_PAPER_EXECUTION_ENABLED = True
 PHASE15_SHADOW_EXECUTION_ENABLED = True
 
-# Upstream authority.
+# Upstream authority. The cumulative historical foundation is a hard prerequisite
+# alongside accepted Phase 14. Its exact target-machine acceptance fingerprint is
+# locked before Phase 15 can resolve even a zero-case execution run.
+PHASE15_REQUIRE_ACCEPTED_CUMULATIVE_FOUNDATION = True
 PHASE15_REQUIRE_ACCEPTED_PHASE14 = True
 PHASE15_REQUIRE_PHASE13_REVIEW_READY = True
 PHASE15_AI_DISPOSITION_IS_EXECUTION_AUTHORITY = False
@@ -86,6 +94,9 @@ def phase15_policy_payload() -> dict[str, object]:
         "live_execution_enabled": PHASE15_LIVE_EXECUTION_ENABLED,
         "paper_execution_enabled": PHASE15_PAPER_EXECUTION_ENABLED,
         "shadow_execution_enabled": PHASE15_SHADOW_EXECUTION_ENABLED,
+        "require_accepted_cumulative_foundation": PHASE15_REQUIRE_ACCEPTED_CUMULATIVE_FOUNDATION,
+        "accepted_cumulative_foundation_fingerprint": PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
+        "accepted_cumulative_policy_fingerprint": PHASE15_ACCEPTED_CUMULATIVE_POLICY_FINGERPRINT,
         "require_accepted_phase14": PHASE15_REQUIRE_ACCEPTED_PHASE14,
         "require_phase13_review_ready": PHASE15_REQUIRE_PHASE13_REVIEW_READY,
         "ai_disposition_is_execution_authority": PHASE15_AI_DISPOSITION_IS_EXECUTION_AUTHORITY,
