@@ -20,11 +20,14 @@ MARKET_SECTOR_SNAPSHOT_CONTRACT_VERSION = (
 MARKET_SECTOR_MANIFEST_VERSION = "regime-state-manifest-v2-split-origin-source-lineage"
 INTRADAY_POLICY = "NO_SYNTHETIC_PRE2021_4H_OR_1H_FROM_DAILY_BACKFILL"
 
-# Gate 10-A is the accepted evidence that established this production policy.  It is
-# intentionally retained as immutable policy provenance so future v2 materializations
-# remain lineage-compatible with the accepted Gate 10-B candidate.
+# Gate 10-A / 10-B are the accepted evidence that established this production policy.
+# Their identifiers are immutable policy provenance, not runtime dependencies on the
+# historical-backfill implementation modules.
 MARKET_SECTOR_POLICY_GENESIS_FINGERPRINT = (
     "df85452f596808d0962d9f666dc4a1f27727edc8e2732b772a46873743cfdf54"
+)
+MARKET_SECTOR_POLICY_GENESIS_BUILD_CONTRACT = (
+    "historical-backfill-regime-replay-v1-isolated-split-origin"
 )
 
 REGIME_HISTORY_DATASET_VERSION = "split_origin_v1"
