@@ -34,8 +34,11 @@ PHASE15_BROKER_SWITCH_REQUIRES_ZERO_POSITIONS = True
 PHASE15_BROKER_SWITCH_REQUIRES_RECONCILIATION = True
 
 # v1 executes equity only because the accepted Phase 13 primary instrument is
-# equity and no option relative-value model has been accepted.
+# equity and no option relative-value model has been accepted. It also refuses
+# additive/reversal entries when the selected broker already has that ticker;
+# position adjustment semantics belong in a later explicit portfolio/order phase.
 PHASE15_ALLOWED_INSTRUMENT_KINDS = ("EQUITY",)
+PHASE15_EXISTING_SAME_TICKER_ENTRY_ALLOWED = False
 PHASE15_ENTRY_ORDER_TYPE = "LIMIT"
 PHASE15_TIME_IN_FORCE = "DAY"
 PHASE15_EXTENDED_HOURS_ENABLED = False
@@ -92,6 +95,7 @@ def phase15_policy_payload() -> dict[str, object]:
         "broker_switch_requires_zero_positions": PHASE15_BROKER_SWITCH_REQUIRES_ZERO_POSITIONS,
         "broker_switch_requires_reconciliation": PHASE15_BROKER_SWITCH_REQUIRES_RECONCILIATION,
         "allowed_instrument_kinds": list(PHASE15_ALLOWED_INSTRUMENT_KINDS),
+        "existing_same_ticker_entry_allowed": PHASE15_EXISTING_SAME_TICKER_ENTRY_ALLOWED,
         "entry_order_type": PHASE15_ENTRY_ORDER_TYPE,
         "time_in_force": PHASE15_TIME_IN_FORCE,
         "extended_hours_enabled": PHASE15_EXTENDED_HOURS_ENABLED,
