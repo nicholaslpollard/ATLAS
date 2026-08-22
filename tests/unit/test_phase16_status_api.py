@@ -138,7 +138,9 @@ def test_system_status_fails_closed_until_phase15_acceptance_is_present(tmp_path
     status = Phase16StatusService(_settings_with_derived(tmp_path), env={}).system_status()
     assert status.health == ControlPlaneHealthState.BLOCKED
     assert status.phase15.accepted is False
-    assert status.write_actions_enabled is False
+    assert status.action_ledger_valid is True
+    assert status.action_request_endpoints_present is True
+    assert status.provider_write_endpoints_present is False
     assert status.live_execution_promoted is False
     assert status.automatic_cross_broker_failover_allowed is False
 
@@ -151,6 +153,9 @@ def test_system_status_accepts_exact_phase15_closeout_artifact(tmp_path) -> None
     assert status.phase15.execution_case_count == 0
     assert status.selected_broker is None
     assert status.selected_environment is None
+    assert status.action_count == 0
+    assert status.active_action_count == 0
+    assert status.uncertain_action_count == 0
 
 
 def test_broker_status_is_lazy_and_never_exposes_credential_values(tmp_path) -> None:
@@ -237,6 +242,8 @@ def test_http_status_is_loopback_host_validated_and_non_action_post_is_405(tmp_p
             payload = json.loads(response.read().decode("utf-8"))
             assert response.status == 200
             assert payload["phase15_accepted"] is False
+            assert payload["action_ledger_valid"] is True
+            assert payload["provider_write_endpoints_present"] is False
             assert response.headers.get("Access-Control-Allow-Origin") is None
             assert response.headers["Cache-Control"] == "no-store"
 
@@ -254,6 +261,59 @@ def test_http_status_is_loopback_host_validated_and_non_action_post_is_405(tmp_p
         connection.endheaders()
         assert connection.getresponse().status == 403
         connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_browser_dashboard_is_same_origin_csp_locked_and_fixed_allowlist(tmp_path) -> None:
+    calls: list[BrokerName] = []
+
+    def factory(broker: BrokerName):
+        calls.append(broker)
+        raise AssertionError("loading the dashboard must not initialize a broker")
+
+    service = Phase16StatusService(
+        _settings_with_derived(tmp_path), env={}, broker_factory=factory
+    )
+    server = create_status_server(service=service, host="127.0.0.1", port=0)
+    thread = threading.Thread(
+        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
+    )
+    thread.start()
+    port = int(server.server_address[1])
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as response:
+            body = response.read().decode("utf-8")
+            csp = response.headers["Content-Security-Policy"]
+            assert response.status == 200
+            assert response.headers["Content-Type"].startswith("text/html")
+            assert "ATLAS Control Plane" in body
+            assert "style-src 'self'" in csp
+            assert "script-src 'self'" in csp
+            assert "connect-src 'self'" in csp
+            assert "unsafe-inline" not in csp
+            assert response.headers.get("Access-Control-Allow-Origin") is None
+            assert response.headers["X-Frame-Options"] == "DENY"
+
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/assets/app.js", timeout=5
+        ) as response:
+            js = response.read().decode("utf-8")
+            assert response.status == 200
+            assert response.headers["Content-Type"].startswith("text/javascript")
+            assert "/api/v1/status/full" in js
+            assert "https://" not in js
+            assert "http://" not in js
+
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        connection.request("GET", "/assets/../.env")
+        response = connection.getresponse()
+        response.read()
+        assert response.status == 404
+        connection.close()
+        assert calls == []
     finally:
         server.shutdown()
         server.server_close()
