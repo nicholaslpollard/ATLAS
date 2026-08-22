@@ -222,7 +222,6 @@ class Phase15ExecutionRunEngine:
                             ),
                         )
                     )
-                    # Exposure state is now uncertain. Do not process another candidate.
                     break
                 except (ExecutionEngineError, ExecutionValidationError, BrokerAdapterError) as exc:
                     attempted = bool(
@@ -339,6 +338,7 @@ class Phase15ExecutionRunEngine:
             "known_broker_writes": known_broker_writes,
             "known_order_writes": known_order_writes,
             "unknown_write_record_count": unknown_write_records,
+            "production_ml_writes": 0,
             "live_writes": 0,
             "automatic_broker_failover_performed": False,
             "execution_present": any(
