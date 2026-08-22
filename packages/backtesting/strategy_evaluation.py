@@ -12,8 +12,9 @@ from .outcomes import DEFAULT_COST_GRID_BPS
 
 
 STRATEGY_EVALUATION_CONTRACT_VERSION = (
-    "strategy-evaluation-v1-identity-safe-three-session-signal-study"
+    "strategy-evaluation-v2-identity-safe-bounded-three-session-signal-study"
 )
+STRATEGY_SOURCE_COLUMN_ALIASES = {"close": "observation_close"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,8 @@ class StrategyEvaluationSummary:
     contract_version: str
     strategy_id: str
     direction: str
+    evaluation_start: str | None
+    evaluation_end: str | None
     source_rows: int
     fired_rows: int
     routed_rows: int
@@ -52,6 +55,8 @@ class StrategyEvaluationSummary:
             "contract_version": self.contract_version,
             "strategy_id": self.strategy_id,
             "direction": self.direction,
+            "evaluation_start": self.evaluation_start,
+            "evaluation_end": self.evaluation_end,
             "source_rows": self.source_rows,
             "fired_rows": self.fired_rows,
             "routed_rows": self.routed_rows,
@@ -72,8 +77,12 @@ def _identifier(name: str) -> str:
     return f'"{name}"'
 
 
+def _source_identifier(name: str) -> str:
+    return _identifier(STRATEGY_SOURCE_COLUMN_ALIASES.get(name, name))
+
+
 def condition_sql(condition: FeatureCondition) -> str:
-    left = _identifier(condition.left)
+    left = _source_identifier(condition.left)
     operator = {
         Comparison.GT: ">",
         Comparison.GE: ">=",
@@ -81,10 +90,15 @@ def condition_sql(condition: FeatureCondition) -> str:
         Comparison.LE: "<=",
     }[condition.comparison]
     if condition.right_feature is not None:
-        right = _identifier(condition.right_feature)
+        right = _source_identifier(condition.right_feature)
+        right_guard = f" AND {right} IS NOT NULL AND isfinite(CAST({right} AS DOUBLE))"
     else:
         right = format(float(condition.right_value), ".17g")
-    return f"({left} IS NOT NULL AND isfinite(CAST({left} AS DOUBLE)) AND {left} {operator} {right})"
+        right_guard = ""
+    return (
+        f"({left} IS NOT NULL AND isfinite(CAST({left} AS DOUBLE))"
+        f"{right_guard} AND {left} {operator} {right})"
+    )
 
 
 def strategy_condition_sql(strategy: RuleStrategy) -> str:
@@ -99,9 +113,17 @@ def historical_market_route_sql(direction: StrategyDirection, field: str = "mark
         "MIXED",
     )
     values = ", ".join(sql_string(value) for value in allowed)
-    # Unavailable context is preserved as unavailable rather than fabricated. The
-    # historical study therefore allows NULL context while reporting it separately.
+    # Unavailable historical context stays unavailable rather than being fabricated.
     return f"({column} IS NULL OR {column} IN ({values}))"
+
+
+def _date_clause(start_date: str | None, end_date: str | None) -> str:
+    clauses: list[str] = []
+    if start_date is not None:
+        clauses.append(f"session_date >= DATE {sql_string(start_date)}")
+    if end_date is not None:
+        clauses.append(f"session_date <= DATE {sql_string(end_date)}")
+    return "" if not clauses else " AND " + " AND ".join(clauses)
 
 
 def _metrics_from_row(row: tuple[Any, ...]) -> StrategyEvaluationMetrics:
@@ -137,12 +159,10 @@ def _metric_select(return_expression: str) -> str:
 
 
 class StrategyEvaluationEngine:
-    """DuckDB signal-study evaluator over an identity-safe feature/outcome source.
+    """DuckDB signal-study evaluator over identity-safe feature/outcome evidence.
 
-    The source is expected to be the accepted ML-style dataset shape containing a
-    stable instrument identity, point-in-time daily features, `forward_return`, and
-    market regime evaluation context. This engine does not construct positions or
-    assume fills; it studies setup-conditioned forward returns only.
+    This studies setup-conditioned forward returns only. It never constructs positions,
+    assumes fills, computes trade geometry, or emits broker instructions.
     """
 
     def __init__(self, registry: StrategyRegistry = DEFAULT_STRATEGY_REGISTRY) -> None:
@@ -155,15 +175,20 @@ class StrategyEvaluationEngine:
         source_sql: str,
         strategy_id: str,
         cost_grid_bps: tuple[float, ...] = DEFAULT_COST_GRID_BPS,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> StrategyEvaluationSummary:
         strategy = self.registry.get(strategy_id)
         if not isinstance(strategy, RuleStrategy):
             raise TypeError("historical evaluation currently requires RuleStrategy implementations")
         if not cost_grid_bps or any(float(value) < 0.0 for value in cost_grid_bps):
             raise ValueError("cost_grid_bps must contain non-negative values")
+        if start_date is not None and end_date is not None and start_date > end_date:
+            raise ValueError("start_date cannot be after end_date")
 
         condition = strategy_condition_sql(strategy)
         route = historical_market_route_sql(strategy.metadata.direction)
+        bounded = _date_clause(start_date, end_date)
         direction_sign = 1.0 if strategy.metadata.direction == StrategyDirection.LONG else -1.0
         directional = f"(CAST(forward_return AS DOUBLE) * {direction_sign:.1f})"
 
@@ -176,6 +201,7 @@ class StrategyEvaluationEngine:
             FROM {source_sql}
             WHERE forward_return IS NOT NULL
               AND isfinite(CAST(forward_return AS DOUBLE))
+              {bounded}
             """
         ).fetchone()
 
@@ -191,6 +217,7 @@ class StrategyEvaluationEngine:
                   AND isfinite(CAST(forward_return AS DOUBLE))
                   AND {condition}
                   AND {route}
+                  {bounded}
                 """
             ).fetchone()
             aggregate[format(float(cost_bps), "g")] = _metrics_from_row(row)
@@ -205,6 +232,7 @@ class StrategyEvaluationEngine:
               AND isfinite(CAST(forward_return AS DOUBLE))
               AND {condition}
               AND {route}
+              {bounded}
             GROUP BY 1
             ORDER BY 1
             """
@@ -221,6 +249,7 @@ class StrategyEvaluationEngine:
               AND isfinite(CAST(forward_return AS DOUBLE))
               AND {condition}
               AND {route}
+              {bounded}
             GROUP BY 1
             ORDER BY 1
             """
@@ -231,6 +260,8 @@ class StrategyEvaluationEngine:
             contract_version=STRATEGY_EVALUATION_CONTRACT_VERSION,
             strategy_id=strategy.metadata.strategy_id,
             direction=strategy.metadata.direction.value,
+            evaluation_start=start_date,
+            evaluation_end=end_date,
             source_rows=int(counts[0]),
             fired_rows=int(counts[1]),
             routed_rows=int(counts[2]),
