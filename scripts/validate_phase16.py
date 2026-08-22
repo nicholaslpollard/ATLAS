@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from packages.control_plane.http_server import (
+    CONTROL_PLANE_HTTP_CONTRACT_VERSION,
+    DEFAULT_CONTROL_PLANE_PORT,
+    host_header_is_loopback,
+    is_loopback_host,
+)
 from packages.control_plane.phase16_policy import (
     PHASE16_ACCEPTED_PHASE15_MERGE_SHA,
     PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT,
@@ -20,6 +26,7 @@ from packages.control_plane.phase16_policy import (
     phase16_policy_fingerprint,
     validate_phase16_policy,
 )
+from packages.schemas.control_plane_status import CONTROL_PLANE_STATUS_CONTRACT_VERSION
 
 
 def main() -> None:
@@ -42,16 +49,28 @@ def main() -> None:
         "loopback_default": PHASE16_DEFAULT_BIND_HOST == "127.0.0.1",
         "remote_bind_disabled_default": PHASE16_REMOTE_BIND_ENABLED_BY_DEFAULT is False,
         "policy_fingerprint_present": len(phase16_policy_fingerprint()) == 64,
+        "status_contract_locked": CONTROL_PLANE_STATUS_CONTRACT_VERSION
+        == "control-plane-status-v1-readonly-sanitized-lineage-broker-state",
+        "http_contract_locked": CONTROL_PLANE_HTTP_CONTRACT_VERSION
+        == "control-plane-http-v1-loopback-get-only-no-cors-host-validated",
+        "http_default_port_locked": DEFAULT_CONTROL_PLANE_PORT == 8765,
+        "loopback_ipv4_accepted": is_loopback_host("127.0.0.1"),
+        "loopback_ipv6_accepted": is_loopback_host("::1"),
+        "wildcard_bind_rejected": not is_loopback_host("0.0.0.0"),
+        "localhost_host_header_accepted": host_header_is_loopback("localhost:8765"),
+        "foreign_host_header_rejected": not host_header_is_loopback("example.com"),
     }
     print(f"Phase 16 accepted Phase 15 merge: {PHASE16_ACCEPTED_PHASE15_MERGE_SHA}")
     print(f"Phase 16 accepted Phase 15 policy: {PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT}")
     print(f"Phase 16 policy fingerprint: {phase16_policy_fingerprint()}")
+    print(f"Phase 16 status contract: {CONTROL_PLANE_STATUS_CONTRACT_VERSION}")
+    print(f"Phase 16 HTTP contract: {CONTROL_PLANE_HTTP_CONTRACT_VERSION}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
     if not all(checks.values()):
         failed = sorted(name for name, value in checks.items() if not value)
         raise SystemExit("Phase 16 static validation failed: " + ", ".join(failed))
-    print("Phase 16 Browser Control Plane authority contracts: PASS")
+    print("Phase 16 Browser Control Plane authority/read-only status contracts: PASS")
 
 
 if __name__ == "__main__":
