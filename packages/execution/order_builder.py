@@ -214,8 +214,6 @@ def build_execution_intent(
         live_execution_enabled=PHASE15_LIVE_EXECUTION_ENABLED,
         reason_codes=reasons,
     )
-    # Keep the entry-side mapping explicit in one place so broker adapters cannot
-    # reinterpret a bullish/bearish case independently.
     expected_side = BrokerOrderSide.BUY if case.direction == DiscoveryDirection.BULLISH else BrokerOrderSide.SHORT
     if side != expected_side:
         raise AssertionError("execution side mapping changed")
@@ -228,10 +226,13 @@ def build_broker_order_plan(intent: ExecutionIntent) -> BrokerOrderPlan:
         if intent.direction == DiscoveryDirection.BULLISH
         else BrokerOrderSide.SHORT
     )
-    client_order_id = "atlas-" + intent.intent_id
+    # 32 chars is the stricter provider limit (Webull). The deterministic intent
+    # hash still gives ample collision resistance while keeping the exact same
+    # idempotency key valid for Webull and Alpaca.
+    client_order_id = "a15-" + intent.intent_id.removeprefix("p15-")[:28]
     return BrokerOrderPlan(
         intent_id=intent.intent_id,
-        client_order_id=client_order_id[:128],
+        client_order_id=client_order_id,
         ticker=intent.ticker,
         instrument_type="EQUITY",
         side=side,
