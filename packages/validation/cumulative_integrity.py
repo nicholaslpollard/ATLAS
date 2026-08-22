@@ -3,9 +3,12 @@ from __future__ import annotations
 import json
 from datetime import date
 from pathlib import Path
+from typing import Callable
 
+from packages.core.enums import Timeframe
 from packages.data.alpaca_backfill_identity_policy import ALPACA_BACKFILL_IDENTITY_POLICY_CONTRACT_VERSION
 from packages.data.alpaca_backfill_identity_segments import ALPACA_BACKFILL_IDENTITY_SEGMENT_CONTRACT_VERSION
+from packages.data.alpaca_backfill_policy import ALPACA_BACKFILL_START
 from packages.data.duckdb_connection import connect_utc
 from packages.features.partition_store import sha256_file
 from packages.ml.historical_backfill_closeout import HISTORICAL_BACKFILL_CLOSEOUT_CONTRACT_VERSION
@@ -19,11 +22,77 @@ from packages.regimes.split_origin_policy import (
     TICKER_HISTORY_ORIGIN_DATE,
 )
 
-from .cumulative_foundation import CumulativeFoundationAuditor, _json, _sql
+from .cumulative_foundation import CumulativeFoundationAuditor, _json, _partition_date, _sql
 
 
 class CumulativeFoundationIntegrityAuditor(CumulativeFoundationAuditor):
-    """Cumulative auditor with explicit accepted identity and split-origin proofs."""
+    """Cumulative auditor with explicit identity, coverage, and split-origin proofs."""
+
+    def _audit_feature_manifests(
+        self,
+        end_date: date,
+        progress: Callable[[str], None] | None,
+    ) -> dict[str, object]:
+        """Verify each source partition has exactly one current feature manifest.
+
+        The base audit verifies every discovered manifest's contract, bound source hash,
+        feature hash, and recursive state-chain fingerprint. This extension additionally
+        proves date-set coverage so a silently missing indicator partition cannot pass
+        merely because the remaining manifests are individually valid.
+        """
+
+        result = super()._audit_feature_manifests(end_date, progress)
+        overall = bool(result.get("pass"))
+        for timeframe in (Timeframe.DAY_1, Timeframe.HOUR_1, Timeframe.HOUR_4):
+            origin = ALPACA_BACKFILL_START if timeframe == Timeframe.DAY_1 else TICKER_HISTORY_ORIGIN_DATE
+            if timeframe == Timeframe.DAY_1:
+                source_files = self._daily_files()
+            else:
+                source_files = self._files_for(timeframe)
+            source_dates = {
+                _partition_date(path)
+                for path in source_files
+                if origin <= _partition_date(path) <= end_date
+            }
+            manifest_dir = self.manifest_root / "features" / timeframe.value
+            manifest_dates = {
+                date.fromisoformat(path.stem)
+                for path in manifest_dir.glob("*/*.json")
+                if origin <= date.fromisoformat(path.stem) <= end_date
+            }
+            missing_manifest_dates = sorted(source_dates - manifest_dates)
+            orphan_manifest_dates = sorted(manifest_dates - source_dates)
+            coverage_exact = (
+                bool(source_dates)
+                and source_dates == manifest_dates
+                and end_date in source_dates
+                and end_date in manifest_dates
+            )
+            item = dict(result.get(timeframe.value) or {})
+            item.update(
+                {
+                    "source_partition_date_count": len(source_dates),
+                    "manifest_partition_date_count": len(manifest_dates),
+                    "source_manifest_date_coverage_exact": coverage_exact,
+                    "missing_manifest_date_count": len(missing_manifest_dates),
+                    "missing_manifest_dates": [d.isoformat() for d in missing_manifest_dates[:20]],
+                    "orphan_manifest_date_count": len(orphan_manifest_dates),
+                    "orphan_manifest_dates": [d.isoformat() for d in orphan_manifest_dates[:20]],
+                    "latest_source_date": max(source_dates).isoformat() if source_dates else None,
+                    "latest_manifest_date": max(manifest_dates).isoformat() if manifest_dates else None,
+                }
+            )
+            item["pass"] = bool(item.get("pass")) and coverage_exact
+            result[timeframe.value] = item
+            overall = overall and bool(item["pass"])
+            if progress is not None:
+                progress(
+                    f"feature coverage {timeframe.value}: sources {len(source_dates):,}; "
+                    f"manifests {len(manifest_dates):,}; missing {len(missing_manifest_dates):,}; "
+                    f"orphan {len(orphan_manifest_dates):,}"
+                )
+        result["pass"] = overall
+        return result
 
     def _audit_regimes(self, end_date: date) -> dict[str, object]:
         manifest_path = self.paths.regime_state_manifest(end_date)
