@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from packages.discovery.promotion import CandidatePromotionEngine
-from packages.schemas.candidate import StrategyHistoricalSupportSnapshot
+from packages.schemas.candidate_promotion import StrategyHistoricalSupportSnapshot
 from packages.schemas.discovery_score import DiscoveryDirection, DiscoveryState
 from packages.schemas.discovery_state import DiscoveryStateRecord
 from packages.schemas.strategy import MLProbabilityEvidence
