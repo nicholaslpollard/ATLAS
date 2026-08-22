@@ -33,16 +33,23 @@ class FakeWebullOrderAPI:
         self.cancel_calls: list[str] = []
         self.cancel_error: Exception | None = None
         self.detail_error: Exception | None = None
-        self.status = "CANCELLED"
+        self.detail_error_after = 0
+        self.detail_calls = 0
+        self.status = "SUBMITTED"
+        self.filled_quantity = "0"
+        self.cancel_sets_status = True
 
     def cancel_order(self, account_id: str, client_order_id: str):
         self.cancel_calls.append(client_order_id)
         if self.cancel_error is not None:
             raise self.cancel_error
+        if self.cancel_sets_status:
+            self.status = "CANCELLED"
         return FakeResponse(200, {})
 
     def get_order_detail(self, account_id: str, client_order_id: str):
-        if self.detail_error is not None:
+        self.detail_calls += 1
+        if self.detail_error is not None and self.detail_calls > self.detail_error_after:
             raise self.detail_error
         return FakeResponse(
             200,
@@ -54,7 +61,8 @@ class FakeWebullOrderAPI:
                         "symbol": "SPY",
                         "side": "BUY",
                         "quantity": "1",
-                        "filled_quantity": "0",
+                        "filled_quantity": self.filled_quantity,
+                        "filled_price": "100" if self.filled_quantity != "0" else "0",
                         "order_status": self.status,
                     }
                 ]
@@ -79,6 +87,7 @@ class FakeAlpacaClient:
         self.cancel_error: Exception | None = None
         self.lookup_error: Exception | None = None
         self.status = "new"
+        self.filled_qty = "0"
         self.provider_id: str | None = "provider-order-1"
 
     def get_account(self):
@@ -92,8 +101,8 @@ class FakeAlpacaClient:
             client_order_id=client_order_id,
             symbol="SPY",
             qty="1",
-            filled_qty="0",
-            filled_avg_price=None,
+            filled_qty=self.filled_qty,
+            filled_avg_price="100" if self.filled_qty != "0" else None,
             submitted_at=NOW,
             updated_at=NOW,
             side="buy",
@@ -116,6 +125,50 @@ def test_webull_cancel_requires_final_cancelled_reconciliation() -> None:
     result = broker.cancel("client-order-1")
     assert result.status == BrokerOrderStatus.CANCELLED
     assert api.cancel_calls == ["client-order-1"]
+    assert api.detail_calls == 2
+
+
+def test_webull_already_cancelled_is_idempotent_noop() -> None:
+    api = FakeWebullOrderAPI()
+    api.status = "CANCELLED"
+    broker = WebullSandboxBroker(
+        account_id="webull-sandbox-account",
+        trade_client=FakeWebullClient(api),
+    )
+    result = broker.cancel("client-order-already-cancelled")
+    assert result.status == BrokerOrderStatus.CANCELLED
+    assert api.cancel_calls == []
+    assert api.detail_calls == 1
+
+
+@pytest.mark.parametrize("terminal_status", ["FILLED", "REJECTED"])
+def test_webull_terminal_non_cancelled_order_fails_before_cancel(terminal_status: str) -> None:
+    api = FakeWebullOrderAPI()
+    api.status = terminal_status
+    if terminal_status == "FILLED":
+        api.filled_quantity = "1"
+    broker = WebullSandboxBroker(
+        account_id="webull-sandbox-account",
+        trade_client=FakeWebullClient(api),
+    )
+    with pytest.raises(BrokerAdapterError):
+        broker.cancel("client-order-terminal")
+    assert api.cancel_calls == []
+    assert api.detail_calls == 1
+
+
+def test_webull_partially_filled_then_cancelled_is_terminal_cancelled() -> None:
+    api = FakeWebullOrderAPI()
+    api.status = "SUBMITTED"
+    api.filled_quantity = "0.5"
+    broker = WebullSandboxBroker(
+        account_id="webull-sandbox-account",
+        trade_client=FakeWebullClient(api),
+    )
+    result = broker.cancel("client-order-partial")
+    assert result.status == BrokerOrderStatus.CANCELLED
+    assert result.filled_quantity == 0.5
+    assert api.cancel_calls == ["client-order-partial"]
 
 
 def test_webull_cancel_transport_or_reconciliation_failure_is_mutation_uncertain() -> None:
@@ -131,6 +184,7 @@ def test_webull_cancel_transport_or_reconciliation_failure_is_mutation_uncertain
 
     api = FakeWebullOrderAPI()
     api.detail_error = TimeoutError("detail timeout")
+    api.detail_error_after = 1
     broker = WebullSandboxBroker(
         account_id="webull-sandbox-account",
         trade_client=FakeWebullClient(api),
@@ -143,6 +197,7 @@ def test_webull_cancel_transport_or_reconciliation_failure_is_mutation_uncertain
 def test_webull_cancel_nonterminal_reconciliation_is_mutation_uncertain() -> None:
     api = FakeWebullOrderAPI()
     api.status = "PENDING"
+    api.cancel_sets_status = False
     broker = WebullSandboxBroker(
         account_id="webull-sandbox-account",
         trade_client=FakeWebullClient(api),
@@ -161,6 +216,7 @@ def test_webull_empty_client_order_id_fails_before_provider_mutation() -> None:
     with pytest.raises(BrokerAdapterError):
         broker.cancel(" ")
     assert api.cancel_calls == []
+    assert api.detail_calls == 0
 
 
 def test_alpaca_cancel_requires_final_cancelled_reconciliation() -> None:
@@ -168,6 +224,38 @@ def test_alpaca_cancel_requires_final_cancelled_reconciliation() -> None:
     broker = AlpacaPaperBroker(trading_client=client)
     result = broker.cancel("client-order-1")
     assert result.status == BrokerOrderStatus.CANCELLED
+    assert client.cancel_calls == ["provider-order-1"]
+
+
+def test_alpaca_already_cancelled_is_idempotent_noop() -> None:
+    client = FakeAlpacaClient()
+    client.status = "canceled"
+    broker = AlpacaPaperBroker(trading_client=client)
+    result = broker.cancel("client-order-already-cancelled")
+    assert result.status == BrokerOrderStatus.CANCELLED
+    assert client.cancel_calls == []
+
+
+@pytest.mark.parametrize("terminal_status", ["filled", "rejected"])
+def test_alpaca_terminal_non_cancelled_order_fails_before_cancel(terminal_status: str) -> None:
+    client = FakeAlpacaClient()
+    client.status = terminal_status
+    if terminal_status == "filled":
+        client.filled_qty = "1"
+    broker = AlpacaPaperBroker(trading_client=client)
+    with pytest.raises(BrokerAdapterError):
+        broker.cancel("client-order-terminal")
+    assert client.cancel_calls == []
+
+
+def test_alpaca_partial_fill_can_cancel_remainder_and_finish_cancelled() -> None:
+    client = FakeAlpacaClient()
+    client.status = "partially_filled"
+    client.filled_qty = "0.5"
+    broker = AlpacaPaperBroker(trading_client=client)
+    result = broker.cancel("client-order-partial")
+    assert result.status == BrokerOrderStatus.CANCELLED
+    assert result.filled_quantity == 0.5
     assert client.cancel_calls == ["provider-order-1"]
 
 
