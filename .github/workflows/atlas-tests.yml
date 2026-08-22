@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - 'phase-*'
+      - 'cumulative-*'
   pull_request:
     branches:
       - main
@@ -82,6 +83,9 @@ jobs:
 
       - name: Validate Phase 14 contracts
         run: python scripts/validate_phase14.py
+
+      - name: Validate cumulative foundation audit contracts
+        run: python scripts/validate_cumulative_foundation.py
 
       - name: Run tests
         run: python -m pytest -q
