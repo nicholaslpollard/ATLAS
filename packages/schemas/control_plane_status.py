@@ -15,7 +15,7 @@ from packages.schemas.execution import (
 
 
 CONTROL_PLANE_STATUS_CONTRACT_VERSION = (
-    "control-plane-status-v1-readonly-sanitized-lineage-broker-state"
+    "control-plane-status-v2-sanitized-lineage-runtime-ledger-reconciliation"
 )
 
 
@@ -203,15 +203,18 @@ class ControlPlaneSystemStatus(BaseModel):
     runtime_state_valid: bool
     runtime_state_source: Literal["synthetic_default", "persisted", "invalid"]
     runtime_revision: int | None = Field(default=None, ge=0)
+    action_ledger_valid: bool
+    action_count: int = Field(ge=0)
+    active_action_count: int = Field(ge=0)
+    uncertain_action_count: int = Field(ge=0)
     provider_write_uncertain: bool
-    active_action_present: bool
-    uncertain_action_present: bool
     allowed_execution_environments: tuple[str, str]
     live_execution_promoted: Literal[False] = False
     automatic_cross_broker_failover_allowed: Literal[False] = False
     browser_is_execution_authority: Literal[False] = False
     credentials_exposed: Literal[False] = False
-    write_actions_enabled: bool = False
+    action_request_endpoints_present: Literal[True] = True
+    provider_write_endpoints_present: Literal[False] = False
     bind_host_default: Literal["127.0.0.1"] = "127.0.0.1"
     phase15: Phase15AcceptanceStatus
 
@@ -228,6 +231,10 @@ class ControlPlaneSystemStatus(BaseModel):
                 raise ValueError("invalid runtime state cannot supply execution routing")
             if not self.provider_write_uncertain:
                 raise ValueError("invalid runtime state must fail closed as uncertain")
+        if not self.action_ledger_valid and not self.provider_write_uncertain:
+            raise ValueError("invalid action ledger must fail closed as uncertain")
+        if self.uncertain_action_count > 0 and not self.provider_write_uncertain:
+            raise ValueError("uncertain action requires provider-write uncertainty")
         return self
 
 
@@ -242,11 +249,14 @@ class ControlPlaneExecutionStatus(BaseModel):
     phase15_execution_case_count: int | None = None
     selected_broker: BrokerName | None = None
     selected_environment: ExecutionEnvironment | None = None
+    action_ledger_valid: bool
+    action_count: int = Field(ge=0)
     provider_write_uncertain: bool = False
     shadow_execution_available_by_policy: Literal[True] = True
     paper_execution_available_by_policy: Literal[True] = True
     live_execution_available_by_policy: Literal[False] = False
-    write_endpoints_present: Literal[False] = False
+    action_request_endpoints_present: Literal[True] = True
+    provider_write_endpoints_present: Literal[False] = False
     automatic_failover_present: Literal[False] = False
     current_action_count: int = Field(default=0, ge=0)
     uncertain_action_count: int = Field(default=0, ge=0)
