@@ -3,6 +3,7 @@ from __future__ import annotations
 from packages.control_plane.http_server import (
     CONTROL_PLANE_HTTP_CONTRACT_VERSION,
     DEFAULT_CONTROL_PLANE_PORT,
+    MAX_JSON_BODY_BYTES,
     host_header_is_loopback,
     is_loopback_host,
 )
@@ -25,6 +26,11 @@ from packages.control_plane.phase16_policy import (
     PHASE16_SECONDARY_BROKER,
     phase16_policy_fingerprint,
     validate_phase16_policy,
+)
+from packages.control_plane.session import CONTROL_PLANE_SESSION_CONTRACT_VERSION
+from packages.schemas.control_plane_ledger import (
+    CONTROL_PLANE_ACTION_RECORD_CONTRACT_VERSION,
+    CONTROL_PLANE_AUDIT_EVENT_CONTRACT_VERSION,
 )
 from packages.schemas.control_plane_runtime import (
     CONTROL_PLANE_RUNTIME_CONTRACT_VERSION,
@@ -62,8 +68,15 @@ def main() -> None:
         and default_state.selected_environment is None,
         "runtime_default_not_persisted": default_state.source == "synthetic_default",
         "runtime_default_not_uncertain": default_state.provider_write_uncertain is False,
+        "action_record_contract_locked": CONTROL_PLANE_ACTION_RECORD_CONTRACT_VERSION
+        == "control-plane-action-record-v1-idempotent-confirmed-provider-uncertainty",
+        "audit_event_contract_locked": CONTROL_PLANE_AUDIT_EVENT_CONTRACT_VERSION
+        == "control-plane-audit-event-v1-hash-chain-append-only",
+        "session_contract_locked": CONTROL_PLANE_SESSION_CONTRACT_VERSION
+        == "control-plane-session-v1-same-origin-double-submit-csrf",
         "http_contract_locked": CONTROL_PLANE_HTTP_CONTRACT_VERSION
-        == "control-plane-http-v1-loopback-get-only-no-cors-host-validated",
+        == "control-plane-http-v2-loopback-session-audit-only-actions-no-provider-writes",
+        "http_json_body_cap_locked": MAX_JSON_BODY_BYTES == 64 * 1024,
         "http_default_port_locked": DEFAULT_CONTROL_PLANE_PORT == 8765,
         "loopback_ipv4_accepted": is_loopback_host("127.0.0.1"),
         "loopback_ipv6_accepted": is_loopback_host("::1"),
@@ -76,13 +89,16 @@ def main() -> None:
     print(f"Phase 16 policy fingerprint: {phase16_policy_fingerprint()}")
     print(f"Phase 16 status contract: {CONTROL_PLANE_STATUS_CONTRACT_VERSION}")
     print(f"Phase 16 runtime contract: {CONTROL_PLANE_RUNTIME_CONTRACT_VERSION}")
+    print(f"Phase 16 action record contract: {CONTROL_PLANE_ACTION_RECORD_CONTRACT_VERSION}")
+    print(f"Phase 16 audit event contract: {CONTROL_PLANE_AUDIT_EVENT_CONTRACT_VERSION}")
+    print(f"Phase 16 session contract: {CONTROL_PLANE_SESSION_CONTRACT_VERSION}")
     print(f"Phase 16 HTTP contract: {CONTROL_PLANE_HTTP_CONTRACT_VERSION}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
     if not all(checks.values()):
         failed = sorted(name for name, value in checks.items() if not value)
         raise SystemExit("Phase 16 static validation failed: " + ", ".join(failed))
-    print("Phase 16 Browser Control Plane authority/read-only status/runtime contracts: PASS")
+    print("Phase 16 Browser Control Plane authority/status/runtime/audit/session contracts: PASS")
 
 
 if __name__ == "__main__":
