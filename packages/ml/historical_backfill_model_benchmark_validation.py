@@ -148,7 +148,7 @@ def _weighted(values: list[tuple[float, int]]) -> float:
 
 
 def _close(left: float, right: float) -> bool:
-    return abs(float(left) - float(right)) <= HISTORICAL_BACKFILL_MODEL_VALIDATION_TOLERANCE
+    return abs(float(left) - float(right)) <= HISTORICAL_BACKFILL_VALIDATION_TOLERANCE
 
 
 class HistoricalBackfillModelBenchmarkValidator:
@@ -242,14 +242,23 @@ class HistoricalBackfillModelBenchmarkValidator:
         }
         artifacts: list[dict[str, object]] = []
         metric_checks: list[bool] = []
+        sample_checks: list[bool] = []
         for fold_index in range(1, 11):
             d = design_folds[fold_index]
             b = benchmark_folds[fold_index]
             if str(b["expected_test_key_sha256"]) != str(d["test_key_sha256"]):
                 raise HistoricalBackfillModelBenchmarkValidationError("fold checkpoint expected-key hash changed")
             roles = dict(b["roles"])
+            fixed = dict(d["fixed_budget"])
+            nested_design = dict(d["nested_history_sensitivity"])
+            expected_samples = {
+                HISTORICAL_BACKFILL_PRIMARY_B_ROLE: int(fixed["B_sample_rows"]),
+                HISTORICAL_BACKFILL_PRIMARY_C_ROLE: int(fixed["C_sample_rows"]),
+                HISTORICAL_BACKFILL_NESTED_C_ROLE: int(nested_design["C_nested_sample_rows"]),
+            }
             for role in role_metrics:
                 item = dict(roles[role])
+                sample_checks.append(int(item["sampled_train_rows"]) == expected_samples[role])
                 recomputed, proof = self._artifact_metrics(
                     dict(item["test_artifact"]), str(d["test_key_sha256"])
                 )
@@ -339,6 +348,7 @@ class HistoricalBackfillModelBenchmarkValidator:
             "benchmark_pass": benchmark.get("pass") is True,
             "fold_count_exact": len(benchmark_folds) == 10,
             "artifact_count_exact": len(artifacts) == 30,
+            "all_training_sample_counts_exact": all(sample_checks),
             "all_artifact_keys_exact": all(
                 item["observation_key_sha256"]
                 == str(design_folds[int(item["fold_index"])]["test_key_sha256"])
