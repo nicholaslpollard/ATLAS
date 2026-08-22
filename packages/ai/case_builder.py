@@ -78,11 +78,6 @@ def build_review_case_packet(
         raise ValueError("Phase 13 case and Phase 12 research identity differ")
     if case.as_of_date != research.as_of_date or case.direction != research.direction:
         raise ValueError("Phase 13 case and Phase 12 research context differ")
-    if case.phase12_case_sha256 != research.model_dump().get("phase11_candidate_sha256"):
-        # The Phase 12 file hash is external lineage, not a field inside DeepResearchCase.
-        # Matching is enforced by Phase14ReviewInputResolver; this guard intentionally
-        # does not pretend the Phase 11 candidate hash is the Phase 12 file hash.
-        pass
 
     phase13 = _sanitize(case.model_dump(mode="json"))
     phase12 = _sanitize(research.model_dump(mode="json"))
