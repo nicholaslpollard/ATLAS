@@ -87,5 +87,8 @@ jobs:
       - name: Validate cumulative foundation audit contracts
         run: python scripts/validate_cumulative_foundation.py
 
+      - name: Validate Phase 15 contracts
+        run: python scripts/validate_phase15.py
+
       - name: Run tests
         run: python -m pytest -q
