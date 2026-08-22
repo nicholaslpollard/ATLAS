@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATLAS Control Plane</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">ATLAS · Phase 16</div>
+      <h1>Control Plane</h1>
+    </div>
+    <div class="top-actions">
+      <button id="refresh-local" type="button">Refresh local status</button>
+      <button id="refresh-brokers" class="primary" type="button">Read-only broker refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="safety-banner" class="banner warning" aria-live="polite">
+      Provider-write endpoints are disabled. Live execution is not promoted.
+    </section>
+
+    <section class="grid summary-grid" aria-label="System summary">
+      <article class="card">
+        <div class="label">System health</div>
+        <div id="system-health" class="metric">Loading…</div>
+        <div id="health-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Selected routing</div>
+        <div id="selected-routing" class="metric">—</div>
+        <div id="runtime-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Phase 15 authority</div>
+        <div id="phase15-state" class="metric">Loading…</div>
+        <div id="phase15-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Action ledger</div>
+        <div id="ledger-state" class="metric">Loading…</div>
+        <div id="ledger-detail" class="muted"></div>
+      </article>
+    </section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Execution providers</div>
+        <h2>Paper broker reconciliation</h2>
+      </div>
+      <p>Broker calls are lazy. Use the read-only refresh button to reconcile account, open orders, and positions.</p>
+    </section>
+
+    <section id="brokers" class="grid broker-grid" aria-live="polite"></section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Operational authority</div>
+        <h2>Current actions</h2>
+      </div>
+      <p>Requests and confirmations are audited workflow records. They are not provider writes.</p>
+    </section>
+
+    <section class="card table-card">
+      <div id="actions-empty" class="empty">No control-plane actions recorded.</div>
+      <div class="table-wrap">
+        <table id="actions-table" hidden>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Target</th>
+              <th>State</th>
+              <th>Revision</th>
+              <th>Provider write</th>
+            </tr>
+          </thead>
+          <tbody id="actions-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Lineage</div>
+        <h2>Accepted authority chain</h2>
+      </div>
+    </section>
+
+    <section class="card lineage-card">
+      <dl>
+        <div><dt>Accepted Phase 15 merge</dt><dd id="lineage-merge">—</dd></div>
+        <div><dt>Phase 15 policy</dt><dd id="lineage-phase15">—</dd></div>
+        <div><dt>Phase 16 policy</dt><dd id="lineage-phase16">—</dd></div>
+        <div><dt>Cumulative foundation</dt><dd id="lineage-foundation">—</dd></div>
+      </dl>
+    </section>
+
+    <div id="error-box" class="banner danger" hidden role="alert"></div>
+  </main>
+
+  <footer>
+    Local loopback control plane · Webull primary · Alpaca manual secondary · automatic cross-broker failover disabled
+  </footer>
+
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
