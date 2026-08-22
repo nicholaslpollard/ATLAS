@@ -38,6 +38,7 @@ button {
 button:hover { border-color: var(--accent); }
 button:disabled { opacity: 0.55; cursor: wait; }
 button.primary { background: #123958; border-color: #28648f; }
+button.danger-action { border-color: #713443; background: #2a1720; }
 
 .topbar {
   position: sticky;
@@ -161,14 +162,18 @@ main {
   border-top: 1px solid var(--line);
 }
 .broker-actions .muted { margin: 0; }
+.cleanup-actions { align-items: flex-start; flex-direction: column; }
+.cleanup-button-row { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+.cleanup-button-row button { flex: 1 1 190px; }
 
 .table-card { padding: 0; overflow: hidden; }
 .table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+table { width: 100%; border-collapse: collapse; min-width: 900px; }
 th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); }
 th { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
 tbody tr:last-child td { border-bottom: 0; }
 .empty { padding: 22px; color: var(--muted); }
+.empty.compact { padding: 14px; }
 
 .lineage-card dl { margin: 0; display: grid; gap: 12px; }
 .lineage-card dl > div { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 18px; }
@@ -205,6 +210,27 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
   gap: 10px;
   margin-top: 20px;
 }
+
+.cleanup-resource-head { margin-top: 18px; }
+.cleanup-targets {
+  display: grid;
+  gap: 9px;
+  max-height: 290px;
+  overflow-y: auto;
+  margin-top: 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0f1724;
+}
+.cleanup-target {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.cleanup-target:last-child { border-bottom: 0; }
+.cleanup-target-title { font-weight: 760; overflow-wrap: anywhere; }
+.cleanup-target-detail { color: var(--muted); font-size: 0.85rem; margin-top: 4px; overflow-wrap: anywhere; }
+.cleanup-result { margin: 16px 0 0; }
+.recovery-cell button { padding: 7px 10px; white-space: nowrap; }
 
 footer {
   border-top: 1px solid var(--line);
