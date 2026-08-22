@@ -7,10 +7,8 @@ from pathlib import Path
 
 from packages.core.settings import load_settings
 from packages.validation.cumulative_acceptance import CumulativeFoundationIndependentValidator
-from packages.validation.cumulative_foundation import (
-    CumulativeFoundationAuditError,
-    CumulativeFoundationAuditor,
-)
+from packages.validation.cumulative_foundation import CumulativeFoundationAuditError
+from packages.validation.cumulative_integrity import CumulativeFoundationIntegrityAuditor
 from packages.validation.cumulative_policy import cumulative_policy_fingerprint
 
 
@@ -89,13 +87,17 @@ def _print_component_summary(root: Path) -> None:
         print(f"    market/sector origin:           {regimes.get('market_sector_origin')}")
         print(f"    ticker origin:                  {regimes.get('ticker_origin')}")
         print(f"    manifest current:               {regimes.get('manifest_contract_current')}")
+        print(f"    snapshot current:               {regimes.get('snapshot_contract_current')}")
         print(f"    split-origin provenance:        {regimes.get('split_origin_provenance_present')}")
         print(f"    pass:                           {regimes.get('pass')}")
 
     historical = _load(root / "08_accepted_historical_evidence.json")
     if historical:
-        print("  accepted historical extension evidence:")
-        print(f"    accepted:                       {historical.get('accepted')}")
+        print("  historical identity / extension evidence:")
+        identity_checks = dict(historical.get("identity_checks") or {})
+        print(f"    identity rows:                  {int(historical.get('identity_rows', 0)):,}")
+        print(f"    identity checks all pass:       {bool(identity_checks) and all(identity_checks.values())}")
+        print(f"    extension accepted:             {historical.get('accepted')}")
         print(f"    Phase 10 authority preserved:   {historical.get('phase10_authority_reference_present')}")
         print(f"    pass:                           {historical.get('pass')}")
 
@@ -112,7 +114,7 @@ def main() -> None:
     )
     args = parser.parse_args()
     settings = load_settings()
-    auditor = CumulativeFoundationAuditor(settings)
+    auditor = CumulativeFoundationIntegrityAuditor(settings)
 
     print("ATLAS Cumulative Data & Lineage Integrity Audit v1")
     print(
@@ -120,7 +122,7 @@ def main() -> None:
         "no external provider calls"
     )
     print(f"  preregistered policy fingerprint: {cumulative_policy_fingerprint()}")
-    print("  audit coverage: Alpaca daily history -> provider seam -> Massive -> bars -> features -> regimes")
+    print("  audit coverage: Alpaca daily history -> identity -> provider seam -> Massive -> bars -> features -> regimes")
 
     try:
         acceptance = auditor.run(
