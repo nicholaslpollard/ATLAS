@@ -287,13 +287,27 @@ class AlpacaPaperBroker(BrokerAdapter):
         )
 
     def cancel(self, client_order_id: str) -> BrokerOrderSnapshot:
-        if not str(client_order_id).strip():
+        client_order_id = str(client_order_id).strip()
+        if not client_order_id:
             raise BrokerAdapterError("Alpaca cancellation requires a client order id")
-        order = self.order(client_order_id)
-        if order.provider_order_id is None:
+        current = self.order(client_order_id)
+        if current.status == BrokerOrderStatus.CANCELLED:
+            return current
+        if current.status in {BrokerOrderStatus.FILLED, BrokerOrderStatus.REJECTED}:
+            raise BrokerAdapterError(
+                f"Alpaca order is already terminal and cannot be cancelled: {current.status.value}"
+            )
+        if current.status not in {
+            BrokerOrderStatus.SUBMITTED,
+            BrokerOrderStatus.PARTIAL_FILLED,
+        }:
+            raise BrokerAdapterError(
+                f"Alpaca order state is not cancelable: {current.status.value}"
+            )
+        if current.provider_order_id is None:
             raise BrokerAdapterError("Alpaca order is missing provider order id for cancellation")
         try:
-            self._client.cancel_order_by_id(order.provider_order_id)
+            self._client.cancel_order_by_id(current.provider_order_id)
         except Exception as exc:
             raise BrokerMutationUncertain(
                 "Alpaca cancel request outcome is uncertain; reconcile exact client order id before any retry"
