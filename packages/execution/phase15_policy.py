@@ -53,6 +53,13 @@ PHASE15_REQUIRE_REALTIME_QUOTE_FOR_BROKER_SUBMISSION = True
 PHASE15_REQUIRE_BROKER_PREFLIGHT = True
 PHASE15_REQUIRE_BROKER_RECONCILIATION_BEFORE_SUBMIT = True
 
+# The Phase 13 portfolio snapshot is not permanent execution authority. Immediately
+# before submission, current broker equity/exposure must still satisfy the accepted
+# Phase 13 risk envelope. If any positions are open, fresh current correlation
+# evidence is mandatory; stale Phase 13 correlation is never silently reused.
+PHASE15_REQUIRE_CURRENT_BROKER_RISK_REVALIDATION = True
+PHASE15_REQUIRE_CURRENT_CORRELATION_WITH_EXISTING_POSITIONS = True
+
 # Protective exits must be represented in the broker-neutral order plan before
 # a paper/sandbox entry can be submitted. Broker adapters may translate this to
 # native bracket/OTOCO semantics but may not remove the stop or target.
@@ -94,6 +101,8 @@ def phase15_policy_payload() -> dict[str, object]:
         "require_realtime_quote_for_broker_submission": PHASE15_REQUIRE_REALTIME_QUOTE_FOR_BROKER_SUBMISSION,
         "require_broker_preflight": PHASE15_REQUIRE_BROKER_PREFLIGHT,
         "require_broker_reconciliation_before_submit": PHASE15_REQUIRE_BROKER_RECONCILIATION_BEFORE_SUBMIT,
+        "require_current_broker_risk_revalidation": PHASE15_REQUIRE_CURRENT_BROKER_RISK_REVALIDATION,
+        "require_current_correlation_with_existing_positions": PHASE15_REQUIRE_CURRENT_CORRELATION_WITH_EXISTING_POSITIONS,
         "require_protective_stop": PHASE15_REQUIRE_PROTECTIVE_STOP,
         "require_profit_target": PHASE15_REQUIRE_PROFIT_TARGET,
         "outcome_learning_can_promote_model": PHASE15_OUTCOME_LEARNING_CAN_PROMOTE_MODEL,
