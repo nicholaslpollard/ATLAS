@@ -53,8 +53,6 @@ def _sanitize(value: Any) -> Any:
 def _collect_paths(value: Any, prefix: str = "") -> set[str]:
     paths: set[str] = set()
     if isinstance(value, dict):
-        if prefix:
-            paths.add(prefix)
         for key, item in value.items():
             child = f"{prefix}.{key}" if prefix else str(key)
             paths.update(_collect_paths(item, child))
@@ -107,7 +105,8 @@ def build_review_case_packet(
         "review dispositions for alert presentation and are never trade signals. Do not "
         "invent facts, browse, request tools, alter direction/instrument/entry/stop/target/"
         "horizon/quantity, or create an order. Every reason, risk flag, and disagreement must "
-        "cite one or more exact evidence paths from the supplied whitelist. APPROVE means the "
+        "cite one or more exact evidence paths from the supplied whitelist. Cite leaf facts or "
+        "explicit list fields; broad object-level citations are not accepted. APPROVE means the "
         "deterministic case is internally coherent with no material disagreement. CAUTIOUS "
         "means the case remains coherent but material uncertainty or weakness should be shown. "
         "REJECT means the auditor finds a material evidence-based conflict or weakness; it does "
