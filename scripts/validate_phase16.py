@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from packages.brokers.base import BrokerAdapterError, BrokerMutationUncertain
 from packages.control_plane.broker_switch_processor import (
     BROKER_SWITCH_PROCESSOR_CONTRACT_VERSION,
+)
+from packages.control_plane.cleanup_plan_ledger import (
+    CONTROL_PLANE_CLEANUP_PLAN_LEDGER_CONTRACT_VERSION,
 )
 from packages.control_plane.cleanup_planner import (
     CONTROL_PLANE_CLEANUP_PLANNER_CONTRACT_VERSION,
@@ -14,6 +18,9 @@ from packages.control_plane.cleanup_policy import (
     PHASE16_FLATTEN_PROVIDER_WRITES_ENABLED,
     cleanup_policy_fingerprint,
     validate_cleanup_policy,
+)
+from packages.control_plane.cleanup_processor import (
+    CONTROL_PLANE_CLEANUP_PROCESSOR_CONTRACT_VERSION,
 )
 from packages.control_plane.http_server import (
     CONTROL_PLANE_HTTP_CONTRACT_VERSION,
@@ -111,8 +118,15 @@ def main() -> None:
         == "control-plane-cleanup-plan-v1-reconciled-exact-resource-review-no-provider-authority",
         "cleanup_plan_confirmation_locked": CONTROL_PLANE_CLEANUP_PLAN_CONFIRMATION_CONTRACT_VERSION
         == "control-plane-cleanup-plan-confirmation-v1-action-and-plan-fingerprint-bound",
+        "cleanup_plan_ledger_locked": CONTROL_PLANE_CLEANUP_PLAN_LEDGER_CONTRACT_VERSION
+        == "control-plane-cleanup-plan-ledger-v1-shared-audit-latest-plan-one-time-confirmation",
         "cleanup_planner_locked": CONTROL_PLANE_CLEANUP_PLANNER_CONTRACT_VERSION
         == "control-plane-cleanup-planner-v1-authorized-action-fresh-reconciliation-review-only",
+        "cleanup_processor_locked": CONTROL_PLANE_CLEANUP_PROCESSOR_CONTRACT_VERSION
+        == "control-plane-cleanup-processor-v1-confirmed-exact-recheck-no-provider-writes",
+        "broker_mutation_uncertainty_is_adapter_error": issubclass(
+            BrokerMutationUncertain, BrokerAdapterError
+        ),
         "cleanup_exact_plan_confirmation_required": PHASE16_CLEANUP_REQUIRES_EXACT_PLAN_CONFIRMATION is True,
         "cancel_provider_writes_disabled": PHASE16_CANCEL_PROVIDER_WRITES_ENABLED is False,
         "flatten_provider_writes_disabled": PHASE16_FLATTEN_PROVIDER_WRITES_ENABLED is False,
@@ -141,14 +155,16 @@ def main() -> None:
     print(f"Phase 16 cleanup policy: {CONTROL_PLANE_CLEANUP_POLICY_VERSION}")
     print(f"Phase 16 cleanup policy fingerprint: {cleanup_policy_fingerprint()}")
     print(f"Phase 16 cleanup plan: {CONTROL_PLANE_CLEANUP_PLAN_CONTRACT_VERSION}")
+    print(f"Phase 16 cleanup plan ledger: {CONTROL_PLANE_CLEANUP_PLAN_LEDGER_CONTRACT_VERSION}")
     print(f"Phase 16 cleanup planner: {CONTROL_PLANE_CLEANUP_PLANNER_CONTRACT_VERSION}")
+    print(f"Phase 16 cleanup processor: {CONTROL_PLANE_CLEANUP_PROCESSOR_CONTRACT_VERSION}")
     print(f"Phase 16 HTTP contract: {CONTROL_PLANE_HTTP_CONTRACT_VERSION}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
     if not all(checks.values()):
         failed = sorted(name for name, value in checks.items() if not value)
         raise SystemExit("Phase 16 static validation failed: " + ", ".join(failed))
-    print("Phase 16 Browser Control Plane authority/status/runtime/recovery/audit/session/UI/switch/cleanup-planning contracts: PASS")
+    print("Phase 16 Browser Control Plane authority/status/runtime/recovery/audit/session/UI/switch/cleanup contracts: PASS")
 
 
 if __name__ == "__main__":
