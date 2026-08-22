@@ -199,6 +199,13 @@ class ControlPlaneSystemStatus(BaseModel):
     primary_broker: Literal["webull"] = "webull"
     secondary_broker: Literal["alpaca"] = "alpaca"
     selected_broker: BrokerName | None = None
+    selected_environment: ExecutionEnvironment | None = None
+    runtime_state_valid: bool
+    runtime_state_source: Literal["synthetic_default", "persisted", "invalid"]
+    runtime_revision: int | None = Field(default=None, ge=0)
+    provider_write_uncertain: bool
+    active_action_present: bool
+    uncertain_action_present: bool
     allowed_execution_environments: tuple[str, str]
     live_execution_promoted: Literal[False] = False
     automatic_cross_broker_failover_allowed: Literal[False] = False
@@ -209,9 +216,18 @@ class ControlPlaneSystemStatus(BaseModel):
     phase15: Phase15AcceptanceStatus
 
     @model_validator(mode="after")
-    def _validate_environments(self) -> "ControlPlaneSystemStatus":
+    def _validate_system_state(self) -> "ControlPlaneSystemStatus":
         if self.allowed_execution_environments != ("shadow", "paper"):
             raise ValueError("Phase 16 allowed environments must remain shadow/paper")
+        if (self.selected_broker is None) != (self.selected_environment is None):
+            raise ValueError("selected broker/environment must be set or unset together")
+        if not self.runtime_state_valid:
+            if self.runtime_state_source != "invalid" or self.runtime_revision is not None:
+                raise ValueError("invalid runtime state must not claim a revision")
+            if self.selected_broker is not None or self.selected_environment is not None:
+                raise ValueError("invalid runtime state cannot supply execution routing")
+            if not self.provider_write_uncertain:
+                raise ValueError("invalid runtime state must fail closed as uncertain")
         return self
 
 
@@ -224,10 +240,13 @@ class ControlPlaneExecutionStatus(BaseModel):
     phase15_accepted: bool
     phase15_as_of_date: str | None = None
     phase15_execution_case_count: int | None = None
+    selected_broker: BrokerName | None = None
+    selected_environment: ExecutionEnvironment | None = None
+    provider_write_uncertain: bool = False
     shadow_execution_available_by_policy: Literal[True] = True
     paper_execution_available_by_policy: Literal[True] = True
     live_execution_available_by_policy: Literal[False] = False
     write_endpoints_present: Literal[False] = False
     automatic_failover_present: Literal[False] = False
-    current_action_count: Literal[0] = 0
-    uncertain_action_count: Literal[0] = 0
+    current_action_count: int = Field(default=0, ge=0)
+    uncertain_action_count: int = Field(default=0, ge=0)
