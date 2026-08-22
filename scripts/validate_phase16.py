@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from packages.brokers.base import BrokerAdapterError, BrokerMutationUncertain
+from packages.control_plane.action_ledger import ControlPlaneActionLedger
 from packages.control_plane.broker_switch_processor import (
     BROKER_SWITCH_PROCESSOR_CONTRACT_VERSION,
 )
@@ -87,6 +88,7 @@ def main() -> None:
         "cancel_requires_explicit_confirmation": PHASE16_CANCEL_OPEN_ORDERS_REQUIRES_EXPLICIT_CONFIRMATION is True,
         "actions_idempotent": PHASE16_OPERATIONAL_ACTIONS_ARE_IDEMPOTENT is True,
         "actions_audited": PHASE16_OPERATIONAL_ACTIONS_ARE_AUDITED is True,
+        "action_abandon_present": callable(getattr(ControlPlaneActionLedger, "abandon", None)),
         "credential_values_hidden": PHASE16_CREDENTIAL_VALUES_EXPOSED_TO_BROWSER is False,
         "loopback_default": PHASE16_DEFAULT_BIND_HOST == "127.0.0.1",
         "remote_bind_disabled_default": PHASE16_REMOTE_BIND_ENABLED_BY_DEFAULT is False,
@@ -132,7 +134,7 @@ def main() -> None:
         "flatten_provider_writes_disabled": PHASE16_FLATTEN_PROVIDER_WRITES_ENABLED is False,
         "flatten_close_method_unaccepted": PHASE16_FLATTEN_CLOSE_ORDER_METHOD_ACCEPTED is False,
         "http_contract_locked": CONTROL_PLANE_HTTP_CONTRACT_VERSION
-        == "control-plane-http-v6-loopback-browser-cleanup-review-close-no-provider-writes",
+        == "control-plane-http-v7-loopback-browser-cleanup-review-abandon-no-provider-writes",
         "http_json_body_cap_locked": MAX_JSON_BODY_BYTES == 64 * 1024,
         "http_static_asset_cap_locked": MAX_STATIC_ASSET_BYTES == 1024 * 1024,
         "http_default_port_locked": DEFAULT_CONTROL_PLANE_PORT == 8765,
