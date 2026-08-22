@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from packages.core.enums import LiveConnectionState, LiveFeedMode, QuoteFreshness, SessionSegment
+from packages.core.enums import LiveConnectionState, LiveFeedMode, LiveFreshness, SessionSegment
 from packages.core.settings import AtlasSettings
 from packages.data.paths import MarketDataPaths
 from packages.schemas.live_market import LiveQuote, LiveStateSnapshot
@@ -44,7 +44,7 @@ class Phase15LiveQuoteResolver:
         symbol = matches[0]
         if symbol.quote is None:
             raise ExecutionQuoteError("live state ticker has no quote")
-        if symbol.quote_freshness != QuoteFreshness.FRESH:
+        if symbol.quote_freshness != LiveFreshness.FRESH:
             raise ExecutionQuoteError("live state ticker quote is not FRESH")
         quote = symbol.quote
         if quote.feed_mode != LiveFeedMode.REALTIME or quote.expected_delay_seconds != 0:
