@@ -1,0 +1,114 @@
+from __future__ import annotations
+
+import hashlib
+import json
+
+
+PHASE16_CONTROL_PLANE_CONTRACT_VERSION = (
+    "phase16-control-plane-policy-v1-local-browser-explicit-authority-no-live-promotion"
+)
+PHASE16_ACCEPTED_PHASE15_MERGE_SHA = "7b2c50047f761653c7abb992cebc286577801453"
+PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT = (
+    "a5227d764e8d32a88eefe42f1982a4da27853c0d2b35f584eeb455a2426480c5"
+)
+
+PHASE16_PRIMARY_BROKER = "webull"
+PHASE16_SECONDARY_BROKER = "alpaca"
+PHASE16_ALLOWED_EXECUTION_ENVIRONMENTS = ("shadow", "paper")
+PHASE16_LIVE_EXECUTION_PROMOTION_ALLOWED = False
+PHASE16_AUTOMATIC_CROSS_BROKER_FAILOVER_ALLOWED = False
+
+PHASE16_BROWSER_CAN_CREATE_EXECUTION_AUTHORITY = False
+PHASE16_AI_DISPOSITION_IS_EXECUTION_AUTHORITY = False
+PHASE16_PHASE15_GATES_MAY_BE_BYPASSED = False
+
+PHASE16_BROKER_SWITCH_REQUIRES_EXPLICIT_USER_REQUEST = True
+PHASE16_BROKER_SWITCH_REQUIRES_RECONCILIATION = True
+PHASE16_BROKER_SWITCH_REQUIRES_ZERO_OPEN_ORDERS = True
+PHASE16_BROKER_SWITCH_REQUIRES_ZERO_POSITIONS = True
+PHASE16_FLATTEN_REQUIRES_SEPARATE_EXPLICIT_CONFIRMATION = True
+PHASE16_CANCEL_OPEN_ORDERS_REQUIRES_EXPLICIT_CONFIRMATION = True
+PHASE16_UNKNOWN_BROKER_STATE_FAILS_CLOSED = True
+PHASE16_UNCERTAIN_PROVIDER_WRITE_FAILS_CLOSED = True
+
+PHASE16_OPERATIONAL_ACTIONS_ARE_IDEMPOTENT = True
+PHASE16_OPERATIONAL_ACTIONS_ARE_AUDITED = True
+PHASE16_AUDIT_LOG_APPEND_ONLY = True
+PHASE16_CREDENTIAL_VALUES_EXPOSED_TO_BROWSER = False
+
+PHASE16_DEFAULT_BIND_HOST = "127.0.0.1"
+PHASE16_REMOTE_BIND_ENABLED_BY_DEFAULT = False
+
+
+def phase16_policy_payload() -> dict[str, object]:
+    return {
+        "contract_version": PHASE16_CONTROL_PLANE_CONTRACT_VERSION,
+        "accepted_phase15": {
+            "merge_sha": PHASE16_ACCEPTED_PHASE15_MERGE_SHA,
+            "policy_fingerprint": PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT,
+        },
+        "brokers": {
+            "primary": PHASE16_PRIMARY_BROKER,
+            "secondary": PHASE16_SECONDARY_BROKER,
+            "automatic_cross_broker_failover_allowed": PHASE16_AUTOMATIC_CROSS_BROKER_FAILOVER_ALLOWED,
+        },
+        "execution": {
+            "allowed_environments": PHASE16_ALLOWED_EXECUTION_ENVIRONMENTS,
+            "live_execution_promotion_allowed": PHASE16_LIVE_EXECUTION_PROMOTION_ALLOWED,
+            "browser_can_create_execution_authority": PHASE16_BROWSER_CAN_CREATE_EXECUTION_AUTHORITY,
+            "ai_disposition_is_execution_authority": PHASE16_AI_DISPOSITION_IS_EXECUTION_AUTHORITY,
+            "phase15_gates_may_be_bypassed": PHASE16_PHASE15_GATES_MAY_BE_BYPASSED,
+        },
+        "broker_switch": {
+            "explicit_user_request_required": PHASE16_BROKER_SWITCH_REQUIRES_EXPLICIT_USER_REQUEST,
+            "reconciliation_required": PHASE16_BROKER_SWITCH_REQUIRES_RECONCILIATION,
+            "zero_open_orders_required": PHASE16_BROKER_SWITCH_REQUIRES_ZERO_OPEN_ORDERS,
+            "zero_positions_required": PHASE16_BROKER_SWITCH_REQUIRES_ZERO_POSITIONS,
+            "flatten_requires_separate_confirmation": PHASE16_FLATTEN_REQUIRES_SEPARATE_EXPLICIT_CONFIRMATION,
+            "cancel_open_orders_requires_confirmation": PHASE16_CANCEL_OPEN_ORDERS_REQUIRES_EXPLICIT_CONFIRMATION,
+            "unknown_broker_state_fails_closed": PHASE16_UNKNOWN_BROKER_STATE_FAILS_CLOSED,
+            "uncertain_provider_write_fails_closed": PHASE16_UNCERTAIN_PROVIDER_WRITE_FAILS_CLOSED,
+        },
+        "operations": {
+            "idempotent_actions": PHASE16_OPERATIONAL_ACTIONS_ARE_IDEMPOTENT,
+            "audited_actions": PHASE16_OPERATIONAL_ACTIONS_ARE_AUDITED,
+            "append_only_audit_log": PHASE16_AUDIT_LOG_APPEND_ONLY,
+            "credential_values_exposed_to_browser": PHASE16_CREDENTIAL_VALUES_EXPOSED_TO_BROWSER,
+        },
+        "network": {
+            "default_bind_host": PHASE16_DEFAULT_BIND_HOST,
+            "remote_bind_enabled_by_default": PHASE16_REMOTE_BIND_ENABLED_BY_DEFAULT,
+        },
+    }
+
+
+def phase16_policy_fingerprint() -> str:
+    raw = json.dumps(phase16_policy_payload(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def validate_phase16_policy() -> None:
+    assert len(PHASE16_ACCEPTED_PHASE15_MERGE_SHA) == 40
+    assert len(PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT) == 64
+    assert PHASE16_PRIMARY_BROKER == "webull"
+    assert PHASE16_SECONDARY_BROKER == "alpaca"
+    assert PHASE16_ALLOWED_EXECUTION_ENVIRONMENTS == ("shadow", "paper")
+    assert PHASE16_LIVE_EXECUTION_PROMOTION_ALLOWED is False
+    assert PHASE16_AUTOMATIC_CROSS_BROKER_FAILOVER_ALLOWED is False
+    assert PHASE16_BROWSER_CAN_CREATE_EXECUTION_AUTHORITY is False
+    assert PHASE16_AI_DISPOSITION_IS_EXECUTION_AUTHORITY is False
+    assert PHASE16_PHASE15_GATES_MAY_BE_BYPASSED is False
+    assert PHASE16_BROKER_SWITCH_REQUIRES_EXPLICIT_USER_REQUEST
+    assert PHASE16_BROKER_SWITCH_REQUIRES_RECONCILIATION
+    assert PHASE16_BROKER_SWITCH_REQUIRES_ZERO_OPEN_ORDERS
+    assert PHASE16_BROKER_SWITCH_REQUIRES_ZERO_POSITIONS
+    assert PHASE16_FLATTEN_REQUIRES_SEPARATE_EXPLICIT_CONFIRMATION
+    assert PHASE16_CANCEL_OPEN_ORDERS_REQUIRES_EXPLICIT_CONFIRMATION
+    assert PHASE16_UNKNOWN_BROKER_STATE_FAILS_CLOSED
+    assert PHASE16_UNCERTAIN_PROVIDER_WRITE_FAILS_CLOSED
+    assert PHASE16_OPERATIONAL_ACTIONS_ARE_IDEMPOTENT
+    assert PHASE16_OPERATIONAL_ACTIONS_ARE_AUDITED
+    assert PHASE16_AUDIT_LOG_APPEND_ONLY
+    assert PHASE16_CREDENTIAL_VALUES_EXPOSED_TO_BROWSER is False
+    assert PHASE16_DEFAULT_BIND_HOST == "127.0.0.1"
+    assert PHASE16_REMOTE_BIND_ENABLED_BY_DEFAULT is False
