@@ -35,13 +35,13 @@ def select_webull_sandbox_candidate(
     *,
     preferred_ref: str | None = None,
 ) -> tuple[WebullSandboxAccountCandidate, str]:
-    """Select one explicit sandbox account without exposing its provider account id.
+    """Select one sandbox account while failing closed on ambiguity.
 
-    The default is deterministic and operationally conservative: use only accounts
-    whose required Phase 17 read endpoints succeeded, prefer MARGIN because ATLAS
-    includes short-direction strategies, prefer a flat account, then use the
-    sanitized account ref as the stable tie-breaker. A caller may override the
-    default by supplying an exact sanitized ref returned by the local diagnostic.
+    A sanitized account ref may explicitly select any candidate that passed all
+    required Phase 17 read probes. Without an explicit ref, automatic selection is
+    allowed only when exactly one readable candidate exists. Multiple readable
+    candidates remain ambiguous and require user selection; account type, flatness,
+    or hash ordering must never be used as implicit trading/account authority.
     """
 
     if preferred_ref:
@@ -57,24 +57,11 @@ def select_webull_sandbox_candidate(
     readable = tuple(candidate for candidate in candidates if candidate.readable)
     if not readable:
         raise ValueError("no Webull sandbox account passed all required read probes")
-
-    selected = min(
-        readable,
-        key=lambda candidate: (
-            0 if candidate.account_type.upper() == "MARGIN" else 1,
-            0 if candidate.flat else 1,
-            candidate.account_ref,
-        ),
-    )
-    if selected.account_type.upper() == "MARGIN" and selected.flat:
-        reason = "AUTO_PREFER_FLAT_MARGIN"
-    elif selected.account_type.upper() == "MARGIN":
-        reason = "AUTO_PREFER_MARGIN"
-    elif selected.flat:
-        reason = "AUTO_PREFER_FLAT_READABLE"
-    else:
-        reason = "AUTO_READABLE_FALLBACK"
-    return selected, reason
+    if len(readable) > 1:
+        raise ValueError(
+            "multiple readable Webull sandbox accounts remain ambiguous; rerun with --account-ref using one sanitized candidate ref"
+        )
+    return readable[0], "SINGLE_UNAMBIGUOUS_READABLE_ACCOUNT"
 
 
 def update_dotenv_webull_account_id(env_path: Path, account_id: str) -> None:
