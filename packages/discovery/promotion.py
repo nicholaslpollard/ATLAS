@@ -92,22 +92,26 @@ class CandidatePromotionEngine:
         )
         route_by_id = {route.strategy_id: route for route in routes}
         for strategy in self.registry.all():
-            route = route_by_id[strategy.metadata.strategy_id]
+            strategy_id = strategy.metadata.strategy_id
+            route = route_by_id[strategy_id]
             if not route.eligible:
                 continue
-            support = historical_support.get(strategy.metadata.strategy_id)
+            support = historical_support.get(strategy_id)
             if support is None:
-                reason_codes.append(f"NO_HISTORICAL_SUPPORT_RECORD:{strategy.metadata.strategy_id}")
+                reason_codes.append(f"NO_HISTORICAL_SUPPORT_RECORD:{strategy_id}")
+                continue
+            if not support.eligible_for_candidate_promotion:
+                reason_codes.append(f"HISTORICALLY_UNSUPPORTED:{strategy_id}")
                 continue
             try:
                 assessment = strategy.evaluate(strategy_context)
             except KeyError:
                 data_error = True
-                reason_codes.append(f"STRATEGY_FEATURE_DATA_MISSING:{strategy.metadata.strategy_id}")
+                reason_codes.append(f"STRATEGY_FEATURE_DATA_MISSING:{strategy_id}")
                 continue
             assessments.append(assessment)
-            if assessment.fired and support.eligible_for_candidate_promotion:
-                supported_fired.append(strategy.metadata.strategy_id)
+            if assessment.fired:
+                supported_fired.append(strategy_id)
 
         discovery_ready = (
             discovery.effective_state in {DiscoveryState.WARM, DiscoveryState.HOT}
