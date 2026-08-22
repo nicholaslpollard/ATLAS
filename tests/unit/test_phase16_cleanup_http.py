@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from packages.control_plane.action_ledger import ControlPlaneActionLedger
 from packages.control_plane.cleanup_plan_ledger import ControlPlaneCleanupPlanLedger
 from packages.control_plane.cleanup_planner import Phase16CleanupPlanner
+from packages.control_plane.cleanup_processor import Phase16CleanupProcessor
 from packages.control_plane.http_server import create_status_server
 from packages.control_plane.session import (
     CONTROL_PLANE_CSRF_HEADER,
@@ -174,6 +175,14 @@ def _server(tmp_path, fake: FakeCleanupHTTPBroker):
         clock=clock,
     )
     plan_ledger = ControlPlaneCleanupPlanLedger(ledger, clock=clock)
+    processor = Phase16CleanupProcessor(
+        settings,
+        status_service=service,
+        action_ledger=ledger,
+        cleanup_plan_ledger=plan_ledger,
+        broker_factory=lambda broker: fake,
+        clock=clock,
+    )
     server = create_status_server(
         service=service,
         host="127.0.0.1",
@@ -182,6 +191,7 @@ def _server(tmp_path, fake: FakeCleanupHTTPBroker):
         action_ledger=ledger,
         cleanup_planner=planner,
         cleanup_plan_ledger=plan_ledger,
+        cleanup_review_processor=processor,
     )
     return server, ledger, plan_ledger
 
@@ -259,7 +269,7 @@ def _run_server(server):
     return thread, int(server.server_address[1])
 
 
-def test_http_cleanup_plan_review_and_confirmation_never_exposes_processing(tmp_path) -> None:
+def test_http_cleanup_plan_review_confirmation_and_close_never_exposes_provider_processing(tmp_path) -> None:
     fake = FakeCleanupHTTPBroker(BrokerName.WEBULL, orders=True)
     server, ledger, plan_ledger = _server(tmp_path, fake)
     thread, port = _run_server(server)
@@ -286,6 +296,7 @@ def test_http_cleanup_plan_review_and_confirmation_never_exposes_processing(tmp_
         assert planned["cleanup_plan"]["cancel_targets"][0]["client_order_id"] == "cleanup-http-order-0001"
         assert planned["provider_write_authorized"] is False
         assert planned["provider_write_endpoint_invoked"] is False
+        assert planned["cleanup_provider_processor_exposed"] is False
         assert planned["provider_write_endpoints_present"] is False
         plan_fp = planned["cleanup_plan_fingerprint"]
         assert len(plan_fp) == 64
@@ -296,6 +307,7 @@ def test_http_cleanup_plan_review_and_confirmation_never_exposes_processing(tmp_
         assert before["cleanup_plan_fingerprint"] == plan_fp
         assert before["cleanup_plan_confirmed"] is False
         assert before["provider_write_authorized"] is False
+        assert before["cleanup_review_close_present"] is True
 
         _, confirmed = _post(
             port,
@@ -304,6 +316,7 @@ def test_http_cleanup_plan_review_and_confirmation_never_exposes_processing(tmp_
         )
         assert confirmed["cleanup_plan_confirmed"] is True
         assert confirmed["provider_write_authorized"] is False
+        assert confirmed["cleanup_provider_processor_exposed"] is False
         assert confirmed["provider_write_endpoints_present"] is False
         assert fake.write_calls == []
 
@@ -324,6 +337,75 @@ def test_http_cleanup_plan_review_and_confirmation_never_exposes_processing(tmp_
             payload = json.loads(exc.read().decode("utf-8"))
             assert payload["error"] == "PROCESSOR_NOT_AVAILABLE_FOR_ACTION"
         assert ledger.get(action_id).state.value == "AUTHORIZED"
+        assert fake.write_calls == []
+
+        _, closed = _post(
+            port,
+            f"/api/v1/actions/{action_id}/cleanup-plan/close-review",
+            {"close_review": True},
+        )
+        assert closed["review_closed"] is True
+        assert closed["record"]["state"] == "BLOCKED"
+        assert closed["record"]["error_code"] == "CANCEL_PROVIDER_WRITES_DISABLED"
+        assert closed["provider_write_attempted"] is False
+        assert closed["cleanup_provider_processor_exposed"] is False
+        assert closed["provider_write_endpoints_present"] is False
+        assert fake.read_calls == [
+            "account", "open_orders", "positions",
+            "account", "open_orders", "positions",
+        ]
+        assert fake.write_calls == []
+        assert ledger.verify()["active_action_count"] == 0
+
+        _, follow_up = _post(
+            port,
+            "/api/v1/actions/request",
+            _action_payload("cleanup-http-follow-up", "CANCEL_OPEN_ORDERS", fake.broker),
+        )
+        assert follow_up["record"]["state"] == "AWAITING_CONFIRMATION"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_http_cleanup_noop_review_close_completes_locally(tmp_path) -> None:
+    fake = FakeCleanupHTTPBroker(BrokerName.ALPACA, orders=False)
+    server, ledger, _ = _server(tmp_path, fake)
+    thread, port = _run_server(server)
+    action_id = "cleanup-http-noop"
+    try:
+        _, requested = _post(
+            port,
+            "/api/v1/actions/request",
+            _action_payload(action_id, "CANCEL_OPEN_ORDERS", fake.broker),
+        )
+        action_fp = requested["record"]["request_fingerprint"]
+        _post(
+            port,
+            f"/api/v1/actions/{action_id}/confirm",
+            _action_confirm_payload(action_id, action_fp, "CANCEL_OPEN_ORDERS"),
+        )
+        _, planned = _post(
+            port,
+            f"/api/v1/actions/{action_id}/cleanup-plan",
+            {"plan": True},
+        )
+        assert planned["cleanup_plan"]["no_op"] is True
+        plan_fp = planned["cleanup_plan_fingerprint"]
+        _post(
+            port,
+            f"/api/v1/actions/{action_id}/cleanup-plan/confirm",
+            _plan_confirm_payload(action_id, action_fp, plan_fp),
+        )
+        _, closed = _post(
+            port,
+            f"/api/v1/actions/{action_id}/cleanup-plan/close-review",
+            {"close_review": True},
+        )
+        assert closed["record"]["state"] == "COMPLETED"
+        assert closed["record"]["provider_write_attempted"] is False
+        assert ledger.verify()["active_action_count"] == 0
         assert fake.write_calls == []
     finally:
         server.shutdown()
