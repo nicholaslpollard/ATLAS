@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from packages.core.settings import load_settings
 from packages.schemas.control_plane import (
+    ControlPlaneActionKind,
     ControlPlaneActionRequest,
     ControlPlaneConfirmationGrant,
 )
@@ -22,13 +23,17 @@ from .action_ledger import (
     ControlPlaneActionLedgerError,
     ControlPlaneActionNotFound,
 )
+from .broker_switch_processor import (
+    ControlPlaneBrokerSwitchError,
+    Phase16BrokerSwitchProcessor,
+)
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .session import ControlPlaneSessionGuard
 from .status import ControlPlaneStatusError, Phase16StatusService
 
 
 CONTROL_PLANE_HTTP_CONTRACT_VERSION = (
-    "control-plane-http-v3-loopback-browser-ui-session-audit-only-no-provider-writes"
+    "control-plane-http-v4-loopback-browser-switch-local-routing-no-provider-writes"
 )
 DEFAULT_CONTROL_PLANE_PORT = 8765
 MAX_JSON_BODY_BYTES = 64 * 1024
@@ -86,11 +91,18 @@ class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
         *,
         session_guard: ControlPlaneSessionGuard | None = None,
         action_ledger: ControlPlaneActionLedger | None = None,
+        broker_switch_processor: Phase16BrokerSwitchProcessor | None = None,
         web_root: Path | None = None,
     ) -> None:
         self.service = service
         self.session_guard = session_guard or ControlPlaneSessionGuard()
-        self.action_ledger = action_ledger or ControlPlaneActionLedger(service.settings)
+        self.action_ledger = action_ledger or service.action_ledger
+        self.broker_switch_processor = broker_switch_processor or Phase16BrokerSwitchProcessor(
+            service.settings,
+            status_service=service,
+            ledger=self.action_ledger,
+            runtime_store=service.runtime_store,
+        )
         self.web_root = (
             web_root.resolve()
             if web_root is not None
@@ -280,7 +292,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path.startswith("/api/v1/actions/"):
                 action_id = path.rsplit("/", 1)[-1]
-                if action_id and action_id not in {"request", "confirm"}:
+                if action_id and action_id not in {"request", "confirm", "process"}:
                     try:
                         record = self.atlas_server.action_ledger.get(action_id)
                     except ControlPlaneActionNotFound:
@@ -376,7 +388,10 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
         action_confirm = path.startswith("/api/v1/actions/") and path.endswith(
             "/confirm"
         )
-        if not action_request and not action_confirm:
+        action_process = path.startswith("/api/v1/actions/") and path.endswith(
+            "/process"
+        )
+        if not action_request and not action_confirm and not action_process:
             self._method_not_allowed()
             return
         authorization = self.atlas_server.session_guard.authorize_write(
@@ -407,14 +422,29 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     )
                     return
                 action_id = parts[4]
-                grant = ControlPlaneConfirmationGrant.model_validate(payload)
-                record = self.atlas_server.action_ledger.confirm(action_id, grant)
+                if action_confirm:
+                    grant = ControlPlaneConfirmationGrant.model_validate(payload)
+                    record = self.atlas_server.action_ledger.confirm(action_id, grant)
+                else:
+                    if payload != {"process": True}:
+                        raise ValueError("PROCESS_TRUE_REQUIRED")
+                    existing = self.atlas_server.action_ledger.get(action_id)
+                    if existing.request.action_kind != ControlPlaneActionKind.BROKER_SWITCH:
+                        self._send_json(
+                            HTTPStatus.CONFLICT,
+                            {"error": "PROCESSOR_NOT_AVAILABLE_FOR_ACTION"},
+                        )
+                        return
+                    record = self.atlas_server.broker_switch_processor.process(action_id)
+            runtime = self.atlas_server.service.runtime_state()
             self._send_json(
                 HTTPStatus.OK,
                 {
                     "record": record.model_dump(mode="json"),
-                    "provider_write_attempted": False,
+                    "runtime": runtime.model_dump(mode="json"),
+                    "provider_write_attempted": record.provider_write_attempted,
                     "provider_write_endpoint_invoked": False,
+                    "provider_write_endpoints_present": False,
                     "live_execution_promoted": False,
                 },
             )
@@ -422,7 +452,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_json(
                 HTTPStatus.NOT_FOUND, {"error": "ACTION_NOT_FOUND"}
             )
-        except ControlPlaneActionConflict as exc:
+        except (ControlPlaneActionConflict, ControlPlaneBrokerSwitchError) as exc:
             self._send_json(
                 HTTPStatus.CONFLICT,
                 {"error": "ACTION_CONFLICT", "detail": str(exc)},
@@ -445,6 +475,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             {
                 "error": "METHOD_NOT_ALLOWED",
                 "action_request_endpoints_present": True,
+                "broker_switch_local_routing_processor_present": True,
                 "provider_write_endpoints_present": False,
             },
             allow="GET, HEAD, POST",
@@ -463,6 +494,7 @@ def create_status_server(
     port: int = DEFAULT_CONTROL_PLANE_PORT,
     session_guard: ControlPlaneSessionGuard | None = None,
     action_ledger: ControlPlaneActionLedger | None = None,
+    broker_switch_processor: Phase16BrokerSwitchProcessor | None = None,
     web_root: Path | None = None,
 ) -> AtlasControlPlaneHTTPServer:
     if not is_loopback_host(host):
@@ -474,6 +506,7 @@ def create_status_server(
         service,
         session_guard=session_guard,
         action_ledger=action_ledger,
+        broker_switch_processor=broker_switch_processor,
         web_root=web_root,
     )
 
@@ -494,6 +527,7 @@ def main() -> None:
     print(f"ATLAS Phase 16 control plane: http://{host}:{port}")
     print("  browser dashboard: enabled")
     print("  audited request/confirmation endpoints: enabled")
+    print("  broker-switch local routing processor: enabled")
     print("  provider write endpoints: disabled")
     print("  live execution promotion: disabled")
     print("  broker polling: lazy; dashboard refresh is explicit")
