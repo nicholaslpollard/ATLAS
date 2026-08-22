@@ -158,6 +158,125 @@ def test_http_request_and_confirmation_are_audited_but_provider_inert(tmp_path) 
         thread.join(timeout=5)
 
 
+def test_http_prewrite_abandon_is_audited_and_releases_active_workflow(tmp_path) -> None:
+    server, thread, ledger, guard = _open_server(tmp_path)
+    port = int(server.server_address[1])
+    base = f"http://127.0.0.1:{port}"
+    try:
+        opener, token = _session_opener(base)
+        request_model = ControlPlaneActionRequest(
+            action_id="switch-http-abandon-1",
+            action_kind=ControlPlaneActionKind.BROKER_SWITCH,
+            requested_at_utc=NOW,
+            idempotency_key="switch-http-abandon-idem-1",
+            target_broker=BrokerName.ALPACA,
+            environment=ExecutionEnvironment.PAPER,
+            reason="abandon browser review before provider activity",
+        )
+        with _post_json(
+            opener,
+            f"{base}/api/v1/actions/request",
+            request_model.model_dump(mode="json"),
+            token=token,
+            origin=base,
+        ) as response:
+            requested = json.loads(response.read().decode("utf-8"))
+        assert requested["record"]["state"] == ControlPlaneActionState.AWAITING_CONFIRMATION.value
+
+        with _post_json(
+            opener,
+            f"{base}/api/v1/actions/{request_model.action_id}/abandon",
+            {"abandon": True},
+            token=token,
+            origin=base,
+        ) as response:
+            abandoned = json.loads(response.read().decode("utf-8"))
+        assert abandoned["record"]["state"] == ControlPlaneActionState.BLOCKED.value
+        assert abandoned["record"]["error_code"] == "ACTION_ABANDONED_BY_USER"
+        assert abandoned["abandoned"] is True
+        assert abandoned["provider_write_attempted"] is False
+        assert abandoned["provider_write_endpoint_invoked"] is False
+        assert abandoned["provider_write_endpoints_present"] is False
+        assert ledger.verify()["active_action_count"] == 0
+
+        with _post_json(
+            opener,
+            f"{base}/api/v1/actions/{request_model.action_id}/abandon",
+            {"abandon": True},
+            token=token,
+            origin=base,
+        ) as response:
+            duplicate = json.loads(response.read().decode("utf-8"))
+        assert duplicate["record"] == abandoned["record"]
+
+        next_request = ControlPlaneActionRequest(
+            action_id="switch-http-after-abandon",
+            action_kind=ControlPlaneActionKind.BROKER_SWITCH,
+            requested_at_utc=NOW + timedelta(seconds=10),
+            idempotency_key="switch-http-after-abandon-idem",
+            target_broker=BrokerName.WEBULL,
+            environment=ExecutionEnvironment.PAPER,
+        )
+        with _post_json(
+            opener,
+            f"{base}/api/v1/actions/request",
+            next_request.model_dump(mode="json"),
+            token=token,
+            origin=base,
+        ) as response:
+            next_payload = json.loads(response.read().decode("utf-8"))
+        assert next_payload["record"]["state"] == ControlPlaneActionState.AWAITING_CONFIRMATION.value
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_http_abandon_refuses_executing_action(tmp_path) -> None:
+    server, thread, ledger, guard = _open_server(tmp_path)
+    port = int(server.server_address[1])
+    base = f"http://127.0.0.1:{port}"
+    try:
+        opener, token = _session_opener(base)
+        request_model = ControlPlaneActionRequest(
+            action_id="switch-http-executing",
+            action_kind=ControlPlaneActionKind.BROKER_SWITCH,
+            requested_at_utc=NOW,
+            idempotency_key="switch-http-executing-idem",
+            target_broker=BrokerName.ALPACA,
+            environment=ExecutionEnvironment.PAPER,
+        )
+        ledger.create_request(request_model)
+        ledger.confirm(
+            request_model.action_id,
+            ControlPlaneConfirmationGrant(
+                grant_id="grant-http-executing",
+                action_id=request_model.action_id,
+                action_fingerprint=request_model.authority_fingerprint(),
+                scope=ControlPlaneConfirmationScope.BROKER_SWITCH,
+                confirmed_at_utc=NOW + timedelta(seconds=1),
+            ),
+        )
+        ledger.transition(request_model.action_id, ControlPlaneActionState.EXECUTING)
+
+        with pytest.raises(urllib.error.HTTPError) as exc_info:
+            _post_json(
+                opener,
+                f"{base}/api/v1/actions/{request_model.action_id}/abandon",
+                {"abandon": True},
+                token=token,
+                origin=base,
+            )
+        assert exc_info.value.code == 409
+        payload = json.loads(exc_info.value.read().decode("utf-8"))
+        assert payload["error"] == "ACTION_CONFLICT"
+        assert ledger.get(request_model.action_id).state == ControlPlaneActionState.EXECUTING
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_csrf_failure_creates_no_action_event(tmp_path) -> None:
     server, thread, ledger, guard = _open_server(tmp_path)
     port = int(server.server_address[1])
