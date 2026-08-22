@@ -29,6 +29,7 @@ from packages.schemas.control_plane_status import (
 )
 from packages.schemas.execution import BrokerName, ExecutionEnvironment
 
+from .action_ledger import ControlPlaneActionLedger, ControlPlaneActionLedgerError
 from .phase16_policy import (
     PHASE16_ACCEPTED_PHASE15_MERGE_SHA,
     PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT,
@@ -80,7 +81,7 @@ def _account_ref(account_id: str) -> str:
 
 
 class Phase16StatusService:
-    """Read-only local status service with lazy broker reconciliation."""
+    """Local status service with fail-closed lineage/runtime/action-ledger health."""
 
     def __init__(
         self,
@@ -90,12 +91,16 @@ class Phase16StatusService:
         broker_factory: BrokerFactory | None = None,
         clock: Callable[[], datetime] | None = None,
         runtime_store: ControlPlaneRuntimeStateStore | None = None,
+        action_ledger: ControlPlaneActionLedger | None = None,
     ) -> None:
         self.settings = settings
         self._env = env if env is not None else os.environ
         self._broker_factory = broker_factory or _default_broker_factory
         self._clock = clock or (lambda: datetime.now(UTC))
         self.runtime_store = runtime_store or ControlPlaneRuntimeStateStore(
+            settings, clock=self._clock
+        )
+        self.action_ledger = action_ledger or ControlPlaneActionLedger(
             settings, clock=self._clock
         )
         derived = settings.resolved_path(settings.data.paths.derived)
@@ -189,15 +194,34 @@ class Phase16StatusService:
         except ControlPlaneRuntimeStateError:
             return None, False
 
+    def _ledger_or_invalid(self) -> tuple[dict[str, object], bool]:
+        try:
+            return self.action_ledger.verify(), True
+        except ControlPlaneActionLedgerError:
+            return {
+                "action_count": 0,
+                "active_action_count": 0,
+                "uncertain_action_count": 0,
+                "pass": False,
+            }, False
+
     def system_status(self) -> ControlPlaneSystemStatus:
         validate_phase16_policy()
         phase15 = self.phase15_acceptance()
         runtime, runtime_valid = self._runtime_or_invalid()
-        if not phase15.accepted or not runtime_valid:
+        ledger, ledger_valid = self._ledger_or_invalid()
+        action_count = int(ledger.get("action_count", 0))
+        active_count = int(ledger.get("active_action_count", 0))
+        uncertain_count = int(ledger.get("uncertain_action_count", 0))
+        provider_uncertain = bool(
+            not runtime_valid
+            or not ledger_valid
+            or (runtime is not None and runtime.provider_write_uncertain)
+            or uncertain_count > 0
+        )
+        if not phase15.accepted or not runtime_valid or not ledger_valid or provider_uncertain:
             health = ControlPlaneHealthState.BLOCKED
-        elif runtime is not None and runtime.provider_write_uncertain:
-            health = ControlPlaneHealthState.BLOCKED
-        elif runtime is not None and runtime.active_action_id is not None:
+        elif active_count > 0:
             health = ControlPlaneHealthState.DEGRADED
         else:
             health = ControlPlaneHealthState.HEALTHY
@@ -214,17 +238,18 @@ class Phase16StatusService:
             runtime_state_valid=runtime_valid,
             runtime_state_source=runtime.source if runtime else "invalid",
             runtime_revision=runtime.revision if runtime else None,
-            provider_write_uncertain=(
-                runtime.provider_write_uncertain if runtime else True
-            ),
-            active_action_present=bool(runtime and runtime.active_action_id),
-            uncertain_action_present=bool(runtime and runtime.uncertain_action_id),
+            action_ledger_valid=ledger_valid,
+            action_count=action_count,
+            active_action_count=active_count,
+            uncertain_action_count=uncertain_count,
+            provider_write_uncertain=provider_uncertain,
             allowed_execution_environments=PHASE16_ALLOWED_EXECUTION_ENVIRONMENTS,
             live_execution_promoted=PHASE16_LIVE_EXECUTION_PROMOTION_ALLOWED,
             automatic_cross_broker_failover_allowed=PHASE16_AUTOMATIC_CROSS_BROKER_FAILOVER_ALLOWED,
             browser_is_execution_authority=PHASE16_BROWSER_CAN_CREATE_EXECUTION_AUTHORITY,
             credentials_exposed=PHASE16_CREDENTIAL_VALUES_EXPOSED_TO_BROWSER,
-            write_actions_enabled=False,
+            action_request_endpoints_present=True,
+            provider_write_endpoints_present=False,
             bind_host_default=PHASE16_DEFAULT_BIND_HOST,
             phase15=phase15,
         )
@@ -232,17 +257,29 @@ class Phase16StatusService:
     def execution_status(self) -> ControlPlaneExecutionStatus:
         phase15 = self.phase15_acceptance()
         runtime, runtime_valid = self._runtime_or_invalid()
+        ledger, ledger_valid = self._ledger_or_invalid()
+        action_count = int(ledger.get("action_count", 0))
+        active_count = int(ledger.get("active_action_count", 0))
+        uncertain_count = int(ledger.get("uncertain_action_count", 0))
+        provider_uncertain = bool(
+            not runtime_valid
+            or not ledger_valid
+            or (runtime is not None and runtime.provider_write_uncertain)
+            or uncertain_count > 0
+        )
         return ControlPlaneExecutionStatus(
             phase15_accepted=phase15.accepted,
             phase15_as_of_date=phase15.as_of_date,
             phase15_execution_case_count=phase15.execution_case_count,
             selected_broker=runtime.selected_broker if runtime else None,
             selected_environment=runtime.selected_environment if runtime else None,
-            provider_write_uncertain=(
-                runtime.provider_write_uncertain if runtime_valid and runtime else True
-            ),
-            current_action_count=1 if runtime and runtime.active_action_id else 0,
-            uncertain_action_count=1 if runtime and runtime.uncertain_action_id else 0,
+            action_ledger_valid=ledger_valid,
+            action_count=action_count,
+            provider_write_uncertain=provider_uncertain,
+            action_request_endpoints_present=True,
+            provider_write_endpoints_present=False,
+            current_action_count=active_count,
+            uncertain_action_count=uncertain_count,
         )
 
     def broker_status(
@@ -353,6 +390,7 @@ class Phase16StatusService:
         execution = self.execution_status()
         brokers = self.brokers_status(refresh=refresh_brokers)
         runtime, runtime_valid = self._runtime_or_invalid()
+        ledger, ledger_valid = self._ledger_or_invalid()
         return {
             "system": system.model_dump(mode="json"),
             "runtime": (
@@ -361,6 +399,8 @@ class Phase16StatusService:
                 else {"valid": False, "source": "invalid", "fail_closed": True}
             ),
             "runtime_valid": runtime_valid,
+            "action_ledger": ledger,
+            "action_ledger_valid": ledger_valid,
             "execution": execution.model_dump(mode="json"),
             "brokers": [row.model_dump(mode="json") for row in brokers],
         }
