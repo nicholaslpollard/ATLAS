@@ -253,10 +253,12 @@ class HistoricalBackfillRegimePromotionStage:
         }
         staged_bytes = sum(path.stat().st_size for path in self.root.glob("**/*") if path.is_file())
         checks = {
-            "stage_contract": True,
+            "stage_contract": GATE10_REGIME_PROMOTION_STAGE_CONTRACT_VERSION.startswith(
+                "historical-backfill-regime-promotion-stage-v1-"
+            ),
+            "preflight_contract_current": preflight_report.get("contract_version")
+            == GATE10_REGIME_PROMOTION_PREFLIGHT_CONTRACT_VERSION,
             "preflight_pass": preflight_report.get("pass") is True,
-            "preflight_fingerprint_current": preflight_report.get("source_fingerprint")
-            == preflight_report.get("source_fingerprint"),
             "market_snapshot_hash_exact": sha256_file(self.market_snapshot_path) == market_snapshot_sha,
             "ticker_snapshot_hash_exact": sha256_file(self.ticker_snapshot_path) == ticker_snapshot_sha,
             "market_manifest_payload_exact": staged_market_manifest == planned_market_manifest,
@@ -296,7 +298,7 @@ class HistoricalBackfillRegimePromotionStage:
             "ticker_dependency": preflight_report["production_ticker_dependency"],
             "copied_files": copied,
             "reused_files": reused,
-            "staged_artifact_count": 8,
+            "staged_artifact_count": 4 + len(history_artifacts),
             "staged_bytes": staged_bytes,
             "artifacts": artifacts,
             "planned_market_manifest": planned_market_manifest,
@@ -363,14 +365,31 @@ class HistoricalBackfillRegimePromotionStageValidator:
             production_history_paths=production_history_paths,
         )
 
+        stored_artifacts = stored.get("artifacts") if isinstance(stored.get("artifacts"), dict) else {}
+        artifact_report_exact = (
+            stored.get("staged_artifact_count") == 8
+            and stored_artifacts.get("market_sector_snapshot", {}).get("sha256")
+            == sha256_file(self.stage.market_snapshot_path)
+            and stored_artifacts.get("market_sector_manifest", {}).get("sha256")
+            == sha256_file(self.stage.market_manifest_path)
+            and stored_artifacts.get("ticker_snapshot", {}).get("sha256")
+            == sha256_file(self.stage.ticker_snapshot_path)
+            and stored_artifacts.get("ticker_manifest", {}).get("sha256")
+            == sha256_file(self.stage.ticker_manifest_path)
+        )
+
         checks = {
-            "validation_contract": True,
+            "validation_contract": GATE10_REGIME_PROMOTION_STAGE_VALIDATION_CONTRACT_VERSION.startswith(
+                "historical-backfill-regime-promotion-stage-validation-v1-"
+            ),
             "preflight_current": preflight_report.get("pass") is True,
             "stage_report_pass": stored.get("pass") is True,
+            "stage_report_production_writes_zero": stored.get("production_regime_writes") == 0,
             "stage_source_fingerprint_current": stored.get("source_fingerprint")
             == expected_stage_fingerprint,
             "stage_preflight_fingerprint_current": stored.get("preflight_source_fingerprint")
             == preflight_report.get("source_fingerprint"),
+            "stage_artifact_report_exact": artifact_report_exact,
             "market_snapshot_candidate_hash_exact": self.stage.market_snapshot_path.is_file()
             and sha256_file(self.stage.market_snapshot_path)
             == str(candidate_market_manifest["snapshot_sha256"]),
