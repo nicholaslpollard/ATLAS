@@ -24,6 +24,7 @@ class MarketScope(StrEnum):
 
 class DataProvider(StrEnum):
     MASSIVE = "massive"
+    ALPACA = "alpaca"
     ROBINHOOD = "robinhood"
     INTERNAL = "internal"
 

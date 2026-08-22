@@ -68,5 +68,14 @@ jobs:
       - name: Validate Phase 10 final acceptance
         run: python scripts/validate_phase10_final.py
 
+      - name: Validate historical backfill Gate 1
+        run: python scripts/validate_historical_backfill_gate1.py
+
+      - name: Validate historical backfill Gate 2 status
+        run: python scripts/validate_historical_backfill_gate2.py
+
+      - name: Validate historical backfill Gate 3 status
+        run: python scripts/validate_historical_backfill_gate3.py
+
       - name: Run tests
         run: python -m pytest -q

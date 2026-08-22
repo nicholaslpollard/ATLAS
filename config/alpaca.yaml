@@ -1,0 +1,27 @@
+alpaca:
+  provider_name: alpaca
+
+  market_data:
+    base_url: https://data.alpaca.markets
+    feed: sip
+    adjustment: raw
+    asof: "-"
+    timeframe: 1Day
+    page_limit: 10000
+    symbol_batch_size: 100
+    requests_per_minute: 180
+    request_timeout_seconds: 60.0
+    max_attempts: 5
+    initial_retry_seconds: 1.0
+    max_retry_seconds: 30.0
+    backfill_start: "2016-01-04"
+    backfill_end: "2021-08-15"
+
+  credentials:
+    preferred_profile: paper
+    paper_api_key_env: ALPACA_PAPER_API_KEY
+    paper_api_secret_env: ALPACA_PAPER_API_SECRET
+    paper_endpoint_env: ALPACA_PAPER_ENDPOINT
+    live_api_key_env: ALPACA_LIVE_API_KEY
+    live_api_secret_env: ALPACA_LIVE_API_SECRET
+    live_endpoint_env: ALPACA_LIVE_ENDPOINT
