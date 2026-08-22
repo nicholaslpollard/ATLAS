@@ -12,6 +12,7 @@ from packages.core.settings import load_settings
 from packages.schemas.execution import BrokerName
 
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
+from .session import ControlPlaneSessionGuard
 from .status import ControlPlaneStatusError, Phase16StatusService
 
 
@@ -53,8 +54,15 @@ class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
-    def __init__(self, server_address: tuple[str, int], service: Phase16StatusService) -> None:
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        service: Phase16StatusService,
+        *,
+        session_guard: ControlPlaneSessionGuard | None = None,
+    ) -> None:
         self.service = service
+        self.session_guard = session_guard or ControlPlaneSessionGuard()
         super().__init__(server_address, AtlasControlPlaneRequestHandler)
 
 
@@ -70,7 +78,14 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         return
 
-    def _send_json(self, status: HTTPStatus, payload: Any, *, allow: str | None = None) -> None:
+    def _send_json(
+        self,
+        status: HTTPStatus,
+        payload: Any,
+        *,
+        allow: str | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> None:
         raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
         self.send_response(status.value)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -82,6 +97,8 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Referrer-Policy", "no-referrer")
         if allow is not None:
             self.send_header("Allow", allow)
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(raw)
@@ -109,7 +126,18 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                         "contract_version": CONTROL_PLANE_HTTP_CONTRACT_VERSION,
                         "health": status.health.value,
                         "phase15_accepted": status.phase15.accepted,
+                        "runtime_state_valid": status.runtime_state_valid,
+                        "provider_write_uncertain": status.provider_write_uncertain,
                         "live_execution_promoted": False,
+                    },
+                )
+                return
+            if path == "/api/v1/session":
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.atlas_server.session_guard.public_payload(),
+                    extra_headers={
+                        "Set-Cookie": self.atlas_server.session_guard.cookie_header()
                     },
                 )
                 return
@@ -121,6 +149,17 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.OK,
                     service.system_status().model_dump(mode="json"),
                 )
+                return
+            if path == "/api/v1/status/runtime":
+                try:
+                    runtime = service.runtime_state()
+                except Exception:
+                    self._send_json(
+                        HTTPStatus.CONFLICT,
+                        {"valid": False, "source": "invalid", "fail_closed": True},
+                    )
+                    return
+                self._send_json(HTTPStatus.OK, runtime.model_dump(mode="json"))
                 return
             if path == "/api/v1/status/execution":
                 self._send_json(
@@ -172,6 +211,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
     do_PUT = _method_not_allowed  # type: ignore[assignment]
     do_PATCH = _method_not_allowed  # type: ignore[assignment]
     do_DELETE = _method_not_allowed  # type: ignore[assignment]
+    do_OPTIONS = _method_not_allowed  # type: ignore[assignment]
 
 
 def create_status_server(
@@ -179,12 +219,15 @@ def create_status_server(
     service: Phase16StatusService,
     host: str = PHASE16_DEFAULT_BIND_HOST,
     port: int = DEFAULT_CONTROL_PLANE_PORT,
+    session_guard: ControlPlaneSessionGuard | None = None,
 ) -> AtlasControlPlaneHTTPServer:
     if not is_loopback_host(host):
         raise ValueError("Phase 16 read-only control plane may bind only to loopback")
     if not 0 <= int(port) <= 65535:
         raise ValueError("port must be between 0 and 65535")
-    return AtlasControlPlaneHTTPServer((host, int(port)), service)
+    return AtlasControlPlaneHTTPServer(
+        (host, int(port)), service, session_guard=session_guard
+    )
 
 
 def main() -> None:
