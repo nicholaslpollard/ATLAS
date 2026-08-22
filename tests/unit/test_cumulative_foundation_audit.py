@@ -188,7 +188,7 @@ def test_identity_audit_accepts_gate4c_v2_quarantine_contract() -> None:
     report = {
         "contract_version": "historical-backfill-identity-segments-v2-cusip-ambiguous-node-quarantine",
         "parent_segment_contract_version": "historical-backfill-identity-segments-v1-safe-rename-linear-chains",
-        "identity_policy_contract_version": "historical-backfill-identity-policy-v1-corporate-action-evidence-only",
+        "identity_policy_contract_version": "historical-backfill-identity-v2-observed-handoff-boundary",
         "canonical_data_modified": False,
         "edge_component_accounting": True,
         "chain_coverage_exact": True,
@@ -196,12 +196,7 @@ def test_identity_audit_accepts_gate4c_v2_quarantine_contract() -> None:
         "quarantine_accounting_exact": True,
     }
     checks = _identity_v2_report_checks(report)
-    # Use the live constants instead of hard-coding acceptance in the auditor itself.
-    assert checks["segment_policy_contract"] is True
-    assert checks["parent_segment_contract"] is True
-    assert checks["segment_canonical_unchanged"] is True
-    assert checks["eligible_safe_edges_consumed_exact"] is True
-    assert checks["quarantine_accounting_exact"] is True
+    assert all(checks.values())
 
 
 def test_independent_replay_matches_production_core33_on_synthetic_stream() -> None:
