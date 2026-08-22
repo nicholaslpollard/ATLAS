@@ -347,7 +347,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path.startswith("/api/v1/actions/") and path.endswith("/cleanup-plan"):
                 parts = path.split("/")
-                if len(parts) != 7 or parts[:4] != ["", "api", "v1", "actions"]:
+                if len(parts) != 6 or parts[:4] != ["", "api", "v1", "actions"]:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
                     return
                 self._send_json(
@@ -501,7 +501,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 record = self.atlas_server.action_ledger.create_request(request)
             elif cleanup_plan_build:
                 parts = path.split("/")
-                if len(parts) != 7 or parts[:4] != ["", "api", "v1", "actions"]:
+                if len(parts) != 6 or parts[:4] != ["", "api", "v1", "actions"]:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
                     return
                 if payload != {"plan": True}:
@@ -531,7 +531,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             elif cleanup_plan_confirm:
                 parts = path.split("/")
-                if len(parts) != 8 or parts[:4] != ["", "api", "v1", "actions"]:
+                if len(parts) != 7 or parts[:4] != ["", "api", "v1", "actions"]:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
                     return
                 action_id = parts[4]
