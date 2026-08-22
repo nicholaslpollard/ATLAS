@@ -9,17 +9,28 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from packages.core.settings import load_settings
+from packages.schemas.control_plane import (
+    ControlPlaneActionRequest,
+    ControlPlaneConfirmationGrant,
+)
 from packages.schemas.execution import BrokerName
 
+from .action_ledger import (
+    ControlPlaneActionConflict,
+    ControlPlaneActionLedger,
+    ControlPlaneActionLedgerError,
+    ControlPlaneActionNotFound,
+)
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .session import ControlPlaneSessionGuard
 from .status import ControlPlaneStatusError, Phase16StatusService
 
 
 CONTROL_PLANE_HTTP_CONTRACT_VERSION = (
-    "control-plane-http-v1-loopback-get-only-no-cors-host-validated"
+    "control-plane-http-v2-loopback-session-audit-only-actions-no-provider-writes"
 )
 DEFAULT_CONTROL_PLANE_PORT = 8765
+MAX_JSON_BODY_BYTES = 64 * 1024
 
 
 def is_loopback_host(host: str) -> bool:
@@ -60,9 +71,11 @@ class AtlasControlPlaneHTTPServer(ThreadingHTTPServer):
         service: Phase16StatusService,
         *,
         session_guard: ControlPlaneSessionGuard | None = None,
+        action_ledger: ControlPlaneActionLedger | None = None,
     ) -> None:
         self.service = service
         self.session_guard = session_guard or ControlPlaneSessionGuard()
+        self.action_ledger = action_ledger or ControlPlaneActionLedger(service.settings)
         super().__init__(server_address, AtlasControlPlaneRequestHandler)
 
 
@@ -106,17 +119,49 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
     def _authorized_local_request(self) -> bool:
         return host_header_is_loopback(self.headers.get("Host"))
 
+    def _expected_origin(self) -> str:
+        return f"http://{str(self.headers.get('Host', '')).strip()}"
+
+    def _read_json_body(self) -> dict[str, Any]:
+        raw_length = self.headers.get("Content-Length")
+        if raw_length is None:
+            raise ValueError("CONTENT_LENGTH_REQUIRED")
+        try:
+            length = int(raw_length)
+        except ValueError as exc:
+            raise ValueError("CONTENT_LENGTH_INVALID") from exc
+        if length <= 0 or length > MAX_JSON_BODY_BYTES:
+            raise ValueError("JSON_BODY_SIZE_INVALID")
+        raw = self.rfile.read(length)
+        if len(raw) != length:
+            raise ValueError("JSON_BODY_TRUNCATED")
+        payload = json.loads(raw.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("JSON_OBJECT_REQUIRED")
+        return payload
+
+    def _write_preconditions(self) -> bool:
+        system = self.atlas_server.service.system_status()
+        if not system.phase15.accepted:
+            self._send_json(HTTPStatus.CONFLICT, {"error": "PHASE15_ACCEPTANCE_REQUIRED"})
+            return False
+        if not system.runtime_state_valid:
+            self._send_json(HTTPStatus.CONFLICT, {"error": "RUNTIME_STATE_INVALID"})
+            return False
+        if system.provider_write_uncertain:
+            self._send_json(HTTPStatus.CONFLICT, {"error": "PROVIDER_WRITE_UNCERTAIN"})
+            return False
+        return True
+
     def _dispatch_get(self) -> None:
         if not self._authorized_local_request():
             self._send_json(HTTPStatus.FORBIDDEN, {"error": "LOCAL_HOST_REQUIRED"})
             return
-
         split = urlsplit(self.path)
         path = split.path.rstrip("/") or "/"
         query = parse_qs(split.query, keep_blank_values=False)
         refresh = _truthy(query.get("refresh", [None])[0])
         service = self.atlas_server.service
-
         try:
             if path == "/healthz":
                 status = service.system_status()
@@ -136,19 +181,31 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(
                     HTTPStatus.OK,
                     self.atlas_server.session_guard.public_payload(),
-                    extra_headers={
-                        "Set-Cookie": self.atlas_server.session_guard.cookie_header()
-                    },
+                    extra_headers={"Set-Cookie": self.atlas_server.session_guard.cookie_header()},
                 )
                 return
+            if path == "/api/v1/actions":
+                records = self.atlas_server.action_ledger.records()
+                self._send_json(
+                    HTTPStatus.OK,
+                    {"actions": [records[key].model_dump(mode="json") for key in sorted(records)]},
+                )
+                return
+            if path.startswith("/api/v1/actions/"):
+                action_id = path.rsplit("/", 1)[-1]
+                if action_id and action_id != "request" and action_id != "confirm":
+                    try:
+                        record = self.atlas_server.action_ledger.get(action_id)
+                    except ControlPlaneActionNotFound:
+                        self._send_json(HTTPStatus.NOT_FOUND, {"error": "ACTION_NOT_FOUND"})
+                        return
+                    self._send_json(HTTPStatus.OK, record.model_dump(mode="json"))
+                    return
             if path in {"/api/v1/status", "/api/v1/status/full"}:
                 self._send_json(HTTPStatus.OK, service.full_status(refresh_brokers=refresh))
                 return
             if path in {"/api/v1/status/system", "/api/v1/status/lineage"}:
-                self._send_json(
-                    HTTPStatus.OK,
-                    service.system_status().model_dump(mode="json"),
-                )
+                self._send_json(HTTPStatus.OK, service.system_status().model_dump(mode="json"))
                 return
             if path == "/api/v1/status/runtime":
                 try:
@@ -162,10 +219,7 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, runtime.model_dump(mode="json"))
                 return
             if path == "/api/v1/status/execution":
-                self._send_json(
-                    HTTPStatus.OK,
-                    service.execution_status().model_dump(mode="json"),
-                )
+                self._send_json(HTTPStatus.OK, service.execution_status().model_dump(mode="json"))
                 return
             if path == "/api/v1/status/brokers":
                 rows = service.brokers_status(refresh=refresh)
@@ -182,13 +236,15 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 row = service.broker_status(BrokerName(name), refresh=refresh)
                 self._send_json(HTTPStatus.OK, row.model_dump(mode="json"))
                 return
+        except ControlPlaneActionLedgerError:
+            self._send_json(HTTPStatus.CONFLICT, {"error": "ACTION_LEDGER_INVALID"})
+            return
         except ControlPlaneStatusError:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "STATUS_REQUEST_INVALID"})
             return
         except Exception:
             self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "STATUS_READ_FAILED"})
             return
-
         self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
 
     def do_GET(self) -> None:  # noqa: N802
@@ -197,17 +253,72 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
     def do_HEAD(self) -> None:  # noqa: N802
         self._dispatch_get()
 
+    def do_POST(self) -> None:  # noqa: N802
+        if not self._authorized_local_request():
+            self._send_json(HTTPStatus.FORBIDDEN, {"error": "LOCAL_HOST_REQUIRED"})
+            return
+        path = (urlsplit(self.path).path.rstrip("/") or "/")
+        action_request = path == "/api/v1/actions/request"
+        action_confirm = path.startswith("/api/v1/actions/") and path.endswith("/confirm")
+        if not action_request and not action_confirm:
+            self._method_not_allowed()
+            return
+        authorization = self.atlas_server.session_guard.authorize_write(
+            self.headers, expected_origin=self._expected_origin()
+        )
+        if not authorization.allowed:
+            self._send_json(
+                HTTPStatus.FORBIDDEN,
+                {"error": authorization.error_code or "WRITE_AUTHORIZATION_FAILED"},
+            )
+            return
+        if not self._write_preconditions():
+            return
+        try:
+            payload = self._read_json_body()
+            if action_request:
+                request = ControlPlaneActionRequest.model_validate(payload)
+                record = self.atlas_server.action_ledger.create_request(request)
+            else:
+                parts = path.split("/")
+                if len(parts) != 6 or parts[:4] != ["", "api", "v1", "actions"]:
+                    self._send_json(HTTPStatus.NOT_FOUND, {"error": "NOT_FOUND"})
+                    return
+                action_id = parts[4]
+                grant = ControlPlaneConfirmationGrant.model_validate(payload)
+                record = self.atlas_server.action_ledger.confirm(action_id, grant)
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "record": record.model_dump(mode="json"),
+                    "provider_write_attempted": False,
+                    "provider_write_endpoint_invoked": False,
+                    "live_execution_promoted": False,
+                },
+            )
+        except ControlPlaneActionNotFound:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "ACTION_NOT_FOUND"})
+        except ControlPlaneActionConflict as exc:
+            self._send_json(HTTPStatus.CONFLICT, {"error": "ACTION_CONFLICT", "detail": str(exc)})
+        except (ControlPlaneActionLedgerError, ValueError, json.JSONDecodeError):
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "ACTION_REQUEST_INVALID"})
+        except Exception:
+            self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "ACTION_REQUEST_FAILED"})
+
     def _method_not_allowed(self) -> None:
         if not self._authorized_local_request():
             self._send_json(HTTPStatus.FORBIDDEN, {"error": "LOCAL_HOST_REQUIRED"})
             return
         self._send_json(
             HTTPStatus.METHOD_NOT_ALLOWED,
-            {"error": "READ_ONLY_CONTROL_PLANE", "write_endpoints_present": False},
-            allow="GET, HEAD",
+            {
+                "error": "METHOD_NOT_ALLOWED",
+                "action_request_endpoints_present": True,
+                "provider_write_endpoints_present": False,
+            },
+            allow="GET, HEAD, POST",
         )
 
-    do_POST = _method_not_allowed  # type: ignore[assignment]
     do_PUT = _method_not_allowed  # type: ignore[assignment]
     do_PATCH = _method_not_allowed  # type: ignore[assignment]
     do_DELETE = _method_not_allowed  # type: ignore[assignment]
@@ -220,28 +331,32 @@ def create_status_server(
     host: str = PHASE16_DEFAULT_BIND_HOST,
     port: int = DEFAULT_CONTROL_PLANE_PORT,
     session_guard: ControlPlaneSessionGuard | None = None,
+    action_ledger: ControlPlaneActionLedger | None = None,
 ) -> AtlasControlPlaneHTTPServer:
     if not is_loopback_host(host):
-        raise ValueError("Phase 16 read-only control plane may bind only to loopback")
+        raise ValueError("Phase 16 control plane may bind only to loopback")
     if not 0 <= int(port) <= 65535:
         raise ValueError("port must be between 0 and 65535")
     return AtlasControlPlaneHTTPServer(
-        (host, int(port)), service, session_guard=session_guard
+        (host, int(port)),
+        service,
+        session_guard=session_guard,
+        action_ledger=action_ledger,
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ATLAS Phase 16 read-only local control plane")
+    parser = argparse.ArgumentParser(description="ATLAS Phase 16 local control plane")
     parser.add_argument("--host", default=PHASE16_DEFAULT_BIND_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_CONTROL_PLANE_PORT)
     args = parser.parse_args()
-
     settings = load_settings()
     service = Phase16StatusService(settings)
     server = create_status_server(service=service, host=args.host, port=args.port)
     host, port = server.server_address[:2]
-    print(f"ATLAS Phase 16 read-only control plane: http://{host}:{port}")
-    print("  write endpoints: disabled")
+    print(f"ATLAS Phase 16 control plane: http://{host}:{port}")
+    print("  audited request/confirmation endpoints: enabled")
+    print("  provider write endpoints: disabled")
     print("  live execution promotion: disabled")
     print("  broker polling: lazy; add ?refresh=1 to an explicit broker status GET")
     try:
