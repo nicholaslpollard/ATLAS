@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -98,11 +98,9 @@ class HistoricalBackfillRegimePromotionPreflight:
         self.builder = HistoricalBackfillRegimeReplayBuilder(settings)
         self.market_engine = SplitOriginRegimeStateEngine(settings)
         self.ticker_engine = TickerStateEngine(settings)
-        derived = settings.resolved_path(settings.data.paths.derived)
         self.root = self.builder.root / "promotion" / "v1"
         self.report_path = self.root / "gate10c_preflight_report.json"
         self.production_write_count = 0
-        self.derived_root = derived
 
     def _load_parent_reports(self) -> tuple[dict[str, Any], dict[str, Any]]:
         validation_path = self.builder.candidate_root / "gate10_validation_report.json"
@@ -134,8 +132,6 @@ class HistoricalBackfillRegimePromotionPreflight:
         if builder_report.get("pass") is not True or validation_report.get("pass") is not True:
             raise ValueError("Gate 10-C requires Gate 10-B builder and independent validation PASS")
         as_of_text = str(builder_report["as_of_date"])
-        from datetime import date
-
         as_of_date = date.fromisoformat(as_of_text)
         if validation_report.get("builder_source_fingerprint") != builder_report.get("source_fingerprint"):
             raise ValueError("Gate 10-B builder/validator fingerprint disagreement")
@@ -169,7 +165,7 @@ class HistoricalBackfillRegimePromotionPreflight:
         )
 
         history_targets = self.market_engine.history_paths(as_of_date)
-        candidate_history = builder_report["market_sector"]["history_files"]
+        candidate_history = builder_report["market_sector_history"]["files"]
         history_plan: dict[str, dict[str, object]] = {}
         for name, target in history_targets.items():
             expected_sha = str(candidate_history[name]["sha256"])
@@ -204,9 +200,9 @@ class HistoricalBackfillRegimePromotionPreflight:
             "ticker_snapshot": sha256_file(candidate_ticker_snapshot)
             == str(candidate_ticker_manifest["snapshot_sha256"]),
             "market_manifest": sha256_file(candidate_market_manifest_path)
-            == str(builder_report["market_sector"]["manifest_sha256"]),
+            == str(builder_report["market_sector_snapshot"]["manifest_sha256"]),
             "ticker_manifest": sha256_file(candidate_ticker_manifest_path)
-            == str(builder_report["ticker"]["manifest_sha256"]),
+            == str(builder_report["ticker_candidate"]["manifest_sha256"]),
         }
         for name, entry in candidate_history.items():
             candidate_hash_checks[f"history_{name}"] = (
