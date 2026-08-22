@@ -44,6 +44,10 @@ from .phase16_policy import (
     phase16_policy_fingerprint,
     validate_phase16_policy,
 )
+from .recovery import (
+    ControlPlaneRuntimeRecoveryVerifier,
+    RuntimeAuditBindingResult,
+)
 from .runtime_state import ControlPlaneRuntimeStateError, ControlPlaneRuntimeStateStore
 
 
@@ -103,6 +107,7 @@ class Phase16StatusService:
         self.action_ledger = action_ledger or ControlPlaneActionLedger(
             settings, clock=self._clock
         )
+        self.runtime_recovery = ControlPlaneRuntimeRecoveryVerifier(self.action_ledger)
         derived = settings.resolved_path(settings.data.paths.derived)
         self.phase15_root = derived / "execution" / "phase15" / "v1"
         self.phase15_acceptance_path = self.phase15_root / "phase15_final_acceptance.json"
@@ -205,23 +210,57 @@ class Phase16StatusService:
                 "pass": False,
             }, False
 
+    def _binding_result(
+        self,
+        runtime: ControlPlaneRuntimeState | None,
+        *,
+        runtime_valid: bool,
+        ledger_valid: bool,
+    ) -> RuntimeAuditBindingResult:
+        if not runtime_valid or runtime is None:
+            return RuntimeAuditBindingResult(
+                valid=False,
+                recovery_required=False,
+                reason_code="RUNTIME_STATE_INVALID",
+            )
+        if not ledger_valid:
+            return RuntimeAuditBindingResult(
+                valid=False,
+                recovery_required=False,
+                reason_code="ACTION_LEDGER_INVALID",
+            )
+        try:
+            return self.runtime_recovery.verify(runtime)
+        except ControlPlaneActionLedgerError:
+            return RuntimeAuditBindingResult(
+                valid=False,
+                recovery_required=False,
+                reason_code="RUNTIME_AUDIT_BINDING_READ_FAILED",
+            )
+
     def system_status(self) -> ControlPlaneSystemStatus:
         validate_phase16_policy()
         phase15 = self.phase15_acceptance()
         runtime, runtime_valid = self._runtime_or_invalid()
         ledger, ledger_valid = self._ledger_or_invalid()
+        binding = self._binding_result(
+            runtime,
+            runtime_valid=runtime_valid,
+            ledger_valid=ledger_valid,
+        )
         action_count = int(ledger.get("action_count", 0))
         active_count = int(ledger.get("active_action_count", 0))
         uncertain_count = int(ledger.get("uncertain_action_count", 0))
         provider_uncertain = bool(
             not runtime_valid
             or not ledger_valid
+            or not binding.valid
             or (runtime is not None and runtime.provider_write_uncertain)
             or uncertain_count > 0
         )
-        if not phase15.accepted or not runtime_valid or not ledger_valid or provider_uncertain:
+        if not phase15.accepted or provider_uncertain:
             health = ControlPlaneHealthState.BLOCKED
-        elif active_count > 0:
+        elif binding.recovery_required or active_count > 0:
             health = ControlPlaneHealthState.DEGRADED
         else:
             health = ControlPlaneHealthState.HEALTHY
@@ -238,6 +277,9 @@ class Phase16StatusService:
             runtime_state_valid=runtime_valid,
             runtime_state_source=runtime.source if runtime else "invalid",
             runtime_revision=runtime.revision if runtime else None,
+            runtime_audit_binding_valid=binding.valid,
+            runtime_recovery_required=binding.recovery_required,
+            runtime_audit_binding_reason=binding.reason_code,
             action_ledger_valid=ledger_valid,
             action_count=action_count,
             active_action_count=active_count,
@@ -258,12 +300,18 @@ class Phase16StatusService:
         phase15 = self.phase15_acceptance()
         runtime, runtime_valid = self._runtime_or_invalid()
         ledger, ledger_valid = self._ledger_or_invalid()
+        binding = self._binding_result(
+            runtime,
+            runtime_valid=runtime_valid,
+            ledger_valid=ledger_valid,
+        )
         action_count = int(ledger.get("action_count", 0))
         active_count = int(ledger.get("active_action_count", 0))
         uncertain_count = int(ledger.get("uncertain_action_count", 0))
         provider_uncertain = bool(
             not runtime_valid
             or not ledger_valid
+            or not binding.valid
             or (runtime is not None and runtime.provider_write_uncertain)
             or uncertain_count > 0
         )
@@ -273,6 +321,8 @@ class Phase16StatusService:
             phase15_execution_case_count=phase15.execution_case_count,
             selected_broker=runtime.selected_broker if runtime else None,
             selected_environment=runtime.selected_environment if runtime else None,
+            runtime_audit_binding_valid=binding.valid,
+            runtime_recovery_required=binding.recovery_required,
             action_ledger_valid=ledger_valid,
             action_count=action_count,
             provider_write_uncertain=provider_uncertain,
@@ -399,6 +449,11 @@ class Phase16StatusService:
                 else {"valid": False, "source": "invalid", "fail_closed": True}
             ),
             "runtime_valid": runtime_valid,
+            "runtime_audit_binding": {
+                "valid": system.runtime_audit_binding_valid,
+                "recovery_required": system.runtime_recovery_required,
+                "reason_code": system.runtime_audit_binding_reason,
+            },
             "action_ledger": ledger,
             "action_ledger_valid": ledger_valid,
             "execution": execution.model_dump(mode="json"),
