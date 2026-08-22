@@ -232,6 +232,60 @@ class ControlPlaneActionLedger:
             )
             return updated
 
+    def abandon(self, action_id: str) -> ControlPlaneActionRecord:
+        """Abandon a not-yet-executing action without any provider mutation.
+
+        This is a local-user recovery operation for stale confirmations/reviews. It is
+        intentionally unavailable once execution or provider-write uncertainty begins.
+        """
+        with self._lock:
+            record = self.get(action_id)
+            if (
+                record.state == ControlPlaneActionState.BLOCKED
+                and record.error_code == "ACTION_ABANDONED_BY_USER"
+                and not record.provider_write_attempted
+                and not record.provider_write_uncertain
+            ):
+                return record
+            if record.state not in {
+                ControlPlaneActionState.AWAITING_CONFIRMATION,
+                ControlPlaneActionState.AUTHORIZED,
+            }:
+                raise ControlPlaneActionConflict(
+                    f"action cannot be abandoned from state {record.state}"
+                )
+            if record.provider_write_attempted or record.provider_write_uncertain:
+                raise ControlPlaneActionConflict(
+                    "an action cannot be abandoned after provider-write activity"
+                )
+            now = self._now()
+            updated = record.model_copy(
+                update={
+                    "state": ControlPlaneActionState.BLOCKED,
+                    "revision": record.revision + 1,
+                    "updated_at_utc": now,
+                    "provider_write_attempted": False,
+                    "provider_write_uncertain": False,
+                    "error_code": "ACTION_ABANDONED_BY_USER",
+                    "result_reference": "abandoned:local_user",
+                }
+            )
+            updated = ControlPlaneActionRecord.model_validate(updated.model_dump(mode="python"))
+            self.audit_log.append(
+                event_type=ControlPlaneAuditEventType.ACTION_STATE_CHANGED,
+                actor="local_user",
+                action_id=updated.request.action_id,
+                action_fingerprint=updated.request_fingerprint,
+                action_state=updated.state,
+                details={
+                    "record": updated.model_dump(mode="json"),
+                    "abandoned_by_local_user": True,
+                    "provider_write_attempted": False,
+                    "provider_write_uncertain": False,
+                },
+            )
+            return updated
+
     def transition(
         self,
         action_id: str,
@@ -359,10 +413,9 @@ class ControlPlaneActionLedger:
             "event_count": len(events),
             "action_count": len(records),
             "active_action_count": len(active),
-            "active_action_ids": tuple(sorted(active)),
             "uncertain_action_count": len(uncertain),
+            "active_action_ids": tuple(sorted(active)),
             "uncertain_action_ids": tuple(sorted(uncertain)),
-            "hash_chain_valid": True,
-            "idempotency_unique": True,
+            "last_event_hash": events[-1].event_hash if events else None,
             "pass": True,
         }
