@@ -27,6 +27,7 @@ class ExecutionRiskRevalidation(BaseModel):
 
     contract_version: str = EXECUTION_RISK_REVALIDATION_CONTRACT_VERSION
     checked_at_utc: datetime
+    new_submission_evaluated: bool = True
     account_equity: float = Field(gt=0.0)
     account_gross_market_value: float = Field(ge=0.0)
     open_positions_before: int = Field(ge=0)
@@ -52,8 +53,14 @@ class ExecutionRiskRevalidation(BaseModel):
     def validate_risk(self) -> "ExecutionRiskRevalidation":
         if not self.reason_codes:
             raise ValueError("execution risk revalidation requires reason codes")
-        if self.open_positions_before > 0 and self.max_abs_correlation is None:
-            raise ValueError("existing broker positions require current correlation evidence")
+        if (
+            self.new_submission_evaluated
+            and self.open_positions_before > 0
+            and self.max_abs_correlation is None
+        ):
+            raise ValueError("new submission with existing broker positions requires current correlation evidence")
+        if not self.new_submission_evaluated and self.admissible:
+            raise ValueError("non-submission idempotency observation cannot claim new-entry admission")
         return self
 
 
@@ -106,8 +113,12 @@ class ExecutionAttemptRecord(BaseModel):
             raise ValueError("execution attempt requires a reconciled broker snapshot")
         if self.reconciliation_before.account.trading_blocked:
             raise ValueError("execution attempt cannot submit through a blocked account")
-        if not self.risk_revalidation.admissible:
-            raise ValueError("execution attempt requires current broker risk admission")
+        if not self.existing_order_reused:
+            if not self.risk_revalidation.new_submission_evaluated or not self.risk_revalidation.admissible:
+                raise ValueError("new execution attempt requires current broker risk admission")
+        else:
+            if self.risk_revalidation.new_submission_evaluated:
+                raise ValueError("existing-order reuse must not be represented as a new-entry risk admission")
         if not self.preflight.accepted:
             raise ValueError("execution attempt requires accepted broker preflight")
         if self.existing_order_reused and self.provider_submission_performed:
