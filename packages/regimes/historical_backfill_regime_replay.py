@@ -248,7 +248,7 @@ class HistoricalBackfillRegimeReplayPreflight:
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
         self.paths = MarketDataPaths(settings)
-        self.calendar = get_market_calendar()
+        self.calendar = get_market_calendar(settings.data.calendar.exchange)
         self.calibration = RegimeCalibration(settings)
         self.regime_engine = RegimeStateEngine(settings)
         self.ticker_engine = TickerStateEngine(settings)
@@ -274,13 +274,33 @@ class HistoricalBackfillRegimeReplayPreflight:
             return str(value)
         raise RuntimeError("Gate 10-A cannot resolve the accepted Gate 9-C handoff fingerprint")
 
+    def _accepted_gate9c_writer(self, gate9c_fingerprint: str) -> dict[str, Any]:
+        writer_path = self.gate9c_validator.handoff.report_path
+        if not writer_path.is_file():
+            raise RuntimeError(f"Gate 10-A requires Gate 9-C writer report: {writer_path}")
+        try:
+            report = json.loads(writer_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"Gate 10-A cannot read Gate 9-C writer report: {writer_path}") from exc
+        writer_fingerprint = str(report.get("source_fingerprint") or "")
+        if not writer_fingerprint or writer_fingerprint != gate9c_fingerprint:
+            raise RuntimeError(
+                "Gate 10-A Gate 9-C writer/validator handoff fingerprints do not match"
+            )
+        last_session = report.get("last_session")
+        if not last_session:
+            raise RuntimeError("Gate 10-A Gate 9-C writer report lacks last_session")
+        date.fromisoformat(str(last_session))
+        return report
+
     def run(self) -> dict[str, object]:
         gate9c = self.gate9c_validator.run()
         if gate9c.get("pass") is not True:
             raise RuntimeError("Gate 10-A requires current passing Gate 9-C production validation")
         gate9c_fp = self._gate9c_fingerprint(gate9c)
+        gate9c_writer = self._accepted_gate9c_writer(gate9c_fp)
 
-        as_of_date = date.fromisoformat(str(gate9c.get("last_session") or "2026-08-14"))
+        as_of_date = date.fromisoformat(str(gate9c_writer["last_session"]))
         daily = feature_manifest_inventory(self.settings, Timeframe.DAY_1)
         hour4 = feature_manifest_inventory(self.settings, Timeframe.HOUR_4)
         hour1 = feature_manifest_inventory(self.settings, Timeframe.HOUR_1)
@@ -368,6 +388,10 @@ class HistoricalBackfillRegimeReplayPreflight:
         checks = {
             "preflight_contract": True,
             "gate9c_production_validation_pass": gate9c.get("pass") is True,
+            "gate9c_writer_handoff_fingerprint_exact": str(
+                gate9c_writer["source_fingerprint"]
+            )
+            == gate9c_fp,
             "candidate_market_sector_origin_is_daily_backfill_origin": GATE10_MARKET_SECTOR_CANDIDATE_ORIGIN == ALPACA_BACKFILL_START,
             "ticker_origin_remains_massive_intraday_origin": GATE10_TICKER_ORIGIN == date(2021, 8, 16),
             "daily_manifest_coverage_complete": _coverage_complete(
@@ -407,6 +431,7 @@ class HistoricalBackfillRegimeReplayPreflight:
             "role": GATE10_REGIME_REPLAY_ROLE,
             "source_fingerprint": source_fp,
             "gate9c_handoff_source_fingerprint": gate9c_fp,
+            "gate9c_writer_report_path": str(self.gate9c_validator.handoff.report_path),
             "as_of_date": as_of_date.isoformat(),
             "current_phase9_origin": REGIME_HISTORY_ORIGIN_DATE.isoformat(),
             "candidate_market_sector_origin": GATE10_MARKET_SECTOR_CANDIDATE_ORIGIN.isoformat(),
