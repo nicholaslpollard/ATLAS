@@ -67,14 +67,14 @@ def _orders_from_payload(payload: Any) -> list[dict[str, Any]]:
 
 def _status(raw: object, filled: float, requested: float) -> BrokerOrderStatus:
     text = str(raw or "").upper()
-    if filled > 0.0 and filled + 1e-12 < requested:
-        return BrokerOrderStatus.PARTIAL_FILLED
-    if text in {"FILLED", "FINAL_FILLED"} or (requested > 0 and filled >= requested - 1e-12):
-        return BrokerOrderStatus.FILLED
     if text in {"CANCELLED", "CANCELED"}:
         return BrokerOrderStatus.CANCELLED
     if text in {"FAILED", "REJECTED", "PLACE_FAILED"}:
         return BrokerOrderStatus.REJECTED
+    if text in {"FILLED", "FINAL_FILLED"} or (requested > 0 and filled >= requested - 1e-12):
+        return BrokerOrderStatus.FILLED
+    if filled > 0.0 and filled + 1e-12 < requested:
+        return BrokerOrderStatus.PARTIAL_FILLED
     if text in {"SUBMITTED", "PENDING", "NEW", "WORKING", "QUEUED"}:
         return BrokerOrderStatus.SUBMITTED
     return BrokerOrderStatus.SUBMITTED
@@ -378,8 +378,23 @@ class WebullSandboxBroker(BrokerAdapter):
         return _normalize_order(row, account_id=self.account_id)
 
     def cancel(self, client_order_id: str) -> BrokerOrderSnapshot:
-        if not str(client_order_id).strip():
+        client_order_id = str(client_order_id).strip()
+        if not client_order_id:
             raise BrokerAdapterError("Webull cancellation requires a client order id")
+        current = self.order(client_order_id)
+        if current.status == BrokerOrderStatus.CANCELLED:
+            return current
+        if current.status in {BrokerOrderStatus.FILLED, BrokerOrderStatus.REJECTED}:
+            raise BrokerAdapterError(
+                f"Webull order is already terminal and cannot be cancelled: {current.status.value}"
+            )
+        if current.status not in {
+            BrokerOrderStatus.SUBMITTED,
+            BrokerOrderStatus.PARTIAL_FILLED,
+        }:
+            raise BrokerAdapterError(
+                f"Webull order state is not cancelable: {current.status.value}"
+            )
         try:
             response = self._client.order_v3.cancel_order(self.account_id, client_order_id)
         except Exception as exc:
