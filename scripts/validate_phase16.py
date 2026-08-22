@@ -61,7 +61,7 @@ def main() -> None:
         "remote_bind_disabled_default": PHASE16_REMOTE_BIND_ENABLED_BY_DEFAULT is False,
         "policy_fingerprint_present": len(phase16_policy_fingerprint()) == 64,
         "status_contract_locked": CONTROL_PLANE_STATUS_CONTRACT_VERSION
-        == "control-plane-status-v1-readonly-sanitized-lineage-broker-state",
+        == "control-plane-status-v2-sanitized-lineage-runtime-ledger-reconciliation",
         "runtime_contract_locked": CONTROL_PLANE_RUNTIME_CONTRACT_VERSION
         == "control-plane-runtime-v2-explicit-selection-audit-bound-uncertainty-fail-closed",
         "runtime_default_unselected": default_state.selected_broker is None
