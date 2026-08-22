@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import threading
 from datetime import UTC, datetime
-from typing import Callable
+from typing import Any, Callable
 
 from packages.core.settings import AtlasSettings
 from packages.schemas.control_plane import (
@@ -14,6 +14,7 @@ from packages.schemas.control_plane import (
 )
 from packages.schemas.control_plane_ledger import (
     ControlPlaneActionRecord,
+    ControlPlaneAuditEvent,
     ControlPlaneAuditEventType,
 )
 
@@ -33,13 +34,31 @@ class ControlPlaneActionNotFound(ControlPlaneActionLedgerError):
 
 
 _TERMINAL_KNOWN_STATES = {
+    ControlPlaneActionState.BLOCKED,
     ControlPlaneActionState.COMPLETED,
     ControlPlaneActionState.FAILED,
+}
+_ALLOWED_TRANSITIONS: dict[ControlPlaneActionState, set[ControlPlaneActionState]] = {
+    ControlPlaneActionState.AUTHORIZED: {
+        ControlPlaneActionState.EXECUTING,
+        ControlPlaneActionState.BLOCKED,
+        ControlPlaneActionState.COMPLETED,
+        ControlPlaneActionState.FAILED,
+    },
+    ControlPlaneActionState.EXECUTING: {
+        ControlPlaneActionState.COMPLETED,
+        ControlPlaneActionState.FAILED,
+        ControlPlaneActionState.UNCERTAIN,
+    },
+    ControlPlaneActionState.UNCERTAIN: {
+        ControlPlaneActionState.COMPLETED,
+        ControlPlaneActionState.FAILED,
+    },
 }
 
 
 class ControlPlaneActionLedger:
-    """Audit-log-backed action state machine; no broker methods are called here."""
+    """Audit-log-backed action state machine; provider calls are outside this class."""
 
     def __init__(
         self,
@@ -212,6 +231,114 @@ class ControlPlaneActionLedger:
                 details={"record": updated.model_dump(mode="json")},
             )
             return updated
+
+    def transition(
+        self,
+        action_id: str,
+        state: ControlPlaneActionState,
+        *,
+        provider_write_attempted: bool | None = None,
+        provider_write_uncertain: bool | None = None,
+        error_code: str | None = None,
+        result_reference: str | None = None,
+        event_details: dict[str, Any] | None = None,
+    ) -> ControlPlaneActionRecord:
+        with self._lock:
+            record = self.get(action_id)
+            if state == record.state:
+                return record
+            if state not in _ALLOWED_TRANSITIONS.get(record.state, set()):
+                raise ControlPlaneActionConflict(
+                    f"invalid action transition: {record.state} -> {state}"
+                )
+            attempted = (
+                record.provider_write_attempted
+                if provider_write_attempted is None
+                else bool(provider_write_attempted)
+            )
+            if record.provider_write_attempted and not attempted:
+                raise ControlPlaneActionConflict("provider_write_attempted cannot revert to false")
+            uncertain = (
+                record.provider_write_uncertain
+                if provider_write_uncertain is None
+                else bool(provider_write_uncertain)
+            )
+            if state == ControlPlaneActionState.UNCERTAIN:
+                attempted = True
+                uncertain = True
+            elif uncertain:
+                raise ControlPlaneActionConflict(
+                    "provider write uncertainty may exist only in UNCERTAIN state"
+                )
+            now = self._now()
+            updated = record.model_copy(
+                update={
+                    "state": state,
+                    "revision": record.revision + 1,
+                    "updated_at_utc": now,
+                    "provider_write_attempted": attempted,
+                    "provider_write_uncertain": uncertain,
+                    "error_code": error_code,
+                    "result_reference": result_reference,
+                }
+            )
+            updated = ControlPlaneActionRecord.model_validate(updated.model_dump(mode="python"))
+            details = dict(event_details or {})
+            details["record"] = updated.model_dump(mode="json")
+            self.audit_log.append(
+                event_type=ControlPlaneAuditEventType.ACTION_STATE_CHANGED,
+                actor="atlas_system",
+                action_id=updated.request.action_id,
+                action_fingerprint=updated.request_fingerprint,
+                action_state=updated.state,
+                details=details,
+            )
+            return updated
+
+    def append_runtime_transition_intent(
+        self,
+        action_id: str,
+        *,
+        prior_revision: int,
+        next_revision: int,
+        selected_broker: str,
+        selected_environment: str,
+    ) -> ControlPlaneAuditEvent:
+        with self._lock:
+            record = self.get(action_id)
+            if record.state != ControlPlaneActionState.EXECUTING:
+                raise ControlPlaneActionConflict(
+                    "runtime transition intent requires EXECUTING action"
+                )
+            if record.provider_write_attempted or record.provider_write_uncertain:
+                raise ControlPlaneActionConflict(
+                    "broker selection runtime transition cannot follow provider write"
+                )
+            return self.audit_log.append(
+                event_type=ControlPlaneAuditEventType.RUNTIME_STATE_CHANGED,
+                actor="atlas_system",
+                action_id=record.request.action_id,
+                action_fingerprint=record.request_fingerprint,
+                action_state=record.state,
+                details={
+                    "transition_kind": "BROKER_SELECTION",
+                    "prior_revision": int(prior_revision),
+                    "next_revision": int(next_revision),
+                    "selected_broker": selected_broker,
+                    "selected_environment": selected_environment,
+                    "provider_write_attempted": False,
+                },
+            )
+
+    def runtime_transition_events(self, action_id: str) -> tuple[ControlPlaneAuditEvent, ...]:
+        record = self.get(action_id)
+        return tuple(
+            event
+            for event in self.audit_log.read_verified()
+            if event.event_type == ControlPlaneAuditEventType.RUNTIME_STATE_CHANGED
+            and event.action_id == action_id
+            and event.action_fingerprint == record.request_fingerprint
+        )
 
     def verify(self) -> dict[str, object]:
         records = self.records()
