@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
 
 from packages.core.enums import Timeframe
+from packages.data.alpaca_backfill_policy import ALPACA_BACKFILL_START
 from packages.features.historical_backfill_feature_promotion_stage import (
     GATE9_FEATURE_PROMOTION_STAGE_CONTRACT_VERSION,
     GATE9_FEATURE_PROMOTION_STAGE_YEAR_CONTRACT_VERSION,
@@ -132,7 +132,7 @@ class CumulativeFoundationRetainedStageAuditor(CumulativeFoundationLifecycleAwar
                 except (KeyError, TypeError, ValueError):
                     year_manifest_failures.append(f"{year}: invalid retained session date")
                     continue
-                if session < self._history_origin() or session > end_date:
+                if session < ALPACA_BACKFILL_START or session > end_date:
                     continue
                 if session in rows:
                     duplicate_sessions += 1
@@ -207,10 +207,3 @@ class CumulativeFoundationRetainedStageAuditor(CumulativeFoundationLifecycleAwar
             "checks": checks,
             "pass": all(checks.values()),
         }
-
-    @staticmethod
-    def _history_origin() -> date:
-        return ALPACA_BACKFILL_START
-
-
-from packages.data.alpaca_backfill_policy import ALPACA_BACKFILL_START
