@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 from packages.core.enums import Timeframe
+from packages.core.market_calendar import get_market_calendar
 from packages.data.alpaca_backfill_identity_policy import ALPACA_BACKFILL_IDENTITY_POLICY_CONTRACT_VERSION
 from packages.data.alpaca_backfill_identity_segments import ALPACA_BACKFILL_IDENTITY_SEGMENT_CONTRACT_VERSION
 from packages.data.alpaca_backfill_policy import ALPACA_BACKFILL_START
@@ -22,11 +23,160 @@ from packages.regimes.split_origin_policy import (
     TICKER_HISTORY_ORIGIN_DATE,
 )
 
-from .cumulative_foundation import CumulativeFoundationAuditor, _json, _partition_date, _sql
+from .cumulative_foundation import (
+    CumulativeFoundationAuditError,
+    CumulativeFoundationAuditor,
+    _json,
+    _partition_date,
+    _sql,
+)
+
+
+def _daily_integrity_sql(transaction_column: str = "transaction_count") -> str:
+    """Return the exhaustive daily integrity query for the accepted canonical schema."""
+
+    if transaction_column != "transaction_count":
+        raise CumulativeFoundationAuditError(
+            f"unexpected canonical transaction column: {transaction_column}"
+        )
+    return f"""
+        SELECT
+            count(*) AS rows,
+            count(DISTINCT symbol) AS symbols,
+            count(DISTINCT CAST(timestamp_utc AS DATE)) AS sessions,
+            count(*) FILTER (WHERE symbol IS NULL OR trim(symbol)='') AS blank_symbol,
+            count(*) FILTER (WHERE timestamp_utc IS NULL) AS null_timestamp,
+            count(*) FILTER (
+                WHERE NOT isfinite(open) OR NOT isfinite(high) OR NOT isfinite(low) OR NOT isfinite(close)
+                   OR open <= 0 OR high <= 0 OR low <= 0 OR close <= 0
+                   OR high < low OR open < low OR open > high OR close < low OR close > high
+            ) AS invalid_ohlc,
+            count(*) FILTER (WHERE NOT isfinite(volume) OR volume < 0) AS invalid_volume,
+            count(*) FILTER (
+                WHERE {transaction_column} IS NOT NULL AND {transaction_column} < 0
+            ) AS invalid_transactions,
+            count(*) FILTER (
+                WHERE CAST(timestamp_utc AS DATE)
+                   <> TRY_CAST(regexp_extract(filename, 'date=([0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}})', 1) AS DATE)
+            ) AS partition_date_mismatch
+        FROM daily
+    """
 
 
 class CumulativeFoundationIntegrityAuditor(CumulativeFoundationAuditor):
     """Cumulative auditor with explicit identity, coverage, and split-origin proofs."""
+
+    def _audit_daily(self, end_date: date) -> dict[str, object]:
+        """Exhaustively validate canonical daily structure using the accepted schema names."""
+
+        files = [
+            path
+            for path in self._daily_files()
+            if ALPACA_BACKFILL_START <= _partition_date(path) <= end_date
+        ]
+        actual_sessions = [_partition_date(path) for path in files]
+        expected_sessions = get_market_calendar().sessions_in_range(ALPACA_BACKFILL_START, end_date)
+        missing_sessions = sorted(set(expected_sessions).difference(actual_sessions))
+        unexpected_sessions = sorted(set(actual_sessions).difference(expected_sessions))
+        duplicate_partitions = len(actual_sessions) - len(set(actual_sessions))
+        if not files:
+            raise CumulativeFoundationAuditError("no canonical daily partitions in audit range")
+
+        glob = (
+            self.canonical_root
+            / "stocks"
+            / Timeframe.DAY_1.value
+            / "year=*"
+            / "date=*"
+            / "part-000.parquet"
+        ).as_posix()
+        con = connect_utc(":memory:")
+        try:
+            con.execute(
+                f"""
+                CREATE TEMP VIEW daily AS
+                SELECT *, filename
+                FROM read_parquet({_sql(glob)}, union_by_name=true, filename=true)
+                WHERE CAST(timestamp_utc AS DATE) BETWEEN DATE '{ALPACA_BACKFILL_START}' AND DATE '{end_date}'
+                """
+            )
+            columns = {
+                str(row[0]): str(row[1]).upper()
+                for row in con.execute("DESCRIBE daily").fetchall()
+            }
+            if "transaction_count" not in columns:
+                raise CumulativeFoundationAuditError(
+                    "canonical daily schema is missing accepted transaction_count column"
+                )
+            row = con.execute(_daily_integrity_sql("transaction_count")).fetchone()
+            duplicates = int(
+                con.execute(
+                    """
+                    SELECT count(*) FROM (
+                        SELECT symbol, timestamp_utc, count(*) n
+                        FROM daily GROUP BY 1,2 HAVING n > 1
+                    )
+                    """
+                ).fetchone()[0]
+            )
+            yearly = con.execute(
+                """
+                SELECT year(CAST(timestamp_utc AS DATE)) y,
+                       count(*) rows,
+                       count(DISTINCT symbol) symbols,
+                       count(DISTINCT CAST(timestamp_utc AS DATE)) sessions,
+                       median(volume) median_volume,
+                       quantile_cont(close, 0.5) median_close
+                FROM daily GROUP BY 1 ORDER BY 1
+                """
+            ).fetchall()
+        finally:
+            con.close()
+
+        stats = {
+            "row_count": int(row[0]),
+            "symbol_count": int(row[1]),
+            "session_count": int(row[2]),
+            "blank_symbol_rows": int(row[3]),
+            "null_timestamp_rows": int(row[4]),
+            "invalid_ohlc_rows": int(row[5]),
+            "invalid_volume_rows": int(row[6]),
+            "invalid_transaction_rows": int(row[7]),
+            "partition_date_mismatch_rows": int(row[8]),
+            "duplicate_market_keys": duplicates,
+            "partition_count": len(files),
+            "expected_session_count": len(expected_sessions),
+            "missing_sessions": [item.isoformat() for item in missing_sessions],
+            "unexpected_sessions": [item.isoformat() for item in unexpected_sessions],
+            "duplicate_partition_dates": duplicate_partitions,
+            "schema_columns": columns,
+            "yearly_diagnostics": [
+                {
+                    "year": int(year),
+                    "rows": int(rows),
+                    "symbols": int(symbols),
+                    "sessions": int(sessions),
+                    "median_volume": None if median_volume is None else float(median_volume),
+                    "median_close": None if median_close is None else float(median_close),
+                }
+                for year, rows, symbols, sessions, median_volume, median_close in yearly
+            ],
+        }
+        stats["pass"] = all(
+            (
+                stats["blank_symbol_rows"] == 0,
+                stats["null_timestamp_rows"] == 0,
+                stats["invalid_ohlc_rows"] == 0,
+                stats["invalid_volume_rows"] == 0,
+                stats["invalid_transaction_rows"] == 0,
+                stats["partition_date_mismatch_rows"] == 0,
+                stats["duplicate_market_keys"] == 0,
+                not missing_sessions,
+                not unexpected_sessions,
+                duplicate_partitions == 0,
+            )
+        )
+        return stats
 
     def _audit_feature_manifests(
         self,
