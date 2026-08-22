@@ -167,7 +167,9 @@ class BrokerOrderPlan(BaseModel):
 
     contract_version: str = BROKER_ORDER_PLAN_CONTRACT_VERSION
     intent_id: str = Field(min_length=16, max_length=128)
-    client_order_id: str = Field(min_length=8, max_length=128)
+    # Webull currently caps client_order_id at 32 chars; ATLAS uses the stricter
+    # shared limit so the same idempotency key is valid for Webull and Alpaca.
+    client_order_id: str = Field(min_length=8, max_length=32)
     ticker: str = Field(min_length=1, max_length=64)
     instrument_type: str = Field(pattern="^EQUITY$")
     side: BrokerOrderSide
@@ -266,7 +268,7 @@ class BrokerOrderSnapshot(BaseModel):
     contract_version: str = BROKER_ORDER_SNAPSHOT_CONTRACT_VERSION
     broker: BrokerName
     account_id: str = Field(min_length=1)
-    client_order_id: str = Field(min_length=8, max_length=128)
+    client_order_id: str = Field(min_length=8, max_length=32)
     provider_order_id: str | None = None
     ticker: str = Field(min_length=1, max_length=64)
     side: BrokerOrderSide
