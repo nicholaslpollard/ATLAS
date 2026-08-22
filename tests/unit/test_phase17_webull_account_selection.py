@@ -14,6 +14,7 @@ def _candidate(
     readable: bool = True,
     open_orders: int = 0,
     positions: int = 0,
+    buying_power: str | None = None,
 ) -> WebullSandboxAccountCandidate:
     return WebullSandboxAccountCandidate(
         account_id=account_id,
@@ -23,6 +24,8 @@ def _candidate(
         positions_readable=readable,
         open_order_count=open_orders if readable else None,
         position_count=positions if readable else None,
+        balance_currency="USD" if readable else None,
+        buying_power=buying_power,
     )
 
 
@@ -48,9 +51,9 @@ def test_selector_fails_closed_on_multiple_readable_accounts() -> None:
         raise AssertionError("expected multiple readable accounts to fail closed")
 
 
-def test_selector_does_not_infer_authority_from_flatness_or_account_type() -> None:
-    exposed = _candidate("margin-exposed", "MARGIN", positions=1)
-    flat = _candidate("cash-flat", "CASH")
+def test_selector_does_not_infer_authority_from_account_state_or_buying_power() -> None:
+    exposed = _candidate("margin-exposed", "MARGIN", positions=1, buying_power="1000000")
+    flat = _candidate("cash-flat", "CASH", buying_power="100")
 
     try:
         select_webull_sandbox_candidate((exposed, flat))
