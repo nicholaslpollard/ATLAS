@@ -38,10 +38,56 @@ def _row_count(payload: Any, key: str) -> int | None:
     return None
 
 
+def _text_value(value: Any) -> str | None:
+    if value in (None, ""):
+        return None
+    return str(value)
+
+
+def _balance_fields(payload: Any) -> dict[str, str | None]:
+    if not isinstance(payload, dict):
+        return {
+            "balance_currency": None,
+            "cash_balance": None,
+            "net_liquidation_value": None,
+            "buying_power": None,
+            "day_buying_power": None,
+            "overnight_buying_power": None,
+        }
+
+    currency_assets = payload.get("account_currency_assets")
+    currency_row: dict[str, Any] = {}
+    if isinstance(currency_assets, list):
+        for item in currency_assets:
+            if isinstance(item, dict) and str(item.get("currency") or "").upper() == "USD":
+                currency_row = item
+                break
+        if not currency_row:
+            currency_row = next((item for item in currency_assets if isinstance(item, dict)), {})
+
+    return {
+        "balance_currency": _text_value(payload.get("total_asset_currency") or currency_row.get("currency")),
+        "cash_balance": _text_value(payload.get("total_cash_balance") or currency_row.get("cash_balance")),
+        "net_liquidation_value": _text_value(
+            payload.get("total_net_liquidation_value") or currency_row.get("net_liquidation_value")
+        ),
+        "buying_power": _text_value(currency_row.get("buying_power")),
+        "day_buying_power": _text_value(currency_row.get("day_buying_power")),
+        "overnight_buying_power": _text_value(currency_row.get("overnight_buying_power")),
+    }
+
+
+def _display(value: str | None) -> str:
+    return value if value is not None else "UNKNOWN"
+
+
 def _probe_account(client: Any, account_id: str, account_type: str) -> WebullSandboxAccountCandidate:
+    balance_payload: Any = None
     try:
         balance_response = client.account_v2.get_account_balance(account_id)
         balance_ok = int(getattr(balance_response, "status_code", 0)) == 200
+        if balance_ok:
+            balance_payload = _payload(balance_response)
     except Exception:
         balance_ok = False
 
@@ -61,6 +107,7 @@ def _probe_account(client: Any, account_id: str, account_type: str) -> WebullSan
         positions_ok = False
         position_count = None
 
+    balance = _balance_fields(balance_payload)
     return WebullSandboxAccountCandidate(
         account_id=account_id,
         account_type=account_type,
@@ -69,6 +116,7 @@ def _probe_account(client: Any, account_id: str, account_type: str) -> WebullSan
         positions_readable=positions_ok,
         open_order_count=order_count,
         position_count=position_count,
+        **balance,
     )
 
 
@@ -133,6 +181,12 @@ def main() -> None:
             f"ref={candidate.account_ref} "
             f"readable={candidate.readable} "
             f"flat={candidate.flat} "
+            f"currency={_display(candidate.balance_currency)} "
+            f"cash={_display(candidate.cash_balance)} "
+            f"net_liq={_display(candidate.net_liquidation_value)} "
+            f"buying_power={_display(candidate.buying_power)} "
+            f"day_bp={_display(candidate.day_buying_power)} "
+            f"overnight_bp={_display(candidate.overnight_buying_power)} "
             f"open_orders={candidate.open_order_count if candidate.open_order_count is not None else 'UNKNOWN'} "
             f"positions={candidate.position_count if candidate.position_count is not None else 'UNKNOWN'}"
         )
