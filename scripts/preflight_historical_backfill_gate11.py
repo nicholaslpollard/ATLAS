@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from packages.core.settings import load_settings
-from packages.ml.historical_backfill_long_history_preflight import (
-    HistoricalBackfillLongHistoryMLPreflight,
+from packages.ml.historical_backfill_long_history_preflight_runtime import (
+    HistoricalBackfillLongHistoryMLPreflightRuntime,
 )
 
 
@@ -11,7 +11,7 @@ def _pct(value: float) -> str:
 
 
 def main() -> None:
-    report = HistoricalBackfillLongHistoryMLPreflight(load_settings()).run()
+    report = HistoricalBackfillLongHistoryMLPreflightRuntime(load_settings()).run()
     accepted = report["accepted_phase10_A"]
     rebase = report["B_rebase_evidence"]
     pre = report["C_preseam_feasibility_before_structural_reconciliation"]
@@ -21,6 +21,7 @@ def main() -> None:
     print("  safety: read-only feasibility/comparison proof; accepted Phase 10 model remains protected")
     print(f"  contract:                         {report['contract_version']}")
     print(f"  source fingerprint:               {report['source_fingerprint']}")
+    print(f"  fingerprint scope:                {report['fingerprint_scope']}")
     print(f"  as-of date:                       {report['as_of_date']}")
     print("  locked comparison:")
     print("    A: frozen accepted Phase 10 dataset/model")
