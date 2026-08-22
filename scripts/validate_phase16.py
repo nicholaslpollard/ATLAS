@@ -26,11 +26,16 @@ from packages.control_plane.phase16_policy import (
     phase16_policy_fingerprint,
     validate_phase16_policy,
 )
+from packages.schemas.control_plane_runtime import (
+    CONTROL_PLANE_RUNTIME_CONTRACT_VERSION,
+    ControlPlaneRuntimeState,
+)
 from packages.schemas.control_plane_status import CONTROL_PLANE_STATUS_CONTRACT_VERSION
 
 
 def main() -> None:
     validate_phase16_policy()
+    default_state = ControlPlaneRuntimeState.synthetic_default()
     checks = {
         "accepted_phase15_merge_bound": len(PHASE16_ACCEPTED_PHASE15_MERGE_SHA) == 40,
         "accepted_phase15_policy_bound": len(PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT) == 64,
@@ -51,6 +56,12 @@ def main() -> None:
         "policy_fingerprint_present": len(phase16_policy_fingerprint()) == 64,
         "status_contract_locked": CONTROL_PLANE_STATUS_CONTRACT_VERSION
         == "control-plane-status-v1-readonly-sanitized-lineage-broker-state",
+        "runtime_contract_locked": CONTROL_PLANE_RUNTIME_CONTRACT_VERSION
+        == "control-plane-runtime-v1-explicit-selection-uncertainty-fail-closed",
+        "runtime_default_unselected": default_state.selected_broker is None
+        and default_state.selected_environment is None,
+        "runtime_default_not_persisted": default_state.source == "synthetic_default",
+        "runtime_default_not_uncertain": default_state.provider_write_uncertain is False,
         "http_contract_locked": CONTROL_PLANE_HTTP_CONTRACT_VERSION
         == "control-plane-http-v1-loopback-get-only-no-cors-host-validated",
         "http_default_port_locked": DEFAULT_CONTROL_PLANE_PORT == 8765,
@@ -64,13 +75,14 @@ def main() -> None:
     print(f"Phase 16 accepted Phase 15 policy: {PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT}")
     print(f"Phase 16 policy fingerprint: {phase16_policy_fingerprint()}")
     print(f"Phase 16 status contract: {CONTROL_PLANE_STATUS_CONTRACT_VERSION}")
+    print(f"Phase 16 runtime contract: {CONTROL_PLANE_RUNTIME_CONTRACT_VERSION}")
     print(f"Phase 16 HTTP contract: {CONTROL_PLANE_HTTP_CONTRACT_VERSION}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
     if not all(checks.values()):
         failed = sorted(name for name, value in checks.items() if not value)
         raise SystemExit("Phase 16 static validation failed: " + ", ".join(failed))
-    print("Phase 16 Browser Control Plane authority/read-only status contracts: PASS")
+    print("Phase 16 Browser Control Plane authority/read-only status/runtime contracts: PASS")
 
 
 if __name__ == "__main__":
