@@ -63,11 +63,13 @@ def main() -> None:
         "status_contract_locked": CONTROL_PLANE_STATUS_CONTRACT_VERSION
         == "control-plane-status-v1-readonly-sanitized-lineage-broker-state",
         "runtime_contract_locked": CONTROL_PLANE_RUNTIME_CONTRACT_VERSION
-        == "control-plane-runtime-v1-explicit-selection-uncertainty-fail-closed",
+        == "control-plane-runtime-v2-explicit-selection-audit-bound-uncertainty-fail-closed",
         "runtime_default_unselected": default_state.selected_broker is None
         and default_state.selected_environment is None,
         "runtime_default_not_persisted": default_state.source == "synthetic_default",
         "runtime_default_not_uncertain": default_state.provider_write_uncertain is False,
+        "runtime_default_not_audit_bound": default_state.last_transition_action_id is None
+        and default_state.last_transition_audit_hash is None,
         "action_record_contract_locked": CONTROL_PLANE_ACTION_RECORD_CONTRACT_VERSION
         == "control-plane-action-record-v1-idempotent-confirmed-provider-uncertainty",
         "audit_event_contract_locked": CONTROL_PLANE_AUDIT_EVENT_CONTRACT_VERSION
