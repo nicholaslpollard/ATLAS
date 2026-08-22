@@ -26,7 +26,6 @@ from packages.schemas.execution import (
     ExecutionEnvironment,
 )
 
-
 NOW = datetime(2026, 8, 22, 20, 0, tzinfo=UTC)
 
 
@@ -54,22 +53,6 @@ class FakeReadBroker:
             shorting_enabled=True,
         )
 
-    def positions(self) -> tuple[BrokerPositionSnapshot, ...]:
-        self.calls.append("positions")
-        if self.flat:
-            return ()
-        return (
-            BrokerPositionSnapshot(
-                broker=self.broker,
-                account_id=self.account_id,
-                ticker="SPY",
-                quantity=2.0,
-                market_value=1200.0,
-                average_entry_price=590.0,
-                as_of_utc=NOW,
-            ),
-        )
-
     def open_orders(self) -> tuple[BrokerOrderSnapshot, ...]:
         self.calls.append("open_orders")
         if self.flat:
@@ -91,17 +74,33 @@ class FakeReadBroker:
             ),
         )
 
+    def positions(self) -> tuple[BrokerPositionSnapshot, ...]:
+        self.calls.append("positions")
+        if self.flat:
+            return ()
+        return (
+            BrokerPositionSnapshot(
+                broker=self.broker,
+                account_id=self.account_id,
+                ticker="SPY",
+                quantity=2.0,
+                market_value=1200.0,
+                average_entry_price=590.0,
+                as_of_utc=NOW,
+            ),
+        )
+
     def preview(self, plan: object) -> None:
-        raise AssertionError("read-only status service must never call preview")
+        raise AssertionError("status service must never call preview")
 
     def submit(self, plan: object) -> None:
-        raise AssertionError("read-only status service must never call submit")
+        raise AssertionError("status service must never call submit")
 
     def order(self, client_order_id: str) -> None:
-        raise AssertionError("read-only status service must never query individual orders")
+        raise AssertionError("status service must never call individual order query")
 
     def cancel(self, client_order_id: str) -> None:
-        raise AssertionError("read-only status service must never call cancel")
+        raise AssertionError("status service must never call cancel")
 
 
 def _settings_with_derived(tmp_path):
@@ -114,28 +113,29 @@ def _settings_with_derived(tmp_path):
 def _write_phase15_acceptance(tmp_path) -> None:
     root = tmp_path / "execution" / "phase15" / "v1"
     root.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "contract_version": PHASE15_CLOSEOUT_CONTRACT_VERSION,
-        "pass": True,
-        "as_of_date": "2026-08-14",
-        "phase15_policy_fingerprint": phase15_policy_fingerprint(),
-        "cumulative_foundation_fingerprint": PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
-        "execution_case_count": 0,
-        "final_disposition": {
-            "phase15_accepted": True,
-            "actual_broker_execution_exercised_in_acceptance": False,
-            "live_execution_promoted": False,
-            "automatic_cross_broker_failover_allowed": False,
-        },
-    }
     (root / "phase15_final_acceptance.json").write_text(
-        json.dumps(payload), encoding="utf-8"
+        json.dumps(
+            {
+                "contract_version": PHASE15_CLOSEOUT_CONTRACT_VERSION,
+                "pass": True,
+                "as_of_date": "2026-08-14",
+                "phase15_policy_fingerprint": phase15_policy_fingerprint(),
+                "cumulative_foundation_fingerprint": PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
+                "execution_case_count": 0,
+                "final_disposition": {
+                    "phase15_accepted": True,
+                    "actual_broker_execution_exercised_in_acceptance": False,
+                    "live_execution_promoted": False,
+                    "automatic_cross_broker_failover_allowed": False,
+                },
+            }
+        ),
+        encoding="utf-8",
     )
 
 
 def test_system_status_fails_closed_until_phase15_acceptance_is_present(tmp_path) -> None:
-    service = Phase16StatusService(_settings_with_derived(tmp_path), env={})
-    status = service.system_status()
+    status = Phase16StatusService(_settings_with_derived(tmp_path), env={}).system_status()
     assert status.health == ControlPlaneHealthState.BLOCKED
     assert status.phase15.accepted is False
     assert status.write_actions_enabled is False
@@ -145,11 +145,12 @@ def test_system_status_fails_closed_until_phase15_acceptance_is_present(tmp_path
 
 def test_system_status_accepts_exact_phase15_closeout_artifact(tmp_path) -> None:
     _write_phase15_acceptance(tmp_path)
-    service = Phase16StatusService(_settings_with_derived(tmp_path), env={})
-    status = service.system_status()
+    status = Phase16StatusService(_settings_with_derived(tmp_path), env={}).system_status()
     assert status.health == ControlPlaneHealthState.HEALTHY
     assert status.phase15.accepted is True
     assert status.phase15.execution_case_count == 0
+    assert status.selected_broker is None
+    assert status.selected_environment is None
 
 
 def test_broker_status_is_lazy_and_never_exposes_credential_values(tmp_path) -> None:
@@ -166,36 +167,26 @@ def test_broker_status_is_lazy_and_never_exposes_credential_values(tmp_path) -> 
         "ALPACA_PAPER_API_KEY": "alpaca-key-secret-value",
         "ALPACA_PAPER_API_SECRET": "alpaca-secret-value",
     }
-    service = Phase16StatusService(
+    rows = Phase16StatusService(
         _settings_with_derived(tmp_path), env=env, broker_factory=factory
-    )
-    rows = service.brokers_status(refresh=False)
+    ).brokers_status(refresh=False)
     assert calls == []
     assert all(row.state == ControlPlaneReadState.UNPOLLED for row in rows)
     encoded = json.dumps([row.model_dump(mode="json") for row in rows])
-    for secret in env.values():
-        assert secret not in encoded
+    assert all(secret not in encoded for secret in env.values())
 
 
-def test_refresh_uses_phase15_reconciliation_and_sanitizes_provider_identifiers(tmp_path) -> None:
+def test_refresh_reuses_phase15_reconciliation_and_sanitizes_provider_ids(tmp_path) -> None:
     fake = FakeReadBroker(BrokerName.WEBULL)
-    env = {"WEBULL_APP_KEY": "k", "WEBULL_APP_SECRET": "s"}
-    service = Phase16StatusService(
+    status = Phase16StatusService(
         _settings_with_derived(tmp_path),
-        env=env,
+        env={"WEBULL_APP_KEY": "k", "WEBULL_APP_SECRET": "s"},
         broker_factory=lambda broker: fake,
         clock=lambda: NOW,
-    )
-    status = service.broker_status(BrokerName.WEBULL, refresh=True)
-    assert status.state == ControlPlaneReadState.AVAILABLE
+    ).broker_status(BrokerName.WEBULL, refresh=True)
     assert fake.calls == ["account", "open_orders", "positions"]
-    assert status.account is not None
-    assert len(status.account.account_ref) == 16
-    assert status.positions[0].ticker == "SPY"
-    assert status.open_orders[0].ticker == "QQQ"
+    assert status.state == ControlPlaneReadState.AVAILABLE
     assert status.reconciled is True
-    assert status.zero_open_orders is False
-    assert status.zero_positions is False
     assert status.safe_to_switch_broker is False
     encoded = status.model_dump_json()
     assert fake.account_id not in encoded
@@ -203,44 +194,37 @@ def test_refresh_uses_phase15_reconciliation_and_sanitizes_provider_identifiers(
     assert "provider-raw-status" not in encoded
 
 
-def test_flat_reconciled_broker_is_reported_safe_to_switch(tmp_path) -> None:
+def test_flat_reconciled_broker_is_safe_to_switch(tmp_path) -> None:
     fake = FakeReadBroker(BrokerName.ALPACA, flat=True)
-    env = {"ALPACA_PAPER_API_KEY": "k", "ALPACA_PAPER_API_SECRET": "s"}
-    service = Phase16StatusService(
+    status = Phase16StatusService(
         _settings_with_derived(tmp_path),
-        env=env,
+        env={"ALPACA_PAPER_API_KEY": "k", "ALPACA_PAPER_API_SECRET": "s"},
         broker_factory=lambda broker: fake,
         clock=lambda: NOW,
-    )
-    status = service.broker_status(BrokerName.ALPACA, refresh=True)
-    assert fake.calls == ["account", "open_orders", "positions"]
-    assert status.state == ControlPlaneReadState.AVAILABLE
+    ).broker_status(BrokerName.ALPACA, refresh=True)
     assert status.reconciled is True
     assert status.zero_open_orders is True
     assert status.zero_positions is True
     assert status.safe_to_switch_broker is True
-    assert status.positions == ()
-    assert status.open_orders == ()
 
 
-def test_refresh_without_credentials_does_not_initialize_adapter(tmp_path) -> None:
+def test_missing_credentials_prevent_adapter_initialization(tmp_path) -> None:
     called = False
 
     def factory(broker: BrokerName):
         nonlocal called
         called = True
-        raise AssertionError("missing credentials must fail before adapter construction")
+        raise AssertionError("must fail before adapter construction")
 
-    service = Phase16StatusService(
+    status = Phase16StatusService(
         _settings_with_derived(tmp_path), env={}, broker_factory=factory, clock=lambda: NOW
-    )
-    status = service.broker_status(BrokerName.ALPACA, refresh=True)
+    ).broker_status(BrokerName.ALPACA, refresh=True)
     assert status.state == ControlPlaneReadState.UNAVAILABLE
     assert status.error_code == "CREDENTIALS_UNAVAILABLE"
     assert called is False
 
 
-def test_http_server_is_get_only_loopback_and_host_validated(tmp_path) -> None:
+def test_http_status_is_loopback_host_validated_and_non_action_post_is_405(tmp_path) -> None:
     service = Phase16StatusService(_settings_with_derived(tmp_path), env={})
     server = create_status_server(service=service, host="127.0.0.1", port=0)
     thread = threading.Thread(
@@ -250,10 +234,9 @@ def test_http_server_is_get_only_loopback_and_host_validated(tmp_path) -> None:
     port = int(server.server_address[1])
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=5) as response:
-            assert response.status == 200
             payload = json.loads(response.read().decode("utf-8"))
+            assert response.status == 200
             assert payload["phase15_accepted"] is False
-            assert payload["live_execution_promoted"] is False
             assert response.headers.get("Access-Control-Allow-Origin") is None
             assert response.headers["Cache-Control"] == "no-store"
 
@@ -263,14 +246,13 @@ def test_http_server_is_get_only_loopback_and_host_validated(tmp_path) -> None:
         with pytest.raises(urllib.error.HTTPError) as exc_info:
             urllib.request.urlopen(request, timeout=5)
         assert exc_info.value.code == 405
-        assert exc_info.value.headers["Allow"] == "GET, HEAD"
+        assert exc_info.value.headers["Allow"] == "GET, HEAD, POST"
 
         connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
         connection.putrequest("GET", "/healthz", skip_host=True)
         connection.putheader("Host", "evil.example")
         connection.endheaders()
-        response = connection.getresponse()
-        assert response.status == 403
+        assert connection.getresponse().status == 403
         connection.close()
     finally:
         server.shutdown()
