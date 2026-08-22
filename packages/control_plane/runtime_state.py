@@ -89,19 +89,33 @@ class ControlPlaneRuntimeStateStore:
                 raise ControlPlaneRuntimeStateError(
                     "runtime transition revision must increment exactly once"
                 )
-            if state.updated_at_utc < current.updated_at_utc:
+            # The synthetic revision-zero state is deliberately ephemeral: its timestamp
+            # records when the absence of persisted state was observed, not an operational
+            # transition. It therefore cannot constrain the timestamp of the first real
+            # persisted transition. Once a state has been persisted, timestamps are
+            # monotonic across all subsequent revisions.
+            if (
+                current.source == "persisted"
+                and state.updated_at_utc < current.updated_at_utc
+            ):
                 raise ControlPlaneRuntimeStateError(
                     "runtime transition timestamp cannot move backward"
                 )
-            if state.last_transition_action_id is None or state.last_transition_audit_hash is None:
+            if (
+                state.last_transition_action_id is None
+                or state.last_transition_audit_hash is None
+            ):
                 raise ControlPlaneRuntimeStateError(
                     "runtime transition must be bound to an action and audit hash"
                 )
-            payload = json.dumps(
-                state.model_dump(mode="json"),
-                sort_keys=True,
-                separators=(",", ":"),
-            ) + "\n"
+            payload = (
+                json.dumps(
+                    state.model_dump(mode="json"),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            )
             atomic_write_text(self.state_path, payload, fsync=True)
             reloaded = self.load()
             if reloaded != state:
