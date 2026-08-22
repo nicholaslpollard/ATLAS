@@ -42,7 +42,7 @@ from .promotion import CandidatePromotionEngine, support_mapping_from_study
 
 
 CURRENT_CANDIDATE_MATERIALIZATION_CONTRACT_VERSION = (
-    "current-candidates-v2-split-origin-regime-hash-bound-supported-strategy-evidence"
+    "current-candidates-v3-canonical-close-split-origin-regime-hash-bound"
 )
 CURRENT_CANDIDATE_SECTOR_POLICY = "UNAVAILABLE_NO_AUTHORITATIVE_TICKER_TO_SECTOR_MAPPING"
 
@@ -100,6 +100,25 @@ def _validate_split_origin_market_snapshot(payload: dict[str, Any], as_of_date: 
         )
 
 
+def _validate_feature_source_binding(
+    manifest: FeaturePartitionManifest,
+    *,
+    feature_path: Path,
+    feature_sha256: str,
+    canonical_path: Path,
+    canonical_sha256: str,
+) -> None:
+    """Prove current strategy raw-price inputs come from the feature partition's source."""
+    if manifest.feature_sha256 != feature_sha256:
+        raise CurrentCandidateMaterializationError("1d feature snapshot hash changed")
+    if Path(manifest.feature_path).resolve() != feature_path.resolve():
+        raise CurrentCandidateMaterializationError("1d feature manifest path changed")
+    if Path(manifest.source_path).resolve() != canonical_path.resolve():
+        raise CurrentCandidateMaterializationError("1d feature canonical source path changed")
+    if manifest.source_sha256 != canonical_sha256:
+        raise CurrentCandidateMaterializationError("1d feature canonical source hash changed")
+
+
 class CurrentCandidateMaterializer:
     """Build current Phase 11 candidate decisions from accepted upstream artifacts."""
 
@@ -131,6 +150,7 @@ class CurrentCandidateMaterializer:
                 continue
         for as_of_date in sorted(set(candidates), reverse=True):
             required = (
+                self.paths.canonical_file(Timeframe.DAY_1, as_of_date),
                 self.paths.feature_file(Timeframe.DAY_1, as_of_date),
                 self.paths.feature_manifest_file(Timeframe.DAY_1, as_of_date),
                 self.paths.discovery_state_manifest(as_of_date),
@@ -142,7 +162,7 @@ class CurrentCandidateMaterializer:
             if all(path.is_file() for path in required):
                 return as_of_date
         raise CurrentCandidateMaterializationError(
-            "no session has the complete discovery/features/market-regime/ticker-regime artifact set"
+            "no session has the complete canonical/features/discovery/market-regime/ticker-regime artifact set"
         )
 
     def _verify_discovery(self, as_of_date: date) -> tuple[Path, str]:
@@ -160,17 +180,28 @@ class CurrentCandidateMaterializer:
             raise CurrentCandidateMaterializationError("discovery state snapshot hash changed")
         return snapshot, digest
 
-    def _verify_features(self, as_of_date: date) -> tuple[Path, str]:
-        snapshot = self.paths.feature_file(Timeframe.DAY_1, as_of_date)
+    def _verify_features(
+        self, as_of_date: date
+    ) -> tuple[Path, str, Path, str, FeaturePartitionManifest]:
+        feature_path = self.paths.feature_file(Timeframe.DAY_1, as_of_date)
         manifest_path = self.paths.feature_manifest_file(Timeframe.DAY_1, as_of_date)
         manifest = FeaturePartitionManifest.from_dict(_read_json(manifest_path, "1d feature manifest"))
         manifest.validate_contract(Timeframe.DAY_1, as_of_date)
-        digest = sha256_file(snapshot)
-        if manifest.feature_sha256 != digest:
-            raise CurrentCandidateMaterializationError("1d feature snapshot hash changed")
-        if Path(manifest.feature_path).resolve() != snapshot.resolve():
-            raise CurrentCandidateMaterializationError("1d feature manifest path changed")
-        return snapshot, digest
+        canonical_path = self.paths.canonical_file(Timeframe.DAY_1, as_of_date)
+        if not canonical_path.is_file():
+            raise CurrentCandidateMaterializationError(
+                f"missing canonical 1d source for current strategies: {canonical_path}"
+            )
+        feature_sha = sha256_file(feature_path)
+        canonical_sha = sha256_file(canonical_path)
+        _validate_feature_source_binding(
+            manifest,
+            feature_path=feature_path,
+            feature_sha256=feature_sha,
+            canonical_path=canonical_path,
+            canonical_sha256=canonical_sha,
+        )
+        return feature_path, feature_sha, canonical_path, canonical_sha, manifest
 
     def _verify_market_regime(self, as_of_date: date) -> tuple[dict[str, Any], str]:
         snapshot = self.paths.regime_state_snapshot(as_of_date)
@@ -213,7 +244,9 @@ class CurrentCandidateMaterializer:
 
     def materialize(self, as_of_date: date, *, historical_study_path: Path) -> dict[str, object]:
         discovery_path, discovery_sha = self._verify_discovery(as_of_date)
-        feature_path, feature_sha = self._verify_features(as_of_date)
+        feature_path, feature_sha, canonical_path, canonical_sha, feature_manifest = self._verify_features(
+            as_of_date
+        )
         market_payload, market_sha = self._verify_market_regime(as_of_date)
         ticker_path, ticker_sha = self._verify_ticker_regime(as_of_date)
         study = _read_json(historical_study_path, "historical strategy study")
@@ -231,8 +264,32 @@ class CurrentCandidateMaterializer:
                 ORDER BY priority_score DESC, ticker, instrument_id
                 """
             ).fetch_df()
+            canonical_duplicate_keys = int(
+                con.execute(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM (
+                        SELECT symbol, timestamp_utc
+                        FROM read_parquet({sql_string(canonical_path)})
+                        GROUP BY symbol, timestamp_utc
+                        HAVING COUNT(*) > 1
+                    )
+                    """
+                ).fetchone()[0]
+            )
+            if canonical_duplicate_keys:
+                raise CurrentCandidateMaterializationError(
+                    "canonical 1d source contains duplicate symbol/timestamp keys"
+                )
             features = con.execute(
-                f"SELECT * FROM read_parquet({sql_string(feature_path)}) ORDER BY symbol"
+                f"""
+                SELECT f.*, b.close
+                FROM read_parquet({sql_string(feature_path)}) AS f
+                INNER JOIN read_parquet({sql_string(canonical_path)}) AS b
+                  ON f.symbol = b.symbol
+                 AND f.timestamp_utc = b.timestamp_utc
+                ORDER BY f.symbol
+                """
             ).fetch_df()
             ticker = con.execute(
                 f"SELECT instrument_id, effective_ticker_state FROM read_parquet({sql_string(ticker_path)})"
@@ -240,6 +297,12 @@ class CurrentCandidateMaterializer:
         finally:
             con.close()
 
+        if len(features) != int(feature_manifest.row_count):
+            raise CurrentCandidateMaterializationError(
+                "canonical/feature exact-key join did not preserve the feature partition row count"
+            )
+        if features["close"].isna().any():
+            raise CurrentCandidateMaterializationError("canonical close is missing after exact-key join")
         if discovery["instrument_id"].duplicated().any():
             raise CurrentCandidateMaterializationError("discovery candidate identities are duplicated")
         if features["symbol"].duplicated().any():
@@ -270,6 +333,12 @@ class CurrentCandidateMaterializer:
         required_features = sorted(
             {name for strategy in DEFAULT_STRATEGY_REGISTRY.all() for name in strategy.metadata.required_features}
         )
+        missing_required_columns = sorted(set(required_features).difference(features.columns))
+        if missing_required_columns:
+            raise CurrentCandidateMaterializationError(
+                "current strategy input columns are unavailable: " + ", ".join(missing_required_columns)
+            )
+
         records: list[CandidatePromotionRecord] = []
         for position, (_, discovery_row) in enumerate(discovery.iterrows()):
             ticker_symbol = str(discovery_row["ticker"])
@@ -314,6 +383,9 @@ class CurrentCandidateMaterializer:
         lineage = {
             "discovery_state_sha256": discovery_sha,
             "feature_1d_sha256": feature_sha,
+            "canonical_1d_source_path": str(canonical_path.resolve()),
+            "canonical_1d_source_sha256": canonical_sha,
+            "canonical_feature_exact_key_join": "symbol+timestamp_utc",
             "market_regime_sha256": market_sha,
             "market_regime_manifest_version": MARKET_SECTOR_MANIFEST_VERSION,
             "market_regime_split_origin_policy": SPLIT_ORIGIN_POLICY_VERSION,
