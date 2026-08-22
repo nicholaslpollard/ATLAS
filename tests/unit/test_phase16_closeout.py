@@ -92,6 +92,18 @@ def test_default_operational_smoke_forbids_provider_initialization(tmp_path) -> 
     assert all(report["checks"].values())
 
 
+def test_provider_readonly_smoke_has_separate_output_artifact(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    smoke = Phase16OperationalSmoke(settings)
+    acceptance_path = smoke.output_path(refresh_brokers=False)
+    readonly_path = smoke.output_path(refresh_brokers=True)
+    assert acceptance_path == smoke.report_path
+    assert acceptance_path.name == "phase16_operational_smoke.json"
+    assert readonly_path == smoke.readonly_report_path
+    assert readonly_path.name == "phase16_provider_readonly_smoke.json"
+    assert readonly_path != acceptance_path
+
+
 def test_phase16_closeout_accepts_empty_control_plane_without_provider_activity(tmp_path) -> None:
     _write_phase15_acceptance(tmp_path)
     settings = _settings(tmp_path)

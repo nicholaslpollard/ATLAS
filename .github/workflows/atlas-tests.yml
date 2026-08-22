@@ -99,5 +99,8 @@ jobs:
       - name: Validate Phase 16 closeout contracts
         run: python scripts/validate_phase16_closeout.py
 
+      - name: Validate Phase 17 contracts
+        run: python scripts/validate_phase17.py
+
       - name: Run tests
         run: python -m pytest -q

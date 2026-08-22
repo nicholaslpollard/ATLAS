@@ -4,11 +4,12 @@ import json
 import threading
 import urllib.request
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Callable
 
 from packages.brokers.base import BrokerAdapter
 from packages.control_plane.http_server import create_status_server
-from packages.control_plane.status import Phase16StatusService
+from packages.control_plane.status import Phase16StatusService, _default_broker_factory
 from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
 from packages.schemas.execution import BrokerName
@@ -32,6 +33,10 @@ class Phase16OperationalSmoke:
     By default, a broker factory that raises on construction is installed so an accidental
     provider read causes the smoke to fail immediately. Read-only broker reconciliation is
     available only when the caller explicitly requests it.
+
+    The accepted zero-provider smoke artifact and the optional provider-readonly artifact
+    are deliberately stored at different paths. A later read-only reconciliation must never
+    overwrite the evidence hash-bound into Phase 16 final acceptance.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -39,6 +44,10 @@ class Phase16OperationalSmoke:
         derived = settings.resolved_path(settings.data.paths.derived)
         self.root = derived / "control_plane" / "phase16" / "v1"
         self.report_path = self.root / "phase16_operational_smoke.json"
+        self.readonly_report_path = self.root / "phase16_provider_readonly_smoke.json"
+
+    def output_path(self, *, refresh_brokers: bool) -> Path:
+        return self.readonly_report_path if refresh_brokers else self.report_path
 
     @staticmethod
     def _get_json(base: str, path: str) -> dict[str, object]:
@@ -70,9 +79,16 @@ class Phase16OperationalSmoke:
             )
 
         if refresh_brokers:
+            underlying_factory = broker_factory or _default_broker_factory
+
+            def counted_factory(broker: BrokerName) -> BrokerAdapter:
+                nonlocal provider_factory_calls
+                provider_factory_calls += 1
+                return underlying_factory(broker)
+
             service = Phase16StatusService(
                 self.settings,
-                broker_factory=broker_factory,
+                broker_factory=counted_factory,
             )
         else:
             service = Phase16StatusService(
@@ -136,8 +152,10 @@ class Phase16OperationalSmoke:
             rows = broker_payload.get("brokers") if isinstance(broker_payload, dict) else None
             if not isinstance(rows, list):
                 checks["readonly_broker_rows_present"] = False
+                checks["readonly_provider_factory_calls_exact"] = False
             else:
                 checks["readonly_broker_rows_present"] = len(rows) == 2
+                checks["readonly_provider_factory_calls_exact"] = provider_factory_calls == 2
                 checks["readonly_brokers_reconciled"] = all(
                     isinstance(row, dict)
                     and row.get("state") == "AVAILABLE"
@@ -182,10 +200,11 @@ class Phase16OperationalSmoke:
                 "Phase 16 operational smoke failed: " + ", ".join(failed)
             )
         if write_report:
+            output_path = self.output_path(refresh_brokers=refresh_brokers)
             self.root.mkdir(parents=True, exist_ok=True)
             atomic_write_text(
-                self.report_path,
+                output_path,
                 json.dumps(report, indent=2, sort_keys=True, default=str) + "\n",
             )
-            report["report_path"] = str(self.report_path.resolve())
+            report["report_path"] = str(output_path.resolve())
         return report
