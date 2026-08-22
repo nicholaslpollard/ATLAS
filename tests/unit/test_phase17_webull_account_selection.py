@@ -26,24 +26,38 @@ def _candidate(
     )
 
 
-def test_selector_prefers_flat_margin_over_flat_cash() -> None:
+def test_selector_accepts_single_unambiguous_readable_account() -> None:
+    candidate = _candidate("only-account", "MARGIN")
+
+    selected, reason = select_webull_sandbox_candidate((candidate,))
+
+    assert selected.account_id == "only-account"
+    assert reason == "SINGLE_UNAMBIGUOUS_READABLE_ACCOUNT"
+
+
+def test_selector_fails_closed_on_multiple_readable_accounts() -> None:
     cash = _candidate("cash-account", "CASH")
     margin = _candidate("margin-account", "MARGIN")
 
-    selected, reason = select_webull_sandbox_candidate((cash, margin))
+    try:
+        select_webull_sandbox_candidate((cash, margin))
+    except ValueError as exc:
+        assert "remain ambiguous" in str(exc)
+        assert "--account-ref" in str(exc)
+    else:
+        raise AssertionError("expected multiple readable accounts to fail closed")
 
-    assert selected.account_id == "margin-account"
-    assert reason == "AUTO_PREFER_FLAT_MARGIN"
 
-
-def test_selector_prefers_flat_margin_over_exposed_margin() -> None:
+def test_selector_does_not_infer_authority_from_flatness_or_account_type() -> None:
     exposed = _candidate("margin-exposed", "MARGIN", positions=1)
-    flat = _candidate("margin-flat", "MARGIN")
+    flat = _candidate("cash-flat", "CASH")
 
-    selected, reason = select_webull_sandbox_candidate((exposed, flat))
-
-    assert selected.account_id == "margin-flat"
-    assert reason == "AUTO_PREFER_FLAT_MARGIN"
+    try:
+        select_webull_sandbox_candidate((exposed, flat))
+    except ValueError as exc:
+        assert "remain ambiguous" in str(exc)
+    else:
+        raise AssertionError("expected account-state heuristic selection to be forbidden")
 
 
 def test_selector_allows_explicit_sanitized_ref_override() -> None:
