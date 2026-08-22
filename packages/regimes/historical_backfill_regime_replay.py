@@ -73,7 +73,7 @@ def _date_value(value: object) -> date:
 def _frame_date_range(frame: pd.DataFrame) -> tuple[str | None, str | None]:
     if frame.empty:
         return None, None
-    values = pd.to_datetime(frame["trading_date"]).dt.date
+    values = pd.to_datetime(frame["trading_date"], utc=True).dt.date
     return min(values).isoformat(), max(values).isoformat()
 
 
