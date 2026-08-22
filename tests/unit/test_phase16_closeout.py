@@ -14,6 +14,7 @@ from packages.control_plane.phase16_closeout import (
 from packages.control_plane.phase16_smoke import (
     PHASE16_OPERATIONAL_SMOKE_CONTRACT_VERSION,
     Phase16OperationalSmoke,
+    _safe_broker_diagnostics,
 )
 from packages.control_plane.phase16_validation import (
     PHASE16_INDEPENDENT_VALIDATION_CONTRACT_VERSION,
@@ -102,6 +103,36 @@ def test_provider_readonly_smoke_has_separate_output_artifact(tmp_path) -> None:
     assert readonly_path == smoke.readonly_report_path
     assert readonly_path.name == "phase16_provider_readonly_smoke.json"
     assert readonly_path != acceptance_path
+
+
+def test_readonly_smoke_diagnostics_are_sanitized() -> None:
+    rows = [
+        {
+            "broker": "webull",
+            "state": "ERROR",
+            "reconciled": False,
+            "error_code": "BROKER_READ_FAILED_BROKERADAPTERERROR",
+            "account_ref": "deadbeefdeadbeef",
+            "credential_value": "must-not-appear",
+        },
+        {
+            "broker": "alpaca",
+            "state": "AVAILABLE",
+            "reconciled": True,
+            "error_code": None,
+            "account_ref": "cafebabecafebabe",
+        },
+    ]
+
+    diagnostic = _safe_broker_diagnostics(rows)
+
+    assert diagnostic == (
+        "webull[state=ERROR,reconciled=False,error_code=BROKER_READ_FAILED_BROKERADAPTERERROR]; "
+        "alpaca[state=AVAILABLE,reconciled=True,error_code=NONE]"
+    )
+    assert "deadbeefdeadbeef" not in diagnostic
+    assert "cafebabecafebabe" not in diagnostic
+    assert "must-not-appear" not in diagnostic
 
 
 def test_phase16_closeout_accepts_empty_control_plane_without_provider_activity(tmp_path) -> None:
