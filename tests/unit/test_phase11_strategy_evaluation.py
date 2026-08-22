@@ -20,7 +20,7 @@ def _frame() -> pd.DataFrame:
                 "symbol": "AAA",
                 "forward_return": 0.03,
                 "market_regime_composite": "BULL",
-                "close": 110.0,
+                "observation_close": 110.0,
                 "ema_20": 105.0,
                 "ema_50": 100.0,
                 "ema_20_slope_1": 0.5,
@@ -32,7 +32,7 @@ def _frame() -> pd.DataFrame:
                 "symbol": "BBB",
                 "forward_return": 0.04,
                 "market_regime_composite": "BEAR",
-                "close": 110.0,
+                "observation_close": 110.0,
                 "ema_20": 105.0,
                 "ema_50": 100.0,
                 "ema_20_slope_1": 0.5,
@@ -44,7 +44,7 @@ def _frame() -> pd.DataFrame:
                 "symbol": "CCC",
                 "forward_return": 0.02,
                 "market_regime_composite": "BULL",
-                "close": 110.0,
+                "observation_close": 110.0,
                 "ema_20": 105.0,
                 "ema_50": 100.0,
                 "ema_20_slope_1": -0.5,
@@ -56,7 +56,7 @@ def _frame() -> pd.DataFrame:
                 "symbol": "DDD",
                 "forward_return": -0.01,
                 "market_regime_composite": None,
-                "close": 110.0,
+                "observation_close": 110.0,
                 "ema_20": 105.0,
                 "ema_50": 100.0,
                 "ema_20_slope_1": 0.5,
@@ -91,7 +91,6 @@ def test_strategy_evaluation_counts_fired_and_regime_routed_rows() -> None:
 
     assert summary.source_rows == 4
     assert summary.fired_rows == 3
-    # BULL and unavailable market context are allowed; BEAR contradicts a long trend route.
     assert summary.routed_rows == 2
     raw = summary.aggregate_by_cost_bps["0"]
     assert raw.rows == 2
@@ -103,6 +102,26 @@ def test_strategy_evaluation_counts_fired_and_regime_routed_rows() -> None:
     assert set(summary.by_market_regime) == {"BULL", "UNAVAILABLE"}
 
 
+def test_strategy_evaluation_date_bounds_are_applied() -> None:
+    con = connect_utc(":memory:")
+    try:
+        con.register("study", _frame())
+        summary = StrategyEvaluationEngine().evaluate_source(
+            con,
+            source_sql="study",
+            strategy_id="trend_following_long_v1",
+            cost_grid_bps=(0.0,),
+            start_date="2025-01-01",
+            end_date="2025-12-31",
+        )
+    finally:
+        con.close()
+    assert summary.source_rows == 2
+    assert summary.fired_rows == 1
+    assert summary.routed_rows == 1
+    assert summary.aggregate_by_cost_bps["0"].mean_return == pytest.approx(-0.01)
+
+
 def test_short_strategy_flips_forward_return_direction() -> None:
     frame = pd.DataFrame(
         [
@@ -112,7 +131,7 @@ def test_short_strategy_flips_forward_return_direction() -> None:
                 "symbol": "AAA",
                 "forward_return": -0.03,
                 "market_regime_composite": "BEAR",
-                "close": 90.0,
+                "observation_close": 90.0,
                 "ema_20": 95.0,
                 "ema_50": 100.0,
                 "ema_20_slope_1": -0.5,
