@@ -188,7 +188,7 @@ class Phase16IndependentValidator:
             "prewrite_abandon_forbids_provider_activity": (
                 "record.provider_write_attempted" in ledger
                 and "record.provider_write_uncertain" in ledger
-                and "cannot be abandoned after provider activity" in ledger
+                and "cannot be abandoned after provider-write activity" in ledger
             ),
             "mutation_uncertainty_contract_present": "class BrokerMutationUncertain" in base,
             "webull_cancel_uncertainty_present": "BrokerMutationUncertain" in webull
