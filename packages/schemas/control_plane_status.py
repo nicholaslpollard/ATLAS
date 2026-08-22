@@ -15,7 +15,7 @@ from packages.schemas.execution import (
 
 
 CONTROL_PLANE_STATUS_CONTRACT_VERSION = (
-    "control-plane-status-v2-sanitized-lineage-runtime-ledger-reconciliation"
+    "control-plane-status-v3-sanitized-lineage-runtime-audit-binding-reconciliation"
 )
 
 
@@ -203,6 +203,9 @@ class ControlPlaneSystemStatus(BaseModel):
     runtime_state_valid: bool
     runtime_state_source: Literal["synthetic_default", "persisted", "invalid"]
     runtime_revision: int | None = Field(default=None, ge=0)
+    runtime_audit_binding_valid: bool
+    runtime_recovery_required: bool
+    runtime_audit_binding_reason: str = Field(min_length=1, max_length=128)
     action_ledger_valid: bool
     action_count: int = Field(ge=0)
     active_action_count: int = Field(ge=0)
@@ -231,6 +234,10 @@ class ControlPlaneSystemStatus(BaseModel):
                 raise ValueError("invalid runtime state cannot supply execution routing")
             if not self.provider_write_uncertain:
                 raise ValueError("invalid runtime state must fail closed as uncertain")
+        if self.runtime_recovery_required and not self.runtime_audit_binding_valid:
+            raise ValueError("runtime recovery may be required only for a valid audit binding")
+        if not self.runtime_audit_binding_valid and not self.provider_write_uncertain:
+            raise ValueError("invalid runtime audit binding must fail closed as uncertain")
         if not self.action_ledger_valid and not self.provider_write_uncertain:
             raise ValueError("invalid action ledger must fail closed as uncertain")
         if self.uncertain_action_count > 0 and not self.provider_write_uncertain:
@@ -249,6 +256,8 @@ class ControlPlaneExecutionStatus(BaseModel):
     phase15_execution_case_count: int | None = None
     selected_broker: BrokerName | None = None
     selected_environment: ExecutionEnvironment | None = None
+    runtime_audit_binding_valid: bool
+    runtime_recovery_required: bool
     action_ledger_valid: bool
     action_count: int = Field(ge=0)
     provider_write_uncertain: bool = False
