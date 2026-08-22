@@ -17,8 +17,16 @@ class BrokerAdapterError(RuntimeError):
     pass
 
 
+class BrokerOrderNotFound(BrokerAdapterError):
+    """Definitive provider response that the requested client order id is absent."""
+
+
 class BrokerSubmissionDisabled(BrokerAdapterError):
     pass
+
+
+class BrokerSubmissionUncertain(BrokerAdapterError):
+    """Submission may have reached the broker; callers must reconcile, never retry blindly."""
 
 
 class BrokerAdapter(ABC):
@@ -54,6 +62,7 @@ class BrokerAdapter(ABC):
 
     @abstractmethod
     def order(self, client_order_id: str) -> BrokerOrderSnapshot:
+        """Return exact order or raise BrokerOrderNotFound on a definitive miss."""
         raise NotImplementedError
 
     @abstractmethod
