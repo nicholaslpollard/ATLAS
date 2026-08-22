@@ -20,6 +20,10 @@ from packages.ai.phase14_engine import (
 from packages.ai.phase14_source import Phase14ReviewInputResolver
 from packages.ai.phase14_validation import Phase14IndependentValidator
 from packages.core.settings import AtlasSettings
+from packages.execution.phase15_foundation import (
+    Phase15CumulativeFoundationBinding,
+    Phase15CumulativeFoundationResolver,
+)
 from packages.features.partition_store import sha256_file
 from packages.schemas.ai_review import AIReviewRecord, AlertArtifactRecord
 from packages.schemas.case_file import Phase13CaseFile
@@ -27,7 +31,7 @@ from packages.schemas.deep_research import DeepResearchCase
 
 
 PHASE15_INPUT_CONTRACT_VERSION = (
-    "phase15-input-v1-accepted-phase14-plus-immutable-phase13-case-lineage"
+    "phase15-input-v2-cumulative-foundation-plus-accepted-phase14-immutable-phase13-lineage"
 )
 
 
@@ -57,6 +61,7 @@ class Phase15ExecutionInput:
     contract_version: str
     source_fingerprint: str
     as_of_date: date
+    cumulative_foundation: Phase15CumulativeFoundationBinding
     phase14_acceptance_path: Path
     phase14_acceptance_sha256: str
     phase14_manifest_path: Path
@@ -83,6 +88,7 @@ class Phase15ExecutionInput:
             "contract_version": self.contract_version,
             "source_fingerprint": self.source_fingerprint,
             "as_of_date": self.as_of_date.isoformat(),
+            "cumulative_foundation": self.cumulative_foundation.public_dict(),
             "phase14_acceptance_path": str(self.phase14_acceptance_path.resolve()),
             "phase14_acceptance_sha256": self.phase14_acceptance_sha256,
             "phase14_manifest_path": str(self.phase14_manifest_path.resolve()),
@@ -98,16 +104,22 @@ class Phase15ExecutionInput:
 
 
 class Phase15ExecutionInputResolver:
-    """Resolve execution inputs exclusively from the accepted Phase 14 closeout."""
+    """Resolve execution inputs only from accepted cumulative and Phase 14 authority."""
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
+        self.foundation = Phase15CumulativeFoundationResolver(settings)
         self.closeout = Phase14Closeout(settings)
         self.engine = Phase14AuditEngine(settings)
         self.validator = Phase14IndependentValidator(settings)
         self.phase14_input = Phase14ReviewInputResolver(settings)
 
     def resolve(self, as_of_date: date | None = None) -> Phase15ExecutionInput:
+        try:
+            cumulative = self.foundation.resolve()
+        except RuntimeError as exc:
+            raise Phase15InputError("Phase 15 cumulative foundation prerequisite failed") from exc
+
         acceptance = _read_json(self.closeout.report_path, "Phase 14 final acceptance")
         if acceptance.get("contract_version") != PHASE14_CLOSEOUT_CONTRACT_VERSION:
             raise Phase15InputError("Phase 14 final acceptance contract changed")
@@ -126,6 +138,8 @@ class Phase15ExecutionInputResolver:
         accepted_date = date.fromisoformat(str(acceptance["as_of_date"]))
         if as_of_date is not None and as_of_date != accepted_date:
             raise Phase15InputError("requested Phase 15 date differs from accepted Phase 14 date")
+        if accepted_date != cumulative.history_end:
+            raise Phase15InputError("Phase 14 accepted date differs from cumulative foundation endpoint")
 
         manifest_path = self.engine.manifest_path(accepted_date)
         manifest = _read_json(manifest_path, "Phase 14 manifest")
@@ -219,10 +233,14 @@ class Phase15ExecutionInputResolver:
             if manifest.get("provider_initialized") is not False or int(manifest.get("provider_calls", -1)) != 0:
                 raise Phase15InputError("zero-review Phase 14 unexpectedly initialized/called AI provider")
 
+        phase14_acceptance_sha = sha256_file(self.closeout.report_path)
         source_payload = {
             "contract_version": PHASE15_INPUT_CONTRACT_VERSION,
             "as_of_date": accepted_date.isoformat(),
-            "phase14_acceptance_sha256": sha256_file(self.closeout.report_path),
+            "cumulative_foundation_fingerprint": cumulative.foundation_fingerprint,
+            "cumulative_acceptance_sha256": cumulative.acceptance_sha256,
+            "cumulative_validation_sha256": cumulative.validation_sha256,
+            "phase14_acceptance_sha256": phase14_acceptance_sha,
             "phase14_manifest_sha256": manifest_sha,
             "phase14_validation_sha256": validation_sha,
             "phase13_case_hashes": case_hashes,
@@ -233,8 +251,9 @@ class Phase15ExecutionInputResolver:
             contract_version=PHASE15_INPUT_CONTRACT_VERSION,
             source_fingerprint=_stable_hash(source_payload),
             as_of_date=accepted_date,
+            cumulative_foundation=cumulative,
             phase14_acceptance_path=self.closeout.report_path,
-            phase14_acceptance_sha256=sha256_file(self.closeout.report_path),
+            phase14_acceptance_sha256=phase14_acceptance_sha,
             phase14_manifest_path=manifest_path,
             phase14_manifest_sha256=manifest_sha,
             phase14_validation_path=validation_path,
