@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict
 
-from packages.schemas.candidate import (
+from packages.schemas.candidate_promotion import (
     CandidatePromotionRecord,
     StrategyHistoricalSupportSnapshot,
 )
@@ -124,10 +123,11 @@ class CandidatePromotionEngine:
         if promoted:
             reason_codes.append("PROMOTE:SUPPORTED_ROUTED_STRATEGY_FIRED")
 
+        registered_ids = {strategy.metadata.strategy_id for strategy in self.registry.all()}
         support_values = tuple(
             historical_support[key]
             for key in sorted(historical_support)
-            if key in {strategy.metadata.strategy_id for strategy in self.registry.all()}
+            if key in registered_ids
         )
         return CandidatePromotionRecord(
             instrument_id=discovery.instrument_id,
