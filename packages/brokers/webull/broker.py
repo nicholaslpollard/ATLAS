@@ -33,6 +33,14 @@ def _float(value: object, default: float = 0.0) -> float:
     return float(value)
 
 
+def _first_env(*names: str) -> str:
+    for name in names:
+        value = str(os.getenv(name, "") or "").strip()
+        if value:
+            return value
+    return ""
+
+
 def _json_response(response: Any, label: str) -> Any:
     if int(getattr(response, "status_code", 0)) != 200:
         try:
@@ -133,14 +141,30 @@ class WebullSandboxBroker(BrokerAdapter):
         account_id: str | None = None,
         trade_client: Any | None = None,
     ) -> None:
-        self._account_id = (account_id or os.getenv("WEBULL_ACCOUNT_ID") or "").strip() or None
+        self._account_id = (
+            account_id
+            or _first_env("WEBULL_PAPER_ACCOUNT_ID", "WEBULL_ACCOUNT_ID")
+            or ""
+        ).strip() or None
         if trade_client is not None:
             self._client = trade_client
         else:
-            key = (app_key or os.getenv("WEBULL_APP_KEY") or "").strip()
-            secret = (app_secret or os.getenv("WEBULL_APP_SECRET") or "").strip()
+            key = (
+                app_key
+                or _first_env("WEBULL_PAPER_APP_KEY", "WEBULL_APP_KEY")
+                or ""
+            ).strip()
+            secret = (
+                app_secret
+                or _first_env("WEBULL_PAPER_APP_SECRET", "WEBULL_APP_SECRET")
+                or ""
+            ).strip()
             if not key or not secret:
-                raise BrokerAdapterError("Webull sandbox credentials are unavailable")
+                raise BrokerAdapterError(
+                    "Webull sandbox credentials are unavailable; configure "
+                    "WEBULL_PAPER_APP_KEY and WEBULL_PAPER_APP_SECRET "
+                    "(legacy WEBULL_APP_KEY/WEBULL_APP_SECRET aliases are accepted)"
+                )
             try:
                 from webull.core.client import ApiClient
                 from webull.trade.trade_client import TradeClient
@@ -174,7 +198,8 @@ class WebullSandboxBroker(BrokerAdapter):
         ]
         if len(candidates) != 1:
             raise BrokerAdapterError(
-                "Webull account selection is ambiguous; set WEBULL_ACCOUNT_ID explicitly"
+                "Webull account selection is ambiguous; set WEBULL_PAPER_ACCOUNT_ID explicitly "
+                "(legacy WEBULL_ACCOUNT_ID alias is accepted)"
             )
         return candidates[0]
 
