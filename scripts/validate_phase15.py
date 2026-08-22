@@ -60,6 +60,7 @@ def main() -> None:
     intent_fields = set(ExecutionIntent.model_fields)
     plan_fields = set(BrokerOrderPlan.model_fields)
     outcome_fields = set(ExecutionOutcome.model_fields)
+    order_plan_schema = BrokerOrderPlan.model_json_schema()["properties"]
     checks = {
         "webull_primary": PHASE15_PRIMARY_BROKER == "webull",
         "alpaca_secondary": PHASE15_SECONDARY_BROKER == "alpaca",
@@ -81,7 +82,7 @@ def main() -> None:
         "protective_stop_required": PHASE15_REQUIRE_PROTECTIVE_STOP is True,
         "profit_target_required": PHASE15_REQUIRE_PROFIT_TARGET is True,
         "order_plan_has_protective_geometry": {"stop_price", "target_price", "bracket_required"}.issubset(plan_fields),
-        "client_order_id_cross_broker_limit": BrokerOrderPlan.model_fields["client_order_id"].metadata[-1].max_length == 32,
+        "client_order_id_cross_broker_limit": order_plan_schema["client_order_id"].get("maxLength") == 32,
         "intent_has_no_live_authority_field": not bool(intent_fields & _FORBIDDEN_LIVE_AUTHORITY_FIELDS),
         "outcome_descriptive_not_model_authority": PHASE15_OUTCOME_LEARNING_CAN_PROMOTE_MODEL is False
         and PHASE15_OUTCOME_LEARNING_CAN_CHANGE_STRATEGY_SUPPORT is False
