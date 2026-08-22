@@ -7,6 +7,7 @@ from typing import Any
 from packages.brokers.base import (
     BrokerAdapter,
     BrokerAdapterError,
+    BrokerMutationUncertain,
     BrokerOrderNotFound,
     BrokerSubmissionUncertain,
 )
@@ -259,8 +260,6 @@ class AlpacaPaperBroker(BrokerAdapter):
             )
             order = self._client.submit_order(order_data=request)
         except Exception as exc:
-            # Transport/API exceptions around submission are not retried because the
-            # request may have reached Alpaca. Reconcile by client_order_id first.
             raise BrokerSubmissionUncertain(
                 "Alpaca submit_order outcome is uncertain; reconcile client order id before any retry"
             ) from exc
@@ -288,11 +287,25 @@ class AlpacaPaperBroker(BrokerAdapter):
         )
 
     def cancel(self, client_order_id: str) -> BrokerOrderSnapshot:
+        if not str(client_order_id).strip():
+            raise BrokerAdapterError("Alpaca cancellation requires a client order id")
         order = self.order(client_order_id)
         if order.provider_order_id is None:
             raise BrokerAdapterError("Alpaca order is missing provider order id for cancellation")
         try:
             self._client.cancel_order_by_id(order.provider_order_id)
         except Exception as exc:
-            raise BrokerAdapterError("Alpaca paper cancel request failed") from exc
-        return self.order(client_order_id)
+            raise BrokerMutationUncertain(
+                "Alpaca cancel request outcome is uncertain; reconcile exact client order id before any retry"
+            ) from exc
+        try:
+            reconciled = self.order(client_order_id)
+        except BrokerAdapterError as exc:
+            raise BrokerMutationUncertain(
+                "Alpaca cancellation was attempted but exact order reconciliation failed; reconcile before any further mutation"
+            ) from exc
+        if reconciled.status != BrokerOrderStatus.CANCELLED:
+            raise BrokerMutationUncertain(
+                "Alpaca cancellation was attempted but final cancellation is not yet proven; reconcile before any further mutation"
+            )
+        return reconciled
