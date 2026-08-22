@@ -4,7 +4,7 @@ import numpy as np
 
 from packages.ml.historical_backfill_model_benchmark_validation import (
     HISTORICAL_BACKFILL_ECE_BINS,
-    HISTORICAL_BACKFILL_MODEL_VALIDATION_TOLERANCE,
+    HISTORICAL_BACKFILL_VALIDATION_TOLERANCE,
     _close,
     _independent_metrics,
     _key_hash,
@@ -39,7 +39,7 @@ def test_independent_key_hash_is_order_sensitive_and_deterministic() -> None:
 
 
 def test_validation_tolerance_is_strict() -> None:
-    assert HISTORICAL_BACKFILL_MODEL_VALIDATION_TOLERANCE == 1e-12
+    assert HISTORICAL_BACKFILL_VALIDATION_TOLERANCE == 1e-12
     assert _close(1.0, 1.0 + 5e-13)
     assert not _close(1.0, 1.0 + 2e-12)
     assert HISTORICAL_BACKFILL_ECE_BINS == 15
