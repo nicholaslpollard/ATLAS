@@ -18,6 +18,7 @@ from packages.analogues.engine import (
 from packages.analogues.policy import (
     PHASE12_ANALOGUE_TOP_K,
     PHASE12_BOOTSTRAP_DRAWS,
+    PHASE12_MIN_ANALOGUES_FOR_DISTRIBUTION,
     PHASE12_PER_INSTRUMENT_CAP,
     PHASE12_RESEARCH_POLICY_CONTRACT_VERSION,
     PHASE12_SIMILARITY_FEATURES,
@@ -110,7 +111,7 @@ def _independent_scenarios(
     direction: str,
 ) -> EmpiricalPathScenarios:
     seed = deterministic_seed(instrument_id=instrument_id, as_of_date=as_of_date, direction=direction)
-    if len(paths) < 50:
+    if len(paths) < PHASE12_MIN_ANALOGUES_FOR_DISTRIBUTION:
         return EmpiricalPathScenarios(
             available=False,
             draw_count=0,
@@ -124,7 +125,9 @@ def _independent_scenarios(
     if not np.isfinite(matrix).all():
         raise Phase12ValidationError("persisted path evidence contains non-finite values")
     rng = np.random.default_rng(seed)
-    sampled = matrix[rng.integers(0, len(matrix), size=PHASE12_BOOTSTRAP_DRAWS, endpoint=False)]
+    sampled = matrix[
+        rng.integers(0, len(matrix), size=PHASE12_BOOTSTRAP_DRAWS, endpoint=False)
+    ]
     terminal = sampled[:, 2]
     mae = np.minimum(0.0, np.min(sampled, axis=1))
     mfe = np.maximum(0.0, np.max(sampled, axis=1))
@@ -226,14 +229,20 @@ class Phase12IndependentValidator:
         if manifest.get("pass") is not True:
             raise Phase12ValidationError("Phase 12 research manifest is not passing")
         research_input = self.input_resolver.resolve(as_of_date)
-        if dict(manifest.get("phase12_input") or {}).get("source_fingerprint") != research_input.source_fingerprint:
+        if (
+            dict(manifest.get("phase12_input") or {}).get("source_fingerprint")
+            != research_input.source_fingerprint
+        ):
             raise Phase12ValidationError("Phase 12 research input fingerprint changed")
         expected_policy = phase12_policy_payload()
         if manifest.get("policy") != expected_policy:
             raise Phase12ValidationError("Phase 12 preregistered policy changed")
         if manifest.get("policy_fingerprint") != _stable_hash(expected_policy):
             raise Phase12ValidationError("Phase 12 policy fingerprint changed")
-        if expected_policy["research_policy_contract_version"] != PHASE12_RESEARCH_POLICY_CONTRACT_VERSION:
+        if (
+            expected_policy["research_policy_contract_version"]
+            != PHASE12_RESEARCH_POLICY_CONTRACT_VERSION
+        ):
             raise Phase12ValidationError("Phase 12 policy contract mismatch")
 
         case_proofs: list[dict[str, object]] = []
@@ -259,6 +268,9 @@ class Phase12IndependentValidator:
 
             con = connect_utc(":memory:")
             try:
+                feature_projection = ", ".join(
+                    f'"{name}"' for name in PHASE12_SIMILARITY_FEATURES
+                )
                 for record in records:
                     if not isinstance(record, dict):
                         raise Phase12ValidationError("malformed Phase 12 case manifest record")
@@ -286,7 +298,8 @@ class Phase12IndependentValidator:
                     if sha256_file(path_path) != case.path_artifact_sha256:
                         raise Phase12ValidationError("Phase 12 path artifact hash changed")
                     analogues = con.execute(
-                        f"SELECT * FROM read_parquet({sql_string(analogue_path)}) ORDER BY distance, session_date DESC, observation_key"
+                        f"SELECT * FROM read_parquet({sql_string(analogue_path)}) "
+                        "ORDER BY distance, session_date DESC, observation_key"
                     ).fetch_df()
                     paths = con.execute(
                         f"SELECT * FROM read_parquet({sql_string(path_path)}) ORDER BY observation_key"
@@ -294,9 +307,13 @@ class Phase12IndependentValidator:
                     recomputed_distribution = summarize_distribution(analogues)
                     recomputed_quality = classify_quality(analogues, paths)
                     if recomputed_distribution != case.analogue_distribution:
-                        raise Phase12ValidationError("Phase 12 analogue distribution did not independently recompute")
+                        raise Phase12ValidationError(
+                            "Phase 12 analogue distribution did not independently recompute"
+                        )
                     if recomputed_quality != case.analogue_quality:
-                        raise Phase12ValidationError("Phase 12 analogue quality did not independently recompute")
+                        raise Phase12ValidationError(
+                            "Phase 12 analogue quality did not independently recompute"
+                        )
                     recomputed_scenarios = _independent_scenarios(
                         paths,
                         instrument_id=case.instrument_id,
@@ -304,10 +321,12 @@ class Phase12IndependentValidator:
                         direction=case.direction.value,
                     )
                     if recomputed_scenarios != case.scenarios:
-                        raise Phase12ValidationError("Phase 12 scenarios did not independently recompute")
+                        raise Phase12ValidationError(
+                            "Phase 12 scenarios did not independently recompute"
+                        )
 
                     current = con.execute(
-                        f"SELECT {', '.join(f'\"{name}\"' for name in PHASE12_SIMILARITY_FEATURES)} "
+                        f"SELECT {feature_projection} "
                         f"FROM read_parquet({sql_string(research_input.feature_path)}) "
                         f"WHERE symbol = {sql_string(case.ticker)}"
                     ).fetchone()
@@ -328,7 +347,9 @@ class Phase12IndependentValidator:
                     if selection["observation_key"].astype(str).tolist() != analogues[
                         "observation_key"
                     ].astype(str).tolist():
-                        raise Phase12ValidationError("Phase 12 top analogue selection did not independently recompute")
+                        raise Phase12ValidationError(
+                            "Phase 12 top analogue selection did not independently recompute"
+                        )
                     if len(selection) and not np.allclose(
                         selection["distance"].to_numpy(dtype="float64"),
                         analogues["distance"].to_numpy(dtype="float64"),
@@ -357,9 +378,11 @@ class Phase12IndependentValidator:
             == research_input.promoted_count,
             "accepted_gate11c_history_reverified_or_not_needed": history_reverified,
             "zero_candidate_path_skips_expensive_history": (
-                research_input.promoted_count != 0 or manifest.get("historical_source_accessed") is False
+                research_input.promoted_count != 0
+                or manifest.get("historical_source_accessed") is False
             ),
-            "case_evidence_independently_recomputed": len(case_proofs) == research_input.promoted_count,
+            "case_evidence_independently_recomputed": len(case_proofs)
+            == research_input.promoted_count,
             "research_only_not_trade_signal": manifest.get("research_only_not_trade_signal") is True,
             "no_trade_or_order_geometry": not _forbidden_keys(manifest)
             and all(not _forbidden_keys(payload) for payload in all_payloads),
@@ -389,6 +412,9 @@ class Phase12IndependentValidator:
             "pass": all(bool(value) for value in checks.values()),
         }
         self.report_path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(self.report_path, json.dumps(report, indent=2, sort_keys=True, default=str) + "\n")
+        atomic_write_text(
+            self.report_path,
+            json.dumps(report, indent=2, sort_keys=True, default=str) + "\n",
+        )
         report["report_path"] = str(self.report_path.resolve())
         return report
