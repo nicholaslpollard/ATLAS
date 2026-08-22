@@ -9,7 +9,7 @@ from typing import Callable
 
 from packages.brokers.base import BrokerAdapter
 from packages.control_plane.http_server import create_status_server
-from packages.control_plane.status import Phase16StatusService
+from packages.control_plane.status import Phase16StatusService, _default_broker_factory
 from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
 from packages.schemas.execution import BrokerName
@@ -79,9 +79,16 @@ class Phase16OperationalSmoke:
             )
 
         if refresh_brokers:
+            underlying_factory = broker_factory or _default_broker_factory
+
+            def counted_factory(broker: BrokerName) -> BrokerAdapter:
+                nonlocal provider_factory_calls
+                provider_factory_calls += 1
+                return underlying_factory(broker)
+
             service = Phase16StatusService(
                 self.settings,
-                broker_factory=broker_factory,
+                broker_factory=counted_factory,
             )
         else:
             service = Phase16StatusService(
@@ -145,8 +152,10 @@ class Phase16OperationalSmoke:
             rows = broker_payload.get("brokers") if isinstance(broker_payload, dict) else None
             if not isinstance(rows, list):
                 checks["readonly_broker_rows_present"] = False
+                checks["readonly_provider_factory_calls_exact"] = False
             else:
                 checks["readonly_broker_rows_present"] = len(rows) == 2
+                checks["readonly_provider_factory_calls_exact"] = provider_factory_calls == 2
                 checks["readonly_brokers_reconciled"] = all(
                     isinstance(row, dict)
                     and row.get("state") == "AVAILABLE"
