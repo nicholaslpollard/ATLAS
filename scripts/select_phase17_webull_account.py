@@ -79,7 +79,10 @@ def main() -> None:
     parser.add_argument(
         "--account-ref",
         default=None,
-        help="Optional sanitized 16-character account ref from the Phase 17 diagnostic.",
+        help=(
+            "Sanitized 16-character account ref from this selector/Phase 17 diagnostic. "
+            "Required when more than one readable sandbox account exists."
+        ),
     )
     args = parser.parse_args()
 
