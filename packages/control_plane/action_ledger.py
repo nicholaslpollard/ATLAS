@@ -32,6 +32,12 @@ class ControlPlaneActionNotFound(ControlPlaneActionLedgerError):
     pass
 
 
+_TERMINAL_KNOWN_STATES = {
+    ControlPlaneActionState.COMPLETED,
+    ControlPlaneActionState.FAILED,
+}
+
+
 class ControlPlaneActionLedger:
     """Audit-log-backed action state machine; no broker methods are called here."""
 
@@ -125,6 +131,19 @@ class ControlPlaneActionLedger:
                 if collision.request_fingerprint == fingerprint:
                     return collision
                 raise ControlPlaneActionConflict("action_id already belongs to another request")
+            blocking = [
+                record
+                for record in existing.values()
+                if record.state not in _TERMINAL_KNOWN_STATES
+            ]
+            if blocking:
+                if any(record.state == ControlPlaneActionState.UNCERTAIN for record in blocking):
+                    raise ControlPlaneActionConflict(
+                        "provider-write uncertainty must be reconciled before another action"
+                    )
+                raise ControlPlaneActionConflict(
+                    "another nonterminal control-plane action must finish before a new action"
+                )
 
             now = self._now()
             scope = required_confirmation_scope(request.action_kind)
@@ -200,11 +219,20 @@ class ControlPlaneActionLedger:
         uncertain = [
             record.request.action_id
             for record in records.values()
-            if record.provider_write_uncertain
+            if record.state == ControlPlaneActionState.UNCERTAIN
+            or record.provider_write_uncertain
+        ]
+        active = [
+            record.request.action_id
+            for record in records.values()
+            if record.state not in _TERMINAL_KNOWN_STATES
+            and record.state != ControlPlaneActionState.UNCERTAIN
         ]
         return {
             "event_count": len(events),
             "action_count": len(records),
+            "active_action_count": len(active),
+            "active_action_ids": tuple(sorted(active)),
             "uncertain_action_count": len(uncertain),
             "uncertain_action_ids": tuple(sorted(uncertain)),
             "hash_chain_valid": True,
