@@ -8,14 +8,16 @@ from pathlib import Path
 from typing import Any
 
 from packages.core.atomic_io import atomic_write_text
+from packages.core.enums import Timeframe
 from packages.core.settings import AtlasSettings
+from packages.data.paths import MarketDataPaths
 from packages.discovery.current_candidates import (
     CURRENT_CANDIDATE_MATERIALIZATION_CONTRACT_VERSION,
     CURRENT_CANDIDATE_SECTOR_POLICY,
     CurrentCandidateMaterializer,
 )
 from packages.discovery.promotion import support_mapping_from_study
-from packages.features.partition_store import sha256_file
+from packages.features.partition_store import FeaturePartitionManifest, sha256_file
 from packages.ml.historical_backfill_model_evaluation_design import (
     GATE11D_ACCEPTED_GATE11C_BUILDER_FINGERPRINT,
     GATE11D_ACCEPTED_GATE11C_VALIDATION_FINGERPRINT,
@@ -32,7 +34,7 @@ from .strategy_support import classify_strategy_support
 
 
 PHASE11_VALIDATION_CONTRACT_VERSION = (
-    "phase11-validation-v1-independent-support-and-current-candidate-recompute"
+    "phase11-validation-v2-independent-support-current-candidate-canonical-source-recompute"
 )
 PHASE11_FORBIDDEN_TRADE_KEYS = {
     "entry",
@@ -126,6 +128,7 @@ class Phase11IndependentValidator:
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
+        self.paths = MarketDataPaths(settings)
         self.study = StrategyHistoricalStudy(settings)
         self.materializer = CurrentCandidateMaterializer(settings)
         self.source_resolver = HistoricalStrategyResearchSourceResolver(settings)
@@ -192,6 +195,48 @@ class Phase11IndependentValidator:
             raise Phase11ValidationError("supported strategy-id set changed")
         return support_recomputed, supported_ids
 
+    def _verify_current_feature_lineage(
+        self,
+        *,
+        as_of_date: date,
+        lineage: dict[str, Any],
+    ) -> dict[str, object]:
+        feature_path = self.paths.feature_file(Timeframe.DAY_1, as_of_date)
+        feature_manifest_path = self.paths.feature_manifest_file(Timeframe.DAY_1, as_of_date)
+        feature_manifest = FeaturePartitionManifest.from_dict(
+            _read_json(feature_manifest_path, "independent 1d feature manifest")
+        )
+        feature_manifest.validate_contract(Timeframe.DAY_1, as_of_date)
+        canonical_path = self.paths.canonical_file(Timeframe.DAY_1, as_of_date)
+        if not feature_path.is_file() or not canonical_path.is_file():
+            raise Phase11ValidationError("independent current feature/canonical source is missing")
+
+        feature_sha = sha256_file(feature_path)
+        canonical_sha = sha256_file(canonical_path)
+        if feature_manifest.feature_sha256 != feature_sha:
+            raise Phase11ValidationError("independent 1d feature hash changed")
+        if Path(feature_manifest.feature_path).resolve() != feature_path.resolve():
+            raise Phase11ValidationError("independent 1d feature path changed")
+        if Path(feature_manifest.source_path).resolve() != canonical_path.resolve():
+            raise Phase11ValidationError("independent canonical feature-source path changed")
+        if feature_manifest.source_sha256 != canonical_sha:
+            raise Phase11ValidationError("independent canonical feature-source hash changed")
+        if lineage.get("feature_1d_sha256") != feature_sha:
+            raise Phase11ValidationError("current candidate feature hash lineage changed")
+        if lineage.get("canonical_1d_source_path") != str(canonical_path.resolve()):
+            raise Phase11ValidationError("current candidate canonical source path lineage changed")
+        if lineage.get("canonical_1d_source_sha256") != canonical_sha:
+            raise Phase11ValidationError("current candidate canonical source hash lineage changed")
+        if lineage.get("canonical_feature_exact_key_join") != "symbol+timestamp_utc":
+            raise Phase11ValidationError("current candidate canonical/feature join key changed")
+
+        return {
+            "feature_sha256": feature_sha,
+            "canonical_sha256": canonical_sha,
+            "feature_manifest_source_sha256": feature_manifest.source_sha256,
+            "canonical_feature_binding_exact": True,
+        }
+
     def _validate_current(
         self,
         *,
@@ -213,6 +258,10 @@ class Phase11IndependentValidator:
         if sha256_file(promoted_path) != manifest.get("promoted_sha256"):
             raise Phase11ValidationError("promoted-candidate artifact hash changed")
         lineage = dict(manifest.get("lineage") or {})
+        current_input_proof = self._verify_current_feature_lineage(
+            as_of_date=as_of_date,
+            lineage=lineage,
+        )
         if lineage.get("historical_strategy_study_sha256") != sha256_file(self.study.report_path):
             raise Phase11ValidationError("current candidates are not bound to current strategy study")
         if lineage.get("strategy_registry_fingerprint") != DEFAULT_STRATEGY_REGISTRY.fingerprint():
@@ -280,6 +329,7 @@ class Phase11IndependentValidator:
             "candidate_count": len(raw_records),
             "promoted_count": len(promoted_records),
             "all_promoted_records_recompute_valid": all(promoted_checks),
+            "current_input_lineage": current_input_proof,
         }
 
     def run(self, *, as_of_date: date) -> dict[str, object]:
@@ -302,6 +352,9 @@ class Phase11IndependentValidator:
                 for item in study["studies"]
             ),
             "current_candidate_manifest_pass": current_manifest.get("pass") is True,
+            "canonical_feature_source_binding_reverified": bool(
+                dict(current_proof["current_input_lineage"]).get("canonical_feature_binding_exact")
+            ),
             "accepted_phase10_model_only": dict(current_manifest["lineage"]).get("accepted_ml_model_id")
             == accepted_model_id(),
             "sector_context_not_guessed": current_manifest.get("sector_context_policy")
