@@ -28,7 +28,7 @@ class DiscoveryReasonCode(StrEnum):
     INVALID_VOLUME = "invalid_volume"
     INVALID_DOLLAR_VOLUME = "invalid_dollar_volume"
     BELOW_MINIMUM_DOLLAR_VOLUME = "below_minimum_dollar_volume"
-    MISSING_REGULAR_INTRADAY = "missing_regular_intrADAY"
+    MISSING_REGULAR_INTRADAY = "missing_regular_intraday"
     MANDATORY_ROUTE_BYPASS = "mandatory_route_bypass"
 
 
