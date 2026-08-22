@@ -77,5 +77,8 @@ jobs:
       - name: Validate historical backfill Gate 3 status
         run: python scripts/validate_historical_backfill_gate3.py
 
+      - name: Validate Phase 13 contracts
+        run: python scripts/validate_phase13.py
+
       - name: Run tests
         run: python -m pytest -q
