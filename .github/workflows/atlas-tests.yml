@@ -39,6 +39,9 @@ jobs:
       - name: Compile
         run: python -m compileall -q packages apps scripts tests
 
+      - name: Validate browser JavaScript syntax
+        run: node --check apps/web/app.js
+
       - name: Validate foundation
         run: python scripts/validate_foundation.py
 
