@@ -16,6 +16,12 @@ class WebullSandboxAccountCandidate:
     positions_readable: bool
     open_order_count: int | None
     position_count: int | None
+    balance_currency: str | None = None
+    cash_balance: str | None = None
+    net_liquidation_value: str | None = None
+    buying_power: str | None = None
+    day_buying_power: str | None = None
+    overnight_buying_power: str | None = None
 
     @property
     def account_ref(self) -> str:
@@ -41,7 +47,8 @@ def select_webull_sandbox_candidate(
     required Phase 17 read probes. Without an explicit ref, automatic selection is
     allowed only when exactly one readable candidate exists. Multiple readable
     candidates remain ambiguous and require user selection; account type, flatness,
-    or hash ordering must never be used as implicit trading/account authority.
+    balance, buying power, or hash ordering must never be used as implicit account
+    authority.
     """
 
     if preferred_ref:
