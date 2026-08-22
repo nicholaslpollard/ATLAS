@@ -11,3 +11,5 @@ pytz==2026.2
 websockets==17.0
 numpy==2.5.2
 pandas==3.0.5
+webull-openapi-python-sdk==2.0.17
+alpaca-py==0.44.0
