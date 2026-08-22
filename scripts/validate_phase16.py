@@ -4,6 +4,7 @@ from packages.control_plane.http_server import (
     CONTROL_PLANE_HTTP_CONTRACT_VERSION,
     DEFAULT_CONTROL_PLANE_PORT,
     MAX_JSON_BODY_BYTES,
+    MAX_STATIC_ASSET_BYTES,
     host_header_is_loopback,
     is_loopback_host,
 )
@@ -77,8 +78,9 @@ def main() -> None:
         "session_contract_locked": CONTROL_PLANE_SESSION_CONTRACT_VERSION
         == "control-plane-session-v1-same-origin-double-submit-csrf",
         "http_contract_locked": CONTROL_PLANE_HTTP_CONTRACT_VERSION
-        == "control-plane-http-v2-loopback-session-audit-only-actions-no-provider-writes",
+        == "control-plane-http-v3-loopback-browser-ui-session-audit-only-no-provider-writes",
         "http_json_body_cap_locked": MAX_JSON_BODY_BYTES == 64 * 1024,
+        "http_static_asset_cap_locked": MAX_STATIC_ASSET_BYTES == 1024 * 1024,
         "http_default_port_locked": DEFAULT_CONTROL_PLANE_PORT == 8765,
         "loopback_ipv4_accepted": is_loopback_host("127.0.0.1"),
         "loopback_ipv6_accepted": is_loopback_host("::1"),
@@ -100,7 +102,7 @@ def main() -> None:
     if not all(checks.values()):
         failed = sorted(name for name, value in checks.items() if not value)
         raise SystemExit("Phase 16 static validation failed: " + ", ".join(failed))
-    print("Phase 16 Browser Control Plane authority/status/runtime/audit/session contracts: PASS")
+    print("Phase 16 Browser Control Plane authority/status/runtime/audit/session/UI contracts: PASS")
 
 
 if __name__ == "__main__":
