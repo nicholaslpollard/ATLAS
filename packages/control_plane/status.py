@@ -11,11 +11,10 @@ from packages.brokers.base import BrokerAdapter, BrokerAdapterError
 from packages.brokers.webull import WebullSandboxBroker
 from packages.core.settings import AtlasSettings
 from packages.execution.phase15_closeout import PHASE15_CLOSEOUT_CONTRACT_VERSION
-from packages.execution.phase15_foundation import (
-    PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
-)
+from packages.execution.phase15_foundation import PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT
 from packages.execution.phase15_policy import phase15_policy_fingerprint
 from packages.execution.validator import ExecutionValidationError, reconcile_broker
+from packages.schemas.control_plane_runtime import ControlPlaneRuntimeState
 from packages.schemas.control_plane_status import (
     BrokerReadStatus,
     ControlPlaneExecutionStatus,
@@ -44,6 +43,7 @@ from .phase16_policy import (
     phase16_policy_fingerprint,
     validate_phase16_policy,
 )
+from .runtime_state import ControlPlaneRuntimeStateError, ControlPlaneRuntimeStateStore
 
 
 BrokerFactory = Callable[[BrokerName], BrokerAdapter]
@@ -62,16 +62,10 @@ def _default_broker_factory(broker: BrokerName) -> BrokerAdapter:
 
 
 def _presence(
-    env: Mapping[str, str],
-    required: tuple[str, ...],
-    optional: tuple[str, ...] = (),
+    env: Mapping[str, str], required: tuple[str, ...], optional: tuple[str, ...] = ()
 ) -> CredentialPresence:
-    required_present = {
-        name: bool(str(env.get(name, "") or "").strip()) for name in required
-    }
-    optional_present = {
-        name: bool(str(env.get(name, "") or "").strip()) for name in optional
-    }
+    required_present = {name: bool(str(env.get(name, "") or "").strip()) for name in required}
+    optional_present = {name: bool(str(env.get(name, "") or "").strip()) for name in optional}
     return CredentialPresence(
         required_names=required,
         optional_names=optional,
@@ -86,13 +80,7 @@ def _account_ref(account_id: str) -> str:
 
 
 class Phase16StatusService:
-    """Read-only browser status service.
-
-    Provider adapters are never initialized during construction or ordinary status reads.
-    `broker_status(..., refresh=True)` is the only method that performs provider network
-    reads. The provider state is reconciled through the accepted Phase 15 reconciliation
-    primitive; this service has no preview/submit/cancel/flatten/switch code path.
-    """
+    """Read-only local status service with lazy broker reconciliation."""
 
     def __init__(
         self,
@@ -101,11 +89,15 @@ class Phase16StatusService:
         env: Mapping[str, str] | None = None,
         broker_factory: BrokerFactory | None = None,
         clock: Callable[[], datetime] | None = None,
+        runtime_store: ControlPlaneRuntimeStateStore | None = None,
     ) -> None:
         self.settings = settings
         self._env = env if env is not None else os.environ
         self._broker_factory = broker_factory or _default_broker_factory
         self._clock = clock or (lambda: datetime.now(UTC))
+        self.runtime_store = runtime_store or ControlPlaneRuntimeStateStore(
+            settings, clock=self._clock
+        )
         derived = settings.resolved_path(settings.data.paths.derived)
         self.phase15_root = derived / "execution" / "phase15" / "v1"
         self.phase15_acceptance_path = self.phase15_root / "phase15_final_acceptance.json"
@@ -119,8 +111,7 @@ class Phase16StatusService:
             )
         if broker == BrokerName.ALPACA:
             return _presence(
-                self._env,
-                ("ALPACA_PAPER_API_KEY", "ALPACA_PAPER_API_SECRET"),
+                self._env, ("ALPACA_PAPER_API_KEY", "ALPACA_PAPER_API_SECRET")
             )
         raise ControlPlaneStatusError(f"unsupported provider broker: {broker}")
 
@@ -142,25 +133,21 @@ class Phase16StatusService:
                 accepted=False,
                 error_code="PHASE15_ACCEPTANCE_INVALID",
             )
-
-        final = (
-            raw.get("final_disposition")
-            if isinstance(raw.get("final_disposition"), dict)
-            else {}
+        final = raw.get("final_disposition") if isinstance(raw.get("final_disposition"), dict) else {}
+        accepted = all(
+            (
+                raw.get("contract_version") == PHASE15_CLOSEOUT_CONTRACT_VERSION,
+                raw.get("pass") is True,
+                raw.get("phase15_policy_fingerprint")
+                == PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT,
+                raw.get("phase15_policy_fingerprint") == phase15_policy_fingerprint(),
+                raw.get("cumulative_foundation_fingerprint")
+                == PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
+                final.get("phase15_accepted") is True,
+                final.get("live_execution_promoted") is False,
+                final.get("automatic_cross_broker_failover_allowed") is False,
+            )
         )
-        checks = (
-            raw.get("contract_version") == PHASE15_CLOSEOUT_CONTRACT_VERSION,
-            raw.get("pass") is True,
-            raw.get("phase15_policy_fingerprint")
-            == PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT,
-            raw.get("phase15_policy_fingerprint") == phase15_policy_fingerprint(),
-            raw.get("cumulative_foundation_fingerprint")
-            == PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
-            final.get("phase15_accepted") is True,
-            final.get("live_execution_promoted") is False,
-            final.get("automatic_cross_broker_failover_allowed") is False,
-        )
-        accepted = all(checks)
         return Phase15AcceptanceStatus(
             artifact_present=True,
             accepted=accepted,
@@ -193,14 +180,27 @@ class Phase16StatusService:
             error_code=None if accepted else "PHASE15_ACCEPTANCE_MISMATCH",
         )
 
+    def runtime_state(self) -> ControlPlaneRuntimeState:
+        return self.runtime_store.load()
+
+    def _runtime_or_invalid(self) -> tuple[ControlPlaneRuntimeState | None, bool]:
+        try:
+            return self.runtime_state(), True
+        except ControlPlaneRuntimeStateError:
+            return None, False
+
     def system_status(self) -> ControlPlaneSystemStatus:
         validate_phase16_policy()
         phase15 = self.phase15_acceptance()
-        health = (
-            ControlPlaneHealthState.HEALTHY
-            if phase15.accepted
-            else ControlPlaneHealthState.BLOCKED
-        )
+        runtime, runtime_valid = self._runtime_or_invalid()
+        if not phase15.accepted or not runtime_valid:
+            health = ControlPlaneHealthState.BLOCKED
+        elif runtime is not None and runtime.provider_write_uncertain:
+            health = ControlPlaneHealthState.BLOCKED
+        elif runtime is not None and runtime.active_action_id is not None:
+            health = ControlPlaneHealthState.DEGRADED
+        else:
+            health = ControlPlaneHealthState.HEALTHY
         return ControlPlaneSystemStatus(
             generated_at_utc=self._clock(),
             health=health,
@@ -209,7 +209,16 @@ class Phase16StatusService:
             accepted_phase15_policy_fingerprint=PHASE16_ACCEPTED_PHASE15_POLICY_FINGERPRINT,
             primary_broker=PHASE16_PRIMARY_BROKER,
             secondary_broker=PHASE16_SECONDARY_BROKER,
-            selected_broker=None,
+            selected_broker=runtime.selected_broker if runtime else None,
+            selected_environment=runtime.selected_environment if runtime else None,
+            runtime_state_valid=runtime_valid,
+            runtime_state_source=runtime.source if runtime else "invalid",
+            runtime_revision=runtime.revision if runtime else None,
+            provider_write_uncertain=(
+                runtime.provider_write_uncertain if runtime else True
+            ),
+            active_action_present=bool(runtime and runtime.active_action_id),
+            uncertain_action_present=bool(runtime and runtime.uncertain_action_id),
             allowed_execution_environments=PHASE16_ALLOWED_EXECUTION_ENVIRONMENTS,
             live_execution_promoted=PHASE16_LIVE_EXECUTION_PROMOTION_ALLOWED,
             automatic_cross_broker_failover_allowed=PHASE16_AUTOMATIC_CROSS_BROKER_FAILOVER_ALLOWED,
@@ -222,23 +231,26 @@ class Phase16StatusService:
 
     def execution_status(self) -> ControlPlaneExecutionStatus:
         phase15 = self.phase15_acceptance()
+        runtime, runtime_valid = self._runtime_or_invalid()
         return ControlPlaneExecutionStatus(
             phase15_accepted=phase15.accepted,
             phase15_as_of_date=phase15.as_of_date,
             phase15_execution_case_count=phase15.execution_case_count,
+            selected_broker=runtime.selected_broker if runtime else None,
+            selected_environment=runtime.selected_environment if runtime else None,
+            provider_write_uncertain=(
+                runtime.provider_write_uncertain if runtime_valid and runtime else True
+            ),
+            current_action_count=1 if runtime and runtime.active_action_id else 0,
+            uncertain_action_count=1 if runtime and runtime.uncertain_action_id else 0,
         )
 
     def broker_status(
-        self,
-        broker: BrokerName | str,
-        *,
-        refresh: bool = False,
+        self, broker: BrokerName | str, *, refresh: bool = False
     ) -> BrokerReadStatus:
         broker_name = BrokerName(broker)
         if broker_name not in {BrokerName.WEBULL, BrokerName.ALPACA}:
-            raise ControlPlaneStatusError(
-                "provider status supports only Webull and Alpaca"
-            )
+            raise ControlPlaneStatusError("provider status supports only Webull and Alpaca")
         credentials = self.credentials(broker_name)
         if not refresh:
             return BrokerReadStatus(
@@ -256,17 +268,11 @@ class Phase16StatusService:
                 polled_at_utc=self._clock(),
                 error_code="CREDENTIALS_UNAVAILABLE",
             )
-
         polled_at = self._clock()
         try:
             adapter = self._broker_factory(broker_name)
-            if (
-                adapter.broker != broker_name
-                or adapter.environment != ExecutionEnvironment.PAPER
-            ):
-                raise ControlPlaneStatusError(
-                    "broker adapter identity/environment mismatch"
-                )
+            if adapter.broker != broker_name or adapter.environment != ExecutionEnvironment.PAPER:
+                raise ControlPlaneStatusError("broker adapter identity/environment mismatch")
             reconciliation = reconcile_broker(adapter, now_utc=polled_at)
         except (
             BrokerAdapterError,
@@ -284,11 +290,9 @@ class Phase16StatusService:
                 polled_at_utc=polled_at,
                 error_code=f"BROKER_READ_FAILED_{type(exc).__name__.upper()}",
             )
-
         account = reconciliation.account
-        account_id = account.account_id
         public_account = PublicBrokerAccountStatus(
-            account_ref=_account_ref(account_id),
+            account_ref=_account_ref(account.account_id),
             as_of_utc=account.as_of_utc,
             equity=account.equity,
             cash=account.cash,
@@ -337,9 +341,7 @@ class Phase16StatusService:
         )
 
     def brokers_status(
-        self,
-        *,
-        refresh: bool = False,
+        self, *, refresh: bool = False
     ) -> tuple[BrokerReadStatus, BrokerReadStatus]:
         return (
             self.broker_status(BrokerName.WEBULL, refresh=refresh),
@@ -350,8 +352,15 @@ class Phase16StatusService:
         system = self.system_status()
         execution = self.execution_status()
         brokers = self.brokers_status(refresh=refresh_brokers)
+        runtime, runtime_valid = self._runtime_or_invalid()
         return {
             "system": system.model_dump(mode="json"),
+            "runtime": (
+                runtime.model_dump(mode="json")
+                if runtime is not None
+                else {"valid": False, "source": "invalid", "fail_closed": True}
+            ),
+            "runtime_valid": runtime_valid,
             "execution": execution.model_dump(mode="json"),
             "brokers": [row.model_dump(mode="json") for row in brokers],
         }
