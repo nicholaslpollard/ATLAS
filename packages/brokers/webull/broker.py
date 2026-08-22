@@ -7,6 +7,7 @@ from typing import Any
 from packages.brokers.base import (
     BrokerAdapter,
     BrokerAdapterError,
+    BrokerMutationUncertain,
     BrokerOrderNotFound,
     BrokerSubmissionUncertain,
 )
@@ -352,8 +353,6 @@ class WebullSandboxBroker(BrokerAdapter):
             raise BrokerAdapterError(
                 f"Webull sandbox order rejected before acknowledgement: HTTP {getattr(response, 'status_code', '?')} {payload}"
             )
-        # A successful placement response is not treated as final order state. Webull
-        # explicitly recommends Order Detail by client_order_id for current status.
         return self.order(plan.client_order_id)
 
     def order(self, client_order_id: str) -> BrokerOrderSnapshot:
@@ -379,9 +378,23 @@ class WebullSandboxBroker(BrokerAdapter):
         return _normalize_order(row, account_id=self.account_id)
 
     def cancel(self, client_order_id: str) -> BrokerOrderSnapshot:
+        if not str(client_order_id).strip():
+            raise BrokerAdapterError("Webull cancellation requires a client order id")
         try:
             response = self._client.order_v3.cancel_order(self.account_id, client_order_id)
         except Exception as exc:
-            raise BrokerAdapterError("Webull cancel request failed") from exc
-        _json_response(response, "cancel order")
-        return self.order(client_order_id)
+            raise BrokerMutationUncertain(
+                "Webull cancel request outcome is uncertain; reconcile exact client order id before any retry"
+            ) from exc
+        try:
+            _json_response(response, "cancel order")
+            reconciled = self.order(client_order_id)
+        except BrokerAdapterError as exc:
+            raise BrokerMutationUncertain(
+                "Webull cancellation was attempted but exact order reconciliation failed; reconcile before any further mutation"
+            ) from exc
+        if reconciled.status != BrokerOrderStatus.CANCELLED:
+            raise BrokerMutationUncertain(
+                "Webull cancellation was attempted but final cancellation is not yet proven; reconcile before any further mutation"
+            )
+        return reconciled
