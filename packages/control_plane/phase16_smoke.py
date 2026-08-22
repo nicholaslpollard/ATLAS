@@ -27,6 +27,21 @@ class Phase16OperationalSmokeError(RuntimeError):
 BrokerFactory = Callable[[BrokerName], BrokerAdapter]
 
 
+def _safe_broker_diagnostics(rows: list[dict[str, object]]) -> str:
+    """Render only sanitized provider-read state; never include account or credential values."""
+
+    diagnostics: list[str] = []
+    for row in rows:
+        broker = str(row.get("broker") or "unknown")
+        state = str(row.get("state") or "UNKNOWN")
+        reconciled = row.get("reconciled") is True
+        error_code = str(row.get("error_code") or "NONE")
+        diagnostics.append(
+            f"{broker}[state={state},reconciled={reconciled},error_code={error_code}]"
+        )
+    return "; ".join(diagnostics)
+
+
 class Phase16OperationalSmoke:
     """Exercise the localhost HTTP control plane without provider mutation.
 
@@ -195,10 +210,6 @@ class Phase16OperationalSmoke:
             "failed_checks": failed,
             "pass": not failed,
         }
-        if failed:
-            raise Phase16OperationalSmokeError(
-                "Phase 16 operational smoke failed: " + ", ".join(failed)
-            )
         if write_report:
             output_path = self.output_path(refresh_brokers=refresh_brokers)
             self.root.mkdir(parents=True, exist_ok=True)
@@ -207,4 +218,10 @@ class Phase16OperationalSmoke:
                 json.dumps(report, indent=2, sort_keys=True, default=str) + "\n",
             )
             report["report_path"] = str(output_path.resolve())
+        if failed:
+            diagnostic = _safe_broker_diagnostics(broker_summary)
+            suffix = f" | broker diagnostics: {diagnostic}" if diagnostic else ""
+            raise Phase16OperationalSmokeError(
+                "Phase 16 operational smoke failed: " + ", ".join(failed) + suffix
+            )
         return report
