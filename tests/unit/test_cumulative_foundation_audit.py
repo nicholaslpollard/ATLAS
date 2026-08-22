@@ -6,9 +6,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from packages.data.duckdb_connection import connect_utc
 from packages.features.engine import compute_core_features
 from packages.features.feature_registry import CORE_FEATURE_REGISTRY
 from packages.validation.cumulative_foundation import _deterministic_take, _partition_date
+from packages.validation.cumulative_integrity import _daily_integrity_sql
 from packages.validation.cumulative_policy import (
     CUMULATIVE_ALPACA_AUTHORITY_END,
     CUMULATIVE_AUDIT_BROKER_WRITES,
@@ -80,6 +82,33 @@ def test_deterministic_sampling_is_order_independent() -> None:
 def test_partition_date_parses_both_daily_and_intraday_layouts() -> None:
     assert _partition_date(Path("stocks/1d/year=2021/date=2021-08-16/part-000.parquet")).isoformat() == "2021-08-16"
     assert _partition_date(Path("bars/4h/year=2026/month=08/date=2026-08-14/part-000.parquet")).isoformat() == "2026-08-14"
+
+
+def test_daily_integrity_sql_executes_against_canonical_transaction_count_schema() -> None:
+    con = connect_utc(":memory:")
+    try:
+        con.execute(
+            """
+            CREATE TEMP VIEW daily AS
+            SELECT
+                'TEST'::VARCHAR AS symbol,
+                TIMESTAMPTZ '2026-08-14 20:00:00+00' AS timestamp_utc,
+                100.0::DOUBLE AS open,
+                101.0::DOUBLE AS high,
+                99.0::DOUBLE AS low,
+                100.5::DOUBLE AS close,
+                100000.0::DOUBLE AS volume,
+                123::BIGINT AS transaction_count,
+                'stocks/1d/year=2026/date=2026-08-14/part-000.parquet'::VARCHAR AS filename
+            """
+        )
+        row = con.execute(_daily_integrity_sql()).fetchone()
+    finally:
+        con.close()
+    assert row is not None
+    assert int(row[0]) == 1
+    assert int(row[7]) == 0
+    assert int(row[8]) == 0
 
 
 def test_independent_replay_matches_production_core33_on_synthetic_stream() -> None:
