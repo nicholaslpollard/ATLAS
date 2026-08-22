@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from packages.schemas.discovery_score import DiscoveryDirection
-from packages.schemas.strategy import MLProbabilityEvidence, StrategyDirection, StrategyRegimeFit
+from packages.schemas.strategy import MLProbabilityEvidence, StrategyAssessment, StrategyDirection, StrategyRegimeFit
 from packages.strategies.base import StrategyContext
 from packages.strategies.registry import DEFAULT_STRATEGY_REGISTRY
 from packages.strategies.router import StrategyRouter, StrategyRoutingContext
@@ -61,8 +61,9 @@ def test_rule_strategy_emits_setup_evidence_not_trade_geometry() -> None:
     assessment = strategy.evaluate(context)
     assert assessment.fired is True
     assert assessment.evidence_score == 1.0
-    assert set(assessment.model_fields) >= {"fired", "evidence", "ml_probability_evidence"}
-    assert {"entry", "stop", "target", "quantity", "broker"}.isdisjoint(assessment.model_fields)
+    fields = StrategyAssessment.model_fields
+    assert set(fields) >= {"fired", "evidence", "ml_probability_evidence"}
+    assert {"entry", "stop", "target", "quantity", "broker"}.isdisjoint(fields)
 
 
 def test_rule_strategy_partial_match_is_not_fired() -> None:
