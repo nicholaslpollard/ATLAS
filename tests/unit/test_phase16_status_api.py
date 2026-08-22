@@ -33,8 +33,9 @@ NOW = datetime(2026, 8, 22, 20, 0, tzinfo=UTC)
 class FakeReadBroker:
     environment = ExecutionEnvironment.PAPER
 
-    def __init__(self, broker: BrokerName) -> None:
+    def __init__(self, broker: BrokerName, *, flat: bool = False) -> None:
         self.broker = broker
+        self.flat = flat
         self.calls: list[str] = []
         self.account_id = "acct-super-secret-1234"
 
@@ -48,13 +49,15 @@ class FakeReadBroker:
             equity=25000.0,
             cash=10000.0,
             buying_power=20000.0,
-            gross_market_value=15000.0,
+            gross_market_value=0.0 if self.flat else 15000.0,
             trading_blocked=False,
             shorting_enabled=True,
         )
 
     def positions(self) -> tuple[BrokerPositionSnapshot, ...]:
         self.calls.append("positions")
+        if self.flat:
+            return ()
         return (
             BrokerPositionSnapshot(
                 broker=self.broker,
@@ -69,6 +72,8 @@ class FakeReadBroker:
 
     def open_orders(self) -> tuple[BrokerOrderSnapshot, ...]:
         self.calls.append("open_orders")
+        if self.flat:
+            return ()
         return (
             BrokerOrderSnapshot(
                 broker=self.broker,
@@ -172,7 +177,7 @@ def test_broker_status_is_lazy_and_never_exposes_credential_values(tmp_path) -> 
         assert secret not in encoded
 
 
-def test_refresh_uses_only_read_methods_and_sanitizes_provider_identifiers(tmp_path) -> None:
+def test_refresh_uses_phase15_reconciliation_and_sanitizes_provider_identifiers(tmp_path) -> None:
     fake = FakeReadBroker(BrokerName.WEBULL)
     env = {"WEBULL_APP_KEY": "k", "WEBULL_APP_SECRET": "s"}
     service = Phase16StatusService(
@@ -183,15 +188,39 @@ def test_refresh_uses_only_read_methods_and_sanitizes_provider_identifiers(tmp_p
     )
     status = service.broker_status(BrokerName.WEBULL, refresh=True)
     assert status.state == ControlPlaneReadState.AVAILABLE
-    assert fake.calls == ["account", "positions", "open_orders"]
+    assert fake.calls == ["account", "open_orders", "positions"]
     assert status.account is not None
     assert len(status.account.account_ref) == 16
     assert status.positions[0].ticker == "SPY"
     assert status.open_orders[0].ticker == "QQQ"
+    assert status.reconciled is True
+    assert status.zero_open_orders is False
+    assert status.zero_positions is False
+    assert status.safe_to_switch_broker is False
     encoded = status.model_dump_json()
     assert fake.account_id not in encoded
     assert "provider-secret-id" not in encoded
     assert "provider-raw-status" not in encoded
+
+
+def test_flat_reconciled_broker_is_reported_safe_to_switch(tmp_path) -> None:
+    fake = FakeReadBroker(BrokerName.ALPACA, flat=True)
+    env = {"ALPACA_PAPER_API_KEY": "k", "ALPACA_PAPER_API_SECRET": "s"}
+    service = Phase16StatusService(
+        _settings_with_derived(tmp_path),
+        env=env,
+        broker_factory=lambda broker: fake,
+        clock=lambda: NOW,
+    )
+    status = service.broker_status(BrokerName.ALPACA, refresh=True)
+    assert fake.calls == ["account", "open_orders", "positions"]
+    assert status.state == ControlPlaneReadState.AVAILABLE
+    assert status.reconciled is True
+    assert status.zero_open_orders is True
+    assert status.zero_positions is True
+    assert status.safe_to_switch_broker is True
+    assert status.positions == ()
+    assert status.open_orders == ()
 
 
 def test_refresh_without_credentials_does_not_initialize_adapter(tmp_path) -> None:
