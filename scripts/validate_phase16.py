@@ -31,6 +31,9 @@ from packages.control_plane.phase16_policy import (
     phase16_policy_fingerprint,
     validate_phase16_policy,
 )
+from packages.control_plane.recovery import (
+    CONTROL_PLANE_RUNTIME_RECOVERY_CONTRACT_VERSION,
+)
 from packages.control_plane.session import CONTROL_PLANE_SESSION_CONTRACT_VERSION
 from packages.schemas.control_plane_ledger import (
     CONTROL_PLANE_ACTION_RECORD_CONTRACT_VERSION,
@@ -65,9 +68,11 @@ def main() -> None:
         "remote_bind_disabled_default": PHASE16_REMOTE_BIND_ENABLED_BY_DEFAULT is False,
         "policy_fingerprint_present": len(phase16_policy_fingerprint()) == 64,
         "status_contract_locked": CONTROL_PLANE_STATUS_CONTRACT_VERSION
-        == "control-plane-status-v2-sanitized-lineage-runtime-ledger-reconciliation",
+        == "control-plane-status-v3-sanitized-lineage-runtime-audit-binding-reconciliation",
         "runtime_contract_locked": CONTROL_PLANE_RUNTIME_CONTRACT_VERSION
         == "control-plane-runtime-v2-explicit-selection-audit-bound-uncertainty-fail-closed",
+        "runtime_recovery_contract_locked": CONTROL_PLANE_RUNTIME_RECOVERY_CONTRACT_VERSION
+        == "control-plane-runtime-recovery-v1-audit-bound-broker-selection-replay",
         "runtime_default_unselected": default_state.selected_broker is None
         and default_state.selected_environment is None,
         "runtime_default_not_persisted": default_state.source == "synthetic_default",
@@ -98,6 +103,7 @@ def main() -> None:
     print(f"Phase 16 policy fingerprint: {phase16_policy_fingerprint()}")
     print(f"Phase 16 status contract: {CONTROL_PLANE_STATUS_CONTRACT_VERSION}")
     print(f"Phase 16 runtime contract: {CONTROL_PLANE_RUNTIME_CONTRACT_VERSION}")
+    print(f"Phase 16 runtime recovery: {CONTROL_PLANE_RUNTIME_RECOVERY_CONTRACT_VERSION}")
     print(f"Phase 16 action record contract: {CONTROL_PLANE_ACTION_RECORD_CONTRACT_VERSION}")
     print(f"Phase 16 audit event contract: {CONTROL_PLANE_AUDIT_EVENT_CONTRACT_VERSION}")
     print(f"Phase 16 session contract: {CONTROL_PLANE_SESSION_CONTRACT_VERSION}")
@@ -108,7 +114,7 @@ def main() -> None:
     if not all(checks.values()):
         failed = sorted(name for name, value in checks.items() if not value)
         raise SystemExit("Phase 16 static validation failed: " + ", ".join(failed))
-    print("Phase 16 Browser Control Plane authority/status/runtime/audit/session/UI/switch contracts: PASS")
+    print("Phase 16 Browser Control Plane authority/status/runtime/recovery/audit/session/UI/switch contracts: PASS")
 
 
 if __name__ == "__main__":
