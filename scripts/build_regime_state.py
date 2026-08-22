@@ -15,14 +15,16 @@ from packages.regimes.persistence_policy import (
     REGIME_PERSISTENCE_POLICY_CONTRACT_VERSION,
     REGIME_SELECTED_CONFIRMATION_SESSIONS,
 )
-from packages.regimes.state_engine import (
-    REGIME_STATE_POLICY_CONTRACT_VERSION,
-    REGIME_STATE_SNAPSHOT_CONTRACT_VERSION,
-    RegimeStateEngine,
+from packages.regimes.split_origin_policy import (
+    MARKET_SECTOR_HISTORY_ORIGIN_DATE,
+    MARKET_SECTOR_SNAPSHOT_CONTRACT_VERSION,
+    MARKET_SECTOR_STATE_POLICY_CONTRACT_VERSION,
+    SPLIT_ORIGIN_POLICY_VERSION,
+    TICKER_HISTORY_ORIGIN_DATE,
 )
+from packages.regimes.split_origin_state_engine import SplitOriginRegimeStateEngine
 from packages.regimes.threshold_policy import (
     REGIME_BREADTH_POPULATION_CONTRACT_VERSION,
-    REGIME_HISTORY_ORIGIN_DATE,
     REGIME_THRESHOLD_POLICY_CONTRACT_VERSION,
     REGIME_THRESHOLD_POLICY_NAME,
     REGIME_THRESHOLD_TRAINING_SESSIONS,
@@ -31,22 +33,26 @@ from packages.regimes.threshold_policy import (
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Materialize the accepted Phase 9 market + sector regime state"
+        description="Materialize the accepted split-origin market + sector regime state"
     )
     parser.add_argument("--as-of", type=date.fromisoformat, required=True)
     args = parser.parse_args()
 
-    result = RegimeStateEngine(load_settings(PROJECT_ROOT, "development")).build(args.as_of)
+    result = SplitOriginRegimeStateEngine(
+        load_settings(PROJECT_ROOT, "development")
+    ).build(args.as_of)
     snapshot = json.loads(result.snapshot_path.read_text(encoding="utf-8"))
 
-    print("ATLAS Phase 9 Market/Sector Regime State")
-    print(f"  state policy contract:      {REGIME_STATE_POLICY_CONTRACT_VERSION}")
-    print(f"  snapshot contract:          {REGIME_STATE_SNAPSHOT_CONTRACT_VERSION}")
+    print("ATLAS Split-Origin Market/Sector Regime State")
+    print(f"  split-origin policy:        {SPLIT_ORIGIN_POLICY_VERSION}")
+    print(f"  state policy contract:      {MARKET_SECTOR_STATE_POLICY_CONTRACT_VERSION}")
+    print(f"  snapshot contract:          {MARKET_SECTOR_SNAPSHOT_CONTRACT_VERSION}")
     print(f"  threshold policy contract:  {REGIME_THRESHOLD_POLICY_CONTRACT_VERSION}")
     print(f"  persistence contract:       {REGIME_PERSISTENCE_POLICY_CONTRACT_VERSION}")
     print(f"  breadth population:         {REGIME_BREADTH_POPULATION_CONTRACT_VERSION}")
     print(f"  as-of session:              {result.as_of_date}")
-    print(f"  history origin:             {REGIME_HISTORY_ORIGIN_DATE}")
+    print(f"  market/sector origin:       {MARKET_SECTOR_HISTORY_ORIGIN_DATE}")
+    print(f"  ticker/intraday origin:     {TICKER_HISTORY_ORIGIN_DATE}")
     print(f"  threshold memory:           {REGIME_THRESHOLD_POLICY_NAME}")
     print(f"  threshold seed:             {REGIME_THRESHOLD_TRAINING_SESSIONS} prior sessions")
     print(f"  persistence:                {REGIME_SELECTED_CONFIRMATION_SESSIONS}-session confirmation")
