@@ -39,7 +39,9 @@ ATLAS advances by explicit numbered phases. The normative process is defined in 
 
 Every numbered phase follows:
 
-`DEFINE -> LOCK -> IMPLEMENT -> FOCUSED TEST -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
+`DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST AS NEEDED -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
+
+This is a control framework, not a requirement to stop after every arrow. When a full phase is well-defined, its dependencies are available, and no external/authority boundary interrupts it, the preferred cadence is to implement the **entire phase in one coherent batch** and then perform the strongest required validation at the phase evidence boundary.
 
 Required principles:
 
@@ -47,8 +49,13 @@ Required principles:
 - do not treat code existence or passing tests alone as phase acceptance;
 - do not silently expand provider/live authority from credentials, configuration, connectivity, or prior acceptance;
 - use subphases only when a genuine authority/external-condition boundary exists;
+- combine related code/tests/validators/orchestration/docs instead of creating artificial checkpoints;
+- use focused tests during development where they provide useful feedback, but do not require full regression after every small commit;
+- run full regression and Windows/Ubuntu CI at meaningful evidence boundaries, normally once per coherent phase batch unless risk justifies an intermediate boundary;
+- target-machine work is required only for evidence unavailable in CI/mocks and should not be repeated when relevant code has not changed;
 - complete and merge the current numbered phase before activating the next numbered phase unless an explicit roadmap exception is documented;
-- synchronize living docs and PR evidence at each meaningful boundary.
+- synchronize living docs and PR evidence at meaningful evidence/acceptance boundaries rather than after every minor edit;
+- explicit user/provider/live authority checkpoints override batching and may never be crossed implicitly.
 
 Current application:
 
@@ -330,28 +337,35 @@ Phase 18A is complete. The remaining flow is Phase 18B only:
 19. verify `main` and delete merged Phase 18 branch;
 20. only then define and activate Phase 19.
 
-## 13. Development protocol
+## 13. Batch-first development protocol
 
-ATLAS uses evidence boundaries, not micro-step ceremony.
+ATLAS uses coherent implementation batches and evidence boundaries, not micro-step ceremony.
 
 Normal coherent work package:
 
 `implementation + targeted tests + validator + CLI/orchestration + documentation/status`
 
-Rules:
+Preferred cadence:
 
-- focused tests during coding;
-- full regression + Windows/Ubuntu CI at batch/evidence boundaries;
-- independent validators at data/model/broker-authority transitions;
-- read-only diagnostics/preregistration automated where possible;
-- target-machine interaction only where local/external evidence is genuinely required;
+- implement the largest coherent portion of the active phase that can be safely completed with the currently available dependencies;
+- when feasible, implement the **whole phase** before the formal full-regression/CI boundary;
+- use focused tests during coding as cheap feedback rather than as mandatory stop points;
+- run full regression + Windows/Ubuntu CI at batch/evidence boundaries, especially before acceptance/merge, after broad shared-code changes, or when failures indicate wider regression risk;
+- keep independent validators mandatory at data/model/broker-authority transitions even when the rest of the phase is batched;
+- automate read-only diagnostics/preregistration where possible;
+- request target-machine interaction only where local/external evidence is genuinely required;
+- do not rerun target-machine/provider evidence solely because documentation or unrelated code changed;
+- synchronize living docs once per meaningful batch/evidence boundary rather than after every small edit;
+- split a phase only for a genuine external, risk, dependency, or authority boundary — not to manufacture checkpoints;
 - fail closed on ambiguous identity, missing lineage/data, invalid geometry, broker uncertainty, and uncertain writes.
+
+The goal is the fastest cadence that preserves high-quality evidence, reproducibility, and explicit authority control.
 
 ## 14. Documentation policy
 
 Documentation synchronization is part of implementation, not optional cleanup.
 
-Every meaningful change must update, as applicable:
+Every meaningful batch/evidence boundary must update, as applicable:
 
 - root `README.md`;
 - `docs/roadmap.md`;
@@ -386,7 +400,7 @@ After Phase 18B is accepted and merged:
 3. lock scope/non-goals/authority;
 4. preregister tests, validators, target evidence, and acceptance criteria;
 5. create the focused Phase 19 branch/PR;
-6. only then begin Phase 19 implementation.
+6. implement as much of Phase 19 as possible in one coherent batch — preferably the entire phase — before stopping for the formal evidence boundary unless measured risk, an external prerequisite, or an authority checkpoint makes an earlier boundary materially useful.
 
 ## 17. Future-chat recovery protocol
 
@@ -400,6 +414,7 @@ A new session should:
 6. read root README;
 7. inspect active PR evidence;
 8. preserve provider/live authority boundaries;
-9. continue from the exact active phase/subphase rather than reopening accepted phases without new evidence.
+9. preserve the batch-first/evidence-boundary cadence rather than reverting to micro-checkpoints;
+10. continue from the exact active phase/subphase rather than reopening accepted phases without new evidence.
 
 The exact continuation point is maintained in `docs/current_status.md`.
