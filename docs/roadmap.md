@@ -90,7 +90,7 @@ The historical extension preserved the accepted Phase 10 production model while 
 
 ## 6. Accepted roadmap phases after the historical extension
 
-Phases 11-16 have been implemented, independently validated at their authority boundaries, and merged. Their architectural responsibilities remain locked as follows.
+Phases 11-17 have been implemented and accepted at their respective authority boundaries. Their architectural responsibilities remain locked as follows.
 
 ### Phase 11 — Strategy Evaluation and Regime Routing
 
@@ -131,6 +131,27 @@ Expose system state through the browser: scan/run control, broker and paper/live
 Deliverable: production-operable ATLAS with transparent control and monitoring.
 
 Phase 15/16 acceptance did **not** promote live money. Provider mutation, actual paper-provider order lifecycle testing, and live promotion remain separate operational authority checkpoints.
+
+### Phase 17 — Provider-Readonly Operational Readiness
+
+Validate real Webull sandbox and Alpaca paper access using read-only provider reconciliation while preserving accepted Phase 16 artifacts unchanged and hash-bound.
+
+Accepted 2026-08-23 target-machine evidence:
+
+- Webull sandbox account selected by explicit sanitized account ref after ambiguous multi-account discovery failed closed;
+- Webull balance/open-orders/positions read path passed with 0 open orders and 0 positions;
+- Alpaca paper reconciled with 0 open orders and 0 positions;
+- both brokers reported `AVAILABLE`, reconciled=true, and safe-to-switch=true;
+- exactly two provider adapters initialized;
+- provider mutation endpoint invocations: 0;
+- provider writes: 0;
+- live writes: 0;
+- automatic cross-broker failover remained disabled;
+- live execution remained disabled;
+- full target-machine regression suite: 874 passed;
+- Ubuntu and Windows CI passed.
+
+Deliverable: accepted dual-broker provider-readiness evidence without granting mutation or live authority.
 
 ## 7. Accelerated delivery protocol
 
@@ -177,21 +198,17 @@ Otherwise continue autonomously through the batch.
 - Preserve rollback artifacts for production data/state promotions.
 - Keep PR descriptions or phase acceptance records as the concise evidence ledger; avoid duplicating the same status across dozens of documents.
 
-## 8. Immediate priority
+## 8. Immediate priority / authority boundary
 
-Complete **Phase 17 — Provider-Readonly Operational Readiness** as a bounded operational extension after accepted Phase 16.
+**Phase 17 is accepted and merged.** The next checkpoint is `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`.
 
-Required acceptance boundary:
+No implementation step may infer that authorization merely from Phase 17 success. Until the user explicitly authorizes the checkpoint:
 
-- reconcile real Webull sandbox and Alpaca paper accounts through read-only provider calls;
-- keep credential/account values out of reports and logs;
-- preserve the accepted Phase 16 artifacts unchanged and hash-bound;
-- keep provider mutation disabled;
-- keep live execution disabled;
-- keep automatic cross-broker failover disabled;
-- report open orders/positions without requiring a flat account merely to accept read-only readiness;
-- fail closed if broker/account selection or reconciliation is ambiguous.
+- provider order submission remains disabled;
+- provider order cancellation/replacement remains disabled;
+- provider flatten/close mutation remains disabled;
+- browser broker-switch cleanup may not mutate a provider;
+- live execution remains disabled;
+- automatic cross-broker failover remains disabled.
 
-Webull sandbox account selection may be resolved locally and persisted only as local configuration; selecting an account is not trading authority.
-
-After Phase 17 is accepted, the next authority boundary is a **separate explicitly authorized paper-provider mutation checkpoint**. That checkpoint may validate real paper/sandbox order lifecycle behavior under the already accepted Phase 15/16 safety contracts, but it must not silently enable live trading, automatic broker failover, or bypass reconciliation/risk/idempotency controls.
+When explicitly authorized, the next coherent work package may validate real Webull sandbox / Alpaca paper order lifecycle behavior under the already accepted Phase 15/16 safety contracts. It must retain fresh-quote translation, current risk checks, reconciliation, protective geometry, idempotent client identifiers, uncertainty fail-closed behavior, and explicit broker switching. Paper-provider mutation acceptance must remain separate from any later live-money promotion.
