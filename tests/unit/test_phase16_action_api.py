@@ -308,6 +308,19 @@ def test_csrf_failure_creates_no_action_event(tmp_path) -> None:
         assert exc_info.value.code == 403
         assert ledger.verify()["event_count"] == 0
 
+        # Prove the application-level security decision directly, independent of
+        # host networking/security software that may intercept the rejected socket.
+        foreign_authorization = guard.authorize_write(
+            {
+                "Content-Type": "application/json",
+                "Origin": "https://evil.example",
+                CONTROL_PLANE_CSRF_HEADER: token,
+            },
+            expected_origin=base,
+        )
+        assert foreign_authorization.allowed is False
+        assert foreign_authorization.error_code == "SAME_ORIGIN_REQUIRED"
+
         foreign_origin = urllib.request.Request(
             f"{base}/api/v1/actions/request",
             data=raw,
@@ -318,9 +331,18 @@ def test_csrf_failure_creates_no_action_event(tmp_path) -> None:
                 CONTROL_PLANE_CSRF_HEADER: token,
             },
         )
-        with pytest.raises(urllib.error.HTTPError) as exc_info:
+        try:
             opener.open(foreign_origin, timeout=5)
-        assert exc_info.value.code == 403
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 403
+        except ConnectionAbortedError as exc:
+            # Some Windows host security stacks abort an already-rejected local
+            # socket before urllib receives the 403 response. Accept only that
+            # exact Windows transport code; every other socket failure remains a
+            # test failure. The guard assertion above still proves the rejection.
+            assert getattr(exc, "winerror", None) == 10053
+        else:
+            pytest.fail("foreign-origin control-plane request was not rejected")
         assert ledger.verify()["event_count"] == 0
     finally:
         server.shutdown()
