@@ -57,6 +57,27 @@ Key architectural roles:
 
 Phase 17 was accepted on target-machine evidence and merged into `main` after the Webull sandbox and Alpaca paper accounts both reconciled successfully with no provider mutation.
 
+## Active work — Phase 18
+
+**Phase 18 — Paper Provider Mutation Lifecycle Validation is active on draft PR #18.**
+
+The repository-side Phase 18 work is intentionally allowed to advance before any real provider write. Current Phase 18 implementation includes:
+
+- a Phase 17-bound mutation policy contract;
+- provider mutation **disabled by default**;
+- explicit per-run authorization requiring one selected broker plus the exact confirmation text `AUTHORIZE_PAPER_PROVIDER_MUTATION`;
+- a guarded lifecycle around the accepted Phase 15 execution engine;
+- mandatory flat/zero-open-order pre-reconciliation for the first real lifecycle;
+- exact deterministic client-order reconciliation after submit;
+- cancel-only-while-open behavior;
+- no automatic flatten if an order fills or partially fills;
+- no retry, second mutation, or broker failover after an uncertain submit/cancel until exact reconciliation;
+- fake-provider tests for successful submit/reconcile/cancel, fills, uncertain submit, uncertain cancel, existing exposure, and broker-authority mismatch;
+- independent Phase 18 validator and zero-provider-call authorization diagnostic;
+- Windows/Ubuntu CI integration for the Phase 18 validator.
+
+**No real provider mutation has been performed by Phase 18 repository/CI work.** Real Webull sandbox or Alpaca paper writes remain a separate target-machine authorization event after code, validator, and CI evidence are green. Live execution remains disabled.
+
 ## Accepted historical source boundary
 
 - Alpaca raw SIP daily: **2016-01-04 through 2021-08-13**.
@@ -143,11 +164,11 @@ Accepted target-machine result:
 
 ## Current authority boundary
 
-The exact next checkpoint is:
+The active code-development phase is Phase 18, but the real-provider authority checkpoint remains:
 
 `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
 
-Phase 17 success does not grant provider-mutation authority. Until explicit authorization is given, ATLAS may not perform real provider:
+Phase 17 success, Phase 18 code existence, credentials, endpoints, or a passing fake-provider lifecycle do not grant provider-mutation authority. Until the target-machine mutation run is explicitly authorized, ATLAS may not perform real provider:
 
 - order submission;
 - order replacement;
@@ -155,7 +176,7 @@ Phase 17 success does not grant provider-mutation authority. Until explicit auth
 - flatten/close writes;
 - broker-switch cleanup writes.
 
-Live execution remains disabled. Automatic broker failover remains disabled. Any future paper-provider mutation acceptance must remain separate from any later live-money promotion.
+Live execution remains disabled. Automatic broker failover remains disabled. Paper-provider mutation acceptance must remain separate from any later live-money promotion.
 
 ## Environment/configuration template
 
