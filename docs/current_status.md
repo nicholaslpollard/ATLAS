@@ -33,8 +33,11 @@ Active work:
 - PR: #18, draft, targeting `main`.
 - Phase 18 policy: `phase18-policy-v1-phase17-bound-explicit-paper-mutation-no-live`.
 - Phase 18 policy fingerprint: `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`.
-- Current test-harness portability code head: `38c09c21d4fc636667921c779fbe59341839e9e8`.
-- Cross-platform CI run for that code: `32662398274`, SUCCESS on Ubuntu and Windows.
+- Test-harness portability code head: `38c09c21d4fc636667921c779fbe59341839e9e8`.
+- Final target-machine pre-mutation software acceptance baseline: `94a859fc6d44c22a6f8852c1488215a6677806a0`.
+- Cross-platform CI for portability code: run `32662398274`, SUCCESS on Ubuntu and Windows.
+- Cross-platform CI for baseline `94a859fc6d44c22a6f8852c1488215a6677806a0`: run `32662817172`, SUCCESS on Ubuntu and Windows.
+- Phase 18 pre-mutation software package: **ACCEPTED / COMPLETE**.
 - Real Phase 18 provider mutation performed: **NO**.
 - Live execution promoted: **NO**.
 - Automatic broker failover allowed: **NO**.
@@ -287,6 +290,24 @@ The target machine then reran:
 
 Because the isolated test passed immediately before the full suite, the failure is nondeterministic host transport behavior under suite load rather than a deterministic ATLAS CSRF decision failure.
 
+### 7.3 Final target-machine pre-mutation software acceptance
+
+After the second contract-preserving hardening and documentation synchronization, the target machine pulled baseline head:
+
+`94a859fc6d44c22a6f8852c1488215a6677806a0`
+
+Final result:
+
+- isolated `test_csrf_failure_creates_no_action_event`: **1 passed in 3.30s**;
+- full regression: **908 passed in 23.50s**;
+- `git status --short`: empty / clean working tree;
+- provider calls during this recheck: 0;
+- provider writes during this recheck: 0.
+
+GitHub Actions run `32662817172` for the same baseline also completed successfully on both Ubuntu and Windows with all validators through Phase 18 green.
+
+**Disposition: Phase 18 pre-mutation software package is accepted and complete. There is no remaining software/portability blocker before the separately authorized real paper-provider lifecycle.**
+
 ## 8. Windows loopback rejection hardening
 
 ### 8.1 Preserved security contract
@@ -313,7 +334,7 @@ The unit test now:
 
 This does **not** modify production Phase 16 HTTP code, broker adapters, execution/risk logic, provider authority, or the Phase 18 mutation gate.
 
-Final repository-side evidence for this hardening is GitHub Actions run `32662398274`:
+Repository-side evidence is GitHub Actions run `32662398274`:
 
 - all validators through Phase 18: **PASS**;
 - Ubuntu: **908 passed in 13.95s**;
@@ -321,7 +342,7 @@ Final repository-side evidence for this hardening is GitHub Actions run `3266239
 - both jobs: **SUCCESS**;
 - provider writes: **0**.
 
-The Windows loopback portability issue is therefore repository-side green. One final target-machine regression recheck remains before the pre-mutation software package is considered locally clean.
+Target-machine evidence at baseline `94a859fc6d44c22a6f8852c1488215a6677806a0` is also green at **908 passed in 23.50s**. The Windows loopback portability issue is therefore closed for Phase 18.
 
 ## 9. Current broker authority
 
@@ -361,19 +382,13 @@ Secrets, raw account IDs, passwords, security codes, or tokens must never be com
 
 ## 11. Exact next steps
 
-### Immediate local recheck
+### Pre-mutation software
 
-Pull the latest Phase 18 branch, then:
-
-1. rerun isolated `test_csrf_failure_creates_no_action_event`;
-2. rerun full `pytest -q`;
-3. confirm clean `git status`.
-
-Expected: isolated test passes and full suite reports **908 passed**. A local Windows 10053 on the already-proven foreign-origin rejection is recognized only under the exact guarded conditions above and still requires zero ledger events.
+**COMPLETE.** No additional local regression or broker read diagnostics are required solely for the Windows portability issue.
 
 ### Later regular-session Phase 18 certification
 
-After local recheck is clean, wait until a regular U.S. equity session, then:
+During a regular U.S. equity session:
 
 1. start focused Massive realtime `Q.<ticker>` stream;
 2. keep stream active;
@@ -389,6 +404,8 @@ After local recheck is clean, wait until a regular U.S. equity session, then:
 12. never auto-fail over to Alpaca;
 13. record sanitized evidence in PR/docs;
 14. merge Phase 18 only after accepted real paper-provider lifecycle evidence.
+
+Until explicit authorization is given, do not submit, cancel, replace, or flatten any provider order as part of Phase 18 certification.
 
 ## 12. Future-chat startup procedure
 
