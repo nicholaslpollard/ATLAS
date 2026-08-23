@@ -4,6 +4,13 @@
 
 Phase 18 certifies the first real paper/sandbox provider-mutation lifecycle on top of accepted Phase 17 read-only readiness. It does **not** promote live trading and does not fabricate production strategy/model/AI lineage merely to test a broker API.
 
+The phase is explicitly split at the real-provider authority boundary:
+
+- **Phase 18A — Pre-mutation software validation: ACCEPTED / COMPLETE**.
+- **Phase 18B — Real paper-provider operational certification: WAITING_EXTERNAL**.
+
+Phase 19 is not active while Phase 18 remains open.
+
 ## 1. Accepted upstream binding
 
 - Phases 1–17 accepted and merged.
@@ -58,7 +65,7 @@ The operational runner requires both:
 - `--authorize-paper-provider-mutation`;
 - exact confirmation text `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
 
-Credentials, configured endpoints, `ATLAS_ENV`, account connectivity, Phase 17 acceptance, Phase 18 implementation, or passing tests/CI cannot substitute for this authorization.
+Credentials, configured endpoints, `ATLAS_ENV`, account connectivity, Phase 17 acceptance, Phase 18A acceptance, implementation existence, or passing tests/CI cannot substitute for this authorization.
 
 Without authorization the runner must stop before broker initialization.
 
@@ -195,7 +202,7 @@ The stream must remain running while the operational validation command reads th
 - quote exists and is `FRESH`;
 - quote itself is realtime/undelayed/regular-session.
 
-Therefore weekends, holidays, stopped streams, stale/delayed data, premarket, and after-hours fail closed. Since 2026-08-23 is Sunday, a real provider-mutation certification is intentionally invalid today.
+Weekends, holidays, stopped streams, stale/delayed data, premarket, and after-hours fail closed. The quote gate must never be weakened merely to force certification.
 
 ## 10. Target-machine runner
 
@@ -233,7 +240,7 @@ Expected default result:
 - live disabled;
 - automatic failover disabled;
 - authorization gate DENIED;
-- required confirmation shown as `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
+- required confirmation `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
 
 DENIED is the correct result before explicit authorization.
 
@@ -298,7 +305,7 @@ DENIED is the correct result before explicit authorization.
 - accepted Phase 13 risk fraction 0.5%;
 - accepted Phase 13 single-name fraction 10%.
 
-## 14. Repository/CI evidence
+## 14. Phase 18A — repository and CI evidence
 
 First portability-hardening code head:
 
@@ -307,16 +314,16 @@ First portability-hardening code head:
 CI run `32657554236`:
 
 - all validators through Phase 18 PASS;
-- Ubuntu: **908 passed in 13.57s**;
-- Windows: **908 passed in 20.98s**;
+- Ubuntu: 908 passed;
+- Windows: 908 passed;
 - both jobs SUCCESS;
-- real provider writes in CI: 0.
+- provider writes 0.
 
-Current contract-preserving Windows transport hardening code head:
+Contract-preserving Windows transport hardening code head:
 
 `38c09c21d4fc636667921c779fbe59341839e9e8`
 
-Final CI run `32662398274`:
+CI run `32662398274`:
 
 - all validators through Phase 18 PASS;
 - Ubuntu: **908 passed in 13.95s**;
@@ -324,117 +331,74 @@ Final CI run `32662398274`:
 - both jobs SUCCESS;
 - provider writes 0.
 
-The repository-side Phase 18 pre-mutation software package is cross-platform green. One final target-machine regression recheck remains.
+Baseline `94a859fc6d44c22a6f8852c1488215a6677806a0` also completed GitHub Actions run `32662817172` successfully on Ubuntu and Windows with all validators through Phase 18 green.
 
-## 15. Target-machine pre-mutation evidence
+## 15. Phase 18A — target-machine evidence
 
-### 15.1 Initial pre-mutation block
-
-At local head `e1631e741a547c78eb6c3c9b943ba1473c805cf6`, the complete pre-mutation block produced:
+Initial pre-mutation block:
 
 - Phase 18 validator PASS;
-- Phase 18 focused tests **34 passed in 2.23s**;
-- Webull sandbox:
-  - selected sanitized account ref configured;
-  - account list HTTP 200;
-  - balance HTTP 200;
-  - open orders HTTP 200 / 0 orders;
-  - positions HTTP 200 / 0 positions;
-- Alpaca paper:
-  - reconciled true;
-  - 0 open orders;
-  - 0 positions;
-  - safe-to-switch true;
-- mutation gate:
-  - adapter initialized NO;
-  - provider calls 0;
-  - provider writes 0;
-  - authorization DENIED correctly;
-- final Git working tree clean.
+- focused Phase 18 tests 34 passed in 2.23s;
+- Webull sandbox read-only recheck: selected account configured, account list/balance/orders/positions HTTP 200, 0 open orders, 0 positions;
+- Alpaca paper: reconciled, 0 open orders, 0 positions;
+- mutation gate: adapter initialized NO, provider calls 0, provider writes 0, authorization DENIED correctly.
 
-Full local suite: **907 passed / 1 failed in 31.73s**.
+The first local full regression exposed only a Windows loopback transport abort in the pre-existing Phase 16 CSRF test. The issue was isolated to test-host transport behavior and hardened without modifying production Phase 16 HTTP code or broker/execution behavior.
 
-The only failure was the pre-existing Phase 16 loopback CSRF test:
+Final target-machine acceptance at baseline:
 
-`tests/unit/test_phase16_action_api.py::test_csrf_failure_creates_no_action_event`
+`94a859fc6d44c22a6f8852c1488215a6677806a0`
 
-Windows reported `WinError 10053` while waiting for the expected HTTP 403 response.
+- isolated CSRF test: **1 passed in 3.30s**;
+- full regression: **908 passed in 23.50s**;
+- final `git status --short`: clean;
+- provider calls during final recheck: 0;
+- provider writes during final recheck: 0.
 
-### 15.2 Rerun after proxy bypass
+**Phase 18A disposition: ACCEPTED / COMPLETE. No software or portability blocker remains.**
 
-After pulling the first test-client hardening:
+## 16. Windows loopback portability hardening
 
-- isolated CSRF test: **1 passed in 3.52s**;
-- immediately following full regression: **907 passed / 1 failed in 24.04s**;
-- sole failure: same CSRF test on its second foreign-origin request;
-- error: `ConnectionAbortedError: [WinError 10053]` while waiting for the expected 403;
-- final working tree clean.
-
-The fact that the exact isolated test passed immediately before the full-suite failure demonstrates the local behavior is nondeterministic host transport/security interception under suite load, not a deterministic ATLAS authorization failure.
-
-## 16. Loopback test portability hardening
-
-### 16.1 First fix — remove ambient proxy routing
-
-Commit:
+First test-only hardening:
 
 `45a2abeba7a51401ee708ab777d960d2f7fea88f`
 
-The test opener includes:
+- deterministic loopback test opener includes `urllib.request.ProxyHandler({})` so ambient proxy configuration does not intercept `127.0.0.1` traffic.
 
-```python
-urllib.request.ProxyHandler({})
-```
-
-before the cookie handler so deterministic loopback requests do not inherit user/OS proxy configuration.
-
-### 16.2 Current fix — separate application security proof from host transport
-
-Commit:
+Second test-only hardening:
 
 `38c09c21d4fc636667921c779fbe59341839e9e8`
 
-The foreign-origin test now first calls `ControlPlaneSessionGuard.authorize_write()` directly and requires:
+The foreign-origin test:
 
-- `allowed is False`;
-- `error_code == "SAME_ORIGIN_REQUIRED"`.
+1. directly calls `ControlPlaneSessionGuard.authorize_write()` and requires `allowed is False` with `SAME_ORIGIN_REQUIRED`;
+2. still requires HTTP 403 normally;
+3. accepts only exact Windows `ConnectionAbortedError` with `winerror == 10053` as an alternate host-transport manifestation after rejection is already proven;
+4. still requires zero action/audit events;
+5. fails every other transport error.
 
-It then exercises the actual loopback HTTP request:
+Unchanged production scope:
 
-- normal/clean-host result must be HTTP `403`;
-- only `ConnectionAbortedError` with exact Windows `winerror == 10053` is accepted as an alternate host-transport manifestation of the already-proven rejection;
-- every other socket/transport error still fails;
-- ledger event count must remain 0.
+- `packages/control_plane/http_server.py` unchanged;
+- `packages/control_plane/session.py` unchanged;
+- broker adapters unchanged;
+- execution lifecycle unchanged;
+- Phase 18 policy unchanged;
+- provider authority unchanged.
 
-This preserves the accepted Phase 16 same-origin security contract while preventing local Windows endpoint-security behavior from being misclassified as an ATLAS application failure.
+## 17. Phase 18B — remaining real certification sequence
 
-Scope remains deliberately narrow:
+**State: WAITING_EXTERNAL**
 
-- production `packages/control_plane/http_server.py`: unchanged;
-- `packages/control_plane/session.py`: unchanged;
-- broker adapters: unchanged;
-- execution lifecycle: unchanged;
-- Phase 18 policy: unchanged;
-- provider authority: unchanged;
-- provider writes: none.
+Waiting conditions:
 
-## 17. Immediate local recheck
+- regular U.S. equity session;
+- accepted Massive realtime focused quote state;
+- explicit user authorization only after plan-only review.
 
-Pull the latest branch and rerun only:
+When those conditions are available:
 
-1. the isolated CSRF test;
-2. the full suite;
-3. `git status --short`.
-
-Expected full result: **908 passed**.
-
-No broker/provider read diagnostics are required solely because the code changes since the prior target-machine run are test-harness-only plus documentation.
-
-## 18. Real certification sequence — future regular session
-
-After local regression is green:
-
-1. choose an exact provider-native ticker suitable for the one-share <$1,000 validation cap;
+1. choose exact provider-native ticker suitable for the one-share <$1,000 validation cap;
 2. start focused Massive realtime `Q.<ticker>` stream;
 3. keep the stream active;
 4. run Phase 18 plan-only operational validation;
@@ -449,12 +413,13 @@ After local regression is green:
 13. if filled/partially filled, stop for separate cleanup authorization;
 14. never automatically fail over to Alpaca;
 15. save only sanitized evidence;
-16. rerun validators/regression as needed;
+16. rerun validators/regression only if code changes or acceptance evidence requires it;
 17. update README/roadmap/current-status/spec/PR;
-18. mark PR ready and merge only after accepted target-machine evidence;
-19. delete merged Phase 18 branch after closeout.
+18. mark PR #18 ready and merge only after accepted target-machine Phase 18B evidence;
+19. verify `main` and delete merged Phase 18 branch;
+20. only then define and activate Phase 19.
 
-## 19. Acceptance boundary after Phase 18
+## 18. Acceptance boundary after Phase 18
 
 Successful Phase 18 acceptance will mean only that ATLAS can safely perform the accepted **paper/sandbox provider mutation lifecycle** under explicit authority and reconciliation.
 
@@ -467,3 +432,9 @@ It will **not** mean:
 - cleanup/flatten is universally authorized.
 
 Any live-money transition remains a separate future preregistered phase with explicit user authorization.
+
+## 19. Phase-flow binding
+
+Phase 18 follows `docs/phase_flow.md`.
+
+The phase cannot be marked accepted/merged until Phase 18B evidence is complete. Phase 19 cannot become active until Phase 18 is accepted and merged, then Phase 19 must itself be defined and locked before implementation.
