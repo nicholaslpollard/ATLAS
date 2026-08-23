@@ -80,6 +80,38 @@ def _presence(
     )
 
 
+def _presence_with_aliases(
+    env: Mapping[str, str],
+    required: Mapping[str, tuple[str, ...]],
+    optional: Mapping[str, tuple[str, ...]] | None = None,
+) -> CredentialPresence:
+    """Report only canonical credential names while accepting explicit legacy aliases."""
+
+    optional = optional or {}
+
+    def present(canonical: str, aliases: tuple[str, ...]) -> bool:
+        return any(
+            bool(str(env.get(name, "") or "").strip())
+            for name in (canonical, *aliases)
+        )
+
+    required_present = {
+        canonical: present(canonical, aliases)
+        for canonical, aliases in required.items()
+    }
+    optional_present = {
+        canonical: present(canonical, aliases)
+        for canonical, aliases in optional.items()
+    }
+    return CredentialPresence(
+        required_names=tuple(required),
+        optional_names=tuple(optional),
+        required_present=required_present,
+        optional_present=optional_present,
+        ready=all(required_present.values()),
+    )
+
+
 def _account_ref(account_id: str) -> str:
     return hashlib.sha256(account_id.encode("utf-8")).hexdigest()[:16]
 
@@ -114,10 +146,13 @@ class Phase16StatusService:
 
     def credentials(self, broker: BrokerName) -> CredentialPresence:
         if broker == BrokerName.WEBULL:
-            return _presence(
+            return _presence_with_aliases(
                 self._env,
-                ("WEBULL_APP_KEY", "WEBULL_APP_SECRET"),
-                ("WEBULL_ACCOUNT_ID",),
+                {
+                    "WEBULL_PAPER_APP_KEY": ("WEBULL_APP_KEY",),
+                    "WEBULL_PAPER_APP_SECRET": ("WEBULL_APP_SECRET",),
+                },
+                {"WEBULL_PAPER_ACCOUNT_ID": ("WEBULL_ACCOUNT_ID",)},
             )
         if broker == BrokerName.ALPACA:
             return _presence(

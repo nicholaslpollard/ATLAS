@@ -76,7 +76,7 @@ Phases 1-10 established the foundation required before strategy/execution work: 
 
 Phase 10 is accepted. The accepted HGB model uses 33 point-in-time quantitative predictors and raw three-class probabilities. The protected final holdout passed all locked checks. The model remains a probability surface, not a strategy or execution signal.
 
-## 5. Historical extension sidecar (current)
+## 5. Accepted historical extension
 
 The post-Phase-10 historical-data work is a **foundation extension**, not a replacement roadmap phase.
 
@@ -86,9 +86,11 @@ Accepted source boundary:
 - Massive production history: 2021-08-16 onward.
 - No pre-2021 4h/1h data is synthesized from the Alpaca daily backfill.
 
-The historical extension must preserve the accepted Phase 10 model while it validates canonical history, feature state, regime replay, and any longer-history ML challenger independently. Its primary value is deeper regime/strategy/backtest/analogue evidence even if the existing Phase 10 production probability model remains preferred.
+The historical extension preserved the accepted Phase 10 production model while validating canonical history, feature state, regime replay, and longer-history challenger evidence independently. The longer-history C result remains separately versioned challenger/research evidence rather than silently replacing production authority. Its primary value is deeper regime/strategy/backtest/analogue evidence.
 
-## 6. Roadmap after the historical extension
+## 6. Accepted roadmap phases after the historical extension
+
+Phases 11-16 have been implemented, independently validated at their authority boundaries, and merged. Their architectural responsibilities remain locked as follows.
 
 ### Phase 11 — Strategy Evaluation and Regime Routing
 
@@ -127,6 +129,8 @@ Deliverable: safe execution plus a learning/performance record that can evaluate
 Expose system state through the browser: scan/run control, broker and paper/live mode, candidate funnel, complete case reasoning, AI review, alerts, orders/positions, performance, model/strategy versions, data freshness, failures, resumable jobs, and operational health.
 
 Deliverable: production-operable ATLAS with transparent control and monitoring.
+
+Phase 15/16 acceptance did **not** promote live money. Provider mutation, actual paper-provider order lifecycle testing, and live promotion remain separate operational authority checkpoints.
 
 ## 7. Accelerated delivery protocol
 
@@ -175,6 +179,19 @@ Otherwise continue autonomously through the batch.
 
 ## 8. Immediate priority
 
-Finish the active Alpaca historical-extension PR without expanding its scope further. Complete the lineage-controlled B-vs-C longer-history evaluation, close with one final reproducibility/acceptance pass, and merge only when current CI plus target-machine evidence are clean.
+Complete **Phase 17 — Provider-Readonly Operational Readiness** as a bounded operational extension after accepted Phase 16.
 
-After that, begin **Phase 11 — Strategy Evaluation and Regime Routing**. Do not detour into GUI, broker execution, AI review, or full options research before strategy/candidate promotion exists; those layers depend on the promoted-candidate contract.
+Required acceptance boundary:
+
+- reconcile real Webull sandbox and Alpaca paper accounts through read-only provider calls;
+- keep credential/account values out of reports and logs;
+- preserve the accepted Phase 16 artifacts unchanged and hash-bound;
+- keep provider mutation disabled;
+- keep live execution disabled;
+- keep automatic cross-broker failover disabled;
+- report open orders/positions without requiring a flat account merely to accept read-only readiness;
+- fail closed if broker/account selection or reconciliation is ambiguous.
+
+Webull sandbox account selection may be resolved locally and persisted only as local configuration; selecting an account is not trading authority.
+
+After Phase 17 is accepted, the next authority boundary is a **separate explicitly authorized paper-provider mutation checkpoint**. That checkpoint may validate real paper/sandbox order lifecycle behavior under the already accepted Phase 15/16 safety contracts, but it must not silently enable live trading, automatic broker failover, or bypass reconciliation/risk/idempotency controls.
