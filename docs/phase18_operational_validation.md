@@ -300,17 +300,11 @@ DENIED is the correct result before explicit authorization.
 
 ## 14. Repository/CI evidence
 
-The main Phase 18 implementation reached 908/908 Windows+Ubuntu test success with all validators green before target-machine pre-mutation testing.
-
 First portability-hardening code head:
 
 `45a2abeba7a51401ee708ab777d960d2f7fea88f`
 
-CI run:
-
-`32657554236`
-
-Results:
+CI run `32657554236`:
 
 - all validators through Phase 18 PASS;
 - Ubuntu: **908 passed in 13.57s**;
@@ -322,7 +316,15 @@ Current contract-preserving Windows transport hardening code head:
 
 `38c09c21d4fc636667921c779fbe59341839e9e8`
 
-This change is test-only and is being validated by the current GitHub Actions run. Ubuntu has completed successfully; Windows must also complete successfully before repository-side closeout of this portability issue.
+Final CI run `32662398274`:
+
+- all validators through Phase 18 PASS;
+- Ubuntu: **908 passed in 13.95s**;
+- Windows: **908 passed in 22.59s**;
+- both jobs SUCCESS;
+- provider writes 0.
+
+The repository-side Phase 18 pre-mutation software package is cross-platform green. One final target-machine regression recheck remains.
 
 ## 15. Target-machine pre-mutation evidence
 
@@ -360,7 +362,7 @@ Windows reported `WinError 10053` while waiting for the expected HTTP 403 respon
 
 ### 15.2 Rerun after proxy bypass
 
-At local documentation head `36c9832891b8565f75b727db7dfc231719be5006` after pulling the first test-client hardening:
+After pulling the first test-client hardening:
 
 - isolated CSRF test: **1 passed in 3.52s**;
 - immediately following full regression: **907 passed / 1 failed in 24.04s**;
@@ -418,7 +420,7 @@ Scope remains deliberately narrow:
 
 ## 17. Immediate local recheck
 
-After the current CI and documentation commits settle, pull the latest branch and rerun only:
+Pull the latest branch and rerun only:
 
 1. the isolated CSRF test;
 2. the full suite;
