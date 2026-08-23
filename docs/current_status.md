@@ -12,7 +12,7 @@ When sources disagree, use this order:
 2. active PR/branch code for in-progress work;
 3. `docs/roadmap.md` for architecture and authority rules;
 4. this file for exact current state/evidence/continuation;
-5. `docs/phase_flow.md` for the mandatory phase progression;
+5. `docs/phase_flow.md` for the mandatory phase progression and development cadence;
 6. active phase living specification;
 7. root `README.md`;
 8. merged PRs for deeper accepted evidence;
@@ -46,15 +46,23 @@ Current provider-authority checkpoint:
 
 `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
 
-## 3. Mandatory phase flow
+## 3. Mandatory phase flow and cadence
 
-ATLAS now has an explicit phase execution contract in `docs/phase_flow.md`.
+ATLAS has an explicit phase execution contract in `docs/phase_flow.md`.
 
 Every numbered phase follows:
 
-`DEFINE -> LOCK -> IMPLEMENT -> FOCUSED TEST -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
+`DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST AS NEEDED -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
 
-A future numbered phase does not become active merely because useful work can be imagined. The current phase must satisfy its acceptance boundary and merge first unless a deliberate roadmap exception is explicitly documented.
+The preferred cadence is **batch-first**. The phase flow is a control framework, not a requirement to stop after every step.
+
+- If a whole phase is well-defined, dependencies are available, and no external/authority checkpoint interrupts it, implement the whole phase in one coherent batch before the formal evidence boundary.
+- Combine related production code, tests, validators, orchestration, diagnostics, and documentation instead of creating artificial micro-checkpoints.
+- Use focused tests during coding when they provide useful feedback; do not run the full regression after every minor edit.
+- Run independent validators, full regression, and Windows/Ubuntu CI at meaningful evidence boundaries, normally once per coherent batch/phase unless measured risk justifies an intermediate boundary.
+- Request target-machine/provider interaction only for evidence CI/mocks cannot establish, and do not repeat it when relevant code has not changed.
+- Batch documentation synchronization at meaningful evidence/acceptance boundaries rather than after each small commit.
+- Genuine authority/external boundaries override batching. Explicit paper mutation, destructive cleanup, and future live authority may not be crossed implicitly.
 
 Current Phase 18 subphase status:
 
@@ -344,7 +352,7 @@ Final target-machine acceptance at baseline `94a859fc6d44c22a6f8852c1488215a6677
 12. if filled/partially filled, stop for separate cleanup authorization.
 13. never automatically fail over to Alpaca.
 14. save only sanitized evidence.
-15. update living docs/PR.
+15. update living docs/PR at the Phase 18B evidence boundary.
 16. mark PR #18 ready and merge only after accepted Phase 18B evidence.
 17. verify `main` and delete the merged Phase 18 branch.
 18. only then define and activate Phase 19.
@@ -372,7 +380,7 @@ A future session should:
 1. inspect `main`, branches, open PRs, and latest CI.
 2. read this file.
 3. read `docs/roadmap.md`.
-4. read `docs/phase_flow.md`.
+4. read `docs/phase_flow.md` and preserve its batch-first/evidence-boundary cadence.
 5. read `docs/phase18_operational_validation.md` while Phase 18 is active.
 6. read root README.
 7. preserve explicit provider/live authority boundaries.
@@ -380,7 +388,7 @@ A future session should:
 
 ## 15. Documentation rule
 
-Every meaningful work package synchronizes, as applicable:
+Every meaningful batch/evidence boundary synchronizes, as applicable:
 
 - `README.md`.
 - `docs/roadmap.md`.
