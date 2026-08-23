@@ -33,7 +33,7 @@ Active work:
 - PR: #18, draft, targeting `main`.
 - Phase 18 policy: `phase18-policy-v1-phase17-bound-explicit-paper-mutation-no-live`.
 - Phase 18 policy fingerprint: `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`.
-- Current code/test portability head before this documentation commit: `45a2abeba7a51401ee708ab777d960d2f7fea88f`.
+- Latest test-harness portability code head before this documentation commit: `38c09c21d4fc636667921c779fbe59341839e9e8`.
 - Real Phase 18 provider mutation performed: **NO**.
 - Live execution promoted: **NO**.
 - Automatic broker failover allowed: **NO**.
@@ -251,75 +251,68 @@ Stopped streams, weekends, holidays, stale/delayed feeds, premarket, and after-h
 
 ## 7. Latest target-machine evidence
 
-User pulled Phase 18 branch head `e1631e741a547c78eb6c3c9b943ba1473c805cf6` and ran the complete pre-mutation block.
+### 7.1 Pre-mutation broker/readiness block
 
-Results:
+At local branch head `e1631e741a547c78eb6c3c9b943ba1473c805cf6`:
 
 - Phase 18 validator: PASS.
 - Focused Phase 18 tests: **34 passed in 2.23s**.
-- Webull read-only recheck:
-  - credentials present;
-  - explicit selected account configured;
-  - account list HTTP 200;
-  - balance HTTP 200;
-  - open orders HTTP 200, count 0;
-  - positions HTTP 200, count 0.
-- Alpaca paper read-only recheck:
-  - reconciled true;
-  - open orders 0;
-  - positions 0;
-  - safe-to-switch true.
-- Phase 18 mutation gate:
-  - provider adapter initialized NO;
-  - provider calls 0;
-  - provider writes 0;
-  - live disabled;
-  - automatic failover disabled;
-  - authorization DENIED exactly as intended.
-- Working tree: clean.
+- Webull sandbox read-only recheck: account list/balance/orders/positions HTTP 200, 0 open orders, 0 positions.
+- Alpaca paper read-only recheck: reconciled, 0 open orders, 0 positions, safe-to-switch true.
+- Phase 18 mutation gate: adapter initialized NO, provider calls 0, provider writes 0, authorization DENIED correctly.
+- Live disabled; automatic failover disabled.
+- Working tree clean.
 
-Full local regression was **907 passed / 1 failed in 31.73s**. Sole failure:
+That run's full local regression was **907 passed / 1 failed in 31.73s**, with only the Phase 16 loopback CSRF test receiving Windows `WinError 10053`.
 
-`tests/unit/test_phase16_action_api.py::test_csrf_failure_creates_no_action_event`
+### 7.2 First portability hardening and rerun
 
-Error:
+Commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` added `urllib.request.ProxyHandler({})` to the loopback test opener so ambient proxy configuration could not intercept `127.0.0.1` requests.
 
-`ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine`
-
-This happened on the loopback CSRF-rejection request and was isolated from Phase 18 broker/provider logic.
-
-## 8. Windows loopback test portability hardening
-
-Investigation showed the unit-test HTTP opener inherited ambient proxy settings. That is inappropriate for a deterministic test of the accepted Phase 16 loopback-only `127.0.0.1` server and can expose the test to local Windows proxy/security interception.
-
-Commit:
-
-`45a2abeba7a51401ee708ab777d960d2f7fea88f`
-
-Change:
-
-- test harness `_session_opener()` now explicitly adds `urllib.request.ProxyHandler({})` before the cookie handler.
-
-Scope:
-
-- test client only;
-- no production Phase 16 server change;
-- no broker-adapter change;
-- no execution/risk/authority change;
-- no provider mutation.
-
-Validation CI run:
-
-`32657554236`
-
-Results:
+CI run `32657554236` after that change:
 
 - all validators through Phase 18 PASS;
 - Ubuntu full suite: **908 passed in 13.57s**;
 - Windows full suite: **908 passed in 20.98s**;
 - both jobs SUCCESS.
 
-Therefore the next target-machine action is only to pull the hardening and rerun the formerly failing isolated test plus full regression. The broker/provider diagnostics do not need repetition solely because this code change is test-harness-only.
+The target machine then pulled documentation head `36c9832891b8565f75b727db7dfc231719be5006` and reran:
+
+- isolated `test_csrf_failure_creates_no_action_event`: **1 passed in 3.52s**;
+- full suite: **907 passed / 1 failed in 24.04s**;
+- sole failure: the same test, this time on the second foreign-origin rejection request;
+- error: `ConnectionAbortedError [WinError 10053]` while waiting for the expected 403;
+- final Git working tree: clean.
+
+Because the isolated test passed immediately before the full suite, the failure is nondeterministic host transport behavior under suite load rather than a deterministic ATLAS CSRF decision failure.
+
+## 8. Windows loopback rejection hardening
+
+### 8.1 Preserved security contract
+
+`ControlPlaneSessionGuard.authorize_write()` deterministically rejects a foreign origin with:
+
+`SAME_ORIGIN_REQUIRED`
+
+before any action ledger event can be created.
+
+### 8.2 Current test-harness handling
+
+Commit:
+
+`38c09c21d4fc636667921c779fbe59341839e9e8`
+
+The unit test now:
+
+1. directly asserts that the application-level guard returns `allowed=False` and `SAME_ORIGIN_REQUIRED` for `https://evil.example`;
+2. still requires normal clean-host HTTP behavior to return `403`;
+3. accepts only `ConnectionAbortedError` with exact Windows `winerror == 10053` as an alternate host-transport manifestation of that already-proven rejection;
+4. still requires the action ledger `event_count == 0`;
+5. fails on every other socket/transport exception.
+
+This does **not** modify production Phase 16 HTTP code, broker adapters, execution/risk logic, provider authority, or the Phase 18 mutation gate.
+
+CI run for `38c09c21...` is the current cross-platform evidence run. Ubuntu has already completed successfully; Windows must also complete successfully before this hardening is considered repository-side green.
 
 ## 9. Current broker authority
 
@@ -361,13 +354,13 @@ Secrets, raw account IDs, passwords, security codes, or tokens must never be com
 
 ### Immediate local recheck
 
-Pull latest Phase 18 branch, run:
+After the `38c09c21...` hardening and synchronized docs are pulled:
 
-1. isolated `test_csrf_failure_creates_no_action_event`;
-2. full `pytest -q`;
+1. rerun isolated `test_csrf_failure_creates_no_action_event`;
+2. rerun full `pytest -q`;
 3. confirm clean `git status`.
 
-Expected: isolated test passes and full suite reports **908 passed**.
+Expected: isolated test passes and full suite reports **908 passed**. A local Windows 10053 on the already-proven foreign-origin rejection is now recognized only under the exact guarded conditions above and still requires zero ledger events.
 
 ### Later regular-session Phase 18 certification
 
