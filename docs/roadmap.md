@@ -38,7 +38,34 @@ Storage/state roles:
 - **PostgreSQL** is the target persistent operational-state store for state that should not live in the analytical lake.
 - Provider-native facts, canonical facts, derived features, strategy/regime state, model evidence, AI audit, and broker state remain explicitly separated.
 
-## 3. Non-negotiable boundaries
+## 3. Provider and broker roles
+
+### Massive
+
+Massive is the accepted primary market/reference-data provider for the production data path. The tracked template may include the public flat-file endpoint `https://files.massive.com`; credential values remain local only.
+
+### Webull
+
+Webull is the planned primary execution broker:
+
+- accepted current operational target: Webull US paper/sandbox;
+- future live operation requires a separate live-authority acceptance;
+- account selection must fail closed when ambiguous;
+- broker mutations require explicit authority and reconciliation.
+
+### Alpaca
+
+Alpaca is the manually selectable secondary/fallback execution broker:
+
+- current accepted operational target: Alpaca paper;
+- no automatic failover from Webull;
+- future live use requires a separate live-authority acceptance.
+
+### IBKR
+
+IBKR remains an optional future/data-fallback integration point. Presence of local host/port/client-ID defaults in `.env.example` does not mean an IBKR provider path is accepted or active.
+
+## 4. Non-negotiable boundaries
 
 ### Data and identity
 
@@ -88,12 +115,12 @@ Storage/state roles:
 
 ### Execution
 
-- Webull is the planned primary execution broker for paper/sandbox and later controlled live operation.
-- Alpaca is the manually selectable secondary/fallback broker.
+- Webull is primary; Alpaca is manually selectable secondary/fallback.
 - Broker adapters must be replaceable without changing strategy logic.
 - Automatic cross-broker failover is disabled.
 - Broker changes are explicit only and require broker-state reconciliation.
-- Browser broker switching must inspect open orders/positions, warn, and may cancel/close only when the corresponding provider-mutation authority has been explicitly granted; after any mutation the broker must be reconciled before switching.
+- Browser broker switching must inspect open orders/positions, warn, and may cancel/close only when the corresponding provider-mutation authority has been explicitly granted.
+- After any mutation the broker must be reconciled before switching.
 - Fresh-quote translation, current risk checks, reconciliation, protective stop/target, idempotent client identifiers, and uncertainty fail-closed behavior are mandatory before provider mutation.
 - Unknown/uncertain provider state never authorizes a retry or second mutation without exact reconciliation.
 - Live money is never the first validation environment: **paper -> shadow/observation -> controlled live**.
@@ -105,11 +132,11 @@ Storage/state roles:
 - Local loopback bind is the default; remote bind is disabled by default.
 - Operational actions must be audited and idempotent.
 
-## 4. Accepted foundation through Phase 10
+## 5. Accepted foundation through Phase 10
 
-### Phases 1-3
+### Phases 1-3 — foundation, ingestion, canonical storage
 
-Established foundation/configuration/secret handling, Massive restartable flat-file ingestion, canonical market schemas/storage, session-aware derived bars, manifest/checkpoint lineage, and validation.
+Established shared settings/secret handling, Massive restartable flat-file ingestion, canonical market schemas/storage, session-aware derived bars, manifest/checkpoint lineage, and validation.
 
 ### Phase 4 — Instrument Identity and Historical Lake
 
@@ -169,9 +196,9 @@ Accepted production model:
 
 The accepted HGB remains production authority unless a separately versioned challenger is explicitly accepted later.
 
-## 5. Accepted historical extension
+## 6. Accepted historical extension
 
-The post-Phase-10 historical-data work is a **foundation extension**, not a replacement phase hierarchy.
+The post-Phase-10 historical-data work is a foundation extension, not a replacement phase hierarchy.
 
 Accepted source boundary:
 
@@ -183,7 +210,7 @@ The historical source audit and backfill preserved exact provider symbols, obser
 
 The longer-history C result remains separately versioned challenger/research evidence. It may support deeper regime/strategy/backtest/analogue work but did not silently replace the accepted Phase 10 model.
 
-## 6. Accepted phases 11-17
+## 7. Accepted phases 11-17
 
 ### Phase 11 — Strategy Evaluation and Regime Routing
 
@@ -221,6 +248,8 @@ Phase 15 acceptance did **not** promote live execution and did not by itself aut
 
 Accepted a read-only cumulative historical/source/canonical/feature/regime/identity integrity gate before execution advancement. It became an upstream execution prerequisite and did not mutate production analytical or broker state.
 
+Accepted cumulative audit evidence included complete canonical daily structural checks, source/manifest lineage, sampled 1m reconstruction, independent feature replay, regime chronology, identity integrity, and zero invalid/duplicate/missing-session findings in the accepted scope.
+
 ### Phase 16 — Browser Control Plane and Production Operations
 
 Accepted browser status/action APIs, operational health, audit ledger, restart/recovery, broker-switch processor, cleanup planning/confirmation semantics, and loopback-first operation.
@@ -231,7 +260,7 @@ Phase 16 did **not** promote provider cleanup/cancel/flatten writes or live mone
 
 Accepted 2026-08-23 using real Webull sandbox and Alpaca paper **read-only** provider calls while preserving accepted Phase 16 artifacts unchanged and hash-bound.
 
-Webull account discovery returned five readable sandbox accounts; ambiguity failed closed. An operational sandbox account was explicitly selected by sanitized ref `3d64d273c694250b`; raw account identity remained local.
+Webull account discovery returned five readable sandbox accounts; ambiguity failed closed. An operational sandbox margin account was explicitly selected locally by sanitized account reference; raw account identity remained local.
 
 Accepted target-machine evidence:
 
@@ -253,9 +282,48 @@ Accepted target-machine evidence:
 
 Deliverable: accepted dual-broker provider-readiness evidence **without** provider-mutation or live authority.
 
-## 7. Accelerated delivery protocol
+## 8. Environment/configuration policy
 
-Quality gates remain; **micro-step ceremony does not**.
+The tracked `.env.example` is a configuration template, not a secret store.
+
+It may include:
+
+- public provider endpoints;
+- localhost/default host, port, and client-ID values;
+- blank credential variable names for accepted or planned integrations;
+- future live-variable names/endpoints when useful for configuration continuity.
+
+It must not include:
+
+- API keys/secrets;
+- passwords;
+- raw broker account IDs;
+- security codes;
+- tokens/session secrets;
+- any other credential value.
+
+A line remains sensitive even if commented out. Comment syntax does not make a credential safe to commit.
+
+Current template organization:
+
+- `ATLAS_ENV`, `OPENAI_API_KEY`, `DATABASE_URL`;
+- Massive API/S3 placeholders plus `MASSIVE_ENDPOINT=https://files.massive.com`;
+- Webull paper/sandbox and live credential placeholders;
+- Alpaca paper/live endpoints and credential placeholders;
+- optional IBKR host/port/client-ID defaults.
+
+**Configuration presence is not authority.** In particular:
+
+- `WEBULL_LIVE_*` placeholders do not authorize Webull live execution;
+- `ALPACA_LIVE_*` placeholders/endpoints do not authorize Alpaca live execution;
+- IBKR defaults do not imply an accepted IBKR runtime integration;
+- a configured provider does not bypass reconciliation, risk, geometry, idempotency, or authority gates.
+
+The real `.env` remains local and ignored by Git.
+
+## 9. Accelerated delivery protocol
+
+Quality gates remain; micro-step ceremony does not.
 
 ### Batch by evidence boundary
 
@@ -298,74 +366,58 @@ Otherwise continue autonomously through the work package.
 - Preserve rollback artifacts for production data/state promotions.
 - Keep PR descriptions/acceptance records as the concise evidence ledger.
 
-## 8. Repository and branch policy
+## 10. Repository and branch policy
 
 - `main` contains accepted work.
 - Substantial phases and authority-changing work packages use focused branches/PRs.
 - Acceptance evidence is recorded in the active PR before merge.
 - Completed phase branches are deleted after merge unless there is a concrete retention reason.
 - Branch deletion never removes merged commits/PR history.
-- Real `.env` stays local and ignored; `.env.example` remains a non-secret template.
+- Real `.env` stays local and ignored; `.env.example` remains tracked and non-secret.
 
-## 9. Documentation synchronization policy
+## 11. Documentation synchronization policy
 
 Documentation is part of the acceptance package for every meaningful ATLAS change.
 
 At each coherent work-package/phase boundary:
 
-1. update root `README.md` when current project state, architecture summary, broker authority, or next checkpoint changes;
-2. update this roadmap when architecture, phase status/responsibility, validation protocol, or authority boundaries change;
-3. update [`current_status.md`](current_status.md) with the latest accepted evidence, current operating state, and exact continuation point;
+1. update root `README.md` when current project state, architecture summary, provider/broker configuration, broker authority, or next checkpoint changes;
+2. update this roadmap when architecture, phase status/responsibility, validation protocol, configuration policy, or authority boundaries change;
+3. update [`current_status.md`](current_status.md) with the latest accepted evidence, current operating state, configuration notes, and exact continuation point;
 4. update the active PR body with concise target-machine + CI acceptance evidence;
 5. preserve old `README_PHASE_*`, `README_ATLAS_*`, phase-fix notes, and historical acceptance documents as historical evidence unless correcting a factual error in that historical record.
 
 A future chat/session should be able to recover the project accurately from the repository without depending on conversational memory.
 
-## 10. Immediate priority / authority boundary
+## 12. Immediate priority / authority boundary
 
 **Phase 17 is accepted and merged.** The exact next checkpoint is:
 
 `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
 
-No implementation or provider call may infer mutation authorization merely from Phase 17 success.
+No implementation step may infer that authorization merely from Phase 17 success, from credential availability, or from the presence of live endpoint/credential placeholders in `.env.example`.
 
-Until the user explicitly authorizes that checkpoint:
+Until the user explicitly authorizes the paper-provider mutation checkpoint:
 
-- real provider order submission remains disabled;
-- real provider order cancellation/replacement remains disabled;
+- provider order submission remains disabled;
+- provider order cancellation/replacement remains disabled;
 - provider flatten/close mutation remains disabled;
 - browser broker-switch cleanup may not mutate a provider;
 - live execution remains disabled;
 - automatic cross-broker failover remains disabled.
 
-When explicitly authorized, the next coherent work package may validate real Webull sandbox / Alpaca paper order lifecycle behavior under the already accepted Phase 15/16 safety contracts. The package should cover, as supported by the provider and accepted adapter semantics:
+When explicitly authorized, the next coherent work package may validate real Webull sandbox / Alpaca paper order lifecycle behavior under the already accepted Phase 15/16 safety contracts. It must retain fresh-quote translation, current risk checks, reconciliation, protective geometry, idempotent client identifiers, uncertain-write fail-closed behavior, and explicit broker switching.
 
-- exact provider preflight or documented local preflight equivalent;
-- fresh quote and entry-drift validation;
-- current account/risk/position/order reconciliation;
-- valid protective stop/target geometry;
-- idempotent client order identifiers;
-- submit acknowledgement and exact-client-order reconciliation;
-- partial-fill/terminal-state handling;
-- cancel/replace behavior where supported;
-- uncertain-write recovery without blind retry;
-- broker-state reconciliation after mutation;
-- safe cleanup/flat-state proof when required;
-- evidence ledger and outcome attribution;
-- zero live writes and zero automatic failover.
+Paper-provider mutation acceptance must remain separate from any later live-money promotion.
 
-Paper-provider mutation acceptance must remain a separate checkpoint from any later live-money promotion.
+## 13. Future roadmap after paper-provider mutation
 
-## 11. Future-chat startup rule
+The exact later sequence may be refined by measured evidence, but authority must continue to advance in bounded steps. Expected future work includes:
 
-Before changing ATLAS in a new chat/session:
+1. real paper/sandbox provider mutation lifecycle validation;
+2. repeated shadow/paper operational observation and outcome capture;
+3. production hardening around failure/recovery, monitoring, and operator workflows;
+4. evaluation of strategy/model/research performance as fresh observations accumulate;
+5. only then, a separately designed and explicitly approved controlled-live authority phase.
 
-1. inspect current `main`, open PRs, and active branches;
-2. read root `README.md`;
-3. read this roadmap;
-4. read `docs/current_status.md` completely;
-5. inspect the latest merged PR(s) when detailed acceptance evidence is needed;
-6. confirm the planned work does not cross an authority boundary without explicit approval;
-7. do not revive superseded legacy Chart Monitor pipeline assumptions or old phase instructions when they conflict with the living roadmap/current-status documents.
-
-**Current correct continuation point: after accepted Phase 17, before any real paper/sandbox provider mutation.**
+No later phase may treat successful sandbox mutation as implicit permission to trade live capital.
