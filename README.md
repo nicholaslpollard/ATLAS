@@ -10,9 +10,10 @@ For any future development session or new chat, read these living sources in thi
 
 1. [`docs/current_status.md`](docs/current_status.md) — exact current handoff, accepted evidence, active branch/PR, target-machine state, broker authority, and next action.
 2. [`docs/roadmap.md`](docs/roadmap.md) — architecture lock, phase ledger, non-negotiable data/safety rules, and authority transitions.
-3. [`docs/phase18_operational_validation.md`](docs/phase18_operational_validation.md) — active Phase 18 broker-certification specification and acceptance ledger.
-4. This README — project orientation and concise state.
-5. Merged PRs — detailed historical acceptance evidence.
+3. [`docs/phase_flow.md`](docs/phase_flow.md) — mandatory numbered-phase execution flow and acceptance/merge rules.
+4. [`docs/phase18_operational_validation.md`](docs/phase18_operational_validation.md) — active Phase 18 broker-certification specification and acceptance ledger.
+5. This README — project orientation and concise state.
+6. Merged PRs — detailed historical acceptance evidence.
 
 Files named `README_PHASE_*`, `README_ATLAS_*`, old fix notes, and old phase-specific status files are historical provenance. They are not the current roadmap when they conflict with the living sources above.
 
@@ -33,13 +34,26 @@ Core roles:
 - **Execution**: broker-neutral contracts with fresh quote, reconciliation, current risk, protective geometry, idempotency, and uncertainty fail-closed behavior.
 - **Browser**: monitoring/control plane only; it cannot create independent trading authority.
 
+## Mandatory development flow
+
+ATLAS advances by explicit numbered phases:
+
+`DEFINE -> LOCK -> IMPLEMENT -> FOCUSED TEST -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
+
+The current phase must satisfy its acceptance boundary before the next numbered phase becomes active. Passing tests, configured credentials, available endpoints, or connected accounts do not silently change provider/live authority.
+
 ## Current state — 2026-08-23
 
 - **Phases 1–17: ACCEPTED and merged.**
 - **Phase 18: ACTIVE** on draft PR #18, branch `phase-18-paper-provider-mutation-lifecycle-validation`.
+- **Phase 18A — Pre-mutation software validation: ACCEPTED / COMPLETE.**
+- **Phase 18B — Real paper-provider operational certification: WAITING_EXTERNAL.**
+- **Phase 19: NOT ACTIVE / NOT YET DEFINED.**
 - Accepted Phase 17 merge: `65d5a7b58c6894eba27722465741c92db9a33aaf`.
-- Phase 18 test-harness portability code head: `38c09c21d4fc636667921c779fbe59341839e9e8`.
 - Phase 18 policy fingerprint: `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`.
+- Final target-machine Phase 18A baseline: `94a859fc6d44c22a6f8852c1488215a6677806a0`.
+- Final target-machine Phase 18A regression: **908 passed in 23.50s**.
+- Matching Windows/Ubuntu CI: **SUCCESS**.
 - Real provider mutation performed in Phase 18 so far: **NO**.
 - Live execution: **DISABLED**.
 - Automatic cross-broker failover: **DISABLED**.
@@ -92,7 +106,7 @@ Phase 11 evaluated eight deterministic strategy variants. Accepted support class
 - MIXED: 3 — `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
 - UNSUPPORTED: 5.
 
-Zero supported strategies correctly yielded zero promoted candidates in the accepted 2026-08-14 case. Downstream no-op behavior is intentional; thresholds are never weakened to manufacture trades.
+Zero supported strategies correctly yielded zero promoted candidates in the accepted locked case. Downstream no-op behavior is intentional; thresholds are never weakened to manufacture trades.
 
 ## Accepted execution/control-plane foundation
 
@@ -146,9 +160,24 @@ Combined Phase 17 acceptance:
 
 ## Active Phase 18 — Paper Provider Mutation Lifecycle Validation
 
-Phase 18 validates real **paper/sandbox** broker mutation plumbing while keeping live authority completely separate.
+### Phase 18A — ACCEPTED / COMPLETE
 
-### Authority gate
+Completed evidence includes:
+
+- explicit mutation authority gate;
+- fake-provider production lifecycle semantics;
+- separate validation-only operational order path;
+- independent Phase 18 validator;
+- focused Phase 18 target-machine tests;
+- Windows loopback test-harness portability hardening without production behavior changes;
+- final target-machine regression **908 passed in 23.50s**;
+- clean working tree;
+- Windows and Ubuntu CI green;
+- provider calls/writes during final software recheck: 0.
+
+There is no remaining Phase 18A software/portability blocker.
+
+### Phase 18B — WAITING_EXTERNAL
 
 Provider mutation is disabled by default. A real target-machine mutation run requires:
 
@@ -156,18 +185,9 @@ Provider mutation is disabled by default. A real target-machine mutation run req
 - `--authorize-paper-provider-mutation`;
 - exact confirmation text `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
 
-Credentials, endpoint configuration, environment mode, connected-account availability, Phase 17 acceptance, Phase 18 code, or passing CI cannot substitute for that gate.
+Credentials, endpoint configuration, environment mode, connected-account availability, prior phase success, Phase 18 code, or passing CI cannot substitute for that gate.
 
-### Two separate paths
-
-1. **Production semantic validation** — fake-provider tests wrap accepted Phase 15 execution logic and prove quote/risk/preflight/reconciliation/protective/idempotency/uncertainty semantics.
-2. **Operational broker certification** — a separate validation-only order exercises a paper provider without fabricating Phase 13/14 strategy or AI lineage.
-
-Operational validation is not a strategy signal, model outcome, production case, AI recommendation, or performance evidence.
-
-### Locked validation order
-
-Contract: `phase18-operational-validation-v1-one-share-buy-nonmarketable-bracket`
+Locked operational order:
 
 - PAPER/SANDBOX only;
 - EQUITY BUY only;
@@ -183,22 +203,11 @@ Contract: `phase18-operational-validation-v1-one-share-buy-nonmarketable-bracket
 
 Expected certification is `submit once -> exact client-ID reconcile -> cancel once if still open -> reconcile flat`.
 
-A fill/partial fill is possible. If it occurs, ATLAS does **not** auto-flatten or send an opposite order; it stops for separate cleanup authority.
-
-### Uncertainty rules
-
-If submit or cancel becomes uncertain:
-
-- perform read-only reconciliation if possible;
-- no blind retry;
-- no second mutation;
-- no auto-flatten;
-- no automatic Alpaca failover;
-- stop until exact state is established.
+A fill/partial fill is possible. If it occurs, ATLAS does **not** auto-flatten; it stops for separate cleanup authority. Alpaca is not an automatic failover destination.
 
 ## Realtime quote authority
 
-Real Phase 18 certification requires accepted Phase 5/15 market-state evidence:
+Real Phase 18B certification requires accepted Phase 5/15 market-state evidence:
 
 - focused `Q.<ticker>` Massive realtime subscription;
 - live connection actively `SUBSCRIBED`;
@@ -218,55 +227,7 @@ Accepted launcher:
   --no-journal
 ```
 
-Weekends, holidays, premarket, after-hours, stopped streams, stale data, or delayed data fail closed. Because 2026-08-23 is Sunday, no real mutation certification is valid today.
-
-## Latest target-machine pre-mutation evidence — 2026-08-23
-
-At local branch head `e1631e741a547c78eb6c3c9b943ba1473c805cf6`:
-
-- Phase 18 validator: **PASS**;
-- focused Phase 18 suite: **34 passed in 2.23s**;
-- Webull sandbox read recheck: configured selected ref, balance/orders/positions HTTP 200, 0 open orders, 0 positions;
-- Alpaca paper read recheck: reconciled, 0 open orders, 0 positions;
-- Phase 18 mutation gate: **DENIED by default**;
-- provider adapter initialized: **NO**;
-- provider calls: **0**;
-- provider writes: **0**;
-- live execution disabled;
-- automatic failover disabled;
-- working tree clean.
-
-The first local full suite produced **907 passed / 1 failed** on the pre-existing Phase 16 loopback CSRF rejection test with Windows `WinError 10053`.
-
-First portability hardening commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` disabled ambient proxies for deterministic `127.0.0.1` test traffic. CI run `32657554236` then passed all validators and **908 tests on both Ubuntu and Windows**.
-
-The target machine then reran the isolated test and full suite:
-
-- isolated CSRF rejection test: **1 passed in 3.52s**;
-- immediate full suite: **907 passed / 1 failed in 24.04s**;
-- sole failure: the same test on the second foreign-origin request;
-- Windows transport error: `ConnectionAbortedError [WinError 10053]`;
-- final working tree: clean.
-
-Because the isolated test passed immediately before the suite failure, the behavior is nondeterministic Windows host socket/security interception under suite load, not a deterministic failure of ATLAS same-origin authorization.
-
-Current test-harness hardening commit `38c09c21d4fc636667921c779fbe59341839e9e8` preserves the security contract by:
-
-- directly asserting the guard returns `SAME_ORIGIN_REQUIRED` for `https://evil.example`;
-- still requiring normal HTTP `403` behavior on clean hosts;
-- accepting only exact Windows `winerror == 10053` as an alternate transport manifestation after the rejection is already proven;
-- still requiring zero action/audit events;
-- failing every other transport exception.
-
-Cross-platform CI for that exact code change is green in run `32662398274`:
-
-- all validators through Phase 18: **PASS**;
-- Ubuntu: **908 passed in 13.95s**;
-- Windows: **908 passed in 22.59s**;
-- both jobs: **SUCCESS**;
-- provider writes: **0**.
-
-**No production Phase 16 server code, broker adapter, execution/risk logic, provider authority, or Phase 18 mutation gate changed.**
+Weekends, holidays, premarket, after-hours, stopped streams, stale data, or delayed data fail closed.
 
 ## Environment template
 
@@ -301,17 +262,20 @@ A commented secret is still a secret. The commented Alpaca security-code placeho
 
 ## Development and documentation workflow
 
-Normal work package:
+Normative phase flow:
 
-`implementation + targeted tests + validator + CLI/orchestration + documentation/status update`
+`DEFINE -> LOCK -> IMPLEMENT -> FOCUSED TEST -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
 
-Use focused tests while coding, full regression + Windows/Ubuntu CI at evidence boundaries, independent validators for data/model/broker authority transitions, and complete target-machine evidence blocks when local/external access is required.
+Normal coherent work package:
+
+`implementation + targeted tests + validator + CLI/orchestration + documentation/status`
 
 Every meaningful change must synchronize, as applicable:
 
 - `README.md`;
 - `docs/roadmap.md`;
 - `docs/current_status.md`;
+- `docs/phase_flow.md` when process rules change;
 - active phase living spec;
 - active PR acceptance/evidence ledger;
 - configuration docs/templates.
@@ -320,13 +284,23 @@ Historical phase/fix READMEs remain frozen provenance unless a factual historica
 
 ## Exact continuation point
 
-1. Pull the latest Phase 18 branch.
-2. Rerun the isolated Phase 16 CSRF test and full suite locally; expected full result is **908 passed**.
-3. Do not perform real provider mutation yet; none has been authorized.
-4. During a future regular market session, start focused Massive realtime quote state and run Phase 18 **plan-only** validation first.
-5. Review the exact one-share plan.
-6. Only after explicit user authorization may Webull sandbox perform the first real Phase 18 mutation.
-7. If filled/partially filled, stop for separate cleanup authorization.
-8. Never auto-fail over to Alpaca.
-9. Merge Phase 18 only after accepted target-machine mutation/reconciliation evidence.
-10. Any later live-money promotion requires a separate phase and separate explicit authorization.
+Phase 18A is complete. No additional regression is required solely for the closed Windows portability issue.
+
+During a regular U.S. equity session:
+
+1. choose an exact provider-native ticker suitable for the one-share <$1,000 cap;
+2. start focused Massive realtime quote state and keep it active;
+3. run Phase 18 **plan-only** validation first;
+4. verify 0 broker/provider calls/writes in plan-only mode;
+5. review the exact one-share plan;
+6. only after explicit user authorization may Webull sandbox perform the first real Phase 18 mutation;
+7. reconcile the exact deterministic client ID;
+8. cancel once if still open and reconcile flat;
+9. if filled/partially filled, stop for separate cleanup authorization;
+10. never auto-fail over to Alpaca;
+11. record sanitized evidence and synchronize living docs/PR;
+12. accept and merge Phase 18 only after Phase 18B evidence is complete;
+13. verify `main` and delete the merged Phase 18 branch;
+14. only then define, lock, and activate Phase 19.
+
+Any later live-money promotion requires a separate numbered phase and separate explicit authorization.
