@@ -79,7 +79,12 @@ def _open_server(tmp_path):
 
 def _session_opener(base_url: str):
     jar = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    # The control plane is loopback-only. Do not let ambient OS/user proxy
+    # settings intercept deterministic 127.0.0.1 HTTP tests.
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        urllib.request.HTTPCookieProcessor(jar),
+    )
     with opener.open(f"{base_url}/api/v1/session", timeout=5) as response:
         payload = json.loads(response.read().decode("utf-8"))
     return opener, payload["csrf_token"]
