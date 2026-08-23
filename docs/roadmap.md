@@ -282,7 +282,82 @@ Accepted target-machine evidence:
 
 Deliverable: accepted dual-broker provider-readiness evidence **without** provider-mutation or live authority.
 
-## 8. Environment/configuration policy
+## 8. Active Phase 18 — Paper Provider Mutation Lifecycle Validation
+
+Phase 18 is the active development phase on draft PR #18. It is intentionally split into two authority levels:
+
+1. **Repository/CI preparation authority** — allowed now. This may implement policy, orchestration, fakes, validators, diagnostics, and documentation while performing zero real provider writes.
+2. **Target-machine real provider mutation authority** — still gated by `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION` and must not be inferred from development progress.
+
+### Phase 18 locked policy
+
+Contract: `phase18-policy-v1-phase17-bound-explicit-paper-mutation-no-live`.
+
+The policy is bound to:
+
+- accepted Phase 17 merge `65d5a7b58c6894eba27722465741c92db9a33aaf`;
+- accepted Phase 17 policy fingerprint `693113bbb09458ed2939e486f9f6e0a0bda44e331c6419065760586047b93ff8`;
+- accepted Phase 17 readiness contract `phase17-readiness-v1-phase16-artifact-preserving-dual-broker-readonly-reconciliation`.
+
+Locked Phase 18 rules:
+
+- required brokers remain exactly Webull and Alpaca;
+- provider reads remain allowed;
+- provider mutation is disabled by default;
+- real mutation requires explicit **per-run** target-machine authorization;
+- one broker per mutation run;
+- pre- and post-mutation reconciliation required;
+- fresh quote and current risk revalidation required;
+- protective geometry required;
+- deterministic client-order ID required;
+- uncertain submit/cancel blocks all further mutation until exact reconciliation;
+- destructive cleanup/flatten remains separately explicit;
+- live execution remains disabled;
+- automatic cross-broker failover remains disabled;
+- credentials/account secrets remain hidden.
+
+### Phase 18 authorization gate
+
+A real mutation run must provide both:
+
+- an affirmative provider-mutation authorization flag; and
+- exact confirmation text: `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
+
+Broker selection, credential presence, `ATLAS_ENV`, paper endpoints, a connected account, or passing tests cannot substitute for this gate.
+
+### Phase 18 guarded lifecycle
+
+The current implementation wraps the accepted Phase 15 execution engine and is designed for the first conservative real lifecycle:
+
+1. validate explicit per-run authorization and exact broker match;
+2. require PAPER/sandbox environment;
+3. reconcile selected broker and require zero open orders + zero positions before the first mutation test;
+4. invoke the accepted Phase 15 execution engine, preserving fresh-quote/risk/preflight/idempotency/protective-order gates;
+5. require one newly acknowledged provider submission;
+6. reconcile the exact deterministic client order ID;
+7. cancel only if the order is still `SUBMITTED` or `PARTIAL_FILLED`;
+8. reconcile again;
+9. if a fill/partial fill creates exposure, stop and require a separate explicit cleanup action rather than auto-flattening;
+10. if submit/cancel state becomes uncertain, perform read-only reconciliation if possible and stop—no blind retry, no second mutation, no failover.
+
+CI uses fake providers to exercise the nonzero lifecycle and uncertainty matrix. The zero-write diagnostic can exercise the local authorization gate without initializing a provider adapter.
+
+### Phase 18 acceptance sequence
+
+Before any real provider write:
+
+1. focused Phase 18 unit tests green;
+2. independent `scripts/validate_phase18.py` PASS;
+3. full regression green;
+4. Windows + Ubuntu CI green;
+5. documentation and PR evidence synchronized;
+6. target machine pulled to exact accepted Phase 18 code head;
+7. provider read-only reconciliation still clean;
+8. explicit target-machine paper-provider mutation authorization obtained.
+
+Only then may one selected broker perform the first controlled sandbox/paper mutation lifecycle. Webull remains the intended first broker because it is the primary execution path; Alpaca remains secondary and must not be auto-used if Webull rejects/fails/is uncertain.
+
+## 9. Environment/configuration policy
 
 The tracked `.env.example` is a configuration template, not a secret store.
 
@@ -321,7 +396,7 @@ Current template organization:
 
 The real `.env` remains local and ignored by Git.
 
-## 9. Accelerated delivery protocol
+## 10. Accelerated delivery protocol
 
 Quality gates remain; micro-step ceremony does not.
 
@@ -366,7 +441,7 @@ Otherwise continue autonomously through the work package.
 - Preserve rollback artifacts for production data/state promotions.
 - Keep PR descriptions/acceptance records as the concise evidence ledger.
 
-## 10. Repository and branch policy
+## 11. Repository and branch policy
 
 - `main` contains accepted work.
 - Substantial phases and authority-changing work packages use focused branches/PRs.
@@ -375,7 +450,7 @@ Otherwise continue autonomously through the work package.
 - Branch deletion never removes merged commits/PR history.
 - Real `.env` stays local and ignored; `.env.example` remains tracked and non-secret.
 
-## 11. Documentation synchronization policy
+## 12. Documentation synchronization policy
 
 Documentation is part of the acceptance package for every meaningful ATLAS change.
 
@@ -389,15 +464,15 @@ At each coherent work-package/phase boundary:
 
 A future chat/session should be able to recover the project accurately from the repository without depending on conversational memory.
 
-## 12. Immediate priority / authority boundary
+## 13. Immediate priority / authority boundary
 
-**Phase 17 is accepted and merged.** The exact next checkpoint is:
+**Phase 18 repository/CI preparation is active.** The real-provider checkpoint remains:
 
 `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
 
-No implementation step may infer that authorization merely from Phase 17 success, from credential availability, or from the presence of live endpoint/credential placeholders in `.env.example`.
+No implementation step may infer that authorization from Phase 17 success, Phase 18 code, credential availability, endpoints, broker account state, or a locally accepted authorization diagnostic.
 
-Until the user explicitly authorizes the paper-provider mutation checkpoint:
+Until a real target-machine mutation run is explicitly authorized:
 
 - provider order submission remains disabled;
 - provider order cancellation/replacement remains disabled;
@@ -406,11 +481,9 @@ Until the user explicitly authorizes the paper-provider mutation checkpoint:
 - live execution remains disabled;
 - automatic cross-broker failover remains disabled.
 
-When explicitly authorized, the next coherent work package may validate real Webull sandbox / Alpaca paper order lifecycle behavior under the already accepted Phase 15/16 safety contracts. It must retain fresh-quote translation, current risk checks, reconciliation, protective geometry, idempotent client identifiers, uncertain-write fail-closed behavior, and explicit broker switching.
+The next safe development work is to finish Phase 18 fake-provider lifecycle tests, validator/CI, and a sanitized target-machine runner design. After those are accepted, one controlled Webull sandbox lifecycle may be authorized explicitly. Paper-provider mutation acceptance must remain separate from any later live-money promotion.
 
-Paper-provider mutation acceptance must remain separate from any later live-money promotion.
-
-## 13. Future roadmap after paper-provider mutation
+## 14. Future roadmap after paper-provider mutation
 
 The exact later sequence may be refined by measured evidence, but authority must continue to advance in bounded steps. Expected future work includes:
 
