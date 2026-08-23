@@ -300,9 +300,7 @@ Weekends, holidays, stale/delayed data, premarket, after-hours, and stopped stre
 
 ## 11. Phase 18 evidence as of 2026-08-23
 
-Repository/CI implementation is green.
-
-Initial green implementation evidence included 908 tests on Windows/Ubuntu and all validators through Phase 18 PASS.
+Repository/CI implementation is green through the accepted Phase 18 code paths; real provider mutation remains unperformed.
 
 Target-machine pre-mutation evidence at local head `e1631e741a547c78eb6c3c9b943ba1473c805cf6`:
 
@@ -318,22 +316,33 @@ Target-machine pre-mutation evidence at local head `e1631e741a547c78eb6c3c9b943b
 - automatic failover disabled;
 - working tree clean.
 
-The local full suite was 907 passed / 1 failed due only to `test_csrf_failure_creates_no_action_event` receiving Windows `WinError 10053` on a loopback request.
+That run's full suite was 907 passed / 1 failed due only to `test_csrf_failure_creates_no_action_event` receiving Windows `WinError 10053` on a loopback rejection response.
 
-Investigation found the test harness inherited ambient OS/user proxy settings even though the production Phase 16 control plane is loopback-only. Commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` hardened only the test client with `urllib.request.ProxyHandler({})`. Production HTTP server behavior, broker adapters, execution logic, and authority contracts were untouched.
+First hardening commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` disabled ambient proxy use for the deterministic `127.0.0.1` test client. GitHub Actions run `32657554236` then passed all validators and 908 tests on Ubuntu and Windows.
 
-GitHub Actions run `32657554236` validated that hardening:
+The target-machine rerun at documentation head `36c9832891b8565f75b727db7dfc231719be5006` produced:
 
-- all validators through Phase 18 PASS;
-- Ubuntu 908 passed in 13.57s;
-- Windows 908 passed in 20.98s;
-- both jobs SUCCESS.
+- isolated CSRF test: **1 passed in 3.52s**;
+- immediate full suite: **907 passed / 1 failed in 24.04s**;
+- same test failed only on the second foreign-origin request;
+- exact Windows host transport error: `ConnectionAbortedError [WinError 10053]`;
+- final working tree clean.
 
-Next local evidence gate: pull latest branch, rerun the formerly failing isolated CSRF test, then full regression. No provider diagnostic need be repeated solely because the latest code change is test-harness-only.
+Because the exact isolated test passed immediately before the full-suite failure, this is treated as nondeterministic host transport/security interception under suite load rather than a deterministic failure of ATLAS same-origin authorization.
+
+Current test-only hardening commit `38c09c21d4fc636667921c779fbe59341839e9e8` preserves the contract by:
+
+1. directly asserting `ControlPlaneSessionGuard.authorize_write()` returns `SAME_ORIGIN_REQUIRED` for the foreign origin;
+2. still requiring actual HTTP `403` on clean hosts;
+3. accepting only Windows `ConnectionAbortedError` with exact `winerror == 10053` as an alternate transport manifestation after rejection is already proven;
+4. still requiring zero action/audit events;
+5. failing every other transport error.
+
+Production Phase 16 server behavior, broker adapters, execution logic, Phase 18 policy, and provider authority remain unchanged.
 
 ## 12. Phase 18 remaining acceptance sequence
 
-1. Pull latest Phase 18 branch on target machine.
+1. Pull the latest Phase 18 branch on target machine after the current test/docs commits settle.
 2. Run isolated CSRF test and full suite; expected 908 passed.
 3. Keep real provider mutation unauthorized until a regular U.S. equity session.
 4. Start focused Massive realtime `Q.<ticker>` stream and keep it running.
