@@ -38,7 +38,7 @@ Core roles:
 - **Phases 1–17: ACCEPTED and merged.**
 - **Phase 18: ACTIVE** on draft PR #18, branch `phase-18-paper-provider-mutation-lifecycle-validation`.
 - Accepted Phase 17 merge: `65d5a7b58c6894eba27722465741c92db9a33aaf`.
-- Current Phase 18 code/test portability head before this documentation synchronization: `45a2abeba7a51401ee708ab777d960d2f7fea88f`.
+- Latest Phase 18 test-harness portability code head before this documentation commit: `38c09c21d4fc636667921c779fbe59341839e9e8`.
 - Phase 18 policy fingerprint: `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`.
 - Real provider mutation performed in Phase 18 so far: **NO**.
 - Live execution: **DISABLED**.
@@ -236,18 +236,29 @@ At local branch head `e1631e741a547c78eb6c3c9b943ba1473c805cf6`:
 - automatic failover disabled;
 - working tree clean.
 
-The full local suite produced **907 passed / 1 failed**. The sole failure was `tests/unit/test_phase16_action_api.py::test_csrf_failure_creates_no_action_event`, with Windows `WinError 10053` on a loopback request. This was isolated from Phase 18 broker logic.
+That first local full suite produced **907 passed / 1 failed** on the pre-existing Phase 16 loopback CSRF rejection test with Windows `WinError 10053`.
 
-Investigation showed the test HTTP client inherited ambient OS/user proxy configuration despite the accepted Phase 16 server being loopback-only. The test harness was hardened in commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` to add `urllib.request.ProxyHandler({})` for deterministic `127.0.0.1` tests. **No production server, broker adapter, execution code, authority contract, or provider behavior changed.**
+First portability hardening commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` disabled ambient proxies for deterministic `127.0.0.1` test traffic. CI run `32657554236` then passed all validators and **908 tests on both Ubuntu and Windows**.
 
-CI run `32657554236` validated that portability hardening:
+The target machine pulled documentation head `36c9832891b8565f75b727db7dfc231719be5006` and reran the test:
 
-- all validators through Phase 18: PASS;
-- Ubuntu: **908 passed in 13.57s**;
-- Windows: **908 passed in 20.98s**;
-- both jobs: SUCCESS.
+- isolated CSRF rejection test: **1 passed in 3.52s**;
+- immediate full suite: **907 passed / 1 failed in 24.04s**;
+- sole failure: the same test on the second foreign-origin request;
+- Windows transport error: `ConnectionAbortedError [WinError 10053]`;
+- final working tree: clean.
 
-The remaining local pre-mutation check is to pull the hardened branch and rerun the isolated CSRF test plus the complete suite.
+Because the isolated test passed immediately before the suite failure, the behavior is nondeterministic Windows host socket/security interception under suite load, not a deterministic failure of ATLAS same-origin authorization.
+
+Current test-harness hardening commit `38c09c21d4fc636667921c779fbe59341839e9e8` preserves the security contract by:
+
+- directly asserting the guard returns `SAME_ORIGIN_REQUIRED` for `https://evil.example`;
+- still requiring normal HTTP `403` behavior on clean hosts;
+- accepting only exact Windows `winerror == 10053` as an alternate transport manifestation after the rejection is already proven;
+- still requiring zero action/audit events;
+- failing every other transport exception.
+
+**No production Phase 16 server code, broker adapter, execution/risk logic, provider authority, or Phase 18 mutation gate changed.**
 
 ## Environment template
 
@@ -301,7 +312,7 @@ Historical phase/fix READMEs remain frozen provenance unless a factual historica
 
 ## Exact continuation point
 
-1. Pull the latest Phase 18 branch.
+1. Pull the latest Phase 18 branch after the current Windows transport-hardening/docs commits settle.
 2. Rerun the isolated Phase 16 CSRF test and full suite locally; expected full result is 908 passed.
 3. Do not repeat real provider writes — none are authorized yet.
 4. During a future regular market session, start focused Massive realtime quote state and run Phase 18 **plan-only** validation first.
