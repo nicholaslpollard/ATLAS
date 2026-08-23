@@ -12,11 +12,11 @@ The accepted ML layer produces probability evidence; it does not directly create
 
 ## Current state
 
-- **Phases 1-16 are accepted and merged**, including the historical extension, strategy/regime routing, promoted-candidate research, deterministic context/geometry/risk, independent AI audit, broker-neutral shadow/paper execution, cumulative data-lineage audit, and browser control plane.
+- **Phases 1-17 are accepted and merged**, including the historical extension, strategy/regime routing, promoted-candidate research, deterministic context/geometry/risk, independent AI audit, broker-neutral shadow/paper execution, cumulative data-lineage audit, browser control plane, and provider-readonly operational readiness.
 - The accepted Phase 10 production model remains the conventional HGB probability surface using 33 point-in-time quantitative features. The longer-history C result is retained as separately versioned challenger/research evidence rather than silently replacing production authority.
 - Webull is the planned primary execution broker; Alpaca is the manually selectable secondary/fallback broker. Automatic cross-broker failover remains disabled.
-- **Active work: Phase 17 — Provider-Readonly Operational Readiness.** Real Webull sandbox and Alpaca paper reads may be used only for reconciliation/readiness. Provider mutation and live execution remain disabled.
-- The next authority checkpoint after Phase 17 is an explicitly authorized paper-provider mutation checkpoint. It is not implied by read-only readiness and does not promote live trading.
+- Phase 17 accepted real Webull sandbox and Alpaca paper read-only reconciliation with both brokers available/reconciled and zero provider/live writes.
+- **Next authority checkpoint: paper/sandbox provider mutation.** It requires separate explicit user authorization before ATLAS may exercise real provider order submission/cancel/replace/flatten lifecycle behavior. Live execution remains disabled and is not implied by that future checkpoint.
 
 The legacy Chart Monitor is preserved while ATLAS is built as the redesigned system.
 
