@@ -2,7 +2,7 @@
 
 **Normative development-flow contract. Last synchronized: 2026-08-23.**
 
-This document defines how ATLAS work moves from one numbered phase to the next. It exists to prevent scope drift, skipped evidence boundaries, accidental authority expansion, and ad hoc development that bypasses the roadmap.
+This document defines how ATLAS work moves from one numbered phase to the next. It exists to prevent scope drift, skipped evidence boundaries, accidental authority expansion, and ad hoc development that bypasses the roadmap **without turning the phase process into unnecessary micro-checkpoints**.
 
 ## 1. Core rule
 
@@ -10,7 +10,9 @@ ATLAS advances by explicit numbered phases.
 
 A phase is not complete merely because code exists or tests pass. A phase must move through the complete flow below before the next numbered phase becomes active:
 
-`DEFINE -> LOCK -> IMPLEMENT -> FOCUSED TEST -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
+`DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST AS NEEDED -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
+
+The flow is a **control framework, not a requirement to stop after each arrow**. When a whole phase is sufficiently defined, dependencies are available, and authority does not require an intermediate user/external checkpoint, ATLAS should implement the entire phase as one coherent batch and then perform the strongest required validation at the phase evidence boundary.
 
 No credential, endpoint, connected account, implementation detail, prior phase success, or passing CI silently expands provider or live-trading authority.
 
@@ -46,25 +48,43 @@ Before implementation begins, the active phase must state:
 
 Authority-changing phases must additionally preregister the exact authorization checkpoint and fail-closed behavior before any real mutation occurs.
 
-## 4. Implementation package
+## 4. Batch-first implementation package
 
 Normal coherent implementation is:
 
 `implementation + targeted tests + independent validator + CLI/orchestration + documentation/status`
 
-Work should be batched coherently rather than broken into unnecessary micro-checkpoints, but evidence boundaries may not be skipped for speed.
+Default cadence is **batch-first**:
 
-## 5. Validation ladder
+- implement as much of the current phase as can be safely and coherently completed in one development batch;
+- if the entire phase is well-defined and no external/authority boundary interrupts it, implement the whole phase before the first formal full-regression boundary;
+- combine related production code, tests, validators, orchestration, diagnostics, and documentation work instead of creating artificial substeps;
+- use focused tests during development when they provide useful feedback, especially around new contracts, risky shared code, or recently failing paths;
+- do not run the entire regression suite after every small commit merely for ceremony;
+- do not stop for user interaction when the remaining work can be completed safely with repository/CI evidence alone;
+- if an intermediate test reveals a genuine architectural, security, data-integrity, or authority defect, fix that defect before stacking additional work on top of it.
 
-Validation normally proceeds in this order:
+The preferred unit of work is the **largest coherent batch that preserves clear causality and can still be validated meaningfully**.
 
-1. static/syntax/compile checks;
-2. focused unit/contract tests for the changed package;
-3. independent phase validator;
-4. full local regression when a meaningful evidence boundary is reached;
-5. Windows and Ubuntu CI;
-6. target-machine/provider evidence when CI cannot reproduce the required environment;
+## 5. Validation ladder and cadence
+
+Validation normally proceeds through these layers:
+
+1. static/syntax/compile checks as useful during development;
+2. focused unit/contract tests for changed/high-risk packages as useful during development;
+3. independent phase validator before the acceptance evidence boundary;
+4. full local regression at a meaningful batch/phase boundary;
+5. Windows and Ubuntu CI at that evidence boundary;
+6. target-machine/provider evidence only when CI cannot reproduce the required environment;
 7. reconciliation/audit evidence for provider or authority-changing work.
+
+Cadence rules:
+
+- **Whole-phase batch preferred:** when feasible, finish the implementation package and then run the independent validator + full regression + cross-platform CI once as the primary evidence boundary.
+- **Intermediate full regression only when justified:** use it after broad shared-foundation changes, before an irreversible/external step, when a focused failure suggests wider regression risk, or when the phase is large enough that an interim evidence boundary materially reduces debugging risk.
+- **Focused tests are cheap feedback:** run them freely while coding, but they do not replace the final validator/regression/CI evidence.
+- **Target-machine work is scarce evidence:** do not repeatedly ask the user to rerun local/provider checks when code relevant to that evidence has not changed.
+- **Documentation sync is batched:** update living docs at meaningful evidence boundaries and acceptance transitions, not after every minor edit.
 
 A failure at any layer is investigated at that layer. ATLAS does not weaken data, risk, provider, security, or trading gates merely to obtain a green result.
 
@@ -81,12 +101,14 @@ For provider mutations:
 - cleanup/flatten authority is separate when the phase contract says it is separate;
 - live-money authority is never inferred from paper/sandbox authority.
 
+**Authority boundaries override batching.** A coherent phase may be implemented in one batch, but ATLAS may not batch across an explicit user-authorization checkpoint, an external provider-state prerequisite, or a separate destructive/live authority class.
+
 ## 7. Acceptance and merge
 
 A phase may be marked **ACCEPTED** only when:
 
 - required implementation is complete;
-- focused tests pass;
+- required focused/contract tests pass;
 - independent validator passes;
 - required full regression/CI passes;
 - required target-machine/provider evidence is accepted;
@@ -106,7 +128,7 @@ After acceptance:
 
 ## 8. Documentation contract
 
-Every meaningful work package updates, as applicable:
+Every meaningful batch/evidence boundary updates, as applicable:
 
 - `README.md`;
 - `docs/roadmap.md`;
@@ -157,8 +179,12 @@ Required lifecycle:
 
 If the order fills or partially fills, ATLAS stops for separate cleanup authority. Alpaca is not an automatic failover destination. Live trading remains outside Phase 18.
 
+Phase 18 demonstrates the batching rule: 18A was developed and validated as a coherent software package; 18B exists separately only because regular-session realtime evidence and explicit provider-mutation authority are genuine external/authority boundaries.
+
 ## 10. Next-phase rule
 
 Phase 19 is **not active yet**.
 
 The next numbered phase will be defined only after Phase 18B evidence is accepted and Phase 18 is merged. Its purpose, scope, authority, tests, evidence, and acceptance criteria must be written before substantive Phase 19 implementation begins.
+
+Once Phase 19 is locked, the default is to implement **as much of Phase 19 as possible — preferably the full phase — before stopping for the formal evidence boundary**, unless measured risk, an external prerequisite, or an authority checkpoint makes an earlier boundary materially useful.
