@@ -38,7 +38,7 @@ Core roles:
 - **Phases 1–17: ACCEPTED and merged.**
 - **Phase 18: ACTIVE** on draft PR #18, branch `phase-18-paper-provider-mutation-lifecycle-validation`.
 - Accepted Phase 17 merge: `65d5a7b58c6894eba27722465741c92db9a33aaf`.
-- Latest Phase 18 test-harness portability code head before this documentation commit: `38c09c21d4fc636667921c779fbe59341839e9e8`.
+- Phase 18 test-harness portability code head: `38c09c21d4fc636667921c779fbe59341839e9e8`.
 - Phase 18 policy fingerprint: `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`.
 - Real provider mutation performed in Phase 18 so far: **NO**.
 - Live execution: **DISABLED**.
@@ -236,11 +236,11 @@ At local branch head `e1631e741a547c78eb6c3c9b943ba1473c805cf6`:
 - automatic failover disabled;
 - working tree clean.
 
-That first local full suite produced **907 passed / 1 failed** on the pre-existing Phase 16 loopback CSRF rejection test with Windows `WinError 10053`.
+The first local full suite produced **907 passed / 1 failed** on the pre-existing Phase 16 loopback CSRF rejection test with Windows `WinError 10053`.
 
 First portability hardening commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` disabled ambient proxies for deterministic `127.0.0.1` test traffic. CI run `32657554236` then passed all validators and **908 tests on both Ubuntu and Windows**.
 
-The target machine pulled documentation head `36c9832891b8565f75b727db7dfc231719be5006` and reran the test:
+The target machine then reran the isolated test and full suite:
 
 - isolated CSRF rejection test: **1 passed in 3.52s**;
 - immediate full suite: **907 passed / 1 failed in 24.04s**;
@@ -257,6 +257,14 @@ Current test-harness hardening commit `38c09c21d4fc636667921c779fbe59341839e9e8`
 - accepting only exact Windows `winerror == 10053` as an alternate transport manifestation after the rejection is already proven;
 - still requiring zero action/audit events;
 - failing every other transport exception.
+
+Cross-platform CI for that exact code change is green in run `32662398274`:
+
+- all validators through Phase 18: **PASS**;
+- Ubuntu: **908 passed in 13.95s**;
+- Windows: **908 passed in 22.59s**;
+- both jobs: **SUCCESS**;
+- provider writes: **0**.
 
 **No production Phase 16 server code, broker adapter, execution/risk logic, provider authority, or Phase 18 mutation gate changed.**
 
@@ -312,9 +320,9 @@ Historical phase/fix READMEs remain frozen provenance unless a factual historica
 
 ## Exact continuation point
 
-1. Pull the latest Phase 18 branch after the current Windows transport-hardening/docs commits settle.
-2. Rerun the isolated Phase 16 CSRF test and full suite locally; expected full result is 908 passed.
-3. Do not repeat real provider writes — none are authorized yet.
+1. Pull the latest Phase 18 branch.
+2. Rerun the isolated Phase 16 CSRF test and full suite locally; expected full result is **908 passed**.
+3. Do not perform real provider mutation yet; none has been authorized.
 4. During a future regular market session, start focused Massive realtime quote state and run Phase 18 **plan-only** validation first.
 5. Review the exact one-share plan.
 6. Only after explicit user authorization may Webull sandbox perform the first real Phase 18 mutation.
