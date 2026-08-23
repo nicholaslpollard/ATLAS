@@ -30,6 +30,7 @@ Thumbs.db
 /data/manifests/
 /data/checkpoints/
 /logs/
+webull_trade_sdk.log*
 
 # Legacy reference implementation
 /legacy/current_chart_monitor/
