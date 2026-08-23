@@ -24,6 +24,7 @@ from packages.schemas.execution import (
     BrokerAccountSnapshot,
     BrokerName,
     BrokerOrderPlan,
+    BrokerOrderSide,
     BrokerOrderSnapshot,
     BrokerOrderStatus,
     BrokerPositionSnapshot,
@@ -36,19 +37,26 @@ from packages.schemas.live_market import LiveQuote
 NOW = datetime(2026, 8, 24, 15, 0, tzinfo=UTC)
 
 
-def _quote(*, bid: float = 100.0, ask: float = 100.1, delay: int = 0) -> LiveQuote:
+def _quote(
+    *,
+    bid: float = 100.0,
+    ask: float = 100.1,
+    delay: int = 0,
+    feed_mode: LiveFeedMode = LiveFeedMode.REALTIME,
+    session_segment: SessionSegment = SessionSegment.REGULAR,
+) -> LiveQuote:
     return LiveQuote(
         symbol="AAPL",
         provider_timestamp_utc=NOW,
         session_date=date(2026, 8, 24),
-        session_segment=SessionSegment.REGULAR,
+        session_segment=session_segment,
         bid_price=bid,
         bid_size=100,
         ask_price=ask,
         ask_size=100,
         sequence=1,
         provider=DataProvider.MASSIVE,
-        feed_mode=LiveFeedMode.REALTIME,
+        feed_mode=feed_mode,
         expected_delay_seconds=delay,
         received_at_utc=NOW,
     )
@@ -75,12 +83,18 @@ class FakeOperationalBroker(BrokerAdapter):
         uncertain_cancel: bool = False,
         existing_client_order_id: str | None = None,
         existing_position: bool = False,
+        equity: float = 100_000.0,
+        buying_power: float = 200_000.0,
+        trading_blocked: bool = False,
     ) -> None:
         self.account_id = "fake-phase18-operational"
         self.preflight_accepted = preflight_accepted
         self.submit_status = submit_status
         self.uncertain_submit = uncertain_submit
         self.uncertain_cancel = uncertain_cancel
+        self.equity = equity
+        self.buying_power = buying_power
+        self.trading_blocked = trading_blocked
         self.preview_calls = 0
         self.submit_calls = 0
         self.cancel_calls = 0
@@ -121,9 +135,7 @@ class FakeOperationalBroker(BrokerAdapter):
             client_order_id=client_order_id,
             provider_order_id="fake-provider-" + client_order_id,
             ticker=ticker,
-            side=build_phase18_operational_validation_plan(
-                _quote(), broker=self.broker
-            ).side,
+            side=BrokerOrderSide.BUY,
             status=status,
             requested_quantity=quantity,
             filled_quantity=filled,
@@ -140,11 +152,11 @@ class FakeOperationalBroker(BrokerAdapter):
             environment=self.environment,
             account_id=self.account_id,
             as_of_utc=NOW,
-            equity=100_000.0,
-            cash=100_000.0,
-            buying_power=200_000.0,
+            equity=self.equity,
+            cash=self.equity,
+            buying_power=self.buying_power,
             gross_market_value=gross,
-            trading_blocked=False,
+            trading_blocked=self.trading_blocked,
             shorting_enabled=True,
         )
 
@@ -226,7 +238,7 @@ class FakeOperationalBroker(BrokerAdapter):
 def test_operational_plan_is_one_share_nonmarketable_buy_with_valid_geometry() -> None:
     plan = build_phase18_operational_validation_plan(_quote(), broker=BrokerName.WEBULL)
     assert plan.quantity == PHASE18_VALIDATION_QUANTITY == 1
-    assert plan.side.value == "BUY"
+    assert plan.side == BrokerOrderSide.BUY
     assert plan.limit_price == 95.0
     assert plan.stop_price < plan.limit_price < plan.target_price
     assert plan.limit_price * plan.quantity <= PHASE18_MAX_VALIDATION_NOTIONAL
@@ -248,9 +260,18 @@ def test_operational_plan_identity_changes_by_broker() -> None:
 
 
 def test_operational_plan_rejects_delayed_quote() -> None:
-    with pytest.raises(Phase18OperationalValidationError, match="undelayed quote"):
+    with pytest.raises(Phase18OperationalValidationError, match="undelayed realtime quote"):
         build_phase18_operational_validation_plan(
-            _quote(delay=900), broker=BrokerName.WEBULL
+            _quote(delay=900, feed_mode=LiveFeedMode.DELAYED),
+            broker=BrokerName.WEBULL,
+        )
+
+
+def test_operational_plan_rejects_nonregular_quote() -> None:
+    with pytest.raises(Phase18OperationalValidationError, match="regular-session quote"):
+        build_phase18_operational_validation_plan(
+            _quote(session_segment=SessionSegment.PREMARKET),
+            broker=BrokerName.WEBULL,
         )
 
 
@@ -282,6 +303,51 @@ def test_operational_lifecycle_submits_reconciles_cancels_and_returns_flat() -> 
     assert adapter.cancel_calls == 1
 
 
+def test_operational_lifecycle_trading_blocked_stops_before_provider_preflight() -> None:
+    plan = build_phase18_operational_validation_plan(_quote(), broker=BrokerName.WEBULL)
+    adapter = FakeOperationalBroker(trading_blocked=True)
+    with pytest.raises(Phase18OperationalValidationError, match="trading blocked") as exc_info:
+        run_phase18_operational_validation_lifecycle(
+            plan,
+            adapter,
+            authorization=_authorization(),
+            now_utc=NOW,
+        )
+    assert exc_info.value.stage == "risk_revalidation"
+    assert adapter.preview_calls == 0
+    assert adapter.submit_calls == 0
+
+
+def test_operational_lifecycle_buying_power_stops_before_provider_preflight() -> None:
+    plan = build_phase18_operational_validation_plan(_quote(), broker=BrokerName.WEBULL)
+    adapter = FakeOperationalBroker(buying_power=50.0)
+    with pytest.raises(Phase18OperationalValidationError, match="buying power") as exc_info:
+        run_phase18_operational_validation_lifecycle(
+            plan,
+            adapter,
+            authorization=_authorization(),
+            now_utc=NOW,
+        )
+    assert exc_info.value.stage == "risk_revalidation"
+    assert adapter.preview_calls == 0
+    assert adapter.submit_calls == 0
+
+
+def test_operational_lifecycle_single_name_risk_stops_before_provider_preflight() -> None:
+    plan = build_phase18_operational_validation_plan(_quote(), broker=BrokerName.WEBULL)
+    adapter = FakeOperationalBroker(equity=500.0, buying_power=500.0)
+    with pytest.raises(Phase18OperationalValidationError, match="single-name") as exc_info:
+        run_phase18_operational_validation_lifecycle(
+            plan,
+            adapter,
+            authorization=_authorization(),
+            now_utc=NOW,
+        )
+    assert exc_info.value.stage == "risk_revalidation"
+    assert adapter.preview_calls == 0
+    assert adapter.submit_calls == 0
+
+
 def test_operational_lifecycle_preflight_rejection_performs_no_submit() -> None:
     plan = build_phase18_operational_validation_plan(_quote(), broker=BrokerName.WEBULL)
     adapter = FakeOperationalBroker(preflight_accepted=False)
@@ -311,6 +377,21 @@ def test_operational_lifecycle_existing_client_id_blocks_new_write() -> None:
     assert exc_info.value.stage == "idempotency_query"
     assert adapter.preview_calls == 0
     assert adapter.submit_calls == 0
+
+
+def test_operational_lifecycle_rejected_ack_is_not_success() -> None:
+    plan = build_phase18_operational_validation_plan(_quote(), broker=BrokerName.WEBULL)
+    adapter = FakeOperationalBroker(submit_status=BrokerOrderStatus.REJECTED)
+    with pytest.raises(Phase18OperationalValidationError, match="unexpected terminal") as exc_info:
+        run_phase18_operational_validation_lifecycle(
+            plan,
+            adapter,
+            authorization=_authorization(),
+            now_utc=NOW,
+        )
+    assert exc_info.value.stage == "post_submit_reconciliation"
+    assert adapter.submit_calls == 1
+    assert adapter.cancel_calls == 0
 
 
 def test_operational_lifecycle_filled_order_never_auto_flattens() -> None:
