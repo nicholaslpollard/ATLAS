@@ -102,5 +102,8 @@ jobs:
       - name: Validate Phase 17 contracts
         run: python scripts/validate_phase17.py
 
+      - name: Validate Phase 18 contracts
+        run: python scripts/validate_phase18.py
+
       - name: Run tests
         run: python -m pytest -q
