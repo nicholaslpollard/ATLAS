@@ -8,12 +8,14 @@ from packages.brokers.base import (
     BrokerAdapter,
     BrokerAdapterError,
     BrokerMutationUncertain,
+    BrokerOrderNotFound,
     BrokerSubmissionUncertain,
 )
 from packages.control_plane.phase18_authorization import (
     Phase18MutationAuthorization,
     require_phase18_mutation_authorization,
 )
+from packages.core.enums import LiveFeedMode, SessionSegment
 from packages.execution.validator import reconcile_broker
 from packages.schemas.execution import (
     BrokerName,
@@ -95,6 +97,16 @@ def build_phase18_operational_validation_plan(
             "operational validation broker must be Webull or Alpaca",
             stage="plan",
         )
+    if quote.feed_mode != LiveFeedMode.REALTIME or quote.expected_delay_seconds != 0:
+        raise Phase18OperationalValidationError(
+            "operational validation requires an undelayed realtime quote",
+            stage="plan",
+        )
+    if quote.session_segment != SessionSegment.REGULAR:
+        raise Phase18OperationalValidationError(
+            "operational validation requires a regular-session quote",
+            stage="plan",
+        )
     if quote.bid_price <= 0.0 or quote.ask_price <= 0.0:
         raise Phase18OperationalValidationError(
             "operational validation requires positive bid and ask",
@@ -103,11 +115,6 @@ def build_phase18_operational_validation_plan(
     if quote.ask_price < quote.bid_price:
         raise Phase18OperationalValidationError(
             "operational validation quote ask cannot be below bid",
-            stage="plan",
-        )
-    if quote.expected_delay_seconds != 0:
-        raise Phase18OperationalValidationError(
-            "operational validation requires an undelayed quote",
             stage="plan",
         )
 
@@ -211,17 +218,14 @@ def run_phase18_operational_validation_lifecycle(
 
     try:
         existing = adapter.order(plan.client_order_id)
-    except Exception as exc:
-        from packages.brokers.base import BrokerOrderNotFound
-
-        if isinstance(exc, BrokerOrderNotFound):
-            existing = None
-        else:
-            raise Phase18OperationalValidationError(
-                "cannot prove validation client order id is absent",
-                stage="idempotency_query",
-                reconciliation=before,
-            ) from exc
+    except BrokerOrderNotFound:
+        existing = None
+    except BrokerAdapterError as exc:
+        raise Phase18OperationalValidationError(
+            "cannot prove validation client order id is absent",
+            stage="idempotency_query",
+            reconciliation=before,
+        ) from exc
     if existing is not None:
         raise Phase18OperationalValidationError(
             "validation client order id already exists; a new provider write is blocked",
@@ -272,7 +276,7 @@ def run_phase18_operational_validation_lifecycle(
 
     try:
         exact = adapter.order(plan.client_order_id)
-    except Exception as exc:
+    except BrokerAdapterError as exc:
         reconciled = _safe_reconcile(adapter, now)
         raise Phase18OperationalValidationError(
             "validation submission cannot be reconciled by exact client order id",
