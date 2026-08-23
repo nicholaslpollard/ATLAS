@@ -17,6 +17,10 @@ from packages.control_plane.phase18_authorization import (
 )
 from packages.core.enums import LiveFeedMode, SessionSegment
 from packages.execution.validator import reconcile_broker
+from packages.portfolio.phase13_policy import (
+    PHASE13_MAX_SINGLE_NAME_NOTIONAL_FRACTION,
+    PHASE13_RISK_PER_TRADE_FRACTION,
+)
 from packages.schemas.execution import (
     BrokerName,
     BrokerOrderPlan,
@@ -165,6 +169,47 @@ def _safe_reconcile(adapter: BrokerAdapter, now: datetime) -> BrokerReconciliati
         return None
 
 
+def _validate_operational_risk(
+    plan: BrokerOrderPlan,
+    reconciliation: BrokerReconciliationSnapshot,
+) -> None:
+    account = reconciliation.account
+    equity = float(account.equity)
+    notional = float(plan.limit_price) * int(plan.quantity)
+    loss_at_stop = (float(plan.limit_price) - float(plan.stop_price)) * int(plan.quantity)
+
+    if account.trading_blocked:
+        raise Phase18OperationalValidationError(
+            "operational validation broker account reports trading blocked",
+            stage="risk_revalidation",
+            reconciliation=reconciliation,
+        )
+    if equity <= 0.0:
+        raise Phase18OperationalValidationError(
+            "operational validation requires positive broker equity",
+            stage="risk_revalidation",
+            reconciliation=reconciliation,
+        )
+    if notional > float(account.buying_power) + 1e-12:
+        raise Phase18OperationalValidationError(
+            "operational validation exceeds current broker buying power",
+            stage="risk_revalidation",
+            reconciliation=reconciliation,
+        )
+    if notional / equity > PHASE13_MAX_SINGLE_NAME_NOTIONAL_FRACTION + 1e-12:
+        raise Phase18OperationalValidationError(
+            "operational validation exceeds accepted single-name notional risk limit",
+            stage="risk_revalidation",
+            reconciliation=reconciliation,
+        )
+    if loss_at_stop / equity > PHASE13_RISK_PER_TRADE_FRACTION + 1e-12:
+        raise Phase18OperationalValidationError(
+            "operational validation exceeds accepted loss-at-stop risk limit",
+            stage="risk_revalidation",
+            reconciliation=reconciliation,
+        )
+
+
 def run_phase18_operational_validation_lifecycle(
     plan: BrokerOrderPlan,
     adapter: BrokerAdapter,
@@ -215,6 +260,7 @@ def run_phase18_operational_validation_lifecycle(
             stage="pre_reconciliation",
             reconciliation=before,
         )
+    _validate_operational_risk(plan, before)
 
     try:
         existing = adapter.order(plan.client_order_id)
@@ -284,6 +330,19 @@ def run_phase18_operational_validation_lifecycle(
             provider_state_uncertain=True,
             reconciliation=reconciled,
         ) from exc
+
+    allowed_post_submit = {
+        BrokerOrderStatus.SUBMITTED,
+        BrokerOrderStatus.PARTIAL_FILLED,
+        BrokerOrderStatus.FILLED,
+    }
+    if exact.status not in allowed_post_submit:
+        reconciled = _safe_reconcile(adapter, now)
+        raise Phase18OperationalValidationError(
+            "validation submission reached an unexpected terminal/non-open status",
+            stage="post_submit_reconciliation",
+            reconciliation=reconciled,
+        )
 
     cancellation: BrokerOrderSnapshot | None = None
     writes = 1
