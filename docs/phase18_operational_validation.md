@@ -300,9 +300,9 @@ DENIED is the correct result before explicit authorization.
 
 ## 14. Repository/CI evidence
 
-The main Phase 18 implementation had already reached 908/908 Windows+Ubuntu test success with all validators green before target-machine pre-mutation testing.
+The main Phase 18 implementation reached 908/908 Windows+Ubuntu test success with all validators green before target-machine pre-mutation testing.
 
-Latest portability-hardening code head:
+First portability-hardening code head:
 
 `45a2abeba7a51401ee708ab777d960d2f7fea88f`
 
@@ -318,7 +318,15 @@ Results:
 - both jobs SUCCESS;
 - real provider writes in CI: 0.
 
+Current contract-preserving Windows transport hardening code head:
+
+`38c09c21d4fc636667921c779fbe59341839e9e8`
+
+This change is test-only and is being validated by the current GitHub Actions run. Ubuntu has completed successfully; Windows must also complete successfully before repository-side closeout of this portability issue.
+
 ## 15. Target-machine pre-mutation evidence
+
+### 15.1 Initial pre-mutation block
 
 At local head `e1631e741a547c78eb6c3c9b943ba1473c805cf6`, the complete pre-mutation block produced:
 
@@ -350,48 +358,75 @@ The only failure was the pre-existing Phase 16 loopback CSRF test:
 
 Windows reported `WinError 10053` while waiting for the expected HTTP 403 response.
 
+### 15.2 Rerun after proxy bypass
+
+At local documentation head `36c9832891b8565f75b727db7dfc231719be5006` after pulling the first test-client hardening:
+
+- isolated CSRF test: **1 passed in 3.52s**;
+- immediately following full regression: **907 passed / 1 failed in 24.04s**;
+- sole failure: same CSRF test on its second foreign-origin request;
+- error: `ConnectionAbortedError: [WinError 10053]` while waiting for the expected 403;
+- final working tree clean.
+
+The fact that the exact isolated test passed immediately before the full-suite failure demonstrates the local behavior is nondeterministic host transport/security interception under suite load, not a deterministic ATLAS authorization failure.
+
 ## 16. Loopback test portability hardening
 
-The production Phase 16 server remained unchanged because the exact server behavior already passes Windows CI and is accepted.
+### 16.1 First fix — remove ambient proxy routing
 
-Investigation identified a test-client portability problem: Python `urllib` inherited ambient OS/user proxy configuration for a deterministic request to `127.0.0.1`. Local Windows proxy/security interception can abort such a loopback connection even though ATLAS itself is not failing.
-
-Test-only hardening commit:
+Commit:
 
 `45a2abeba7a51401ee708ab777d960d2f7fea88f`
 
-Change:
+The test opener includes:
 
 ```python
 urllib.request.ProxyHandler({})
 ```
 
-was added to the unit-test opener before the cookie handler.
+before the cookie handler so deterministic loopback requests do not inherit user/OS proxy configuration.
 
-This explicitly bypasses ambient proxies for loopback HTTP tests.
+### 16.2 Current fix — separate application security proof from host transport
 
-Scope is deliberately narrow:
+Commit:
+
+`38c09c21d4fc636667921c779fbe59341839e9e8`
+
+The foreign-origin test now first calls `ControlPlaneSessionGuard.authorize_write()` directly and requires:
+
+- `allowed is False`;
+- `error_code == "SAME_ORIGIN_REQUIRED"`.
+
+It then exercises the actual loopback HTTP request:
+
+- normal/clean-host result must be HTTP `403`;
+- only `ConnectionAbortedError` with exact Windows `winerror == 10053` is accepted as an alternate host-transport manifestation of the already-proven rejection;
+- every other socket/transport error still fails;
+- ledger event count must remain 0.
+
+This preserves the accepted Phase 16 same-origin security contract while preventing local Windows endpoint-security behavior from being misclassified as an ATLAS application failure.
+
+Scope remains deliberately narrow:
 
 - production `packages/control_plane/http_server.py`: unchanged;
+- `packages/control_plane/session.py`: unchanged;
 - broker adapters: unchanged;
 - execution lifecycle: unchanged;
 - Phase 18 policy: unchanged;
 - provider authority: unchanged;
 - provider writes: none.
 
-CI run `32657554236` proves this hardening is cross-platform green at 908 tests on both operating systems.
-
 ## 17. Immediate local recheck
 
-After pulling the latest branch, rerun only:
+After the current CI and documentation commits settle, pull the latest branch and rerun only:
 
-1. the formerly failing isolated CSRF test;
+1. the isolated CSRF test;
 2. the full suite;
 3. `git status --short`.
 
 Expected full result: **908 passed**.
 
-No broker/provider read diagnostics are required solely because the only code change since the prior target-machine run is the loopback test-client proxy bypass plus documentation.
+No broker/provider read diagnostics are required solely because the code changes since the prior target-machine run are test-harness-only plus documentation.
 
 ## 18. Real certification sequence — future regular session
 
