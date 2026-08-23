@@ -320,7 +320,7 @@ That run's full suite was 907 passed / 1 failed due only to `test_csrf_failure_c
 
 First hardening commit `45a2abeba7a51401ee708ab777d960d2f7fea88f` disabled ambient proxy use for the deterministic `127.0.0.1` test client. GitHub Actions run `32657554236` then passed all validators and 908 tests on Ubuntu and Windows.
 
-The target-machine rerun at documentation head `36c9832891b8565f75b727db7dfc231719be5006` produced:
+The target-machine rerun produced:
 
 - isolated CSRF test: **1 passed in 3.52s**;
 - immediate full suite: **907 passed / 1 failed in 24.04s**;
@@ -338,13 +338,21 @@ Current test-only hardening commit `38c09c21d4fc636667921c779fbe59341839e9e8` pr
 4. still requiring zero action/audit events;
 5. failing every other transport error.
 
+GitHub Actions run `32662398274` validates that exact code:
+
+- all validators through Phase 18 PASS;
+- Ubuntu: **908 passed in 13.95s**;
+- Windows: **908 passed in 22.59s**;
+- both jobs SUCCESS;
+- provider writes 0.
+
 Production Phase 16 server behavior, broker adapters, execution logic, Phase 18 policy, and provider authority remain unchanged.
 
 ## 12. Phase 18 remaining acceptance sequence
 
-1. Pull the latest Phase 18 branch on target machine after the current test/docs commits settle.
+1. Pull the latest Phase 18 branch on target machine.
 2. Run isolated CSRF test and full suite; expected 908 passed.
-3. Keep real provider mutation unauthorized until a regular U.S. equity session.
+3. Keep real provider mutation unauthorized until a regular U.S. equity session and explicit user approval.
 4. Start focused Massive realtime `Q.<ticker>` stream and keep it running.
 5. Run Phase 18 plan-only validation first; verify no broker adapter/provider calls/writes.
 6. Review the exact one-share plan.
