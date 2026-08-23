@@ -33,7 +33,8 @@ Active work:
 - PR: #18, draft, targeting `main`.
 - Phase 18 policy: `phase18-policy-v1-phase17-bound-explicit-paper-mutation-no-live`.
 - Phase 18 policy fingerprint: `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`.
-- Latest test-harness portability code head before this documentation commit: `38c09c21d4fc636667921c779fbe59341839e9e8`.
+- Current test-harness portability code head: `38c09c21d4fc636667921c779fbe59341839e9e8`.
+- Cross-platform CI run for that code: `32662398274`, SUCCESS on Ubuntu and Windows.
 - Real Phase 18 provider mutation performed: **NO**.
 - Live execution promoted: **NO**.
 - Automatic broker failover allowed: **NO**.
@@ -276,7 +277,7 @@ CI run `32657554236` after that change:
 - Windows full suite: **908 passed in 20.98s**;
 - both jobs SUCCESS.
 
-The target machine then pulled documentation head `36c9832891b8565f75b727db7dfc231719be5006` and reran:
+The target machine then reran:
 
 - isolated `test_csrf_failure_creates_no_action_event`: **1 passed in 3.52s**;
 - full suite: **907 passed / 1 failed in 24.04s**;
@@ -312,7 +313,15 @@ The unit test now:
 
 This does **not** modify production Phase 16 HTTP code, broker adapters, execution/risk logic, provider authority, or the Phase 18 mutation gate.
 
-CI run for `38c09c21...` is the current cross-platform evidence run. Ubuntu has already completed successfully; Windows must also complete successfully before this hardening is considered repository-side green.
+Final repository-side evidence for this hardening is GitHub Actions run `32662398274`:
+
+- all validators through Phase 18: **PASS**;
+- Ubuntu: **908 passed in 13.95s**;
+- Windows: **908 passed in 22.59s**;
+- both jobs: **SUCCESS**;
+- provider writes: **0**.
+
+The Windows loopback portability issue is therefore repository-side green. One final target-machine regression recheck remains before the pre-mutation software package is considered locally clean.
 
 ## 9. Current broker authority
 
@@ -354,13 +363,13 @@ Secrets, raw account IDs, passwords, security codes, or tokens must never be com
 
 ### Immediate local recheck
 
-After the `38c09c21...` hardening and synchronized docs are pulled:
+Pull the latest Phase 18 branch, then:
 
 1. rerun isolated `test_csrf_failure_creates_no_action_event`;
 2. rerun full `pytest -q`;
 3. confirm clean `git status`.
 
-Expected: isolated test passes and full suite reports **908 passed**. A local Windows 10053 on the already-proven foreign-origin rejection is now recognized only under the exact guarded conditions above and still requires zero ledger events.
+Expected: isolated test passes and full suite reports **908 passed**. A local Windows 10053 on the already-proven foreign-origin rejection is recognized only under the exact guarded conditions above and still requires zero ledger events.
 
 ### Later regular-session Phase 18 certification
 
