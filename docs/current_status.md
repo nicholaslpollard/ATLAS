@@ -2,15 +2,15 @@
 
 **Living status document. Last synchronized: 2026-08-23.**
 
-This file is the fastest way for a new development session or future chat to recover the current ATLAS state without reconstructing the project from old conversations. It is intentionally more operational and evidence-focused than `README.md`, while `docs/roadmap.md` remains the architecture and authority-policy lock.
+This file is the fastest way for a new development session or future chat to recover the current ATLAS state without reconstructing the project from old conversations. It is intentionally operational and evidence-focused. `docs/roadmap.md` remains the architecture/authority-policy lock, while the root `README.md` provides orientation.
 
 ## 1. Source-of-truth order
 
 When sources disagree, use this order:
 
 1. current `main` code and accepted validation artifacts;
-2. `docs/roadmap.md` for locked architecture, phase boundaries, safety rules, and authority transitions;
-3. this file for the latest accepted state, evidence summary, and exact next checkpoint;
+2. `docs/roadmap.md` for locked architecture, phase boundaries, safety rules, configuration policy, and authority transitions;
+3. this file for the latest accepted state, evidence summary, and exact continuation point;
 4. root `README.md` for project orientation;
 5. merged pull requests for detailed phase acceptance evidence;
 6. phase-specific documents and old `README_PHASE_*` / `README_ATLAS_*` files as historical records only.
@@ -22,13 +22,15 @@ Old phase/fix READMEs must not be treated as current roadmap instructions. They 
 - **Phases 1 through 17 are accepted and merged.**
 - The legacy Chart Monitor is preserved; ATLAS is the redesign/rebuild path.
 - Phase 17 merged after successful real-provider read-only reconciliation.
-- The repository is operating from `main`; completed phase branches are removed after merge/closeout.
-- The last accepted provider-readiness code head was `21eeb757d84de33878ab1c8d7c8afe0797dee1f9` and Phase 17 merged into `main` at `65d5a7b58c6894eba27722465741c92db9a33aaf`.
-- Subsequent `main` commits synchronize documentation/config templates and ignore generated Webull SDK logs; they do not grant additional trading authority.
+- The repository is operating from `main`; completed phase branches have been removed after merge/closeout.
+- The accepted Phase 17 provider-readiness code head was `21eeb757d84de33878ab1c8d7c8afe0797dee1f9`.
+- Phase 17 merged into `main` at `65d5a7b58c6894eba27722465741c92db9a33aaf`.
+- Later `main` commits synchronize living documentation, `.env.example`, and generated-log ignore rules; they do not grant additional trading authority.
 - **Current authority checkpoint:** `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`.
 - Provider order mutation is **not authorized yet** by Phase 17 acceptance.
 - Live execution is **not promoted**.
 - Automatic cross-broker failover remains **disabled**.
+- GitHub branch policy has been cleaned up so accepted work resides on `main`; old merged phase branches are removed.
 
 ## 3. Target architecture
 
@@ -52,7 +54,7 @@ Phase 3 materialized validated provider files into ATLAS-owned canonical Parquet
 
 Accepted stable identity/history foundation with exact provider-native ticker case, point-in-time reference snapshots, authoritative continuity evidence where available, ticker-reuse protection, anomaly reconciliation, and provider/canonical/derived historical auditing.
 
-Massive authoritative production history begins at **2021-08-16**. The historical lake proved restartable after real Windows interruption without rebuilding already committed work.
+Massive authoritative production history begins at **2021-08-16**. The historical lake proved restartable after a real Windows interruption without rebuilding already committed work.
 
 ### Phase 5 — live market state
 
@@ -70,7 +72,7 @@ Accepted permanent feature persistence policy:
 - 15m: on-demand/cache;
 - 1m: live/current state only.
 
-The accepted 2021-08-16 through 2026-08-14 permanent feature lake contained 154,188,221 rows across 1d/4h/1h and passed deep source/hash/state-lineage audits plus historical-to-incremental continuation checks.
+The accepted 2021-08-16 through 2026-08-14 permanent feature lake contained **154,188,221 rows** across 1d/4h/1h and passed deep source/hash/state-lineage audits plus historical-to-incremental continuation checks.
 
 ### Phase 7 — point-in-time universe registry
 
@@ -188,6 +190,8 @@ Same-ticker exposure changes and broker switching must respect accepted reconcil
 
 Before execution advancement, ATLAS added a read-only cumulative integrity acceptance over historical source/canonical/feature/regime/identity lineage. It did not modify production analytical or broker state. This audit became an upstream execution prerequisite.
 
+Accepted audit evidence included complete canonical daily structural checks, source/manifest lineage verification, deterministic sampled 1m->1h/4h reconstruction, independent feature replay, regime chronology, identity integrity, and zero invalid/duplicate/missing-session findings in the accepted scope.
+
 ### Phase 16 — browser control plane and production operations
 
 Accepted browser-facing control plane, status/action APIs, audit/idempotency semantics, restart/recovery handling, broker-switch workflow, cleanup planning, and operational health surfaces.
@@ -198,7 +202,7 @@ Critical boundary: the browser is a **control plane, not independent execution a
 
 Accepted on 2026-08-23 with real Webull sandbox and Alpaca paper reads.
 
-Webull account discovery found five readable sandbox accounts. The account selector correctly failed closed on ambiguity. The selected operational sandbox account was then explicitly bound by sanitized ref `3d64d273c694250b`; raw account identity remained local and was not printed or committed.
+Webull account discovery found five readable sandbox accounts. The account selector correctly failed closed on ambiguity. A sandbox margin account was then explicitly selected locally using a sanitized reference; raw account identity remained local and was not printed or committed.
 
 Target-machine evidence:
 
@@ -259,15 +263,54 @@ Until explicit authorization is given, ATLAS must not perform real provider:
 
 Live execution and automatic cross-broker failover remain disabled regardless.
 
-If/when explicitly authorized, the next coherent work package should exercise real paper/sandbox order lifecycle behavior under the accepted Phase 15/16 contracts, including preflight, fresh quote, risk, protective geometry, idempotency, exact-client-order reconciliation, uncertain-write recovery, cancellation/replace semantics where supported, position/order reconciliation, and safe cleanup. Paper-provider mutation acceptance must remain separate from any later live-money promotion.
+If/when explicitly authorized, the next coherent work package should exercise real paper/sandbox order lifecycle behavior under the accepted Phase 15/16 contracts, including preflight, fresh quote, risk, protective geometry, idempotency, exact-client-order reconciliation, uncertain-write recovery, cancellation/replace semantics where supported, position/order reconciliation, and safe cleanup.
 
-## 7. Configuration and secret handling
+Paper-provider mutation acceptance must remain separate from any later live-money promotion.
 
-- Real `.env` is local and ignored by Git.
-- `.env.example` is a template only and must never contain real credentials.
-- Endpoint URLs are not treated as secrets, but credentials/account IDs/security codes must not be committed or echoed in logs/docs.
-- Current accepted broker code recognizes Webull paper/sandbox credentials/account selection and Alpaca paper credentials; production/live credential presence must never imply live authority.
-- Generated `webull_trade_sdk.log*` files are ignored.
+## 7. Current environment/configuration template
+
+The tracked `.env.example` is intentionally non-secret but now mirrors the project's desired provider layout so local copies can stay synchronized.
+
+Current template structure:
+
+```text
+ATLAS_ENV=development
+OPENAI_API_KEY=
+DATABASE_URL=
+
+MASSIVE_API_KEY=
+MASSIVE_S3_ACCESS_KEY_ID=
+MASSIVE_S3_SECRET_ACCESS_KEY=
+MASSIVE_ENDPOINT=https://files.massive.com
+
+WEBULL_PAPER_APP_KEY=
+WEBULL_PAPER_APP_SECRET=
+WEBULL_LIVE_APP_KEY=
+WEBULL_LIVE_APP_SECRET=
+
+ALPACA_PAPER_ENDPOINT=https://paper-api.alpaca.markets/v2
+ALPACA_PAPER_API_KEY=
+ALPACA_PAPER_API_SECRET=
+ALPACA_LIVE_ENDPOINT=https://api.alpaca.markets
+ALPACA_LIVE_API_KEY=
+ALPACA_LIVE_API_SECRET=
+
+IBKR_HOST=127.0.0.1
+IBKR_PORT=4002
+IBKR_CLIENT_ID=17
+```
+
+The template also keeps a commented `ALPACa_Security_Code` placeholder **blank**. Security-code values, even on commented lines, are credentials and must not be committed.
+
+Important interpretation rules:
+
+- endpoint URLs and localhost/default connection settings are not secrets;
+- blank live credential placeholders do not authorize live execution;
+- live endpoint presence does not promote a live broker adapter;
+- IBKR configuration placeholders do not mean an IBKR integration is accepted;
+- real credential values remain in the local `.env` or another approved secret store;
+- raw broker account IDs, API secrets, security codes, passwords, tokens, and session credentials must never be committed;
+- generated `webull_trade_sdk.log*` files are ignored.
 
 ## 8. Development and validation workflow
 
@@ -278,7 +321,7 @@ The project uses an accelerated evidence-boundary workflow:
 - run full regression and Windows/Ubuntu CI at coherent batch boundaries;
 - use independent validators for data/model/broker authority transitions;
 - use one complete PowerShell block when target-machine/local evidence is required;
-- fail closed on ambiguity, missing lineage/data, broker-state uncertainty, or invalid geometry;
+- fail closed on ambiguity, missing lineage/data, broker-state uncertainty, uncertain provider writes, or invalid geometry;
 - do not invent post-hoc thresholds to force acceptance.
 
 User input is normally required only for unavailable local/external evidence, a validation result that changes the technical choice, an irreversible/authority-changing write, a broker/live-money transition, or a genuine unresolved product/design choice.
@@ -297,11 +340,12 @@ Documentation synchronization is part of every meaningful ATLAS change, not an o
 
 At each coherent work-package/phase boundary:
 
-1. update root `README.md` if current state, architecture summary, broker authority, or next checkpoint changed;
-2. update `docs/roadmap.md` if architecture, phase status, evidence boundary, development protocol, or authority transition changed;
-3. update this `docs/current_status.md` with the latest accepted evidence, current branch/authority state, and exact next action;
+1. update root `README.md` if current state, architecture summary, provider/broker configuration, broker authority, or next checkpoint changed;
+2. update `docs/roadmap.md` if architecture, phase status, evidence boundary, development protocol, configuration policy, or authority transition changed;
+3. update this `docs/current_status.md` with the latest accepted evidence, current branch/authority state, configuration notes, and exact next action;
 4. update the active PR body with the concise acceptance ledger;
-5. keep historical phase/fix documents intact unless correcting a factual error in that historical record.
+5. update `.env.example` and related configuration notes when provider/configuration layout changes;
+6. keep historical phase/fix documents intact unless correcting a factual error in that historical record.
 
 A future chat should never have to infer the current checkpoint from old conversation memory when the repository can state it directly.
 
@@ -313,8 +357,15 @@ A new chat/session working on ATLAS should do this before changing code:
 2. read `README.md`;
 3. read `docs/roadmap.md`;
 4. read this file completely;
-5. inspect the latest merged PR(s) when more acceptance detail is needed;
-6. verify that planned work does not cross an authority boundary without explicit approval;
-7. treat older Chart Monitor pipeline plans and old phase READMEs as historical unless the current roadmap explicitly incorporates them.
+5. inspect `.env.example` for the current provider variable layout, but never assume configuration presence grants authority;
+6. inspect the latest merged PR(s) when more acceptance detail is needed;
+7. verify that planned work does not cross an authority boundary without explicit approval;
+8. treat older Chart Monitor pipeline plans and old phase READMEs as historical unless the current roadmap explicitly incorporates them.
 
-The current correct continuation point is **after accepted Phase 17 and before any real paper/sandbox provider mutation**.
+## 12. Exact continuation point
+
+The correct continuation point is **after accepted Phase 17 read-only provider readiness and before any real paper/sandbox provider mutation**.
+
+Do not repeat Phase 17 unless new evidence indicates reconciliation/configuration has changed materially. Do not jump to live trading. The next authority-changing package begins only when the user explicitly authorizes:
+
+`PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
