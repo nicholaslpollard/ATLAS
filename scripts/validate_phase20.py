@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from packages.jobs.orchestrator import Phase20Orchestrator
+from packages.jobs.orchestrator import ManifestConflictError, Phase20Orchestrator
 from packages.jobs.phase20_policy import (
     PHASE20_POLICY_CONTRACT_VERSION,
     phase20_policy_fingerprint,
@@ -93,6 +93,18 @@ def main() -> int:
             json.loads(line)
         assert "credential" not in journal_text.lower()
 
+        conflict_plan = orchestrator.plan("validator-false-success")
+        false_success = orchestrator._new_manifest(conflict_plan)
+        false_success["run_state"] = RunState.SUCCEEDED.value
+        orchestrator.store.write_manifest(conflict_plan.run_id, false_success)
+        try:
+            orchestrator.execute_shadow("validator-false-success")
+        except ManifestConflictError:
+            semantic_conflict_blocked = True
+        else:
+            semantic_conflict_blocked = False
+        assert semantic_conflict_blocked
+
     print("ATLAS Phase 20 deterministic run orchestration validation")
     print(f"  policy contract: {PHASE20_POLICY_CONTRACT_VERSION}")
     print(f"  policy fingerprint: {phase20_policy_fingerprint()}")
@@ -100,6 +112,7 @@ def main() -> int:
     print(f"  pipeline fingerprint deterministic: {registry.fingerprint()}")
     print(f"  topological order: {','.join(registry.topological_order())}")
     print("  external mutation-stage registration: BLOCKED")
+    print("  persisted semantic conflict: BLOCKED")
     print("  plan-only local state writes: 0")
     print("  provider calls performed: 0")
     print("  provider writes performed: 0")
