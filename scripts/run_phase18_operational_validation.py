@@ -17,8 +17,13 @@ from packages.execution.phase18_operational_validation import (
     build_phase18_operational_validation_plan,
     run_phase18_operational_validation_lifecycle,
 )
+from packages.execution.phase18_webull_quote import Phase18WebullQuoteResolver
 from packages.execution.quote_source import ExecutionQuoteError, Phase15LiveQuoteResolver
 from packages.schemas.execution import BrokerName
+
+
+QUOTE_SOURCE_MASSIVE = "massive-live-state"
+QUOTE_SOURCE_WEBULL = "webull-snapshot"
 
 
 def _ref(value: str) -> str:
@@ -51,7 +56,7 @@ def main() -> None:
         description=(
             "Phase 18 validation-only paper-provider runner. Without the explicit "
             "authorization flag and exact confirmation text, this script reads only "
-            "local ATLAS live-state and performs zero broker/provider calls."
+            "local quote evidence and performs zero broker/provider calls."
         )
     )
     parser.add_argument(
@@ -66,6 +71,16 @@ def main() -> None:
         help=(
             "Exact provider-native equity ticker used only for the one-share validation "
             "order. No default ticker is supplied."
+        ),
+    )
+    parser.add_argument(
+        "--quote-source",
+        choices=(QUOTE_SOURCE_MASSIVE, QUOTE_SOURCE_WEBULL),
+        default=QUOTE_SOURCE_MASSIVE,
+        help=(
+            "Explicit local quote-evidence source. massive-live-state reads the accepted "
+            "Phase 5/15 snapshot; webull-snapshot reads the sanitized file created by "
+            "capture_phase18_webull_quote.py. Neither choice performs a provider call here."
         ),
     )
     parser.add_argument(
@@ -97,10 +112,14 @@ def main() -> None:
     print("Automatic flatten on fill: DISABLED")
     print(f"Selected broker: {broker.value}")
     print(f"Selected ticker: {ticker}")
+    print(f"Quote source: {args.quote_source}")
 
     settings = load_settings()
     try:
-        quote = Phase15LiveQuoteResolver(settings).quote(ticker)
+        if args.quote_source == QUOTE_SOURCE_WEBULL:
+            quote = Phase18WebullQuoteResolver(settings).quote(ticker)
+        else:
+            quote = Phase15LiveQuoteResolver(settings).quote(ticker)
         plan = build_phase18_operational_validation_plan(quote, broker=broker)
     except (ExecutionQuoteError, Phase18OperationalValidationError, ValueError) as exc:
         print("Plan status: BLOCKED")
