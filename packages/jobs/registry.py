@@ -8,7 +8,10 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Iterable
 
-from .phase20_policy import PHASE20_EXTERNAL_MUTATION_STAGE_REGISTRATION_ALLOWED
+from .phase20_policy import (
+    PHASE20_EXTERNAL_MUTATION_STAGE_REGISTRATION_ALLOWED,
+    phase20_policy_fingerprint,
+)
 
 
 _STAGE_ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
@@ -129,6 +132,7 @@ class PipelineRegistry:
         return {
             "pipeline_id": self.pipeline_id,
             "pipeline_version": self.pipeline_version,
+            "phase20_policy_fingerprint": phase20_policy_fingerprint(),
             "stages": [stage.fingerprint_payload() for stage in self.stages],
             "topological_order": list(self._topological_order),
         }
