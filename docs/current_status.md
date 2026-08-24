@@ -70,6 +70,12 @@ Storage/provider roles:
 - Webull: primary planned execution broker; downstream realtime L1 execution evidence where entitled.
 - Alpaca: manually selectable secondary/fallback; never automatic failover.
 
+### Strategic anti-drift anchor
+
+The operational destination remains the complete ATLAS chain, especially the transition from accepted deterministic analysis/risk/AI evidence into **Webull-primary shadow/paper execution, exact reconciliation, observability, and outcome learning** before any future live authority is considered. Phase 20 is enabling infrastructure for that destination, not a replacement objective.
+
+At each acceptance boundary, independently audit both the implementation and the proposed next phase against `docs/roadmap.md`. Prefer the smallest coherent increment that materially advances correctness, safety, evidence quality, recoverability, performance, operability, or the end-to-end paper/shadow path. Do not allow technically interesting but lower-value infrastructure work to silently displace the agreed operational objective. Any real architecture/destination change must be explicit, documented, and independently validated.
+
 ## 5. Non-negotiable architecture/authority rules
 
 - Preserve exact provider-native ticker text/case.
@@ -241,7 +247,7 @@ Current closeout sequence:
 3. require every validator through Phase 20 and the full regression suite green on both platforms;
 4. mark PR #21 ready/accepted and merge it;
 5. verify the merge on `main` and synchronize final accepted merge/CI evidence;
-6. only then define and authority-lock the next numbered phase.
+6. only then define and authority-lock the next numbered phase, choosing the smallest coherent increment that materially advances the end-to-end operational paper/shadow path toward real Webull-primary paper trading without weakening any existing safety or authority boundary.
 
 Until a later explicit phase changes authority, live execution stays disabled, broker switching stays explicit/manual, automatic failover stays forbidden, and autonomous scheduling/PostgreSQL runtime promotion remain out of scope.
 
