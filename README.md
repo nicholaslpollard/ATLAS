@@ -10,7 +10,7 @@ For a future development session, read in this order:
 
 1. [`docs/current_status.md`](docs/current_status.md) — exact current handoff/evidence/continuation.
 2. [`docs/roadmap.md`](docs/roadmap.md) — architecture, phase ledger, data/safety rules, authority transitions.
-3. [`docs/post_phase19_stabilization.md`](docs/post_phase19_stabilization.md) — unnumbered post-Phase19 closure/performance-housekeeping audit.
+3. [`docs/post_phase19_stabilization.md`](docs/post_phase19_stabilization.md) — completed post-Phase19 closure/performance-housekeeping audit.
 4. [`docs/phase_flow.md`](docs/phase_flow.md) — mandatory phase execution/acceptance/merge rules.
 5. [`docs/phase19_operations_observability.md`](docs/phase19_operations_observability.md) — accepted Phase 19 operations/observability contract and evidence.
 6. [`docs/phase18_operational_validation.md`](docs/phase18_operational_validation.md) — accepted Phase 18 broker-certification evidence.
@@ -46,14 +46,14 @@ Passing tests, configured credentials, available endpoints, or connected account
 
 - **Phases 1–19: ACCEPTED and merged.**
 - Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-- Phase 19 merge / accepted `main` baseline before post-Phase19 maintenance: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
+- Phase 19 merge / accepted baseline: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
 - Final Phase 19 docs-head CI run `32739682576`: Ubuntu **932 passed in 13.78s**; Windows **932 passed in 25.80s**; every validator through Phase 19 PASS.
+- Post-Phase19 stabilization CI run `32754626468`: Ubuntu **932 passed in 15.59s**; Windows **932 passed in 25.38s**; every validator through Phase 19 PASS.
 - Phase 19 policy fingerprint: `ecd30046a7a3258013a29f0a2982de133f3a4f801aee4ad5e24f79b6bd3b4c3d`.
-- Phase 19 provider reads/writes: **0 / 0**.
 - Live execution: **DISABLED**.
 - Automatic cross-broker failover: **DISABLED**.
-- **Phase 20 is not active.**
-- The current work after Phase 19 is unnumbered stabilization/housekeeping only and creates no new trading authority.
+- Post-Phase19 stabilization/performance housekeeping: **COMPLETE**.
+- **Phase 20 is not yet authority-locked in this baseline.**
 
 ## Accepted data/model foundation
 
@@ -154,14 +154,6 @@ Generated Webull SDK logs are local runtime artifacts and are ignored; they are 
 
 ## Exact continuation point
 
-Do **not** repeat the accepted Phase 18 mutation merely to reconfirm it. Phase 19 is already accepted/merged.
+Do **not** repeat accepted Phase 18 mutation merely to reconfirm it. Phase 19 and the post-Phase19 stabilization audit are closed.
 
-Current continuation:
-
-1. complete the unnumbered post-Phase19 stabilization/housekeeping PR;
-2. verify its CI and merge to `main`;
-3. keep Phase 20 inactive until its scope and authority boundary are explicitly defined;
-4. preserve live execution disabled and automatic failover disabled;
-5. use `docs/post_phase19_stabilization.md` for the maintenance audit and performance-housekeeping findings.
-
-No live-money promotion, destructive cleanup, broker mutation, or automatic failover is implied by this maintenance work; any such authority requires a separately defined gate and explicit authorization where applicable.
+The next numbered work begins by defining and authority-locking **Phase 20** from the accepted Phase 19/stabilization baseline. Until that lock exists, live execution remains disabled, broker switching remains explicit/manual, and automatic failover remains forbidden.
