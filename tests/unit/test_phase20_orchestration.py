@@ -31,6 +31,7 @@ from packages.jobs.registry import (
     DuplicateStageError,
     MissingDependencyError,
     PipelineRegistry,
+    RegistryError,
     StageAuthority,
     StageAuthorityError,
     StageDefinition,
@@ -72,6 +73,12 @@ def test_registry_is_deterministic_and_rejects_invalid_graphs() -> None:
             StageDefinition("a", dependencies=("b",)),
             StageDefinition("b", dependencies=("a",)),
         )
+    with pytest.raises(RegistryError):
+        StageDefinition("mutable", dependencies=["alpha"])  # type: ignore[arg-type]
+    with pytest.raises(StageAuthorityError):
+        StageDefinition("authority", authority="LOCAL_ONLY")  # type: ignore[arg-type]
+    with pytest.raises(RegistryError):
+        StageDefinition("attempts", max_attempts=True)
 
 
 def test_registry_rejects_external_authority() -> None:
@@ -131,6 +138,14 @@ def test_stage_status_rejects_impossible_persisted_state_shapes() -> None:
         StageStatus("failed", state=JobState.FAILED, attempts=1, error_code=None)
     with pytest.raises(ValueError):
         StageStatus("blocked", state=JobState.BLOCKED, attempts=0, error_code=None)
+    with pytest.raises(ValueError):
+        StageStatus.from_payload(
+            {"stage_id": "typed", "state": "RUNNING", "attempts": 1.5, "error_code": None}
+        )
+    with pytest.raises(ValueError):
+        StageStatus.from_payload(
+            {"stage_id": "typed", "state": "FAILED", "attempts": 1, "error_code": 7}
+        )
 
 
 def test_plan_is_deterministic_and_zero_write(tmp_path) -> None:
