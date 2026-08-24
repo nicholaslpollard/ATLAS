@@ -54,8 +54,18 @@ class StageDefinition:
     max_attempts: int = 1
 
     def __post_init__(self) -> None:
-        if not _STAGE_ID_RE.fullmatch(self.stage_id):
+        if not isinstance(self.stage_id, str) or not _STAGE_ID_RE.fullmatch(self.stage_id):
             raise RegistryError(f"invalid stage_id: {self.stage_id!r}")
+        if not isinstance(self.dependencies, tuple) or any(
+            not isinstance(dependency, str) for dependency in self.dependencies
+        ):
+            raise RegistryError("dependencies must be an immutable tuple of stage IDs")
+        if not isinstance(self.authority, StageAuthority):
+            raise StageAuthorityError("authority must be a StageAuthority value")
+        if not isinstance(self.retry_safe_local, bool):
+            raise RegistryError("retry_safe_local must be boolean")
+        if not isinstance(self.max_attempts, int) or isinstance(self.max_attempts, bool):
+            raise RegistryError("max_attempts must be an integer")
         if len(set(self.dependencies)) != len(self.dependencies):
             raise RegistryError(f"duplicate dependency in stage {self.stage_id!r}")
         if self.stage_id in self.dependencies:
@@ -87,14 +97,16 @@ class PipelineRegistry:
         pipeline_version: str,
         stages: Iterable[StageDefinition],
     ) -> None:
-        if not _PIPELINE_ID_RE.fullmatch(pipeline_id):
+        if not isinstance(pipeline_id, str) or not _PIPELINE_ID_RE.fullmatch(pipeline_id):
             raise RegistryError(f"invalid pipeline_id: {pipeline_id!r}")
-        if not _VERSION_RE.fullmatch(pipeline_version):
+        if not isinstance(pipeline_version, str) or not _VERSION_RE.fullmatch(pipeline_version):
             raise RegistryError(f"invalid pipeline_version: {pipeline_version!r}")
         self.pipeline_id = pipeline_id
         self.pipeline_version = pipeline_version
         stage_map: dict[str, StageDefinition] = {}
         for stage in stages:
+            if not isinstance(stage, StageDefinition):
+                raise RegistryError("pipeline stages must be StageDefinition values")
             if stage.stage_id in stage_map:
                 raise DuplicateStageError(f"duplicate stage_id: {stage.stage_id}")
             if stage.authority is not StageAuthority.LOCAL_ONLY:
