@@ -12,7 +12,7 @@ ATLAS advances by explicit numbered phases:
 
 The flow is a control framework, not a requirement to stop after every arrow. When a phase is sufficiently defined and no authority/external checkpoint interrupts it, implement the largest coherent batch and validate at the meaningful evidence boundary.
 
-No credential, endpoint, connected account, implementation detail, prior success, available adapter, or passing CI silently expands provider or LIVE authority.
+No credential, endpoint, connected account, implementation detail, prior success, available adapter, or passing CI silently expands provider, broker, automation, or LIVE authority.
 
 ## 2. Phase states
 
@@ -25,7 +25,7 @@ No credential, endpoint, connected account, implementation detail, prior success
 - **ACCEPTED** — all implementation, validation, target evidence, documentation, and negative-path criteria are satisfied.
 - **MERGED** — accepted phase is merged to `main`.
 
-Unnumbered maintenance/stabilization may occur between merged phases only when it changes no numbered-phase authority. It must still be validated and documented when it changes shared foundations.
+Unnumbered maintenance/stabilization may occur between merged phases only when it changes no numbered-phase authority. It must still be validated and documented when it changes shared foundations or living handoff state.
 
 ## 3. Stacked-preparation exception
 
@@ -74,7 +74,8 @@ Rules:
 - focused tests are useful during development but do not replace final regression/CI;
 - do not run the full suite after every tiny change merely for ceremony;
 - do not stop for user interaction when remaining work can be completed safely with repo/CI evidence;
-- fix genuine architecture/security/data/authority defects before stacking more work on top.
+- fix genuine architecture/security/data/authority defects before stacking more work on top;
+- never weaken a strategy/data/risk/authority gate merely to create nonzero output.
 
 ## 6. Validation ladder and cadence
 
@@ -96,7 +97,7 @@ Cadence:
 - documentation sync is batched at evidence/acceptance transitions;
 - stacked prep gets its own CI and is revalidated after upstream merge.
 
-Never weaken data, risk, provider, security, or trading gates merely to obtain green tests.
+Never weaken data, risk, provider, security, strategy, or trading gates merely to obtain green tests or a nonzero trade population.
 
 ## 7. Target-machine/provider rule
 
@@ -110,6 +111,12 @@ For provider mutations:
 - no automatic cross-broker failover;
 - cleanup/flatten authority is separate when its contract says so;
 - LIVE authority is never inferred from PAPER/sandbox authority.
+
+For zero-case target evidence:
+
+- a zero-case/no-provider disposition is valid when it follows accepted upstream evidence;
+- do not fabricate a case, weaken support thresholds, inject arbitrary ticker/order inputs, or repeat unrelated certification mutations merely to obtain a provider write;
+- preserve the zero-case result as evidence of fail-closed/no-op behavior.
 
 Authority boundaries override batching and stacked preparation.
 
@@ -137,6 +144,8 @@ After acceptance:
 6. synchronize living status to MERGED;
 7. define/lock the next numbered phase before substantive next-phase work.
 
+If implementation is merged before required documentation/target closeout due procedural error, do not silently pretend the sequence was followed. Record the drift explicitly, perform an unnumbered no-authority maintenance closeout, validate it, and restore synchronized living state before the next numbered phase.
+
 ## 9. Documentation contract
 
 Every meaningful boundary updates as applicable:
@@ -151,54 +160,60 @@ Every meaningful boundary updates as applicable:
 
 Historical phase/fix docs remain provenance rather than current instructions.
 
-## 10. Current application — Phase 21 validated / merge pending
+## 10. Current application — post-Phase22 documentation closeout
 
 Accepted upstream:
 
-- **Phases 1–20 ACCEPTED / MERGED**;
+- **Phases 1–22 ACCEPTED / MERGED**;
 - Phase18 merge `55bdd7446f0bbd4225de264187c7f5fb601991b0`;
 - Phase19 merge `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`;
 - Phase20 merge `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`;
-- Phase20 fingerprint `b4f9bd37c3c425e182e4a0da255e8a903d95101d119c833c38c7fd2c0cd3741a`;
-- post-Phase20 anti-drift baseline `4afe8e0a5238b176edd47eb6e70359ccff6d65b1`.
+- Phase21 merge `ed9e156437e3924293b90f06620ebbe9534fab15`;
+- Phase22 merge `15c0a997ec847764e41fbd525ff52aa8c58f96ac`.
 
-Current phase:
+Phase21 accepted authority:
 
-- **Phase21 — Unified Paper Execution Authority and Operational Binding: VALIDATED / MERGE PENDING**;
-- branch `phase-21-unified-paper-execution-authority`;
-- PR #22 draft until final acceptance;
 - policy `phase21-policy-v1-unified-paper-execution-authority-run-scoped-default-deny`;
 - fingerprint `0ad0add1345ceec62f65bab25ce43806dafac4a64177ffc9c219e9d6c87665e5`;
-- validated implementation head `d3599f3a184142de4ac5f03b58fc355f0bb11001`;
-- CI `32781962354`: Ubuntu **964 passed in 15.42s**, Windows **964 passed in 24.52s**, every validator through Phase21 PASS;
-- provider calls/writes/broker writes during Phase21 validation: 0/0/0.
+- final exact head `174110e3688a0b8c087555a56adafaab99905c66`;
+- final CI `32782618589`;
+- exactly one raw `adapter.submit(plan)` remains under `packages/`, in the execution engine;
+- every new PAPER provider submit requires exact centralized authority;
+- browser, Phase20, scheduler, LIVE, and automatic failover authority remain absent.
 
-Current Phase21 authority lock:
+Phase22 accepted operator binding:
 
-- every new real PAPER provider submit crosses one centralized default-deny seam;
-- Webull PAPER + Alpaca PAPER require exact broker/PAPER/run-scoped authority;
-- exactly one raw `adapter.submit(plan)` exists under `packages/`, in execution engine;
-- existing deterministic-order reuse performs no new mutation and needs no new mutation authority;
-- SHADOW remains unchanged;
-- original Phase18 explicit certification authorization remains separate and must pass before its narrow Phase21 compatibility authority is constructed;
-- both Phase18 standard lifecycle and operational-validation path cross the central seam;
-- Phase15 validates PAPER authority before live quote resolver initialization;
-- browser cannot acquire Phase21 authority;
-- Phase20 external mutation-stage registration remains blocked;
-- LIVE and automatic failover remain disabled.
+- policy `phase22-policy-v1-operational-paper-runner-webull-primary-explicit-run-authority`;
+- fingerprint `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`;
+- implementation head `68f16256c8f9976ae5b6283dde437e93fbe70155`;
+- CI `32787337500`: Ubuntu **974 passed in 13.80s**, Windows **974 passed in 33.93s**, every validator through Phase22 PASS;
+- Webull default/primary; Alpaca explicit manual selection;
+- PAPER only;
+- exact interactive Phase21 run authority for nonzero cases;
+- no arbitrary ticker/quantity/price/geometry input;
+- no new submit seam;
+- provider calls/writes/broker writes during repository validation: 0/0/0.
 
-The first Phase21 CI exposed a real direct-submit bypass in `phase18_operational_validation.py`. That defect was fixed without weakening the independent validator. The validator now enforces exactly one raw submit seam.
+Target-machine Phase22 evidence on 2026-08-24:
 
-Current closeout sequence:
+`python scripts/run_phase22_paper.py prepare --broker webull`
 
-1. synchronize Phase21 spec + living docs + PR evidence;
-2. run documentation-head full cross-platform CI;
-3. if green, mark Phase21 ACCEPTED in living docs and run final exact-head CI;
-4. mark PR ready and merge to `main`;
-5. verify main;
-6. audit merged code for the smallest next operational gap toward routine Webull-primary PAPER execution/reconciliation/observability/outcomes;
-7. define/lock the next numbered phase from that evidence.
+resolved accepted as-of `2026-08-14`, found **0 accepted execution cases**, required no explicit mutation authority, and returned `PREPARED_ZERO_PROVIDER_CALLS`. This is the correct accepted zero-case path. No `execute` call or fabricated trade is required merely to create a mutation.
 
-No additional real provider mutation is required merely to close Phase21 because accepted Phase18 already proves target Webull sandbox submit/reconcile/cancel behavior. Phase21 itself is an internal authority-boundary hardening phase.
+Current maintenance:
 
-Phase21 does **not** imply autonomous scheduling, PostgreSQL runtime promotion, cleanup/flatten authority, broker switching, automatic failover, browser execution, or LIVE authority.
+- branch `maintenance/post-phase22-closeout`;
+- documentation/status repair only;
+- no numbered-phase authority change;
+- must pass normal Ubuntu/Windows CI before merge.
+
+After this maintenance merge:
+
+1. verify synchronized `main` through Phase22;
+2. audit the actual merged current-data/analysis runners and stage boundaries;
+3. identify the smallest missing binding toward a routine **current** end-to-end analytical run that can naturally produce accepted Phase13/14 cases for Phase22;
+4. define/lock Phase23 only from that evidence;
+5. do not assume scheduler/PostgreSQL work is next;
+6. keep LIVE and automatic failover disabled.
+
+Phase23 is not yet active.
