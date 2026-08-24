@@ -38,8 +38,8 @@ from packages.jobs.status import JobState, RunState, StageStatus
 from packages.jobs.worker import LocalWorker, StageExecutionContext
 
 
-def _registry(*stages: StageDefinition) -> PipelineRegistry:
-    return PipelineRegistry("phase20-test", stages)
+def _registry(*stages: StageDefinition, version: str = "v1") -> PipelineRegistry:
+    return PipelineRegistry("phase20-test", version, stages)
 
 
 def test_phase20_authority_is_provider_free_and_non_live() -> None:
@@ -61,6 +61,7 @@ def test_registry_is_deterministic_and_rejects_invalid_graphs() -> None:
     assert one.topological_order() == ("alpha", "beta", "finish")
     assert two.topological_order() == one.topological_order()
     assert two.fingerprint() == one.fingerprint()
+    assert _registry(alpha, finish, beta, version="v2").fingerprint() != one.fingerprint()
     with pytest.raises(DuplicateStageError):
         _registry(alpha, alpha)
     with pytest.raises(MissingDependencyError):
