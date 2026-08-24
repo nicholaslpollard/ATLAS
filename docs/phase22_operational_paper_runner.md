@@ -1,14 +1,18 @@
 # Phase 22 — Operational Webull-primary PAPER Runner
 
-**Status: IMPLEMENTED / VALIDATION IN PROGRESS**
+**Status: ACCEPTED / MERGED**
 
-Phase 22 turns the already accepted Phase15 execution stack and Phase21 unified PAPER-submit authority into one routine operator entrypoint. It does not add a new trading strategy, broker adapter, quote source, order-builder path, mutation seam, browser authority, scheduler authority, or LIVE capability.
+Phase22 turns the accepted Phase15 execution stack and Phase21 unified PAPER-submit authority into one routine operator entrypoint. It does not add a new trading strategy, broker adapter, quote source, order-builder path, mutation seam, browser authority, scheduler authority, or LIVE capability.
+
+Accepted implementation head: `68f16256c8f9976ae5b6283dde437e93fbe70155`.
+
+Accepted merge: `15c0a997ec847764e41fbd525ff52aa8c58f96ac`.
 
 ## Purpose
 
-Before Phase22, ATLAS had all required safe primitives for broker-neutral SHADOW/PAPER execution, real Webull sandbox lifecycle evidence, immutable execution outcomes, read-only outcome observability, and centralized run-scoped PAPER provider-submit authority. The remaining operational gap was that no routine operator command bound those primitives together. `run_phase15_closeout.py` is an acceptance/closeout command and Phase18's runner is intentionally certification-only.
+Before Phase22, ATLAS had the safe primitives for broker-neutral SHADOW/PAPER execution, accepted real Webull sandbox lifecycle evidence, immutable execution outcomes, read-only outcome observability, and centralized run-scoped PAPER provider-submit authority. The remaining operational gap was that no routine operator command bound those primitives together. `run_phase15_closeout.py` is an acceptance/closeout command and Phase18's runner is intentionally certification-only.
 
-Phase22 closes only that operational binding gap.
+Phase22 closes only that operator-binding gap.
 
 ## Policy
 
@@ -16,7 +20,9 @@ Contract:
 
 `phase22-policy-v1-operational-paper-runner-webull-primary-explicit-run-authority`
 
-The deterministic fingerprint is emitted by `scripts/validate_phase22.py` and is recorded as acceptance evidence only after exact-head CI is green.
+Accepted deterministic fingerprint:
+
+`1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`
 
 Locked rules:
 
@@ -36,7 +42,7 @@ Locked rules:
 
 ## Operator flow
 
-Command:
+Prepare command:
 
 `python scripts/run_phase22_paper.py prepare [--broker webull|alpaca] [--as-of YYYY-MM-DD]`
 
@@ -49,7 +55,7 @@ The prepare operation:
 5. otherwise derives the exact Phase21 broker/PAPER/run-scoped challenge;
 6. performs no provider mutation and does not execute a trade.
 
-Command:
+Execute command:
 
 `python scripts/run_phase22_paper.py execute [--broker webull|alpaca] [--as-of YYYY-MM-DD]`
 
@@ -59,7 +65,7 @@ After exact authority validation, Phase22 delegates to `Phase15ExecutionRunEngin
 
 ## Zero-case behavior
 
-Zero accepted Phase14 execution cases are a valid operational state. In that state:
+Zero accepted execution cases are a valid operational state. In that state:
 
 - no Phase21 mutation authority is requested;
 - a supplied confirmation is rejected as unnecessary;
@@ -67,7 +73,7 @@ Zero accepted Phase14 execution cases are a valid operational state. In that sta
 - quote source and broker initialization remain skipped;
 - no provider submission occurs.
 
-No thresholds are weakened and no trade is manufactured to make the runner do work.
+No strategy support threshold, promotion rule, deterministic case, or trade input may be weakened or fabricated to make the runner do work.
 
 ## Outcome and observability continuity
 
@@ -92,11 +98,12 @@ It does not expose:
 - LIVE environment;
 - automatic failover;
 - browser or scheduler execution authority;
+- command-line mutation confirmation;
 - broker credentials or raw broker account/order identifiers.
 
 ## Validation contract
 
-`scripts/validate_phase22.py` independently verifies at minimum:
+`scripts/validate_phase22.py` independently verifies:
 
 - deterministic Phase22 policy fingerprint;
 - Webull remains default/primary;
@@ -113,6 +120,68 @@ It does not expose:
 
 Focused tests cover provider-free preparation, zero-case operation, exact Webull/Alpaca authority delegation, wrong-confirmation fail-closed behavior, uncertainty stop behavior, and public metadata redaction.
 
+## Cross-platform acceptance evidence
+
+GitHub Actions run `32787337500` completed successfully on the Phase22 PR merge ref:
+
+- Ubuntu: **974 passed in 13.80s**;
+- Windows: **974 passed in 33.93s**;
+- every validator through Phase22 PASS;
+- dependency lock PASS;
+- secret hygiene PASS;
+- ATLAS Doctor PASS;
+- provider-free feature self-test PASS with exact feature parity;
+- compile and browser JavaScript syntax checks PASS;
+- Phase22 policy fingerprint reproduced exactly as `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`;
+- `default_broker=webull`;
+- `environment=paper`;
+- `confirmation_transport=interactive_stdin`;
+- `arbitrary_case_input=false`;
+- `live_execution=false`;
+- `automatic_broker_failover=false`;
+- `browser_execution=false`;
+- `scheduler_execution=false`;
+- `raw_adapter_submit_count=1`;
+- provider calls/writes/broker writes `0 / 0 / 0`.
+
+## Target-machine acceptance evidence
+
+On 2026-08-24 the target Windows machine ran:
+
+`python scripts/run_phase22_paper.py prepare --broker webull`
+
+Observed result:
+
+- Phase22 fingerprint: `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`;
+- accepted as-of date: `2026-08-14`;
+- selected broker: `webull`;
+- environment: PAPER/SANDBOX ONLY;
+- Webull primary: YES;
+- Alpaca selection: MANUAL ONLY;
+- LIVE: DISABLED;
+- automatic cross-broker failover: DISABLED;
+- browser execution authority: DISABLED;
+- scheduler execution authority: DISABLED;
+- accepted execution cases: **0**;
+- explicit run authority required: **False**;
+- disposition: `PREPARED_ZERO_PROVIDER_CALLS`.
+
+This is the expected and accepted target-machine result for the current accepted lineage. Phase11 has zero `SUPPORTED` strategies, so accepted downstream Phase12/13/14/15 evidence contains no executable trade case. Phase22 correctly refuses to request mutation authority or initialize provider work simply to demonstrate activity.
+
+A real routine Webull PAPER submit is deferred until a future accepted upstream analytical run naturally produces one or more executable cases. No `execute` call, fabricated case, arbitrary ticker, or repeated Phase18 certification mutation is required merely for Phase22 closeout.
+
+## Acceptance meaning
+
+The accepted current-population path is:
+
+`accepted Phase13/14 -> Phase15 input resolver -> Phase22 prepare -> zero cases -> no Phase21 mutation authority -> zero provider calls`
+
+Nonzero operator behavior is covered by focused tests/fake-provider semantics, the centralized accepted Phase21 authority contract, and the accepted Phase18 real Webull sandbox mutation/reconciliation lifecycle. Phase22 adds no provider-submit path of its own.
+
+Phase22 is therefore **ACCEPTED / MERGED** at `15c0a997ec847764e41fbd525ff52aa8c58f96ac`.
+
+The implementation merge occurred before this target-machine/living-document closeout was recorded. `maintenance/post-phase22-closeout` documents and repairs that procedural sequencing drift without changing code or authority.
+
 ## Non-goals
 
 Phase22 does not:
@@ -126,8 +195,9 @@ Phase22 does not:
 - give the browser the ability to acquire execution authority;
 - modify accepted ML/strategy/regime/risk/AI decisions;
 - bypass Phase21 or Phase15;
-- replace Phase18 certification evidence.
+- replace or repeat Phase18 certification evidence;
+- manufacture nonzero execution cases.
 
-## Acceptance boundary
+## Next boundary
 
-Repository implementation/CI validation must perform zero real provider writes. A routine real Webull PAPER run is a separate target-machine operational evidence step and is required only when accepted upstream evidence actually contains one or more executable cases. The absence of an accepted execution case is a valid no-op and must not be bypassed merely to demonstrate a mutation.
+After the post-Phase22 documentation maintenance is CI-green and merged, audit the actual merged current-data/analysis path before defining Phase23. The next phase should close the smallest evidenced operational gap toward routine current end-to-end analysis feeding Phase22, not automatically jump to scheduler or PostgreSQL infrastructure.
