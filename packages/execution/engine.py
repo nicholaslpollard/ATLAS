@@ -9,6 +9,11 @@ from packages.brokers.base import (
     BrokerSubmissionUncertain,
 )
 from packages.execution.order_builder import build_broker_order_plan
+from packages.execution.phase21_authority import (
+    Phase21AuthorizationError,
+    Phase21PaperExecutionAuthority,
+    require_phase21_paper_execution_authority,
+)
 from packages.execution.validator import (
     reconcile_broker,
     revalidate_execution_risk,
@@ -40,7 +45,10 @@ class ExecutionEngine:
 
     The engine never chooses a broker. It receives one explicit intent and one matching
     adapter. Before any new submission it asks the broker for the deterministic client
-    order id; only a definitive not-found response permits a new submit attempt.
+    order id; only a definitive not-found response permits a new submit attempt. Every
+    new PAPER provider submission additionally requires exact Phase 21 run-scoped
+    authority. Reusing an already-existing deterministic order performs no new mutation
+    and therefore does not consume or require new mutation authority.
     """
 
     def attempt(
@@ -50,6 +58,8 @@ class ExecutionEngine:
         *,
         max_abs_correlation: float | None = None,
         now_utc: datetime | None = None,
+        execution_scope_id: str | None = None,
+        paper_authority: Phase21PaperExecutionAuthority | None = None,
     ) -> ExecutionAttemptRecord:
         now = (now_utc or datetime.now(UTC)).astimezone(UTC)
         plan = build_broker_order_plan(intent)
@@ -128,6 +138,20 @@ class ExecutionEngine:
             risk_revalidation=risk_revalidation,
             preflight=preflight,
         )
+
+        if intent.environment == ExecutionEnvironment.PAPER:
+            try:
+                require_phase21_paper_execution_authority(
+                    paper_authority,
+                    expected_execution_scope_id=execution_scope_id,
+                    broker=adapter.broker,
+                    environment=adapter.environment,
+                )
+            except Phase21AuthorizationError as exc:
+                raise ExecutionEngineError(
+                    "Phase 21 paper execution authority rejected new provider submission",
+                    stage="paper_authority",
+                ) from exc
 
         try:
             submitted = adapter.submit(plan)
