@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative development-flow contract. Last synchronized: 2026-08-23.**
+**Normative development-flow contract. Last synchronized: 2026-08-24.**
 
 This document defines how ATLAS work moves from one numbered phase to the next. It exists to prevent scope drift, skipped evidence boundaries, accidental authority expansion, and ad hoc development that bypasses the roadmap **without turning the phase process into unnecessary micro-checkpoints**.
 
@@ -29,6 +29,8 @@ Every phase/subphase uses one of these states:
 - **MERGED** — accepted phase is merged to `main`; its branch may then be removed.
 
 A subphase may be used when a phase contains a genuine authority or external-condition boundary. Subphases do not become independent roadmap phases unless explicitly promoted to a numbered phase.
+
+Unnumbered maintenance/stabilization work may occur between merged phases when it changes no numbered-phase scope or authority. Such work must still use normal repository validation, must not silently activate the next phase, and must be documented when it changes living sources or shared foundations.
 
 ## 3. Stacked-preparation exception
 
@@ -142,9 +144,11 @@ After acceptance:
 2. perform final merge-readiness checks;
 3. merge to `main`;
 4. verify `main` state/CI as appropriate;
-5. delete the merged phase branch;
+5. delete the merged phase branch when repository policy/tooling permits;
 6. update living status to `MERGED`;
 7. promote/retarget any valid stacked-prep next phase, or define and lock the next numbered phase before substantive new work starts.
+
+Merged branch cleanup is repository hygiene, not an acceptance requirement once the merge and authoritative `main` state are proven.
 
 ## 9. Documentation contract
 
@@ -160,35 +164,24 @@ Every meaningful batch/evidence boundary updates, as applicable:
 
 Historical phase/fix documents remain provenance rather than current instructions.
 
-## 10. Current application — Phase 18 / Phase 19 prep
+## 10. Current application — post-Phase19 stabilization
 
-Phase 18 is **Paper Provider Mutation Lifecycle Validation**.
+- **Phases 1–19: ACCEPTED / MERGED.**
+- Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
+- Phase 19 merge / accepted baseline: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
+- Phase 19 final docs-head CI `32739682576`: Ubuntu 932 passed in 13.78s; Windows 932 passed in 25.80s; every validator through Phase 19 PASS.
+- No open Phase 20 authority exists.
 
-### Phase 18A — Pre-mutation software validation
+The current `maintenance/post-phase19-stabilization` work is **unnumbered maintenance**, not Phase 20. Its permitted scope is documentation closure, runtime/repository hygiene, and evidence-based performance housekeeping that does not change data semantics or trading authority.
 
-**State: ACCEPTED / COMPLETE**
+It must not:
 
-Evidence includes the Phase 18 authority/lifecycle implementation, focused validation, independent validator, target-machine 908-test regression, Windows/Ubuntu CI, closed Windows loopback portability issue, and zero provider mutations during software acceptance.
+- repeat Phase 18 provider mutation merely for reconfirmation;
+- authorize live execution;
+- authorize automatic failover;
+- change accepted ML/strategy/AI authority;
+- activate PostgreSQL merely because scaffolding exists;
+- introduce destructive cleanup authority;
+- infer Phase 20 scope before Phase 20 is explicitly defined and locked.
 
-### Phase 18B — Real paper-provider operational certification
-
-**State: WAITING_EXTERNAL**
-
-Waiting conditions:
-
-- regular U.S. equity market session;
-- accepted Massive realtime focused quote state;
-- plan-only validation first;
-- explicit paper-provider mutation authorization before the first real write.
-
-Required lifecycle:
-
-`realtime quote -> plan-only one-share validation -> review -> explicit authorization -> Webull sandbox submit once -> exact reconcile -> cancel once if still open -> exact reconcile flat -> sanitized evidence -> Phase 18 acceptance/merge`
-
-If the order fills or partially fills, ATLAS stops for separate cleanup authority. Alpaca is not an automatic failover destination. Live trading remains outside Phase 18.
-
-### Phase 19 stacked preparation
-
-Because Phase 18B is waiting only on an external market-hours/authorization boundary, Phase 19 may enter `STACKED_PREP` on a separate branch/PR under section 3. It remains merge-blocked until Phase 18 is accepted and merged.
-
-The preferred Phase 19 direction is **Operations Dashboard & Paper/Shadow Observability**: read-only end-to-end ATLAS visibility and operator UX, with no new provider-write or live-trading authority.
+After the maintenance batch is validated/merged, Phase 20 may be defined as the next numbered architecture increment. Until then, live execution and automatic failover remain disabled.

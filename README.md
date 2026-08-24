@@ -10,10 +10,11 @@ For a future development session, read in this order:
 
 1. [`docs/current_status.md`](docs/current_status.md) — exact current handoff/evidence/continuation.
 2. [`docs/roadmap.md`](docs/roadmap.md) — architecture, phase ledger, data/safety rules, authority transitions.
-3. [`docs/phase_flow.md`](docs/phase_flow.md) — mandatory phase execution/acceptance/merge rules.
-4. [`docs/phase19_operations_observability.md`](docs/phase19_operations_observability.md) — accepted Phase 19 operations/observability contract and evidence.
-5. [`docs/phase18_operational_validation.md`](docs/phase18_operational_validation.md) — accepted Phase 18 broker-certification evidence.
-6. merged PRs for deeper historical evidence.
+3. [`docs/post_phase19_stabilization.md`](docs/post_phase19_stabilization.md) — completed post-Phase19 closure/performance-housekeeping audit.
+4. [`docs/phase_flow.md`](docs/phase_flow.md) — mandatory phase execution/acceptance/merge rules.
+5. [`docs/phase19_operations_observability.md`](docs/phase19_operations_observability.md) — accepted Phase 19 operations/observability contract and evidence.
+6. [`docs/phase18_operational_validation.md`](docs/phase18_operational_validation.md) — accepted Phase 18 broker-certification evidence.
+7. merged PRs for deeper historical evidence.
 
 Old phase/fix READMEs are provenance only when they conflict with these living sources.
 
@@ -43,17 +44,16 @@ Passing tests, configured credentials, available endpoints, or connected account
 
 ## Current state — 2026-08-24
 
-- **Phases 1–18: ACCEPTED and merged.**
+- **Phases 1–19: ACCEPTED and merged.**
 - Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-- **Phase 19: ACCEPTED** on rebased head `8c7d045af4f75cb734eeebbd76c84edaccdcc173`; PR #19 is the merge vehicle onto `main`.
-- Post-rebase Phase 19 CI run `32738366242`: Ubuntu **932 passed in 16.08s**; Windows **932 passed in 23.74s**; every validator through Phase 19 PASS.
+- Phase 19 merge / accepted baseline: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
+- Final Phase 19 docs-head CI run `32739682576`: Ubuntu **932 passed in 13.78s**; Windows **932 passed in 25.80s**; every validator through Phase 19 PASS.
+- Post-Phase19 stabilization CI run `32754626468`: Ubuntu **932 passed in 15.59s**; Windows **932 passed in 25.38s**; every validator through Phase 19 PASS.
 - Phase 19 policy fingerprint: `ecd30046a7a3258013a29f0a2982de133f3a4f801aee4ad5e24f79b6bd3b4c3d`.
-- Phase 19 provider reads/writes: **0 / 0**.
 - Live execution: **DISABLED**.
 - Automatic cross-broker failover: **DISABLED**.
-- No target broker/provider test is required solely for Phase 19.
-
-This documentation synchronization is part of the Phase 19 merge boundary. PR #19 must remain green on its final docs head before merge. If this file is being read from `main` after PR #19 has merged, Phase 19 is fully closed and the next numbered phase has not yet been activated.
+- Post-Phase19 stabilization/performance housekeeping: **COMPLETE**.
+- **Phase 20 is not yet authority-locked in this baseline.**
 
 ## Accepted data/model foundation
 
@@ -150,16 +150,10 @@ Tracked `.env.example` is non-secret. Public/default endpoints may be populated;
 
 Never commit or print API secrets, passwords, security codes, raw broker IDs, tokens, or signed request metadata. Commented secrets are still secrets. Real `.env` remains local/ignored.
 
+Generated Webull SDK logs are local runtime artifacts and are ignored; they are not source or acceptance evidence.
+
 ## Exact continuation point
 
-Do **not** repeat the accepted Phase 18 mutation or add provider mutation to Phase 19.
+Do **not** repeat accepted Phase 18 mutation merely to reconfirm it. Phase 19 and the post-Phase19 stabilization audit are closed.
 
-Phase 19 closeout:
-
-1. final living-doc synchronization — this change;
-2. require final PR #19 docs-head CI green on Ubuntu and Windows;
-3. mark PR #19 ready;
-4. merge PR #19 to `main`;
-5. verify merged `main`.
-
-After Phase 19 is on `main`, define and lock the next numbered phase before implementation. No live-money promotion, destructive cleanup, broker mutation, or automatic failover is implied by Phase 19 acceptance; any such authority requires a separately defined gate and explicit authorization where applicable.
+The next numbered work begins by defining and authority-locking **Phase 20** from the accepted Phase 19/stabilization baseline. Until that lock exists, live execution remains disabled, broker switching remains explicit/manual, and automatic failover remains forbidden.

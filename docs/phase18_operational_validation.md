@@ -1,14 +1,15 @@
 # Phase 18 — Paper Provider Mutation Lifecycle Validation
 
-**Status: ACCEPTED / CLOSEOUT PENDING MERGE. Last synchronized: 2026-08-24.**
+**Status: ACCEPTED / MERGED. Last synchronized: 2026-08-24.**
 
-Phase 18 certifies the first real paper/sandbox provider-mutation lifecycle on top of accepted Phase 17 read-only readiness. It does **not** promote live trading, automatic broker failover, universal cleanup authority, or fabricated strategy/model/AI lineage.
+Phase 18 certified the first real paper/sandbox provider-mutation lifecycle on top of accepted Phase 17 read-only readiness. It did **not** promote live trading, automatic broker failover, universal cleanup authority, or fabricated strategy/model/AI lineage.
 
-Subphase disposition:
+Final disposition:
 
 - **Phase 18A — Pre-mutation software validation: ACCEPTED / COMPLETE**.
 - **Phase 18B — Real paper-provider operational certification: ACCEPTED / COMPLETE**.
-- **Phase 19 — STACKED_PREP only** on its stacked branch/PR; it remains merge-blocked until Phase 18 is merged, then must be rebased/retargeted to merged `main` and revalidated.
+- Phase 18 merged at `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
+- Phase 19 subsequently rebased onto accepted Phase 18, revalidated, accepted, and merged at `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
 
 ## 1. Accepted upstream binding
 
@@ -137,25 +138,23 @@ Locked ATLAS policy as of 2026-08-24:
 - mutation ambiguity or rate-limit errors fail closed and require reconciliation before any later mutation;
 - automatic broker failover remains forbidden.
 
-This policy is intentionally conservative so ATLAS can operate near useful provider capacity without riding the hard boundary.
-
 ## 8. Provider-specific hardening discovered during Phase 18B
 
 ### 8.1 Webull explicit order absence
 
 Webull sandbox Order Detail can raise an SDK exception for HTTP 417 / `OPENAPI_PARAM_ERR` with the explicit message `Order not present`.
 
-ATLAS now normalizes **only that exact absence condition** to `BrokerOrderNotFound`, allowing deterministic client-order-ID absence to be proven. Other 417/provider errors remain failures.
+ATLAS normalizes **only that exact absence condition** to `BrokerOrderNotFound`, allowing deterministic client-order-ID absence to be proven. Other 417/provider errors remain failures.
 
 ### 8.2 Sensitive SDK logging
 
-The Webull SDK can log signed request metadata on errors. ATLAS suppresses the relevant SDK loggers and emits sanitized operator-facing errors instead.
+The Webull SDK can log signed request metadata on errors. ATLAS suppresses the relevant SDK loggers and emits sanitized operator-facing errors instead. Generated SDK log files are runtime artifacts rather than source/evidence.
 
 ### 8.3 Post-cancel read consistency
 
 The accepted target run proved Webull can acknowledge cancellation while immediate exact reads briefly fail to prove `CANCELLED`.
 
-ATLAS now sends the cancel request **at most once**, then performs bounded read-only reconciliation using exact Order Detail and exact Order History. It never issues a second cancel because of read lag. If exact `CANCELLED` cannot be proven inside the bounded window, state remains uncertain and the lifecycle fails closed.
+ATLAS sends the cancel request **at most once**, then performs bounded read-only reconciliation using exact Order Detail and exact Order History. It never issues a second cancel because of read lag. If exact `CANCELLED` cannot be proven inside the bounded window, state remains uncertain and the lifecycle fails closed.
 
 ## 9. Phase 18A acceptance evidence
 
@@ -254,7 +253,7 @@ The run proved:
 7. immediate post-cancel exact read was temporarily inconclusive, so ATLAS stopped with no retry/failover;
 8. read-only reconciliation still showed 0 open orders and 0 positions.
 
-A subsequent **read-only** exact postmortem then proved:
+A subsequent **read-only** exact postmortem proved:
 
 - Order Detail: `FOUND`, `CANCELLED`;
 - Order History: `FOUND`, `CANCELLED`;
@@ -268,23 +267,23 @@ A subsequent **read-only** exact postmortem then proved:
 - provider writes during postmortem `0`;
 - broker writes during postmortem `0`.
 
-This is definitive evidence that the real paper/sandbox lifecycle completed as intended: **submit once -> exact reconcile -> cancel once -> exact CANCELLED -> flat/zero-open**, with no fill, no cleanup required, no blind retry, and no failover.
+Definitive result:
+
+**`submit once -> exact reconcile -> cancel once -> exact CANCELLED -> zero fill -> flat/zero-open`**
+
+No cleanup was required, no blind retry occurred, and no failover occurred.
 
 **Phase 18B: ACCEPTED / COMPLETE.**
 
-## 11. Closeout code evidence
+## 11. Final closeout evidence
 
-Post-target hardening adds bounded read-only post-cancel reconciliation while retaining exactly-one-cancel semantics. Its regression coverage proves the exact-history fallback can establish `CANCELLED` without invoking cancellation a second time.
+Post-target hardening added bounded read-only post-cancel reconciliation while retaining exactly-one-cancel semantics. Regression coverage proves the exact-history fallback can establish `CANCELLED` without invoking cancellation a second time.
 
-The final Phase 18 acceptance boundary requires:
+The final Phase 18 boundary passed its validator, full regression, Ubuntu/Windows CI, target evidence, and documentation/PR synchronization. No second target-machine mutation was required because the real target lifecycle already produced definitive exact `CANCELLED` evidence and the hardening added no provider mutation authority.
 
-- Phase 18 validator green;
-- full pytest regression green;
-- Ubuntu CI green;
-- Windows CI green;
-- living docs/PR synchronized.
+PR #18 was accepted and merged at:
 
-No second target-machine mutation is required solely to validate this read-only reconciliation hardening because the real target lifecycle already produced definitive exact `CANCELLED` evidence and the code change does not add provider mutation authority.
+`55bdd7446f0bbd4225de264187c7f5fb601991b0`
 
 ## 12. Acceptance meaning
 
@@ -301,14 +300,10 @@ It does **not** mean:
 
 Any live-money transition remains a separate future preregistered phase with separate explicit authorization.
 
-## 13. Phase-flow closeout
+## 13. Subsequent phase-flow closure
 
-Once the final code/docs CI boundary is green:
+After Phase 18 merged, Phase 19 was rebuilt/retargeted to accepted `main`, reran its validator/full regression/Ubuntu+Windows CI, synchronized living documentation, and merged successfully at:
 
-1. mark PR #18 ready;
-2. merge Phase 18 into `main`;
-3. verify merged `main`;
-4. preserve/delete branches according to repository policy;
-5. rebase/retarget the already-stacked Phase 19 observability PR onto merged `main`;
-6. rerun Phase 19 validator/full regression/Windows+Ubuntu CI;
-7. only then treat Phase 19 as the active numbered phase.
+`8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`
+
+Therefore Phase 18 and its immediate downstream integration are fully closed. Do not repeat Phase 18 provider mutation merely to reconfirm accepted evidence. Phase 20 is not implicitly active.
