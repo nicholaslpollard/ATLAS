@@ -10,6 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from packages.brokers.webull import harden_webull_sdk_logging
 from packages.core.market_calendar import get_market_calendar
 from packages.core.settings import load_settings
 from packages.execution.phase15_policy import PHASE15_MAX_QUOTE_AGE_SECONDS
@@ -93,6 +94,7 @@ def main() -> int:
         print("reason: Webull paper/sandbox credentials are unavailable")
         return 2
 
+    harden_webull_sdk_logging()
     try:
         from webull.core.client import ApiClient
         from webull.data.data_client import DataClient
