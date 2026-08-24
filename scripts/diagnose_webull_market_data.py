@@ -12,6 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from dotenv import load_dotenv
 
+from packages.brokers.webull import harden_webull_sdk_logging
+
 
 WEBULL_SANDBOX_ENDPOINT = "api.sandbox.webull.com"
 
@@ -92,6 +94,7 @@ def main() -> int:
         print("broker_writes: 0")
         return 2
 
+    harden_webull_sdk_logging()
     try:
         from webull.core.client import ApiClient
         from webull.data.data_client import DataClient
