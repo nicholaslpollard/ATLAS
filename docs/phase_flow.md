@@ -157,31 +157,35 @@ Every meaningful batch/evidence boundary updates, as applicable:
 - `README.md`;
 - `docs/roadmap.md`;
 - `docs/current_status.md`;
-- this phase-flow contract when the process itself changes;
+- this phase-flow contract when the process itself changes or its current-application section becomes stale;
 - active/stacked phase specification;
 - active PR acceptance/evidence ledger;
 - configuration documentation/templates when configuration changes.
 
 Historical phase/fix documents remain provenance rather than current instructions.
 
-## 10. Current application — post-Phase19 stabilization
+## 10. Current application — accepted Phase 20 baseline
 
-- **Phases 1–19: ACCEPTED / MERGED.**
+- **Phases 1–20: ACCEPTED / MERGED.**
 - Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-- Phase 19 merge / accepted baseline: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
-- Phase 19 final docs-head CI `32739682576`: Ubuntu 932 passed in 13.78s; Windows 932 passed in 25.80s; every validator through Phase 19 PASS.
-- No open Phase 20 authority exists.
+- Phase 19 merge: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
+- Post-Phase19 stabilization baseline: `121503590d3c0b18fa9cc19e4c8210b04e2f8d47`.
+- Phase 20 accepted merge / current numbered baseline: `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`.
+- Phase 20 policy fingerprint: `b4f9bd37c3c425e182e4a0da255e8a903d95101d119c833c38c7fd2c0cd3741a`.
+- Phase 20 final exact PR head: `e0f89c9cb362f25cf7c58bfc2c6554a0d687ae62`.
+- Phase 20 final exact-head CI `32766072120`: Ubuntu **945 passed in 14.69s**; Windows **945 passed in 23.46s**; every validator through Phase 20 PASS.
+- Phase 20 provider calls/writes 0/0; broker writes 0.
+- **No Phase 21 authority exists yet.**
 
-The current `maintenance/post-phase19-stabilization` work is **unnumbered maintenance**, not Phase 20. Its permitted scope is documentation closure, runtime/repository hygiene, and evidence-based performance housekeeping that does not change data semantics or trading authority.
+Before Phase 21 is activated:
 
-It must not:
+1. independently inventory the remaining end-to-end operational gap from accepted candidate/risk/AI evidence through Webull-primary shadow/paper execution, exact reconciliation, observability, and outcome learning;
+2. inspect accepted Phase 15–20 runners, adapters, artifacts, and authority boundaries so existing execution logic is reused rather than rebuilt;
+3. select the smallest coherent increment that materially advances the operational paper/shadow objective;
+4. explicitly define/lock any provider-read, provider-write, broker-write, scheduling, persistence, cleanup, or other authority needed by that increment;
+5. preregister target-machine/provider evidence and explicit mutation authorization where required;
+6. preserve live execution disabled and automatic cross-broker failover disabled.
 
-- repeat Phase 18 provider mutation merely for reconfirmation;
-- authorize live execution;
-- authorize automatic failover;
-- change accepted ML/strategy/AI authority;
-- activate PostgreSQL merely because scaffolding exists;
-- introduce destructive cleanup authority;
-- infer Phase 20 scope before Phase 20 is explicitly defined and locked.
+Phase 20 acceptance does **not** imply autonomous scheduling, PostgreSQL runtime promotion, real provider execution, broker switching, cleanup/flatten authority, automatic failover, or live authority. Those remain separate phase decisions.
 
-After the maintenance batch is validated/merged, Phase 20 may be defined as the next numbered architecture increment. Until then, live execution and automatic failover remain disabled.
+The next phase should be chosen because it advances the agreed ATLAS system, not merely because a remaining infrastructure component is available to build.
