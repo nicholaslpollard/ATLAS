@@ -130,5 +130,8 @@ jobs:
       - name: Validate Phase 19 stacked observability contracts
         run: python scripts/validate_phase19.py
 
+      - name: Validate Phase 20 deterministic orchestration contracts
+        run: python scripts/validate_phase20.py
+
       - name: Run tests
         run: python -m pytest -q
