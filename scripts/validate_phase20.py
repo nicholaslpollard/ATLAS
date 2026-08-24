@@ -24,6 +24,7 @@ def main() -> int:
 
     registry = PipelineRegistry(
         "phase20-validation",
+        "v1",
         (
             StageDefinition("foundation"),
             StageDefinition("inventory", dependencies=("foundation",)),
@@ -32,14 +33,21 @@ def main() -> int:
     )
     replay_registry = PipelineRegistry(
         "phase20-validation",
+        "v1",
         tuple(reversed(registry.stages)),
     )
     assert registry.topological_order() == ("foundation", "inventory", "summary")
     assert replay_registry.fingerprint() == registry.fingerprint()
+    assert PipelineRegistry(
+        "phase20-validation",
+        "v2",
+        registry.stages,
+    ).fingerprint() != registry.fingerprint()
 
     try:
         PipelineRegistry(
             "phase20-invalid",
+            "v1",
             (StageDefinition("mutation", authority=StageAuthority.EXTERNAL_MUTATION),),
         )
     except StageAuthorityError:
@@ -88,6 +96,7 @@ def main() -> int:
     print("ATLAS Phase 20 deterministic run orchestration validation")
     print(f"  policy contract: {PHASE20_POLICY_CONTRACT_VERSION}")
     print(f"  policy fingerprint: {phase20_policy_fingerprint()}")
+    print(f"  pipeline version: {registry.pipeline_version}")
     print(f"  pipeline fingerprint deterministic: {registry.fingerprint()}")
     print(f"  topological order: {','.join(registry.topological_order())}")
     print("  external mutation-stage registration: BLOCKED")
