@@ -1,29 +1,21 @@
 # Phase 18 — Paper Provider Mutation Lifecycle Validation
 
-**Status: ACTIVE / draft PR #18. Last synchronized: 2026-08-23.**
+**Status: ACCEPTED / CLOSEOUT PENDING MERGE. Last synchronized: 2026-08-24.**
 
-Phase 18 certifies the first real paper/sandbox provider-mutation lifecycle on top of accepted Phase 17 read-only readiness. It does **not** promote live trading and does not fabricate production strategy/model/AI lineage merely to test a broker API.
+Phase 18 certifies the first real paper/sandbox provider-mutation lifecycle on top of accepted Phase 17 read-only readiness. It does **not** promote live trading, automatic broker failover, universal cleanup authority, or fabricated strategy/model/AI lineage.
 
-The phase is explicitly split at the real-provider authority boundary:
+Subphase disposition:
 
 - **Phase 18A — Pre-mutation software validation: ACCEPTED / COMPLETE**.
-- **Phase 18B — Real paper-provider operational certification: WAITING_EXTERNAL**.
-
-Phase 19 is not active while Phase 18 remains open.
+- **Phase 18B — Real paper-provider operational certification: ACCEPTED / COMPLETE**.
+- **Phase 19 — STACKED_PREP only** on its stacked branch/PR; it remains merge-blocked until Phase 18 is merged, then must be rebased/retargeted to merged `main` and revalidated.
 
 ## 1. Accepted upstream binding
 
 - Phases 1–17 accepted and merged.
 - Phase 17 merge: `65d5a7b58c6894eba27722465741c92db9a33aaf`.
 - Phase 17 policy fingerprint: `693113bbb09458ed2939e486f9f6e0a0bda44e331c6419065760586047b93ff8`.
-- Phase 17 real provider read-only acceptance:
-  - Webull sandbox reconciled/flat;
-  - Alpaca paper reconciled/flat;
-  - provider mutation endpoint invocations 0;
-  - provider writes 0;
-  - live writes 0;
-  - target-machine regression 874 passed;
-  - Windows/Ubuntu CI passed.
+- Phase 17 accepted Webull sandbox + Alpaca paper reconciliation: flat, zero open orders, provider writes 0.
 
 ## 2. Phase 18 policy lock
 
@@ -40,7 +32,7 @@ Locked requirements:
 - required brokers exactly Webull and Alpaca;
 - reads allowed;
 - provider mutation disabled by default;
-- explicit target-machine per-run authorization required;
+- explicit per-run target authorization required;
 - exactly one broker selected per mutation run;
 - pre/post reconciliation required;
 - fresh realtime quote required;
@@ -48,63 +40,42 @@ Locked requirements:
 - provider preflight required;
 - protective geometry required;
 - deterministic/idempotent client-order identity required;
-- uncertain write blocks further mutation until exact reconciliation;
-- destructive cleanup/flatten is separate authority;
+- uncertain writes block further mutation until exact reconciliation;
+- destructive cleanup/flatten remains separate authority;
 - live execution not promoted;
 - automatic cross-broker failover disabled;
-- credential/raw account secret exposure forbidden.
+- credentials/raw account identifiers/request signatures must not appear in operator output.
 
 ## 3. Authority gate
 
-Real paper-provider mutation remains behind:
+Real paper-provider mutation is behind:
 
 `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
 
-The operational runner requires both:
+A real run requires both:
 
 - `--authorize-paper-provider-mutation`;
 - exact confirmation text `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
 
-Credentials, configured endpoints, `ATLAS_ENV`, account connectivity, Phase 17 acceptance, Phase 18A acceptance, implementation existence, or passing tests/CI cannot substitute for this authorization.
+Credentials, endpoints, environment mode, account connectivity, prior acceptance, implementation existence, or passing CI cannot substitute for this gate.
 
-Without authorization the runner must stop before broker initialization.
+Without authorization the runner stops before broker initialization.
 
-## 4. Two validation paths
+## 4. Validation paths
 
 ### 4.1 Production execution semantic validation
 
 `packages/execution/phase18_lifecycle.py`
 
-This path wraps the accepted Phase 15 `ExecutionEngine` against fake providers to prove the production path still enforces:
-
-- selected broker authority;
-- fresh quote;
-- Phase 13 risk envelope;
-- account/order/position reconciliation;
-- provider preflight;
-- protective geometry;
-- deterministic client IDs/idempotency;
-- existing exposure blocking;
-- uncertainty blocking;
-- no automatic failover;
-- no automatic flatten after fills.
+This path uses fake providers to prove the accepted Phase 15 production path still enforces selected-broker authority, fresh quote, Phase 13 risk, reconciliation, provider preflight, protective geometry, deterministic IDs/idempotency, existing-exposure blocking, uncertainty blocking, no automatic failover, and no automatic flatten after fills.
 
 ### 4.2 Real-provider operational certification
 
 `packages/execution/phase18_operational_validation.py`
 
-This is a deliberately separate validation-only order. It is **not**:
+This is a deliberately separate validation-only provider order. It is not a strategy signal, Phase 13 production case, Phase 14 AI-reviewed case, model outcome, performance evidence, or live-money authorization.
 
-- a strategy signal;
-- a Phase 13 production case;
-- a Phase 14 AI-reviewed case;
-- a model outcome;
-- performance evidence;
-- a live-money trade authorization.
-
-This separation prevents broker plumbing certification from contaminating model/strategy/AI lineage.
-
-## 5. Operational validation order
+## 5. Locked operational certification order
 
 Contract:
 
@@ -112,329 +83,232 @@ Contract:
 
 Locked order:
 
-- environment: PAPER/SANDBOX only;
-- instrument: EQUITY only;
-- side: BUY only;
-- quantity: exactly 1 share;
-- order type: LIMIT;
-- time in force: DAY;
-- extended hours: false;
-- entry: 5% below a fresh realtime bid;
-- stop: 2% below entry;
-- target: 2% above entry;
-- absolute notional cap: $1,000;
-- accepted Phase 13 single-name notional cap: 10% of current equity;
-- accepted Phase 13 loss-at-stop cap: 0.5% of current equity.
-
-The entry is intentionally 5% below bid so it is normally nonmarketable and expected to remain open long enough to exercise submit/reconcile/cancel. This is not a fill guarantee.
+- PAPER/SANDBOX only;
+- EQUITY BUY only;
+- quantity exactly 1 share;
+- LIMIT / DAY;
+- extended hours false;
+- entry 5% below a fresh realtime bid;
+- stop 2% below entry;
+- target 2% above entry;
+- absolute notional <= $1,000;
+- accepted Phase 13 single-name notional <= 10% current equity;
+- accepted Phase 13 loss-at-stop <= 0.5% current equity.
 
 Expected normal lifecycle:
 
-`submit once -> exact deterministic client-ID reconcile -> cancel once while open -> reconcile zero-open/flat`
+`fresh quote -> plan-only -> explicit authorization -> flat reconciliation -> prove client ID absent -> provider preview -> submit once -> exact reconcile -> cancel once if open -> exact terminal reconciliation -> flat/zero-open reconciliation`
 
-## 6. Fill/partial-fill behavior
+## 6. Realtime quote authority
 
-If a validation order fills or partially fills:
+Massive remains the accepted broad-market/reference-data provider. Phase 18 discovered that the current Massive plan authorizes delayed aggregate streaming but rejects realtime `Q.<ticker>` quote subscriptions.
 
-- do not submit an opposite order automatically;
-- do not flatten automatically;
-- do not switch brokers automatically;
-- stop and require separate explicit cleanup authority.
+Phase 18 therefore added an explicit Webull sandbox L1 execution-evidence path without changing broad-market authority:
 
-Paper/sandbox does not eliminate the need for deterministic mutation semantics.
+1. `scripts/capture_phase18_webull_quote.py` makes exactly one read-only Webull L1 depth request;
+2. it stores a sanitized local snapshot;
+3. `scripts/run_phase18_operational_validation.py --quote-source webull-snapshot` reads only that local evidence before authorization;
+4. plan-only mode still initializes no broker adapter and makes zero provider calls/writes.
 
-## 7. Uncertain mutation behavior
+Execution evidence requires:
 
-If submit or cancel becomes uncertain:
+- exact requested ticker;
+- positive bid/ask with `ask >= bid`;
+- provider timestamp not in the future;
+- quote age <= **30 seconds** at the execution boundary;
+- realtime/undelayed classification;
+- regular U.S. equity session.
 
-1. attempt read-only exact reconciliation if possible;
-2. do not retry blindly;
-3. do not perform a second mutation;
-4. do not auto-flatten;
-5. do not fail over to Alpaca;
-6. stop until exact provider state is established.
+Premarket, after-hours, weekend/holiday, stale, delayed, malformed, or wrong-ticker evidence fails closed.
 
-An uncertainty result is not certification success.
+Target-machine entitlement evidence on 2026-08-24 proved local Webull sandbox L1 quotes were fresh rather than the default delayed sandbox behavior.
 
-## 8. Pre-submit gates
+## 7. Webull provider operating-rate policy
 
-Before any real submit:
+Locked ATLAS policy as of 2026-08-24:
 
-1. exact Phase 18 per-run authorization and selected-broker match;
-2. PAPER adapter only;
-3. broker/account reconciliation succeeds;
-4. zero open orders;
-5. zero positions for the initial certification run;
-6. account not trading-blocked;
-7. positive current equity;
-8. adequate buying power;
-9. Phase 13 risk envelope passes;
-10. deterministic validation client-order ID proven absent;
-11. provider preflight accepts;
-12. fresh realtime quote/geometry/notional contract passes.
+- normal sustained Webull **read** traffic targets **80% of the most specific current documented endpoint limit**;
+- endpoint-specific limits override broader/global provider ceilings;
+- no normal 90% sustained target;
+- any future temporary higher read burst must be separately bounded, read-only, and below the provider hard limit;
+- mutation throughput is governed by ATLAS risk/reconciliation/idempotency semantics, **not** by Webull's maximum order-rate allowance;
+- sustained realtime candidate monitoring should prefer Webull streaming/MQTT rather than high-rate HTTP polling;
+- HTTP 429 on reads triggers cooldown/backoff, never a tight retry loop;
+- mutation ambiguity or rate-limit errors fail closed and require reconciliation before any later mutation;
+- automatic broker failover remains forbidden.
 
-Only a specific order-not-found result proves the deterministic client ID is absent. Ambiguous lookup errors block mutation.
+This policy is intentionally conservative so ATLAS can operate near useful provider capacity without riding the hard boundary.
 
-## 9. Realtime quote authority
+## 8. Provider-specific hardening discovered during Phase 18B
 
-Real operational certification uses the accepted Phase 5/15 live-state path rather than a new ad hoc quote client.
+### 8.1 Webull explicit order absence
 
-Launcher:
+Webull sandbox Order Detail can raise an SDK exception for HTTP 417 / `OPENAPI_PARAM_ERR` with the explicit message `Order not present`.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\run_live_market_state.py `
-  --feed realtime `
-  --minute-symbols "" `
-  --quote-symbols <TICKER> `
-  --no-journal
-```
+ATLAS now normalizes **only that exact absence condition** to `BrokerOrderNotFound`, allowing deterministic client-order-ID absence to be proven. Other 417/provider errors remain failures.
 
-The stream must remain running while the operational validation command reads the live-state snapshot.
+### 8.2 Sensitive SDK logging
 
-`Phase15LiveQuoteResolver` requires:
+The Webull SDK can log signed request metadata on errors. ATLAS suppresses the relevant SDK loggers and emits sanitized operator-facing errors instead.
 
-- `connection_state == SUBSCRIBED`;
-- `feed_mode == REALTIME`;
-- expected delay 0;
-- no open transport gap;
-- regular-session state;
-- exact provider-native ticker exactly once;
-- quote exists and is `FRESH`;
-- quote itself is realtime/undelayed/regular-session.
+### 8.3 Post-cancel read consistency
 
-Weekends, holidays, stopped streams, stale/delayed data, premarket, and after-hours fail closed. The quote gate must never be weakened merely to force certification.
+The accepted target run proved Webull can acknowledge cancellation while immediate exact reads briefly fail to prove `CANCELLED`.
 
-## 10. Target-machine runner
+ATLAS now sends the cancel request **at most once**, then performs bounded read-only reconciliation using exact Order Detail and exact Order History. It never issues a second cancel because of read lag. If exact `CANCELLED` cannot be proven inside the bounded window, state remains uncertain and the lifecycle fails closed.
 
-`scripts/run_phase18_operational_validation.py`
+## 9. Phase 18A acceptance evidence
 
-Requires:
-
-- `--broker webull|alpaca`;
-- `--ticker <exact provider-native ticker>`.
-
-No default ticker and no quantity parameter exist.
-
-### Plan-only behavior
-
-Without mutation authorization:
-
-- no broker adapter initialization;
-- no provider reads through a broker adapter;
-- no provider writes;
-- plan evidence may be inspected from accepted local live-state data only;
-- output returns the plan-only/zero-provider-call disposition when valid.
-
-Wrong confirmation also stops before broker initialization.
-
-## 11. Mutation gate diagnostic
-
-`scripts/diagnose_phase18_mutation_gate.py --broker webull`
-
-Expected default result:
-
-- selected broker webull;
-- provider adapter initialized NO;
-- provider calls 0;
-- provider writes 0;
-- live disabled;
-- automatic failover disabled;
-- authorization gate DENIED;
-- required confirmation `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
-
-DENIED is the correct result before explicit authorization.
-
-## 12. Automated coverage
-
-### Authorization
-
-- no authorization denied;
-- false flag denied;
-- wrong confirmation denied;
-- unknown broker denied;
-- exact Webull/Alpaca local authorization accepted only as a gate object, not provider authority by itself.
-
-### Production semantic fake lifecycle
-
-- submit/reconcile/cancel/reconcile flat;
-- fill -> no automatic flatten;
-- uncertain submit -> no second mutation;
-- uncertain cancel -> no retry;
-- existing exposure blocks;
-- broker mismatch blocks.
-
-### Operational validation
-
-- one-share nonmarketable BUY geometry;
-- deterministic broker-specific order identity;
-- delayed/nonrealtime rejection;
-- nonregular-session rejection;
-- >$1,000 notional rejection;
-- trading-blocked rejection;
-- buying-power rejection;
-- Phase 13 risk rejection;
-- preflight rejection -> no submit;
-- existing client ID -> no new write;
-- unexpected terminal status not accepted as success;
-- fill -> no automatic flatten;
-- uncertain submit/cancel -> no retry;
-- existing position blocks;
-- broker mismatch blocks.
-
-### Runner
-
-- plan-only initializes no broker;
-- wrong confirmation initializes no broker;
-- blocked/stale quote initializes no broker.
-
-## 13. Independent validator
-
-`scripts/validate_phase18.py` verifies:
-
-- exact Phase 17 binding;
-- exact Phase 18 fingerprint;
-- provider mutations disabled by default;
-- exact confirmation token;
-- live disabled;
-- auto-failover disabled;
-- operational contract exact;
-- quantity 1;
-- entry offset 5%;
-- protective fraction 2%;
-- max notional $1,000;
-- accepted Phase 13 risk fraction 0.5%;
-- accepted Phase 13 single-name fraction 10%.
-
-## 14. Phase 18A — repository and CI evidence
-
-First portability-hardening code head:
-
-`45a2abeba7a51401ee708ab777d960d2f7fea88f`
-
-CI run `32657554236`:
-
-- all validators through Phase 18 PASS;
-- Ubuntu: 908 passed;
-- Windows: 908 passed;
-- both jobs SUCCESS;
-- provider writes 0.
-
-Contract-preserving Windows transport hardening code head:
-
-`38c09c21d4fc636667921c779fbe59341839e9e8`
-
-CI run `32662398274`:
-
-- all validators through Phase 18 PASS;
-- Ubuntu: **908 passed in 13.95s**;
-- Windows: **908 passed in 22.59s**;
-- both jobs SUCCESS;
-- provider writes 0.
-
-Baseline `94a859fc6d44c22a6f8852c1488215a6677806a0` also completed GitHub Actions run `32662817172` successfully on Ubuntu and Windows with all validators through Phase 18 green.
-
-## 15. Phase 18A — target-machine evidence
-
-Initial pre-mutation block:
-
-- Phase 18 validator PASS;
-- focused Phase 18 tests 34 passed in 2.23s;
-- Webull sandbox read-only recheck: selected account configured, account list/balance/orders/positions HTTP 200, 0 open orders, 0 positions;
-- Alpaca paper: reconciled, 0 open orders, 0 positions;
-- mutation gate: adapter initialized NO, provider calls 0, provider writes 0, authorization DENIED correctly.
-
-The first local full regression exposed only a Windows loopback transport abort in the pre-existing Phase 16 CSRF test. The issue was isolated to test-host transport behavior and hardened without modifying production Phase 16 HTTP code or broker/execution behavior.
-
-Final target-machine acceptance at baseline:
+Final Phase 18A target-machine baseline:
 
 `94a859fc6d44c22a6f8852c1488215a6677806a0`
 
-- isolated CSRF test: **1 passed in 3.30s**;
-- full regression: **908 passed in 23.50s**;
-- final `git status --short`: clean;
-- provider calls during final recheck: 0;
-- provider writes during final recheck: 0.
+Evidence:
 
-**Phase 18A disposition: ACCEPTED / COMPLETE. No software or portability blocker remains.**
+- isolated Phase 16 Windows CSRF transport test: 1 passed in 3.30s;
+- full target regression: **908 passed in 23.50s**;
+- working tree clean;
+- provider calls 0;
+- provider writes 0;
+- Windows/Ubuntu CI green with all validators through Phase 18.
 
-## 16. Windows loopback portability hardening
+**Phase 18A: ACCEPTED / COMPLETE.**
 
-First test-only hardening:
+## 10. Phase 18B target-machine acceptance evidence — 2026-08-24
 
-`45a2abeba7a51401ee708ab777d960d2f7fea88f`
+### 10.1 Webull market-data entitlement
 
-- deterministic loopback test opener includes `urllib.request.ProxyHandler({})` so ambient proxy configuration does not intercept `127.0.0.1` traffic.
+Read-only AAPL sandbox L1 probe:
 
-Second test-only hardening:
+- HTTP 200;
+- fresh bid/ask returned;
+- provider timestamp approximately 20 seconds old on first entitlement probe;
+- later captures consistently sub-2-second during active market;
+- provider writes 0;
+- broker writes 0.
 
-`38c09c21d4fc636667921c779fbe59341839e9e8`
+### 10.2 Premarket fail-closed proof
 
-The foreign-origin test:
+At 09:18 ET and 09:25 ET:
 
-1. directly calls `ControlPlaneSessionGuard.authorize_write()` and requires `allowed is False` with `SAME_ORIGIN_REQUIRED`;
-2. still requires HTTP 403 normally;
-3. accepts only exact Windows `ConnectionAbortedError` with `winerror == 10053` as an alternate host-transport manifestation after rejection is already proven;
-4. still requires zero action/audit events;
-5. fails every other transport error.
+- fresh Webull AAPL quotes were captured;
+- `session_segment: premarket`;
+- Phase 18 plan returned `BLOCKED` solely because the session was outside regular hours;
+- broker adapter initialized NO;
+- plan-step provider calls 0;
+- provider writes 0.
 
-Unchanged production scope:
+### 10.3 Regular-session plan-only proof
 
-- `packages/control_plane/http_server.py` unchanged;
-- `packages/control_plane/session.py` unchanged;
-- broker adapters unchanged;
-- execution lifecycle unchanged;
-- Phase 18 policy unchanged;
-- provider authority unchanged.
+At 09:31 ET:
 
-## 17. Phase 18B — remaining real certification sequence
+- AAPL bid/ask `311.06 / 311.17`;
+- quote age `0.322s`;
+- session `regular`;
+- one-share plan entry/stop/target `295.51 / 289.60 / 301.42`;
+- planned notional `$295.51`;
+- geometry valid: `289.60 < 295.51 < 301.42`;
+- authorization not requested;
+- broker adapter initialized NO;
+- provider calls 0;
+- provider writes 0;
+- disposition `PLAN_ONLY_ZERO_PROVIDER_CALLS`.
 
-**State: WAITING_EXTERNAL**
+### 10.4 First authorized attempt — no mutation
 
-Waiting conditions:
+An explicitly authorized Webull sandbox run reached the idempotency query and stopped because the SDK's explicit `Order not present` 417 was not yet normalized.
 
-- regular U.S. equity session;
-- accepted Massive realtime focused quote state;
-- explicit user authorization only after plan-only review.
+Evidence:
 
-When those conditions are available:
+- failure stage `idempotency_query`;
+- provider state certain;
+- final reconciliation available;
+- 0 open orders;
+- 0 positions;
+- no submit/cancel mutation occurred.
 
-1. choose exact provider-native ticker suitable for the one-share <$1,000 validation cap;
-2. start focused Massive realtime `Q.<ticker>` stream;
-3. keep the stream active;
-4. run Phase 18 plan-only operational validation;
-5. verify 0 broker/provider calls/writes in plan-only mode;
-6. inspect the one-share entry/stop/target/risk plan;
-7. obtain explicit `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION` approval;
-8. certify Webull sandbox first;
-9. submit exactly once;
-10. reconcile exact deterministic client ID;
-11. cancel exactly once if still open;
-12. reconcile zero-open/flat;
-13. if filled/partially filled, stop for separate cleanup authorization;
-14. never automatically fail over to Alpaca;
-15. save only sanitized evidence;
-16. rerun validators/regression only if code changes or acceptance evidence requires it;
-17. update README/roadmap/current-status/spec/PR;
-18. mark PR #18 ready and merge only after accepted target-machine Phase 18B evidence;
-19. verify `main` and delete merged Phase 18 branch;
-20. only then define and activate Phase 19.
+This exposed and led to the exact-absence normalization and SDK-log hardening described above.
 
-## 18. Acceptance boundary after Phase 18
+### 10.5 Accepted authorized Webull sandbox lifecycle
 
-Successful Phase 18 acceptance will mean only that ATLAS can safely perform the accepted **paper/sandbox provider mutation lifecycle** under explicit authority and reconciliation.
+A later explicitly authorized run used:
 
-It will **not** mean:
+- ticker `AAPL`;
+- fresh regular-session bid/ask `311.33 / 311.39`;
+- provider quote timestamp `2026-08-24T13:51:49.262000+00:00`;
+- quote age `0.823s`;
+- deterministic validation client ID `p18v-13abada37159d4486df293b3695`;
+- entry/stop/target `295.76 / 289.84 / 301.68`;
+- planned notional `$295.76`;
+- explicit mutation authorization accepted;
+- exactly one Webull sandbox adapter initialized.
+
+The run proved:
+
+1. pre-reconciliation flat/zero-open;
+2. deterministic client ID absent;
+3. provider preflight accepted;
+4. validation order submitted exactly once;
+5. exact post-submit order reconciliation succeeded;
+6. cancellation was attempted exactly once;
+7. immediate post-cancel exact read was temporarily inconclusive, so ATLAS stopped with no retry/failover;
+8. read-only reconciliation still showed 0 open orders and 0 positions.
+
+A subsequent **read-only** exact postmortem then proved:
+
+- Order Detail: `FOUND`, `CANCELLED`;
+- Order History: `FOUND`, `CANCELLED`;
+- ticker `AAPL`;
+- requested quantity `1.0`;
+- filled quantity `0.0`;
+- open-order count `0`;
+- position count `0`;
+- exact client ID not open;
+- account flat and zero-open;
+- provider writes during postmortem `0`;
+- broker writes during postmortem `0`.
+
+This is definitive evidence that the real paper/sandbox lifecycle completed as intended: **submit once -> exact reconcile -> cancel once -> exact CANCELLED -> flat/zero-open**, with no fill, no cleanup required, no blind retry, and no failover.
+
+**Phase 18B: ACCEPTED / COMPLETE.**
+
+## 11. Closeout code evidence
+
+Post-target hardening adds bounded read-only post-cancel reconciliation while retaining exactly-one-cancel semantics. Its regression coverage proves the exact-history fallback can establish `CANCELLED` without invoking cancellation a second time.
+
+The final Phase 18 acceptance boundary requires:
+
+- Phase 18 validator green;
+- full pytest regression green;
+- Ubuntu CI green;
+- Windows CI green;
+- living docs/PR synchronized.
+
+No second target-machine mutation is required solely to validate this read-only reconciliation hardening because the real target lifecycle already produced definitive exact `CANCELLED` evidence and the code change does not add provider mutation authority.
+
+## 12. Acceptance meaning
+
+Phase 18 acceptance proves only that ATLAS can safely perform the accepted explicit **paper/sandbox** provider mutation/reconciliation lifecycle.
+
+It does **not** mean:
 
 - live trading is authorized;
 - automatic broker failover is authorized;
-- strategy/model authority changed;
+- cleanup/flatten is universally authorized;
+- strategy/model/AI authority changed;
 - browser actions independently authorize execution;
-- cleanup/flatten is universally authorized.
+- provider rate ceilings are trading throughput targets.
 
-Any live-money transition remains a separate future preregistered phase with explicit user authorization.
+Any live-money transition remains a separate future preregistered phase with separate explicit authorization.
 
-## 19. Phase-flow binding
+## 13. Phase-flow closeout
 
-Phase 18 follows `docs/phase_flow.md`.
+Once the final code/docs CI boundary is green:
 
-The phase cannot be marked accepted/merged until Phase 18B evidence is complete. Phase 19 cannot become active until Phase 18 is accepted and merged, then Phase 19 must itself be defined and locked before implementation.
+1. mark PR #18 ready;
+2. merge Phase 18 into `main`;
+3. verify merged `main`;
+4. preserve/delete branches according to repository policy;
+5. rebase/retarget the already-stacked Phase 19 observability PR onto merged `main`;
+6. rerun Phase 19 validator/full regression/Windows+Ubuntu CI;
+7. only then treat Phase 19 as the active numbered phase.
