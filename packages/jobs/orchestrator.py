@@ -244,26 +244,74 @@ class Phase20Orchestrator:
         for key, value in expected.items():
             if manifest.get(key) != value:
                 raise ManifestConflictError(f"persisted manifest conflict at field {key}")
-        parse_run_state(manifest.get("run_state"))
+        try:
+            run_state = parse_run_state(manifest.get("run_state"))
+        except ValueError as exc:
+            raise ManifestConflictError("persisted run state is invalid") from exc
+
         stages = manifest.get("stages")
         if not isinstance(stages, dict) or set(stages) != set(plan.topological_order):
             raise ManifestConflictError("persisted stage set does not match pipeline definition")
+
+        statuses: dict[str, StageStatus] = {}
         for stage_id, stage_payload in stages.items():
-            if not isinstance(stage_payload, dict):
-                raise ManifestConflictError(f"invalid stage payload for {stage_id}")
-            status = StageStatus.from_payload(cast(dict[str, object], stage_payload))
-            if status.stage_id != stage_id:
-                raise ManifestConflictError(f"stage payload identity mismatch for {stage_id}")
+            statuses[str(stage_id)] = self._parse_stage_status(str(stage_id), stage_payload)
+
+        for stage_id in self.registry.topological_order():
+            status = statuses[stage_id]
+            stage = self.registry.get(stage_id)
+            dependency_states = [statuses[dependency].state for dependency in stage.dependencies]
+            if status.state is JobState.SUCCEEDED and any(
+                state is not JobState.SUCCEEDED for state in dependency_states
+            ):
+                raise ManifestConflictError(
+                    f"successful stage {stage_id} has a non-successful dependency"
+                )
+            if status.state is JobState.BLOCKED and not any(
+                state in {JobState.FAILED, JobState.BLOCKED} for state in dependency_states
+            ):
+                raise ManifestConflictError(
+                    f"blocked stage {stage_id} has no failed or blocked dependency"
+                )
+
+        stage_states = [statuses[stage_id].state for stage_id in plan.topological_order]
+        if run_state is RunState.PLANNED and any(
+            state is not JobState.PENDING for state in stage_states
+        ):
+            raise ManifestConflictError("planned run contains non-pending stage state")
+        if run_state is RunState.SUCCEEDED and not all(
+            state is JobState.SUCCEEDED for state in stage_states
+        ):
+            raise ManifestConflictError("successful run contains non-successful stage state")
+        if run_state is RunState.FAILED and not any(
+            state is JobState.FAILED for state in stage_states
+        ):
+            raise ManifestConflictError("failed run contains no failed stage")
+        if run_state is RunState.BLOCKED:
+            if not any(state is JobState.BLOCKED for state in stage_states):
+                raise ManifestConflictError("blocked run contains no blocked stage")
+            if any(state is JobState.FAILED for state in stage_states):
+                raise ManifestConflictError("blocked run contains a failed stage")
+
+    def _parse_stage_status(self, stage_id: str, payload: object) -> StageStatus:
+        if not isinstance(payload, dict):
+            raise ManifestConflictError(f"invalid stage payload for {stage_id}")
+        try:
+            status = StageStatus.from_payload(cast(dict[str, object], payload))
+        except (TypeError, ValueError) as exc:
+            raise ManifestConflictError(f"invalid persisted stage status for {stage_id}") from exc
+        if status.stage_id != stage_id:
+            raise ManifestConflictError(f"stage payload identity mismatch for {stage_id}")
+        stage = self.registry.get(stage_id)
+        if status.attempts > stage.max_attempts:
+            raise ManifestConflictError(
+                f"stage {stage_id} attempts exceed registered maximum"
+            )
+        return status
 
     def _stage_status(self, manifest: dict[str, object], stage_id: str) -> StageStatus:
         stages = cast(dict[str, object], manifest["stages"])
-        payload = stages[stage_id]
-        if not isinstance(payload, dict):
-            raise ManifestConflictError(f"invalid stage payload for {stage_id}")
-        status = StageStatus.from_payload(cast(dict[str, object], payload))
-        if status.stage_id != stage_id:
-            raise ManifestConflictError(f"stage payload identity mismatch for {stage_id}")
-        return status
+        return self._parse_stage_status(stage_id, stages[stage_id])
 
     def _transition_stage(
         self,
