@@ -91,11 +91,21 @@ class StageStatus:
 
     @classmethod
     def from_payload(cls, payload: dict[str, object]) -> "StageStatus":
+        stage_id = payload.get("stage_id")
+        state = payload.get("state")
+        attempts = payload.get("attempts")
+        error_code = payload.get("error_code")
+        if not isinstance(stage_id, str):
+            raise ValueError("persisted stage_id must be a string")
+        if not isinstance(state, str):
+            raise ValueError("persisted stage state must be a string")
+        if not isinstance(attempts, int) or isinstance(attempts, bool):
+            raise ValueError("persisted stage attempts must be an integer")
+        if error_code is not None and not isinstance(error_code, str):
+            raise ValueError("persisted stage error_code must be a string or null")
         return cls(
-            stage_id=str(payload.get("stage_id", "")),
-            state=parse_job_state(payload.get("state")),
-            attempts=int(payload.get("attempts", 0)),
-            error_code=(
-                None if payload.get("error_code") is None else str(payload.get("error_code"))
-            ),
+            stage_id=stage_id,
+            state=parse_job_state(state),
+            attempts=attempts,
+            error_code=error_code,
         )
