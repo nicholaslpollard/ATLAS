@@ -1,24 +1,21 @@
 # Phase 19 — Operations Dashboard & Paper/Shadow Observability
 
-**State: ACCEPTED; PR #19 MERGE VEHICLE. Last synchronized: 2026-08-24.**
+**State: ACCEPTED / MERGED. Last synchronized: 2026-08-24.**
 
 Phase 19 turns the accepted Phase 16 browser control plane into an end-to-end ATLAS operations dashboard without creating provider-write, live-trading, automatic-failover, model, strategy, or AI authority.
 
-## 1. Upstream binding
+## 1. Upstream and merge binding
 
-- branch: `phase-19-operations-dashboard-observability`
-- PR: `#19 — Phase 19: Operations Dashboard & Paper/Shadow Observability`
-- PR base: `main`
-- accepted Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`
-- Phase 18 policy: `phase18-policy-v1-phase17-bound-explicit-paper-mutation-no-live`
-- Phase 18 target lifecycle: ACCEPTED / MERGED
-- clean rebased Phase 19 implementation head: `8c7d045af4f75cb734eeebbd76c84edaccdcc173`
-- live execution: disabled
-- automatic failover: disabled
+- historical branch: `phase-19-operations-dashboard-observability`;
+- merged PR: `#19 — Phase 19: Operations Dashboard & Paper/Shadow Observability`;
+- accepted Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`;
+- clean rebased Phase 19 implementation head: `8c7d045af4f75cb734eeebbd76c84edaccdcc173`;
+- final docs-closeout head: `76133cb6331c97ce1bb19319157f944a540f3214`;
+- accepted Phase 19 merge / `main`: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`;
+- live execution: disabled;
+- automatic failover: disabled.
 
-The old STACKED_PREP implementation/evidence is retained as development provenance. After Phase 18 merged, Phase 19 was rebuilt directly on the accepted Phase 18 `main` baseline, revalidated end-to-end on Ubuntu and Windows, and accepted. This documentation synchronization is the final PR closeout layer; the PR must remain green on the docs head before merge.
-
-If this file is read from `main` after PR #19 has merged, Phase 19 is fully ACCEPTED / MERGED.
+The old STACKED_PREP implementation/evidence is development provenance only. After Phase 18 merged, Phase 19 was rebuilt directly on accepted `main`, revalidated end-to-end on Ubuntu and Windows, accepted, and merged.
 
 ## 2. Authority lock
 
@@ -188,26 +185,22 @@ The optimization preserves provider-native ticker case, session segmentation, de
 
 Staging-to-canonical move/hardlink semantics remain intentionally unimplemented pending recovery/failure evidence.
 
+The post-Phase19 stabilization audit also reviewed caching derived-row counts for no-op materialization reruns. That change was deliberately deferred because it would alter persisted manifest shape without measured evidence that the existing metadata-oriented skip scans are a meaningful bottleneck.
+
 ## 11. Previous STACKED_PREP validation evidence
 
-Validated code head:
-
-`a6736de45de5d5d0aca5876b6b543f2a924a2111`
-
-CI run:
-
-`32686662335`
+Validated code head `a6736de45de5d5d0aca5876b6b543f2a924a2111`, CI `32686662335`:
 
 - Ubuntu: 921 passed in 14.45s;
 - Windows: 921 passed in 34.85s;
 - every validator through Phase 19 PASS;
 - dependency lock PASS;
 - secret hygiene PASS;
-- ATLAS doctor PASS;
+- ATLAS Doctor PASS;
 - feature benchmark self-test PASS;
 - provider/broker calls/writes 0.
 
-This is provenance only; final acceptance is based on the clean post-Phase18 rebase evidence below.
+This is provenance only; final acceptance is based on the clean post-Phase18 rebase evidence.
 
 ## 12. Final post-Phase18 acceptance evidence
 
@@ -215,33 +208,36 @@ Clean rebased implementation head:
 
 `8c7d045af4f75cb734eeebbd76c84edaccdcc173`
 
-CI run:
+Implementation CI `32738366242`:
 
-`32738366242`
+- Ubuntu: 932 passed in 16.08s;
+- Windows: 932 passed in 23.74s;
+- Phase 19 validator and every prior validator through Phase 18 PASS;
+- dependency lock, secret hygiene, ATLAS Doctor, browser JavaScript, feature benchmark self-test PASS;
+- exact 33-feature parity max absolute difference 0.0;
+- provider calls 0;
+- provider writes 0;
+- broker writes 0;
+- live promotion disabled;
+- automatic failover disabled.
 
-Results:
+Final docs-closeout head:
 
-- Ubuntu: **932 passed in 16.08s**;
-- Windows: **932 passed in 23.74s**;
-- Phase 19 validator: PASS on both platforms;
-- every prior validator through Phase 18: PASS;
-- dependency lock: PASS;
-- secret hygiene: PASS;
-- ATLAS Doctor: PASS;
-- browser JavaScript syntax: PASS;
-- feature benchmark self-test: PASS;
-- exact 33-feature parity maximum absolute difference: 0.0;
-- provider calls: 0;
-- provider writes: 0;
-- broker writes: 0;
-- live promotion: disabled;
-- automatic failover: disabled.
+`76133cb6331c97ce1bb19319157f944a540f3214`
 
-The rebase exposed no Phase 18 -> Phase 19 integration drift.
+Final docs-head CI `32739682576`:
 
-**Phase 19 implementation/acceptance: ACCEPTED.**
+- Ubuntu: **932 passed in 13.78s**;
+- Windows: **932 passed in 25.80s**;
+- every validator through Phase 19 PASS on both platforms;
+- dependency lock, secret hygiene, ATLAS Doctor, browser JavaScript, and feature self-test PASS;
+- exact 33-feature parity max absolute difference 0.0;
+- provider writes 0;
+- broker writes 0.
 
-## 13. Final merge boundary
+The rebase and closeout exposed no Phase 18 -> Phase 19 integration drift.
+
+## 13. Final merge boundary — complete
 
 1. Phase 18 accepted/merged — COMPLETE at `55bdd7446f0bbd4225de264187c7f5fb601991b0`;
 2. Phase 19 rebuilt/retargeted to merged `main` — COMPLETE;
@@ -249,12 +245,14 @@ The rebase exposed no Phase 18 -> Phase 19 integration drift.
 4. full regression — PASS;
 5. Ubuntu + Windows CI — PASS;
 6. integration drift resolution — none required;
-7. synchronize README/roadmap/current-status/this spec/PR with final evidence — this docs closeout;
-8. require final docs-head CI green if head changes;
-9. mark PR #19 ready and merge after green evidence;
-10. verify merged `main`.
+7. living docs/PR synchronized — COMPLETE;
+8. final docs-head CI — PASS;
+9. PR #19 marked ready and merged — COMPLETE;
+10. merged `main` verified at `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe` — COMPLETE.
 
-No target-machine broker/provider test is required solely for Phase 19 observability. No Phase 18 provider mutation should be repeated for this phase.
+No target-machine broker/provider test was required solely for Phase 19 observability. No Phase 18 provider mutation should be repeated for this phase.
+
+The next numbered phase is not implicitly active. Post-Phase19 stabilization is unnumbered housekeeping only.
 
 ## 14. Explicit non-goals
 
