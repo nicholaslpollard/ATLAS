@@ -36,6 +36,12 @@ Storage/compute roles:
 - **Webull**: primary planned execution broker; accepted downstream realtime L1 execution-evidence source where locally entitled.
 - **Alpaca**: manually selectable secondary/fallback execution broker; never automatic failover.
 
+### 2.1 Strategic anti-drift anchor
+
+The roadmap destination is the **operational end-to-end ATLAS system**, not any individual infrastructure phase. ATLAS must progress from broad-market discovery through point-in-time evidence, deterministic strategy/research/risk planning and independent AI audit into safe **Webull-primary shadow/paper execution**, exact reconciliation, observability, and outcome learning before any separately authorized live transition is considered.
+
+Infrastructure, storage, orchestration, scheduling, and control-plane work are justified only when they materially improve correctness, safety, evidence quality, recoverability, performance, or operability of that agreed system. At every phase boundary, the implementation and proposed next increment must be independently audited against this roadmap and the current authority lock. Work that does not materially advance the agreed end-to-end paper/shadow objective should not displace higher-value operational work merely because it is technically available. Any genuine change to the destination or architecture requires an explicit documented replacement decision and independent validation; it may never arise through silent drift.
+
 ## 3. Mandatory phase execution contract
 
 ATLAS advances by explicit numbered phases under `docs/phase_flow.md`:
@@ -246,9 +252,9 @@ Closeout sequence:
 2. require final docs-head Ubuntu + Windows CI green with every validator through Phase 20;
 3. mark PR #21 ready/accepted and merge it;
 4. verify the accepted `main` merge and synchronize final merge/CI evidence;
-5. only then define and authority-lock the next numbered phase.
+5. only then define and authority-lock the next numbered phase, selecting the smallest coherent increment that materially advances the end-to-end operational paper/shadow path toward real Webull-primary paper trading while preserving all existing data, risk, AI, broker, and mutation authority boundaries.
 
-No additional real provider mutation is required for Phase 20. No autonomous scheduler, PostgreSQL runtime promotion, real provider execution, automatic broker switching/failover, or live execution authority may be inferred from Phase 20 acceptance.
+No additional real provider mutation is required for Phase 20. No autonomous scheduler, PostgreSQL runtime promotion, real provider execution, automatic broker switching/failover, or live execution authority may be inferred from Phase 20 acceptance. Those capabilities may be introduced only when a later phase explicitly defines and locks the required authority because they are necessary to advance the operational ATLAS system.
 
 ## 13. Batch-first development protocol
 
