@@ -13,6 +13,10 @@ class DuplicateIdempotencyKeyError(QueueError):
     pass
 
 
+class DuplicateStageQueueError(QueueError):
+    pass
+
+
 def stage_idempotency_key(run_id: str, stage_id: str) -> str:
     if not run_id or not stage_id:
         raise ValueError("run_id and stage_id are required")
@@ -35,11 +39,12 @@ class JobEnvelope:
 
 
 class DeterministicJobQueue:
-    """Single-run deterministic queue with permanent duplicate-key protection."""
+    """Single-run deterministic queue with permanent duplicate protection."""
 
     def __init__(self) -> None:
         self._heap: list[tuple[int, str, str, JobEnvelope]] = []
         self._seen_idempotency_keys: set[str] = set()
+        self._seen_stage_ids: set[str] = set()
         self._queued_stage_ids: set[str] = set()
 
     def __len__(self) -> int:
@@ -53,7 +58,12 @@ class DeterministicJobQueue:
             raise DuplicateIdempotencyKeyError(
                 f"duplicate idempotency key: {envelope.idempotency_key}"
             )
+        if envelope.stage_id in self._seen_stage_ids:
+            raise DuplicateStageQueueError(
+                f"stage already scheduled in this queue: {envelope.stage_id}"
+            )
         self._seen_idempotency_keys.add(envelope.idempotency_key)
+        self._seen_stage_ids.add(envelope.stage_id)
         self._queued_stage_ids.add(envelope.stage_id)
         heapq.heappush(
             self._heap,
