@@ -58,10 +58,24 @@ class StageStatus:
             raise ValueError("stage_id must not be empty")
         if self.attempts < 0:
             raise ValueError("attempts must be non-negative")
-        if self.state is JobState.SUCCEEDED and self.error_code is not None:
-            raise ValueError("successful stage cannot carry an error code")
         if self.error_code is not None and (not self.error_code or len(self.error_code) > 128):
             raise ValueError("error_code must be 1..128 characters when present")
+
+        if self.state is JobState.PENDING:
+            if self.attempts != 0 or self.error_code is not None:
+                raise ValueError("pending stage must have zero attempts and no error code")
+        elif self.state is JobState.RUNNING:
+            if self.attempts < 1 or self.error_code is not None:
+                raise ValueError("running stage must have at least one attempt and no error code")
+        elif self.state is JobState.SUCCEEDED:
+            if self.attempts < 1 or self.error_code is not None:
+                raise ValueError("successful stage must have at least one attempt and no error code")
+        elif self.state is JobState.FAILED:
+            if self.attempts < 1 or self.error_code is None:
+                raise ValueError("failed stage must have at least one attempt and an error code")
+        elif self.state is JobState.BLOCKED:
+            if self.attempts != 0 or self.error_code is None:
+                raise ValueError("blocked stage must have zero attempts and an error code")
 
     @property
     def terminal(self) -> bool:
