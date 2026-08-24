@@ -30,7 +30,12 @@ def _handlers():
         validate_phase20_policy()
 
     def living_docs(_context) -> None:
-        for relative in ("README.md", "docs/current_status.md", "docs/roadmap.md"):
+        for relative in (
+            "README.md",
+            "docs/current_status.md",
+            "docs/roadmap.md",
+            "docs/phase20_run_orchestration.md",
+        ):
             path = REPO_ROOT / relative
             if not path.is_file() or path.stat().st_size == 0:
                 raise RuntimeError("required living document unavailable")
