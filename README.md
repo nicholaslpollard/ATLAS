@@ -38,6 +38,12 @@ Core roles:
 - **Browser** — monitoring/control plane only; it cannot create independent trading authority.
 - **Phase 20 orchestration** — deterministic local run control only; a registered job never creates provider, broker, scheduler, or live authority.
 
+## Strategic anti-drift anchor
+
+The implementation destination remains the full architecture above: **ATLAS must operate the complete evidence chain from broad-market discovery through deterministic analysis/risk and independent AI review into safe Webull-primary shadow/paper execution, reconciliation, observability, and outcome learning before any separately authorized live transition is considered.**
+
+Infrastructure is a means to that operational system, not a replacement destination. Every phase boundary must be independently audited against the roadmap, current authority contract, and this end-to-end objective. A proposed phase or optimization that does not materially advance correctness, safety, operability, evidence quality, or the operational paper/shadow path should not displace higher-value work merely because it is technically possible. Material changes to the architecture or destination require an explicit documented decision and independent validation; they may never occur through silent drift.
+
 ## Mandatory development flow
 
 `DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST AS NEEDED -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
@@ -201,6 +207,6 @@ Phase 20 implementation is complete and independently green. Continue only with 
 2. require final docs-head Ubuntu + Windows CI green with every validator through Phase 20;
 3. mark PR #21 ready/accepted and merge it;
 4. verify/synchronize the accepted merge on `main`;
-5. only then define and authority-lock the next numbered phase.
+5. only then define and authority-lock the next numbered phase, choosing the smallest coherent increment that materially advances the agreed end-to-end operational paper/shadow path toward real Webull-primary paper trading while preserving every existing authority and safety boundary.
 
 Until a later explicit phase changes an authority boundary, live execution remains disabled, broker switching remains explicit/manual, automatic failover remains forbidden, and autonomous scheduling/PostgreSQL runtime promotion remain out of scope.
