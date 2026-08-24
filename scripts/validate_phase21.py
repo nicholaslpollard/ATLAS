@@ -72,18 +72,29 @@ def main() -> None:
     submit_index = engine.index("submitted = adapter.submit(plan)")
     _require(gate_index < submit_index, "Phase 21 gate must run before adapter.submit(plan)")
     _require(
+        "def submit_authorized_plan(" in engine,
+        "central execution engine must own the authorized plan submission seam",
+    )
+    _require(
         'stage="paper_authority"' in engine,
         "central execution engine must expose a deterministic paper_authority failure stage",
     )
 
     operational_adapter_submit_paths: list[str] = []
+    raw_adapter_submit_count = 0
     for path in sorted((ROOT / "packages").rglob("*.py")):
         relative = path.relative_to(ROOT).as_posix()
-        if _adapter_submit_calls(relative):
+        count = _adapter_submit_calls(relative)
+        if count:
             operational_adapter_submit_paths.append(relative)
+            raw_adapter_submit_count += count
     _require(
         operational_adapter_submit_paths == ["packages/execution/engine.py"],
         f"adapter.submit mutation seam is not centralized: {operational_adapter_submit_paths}",
+    )
+    _require(
+        raw_adapter_submit_count == 1,
+        f"expected exactly one raw adapter.submit call, found {raw_adapter_submit_count}",
     )
 
     phase15 = _source("packages/execution/phase15_run.py")
@@ -104,6 +115,11 @@ def main() -> None:
         and "paper_authority=paper_authority" in phase15,
         "Phase 15 must pass exact scope and authority into the central execution engine",
     )
+    _require(
+        'if selected_environment == ExecutionEnvironment.PAPER:\n            source_payload["phase21_execution_scope_id"] = execution_scope_id'
+        in phase15,
+        "Phase 15 must bind Phase 21 scope into source lineage only for PAPER runs",
+    )
 
     phase18 = _source("packages/execution/phase18_lifecycle.py")
     phase18_outer_index = phase18.index("auth = require_phase18_mutation_authorization(authorization)")
@@ -119,6 +135,32 @@ def main() -> None:
         "execution_scope_id=phase21_challenge.execution_scope_id" in phase18
         and "paper_authority=phase21_authority" in phase18,
         "Phase 18 certification submit must cross the central Phase 21 gate",
+    )
+
+    phase18_operational = _source("packages/execution/phase18_operational_validation.py")
+    phase18_operational_outer_index = phase18_operational.index(
+        "auth = require_phase18_mutation_authorization(authorization)"
+    )
+    phase18_operational_compat_index = phase18_operational.index(
+        "phase21_challenge = build_phase18_operational_validation_challenge("
+    )
+    phase18_operational_submit_index = phase18_operational.index(
+        "submitted = ExecutionEngine().submit_authorized_plan("
+    )
+    _require(
+        phase18_operational_outer_index
+        < phase18_operational_compat_index
+        < phase18_operational_submit_index,
+        "Phase 18 operational outer authority must precede plan-bound Phase 21 authority and submit",
+    )
+    _require(
+        _adapter_submit_calls("packages/execution/phase18_operational_validation.py") == 0,
+        "Phase 18 operational validation must not own a raw adapter.submit mutation seam",
+    )
+    _require(
+        "build_phase18_operational_validation_challenge" in phase18_operational
+        and "paper_authority=phase21_authority" in phase18_operational,
+        "Phase 18 operational validation must bind exact plan scope into the central Phase 21 gate",
     )
 
     control_plane = "\n".join(
@@ -176,6 +218,8 @@ def main() -> None:
     print("live_execution=false")
     print("automatic_broker_failover=false")
     print("adapter_submit_seam=packages/execution/engine.py")
+    print("raw_adapter_submit_count=1")
+    print("phase18_operational_submit=centralized")
     print("provider_calls=0")
     print("provider_writes=0")
     print("broker_writes=0")

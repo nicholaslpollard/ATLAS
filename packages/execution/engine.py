@@ -20,6 +20,8 @@ from packages.execution.validator import (
     validate_submission_gate,
 )
 from packages.schemas.execution import (
+    BrokerOrderPlan,
+    BrokerOrderSnapshot,
     BrokerPreflightResult,
     ExecutionEnvironment,
     ExecutionIntent,
@@ -50,6 +52,43 @@ class ExecutionEngine:
     authority. Reusing an already-existing deterministic order performs no new mutation
     and therefore does not consume or require new mutation authority.
     """
+
+    def submit_authorized_plan(
+        self,
+        plan: BrokerOrderPlan,
+        adapter: BrokerAdapter,
+        *,
+        execution_scope_id: str | None = None,
+        paper_authority: Phase21PaperExecutionAuthority | None = None,
+    ) -> BrokerOrderSnapshot:
+        """Submit one already-validated plan through the single raw mutation seam.
+
+        PAPER submissions require exact Phase 21 authority. SHADOW remains authority-free
+        because its adapter performs no provider mutation. LIVE is rejected here even if a
+        caller somehow reaches this lower-level seam.
+        """
+
+        if adapter.environment == ExecutionEnvironment.PAPER:
+            try:
+                require_phase21_paper_execution_authority(
+                    paper_authority,
+                    expected_execution_scope_id=execution_scope_id,
+                    broker=adapter.broker,
+                    environment=adapter.environment,
+                )
+            except Phase21AuthorizationError as exc:
+                raise ExecutionEngineError(
+                    "Phase 21 paper execution authority rejected new provider submission",
+                    stage="paper_authority",
+                ) from exc
+        elif adapter.environment == ExecutionEnvironment.LIVE:
+            raise ExecutionEngineError(
+                "LIVE provider submission is disabled",
+                stage="paper_authority",
+            )
+
+        submitted = adapter.submit(plan)
+        return submitted
 
     def attempt(
         self,
@@ -139,23 +178,16 @@ class ExecutionEngine:
             preflight=preflight,
         )
 
-        if intent.environment == ExecutionEnvironment.PAPER:
-            try:
-                require_phase21_paper_execution_authority(
-                    paper_authority,
-                    expected_execution_scope_id=execution_scope_id,
-                    broker=adapter.broker,
-                    environment=adapter.environment,
-                )
-            except Phase21AuthorizationError as exc:
-                raise ExecutionEngineError(
-                    "Phase 21 paper execution authority rejected new provider submission",
-                    stage="paper_authority",
-                ) from exc
-
         try:
-            submitted = adapter.submit(plan)
+            submitted = self.submit_authorized_plan(
+                plan,
+                adapter,
+                execution_scope_id=execution_scope_id,
+                paper_authority=paper_authority,
+            )
         except BrokerSubmissionUncertain:
+            raise
+        except ExecutionEngineError:
             raise
         except BrokerAdapterError as exc:
             raise ExecutionEngineError(

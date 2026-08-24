@@ -7,6 +7,7 @@ import pytest
 
 from packages.brokers.paper.broker import ShadowBroker
 from packages.execution.engine import ExecutionEngine, ExecutionEngineError
+from packages.execution.order_builder import build_broker_order_plan
 from packages.execution.phase21_authority import (
     PHASE21_AUTOMATIC_BROKER_FAILOVER,
     PHASE21_LIVE_EXECUTION_ENABLED,
@@ -14,6 +15,7 @@ from packages.execution.phase21_authority import (
     Phase21PaperExecutionAuthority,
     authorize_phase21_paper_execution,
     build_phase15_paper_execution_challenge,
+    build_phase18_operational_validation_challenge,
     phase21_policy_fingerprint,
 )
 from packages.execution.validator import ExecutionValidationError
@@ -128,6 +130,42 @@ def test_phase21_scope_is_deterministic_and_broker_bound() -> None:
     assert webull_first.execution_scope_id == webull_second.execution_scope_id
     assert webull_first.execution_scope_id != alpaca.execution_scope_id
     assert webull_first.required_confirmation != alpaca.required_confirmation
+
+
+def test_phase18_operational_scope_is_exact_plan_and_broker_bound() -> None:
+    plan = build_broker_order_plan(_intent(BrokerName.WEBULL))
+    first = build_phase18_operational_validation_challenge(plan, broker=BrokerName.WEBULL)
+    second = build_phase18_operational_validation_challenge(plan, broker=BrokerName.WEBULL)
+    alpaca = build_phase18_operational_validation_challenge(plan, broker=BrokerName.ALPACA)
+    changed_plan = plan.model_copy(update={"limit_price": 99.0})
+    changed = build_phase18_operational_validation_challenge(
+        changed_plan,
+        broker=BrokerName.WEBULL,
+    )
+    assert first.execution_scope_id == second.execution_scope_id
+    assert first.execution_scope_id != alpaca.execution_scope_id
+    assert first.execution_scope_id != changed.execution_scope_id
+
+
+def test_central_plan_submit_rejects_scope_mismatch_before_raw_submit() -> None:
+    adapter = CountingPaperBroker(BrokerName.WEBULL)
+    plan = build_broker_order_plan(_intent(BrokerName.WEBULL))
+    challenge = build_phase18_operational_validation_challenge(plan, broker=BrokerName.WEBULL)
+    authority = authorize_phase21_paper_execution(
+        challenge,
+        explicitly_authorized=True,
+        confirmation=challenge.required_confirmation,
+    )
+    with pytest.raises(ExecutionEngineError) as excinfo:
+        ExecutionEngine().submit_authorized_plan(
+            plan,
+            adapter,
+            execution_scope_id="p21-" + "f" * 32,
+            paper_authority=authority,
+        )
+    assert excinfo.value.stage == "paper_authority"
+    assert excinfo.value.provider_submission_attempted is False
+    assert adapter.submit_calls == 0
 
 
 @pytest.mark.parametrize("broker", [BrokerName.WEBULL, BrokerName.ALPACA])

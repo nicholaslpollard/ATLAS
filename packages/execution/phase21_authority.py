@@ -5,7 +5,12 @@ import json
 from dataclasses import dataclass
 from datetime import date
 
-from packages.schemas.execution import BrokerName, ExecutionEnvironment, ExecutionIntent
+from packages.schemas.execution import (
+    BrokerName,
+    BrokerOrderPlan,
+    ExecutionEnvironment,
+    ExecutionIntent,
+)
 
 
 PHASE21_POLICY_CONTRACT_VERSION = (
@@ -153,6 +158,25 @@ def derive_phase18_paper_execution_scope_id(intent: ExecutionIntent) -> str:
     return "p21-" + _stable_hash(payload)[:32]
 
 
+def derive_phase18_operational_validation_scope_id(
+    plan: BrokerOrderPlan,
+    *,
+    broker: BrokerName | str,
+) -> str:
+    normalized = _normalize_paper_broker(broker)
+    payload = {
+        "phase21_policy_fingerprint": phase21_policy_fingerprint(),
+        "scope_kind": "PHASE18_OPERATIONAL_VALIDATION_PAPER_SUBMIT",
+        "broker": normalized.value,
+        "environment": ExecutionEnvironment.PAPER.value,
+        "client_order_id": plan.client_order_id,
+        "intent_id": plan.intent_id,
+        "ticker": plan.ticker,
+        "plan_fingerprint": _stable_hash(plan.model_dump(mode="json")),
+    }
+    return "p21-" + _stable_hash(payload)[:32]
+
+
 def build_phase15_paper_execution_challenge(
     *,
     as_of_date: date,
@@ -175,6 +199,16 @@ def build_phase18_paper_execution_challenge(
 ) -> Phase21PaperExecutionChallenge:
     normalized = _normalize_paper_broker(intent.broker)
     return _challenge(derive_phase18_paper_execution_scope_id(intent), normalized)
+
+
+def build_phase18_operational_validation_challenge(
+    plan: BrokerOrderPlan,
+    *,
+    broker: BrokerName | str,
+) -> Phase21PaperExecutionChallenge:
+    normalized = _normalize_paper_broker(broker)
+    scope = derive_phase18_operational_validation_scope_id(plan, broker=normalized)
+    return _challenge(scope, normalized)
 
 
 def _challenge(

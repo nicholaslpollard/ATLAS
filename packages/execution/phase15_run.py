@@ -358,11 +358,12 @@ class Phase15ExecutionRunEngine:
             "policy_fingerprint": policy_fp,
             "environment": selected_environment.value if selected_environment is not None else None,
             "broker": selected_broker.value if selected_broker is not None else None,
-            "phase21_execution_scope_id": execution_scope_id,
             "record_hashes": [
                 _stable_hash(item.model_dump(mode="json")) for item in records
             ],
         }
+        if selected_environment == ExecutionEnvironment.PAPER:
+            source_payload["phase21_execution_scope_id"] = execution_scope_id
         manifest: dict[str, object] = {
             "contract_version": PHASE15_RUN_MANIFEST_CONTRACT_VERSION,
             "generated_at_utc": datetime.now(UTC).isoformat(),
