@@ -6,6 +6,7 @@ from packages.features.feature_registry import (
     CORE_FEATURE_CONTRACT_VERSION,
     CORE_FEATURE_REGISTRY,
 )
+from packages.features.incremental import IncrementalFeatureEngine, feature_stream_key
 from packages.features.momentum import log_return, macd, rsi_wilder, simple_return
 from packages.features.rolling import ema, sma
 from packages.features.structure import (
@@ -38,6 +39,41 @@ from packages.features.volume import (
 
 
 CORE_BAR_COLUMNS = ("symbol", "timestamp_utc", "high", "low", "close", "volume")
+CORE_FEATURE_OUTPUT_COLUMNS = (
+    "return_1",
+    "log_return_1",
+    "sma_20",
+    "ema_20",
+    "ema_50",
+    "ema_200",
+    "rsi_14",
+    "macd_12_26",
+    "macd_signal_12_26_9",
+    "macd_hist_12_26_9",
+    "true_range",
+    "atr_14",
+    "natr_14",
+    "bb_mid_20",
+    "bb_upper_20",
+    "bb_lower_20",
+    "bb_width_20",
+    "bb_position_20",
+    "realized_volatility_20",
+    "obv",
+    "relative_volume_20",
+    "volume_zscore_20",
+    "dollar_volume",
+    "relative_dollar_volume_20",
+    "range_position_20",
+    "prior_high_20",
+    "prior_low_20",
+    "breakout_distance_20",
+    "breakdown_distance_20",
+    "drawdown_20",
+    "ema_20_slope_1",
+    "price_distance_ema_20",
+    "directional_efficiency_20",
+)
 
 
 class FeatureInputError(ValueError):
@@ -81,6 +117,8 @@ def _validate_input(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def _compute_symbol_features(group: pd.DataFrame) -> pd.DataFrame:
+    """Independent pandas reference implementation for one exact feature stream."""
+
     close = group["close"]
     high = group["high"]
     low = group["low"]
@@ -127,13 +165,19 @@ def _compute_symbol_features(group: pd.DataFrame) -> pd.DataFrame:
     return features
 
 
-def compute_core_features(frame: pd.DataFrame) -> pd.DataFrame:
-    """Compute the Phase 6 core feature contract without cross-stream leakage.
+def _with_contract_metadata(result: pd.DataFrame) -> pd.DataFrame:
+    result.attrs["feature_contract_version"] = CORE_FEATURE_CONTRACT_VERSION
+    result.attrs["feature_registry_fingerprint"] = CORE_FEATURE_REGISTRY.fingerprint()
+    return result
 
-    Provider-native symbol case is preserved. If ``session_segment`` is present,
-    premarket, regular, and after-hours bars form independent recursive/rolling
-    streams for the same symbol. Source columns are retained and feature columns are
-    appended with calculation-contract metadata in DataFrame attrs.
+
+def compute_core_features_reference(frame: pd.DataFrame) -> pd.DataFrame:
+    """Compute core features with the original pandas reference implementation.
+
+    This path is intentionally retained as an independent numerical oracle for
+    regression/parity testing. It is not the preferred bulk-computation path because
+    thousands of short provider-symbol streams incur substantial pandas group/rolling
+    setup overhead.
     """
 
     ordered = _validate_input(frame)
@@ -144,7 +188,53 @@ def compute_core_features(frame: pd.DataFrame) -> pd.DataFrame:
     for _, group in ordered.groupby(grouping, sort=False, observed=True):
         feature_parts.append(_compute_symbol_features(group))
     features = pd.concat(feature_parts).sort_index() if feature_parts else pd.DataFrame(index=ordered.index)
-    result = pd.concat([ordered, features], axis=1)
-    result.attrs["feature_contract_version"] = CORE_FEATURE_CONTRACT_VERSION
-    result.attrs["feature_registry_fingerprint"] = CORE_FEATURE_REGISTRY.fingerprint()
-    return result
+    return _with_contract_metadata(pd.concat([ordered, features], axis=1))
+
+
+def _compute_incremental_frame(ordered: pd.DataFrame) -> pd.DataFrame:
+    """Compute exact batch features using the accepted incremental state math."""
+
+    feature_names = list(CORE_FEATURE_OUTPUT_COLUMNS)
+    registered_names = {definition.name for definition in CORE_FEATURE_REGISTRY.all()}
+    if set(feature_names) != registered_names:
+        raise RuntimeError("feature output order does not match the registered core feature set")
+
+    engine = IncrementalFeatureEngine()
+    has_segment = "session_segment" in ordered.columns
+    records: list[dict[str, float | None]] = []
+
+    for row in ordered.itertuples(index=False):
+        symbol = str(row.symbol)
+        segment = str(row.session_segment) if has_segment else None
+        values = engine.update(
+            symbol=symbol,
+            state_key=feature_stream_key(symbol, segment),
+            timestamp_utc=row.timestamp_utc,
+            high=float(row.high),
+            low=float(row.low),
+            close=float(row.close),
+            volume=float(row.volume),
+        )
+        records.append({name: values[name] for name in feature_names})
+
+    return pd.DataFrame.from_records(records, columns=feature_names, index=ordered.index)
+
+
+def compute_core_features(frame: pd.DataFrame) -> pd.DataFrame:
+    """Compute the Phase 6 core feature contract without cross-stream leakage.
+
+    Provider-native symbol case is preserved. If ``session_segment`` is present,
+    premarket, regular, and after-hours bars form independent recursive/rolling
+    streams for the same symbol. Source columns are retained and feature columns are
+    appended with calculation-contract metadata in DataFrame attrs.
+
+    The default batch path deliberately uses the same accepted incremental state
+    mathematics used by historical/live-compatible feature persistence. This avoids
+    the large per-symbol pandas setup cost of the retained independent reference
+    implementation while preserving both the exact 33-feature numerical contract and
+    the historical batch API column order.
+    """
+
+    ordered = _validate_input(frame)
+    features = _compute_incremental_frame(ordered)
+    return _with_contract_metadata(pd.concat([ordered, features], axis=1))

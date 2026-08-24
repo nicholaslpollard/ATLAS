@@ -109,11 +109,16 @@ class SessionBarBuilder:
         """
         con = connect_utc(":memory:")
         try:
-            con.execute(
+            # DuckDB RETURN_STATS reports the exact row count written by COPY.
+            # Re-reading the just-created Parquet solely for count(*) duplicated
+            # file I/O on every derived timeframe/session materialization.
+            stats = con.execute(
                 f"COPY ({query}) TO {out} "
-                f"(FORMAT PARQUET, COMPRESSION {self.compression}, ROW_GROUP_SIZE {self.row_group_size})"
-            )
-            count = int(con.execute(f"SELECT count(*) FROM read_parquet({out})").fetchone()[0])
+                f"(FORMAT PARQUET, COMPRESSION {self.compression}, ROW_GROUP_SIZE {self.row_group_size}, RETURN_STATS)"
+            ).fetchone()
+            if stats is None:
+                raise RuntimeError("DuckDB COPY returned no write statistics")
+            count = int(stats[1])
         finally:
             con.close()
         promote(temp, target)

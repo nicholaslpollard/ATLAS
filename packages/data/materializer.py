@@ -242,7 +242,10 @@ class MarketDataMaterializer:
             })
             self.manifest.put(record)
             self._copy_atomic(staging, canonical)
-            canonical_rows = self._count(canonical)
+            # Canonical is an atomic byte-for-byte copy of the just-validated
+            # staging Parquet. Re-reading canonical only for count(*) duplicated a
+            # full file scan; the validator's checked_rows is the exact row count.
+            canonical_rows = int(report.checked_rows)
 
             derived_rows: dict[Timeframe, int] = {}
             if dataset == DatasetType.STOCK_MINUTE_AGGREGATES:
