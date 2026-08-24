@@ -4,7 +4,7 @@
 
 ATLAS is the **Autonomous Trading, Learning, and Analysis System**. This file is the long-term architecture and authority lock. Implementation may evolve when measured evidence requires it, but changes must preserve the data-integrity, validation, and trading-authority boundaries below unless an explicit replacement decision is documented and independently validated.
 
-For exact operational continuation, read [`current_status.md`](current_status.md). For the mandatory development sequence, read [`phase_flow.md`](phase_flow.md). Phase 18 evidence is in [`phase18_operational_validation.md`](phase18_operational_validation.md). The root [`README.md`](../README.md) is project orientation.
+For exact operational continuation, read [`current_status.md`](current_status.md). For the mandatory development sequence, read [`phase_flow.md`](phase_flow.md). Phase 19 evidence is in [`phase19_operations_observability.md`](phase19_operations_observability.md). Phase 18 provider-mutation evidence is in [`phase18_operational_validation.md`](phase18_operational_validation.md). The root [`README.md`](../README.md) is project orientation.
 
 ## 1. Mission
 
@@ -30,9 +30,9 @@ Storage/compute roles:
 
 - **Parquet**: durable analytical/history lake.
 - **DuckDB**: analytical/query engine.
-- **PostgreSQL**: target persistent operational state.
+- **PostgreSQL**: target persistent operational state; current SQL scaffold is not accepted operational implementation.
 - **Massive**: primary accepted broad-market/reference-data provider path.
-- **Webull**: primary planned execution broker; also accepted as a downstream realtime L1 execution-evidence source where locally entitled.
+- **Webull**: primary planned execution broker; accepted downstream realtime L1 execution-evidence source where locally entitled.
 - **Alpaca**: manually selectable secondary/fallback execution broker; never automatic failover.
 
 ## 3. Mandatory phase execution contract
@@ -53,10 +53,13 @@ Required principles:
 
 Current phase state:
 
-- **Phase 18A: ACCEPTED / COMPLETE**.
-- **Phase 18B: ACCEPTED / COMPLETE**.
-- **Phase 18 overall: ACCEPTED; merge closeout pending final green code/docs boundary**.
-- **Phase 19: STACKED_PREP** on its existing stacked branch/PR; merge-blocked until Phase 18 merges, then must be rebased/retargeted to merged `main` and revalidated.
+- **Phases 1–18: ACCEPTED / MERGED.**
+- Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
+- **Phase 19: ACCEPTED** after clean rebase to accepted Phase 18 and full Ubuntu/Windows revalidation; PR #19 is the merge vehicle.
+- Phase 19 post-rebase CI run `32738366242`: Ubuntu 932 passed / Windows 932 passed; every validator through Phase 19 PASS.
+- Final docs-head CI must remain green before PR #19 merges.
+- If this file is read from `main` after PR #19 merged, Phase 19 is **ACCEPTED / MERGED**.
+- The next numbered phase has not yet been activated.
 
 ## 4. Non-negotiable data rules
 
@@ -243,56 +246,93 @@ Policy:
 Fingerprint:
 `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`
 
-**State: ACCEPTED / CLOSEOUT PENDING MERGE.**
+**State: ACCEPTED / MERGED.**
 
 Accepted target-machine lifecycle on 2026-08-24:
 
 - ticker AAPL;
-- fresh regular-session Webull sandbox L1 bid/ask `311.33 / 311.39`;
-- quote age `0.823s`;
-- locked one-share plan `295.76 / 289.84 / 301.68` entry/stop/target;
-- planned notional `$295.76`;
-- explicit exact mutation authorization accepted;
+- fresh regular-session Webull sandbox L1;
+- exact one-share risk-bounded nonmarketable bracket;
+- explicit exact paper mutation authorization;
 - pre-reconciliation flat/zero-open;
-- exact deterministic client ID absence proven;
+- exact deterministic client-ID absence;
 - provider preview accepted;
 - order submitted exactly once;
-- exact post-submit reconciliation succeeded;
-- cancellation attempted exactly once;
-- no blind retry and no failover when immediate cancel reconciliation was inconclusive;
-- subsequent read-only exact Order Detail and Order History both reported `CANCELLED`;
-- requested quantity 1, filled quantity 0;
-- final open-order count 0;
-- final position count 0;
+- exact post-submit reconciliation;
+- cancellation requested exactly once;
+- no blind retry/failover/flatten during immediate read uncertainty;
+- later independent Order Detail and Order History both `CANCELLED`;
+- filled quantity 0;
+- final open orders 0;
+- final positions 0;
 - no cleanup required.
 
-Phase 18 also hardened:
+Phase 18 hardening includes explicit Webull order-absence normalization, sensitive SDK request-log suppression, bounded read-only post-cancel reconciliation, a 30-second execution quote-age cap, premarket fail-closed behavior, and the 80% sustained Webull read policy.
 
-- explicit Webull `Order not present` normalization;
-- sensitive SDK request-log suppression;
-- bounded read-only post-cancel reconciliation with exactly-one-cancel semantics;
-- explicit Webull L1 local quote evidence with a 30-second execution-age cap;
-- premarket fail-closed behavior;
-- 80% sustained Webull read-rate policy.
+Accepted Phase 18 merge:
+`55bdd7446f0bbd4225de264187c7f5fb601991b0`
 
-See `docs/phase18_operational_validation.md` for detailed evidence.
+### Phase 19 — Operations Dashboard & Paper/Shadow Observability
 
-## 11. Phase 18 closeout and Phase 19 promotion
+Policy:
+`phase19-policy-v1-phase18-stacked-readonly-operations-observability-no-provider-writes`
 
-After the final Phase 18 code/docs CI boundary is green:
+Fingerprint:
+`ecd30046a7a3258013a29f0a2982de133f3a4f801aee4ad5e24f79b6bd3b4c3d`
 
-1. mark PR #18 ready;
-2. merge Phase 18 into `main`;
-3. verify merged `main`;
-4. retarget/rebase the existing Phase 19 stacked branch/PR onto merged `main`;
-5. run `validate_phase19`;
-6. run full regression;
-7. require Ubuntu + Windows CI green;
-8. resolve any drift introduced by the rebase;
-9. synchronize Phase 19 docs/PR;
-10. only then treat Phase 19 as active/mergeable.
+**State: ACCEPTED; PR #19 merge vehicle.**
 
-No additional real provider mutation is required solely for the Phase 18 post-cancel **read-only** reconciliation hardening because the accepted target lifecycle already produced definitive exact `CANCELLED`, zero-fill, zero-open, flat evidence.
+Accepted scope:
+
+- local sanitized operations dashboard over accepted persisted evidence;
+- dedicated Phase 19 shell with Overview/Pipeline/Candidates/AI Audit/Outcomes/Brokers/Actions/Lineage views;
+- GET-only observability endpoint;
+- optional local 5/15/30-second refresh, default OFF;
+- persisted live-market diagnostics and `INPUTS_APPEAR_READY` display-only checklist;
+- candidate/AI/outcome artifact recency diagnostics;
+- existing accepted Phase 16 explicit read-only broker refresh kept separate;
+- Phase 19 provider reads 0 and writes 0;
+- browser execution authority disabled;
+- live promotion disabled;
+- automatic failover disabled.
+
+Cross-cutting accepted support retained with Phase 19:
+
+- exact dependency lock including `scikit-learn==1.9.0`;
+- dependency-lock and tracked secret-hygiene validators;
+- SHA-pinned Actions with `contents: read` and checkout credential persistence disabled;
+- local sanitized zero-provider-call ATLAS Doctor;
+- exact-parity feature batch optimization;
+- low-risk data-I/O count-scan removals.
+
+Post-Phase18 clean rebase head:
+`8c7d045af4f75cb734eeebbd76c84edaccdcc173`
+
+Final implementation CI run `32738366242`:
+
+- Ubuntu 932 passed in 16.08s;
+- Windows 932 passed in 23.74s;
+- every validator through Phase 19 PASS;
+- dependency lock, secret hygiene, doctor, browser JS, and feature self-test PASS;
+- 33-feature exact parity max difference 0.0;
+- provider calls/writes 0;
+- broker writes 0.
+
+The final documentation head must remain green before PR #19 merge. If this roadmap is read from `main` after PR #19 has merged, Phase 19 is accepted/merged and the ledger is closed through Phase 19.
+
+## 11. Next-phase boundary
+
+No Phase 20 authority is implicitly active.
+
+After Phase 19 merge:
+
+1. verify `main` and final CI;
+2. define the next numbered phase as a coherent architecture increment;
+3. lock its data/provider/execution authority before implementation;
+4. preserve live execution disabled unless a future separately defined live-authority phase explicitly changes that state;
+5. preserve manual-only broker switching and no automatic failover.
+
+No additional real provider mutation is required merely to repeat Phase 18 evidence or validate Phase 19 observability.
 
 ## 12. Batch-first development protocol
 
@@ -310,7 +350,7 @@ Every meaningful boundary synchronizes, as applicable:
 - `docs/roadmap.md`;
 - `docs/current_status.md`;
 - `docs/phase_flow.md` when process changes;
-- active/stacked phase spec;
+- active phase spec;
 - active PR evidence;
 - configuration templates/docs.
 
@@ -324,6 +364,6 @@ A new session should:
 2. read `docs/current_status.md`;
 3. read this roadmap;
 4. read `docs/phase_flow.md`;
-5. read the active/stacked phase spec;
+5. read the active phase spec, if any;
 6. preserve explicit provider/live authority boundaries;
 7. continue from the exact phase state rather than reopening accepted work without new evidence.

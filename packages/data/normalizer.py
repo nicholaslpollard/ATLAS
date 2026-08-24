@@ -111,17 +111,21 @@ class MassiveStockNormalizer:
         con = connect_utc(":memory:")
         try:
             out = sql_string(temp)
-            con.execute(
+            # RETURN_STATS gives the exact count written by COPY, so normalization
+            # no longer re-scans the newly written Parquet solely for count(*).
+            stats = con.execute(
                 f"COPY ({query}) TO {out} "
-                f"(FORMAT PARQUET, COMPRESSION {self.compression}, ROW_GROUP_SIZE {self.row_group_size})"
-            )
+                f"(FORMAT PARQUET, COMPRESSION {self.compression}, ROW_GROUP_SIZE {self.row_group_size}, RETURN_STATS)"
+            ).fetchone()
+            if stats is None:
+                raise RuntimeError("DuckDB COPY returned no write statistics")
+            count = int(stats[1])
             if dataset == DatasetType.STOCK_DAILY_AGGREGATES:
                 description = con.execute(f"DESCRIBE SELECT * FROM read_parquet({out})").fetchall()
                 if not canonical_stock_daily_schema_matches(description):
                     raise RuntimeError(
                         "Massive daily normalizer output does not match the canonical 1d storage schema"
                     )
-            count = int(con.execute(f"SELECT count(*) FROM read_parquet({out})").fetchone()[0])
         finally:
             con.close()
         promote(temp, target_path)

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATLAS Control Plane · Operations Dashboard</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">ATLAS Control Plane · Operations Dashboard</div>
+      <h1>Autonomous Trading, Learning &amp; Analysis System</h1>
+    </div>
+    <div class="top-actions">
+      <button id="refresh-observability" type="button">Refresh intelligence</button>
+      <button id="refresh-local" type="button">Refresh local status</button>
+      <button id="refresh-brokers" class="primary" type="button">Read-only broker refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="safety-banner" class="banner warning" aria-live="polite">
+      Provider-write endpoints are disabled. Live execution is not promoted.
+    </section>
+
+    <section class="grid summary-grid" aria-label="Operations summary">
+      <article class="card accent-card">
+        <div class="label">Development state</div>
+        <div id="obs-phase" class="metric">Loading…</div>
+        <div id="obs-phase-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Observability authority</div>
+        <div id="obs-authority" class="metric">Read only</div>
+        <div id="obs-authority-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">System health</div>
+        <div id="system-health" class="metric">Loading…</div>
+        <div id="health-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Selected routing</div>
+        <div id="selected-routing" class="metric">—</div>
+        <div id="runtime-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Phase 15 authority</div>
+        <div id="phase15-state" class="metric">Loading…</div>
+        <div id="phase15-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Action ledger</div>
+        <div id="ledger-state" class="metric">Loading…</div>
+        <div id="ledger-detail" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Candidate session</div>
+        <div id="candidate-date" class="metric">Loading…</div>
+        <div class="muted"><span id="candidate-count">0</span> directional candidates · <span id="candidate-promoted">0</span> promoted</div>
+      </article>
+      <article class="card">
+        <div class="label">Artifact recency</div>
+        <div id="artifact-recency" class="metric">Loading…</div>
+        <div id="artifact-recency-detail" class="muted">Diagnostic only; never trade authority.</div>
+      </article>
+      <article class="card">
+        <div class="label">Dashboard refreshed</div>
+        <div id="obs-updated" class="metric compact-metric">—</div>
+        <div class="muted">Local artifacts only; no Phase 19 provider calls.</div>
+      </article>
+    </section>
+
+    <div id="observability-error" class="banner danger" hidden role="alert"></div>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Pipeline observability</div>
+        <h2>Current ATLAS evidence chain</h2>
+      </div>
+      <p>Read-only visibility over persisted candidate, independent AI-audit, and execution-outcome evidence. Missing stages are shown as unavailable rather than inferred.</p>
+    </section>
+    <section id="pipeline-stages" class="grid pipeline-grid" aria-live="polite"></section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Market intelligence</div>
+        <h2>Current candidate surface</h2>
+      </div>
+      <p>Accepted Phase 11 candidate materialization: discovery state, regime context, production ML probability evidence, strategy support, and promotion disposition.</p>
+    </section>
+    <section class="grid intel-summary-grid">
+      <article class="card">
+        <div class="label">As of session</div>
+        <div id="candidate-date-summary" class="metric mirror-candidate-date">See candidate session above</div>
+        <div id="candidate-generated" class="muted">Exact persisted materialization only.</div>
+      </article>
+      <article class="card">
+        <div class="label">Accepted ML model</div>
+        <div id="candidate-model" class="metric compact-metric">—</div>
+        <div class="muted">Probability evidence is not a standalone trade signal.</div>
+      </article>
+      <article class="card">
+        <div class="label">Promoted</div>
+        <div id="candidate-promoted-summary" class="metric">See summary</div>
+        <div class="muted">Zero promotions is a valid system result.</div>
+      </article>
+    </section>
+    <section class="card table-card">
+      <div class="candidate-tools" aria-label="Candidate filters">
+        <label>
+          <span class="label">Ticker search</span>
+          <input id="candidate-search" type="search" autocomplete="off" placeholder="AAPL">
+        </label>
+        <label>
+          <span class="label">Discovery state</span>
+          <select id="candidate-state-filter">
+            <option value="ALL">All states</option>
+            <option value="HOT">HOT</option>
+            <option value="WARM">WARM</option>
+            <option value="WATCH">WATCH</option>
+            <option value="NORMAL">NORMAL</option>
+          </select>
+        </label>
+        <label class="checkbox-tool">
+          <input id="candidate-promoted-only" type="checkbox">
+          <span>Promoted only</span>
+        </label>
+        <div class="filter-count"><span id="candidate-visible-count">0</span> shown</div>
+      </div>
+      <div id="candidates-empty" class="empty">Loading candidate artifacts…</div>
+      <div class="table-wrap">
+        <table id="candidates-table" class="intelligence-table" hidden>
+          <thead>
+            <tr>
+              <th>Ticker</th>
+              <th>Discovery</th>
+              <th>Direction</th>
+              <th>Priority</th>
+              <th>Market regime</th>
+              <th>Ticker regime</th>
+              <th>P(up)</th>
+              <th>P(down)</th>
+              <th>Promotion</th>
+              <th>Inspect</th>
+            </tr>
+          </thead>
+          <tbody id="candidates-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Independent audit</div>
+        <h2>AI review evidence</h2>
+      </div>
+      <p>The AI layer remains an independent reviewer. It cannot rewrite deterministic facts or create execution authority.</p>
+    </section>
+    <section class="grid ai-grid">
+      <article class="card">
+        <div class="label">Review session</div>
+        <div id="ai-date" class="metric">—</div>
+        <div id="ai-detail" class="muted"></div>
+      </article>
+      <article class="card"><div class="label">Reviewed</div><div id="ai-count" class="metric">0</div></article>
+      <article class="card"><div class="label">Approve</div><div id="ai-approve" class="metric state-ok">0</div></article>
+      <article class="card"><div class="label">Cautious</div><div id="ai-cautious" class="metric state-warn">0</div></article>
+      <article class="card"><div class="label">Reject</div><div id="ai-reject" class="metric state-danger">0</div></article>
+    </section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Outcome learning</div>
+        <h2>Descriptive paper/shadow outcomes</h2>
+      </div>
+      <p>Execution outcomes are descriptive evidence only; they cannot silently promote models, strategies, or thresholds.</p>
+    </section>
+    <section class="grid outcome-summary-grid">
+      <article class="card"><div class="label">Recorded outcomes</div><div id="outcome-count" class="metric">0</div></article>
+      <article class="card"><div class="label">Total gross P&amp;L</div><div id="outcome-pnl" class="metric">—</div></article>
+      <article class="card"><div class="label">Win rate</div><div id="outcome-win-rate" class="metric">—</div><div id="outcome-record" class="muted">0 W · 0 L · 0 flat</div></article>
+      <article class="card"><div class="label">Average realized R</div><div id="outcome-average-r" class="metric">—</div></article>
+      <article class="card"><div class="label">Latest closed outcome</div><div id="outcome-latest" class="metric compact-metric">—</div></article>
+    </section>
+    <section class="card table-card">
+      <div id="outcomes-empty" class="empty">No execution outcomes recorded.</div>
+      <div class="table-wrap">
+        <table id="outcomes-table" hidden>
+          <thead>
+            <tr>
+              <th>Ticker</th><th>Broker</th><th>Direction</th><th>Exit</th><th>Gross P&amp;L</th><th>Return</th><th>R</th><th>Closed</th>
+            </tr>
+          </thead>
+          <tbody id="outcomes-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Execution providers</div>
+        <h2>Paper broker reconciliation</h2>
+      </div>
+      <p>Broker calls remain lazy and separate from Phase 19 observability. Use the explicit read-only broker refresh to reconcile account, open orders, and positions.</p>
+    </section>
+    <section id="brokers" class="grid broker-grid" aria-live="polite"></section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Operational authority</div>
+        <h2>Current actions</h2>
+      </div>
+      <p>Requests and confirmations are audited workflow records. Pre-write actions can be safely abandoned; executing or uncertain actions cannot.</p>
+    </section>
+    <section class="card table-card">
+      <div id="actions-empty" class="empty">No control-plane actions recorded.</div>
+      <div class="table-wrap">
+        <table id="actions-table" hidden>
+          <thead>
+            <tr><th>Action</th><th>Target</th><th>State</th><th>Revision</th><th>Provider write</th><th>Recovery</th></tr>
+          </thead>
+          <tbody id="actions-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section-head">
+      <div>
+        <div class="eyebrow">Lineage</div>
+        <h2>Accepted authority chain</h2>
+      </div>
+    </section>
+    <section class="card lineage-card">
+      <dl>
+        <div><dt>Accepted Phase 15 merge</dt><dd id="lineage-merge">—</dd></div>
+        <div><dt>Phase 15 policy</dt><dd id="lineage-phase15">—</dd></div>
+        <div><dt>Phase 16 policy</dt><dd id="lineage-phase16">—</dd></div>
+        <div><dt>Cumulative foundation</dt><dd id="lineage-foundation">—</dd></div>
+      </dl>
+    </section>
+
+    <div id="error-box" class="banner danger" hidden role="alert"></div>
+  </main>
+
+  <dialog id="candidate-dialog" aria-labelledby="candidate-dialog-title">
+    <div class="dialog-shell candidate-dialog-shell">
+      <div class="eyebrow">Persisted candidate evidence</div>
+      <h2 id="candidate-dialog-title">Candidate inspector</h2>
+      <p class="dialog-lead">Read-only evidence from the accepted candidate materialization. This inspector cannot create or change a trade.</p>
+      <dl class="dialog-details candidate-details">
+        <div><dt>Ticker</dt><dd id="candidate-detail-ticker">—</dd></div>
+        <div><dt>As of</dt><dd id="candidate-detail-date">—</dd></div>
+        <div><dt>Discovery</dt><dd id="candidate-detail-discovery">—</dd></div>
+        <div><dt>Direction</dt><dd id="candidate-detail-direction">—</dd></div>
+        <div><dt>Priority</dt><dd id="candidate-detail-priority">—</dd></div>
+        <div><dt>Market regime</dt><dd id="candidate-detail-market">—</dd></div>
+        <div><dt>Sector regime</dt><dd id="candidate-detail-sector">—</dd></div>
+        <div><dt>Ticker regime</dt><dd id="candidate-detail-ticker-regime">—</dd></div>
+        <div><dt>P(up)</dt><dd id="candidate-detail-p-up">—</dd></div>
+        <div><dt>P(neutral)</dt><dd id="candidate-detail-p-neutral">—</dd></div>
+        <div><dt>P(down)</dt><dd id="candidate-detail-p-down">—</dd></div>
+        <div><dt>ML model</dt><dd id="candidate-detail-model">—</dd></div>
+        <div><dt>Supported fired strategies</dt><dd id="candidate-detail-strategies">—</dd></div>
+        <div><dt>Promotion</dt><dd id="candidate-detail-promotion">—</dd></div>
+        <div><dt>Reason codes</dt><dd id="candidate-detail-reasons">—</dd></div>
+      </dl>
+      <div class="dialog-actions">
+        <button id="candidate-dialog-close" class="primary" type="button">Close inspector</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="switch-dialog" aria-labelledby="switch-title">
+    <div class="dialog-shell">
+      <div class="eyebrow">Explicit routing change</div>
+      <h2 id="switch-title">Confirm broker switch</h2>
+      <p id="switch-summary" class="dialog-lead"></p>
+      <div class="banner warning dialog-warning">
+        ATLAS will re-check both paper brokers before changing local routing. This action will not cancel orders, close positions, or submit a trade. Any exposure blocks the switch.
+      </div>
+      <dl class="dialog-details">
+        <div><dt>Current routing</dt><dd id="switch-current">—</dd></div>
+        <div><dt>Target routing</dt><dd id="switch-target">—</dd></div>
+        <div><dt>Webull</dt><dd id="switch-webull">—</dd></div>
+        <div><dt>Alpaca</dt><dd id="switch-alpaca">—</dd></div>
+      </dl>
+      <div class="dialog-actions">
+        <button id="switch-cancel" type="button">Cancel</button>
+        <button id="switch-confirm" class="primary" type="button">Confirm local routing switch</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="cleanup-dialog" aria-labelledby="cleanup-title">
+    <div class="dialog-shell">
+      <div class="eyebrow">Exact broker cleanup review</div>
+      <h2 id="cleanup-title">Review broker resources</h2>
+      <p id="cleanup-summary" class="dialog-lead"></p>
+      <div class="banner warning dialog-warning">
+        This workflow performs provider reads and audit writes only. Cancel-order and flatten-position provider writes are disabled. Confirming a plan does not change the broker account.
+      </div>
+      <dl class="dialog-details">
+        <div><dt>Broker</dt><dd id="cleanup-broker">—</dd></div>
+        <div><dt>Review type</dt><dd id="cleanup-kind">—</dd></div>
+        <div><dt>Current inventory</dt><dd id="cleanup-inventory">—</dd></div>
+        <div><dt>Plan fingerprint</dt><dd id="cleanup-fingerprint">Not generated</dd></div>
+        <div><dt>Plan expires</dt><dd id="cleanup-expiry">—</dd></div>
+      </dl>
+      <div class="cleanup-resource-head">
+        <div class="label">Exact reconciled resource set</div>
+        <div class="muted">Provider order IDs and credentials are not exposed.</div>
+      </div>
+      <div id="cleanup-targets" class="cleanup-targets">
+        <div class="empty compact">Authorize plan generation to capture the exact resource set.</div>
+      </div>
+      <div id="cleanup-result" class="banner ok cleanup-result" hidden aria-live="polite"></div>
+      <div class="dialog-actions">
+        <button id="cleanup-cancel" type="button">Cancel review</button>
+        <button id="cleanup-confirm" class="primary" type="button">Authorize plan generation</button>
+      </div>
+    </div>
+  </dialog>
+
+  <footer>
+    Phase 19 stacked read-only observability · Phase 18B remains merge-authoritative · Webull primary · Alpaca manual secondary · automatic cross-broker failover disabled · live execution disabled
+  </footer>
+
+  <script src="/assets/app.js" defer></script>
+  <script src="/assets/observability.js" defer></script>
+</body>
+</html>
