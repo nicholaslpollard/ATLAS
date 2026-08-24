@@ -13,6 +13,7 @@ from .phase20_policy import PHASE20_EXTERNAL_MUTATION_STAGE_REGISTRATION_ALLOWED
 
 _STAGE_ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
 _PIPELINE_ID_RE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
+_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 
 
 class RegistryError(ValueError):
@@ -77,10 +78,18 @@ class StageDefinition:
 
 
 class PipelineRegistry:
-    def __init__(self, pipeline_id: str, stages: Iterable[StageDefinition]) -> None:
+    def __init__(
+        self,
+        pipeline_id: str,
+        pipeline_version: str,
+        stages: Iterable[StageDefinition],
+    ) -> None:
         if not _PIPELINE_ID_RE.fullmatch(pipeline_id):
             raise RegistryError(f"invalid pipeline_id: {pipeline_id!r}")
+        if not _VERSION_RE.fullmatch(pipeline_version):
+            raise RegistryError(f"invalid pipeline_version: {pipeline_version!r}")
         self.pipeline_id = pipeline_id
+        self.pipeline_version = pipeline_version
         stage_map: dict[str, StageDefinition] = {}
         for stage in stages:
             if stage.stage_id in stage_map:
@@ -119,6 +128,7 @@ class PipelineRegistry:
     def fingerprint_payload(self) -> dict[str, object]:
         return {
             "pipeline_id": self.pipeline_id,
+            "pipeline_version": self.pipeline_version,
             "stages": [stage.fingerprint_payload() for stage in self.stages],
             "topological_order": list(self._topological_order),
         }
