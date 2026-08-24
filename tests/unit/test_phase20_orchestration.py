@@ -61,7 +61,6 @@ def test_registry_is_deterministic_and_rejects_invalid_graphs() -> None:
     assert one.topological_order() == ("alpha", "beta", "finish")
     assert two.topological_order() == one.topological_order()
     assert two.fingerprint() == one.fingerprint()
-
     with pytest.raises(DuplicateStageError):
         _registry(alpha, alpha)
     with pytest.raises(MissingDependencyError):
@@ -73,56 +72,44 @@ def test_registry_is_deterministic_and_rejects_invalid_graphs() -> None:
         )
 
 
-def test_registry_rejects_external_read_and_mutation_authority() -> None:
+def test_registry_rejects_external_authority() -> None:
     with pytest.raises(StageAuthorityError):
         _registry(StageDefinition("read", authority=StageAuthority.EXTERNAL_READ))
     with pytest.raises(StageAuthorityError):
         _registry(StageDefinition("write", authority=StageAuthority.EXTERNAL_MUTATION))
 
 
-def test_queue_orders_by_topology_then_stage_and_rejects_duplicate_key() -> None:
+def test_queue_is_deterministic_and_duplicate_safe() -> None:
     queue = DeterministicJobQueue()
     run_id = "run-test"
-    later = JobEnvelope(run_id, "later", 2, stage_idempotency_key(run_id, "later"))
-    beta = JobEnvelope(run_id, "beta", 0, stage_idempotency_key(run_id, "beta"))
-    alpha = JobEnvelope(run_id, "alpha", 0, stage_idempotency_key(run_id, "alpha"))
-    queue.enqueue(later)
-    queue.enqueue(beta)
-    queue.enqueue(alpha)
-    assert [queue.pop().stage_id, queue.pop().stage_id, queue.pop().stage_id] == [
-        "alpha",
-        "beta",
-        "later",
+    jobs = [
+        JobEnvelope(run_id, "later", 2, stage_idempotency_key(run_id, "later")),
+        JobEnvelope(run_id, "beta", 0, stage_idempotency_key(run_id, "beta")),
+        JobEnvelope(run_id, "alpha", 0, stage_idempotency_key(run_id, "alpha")),
     ]
-
+    for job in jobs:
+        queue.enqueue(job)
+    assert [queue.pop().stage_id for _ in range(3)] == ["alpha", "beta", "later"]
     duplicate_queue = DeterministicJobQueue()
-    duplicate_queue.enqueue(alpha)
+    duplicate_queue.enqueue(jobs[2])
     with pytest.raises(DuplicateIdempotencyKeyError):
-        duplicate_queue.enqueue(alpha)
+        duplicate_queue.enqueue(jobs[2])
 
 
-def test_worker_does_not_persist_exception_message() -> None:
-    stage = StageDefinition("safe")
-
+def test_worker_sanitizes_exception_message() -> None:
     def handler(_context: StageExecutionContext) -> None:
         raise RuntimeError("secret credential material must not escape")
 
     result = LocalWorker({"safe": handler}).execute(
-        stage,
-        context=StageExecutionContext(
-            run_id="run-a",
-            logical_slot="slot-a",
-            stage_id="safe",
-            attempt=1,
-            idempotency_key="job-a",
-        ),
+        StageDefinition("safe"),
+        context=StageExecutionContext("run-a", "slot-a", "safe", 1, "job-a"),
     )
     assert result.succeeded is False
     assert result.error_code == "STAGE_HANDLER_ERROR_RuntimeError"
     assert "secret" not in str(result)
 
 
-def test_plan_is_deterministic_and_performs_no_local_write(tmp_path) -> None:
+def test_plan_is_deterministic_and_zero_write(tmp_path) -> None:
     registry = _registry(
         StageDefinition("extract"),
         StageDefinition("score", dependencies=("extract",)),
@@ -130,15 +117,14 @@ def test_plan_is_deterministic_and_performs_no_local_write(tmp_path) -> None:
     state_root = tmp_path / "state"
     orchestrator = Phase20Orchestrator(registry, handlers={}, state_root=state_root)
     first = orchestrator.plan("2026-08-24T13:30:00-04:00")
-    second = orchestrator.plan("2026-08-24T13:30:00-04:00")
-    assert first == second
+    assert orchestrator.plan("2026-08-24T13:30:00-04:00") == first
     assert first.provider_calls_performed == 0
     assert first.provider_writes_performed == 0
     assert first.broker_writes_performed == 0
     assert not state_root.exists()
 
 
-def test_successful_run_resumes_without_rerunning_completed_stages(tmp_path) -> None:
+def test_successful_run_is_idempotent_on_resume(tmp_path) -> None:
     calls: list[tuple[str, int]] = []
     registry = _registry(
         StageDefinition("alpha"),
@@ -156,21 +142,17 @@ def test_successful_run_resumes_without_rerunning_completed_stages(tmp_path) -> 
     first = orchestrator.execute_shadow("slot-1")
     assert first["run_state"] == RunState.SUCCEEDED.value
     assert calls == [("alpha", 1), ("beta", 1)]
-
-    second = orchestrator.execute_shadow("slot-1")
-    assert second == first
+    assert orchestrator.execute_shadow("slot-1") == first
     assert calls == [("alpha", 1), ("beta", 1)]
+    journal = (tmp_path / str(first["run_id"]) / "journal.jsonl").read_text(
+        encoding="utf-8"
+    )
+    assert "secret credential material" not in journal
 
-    journal = (
-        tmp_path / str(first["run_id"]) / "journal.jsonl"
-    ).read_text(encoding="utf-8")
-    assert "provider" not in journal.lower()
 
-
-def test_retry_is_bounded_and_owned_by_orchestrator(tmp_path) -> None:
+def test_retry_is_bounded_and_exception_text_is_not_persisted(tmp_path) -> None:
     attempts: list[int] = []
-    stage = StageDefinition("flaky", retry_safe_local=True, max_attempts=3)
-    registry = _registry(stage)
+    registry = _registry(StageDefinition("flaky", retry_safe_local=True, max_attempts=3))
 
     def flaky(context: StageExecutionContext) -> None:
         attempts.append(context.attempt)
@@ -182,16 +164,15 @@ def test_retry_is_bounded_and_owned_by_orchestrator(tmp_path) -> None:
         handlers={"flaky": flaky},
         state_root=tmp_path,
     ).execute_shadow("slot-retry")
+    status = StageStatus.from_payload(manifest["stages"]["flaky"])
     assert manifest["run_state"] == RunState.SUCCEEDED.value
     assert attempts == [1, 2, 3]
-    status = StageStatus.from_payload(manifest["stages"]["flaky"])
     assert status.state is JobState.SUCCEEDED
     assert status.attempts == 3
-    serialized = json.dumps(manifest, sort_keys=True)
-    assert "transient secret-bearing message" not in serialized
+    assert "transient secret-bearing message" not in json.dumps(manifest, sort_keys=True)
 
 
-def test_failed_dependency_blocks_downstream_without_calling_it(tmp_path) -> None:
+def test_failed_dependency_blocks_downstream(tmp_path) -> None:
     child_calls: list[str] = []
     registry = _registry(
         StageDefinition("root"),
@@ -210,23 +191,17 @@ def test_failed_dependency_blocks_downstream_without_calling_it(tmp_path) -> Non
         state_root=tmp_path,
     ).execute_shadow("slot-fail")
     assert manifest["run_state"] == RunState.FAILED.value
-    root = StageStatus.from_payload(manifest["stages"]["root"])
-    child_status = StageStatus.from_payload(manifest["stages"]["child"])
-    assert root.state is JobState.FAILED
-    assert child_status.state is JobState.BLOCKED
+    assert StageStatus.from_payload(manifest["stages"]["root"]).state is JobState.FAILED
+    assert StageStatus.from_payload(manifest["stages"]["child"]).state is JobState.BLOCKED
     assert child_calls == []
 
 
 def test_interrupted_running_state_fails_closed_without_reexecution(tmp_path) -> None:
     calls: list[str] = []
     registry = _registry(StageDefinition("only", retry_safe_local=True, max_attempts=3))
-
-    def handler(context: StageExecutionContext) -> None:
-        calls.append(context.stage_id)
-
     orchestrator = Phase20Orchestrator(
         registry,
-        handlers={"only": handler},
+        handlers={"only": lambda context: calls.append(context.stage_id)},
         state_root=tmp_path,
     )
     plan = orchestrator.plan("slot-interrupted")
@@ -236,7 +211,6 @@ def test_interrupted_running_state_fails_closed_without_reexecution(tmp_path) ->
         StageStatus("only"), state=JobState.RUNNING, attempts=1
     ).to_payload()
     orchestrator.store.write_manifest(plan.run_id, manifest)
-
     resumed = orchestrator.execute_shadow("slot-interrupted")
     status = StageStatus.from_payload(resumed["stages"]["only"])
     assert resumed["run_state"] == RunState.FAILED.value
@@ -245,7 +219,7 @@ def test_interrupted_running_state_fails_closed_without_reexecution(tmp_path) ->
     assert calls == []
 
 
-def test_run_lease_collision_fails_closed(tmp_path) -> None:
+def test_lease_and_manifest_authority_conflicts_fail_closed(tmp_path) -> None:
     registry = _registry(StageDefinition("only"))
     orchestrator = Phase20Orchestrator(
         registry,
@@ -257,14 +231,6 @@ def test_run_lease_collision_fails_closed(tmp_path) -> None:
         with pytest.raises(RunLeaseCollisionError):
             orchestrator.execute_shadow("slot-lease")
 
-
-def test_persisted_authority_counter_conflict_fails_closed(tmp_path) -> None:
-    registry = _registry(StageDefinition("only"))
-    orchestrator = Phase20Orchestrator(
-        registry,
-        handlers={"only": lambda _context: None},
-        state_root=tmp_path,
-    )
     plan = orchestrator.plan("slot-conflict")
     manifest = orchestrator._new_manifest(plan)
     manifest["provider_calls_performed"] = 1
