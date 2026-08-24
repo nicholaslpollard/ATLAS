@@ -25,31 +25,36 @@ Repository: `nicholaslpollard/ATLAS`
 
 Accepted baseline:
 
-- **Phases 1–19 accepted/merged.**
+- **Phases 1–20 accepted/merged.**
 - Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-- Phase 19 merge / accepted baseline: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
+- Phase 19 merge: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
+- Phase 20 merge / current accepted baseline: `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`.
 - Phase 19 policy fingerprint: `ecd30046a7a3258013a29f0a2982de133f3a4f801aee4ad5e24f79b6bd3b4c3d`.
-- Final Phase 19 docs-head CI `32739682576`: Ubuntu 932 passed in 13.78s; Windows 932 passed in 25.80s; every validator through Phase 19 PASS.
+- Phase 20 policy fingerprint: `b4f9bd37c3c425e182e4a0da255e8a903d95101d119c833c38c7fd2c0cd3741a`.
 - Post-Phase19 stabilization baseline: `121503590d3c0b18fa9cc19e4c8210b04e2f8d47`.
-- Post-Phase19 stabilization CI `32754626468`: Ubuntu 932 passed in 15.59s; Windows 932 passed in 25.38s; every validator through Phase 19 PASS.
 - Post-Phase19 stabilization/performance housekeeping: **COMPLETE**.
 
-Active work:
+Accepted Phase 20 evidence:
 
-- **Phase 20 — Deterministic Run Orchestration & Shadow Operations: ACCEPTANCE CANDIDATE.**
-- Branch: `phase-20-deterministic-run-orchestration-shadow-operations`.
-- PR: **#21**.
-- Phase 20 policy: `phase20-policy-v1-phase19-stabilized-deterministic-run-orchestration-shadow-no-provider-calls`.
-- Phase 20 policy fingerprint: `b4f9bd37c3c425e182e4a0da255e8a903d95101d119c833c38c7fd2c0cd3741a`.
-- Tested implementation head: `6484f8a2eb5cc7e181544725d578b1206ec412df`.
-- Implementation-head CI `32765179020`: Ubuntu **945 passed in 14.67s**; Windows **945 passed in 31.88s**; every validator through Phase 20 PASS.
-- Provider calls performed by Phase 20 validation: **0**.
-- Provider writes: **0**.
-- Broker writes: **0**.
-- Live execution: **DISABLED**.
-- Automatic cross-broker failover: **DISABLED**.
+- implementation head `6484f8a2eb5cc7e181544725d578b1206ec412df`;
+- implementation CI `32765179020`: Ubuntu **945 passed in 14.67s**; Windows **945 passed in 31.88s**;
+- final exact PR head `e0f89c9cb362f25cf7c58bfc2c6554a0d687ae62`;
+- final exact-head CI `32766072120`: Ubuntu **945 passed in 14.69s**; Windows **945 passed in 23.46s**;
+- every validator through Phase 20 PASS on both platforms;
+- validation pipeline fingerprint `80ff188249df6fcb9cc86b232d6322fc373a0d3f39b95ecbc3274513df63df00`;
+- external mutation-stage registration BLOCKED;
+- persisted semantic conflict BLOCKED;
+- deterministic resume/idempotency PASS;
+- provider calls 0;
+- provider writes 0;
+- broker writes 0.
 
-Phase 20 is not yet recorded as accepted/merged. Documentation closeout and final docs-head CI precede PR merge.
+Current numbered work:
+
+- **No Phase 21 authority lock exists yet.**
+- The next action is to inspect the accepted end-to-end operational gaps from Phase 20 baseline `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`, then define and lock the smallest coherent Phase 21 increment that materially advances the Webull-primary paper/shadow path.
+- Live execution remains **DISABLED**.
+- Automatic cross-broker failover remains **DISABLED**.
 
 ## 3. Mandatory phase flow
 
@@ -65,7 +70,7 @@ Storage/provider roles:
 
 - Parquet: durable analytical/history lake.
 - DuckDB: analytical engine.
-- PostgreSQL: target operational state; current repository SQL scaffold remains nonoperational and is not a Phase 20 prerequisite.
+- PostgreSQL: target operational state; current repository SQL scaffold remains nonoperational and is not an accepted runtime prerequisite.
 - Massive: primary broad-market/reference provider.
 - Webull: primary planned execution broker; downstream realtime L1 execution evidence where entitled.
 - Alpaca: manually selectable secondary/fallback; never automatic failover.
@@ -93,7 +98,7 @@ At each acceptance boundary, independently audit both the implementation and the
 - Uncertain writes are never retried blindly.
 - Automatic cross-broker failover is forbidden.
 - Paper/sandbox authority does not imply live authority.
-- Phase 20 orchestration cannot create provider/broker/scheduler authority by registering a job.
+- Accepted Phase 20 orchestration cannot create provider/broker/scheduler authority by registering a job.
 
 ## 6. Accepted data/model evidence
 
@@ -162,11 +167,11 @@ Accepted read-only local operations/observability layer:
 - no browser execution authority;
 - no live promotion or automatic failover.
 
-## 8. Phase 20 implementation evidence
+## 8. Accepted Phase 20 orchestration evidence
 
 Phase 20 fills the prior empty `packages/jobs/` orchestration boundary with a provider-free deterministic local run engine.
 
-Implemented substrate:
+Accepted substrate:
 
 - strict explicit run/stage status model;
 - immutable typed stage registry and deterministic DAG/topological ordering;
@@ -182,7 +187,7 @@ Implemented substrate:
 - provider-free plan-only runner and explicit local shadow rehearsal;
 - independent Phase 20 validator and cross-platform unit/regression coverage.
 
-Implementation-head CI `32765179020` proved on both Ubuntu and Windows:
+Final exact-head CI `32766072120` proved on both Ubuntu and Windows:
 
 - policy contract/fingerprint exact;
 - validation pipeline fingerprint `80ff188249df6fcb9cc86b232d6322fc373a0d3f39b95ecbc3274513df63df00`;
@@ -195,7 +200,7 @@ Implementation-head CI `32765179020` proved on both Ubuntu and Windows:
 - dependency lock, secret hygiene, ATLAS Doctor and feature self-test PASS;
 - full suite 945/945 on each OS.
 
-No target broker/provider run is required for Phase 20 because the phase has no provider-call authority.
+No target broker/provider run was required for Phase 20 because the phase has no provider-call authority.
 
 ## 9. Performance/housekeeping baseline
 
@@ -230,7 +235,7 @@ Manual secondary/fallback. Paper reads accepted. No automatic failover.
 
 ### Phase 20 orchestration
 
-Local-only. It cannot perform provider reads/writes, broker writes, automatic broker switching, or autonomous scheduling. The accepted Phase 18 paper mutation mechanism remains separate and is not callable merely because Phase 20 can execute a stage graph.
+Accepted local-only foundation. It cannot perform provider reads/writes, broker writes, automatic broker switching, or autonomous scheduling. The accepted Phase 18 paper mutation mechanism remains separate and is not callable merely because Phase 20 can execute a stage graph.
 
 ### Live
 
@@ -238,16 +243,15 @@ Live execution disabled. Any live-money transition requires a separately defined
 
 ## 11. Exact continuation point
 
-Do **not** reopen accepted Phase 18/19 work or repeat provider mutation merely to reconfirm it.
+Do **not** reopen accepted Phase 18–20 work or repeat provider mutation merely to reconfirm it.
 
-Current closeout sequence:
+Current continuation sequence:
 
-1. synchronize `docs/phase20_run_orchestration.md`, this handoff, `docs/roadmap.md`, root `README.md`, and PR #21 against implementation-head evidence `6484f8a2eb5cc7e181544725d578b1206ec412df` / CI `32765179020`;
-2. run the final docs-head Phase 20 Ubuntu + Windows CI boundary;
-3. require every validator through Phase 20 and the full regression suite green on both platforms;
-4. mark PR #21 ready/accepted and merge it;
-5. verify the merge on `main` and synchronize final accepted merge/CI evidence;
-6. only then define and authority-lock the next numbered phase, choosing the smallest coherent increment that materially advances the end-to-end operational paper/shadow path toward real Webull-primary paper trading without weakening any existing safety or authority boundary.
+1. treat `3b34bc700f8a0241ca5716c6d18bcb89f0d45620` as the accepted Phase 20 baseline;
+2. independently inventory the remaining end-to-end operational gaps from deterministic candidate/risk/AI evidence into Webull-primary shadow/paper execution, reconciliation, observability, and outcome learning;
+3. compare those gaps against the roadmap and current code rather than assuming that scheduler or PostgreSQL infrastructure is automatically next;
+4. define and authority-lock the smallest coherent Phase 21 increment that materially advances the end-to-end paper/shadow path without weakening any accepted safety boundary;
+5. implement Phase 21 as a coherent batch under the normal phase flow.
 
 Until a later explicit phase changes authority, live execution stays disabled, broker switching stays explicit/manual, automatic failover stays forbidden, and autonomous scheduling/PostgreSQL runtime promotion remain out of scope.
 
@@ -259,4 +263,4 @@ Never commit or expose API secrets, passwords, security codes, raw broker accoun
 
 ## 13. Future-session startup
 
-A future session should inspect `main`, branches/open PRs/latest CI, then read this file, `docs/roadmap.md`, the active phase specification, `docs/phase_flow.md`, and `docs/post_phase19_stabilization.md`. Preserve explicit provider/live/automation authority boundaries and continue from section 11 rather than reopening accepted work without new evidence.
+A future session should inspect `main`, branches/open PRs/latest CI, then read this file, `docs/roadmap.md`, the active phase specification if one exists, `docs/phase_flow.md`, and `docs/post_phase19_stabilization.md`. Preserve explicit provider/live/automation authority boundaries and continue from section 11 rather than reopening accepted work without new evidence.
