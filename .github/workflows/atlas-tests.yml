@@ -136,5 +136,8 @@ jobs:
       - name: Validate Phase 21 unified paper execution authority contracts
         run: python scripts/validate_phase21.py
 
+      - name: Validate Phase 22 operational PAPER runner contracts
+        run: python scripts/validate_phase22.py
+
       - name: Run tests
         run: python -m pytest -q
