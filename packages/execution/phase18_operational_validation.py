@@ -16,6 +16,11 @@ from packages.control_plane.phase18_authorization import (
     require_phase18_mutation_authorization,
 )
 from packages.core.enums import LiveFeedMode, SessionSegment
+from packages.execution.engine import ExecutionEngine, ExecutionEngineError
+from packages.execution.phase21_authority import (
+    authorize_phase21_paper_execution,
+    build_phase18_operational_validation_challenge,
+)
 from packages.execution.validator import reconcile_broker
 from packages.portfolio.phase13_policy import (
     PHASE13_MAX_SINGLE_NAME_NOTIONAL_FRACTION,
@@ -219,6 +224,9 @@ def run_phase18_operational_validation_lifecycle(
 ) -> Phase18OperationalValidationResult:
     """Run one validation-only paper submit/reconcile/cancel lifecycle.
 
+    Phase 18's original explicit operator authorization remains the outer certification
+    authority. The exact validation plan is then bound to a narrow Phase 21 compatibility
+    authority before the single central provider-submit seam is allowed to mutate PAPER.
     This function never auto-flattens filled exposure and never performs cross-broker
     failover. Any uncertain mutation stops the lifecycle and requires exact reconciliation
     before a later separately authorized action.
@@ -294,8 +302,23 @@ def run_phase18_operational_validation_lifecycle(
             reconciliation=before,
         )
 
+    phase21_challenge = build_phase18_operational_validation_challenge(
+        plan,
+        broker=adapter.broker,
+    )
+    phase21_authority = authorize_phase21_paper_execution(
+        phase21_challenge,
+        explicitly_authorized=True,
+        confirmation=phase21_challenge.required_confirmation,
+    )
+
     try:
-        submitted = adapter.submit(plan)
+        submitted = ExecutionEngine().submit_authorized_plan(
+            plan,
+            adapter,
+            execution_scope_id=phase21_challenge.execution_scope_id,
+            paper_authority=phase21_authority,
+        )
     except BrokerSubmissionUncertain as exc:
         reconciled = _safe_reconcile(adapter, now)
         raise Phase18OperationalValidationError(
@@ -303,6 +326,12 @@ def run_phase18_operational_validation_lifecycle(
             stage="submit",
             provider_state_uncertain=True,
             reconciliation=reconciled,
+        ) from exc
+    except ExecutionEngineError as exc:
+        raise Phase18OperationalValidationError(
+            "operational validation unified PAPER submit authority failed closed",
+            stage=exc.stage,
+            reconciliation=before,
         ) from exc
     except BrokerAdapterError as exc:
         raise Phase18OperationalValidationError(

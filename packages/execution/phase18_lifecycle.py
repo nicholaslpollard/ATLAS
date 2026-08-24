@@ -13,6 +13,10 @@ from packages.control_plane.phase18_authorization import (
     require_phase18_mutation_authorization,
 )
 from packages.execution.engine import ExecutionEngine
+from packages.execution.phase21_authority import (
+    authorize_phase21_paper_execution,
+    build_phase18_paper_execution_challenge,
+)
 from packages.execution.validator import reconcile_broker
 from packages.schemas.execution import (
     BrokerOrderSnapshot,
@@ -74,12 +78,10 @@ def run_phase18_cancelable_paper_lifecycle(
 ) -> Phase18LifecycleResult:
     """Exercise one explicitly authorized paper-provider submit/reconcile/cancel lifecycle.
 
-    The first real Phase 18 lifecycle is deliberately conservative: the selected broker
-    must begin flat with zero open orders. A new deterministic order is submitted through
-    the accepted Phase 15 execution engine, reconciled by exact client order id, and
-    cancelled only while still open. If the order fills or provider state becomes
-    uncertain, this function stops and never attempts an automatic flatten or broker
-    failover.
+    Phase 18's original operator authorization remains the outer certification authority.
+    After that authority is validated, a narrow Phase 21 submit authority is derived for
+    the exact certification intent so the provider write also crosses the unified central
+    PAPER submission gate.
     """
 
     auth = require_phase18_mutation_authorization(authorization)
@@ -101,6 +103,13 @@ def run_phase18_cancelable_paper_lifecycle(
             stage="authority",
         )
 
+    phase21_challenge = build_phase18_paper_execution_challenge(intent)
+    phase21_authority = authorize_phase21_paper_execution(
+        phase21_challenge,
+        explicitly_authorized=True,
+        confirmation=phase21_challenge.required_confirmation,
+    )
+
     before = reconcile_broker(adapter, now_utc=now)
     if not before.reconciled:
         raise Phase18LifecycleError("broker did not reconcile", stage="pre_reconciliation")
@@ -117,6 +126,8 @@ def run_phase18_cancelable_paper_lifecycle(
             adapter,
             max_abs_correlation=max_abs_correlation,
             now_utc=now,
+            execution_scope_id=phase21_challenge.execution_scope_id,
+            paper_authority=phase21_authority,
         )
     except BrokerSubmissionUncertain as exc:
         after_uncertain = _safe_reconcile_after_uncertainty(

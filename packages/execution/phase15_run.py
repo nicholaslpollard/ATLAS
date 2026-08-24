@@ -16,6 +16,13 @@ from packages.execution.engine import ExecutionEngine, ExecutionEngineError
 from packages.execution.order_builder import ExecutionIntentError, build_execution_intent
 from packages.execution.phase15_policy import phase15_policy_fingerprint, phase15_policy_payload
 from packages.execution.phase15_source import Phase15ExecutionInputResolver
+from packages.execution.phase21_authority import (
+    Phase21AuthorizationError,
+    Phase21PaperExecutionAuthority,
+    Phase21PaperExecutionChallenge,
+    build_phase15_paper_execution_challenge,
+    require_phase21_paper_execution_authority,
+)
 from packages.execution.quote_source import ExecutionQuoteError, Phase15LiveQuoteResolver
 from packages.execution.validator import ExecutionValidationError
 from packages.features.partition_store import sha256_file
@@ -81,12 +88,28 @@ class Phase15ExecutionRunEngine:
         atomic_write_text(path, model.model_dump_json(indent=2) + "\n")
         return sha256_file(path)
 
+    def prepare_paper_execution_challenge(
+        self,
+        *,
+        as_of_date: date | None = None,
+        broker: BrokerName | str,
+    ) -> Phase21PaperExecutionChallenge:
+        """Resolve accepted local input and return the exact PAPER run challenge."""
+        execution_input = self.input_resolver.resolve(as_of_date)
+        return build_phase15_paper_execution_challenge(
+            as_of_date=execution_input.as_of_date,
+            phase15_input_fingerprint=execution_input.source_fingerprint,
+            phase15_policy_fingerprint=phase15_policy_fingerprint(),
+            broker=broker,
+        )
+
     def run(
         self,
         *,
         as_of_date: date | None = None,
         environment: ExecutionEnvironment | str | None = None,
         broker: BrokerName | str | None = None,
+        paper_authority: Phase21PaperExecutionAuthority | None = None,
         max_abs_correlations: dict[str, float] | None = None,
         progress: Callable[[str], None] | None = None,
     ) -> dict[str, object]:
@@ -97,6 +120,8 @@ class Phase15ExecutionRunEngine:
         broker_adapter: BrokerAdapter | None = None
         quote_resolver: Phase15LiveQuoteResolver | None = None
         provider_uncertain = False
+        execution_scope_id: str | None = None
+        paper_authority_public: dict[str, object] | None = None
 
         if progress is not None:
             progress(
@@ -122,6 +147,28 @@ class Phase15ExecutionRunEngine:
                 BrokerName.ALPACA,
             }:
                 raise Phase15RunError("paper environment requires Webull or Alpaca")
+
+            if selected_environment == ExecutionEnvironment.PAPER:
+                challenge = build_phase15_paper_execution_challenge(
+                    as_of_date=execution_input.as_of_date,
+                    phase15_input_fingerprint=execution_input.source_fingerprint,
+                    phase15_policy_fingerprint=policy_fp,
+                    broker=selected_broker,
+                )
+                execution_scope_id = challenge.execution_scope_id
+                try:
+                    validated_authority = require_phase21_paper_execution_authority(
+                        paper_authority,
+                        expected_execution_scope_id=execution_scope_id,
+                        broker=selected_broker,
+                        environment=ExecutionEnvironment.PAPER,
+                    )
+                except Phase21AuthorizationError as exc:
+                    raise Phase15RunError(
+                        "Phase 21 explicit run-scoped PAPER execution authority is required before provider reads/submission"
+                    ) from exc
+                paper_authority_public = validated_authority.public_dict()
+
             quote_resolver = self._quote_resolver or Phase15LiveQuoteResolver(self.settings)
 
             for index, (case, case_sha) in enumerate(
@@ -191,6 +238,8 @@ class Phase15ExecutionRunEngine:
                         intent,
                         broker_adapter,
                         max_abs_correlation=correlation,
+                        execution_scope_id=execution_scope_id,
+                        paper_authority=paper_authority,
                     )
                 except BrokerSubmissionUncertain as exc:
                     provider_uncertain = True
@@ -313,6 +362,8 @@ class Phase15ExecutionRunEngine:
                 _stable_hash(item.model_dump(mode="json")) for item in records
             ],
         }
+        if selected_environment == ExecutionEnvironment.PAPER:
+            source_payload["phase21_execution_scope_id"] = execution_scope_id
         manifest: dict[str, object] = {
             "contract_version": PHASE15_RUN_MANIFEST_CONTRACT_VERSION,
             "generated_at_utc": datetime.now(UTC).isoformat(),
@@ -324,6 +375,8 @@ class Phase15ExecutionRunEngine:
             "execution_case_count": execution_input.execution_case_count,
             "selected_environment": selected_environment.value if selected_environment is not None else None,
             "selected_broker": selected_broker.value if selected_broker is not None else None,
+            "phase21_execution_scope_id": execution_scope_id,
+            "phase21_paper_authority": paper_authority_public,
             "records": [item.model_dump(mode="json") for item in records],
             "record_count": len(records),
             "blocked_count": sum(1 for item in records if item.disposition == ExecutionCaseDisposition.BLOCKED),
