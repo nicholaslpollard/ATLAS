@@ -102,6 +102,7 @@ def main() -> None:
     if not ticker:
         raise SystemExit("Phase 18 validation ticker cannot be blank")
     broker = BrokerName(args.broker)
+    quote_source = getattr(args, "quote_source", QUOTE_SOURCE_MASSIVE)
 
     print("ATLAS Phase 18 operational validation")
     print("Environment: PAPER/SANDBOX ONLY")
@@ -112,11 +113,11 @@ def main() -> None:
     print("Automatic flatten on fill: DISABLED")
     print(f"Selected broker: {broker.value}")
     print(f"Selected ticker: {ticker}")
-    print(f"Quote source: {args.quote_source}")
+    print(f"Quote source: {quote_source}")
 
     settings = load_settings()
     try:
-        if args.quote_source == QUOTE_SOURCE_WEBULL:
+        if quote_source == QUOTE_SOURCE_WEBULL:
             quote = Phase18WebullQuoteResolver(settings).quote(ticker)
         else:
             quote = Phase15LiveQuoteResolver(settings).quote(ticker)
