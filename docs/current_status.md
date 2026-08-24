@@ -1,371 +1,366 @@
 # ATLAS Current Status and Handoff
 
-**Living status document. Last synchronized: 2026-08-23.**
+**Living operational handoff. Last synchronized: 2026-08-24.**
 
-This file is the fastest way for a new development session or future chat to recover the current ATLAS state without reconstructing the project from old conversations. It is intentionally operational and evidence-focused. `docs/roadmap.md` remains the architecture/authority-policy lock, while the root `README.md` provides orientation.
+This is the fastest source for a future chat/development session to recover exact ATLAS state without reconstructing prior conversation history.
 
 ## 1. Source-of-truth order
 
-When sources disagree, use this order:
+When sources disagree, use:
 
-1. current `main` code and accepted validation artifacts;
-2. `docs/roadmap.md` for locked architecture, phase boundaries, safety rules, configuration policy, and authority transitions;
-3. this file for the latest accepted state, evidence summary, and exact continuation point;
-4. root `README.md` for project orientation;
-5. merged pull requests for detailed phase acceptance evidence;
-6. phase-specific documents and old `README_PHASE_*` / `README_ATLAS_*` files as historical records only.
+1. accepted code/artifacts on `main` for completed work;
+2. active/stacked PR branch code for in-progress work;
+3. `docs/roadmap.md` for architecture/authority rules;
+4. this file for exact current state/evidence/continuation;
+5. `docs/phase_flow.md` for phase progression/cadence;
+6. active/stacked phase living specification;
+7. root `README.md`;
+8. merged PRs for deeper historical evidence;
+9. old phase/fix READMEs as provenance only.
 
-Old phase/fix READMEs must not be treated as current roadmap instructions. They describe the state at the time that work was performed and are intentionally retained for provenance.
+## 2. Repository state
 
-## 2. Current project state
+Repository: `nicholaslpollard/ATLAS`
 
-- **Phases 1 through 17 are accepted and merged.**
-- The legacy Chart Monitor is preserved; ATLAS is the redesign/rebuild path.
-- Phase 17 merged after successful real-provider read-only reconciliation.
-- The repository is operating from `main`; completed phase branches have been removed after merge/closeout.
-- The accepted Phase 17 provider-readiness code head was `21eeb757d84de33878ab1c8d7c8afe0797dee1f9`.
-- Phase 17 merged into `main` at `65d5a7b58c6894eba27722465741c92db9a33aaf`.
-- Later `main` commits synchronize living documentation, `.env.example`, and generated-log ignore rules; they do not grant additional trading authority.
-- **Current authority checkpoint:** `PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`.
-- Provider order mutation is **not authorized yet** by Phase 17 acceptance.
-- Live execution is **not promoted**.
-- Automatic cross-broker failover remains **disabled**.
-- GitHub branch policy has been cleaned up so accepted work resides on `main`; old merged phase branches are removed.
+Accepted upstream:
 
-## 3. Target architecture
+- Phases 1–17 accepted/merged.
+- Phase 17 merge: `65d5a7b58c6894eba27722465741c92db9a33aaf`.
 
-ATLAS is designed around this flow:
+Current merge-authoritative work:
 
-`market/reference data -> Parquet data lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability surface -> strategy routing/evaluation -> candidate promotion -> historical analogue + Monte Carlo/scenario research -> news/events/sentiment -> instrument selection -> entry/stop/target/horizon -> portfolio/risk -> consolidated deterministic case -> independent AI audit -> alert/paper/shadow/live execution -> outcome/performance learning -> browser control plane`
+- Phase 18 — Paper Provider Mutation Lifecycle Validation.
+- Branch: `phase-18-paper-provider-mutation-lifecycle-validation`.
+- PR: #18, currently draft until final closeout boundary is green.
+- Policy: `phase18-policy-v1-phase17-bound-explicit-paper-mutation-no-live`.
+- Fingerprint: `9a992246fe60526295a714c8b6762eebf131680f5a6fb21d579503757be613b7`.
+- Phase 18A: **ACCEPTED / COMPLETE**.
+- Phase 18B: **ACCEPTED / COMPLETE** based on real Webull sandbox target-machine evidence from 2026-08-24.
+- Phase 18 overall: **ACCEPTED; closeout docs/CI/merge pending**.
+- Live execution: **DISABLED**.
+- Automatic broker failover: **DISABLED**.
 
-Durable analytical/history storage is Parquet. DuckDB is the local analytical query engine. PostgreSQL remains the target for operational state that should not live in the analytical lake.
+Stacked work:
 
-## 4. Accepted phase ledger
+- Phase 19 — Operations Dashboard / Observability.
+- State: **STACKED_PREP**, not independently mergeable before Phase 18.
+- Existing stacked branch/PR must be rebased/retargeted to merged `main` after Phase 18 closes, then Phase 19 must be revalidated before becoming active/mergeable.
 
-### Phases 1-3 — foundation, ingestion, canonical storage
+## 3. Mandatory phase flow
 
-Phase 1 established shared settings, secret handling, UTC/session conventions, canonical schemas, data-quality contracts, and validation. XNYS is the initial U.S. equity calendar; regular-session derived bars are exchange-session anchored.
+Normative process:
 
-Phase 2 implemented restartable/idempotent Massive flat-file ingestion with remote inventory, manifests, atomic partial downloads, SHA-256/size/gzip/schema validation, retries, checkpoints, and dry-run planning.
+`DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST AS NEEDED -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
 
-Phase 3 materialized validated provider files into ATLAS-owned canonical Parquet and session-aware derived history. Provider facts remain separate from derived features/strategy state.
+Batch-first is preferred. Authority/external checkpoints override batching. Provider mutation, destructive cleanup, broker switching, and future live authority may never be inferred from credentials/configuration/prior acceptance.
 
-### Phase 4 — instrument identity and historical lake
+## 4. Architecture snapshot
 
-Accepted stable identity/history foundation with exact provider-native ticker case, point-in-time reference snapshots, authoritative continuity evidence where available, ticker-reuse protection, anomaly reconciliation, and provider/canonical/derived historical auditing.
+`market/reference -> Parquet/DuckDB -> features -> broad discovery -> market/sector/ticker regimes -> ML probabilities -> deterministic strategy routing/evaluation -> promotion -> analogue/Monte Carlo/scenarios -> news/events -> instrument/geometry -> portfolio risk -> deterministic case -> independent AI audit -> alerts -> paper/shadow/live execution -> outcome learning -> browser control plane`
 
-Massive authoritative production history begins at **2021-08-16**. The historical lake proved restartable after a real Windows interruption without rebuilding already committed work.
+Storage/provider roles:
 
-### Phase 5 — live market state
+- Parquet: durable analytical/history lake.
+- DuckDB: analytical engine.
+- PostgreSQL: target operational state.
+- Massive: primary broad-market/reference provider.
+- Webull: primary planned execution broker; downstream realtime L1 execution evidence where entitled.
+- Alpaca: manually selectable secondary/fallback; never automatic failover.
 
-Accepted provisional Massive live/delayed market state, explicit freshness and reconnect-gap accounting, journal/current-state persistence, and finalized-data reconciliation. Live observations never overwrite finalized canonical facts.
+## 5. Non-negotiable architecture/authority rules
 
-### Phase 6 — feature engine
+- Preserve exact provider-native ticker text/case.
+- Ticker text never proves identity continuity.
+- Historical populations remain point-in-time.
+- Ambiguity is quarantined/excluded, never guessed.
+- No synthetic pre-2021 intraday from daily data.
+- Finalized canonical facts outrank provisional live observations.
+- ML emits probability evidence; argmax is diagnostic only.
+- Accepted production model cannot be silently replaced by a challenger.
+- AI is independent audit only and cannot create execution authority.
+- LONG geometry: `stop < entry < target`.
+- SHORT geometry: `stop > entry > target`.
+- Unknown broker/provider state fails closed.
+- Uncertain writes are never retried blindly.
+- Automatic cross-broker failover is forbidden.
+- Paper/sandbox authority does not imply live authority.
 
-Accepted **33 versioned quantitative features** with deterministic batch/incremental equivalence and checkpointed recursive state.
+## 6. Accepted data/model evidence
 
-Accepted permanent feature persistence policy:
+Historical provider boundary:
 
-- 1d: permanent;
-- 4h: permanent;
-- 1h: permanent;
-- 15m: on-demand/cache;
-- 1m: live/current state only.
+- Alpaca raw SIP daily controlled authority: 2016-01-04 through 2021-08-13.
+- Massive authority: 2021-08-16 onward.
+- No synthetic pre-2021 1h/4h history.
 
-The accepted 2021-08-16 through 2026-08-14 permanent feature lake contained **154,188,221 rows** across 1d/4h/1h and passed deep source/hash/state-lineage audits plus historical-to-incremental continuation checks.
+Accepted cumulative data/lineage fingerprint:
 
-### Phase 7 — point-in-time universe registry
+`6a3ff7ad3b6fc7dff95df42ec3cc89bfc38ab66f93bc4a125d4d1d87c85a63f6`
 
-Accepted security-safe identity correction and point-in-time universe construction. The default discovery universe uses active U.S.-listed STRONG/MEDIUM identities on accepted exchanges/security types; ambiguous routing is excluded rather than guessed. Position/watchlist/custom routes can explicitly bypass default discovery eligibility while retaining audit reasons.
+Accepted production ML:
 
-Accepted 2026-08-14 routed discovery universe: **12,066 instruments**.
-
-### Phase 8 — broad discovery funnel
-
-Accepted cheap-first, instrument-agnostic discovery foundation and vectorized multi-family scoring. Normal broad discovery requires valid daily data and the locked finalized/as-of daily dollar-volume floor; intraday availability is tracked rather than used to erase otherwise valid names.
-
-Accepted 2026-08-14 broad-ready population: **8,034 instruments**.
-
-Locked discovery-state thresholds:
-
-- WATCH: priority >= 0.35;
-- WARM: priority >= 0.50;
-- HOT: priority >= 0.60 plus dominant-direction, non-neutral, and full-timeframe requirements.
-
-Persistence/hysteresis is deterministic; missing prior-session state bootstraps conservatively rather than inventing continuity.
-
-### Phase 9 — market/sector/ticker regime engine
-
-Accepted deterministic point-in-time market, sector-proxy, optional authoritative SIC, stable-identity ticker-regime, persistence, and self-relative risk hierarchy. Missing classification/history remains explicit absence; no guessed sector crosswalk or ticker-text history splice is allowed.
-
-Accepted 2026-08-14 ticker-state population: 8,034 routed instruments, with 7,338 effective current ticker states.
-
-### Phase 10 — conventional ML probability/evaluation layer
-
-Accepted production model:
-
-- model id: `mlmodel-hgb15-2026-08-14-d485e6c287bacce1`;
-- specification: `hgb_leaf15_iter100`;
-- predictors: 33 point-in-time quantitative features;
-- outputs: raw `p_down`, `p_neutral`, `p_up`;
-- post-hoc calibration: none;
-- argmax: diagnostic only, never a trade signal.
-
-Protected final holdout:
-
-- 2026-05-12 through 2026-08-11;
+- ID `mlmodel-hgb15-2026-08-14-d485e6c287bacce1`;
+- `hgb_leaf15_iter100`;
+- 33 point-in-time predictors;
+- outputs `p_down/p_neutral/p_up`;
+- protected holdout 2026-05-12 through 2026-08-11;
 - 63 sessions / 454,773 rows;
 - log loss 0.948693;
 - Brier 0.560422;
 - macro OVR AUC 0.570016;
-- deterministic replay maximum probability difference 0.
+- exact replay.
 
-The accepted HGB model remains production authority. Later longer-history model evidence is challenger/research evidence unless separately accepted as a production replacement.
+Phase 11 strategy support:
 
-### Historical source audit and backfill extension
+- SUPPORTED 0;
+- MIXED 3 — `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
+- UNSUPPORTED 5.
 
-A read-only source audit accepted Alpaca raw SIP daily as the preferred pre-Massive history source. The controlled historical extension then established:
+Zero supported strategies correctly produced zero accepted promotions on the locked case.
 
-- Alpaca raw SIP daily history from **2016-01-04 through 2021-08-13**;
-- Massive production authority from **2021-08-16 onward**;
-- no synthetic pre-2021 1h/4h bars from daily data;
-- observation-driven historical populations;
-- explicit identity segmentation and no literal-ticker continuity assumptions;
-- accepted feature/regime/ML research handoff across the source seam.
+## 7. Accepted execution/control-plane foundation
 
-The longer-history C result improved research depth and some proper-score evidence but remains separately versioned challenger/research evidence; it did not silently replace the Phase 10 production model.
+### Phase 15
 
-### Phase 11 — strategy evaluation and regime routing
+Broker-neutral shadow/paper execution includes fresh quote, provider preflight, account/order/position reconciliation, current risk revalidation, protective geometry, deterministic client-order IDs/idempotency, uncertainty fail-closed, same-ticker add/flip disabled, live hard-disabled, Webull primary and Alpaca manual secondary.
 
-Accepted versioned deterministic strategy catalog, external regime router, identity-safe historical strategy study, Phase 10 probability attachment as context, and candidate-promotion policy.
+### Phase 16
 
-Eight strategy variants were evaluated. Accepted historical support classification at closeout:
+Accepted loopback-first browser/control plane includes CSRF/same-origin, audit/idempotency, restart recovery, explicit broker switching/cleanup planning, and no independent browser execution authority.
 
-- SUPPORTED: 0;
-- MIXED: 3 (`momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`);
-- UNSUPPORTED: 5.
+### Phase 17
 
-Because promotion requires historical support + current route compatibility + current firing, the accepted 2026-08-14 state legitimately produced **zero promoted candidates**. Thresholds were not weakened after seeing the result.
+Accepted real provider read-only readiness:
 
-### Phase 12 — promoted-candidate deep research
+- Webull sandbox selected sanitized account ref `3d64d273c694250b`, 0 open orders, 0 positions;
+- Alpaca paper sanitized ref `4b5b072f7127b4dc`, 0 open orders, 0 positions;
+- both brokers reconciled;
+- provider writes 0;
+- target regression 874 passed in 24.83s;
+- Windows/Ubuntu CI green.
 
-Accepted promoted-only historical analogue and deterministic empirical scenario/bootstrap research. Expensive history is not opened for non-promoted names. Zero Phase 11 promotions is a valid strict no-op and does not relax promotion thresholds.
+## 8. Phase 18 accepted design
 
-### Phase 13 — context, instrument, trade geometry, portfolio risk
+### 8.1 Authority gate
 
-Accepted deterministic case enrichment across contextual evidence, instrument selection, geometry, liquidity/sizing, exposure/concentration/correlation, and portfolio-risk admissibility.
+Real paper-provider mutation is disabled by default and requires:
 
-Required geometry:
+- one selected broker;
+- `--authorize-paper-provider-mutation`;
+- exact confirmation `AUTHORIZE_PAPER_PROVIDER_MUTATION`.
 
-- LONG: `stop < entry < target`;
-- SHORT: `stop > entry > target`.
+Credentials/endpoints/environment/connectivity/prior acceptance cannot substitute.
 
-Equity is the accepted v1 primary execution instrument. Options may provide finalist context when authoritative chain evidence exists but cannot silently become the primary instrument without a separately accepted relative-value model.
+### 8.2 Locked validation order
 
-### Phase 14 — independent AI audit and alerting
+Contract:
 
-Accepted structured AI audit with dispositions `APPROVE`, `CAUTIOUS`, `REJECT`. AI is an independent auditor, not a predictive model and not execution authority. It cannot rewrite deterministic direction, instrument, geometry, sizing, portfolio admission, or historical/model evidence. Engine evidence and AI review remain separately visible.
+`phase18-operational-validation-v1-one-share-buy-nonmarketable-bracket`
 
-Phase 14 alerting is artifact-first and auditable.
+- PAPER/SANDBOX only;
+- EQUITY BUY only;
+- exactly 1 share;
+- LIMIT / DAY;
+- extended hours false;
+- entry 5% below fresh realtime bid;
+- stop 2% below entry;
+- target 2% above entry;
+- absolute notional <= $1,000;
+- Phase 13 10% single-name cap;
+- Phase 13 0.5% loss-at-stop cap.
 
-### Phase 15 — broker execution and outcome learning foundation
+Expected lifecycle:
 
-Accepted broker-neutral execution contracts and shadow/paper execution semantics with:
+`fresh quote -> plan-only -> explicit authorization -> flat reconcile -> prove client ID absent -> preview -> submit once -> exact reconcile -> cancel once -> exact terminal reconcile -> flat/zero-open`
 
-- Webull as primary broker;
-- Alpaca as manually selectable secondary/fallback;
-- no automatic cross-broker failover;
-- explicit broker switching only;
-- fresh-quote translation before executable entry;
-- current risk and reconciliation checks;
-- protective stop/target in order plans;
-- idempotent client identifiers;
-- uncertainty fail-closed behavior;
-- descriptive outcome learning only;
-- live execution hard-disabled at acceptance.
+### 8.3 Quote-source evolution
 
-Same-ticker exposure changes and broker switching must respect accepted reconciliation/safety rules; unknown provider state never authorizes another mutation.
+Massive remains primary broad-market/reference authority. The current Massive plan rejected realtime stock quote subscriptions while allowing delayed aggregate streaming.
 
-### Cumulative data and lineage audit
+Phase 18 added an explicit read-only Webull sandbox L1 capture path:
 
-Before execution advancement, ATLAS added a read-only cumulative integrity acceptance over historical source/canonical/feature/regime/identity lineage. It did not modify production analytical or broker state. This audit became an upstream execution prerequisite.
+`one Webull L1 read -> sanitized local snapshot -> Phase 18 plan reads local file`
 
-Accepted audit evidence included complete canonical daily structural checks, source/manifest lineage verification, deterministic sampled 1m->1h/4h reconstruction, independent feature replay, regime chronology, identity integrity, and zero invalid/duplicate/missing-session findings in the accepted scope.
+Plan-only still initializes no broker adapter and makes zero provider calls/writes.
 
-### Phase 16 — browser control plane and production operations
+Execution evidence requires exact ticker, valid bid/ask, undelayed/realtime semantics, REGULAR session, and provider quote age <= **30 seconds**. Premarket/after-hours/stale/delayed/wrong-ticker evidence fails closed.
 
-Accepted browser-facing control plane, status/action APIs, audit/idempotency semantics, restart/recovery handling, broker-switch workflow, cleanup planning, and operational health surfaces.
+### 8.4 Webull rate policy
 
-Critical boundary: the browser is a **control plane, not independent execution authority**. Loopback is the default bind; remote bind is disabled by default. Provider cleanup/cancel/flatten mutations were not promoted by Phase 16 acceptance. Live money remained disabled.
+Locked as of 2026-08-24:
 
-### Phase 17 — provider-readonly operational readiness
+- normal sustained Webull **read** target = **80% of the most specific current documented endpoint limit**;
+- endpoint-specific limit outranks broader/global limit;
+- no normal 90% sustained target;
+- any higher temporary read burst must be bounded/read-only/below the hard provider limit;
+- mutation throughput is governed by ATLAS risk/reconciliation/idempotency, not provider write capacity;
+- sustained realtime monitoring should prefer MQTT/streaming over aggressive HTTP polling;
+- 429 reads back off/cool down;
+- ambiguous mutation state requires reconciliation;
+- no automatic failover.
 
-Accepted on 2026-08-23 with real Webull sandbox and Alpaca paper reads.
+## 9. Phase 18A evidence
 
-Webull account discovery found five readable sandbox accounts. The account selector correctly failed closed on ambiguity. A sandbox margin account was then explicitly selected locally using a sanitized reference; raw account identity remained local and was not printed or committed.
+Final target-machine Phase 18A baseline:
 
-Target-machine evidence:
+`94a859fc6d44c22a6f8852c1488215a6677806a0`
 
-- Webull account-list HTTP 200;
-- Webull balance HTTP 200;
-- Webull open-orders HTTP 200 / count 0;
-- Webull positions HTTP 200 / count 0;
-- Webull read result: `WEBULL_READ_PATH_REACHED_ALL_REQUIRED_ENDPOINTS`;
-- Alpaca paper reconciled=true / open orders 0 / positions 0;
-- Alpaca result: `ALPACA_READ_PATH_RECONCILED`;
-- both broker rows `AVAILABLE`, reconciled=true, safe-to-switch=true;
-- provider adapter initializations: exactly 2;
-- provider mutation endpoint invocations: 0;
-- provider writes: 0;
-- live writes: 0;
-- accepted Phase 16 artifacts unchanged and hash-bound;
-- Phase 17 contract validator: PASS;
-- target-machine full regression: **874 passed in 24.83s**;
-- Ubuntu CI: PASS;
-- Windows CI: PASS;
-- final disposition: `phase17_provider_readonly_readiness_accepted=true`.
+- isolated Windows CSRF transport case: 1 passed in 3.30s;
+- full regression: **908 passed in 23.50s**;
+- working tree clean;
+- provider calls 0;
+- provider writes 0;
+- Windows/Ubuntu CI green.
 
-Phase 17 grants provider **read/reconciliation evidence only**. It does not grant order-mutation authority.
+**Phase 18A: ACCEPTED / COMPLETE.**
 
-## 5. Broker and execution authority right now
+## 10. Phase 18B target evidence — 2026-08-24
+
+### 10.1 Webull L1 entitlement
+
+Local sandbox credentials returned fresh AAPL L1 quotes. First explicit entitlement probe was ~20 seconds old; subsequent active-market captures were consistently sub-2-second.
+
+### 10.2 Premarket fail-closed
+
+Fresh premarket quotes were captured at 09:18 and 09:25 ET, but Phase 18 returned `BLOCKED` because session was premarket. Plan-step broker adapter remained uninitialized and provider writes remained 0.
+
+### 10.3 Regular-session plan-only
+
+At 09:31 ET:
+
+- AAPL bid/ask `311.06 / 311.17`;
+- quote age `0.322s`;
+- session REGULAR;
+- plan `295.51 / 289.60 / 301.42` entry/stop/target;
+- notional `$295.51`;
+- broker adapter NO;
+- provider calls 0;
+- provider writes 0;
+- disposition `PLAN_ONLY_ZERO_PROVIDER_CALLS`.
+
+### 10.4 First authorized attempt — safely blocked before write
+
+The first authorized Webull run stopped at `idempotency_query` because the SDK surfaced explicit `Order not present` as HTTP 417/exception. Final reconciliation was flat/zero-open; no submit or cancel occurred.
+
+ATLAS then added:
+
+- exact Webull order-absence normalization;
+- suppression of SDK loggers that could emit signed request/account metadata.
+
+### 10.5 Accepted authorized lifecycle
+
+Later explicitly authorized Webull sandbox run:
+
+- AAPL bid/ask `311.33 / 311.39`;
+- quote timestamp `2026-08-24T13:51:49.262000+00:00`;
+- quote age `0.823s`;
+- client ID `p18v-13abada37159d4486df293b3695`;
+- entry/stop/target `295.76 / 289.84 / 301.68`;
+- notional `$295.76`;
+- authorization accepted;
+- exactly one sandbox adapter initialized.
+
+Lifecycle evidence:
+
+1. pre-reconciliation flat/zero-open;
+2. deterministic client ID absent;
+3. preview accepted;
+4. order submitted exactly once;
+5. exact post-submit reconciliation succeeded;
+6. cancellation attempted exactly once;
+7. immediate post-cancel exact read was inconclusive, so ATLAS stopped with **no retry, no failover, no flatten**;
+8. read-only account reconciliation already showed 0 open orders and 0 positions;
+9. subsequent read-only exact diagnostic reported Order Detail `CANCELLED` and Order History `CANCELLED`;
+10. requested quantity `1.0`, filled quantity `0.0`;
+11. final open orders `0`, positions `0`, exact client ID not open, flat/zero-open true.
+
+This is definitive target-machine proof of:
+
+`submit once -> exact reconcile -> cancel once -> exact CANCELLED -> zero fill -> flat/zero-open`
+
+**Phase 18B: ACCEPTED / COMPLETE. Cleanup not required.**
+
+### 10.6 Post-target hardening
+
+Because Webull showed a short post-cancel read-consistency window, the hardened Webull adapter now:
+
+- sends cancellation at most once;
+- performs bounded **read-only** exact Order Detail + Order History reconciliation;
+- returns only after exact `CANCELLED` is proven;
+- fails uncertain if exact terminal proof is unavailable;
+- never retries cancellation solely because reads lag.
+
+Regression coverage verifies the history fallback proves `CANCELLED` while the cancel endpoint is called exactly once.
+
+No second target mutation is required solely for this read-only hardening because the accepted real lifecycle already produced exact `CANCELLED`, zero-fill, zero-open, flat evidence.
+
+## 11. Current broker authority
 
 ### Webull
 
-- planned primary execution broker;
-- accepted real integration target: Webull US sandbox for paper testing;
-- sandbox account selection is explicit and fail-closed when ambiguous;
-- read-only account/balance/order/position reconciliation is accepted;
-- real sandbox provider order mutation is **not yet authorized by the current checkpoint**;
-- production/live execution is not promoted.
+- primary planned execution broker;
+- sandbox reads accepted;
+- fresh L1 execution-evidence path accepted;
+- Phase 18 sandbox mutation lifecycle accepted;
+- live authority **not** granted.
 
 ### Alpaca
 
-- manually selectable secondary/fallback broker;
-- paper account read/reconciliation is accepted;
-- paper-provider mutation is not yet authorized by the current checkpoint;
-- automatic failover from Webull to Alpaca is forbidden.
+- manual secondary/fallback;
+- paper reads accepted;
+- no automatic failover;
+- no requirement to repeat Phase 18 certification on Alpaca before closing Webull-first Phase 18 unless a future phase explicitly requires it.
 
-### Broker switching
+### Live
 
-The browser may request a switch, but the switch cannot bypass reconciliation. Open orders/positions must be inspected. Any provider mutation required to cancel/close/flatten exposure requires the corresponding explicit authority. The system must reconcile to the required safe state before activating another broker.
-
-## 6. Current next checkpoint
-
-`PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
-
-Until explicit authorization is given, ATLAS must not perform real provider:
-
-- order submission;
-- order replacement;
-- order cancellation;
-- flatten/close writes;
-- broker-switch cleanup writes.
-
-Live execution and automatic cross-broker failover remain disabled regardless.
-
-If/when explicitly authorized, the next coherent work package should exercise real paper/sandbox order lifecycle behavior under the accepted Phase 15/16 contracts, including preflight, fresh quote, risk, protective geometry, idempotency, exact-client-order reconciliation, uncertain-write recovery, cancellation/replace semantics where supported, position/order reconciliation, and safe cleanup.
-
-Paper-provider mutation acceptance must remain separate from any later live-money promotion.
-
-## 7. Current environment/configuration template
-
-The tracked `.env.example` is intentionally non-secret but now mirrors the project's desired provider layout so local copies can stay synchronized.
-
-Current template structure:
-
-```text
-ATLAS_ENV=development
-OPENAI_API_KEY=
-DATABASE_URL=
-
-MASSIVE_API_KEY=
-MASSIVE_S3_ACCESS_KEY_ID=
-MASSIVE_S3_SECRET_ACCESS_KEY=
-MASSIVE_ENDPOINT=https://files.massive.com
-
-WEBULL_PAPER_APP_KEY=
-WEBULL_PAPER_APP_SECRET=
-WEBULL_LIVE_APP_KEY=
-WEBULL_LIVE_APP_SECRET=
-
-ALPACA_PAPER_ENDPOINT=https://paper-api.alpaca.markets/v2
-ALPACA_PAPER_API_KEY=
-ALPACA_PAPER_API_SECRET=
-ALPACA_LIVE_ENDPOINT=https://api.alpaca.markets
-ALPACA_LIVE_API_KEY=
-ALPACA_LIVE_API_SECRET=
-
-IBKR_HOST=127.0.0.1
-IBKR_PORT=4002
-IBKR_CLIENT_ID=17
-```
-
-The template also keeps a commented `ALPACa_Security_Code` placeholder **blank**. Security-code values, even on commented lines, are credentials and must not be committed.
-
-Important interpretation rules:
-
-- endpoint URLs and localhost/default connection settings are not secrets;
-- blank live credential placeholders do not authorize live execution;
-- live endpoint presence does not promote a live broker adapter;
-- IBKR configuration placeholders do not mean an IBKR integration is accepted;
-- real credential values remain in the local `.env` or another approved secret store;
-- raw broker account IDs, API secrets, security codes, passwords, tokens, and session credentials must never be committed;
-- generated `webull_trade_sdk.log*` files are ignored.
-
-## 8. Development and validation workflow
-
-The project uses an accelerated evidence-boundary workflow:
-
-- batch implementation + targeted tests + validator + CLI/orchestration + documentation/status updates;
-- avoid conversational micro-gates when the architecture already resolves the decision;
-- run full regression and Windows/Ubuntu CI at coherent batch boundaries;
-- use independent validators for data/model/broker authority transitions;
-- use one complete PowerShell block when target-machine/local evidence is required;
-- fail closed on ambiguity, missing lineage/data, broker-state uncertainty, uncertain provider writes, or invalid geometry;
-- do not invent post-hoc thresholds to force acceptance.
-
-User input is normally required only for unavailable local/external evidence, a validation result that changes the technical choice, an irreversible/authority-changing write, a broker/live-money transition, or a genuine unresolved product/design choice.
-
-## 9. Branch and PR policy
-
-- `main` contains accepted work.
-- Use a focused branch/PR for substantial new phases or authority-changing work packages.
-- Record target-machine and CI acceptance evidence in the PR before merge.
-- Delete merged phase branches after closeout unless there is a concrete retention reason.
-- Historical commits/PRs remain the evidence ledger even after branch deletion.
-
-## 10. Documentation maintenance policy
-
-Documentation synchronization is part of every meaningful ATLAS change, not an optional cleanup step.
-
-At each coherent work-package/phase boundary:
-
-1. update root `README.md` if current state, architecture summary, provider/broker configuration, broker authority, or next checkpoint changed;
-2. update `docs/roadmap.md` if architecture, phase status, evidence boundary, development protocol, configuration policy, or authority transition changed;
-3. update this `docs/current_status.md` with the latest accepted evidence, current branch/authority state, configuration notes, and exact next action;
-4. update the active PR body with the concise acceptance ledger;
-5. update `.env.example` and related configuration notes when provider/configuration layout changes;
-6. keep historical phase/fix documents intact unless correcting a factual error in that historical record.
-
-A future chat should never have to infer the current checkpoint from old conversation memory when the repository can state it directly.
-
-## 11. Future-chat startup procedure
-
-A new chat/session working on ATLAS should do this before changing code:
-
-1. inspect current `main` and any open PR/branch;
-2. read `README.md`;
-3. read `docs/roadmap.md`;
-4. read this file completely;
-5. inspect `.env.example` for the current provider variable layout, but never assume configuration presence grants authority;
-6. inspect the latest merged PR(s) when more acceptance detail is needed;
-7. verify that planned work does not cross an authority boundary without explicit approval;
-8. treat older Chart Monitor pipeline plans and old phase READMEs as historical unless the current roadmap explicitly incorporates them.
+- live execution disabled;
+- any live-money transition requires a separately defined phase and separate explicit user authorization.
 
 ## 12. Exact continuation point
 
-The correct continuation point is **after accepted Phase 17 read-only provider readiness and before any real paper/sandbox provider mutation**.
+Phase 18 target evidence is complete. Do **not** perform another real provider mutation merely to repeat the accepted lifecycle.
 
-Do not repeat Phase 17 unless new evidence indicates reconciliation/configuration has changed materially. Do not jump to live trading. The next authority-changing package begins only when the user explicitly authorizes:
+Current closeout sequence:
 
-`PAPER_PROVIDER_MUTATION_REQUIRES_EXPLICIT_USER_AUTHORIZATION`
+1. require final Phase 18 code/docs CI green on Ubuntu and Windows;
+2. synchronize README/roadmap/current-status/phase spec/PR evidence;
+3. mark PR #18 ready;
+4. merge Phase 18 into `main`;
+5. verify merged `main`;
+6. retarget/rebase existing Phase 19 stacked branch/PR onto merged `main`;
+7. run Phase 19 validator;
+8. run full regression;
+9. require Windows + Ubuntu Phase 19 CI green;
+10. resolve any rebase drift;
+11. synchronize Phase 19 docs/PR;
+12. only then treat Phase 19 as active/mergeable.
+
+## 13. Configuration/security status
+
+Tracked `.env.example` is non-secret and may contain public/default endpoints plus blank secret placeholders.
+
+Never commit or expose API secrets, passwords, security codes, raw broker account IDs, tokens, or signed request metadata. Commented secrets are still secrets.
+
+## 14. Future-session startup
+
+A future session should:
+
+1. inspect `main`, branches, open PRs, and latest CI;
+2. read this file;
+3. read `docs/roadmap.md`;
+4. read `docs/phase_flow.md`;
+5. read the active/stacked phase spec;
+6. preserve provider/live authority boundaries;
+7. continue from section 12 rather than repeating accepted Phase 18 provider mutations.
+
+## 15. Documentation rule
+
+Every meaningful evidence boundary synchronizes, as applicable:
+
+- `README.md`;
+- `docs/roadmap.md`;
+- this file;
+- `docs/phase_flow.md` when process rules change;
+- active/stacked phase spec;
+- active PR acceptance/evidence ledger;
+- relevant configuration docs/templates.
