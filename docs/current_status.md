@@ -12,37 +12,33 @@ When sources disagree, use:
 2. active PR branch code for in-progress work;
 3. `docs/roadmap.md` for architecture/authority rules;
 4. this file for exact current state/evidence/continuation;
-5. `docs/phase_flow.md` for phase progression/cadence;
-6. active phase living specification;
-7. root `README.md`;
-8. merged PRs for deeper historical evidence;
-9. old phase/fix READMEs as provenance only.
+5. `docs/post_phase19_stabilization.md` for the unnumbered post-Phase19 closure/performance audit;
+6. `docs/phase_flow.md` for phase progression/cadence;
+7. active phase living specification, if any;
+8. root `README.md`;
+9. merged PRs for deeper historical evidence;
+10. old phase/fix READMEs as provenance only.
 
 ## 2. Repository state
 
 Repository: `nicholaslpollard/ATLAS`
 
-Accepted upstream:
+Accepted baseline before the post-Phase19 maintenance batch:
 
-- Phases 1–18 accepted/merged.
+- **Phases 1–19 accepted/merged.**
 - Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-
-Phase 19 closeout:
-
-- Phase 19 — Operations Dashboard / Paper/Shadow Observability.
-- Branch: `phase-19-operations-dashboard-observability`.
-- PR: #19, base `main`.
-- Rebased accepted implementation head: `8c7d045af4f75cb734eeebbd76c84edaccdcc173`.
-- Clean rebase relationship at implementation boundary: 1 commit ahead / 0 behind accepted Phase 18 `main`.
-- Policy: `phase19-policy-v1-phase18-stacked-readonly-operations-observability-no-provider-writes`.
-- Fingerprint: `ecd30046a7a3258013a29f0a2982de133f3a4f801aee4ad5e24f79b6bd3b4c3d`.
-- Phase 19 implementation/acceptance evidence: **ACCEPTED**.
-- Final documentation synchronization is included in the PR closeout head and must remain CI-green before merge.
+- Phase 19 merge / `main`: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
+- Phase 19 policy: `phase19-policy-v1-phase18-stacked-readonly-operations-observability-no-provider-writes`.
+- Phase 19 fingerprint: `ecd30046a7a3258013a29f0a2982de133f3a4f801aee4ad5e24f79b6bd3b4c3d`.
+- Final Phase 19 docs-head CI run `32739682576`: Ubuntu **932 passed in 13.78s**; Windows **932 passed in 25.80s**; every validator through Phase 19 PASS.
 - Live execution: **DISABLED**.
 - Automatic broker failover: **DISABLED**.
 - Phase 19 provider reads/writes: **0 / 0**.
+- No Phase 20 branch or authority is active.
 
-If this file is read from `main` after PR #19 has merged, Phase 19 is fully **ACCEPTED / MERGED** and no numbered Phase 20 authority has yet been activated.
+Current work is an **unnumbered post-Phase19 stabilization/housekeeping batch** only. It cleans documentation/runtime-log hygiene and reviews performance debt without changing provider/broker/model/AI/live authority.
+
+At audit start there were no open issues or open PRs. Only merged Phase 18/19 remote phase branches remained as historical refs.
 
 ## 3. Mandatory phase flow
 
@@ -166,7 +162,7 @@ Webull normal sustained read traffic is locked to **80% of the most specific cur
 
 Phase 18 is accepted/merged at `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
 
-## 9. Phase 19 accepted design
+## 9. Phase 19 accepted implementation
 
 Purpose: turn the accepted Phase 16 local browser control plane into a useful end-to-end ATLAS operations dashboard without adding trading authority.
 
@@ -202,31 +198,40 @@ Browser contract:
 - optional 5/15/30-second observability refresh, default OFF;
 - self-only CSP and loopback deployment.
 
-## 10. Phase 19 rebase and final validation evidence
+## 10. Phase 19 final validation/merge evidence
 
-The old STACKED_PREP branch had diverged while Phase 18 continued. After Phase 18 merged, Phase 19 was rebuilt directly on the accepted Phase 18 tree rather than carrying forward a noisy stacked history.
+After Phase 18 merged, Phase 19 was rebuilt directly on the accepted Phase 18 tree rather than carrying forward noisy stacked history.
 
-Result at implementation head `8c7d045af4f75cb734eeebbd76c84edaccdcc173`:
+Clean rebased implementation head:
 
-- 1 commit ahead / 0 behind accepted Phase 18 `main`;
-- intended Phase 19 implementation/support changes only;
-- Phase 18 broker/quote/security changes inherited unchanged;
-- no provider/broker mutation during the rebase.
+`8c7d045af4f75cb734eeebbd76c84edaccdcc173`
 
 Post-rebase CI run `32738366242`:
 
-- Ubuntu: **932 passed in 16.08s**;
-- Windows: **932 passed in 23.74s**;
-- `scripts/validate_phase19.py`: PASS on both platforms;
-- every prior validator through Phase 18: PASS;
-- dependency lock: PASS;
-- secret hygiene: PASS;
-- ATLAS Doctor: PASS;
-- browser JavaScript syntax: PASS;
-- feature benchmark self-test: PASS;
-- exact 33-feature parity: max absolute difference 0.0;
-- provider calls/writes: 0;
-- broker writes: 0.
+- Ubuntu: 932 passed in 16.08s;
+- Windows: 932 passed in 23.74s;
+- every validator through Phase 19 PASS;
+- dependency lock, secret hygiene, ATLAS Doctor, browser JavaScript syntax, and feature self-test PASS;
+- exact 33-feature parity max absolute difference 0.0;
+- provider calls/writes 0;
+- broker writes 0.
+
+Final docs-head `76133cb6331c97ce1bb19319157f944a540f3214` CI run `32739682576`:
+
+- Ubuntu: **932 passed in 13.78s**;
+- Windows: **932 passed in 25.80s**;
+- every validator through Phase 19 PASS on both platforms;
+- dependency lock PASS;
+- secret hygiene PASS;
+- ATLAS Doctor PASS;
+- browser JavaScript syntax PASS;
+- feature self-test exact 33-feature parity, max absolute difference 0.0;
+- provider writes 0;
+- broker writes 0.
+
+PR #19 merged successfully. Accepted Phase 19 merge / `main` baseline:
+
+`8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`
 
 There was no Phase 18 -> Phase 19 integration drift exposed by the full cross-platform regression.
 
@@ -239,7 +244,29 @@ Historical target performance retained from STACKED_PREP:
 - all 33 features exact parity, max difference 0.0;
 - provider/broker calls/writes 0.
 
-## 11. Current broker authority
+## 11. Post-Phase19 stabilization/performance housekeeping
+
+The unnumbered audit is recorded in `docs/post_phase19_stabilization.md`.
+
+Confirmed closure/hygiene:
+
+- no open issues or PRs at audit start;
+- `main` authoritative through Phase 19;
+- `webull_data_sdk.log*` is local generated runtime output and is ignored;
+- active browser UI remains `apps/web/`; root `frontend/` remains historical/non-authoritative;
+- PostgreSQL files remain explicitly nonoperational scaffolding;
+- no broad scaffold deletion was performed without architectural evidence.
+
+Performance review:
+
+- accepted feature optimization remains exact and fast (~148.5x batch improvement on the accepted 50k target case);
+- normalizer and bar builder already use DuckDB `COPY ... RETURN_STATS` to avoid redundant post-write count scans;
+- materializer already reuses validator `checked_rows` for canonical row count;
+- a possible derived-row-count cache for no-op materialization reruns was reviewed but intentionally deferred because it would alter persisted manifest shape without evidence that those metadata-oriented skip scans are a meaningful bottleneck;
+- no staging move/hardlink semantics were added without recovery evidence;
+- no Webull limiter/MQTT orchestration was added merely for housekeeping; the 80% read policy remains the operating rule until a production consuming path justifies implementation.
+
+## 12. Current broker authority
 
 ### Webull
 
@@ -260,39 +287,38 @@ Historical target performance retained from STACKED_PREP:
 - live execution disabled;
 - any live-money transition requires a separately defined phase and separate explicit user authorization.
 
-## 12. Exact continuation point
+## 13. Exact continuation point
 
-Do **not** repeat Phase 18 provider mutation merely to reconfirm accepted evidence. Do **not** add provider mutation to Phase 19.
+Do **not** repeat Phase 18 provider mutation merely to reconfirm accepted evidence. Phase 19 is already accepted/merged.
 
-Current Phase 19 closeout sequence:
+Current sequence:
 
-1. synchronize README/roadmap/current-status/Phase 19 spec/PR with the green post-rebase evidence — this change;
-2. require final docs-head CI green on Ubuntu and Windows;
-3. mark PR #19 ready;
-4. merge PR #19 to `main`;
-5. verify merged `main`.
+1. finish and merge the unnumbered `maintenance/post-phase19-stabilization` batch after green CI;
+2. verify merged `main` and local worktree;
+3. optionally remove merged Phase 18/19 branch refs as repository cosmetics only;
+4. explicitly define and authority-lock Phase 20 before substantive numbered-phase implementation;
+5. keep live execution and automatic failover disabled unless a future separately accepted authority phase changes them.
 
-After Phase 19 is merged, the next numbered phase must be explicitly defined and authority-locked before implementation. Until then, live execution and automatic failover remain disabled and no additional provider mutation is implied.
-
-## 13. Configuration/security status
+## 14. Configuration/security status
 
 Tracked `.env.example` is non-secret and may contain public/default endpoints plus blank secret placeholders.
 
 Never commit or expose API secrets, passwords, security codes, raw broker account IDs, tokens, or signed request metadata. Commented secrets are still secrets.
 
-## 14. Future-session startup
+## 15. Future-session startup
 
 A future session should:
 
 1. inspect `main`, branches, open PRs, and latest CI;
 2. read this file;
 3. read `docs/roadmap.md`;
-4. read `docs/phase_flow.md`;
-5. read the active phase spec, if any;
-6. preserve provider/live authority boundaries;
-7. continue from section 12 rather than reopening accepted Phase 18/19 work without new evidence.
+4. read `docs/post_phase19_stabilization.md`;
+5. read `docs/phase_flow.md`;
+6. read the active phase spec, if any;
+7. preserve provider/live authority boundaries;
+8. continue from section 13 rather than reopening accepted Phase 18/19 work without new evidence.
 
-## 15. Documentation rule
+## 16. Documentation rule
 
 Every meaningful evidence boundary synchronizes, as applicable:
 
