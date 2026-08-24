@@ -22,6 +22,7 @@ from packages.jobs.phase20_policy import (
 from packages.jobs.queue import (
     DeterministicJobQueue,
     DuplicateIdempotencyKeyError,
+    DuplicateStageQueueError,
     JobEnvelope,
     stage_idempotency_key,
 )
@@ -91,10 +92,19 @@ def test_queue_is_deterministic_and_duplicate_safe() -> None:
     for job in jobs:
         queue.enqueue(job)
     assert [queue.pop().stage_id for _ in range(3)] == ["alpha", "beta", "later"]
-    duplicate_queue = DeterministicJobQueue()
-    duplicate_queue.enqueue(jobs[2])
+
+    duplicate_key_queue = DeterministicJobQueue()
+    duplicate_key_queue.enqueue(jobs[2])
     with pytest.raises(DuplicateIdempotencyKeyError):
-        duplicate_queue.enqueue(jobs[2])
+        duplicate_key_queue.enqueue(jobs[2])
+
+    duplicate_stage_queue = DeterministicJobQueue()
+    duplicate_stage_queue.enqueue(jobs[2])
+    duplicate_stage_queue.pop()
+    with pytest.raises(DuplicateStageQueueError):
+        duplicate_stage_queue.enqueue(
+            JobEnvelope(run_id, "alpha", 0, "job-different-but-same-stage")
+        )
 
 
 def test_worker_sanitizes_exception_message() -> None:
@@ -108,6 +118,19 @@ def test_worker_sanitizes_exception_message() -> None:
     assert result.succeeded is False
     assert result.error_code == "STAGE_HANDLER_ERROR_RuntimeError"
     assert "secret" not in str(result)
+
+
+def test_stage_status_rejects_impossible_persisted_state_shapes() -> None:
+    with pytest.raises(ValueError):
+        StageStatus("pending", state=JobState.PENDING, attempts=1)
+    with pytest.raises(ValueError):
+        StageStatus("running", state=JobState.RUNNING, attempts=0)
+    with pytest.raises(ValueError):
+        StageStatus("success", state=JobState.SUCCEEDED, attempts=0)
+    with pytest.raises(ValueError):
+        StageStatus("failed", state=JobState.FAILED, attempts=1, error_code=None)
+    with pytest.raises(ValueError):
+        StageStatus("blocked", state=JobState.BLOCKED, attempts=0, error_code=None)
 
 
 def test_plan_is_deterministic_and_zero_write(tmp_path) -> None:
@@ -238,3 +261,42 @@ def test_lease_and_manifest_authority_conflicts_fail_closed(tmp_path) -> None:
     orchestrator.store.write_manifest(plan.run_id, manifest)
     with pytest.raises(ManifestConflictError):
         orchestrator.execute_shadow("slot-conflict")
+
+
+def test_manifest_semantic_conflicts_fail_closed(tmp_path) -> None:
+    registry = _registry(
+        StageDefinition("parent"),
+        StageDefinition("child", dependencies=("parent",)),
+    )
+    orchestrator = Phase20Orchestrator(
+        registry,
+        handlers={"parent": lambda _context: None, "child": lambda _context: None},
+        state_root=tmp_path,
+    )
+
+    succeeded_plan = orchestrator.plan("slot-false-success")
+    false_success = orchestrator._new_manifest(succeeded_plan)
+    false_success["run_state"] = RunState.SUCCEEDED.value
+    orchestrator.store.write_manifest(succeeded_plan.run_id, false_success)
+    with pytest.raises(ManifestConflictError):
+        orchestrator.execute_shadow("slot-false-success")
+
+    dependency_plan = orchestrator.plan("slot-impossible-dependency")
+    impossible_dependency = orchestrator._new_manifest(dependency_plan)
+    impossible_dependency["run_state"] = RunState.RUNNING.value
+    impossible_dependency["stages"]["child"] = StageStatus(
+        "child", state=JobState.SUCCEEDED, attempts=1
+    ).to_payload()
+    orchestrator.store.write_manifest(dependency_plan.run_id, impossible_dependency)
+    with pytest.raises(ManifestConflictError):
+        orchestrator.execute_shadow("slot-impossible-dependency")
+
+    attempts_plan = orchestrator.plan("slot-too-many-attempts")
+    too_many_attempts = orchestrator._new_manifest(attempts_plan)
+    too_many_attempts["run_state"] = RunState.RUNNING.value
+    too_many_attempts["stages"]["parent"] = StageStatus(
+        "parent", state=JobState.RUNNING, attempts=2
+    ).to_payload()
+    orchestrator.store.write_manifest(attempts_plan.run_id, too_many_attempts)
+    with pytest.raises(ManifestConflictError):
+        orchestrator.execute_shadow("slot-too-many-attempts")
