@@ -127,14 +127,15 @@ def test_plan_is_deterministic_and_performs_no_local_write(tmp_path) -> None:
         StageDefinition("extract"),
         StageDefinition("score", dependencies=("extract",)),
     )
-    orchestrator = Phase20Orchestrator(registry, handlers={}, state_root=tmp_path)
+    state_root = tmp_path / "state"
+    orchestrator = Phase20Orchestrator(registry, handlers={}, state_root=state_root)
     first = orchestrator.plan("2026-08-24T13:30:00-04:00")
     second = orchestrator.plan("2026-08-24T13:30:00-04:00")
     assert first == second
     assert first.provider_calls_performed == 0
     assert first.provider_writes_performed == 0
     assert first.broker_writes_performed == 0
-    assert not tmp_path.exists()
+    assert not state_root.exists()
 
 
 def test_successful_run_resumes_without_rerunning_completed_stages(tmp_path) -> None:
