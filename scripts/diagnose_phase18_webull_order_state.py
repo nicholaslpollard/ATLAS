@@ -6,6 +6,7 @@ import hashlib
 from packages.brokers.base import BrokerAdapterError, BrokerOrderNotFound
 from packages.brokers.webull import WebullSandboxBroker
 from packages.brokers.webull.broker import _normalize_order, _orders_from_payload
+from packages.core.settings import load_settings
 
 
 def _ref(value: str) -> str:
@@ -47,7 +48,10 @@ def main() -> int:
     print("broker_writes: 0")
     print(f"client_order_id: {client_order_id}")
 
+    # Match the operational runner's initialization path so local .env credentials
+    # are loaded before constructing the sandbox broker. This remains read-only.
     try:
+        load_settings()
         broker = WebullSandboxBroker()
     except Exception:
         print("adapter_status: BLOCKED")
