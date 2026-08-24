@@ -1,6 +1,6 @@
 # Phase 20 — Deterministic Run Orchestration & Shadow Operations
 
-**State: ACCEPTANCE CANDIDATE — implementation complete and independently validated; final docs-head CI and merge pending.**
+**State: ACCEPTED / MERGED — final exact-head cross-platform validation complete.**
 
 ## Purpose
 
@@ -55,7 +55,7 @@ The accepted Phase 18 paper mutation mechanism remains separate and is not calla
 
 ### 20A — deterministic job model
 
-`packages/jobs/` now provides:
+`packages/jobs/` provides:
 
 - `status.py` — explicit run/job states plus strict persisted-state invariants and exact persisted type validation;
 - `registry.py` — immutable typed stage definitions, dependency validation, deterministic topological order, duplicate/missing/cycle rejection, authority classification, and canonical pipeline fingerprinting;
@@ -118,22 +118,36 @@ The store uses atomic manifest replacement and append-only sanitized journal rec
 
 ## Scheduling boundary
 
-Phase 20 does not install or start a background daemon, Windows service, cron task, or autonomous market schedule. It proves the run engine first. A later phase may bind deterministic run slots to a scheduler only after Phase 20 is accepted and a new authority/scheduling contract is defined.
+Phase 20 does not install or start a background daemon, Windows service, cron task, or autonomous market schedule. It proves the run engine first. A later phase may bind deterministic run slots to a scheduler only under a separately defined authority/scheduling contract.
 
-## Implementation-head evidence — 2026-08-24
+## Accepted evidence — 2026-08-24
 
 Implementation head:
 
 `6484f8a2eb5cc7e181544725d578b1206ec412df`
 
-PR CI run:
+Implementation CI:
 
 `32765179020`
 
-Results:
-
 - Ubuntu: **945 passed in 14.67s**;
 - Windows: **945 passed in 31.88s**;
+- every validator through Phase 20 PASS on both platforms.
+
+Final exact PR head:
+
+`e0f89c9cb362f25cf7c58bfc2c6554a0d687ae62`
+
+Final exact-head CI:
+
+`32766072120`
+
+The CI tested merge ref `fbc9bc0e4512598d7d025d177283a356e2833e73` against accepted baseline `121503590d3c0b18fa9cc19e4c8210b04e2f8d47`.
+
+Final results:
+
+- Ubuntu: **945 passed in 14.69s**;
+- Windows: **945 passed in 23.46s**;
 - every validator through Phase 20 PASS on both platforms;
 - Phase 20 validation pipeline fingerprint: `80ff188249df6fcb9cc86b232d6322fc373a0d3f39b95ecbc3274513df63df00`;
 - external mutation-stage registration: BLOCKED;
@@ -147,30 +161,35 @@ Results:
 - ATLAS Doctor: PASS;
 - provider-free feature benchmark: PASS with exact 33-feature parity.
 
-The CI checkout merge ref `1bf1ea383f822406692e9b0ccea556279cca2781` is the test merge of Phase 20 implementation head `6484f8a2eb5cc7e181544725d578b1206ec412df` into accepted baseline `121503590d3c0b18fa9cc19e4c8210b04e2f8d47`.
+Accepted PR:
 
-## Acceptance boundary
+- PR #21 — `Phase 20: Deterministic run orchestration and shadow operations`;
+- merged 2026-08-24;
+- accepted merge: `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`.
 
-Implementation evidence is complete. Phase 20 is not recorded as accepted/merged until the synchronized documentation head passes final Ubuntu + Windows CI and PR #21 is merged.
+No target broker/provider run was required because Phase 20 explicitly has no provider-call authority.
 
-Final acceptance requires:
+## Acceptance decision
 
-- focused Phase 20 tests green — satisfied at implementation head;
-- independent Phase 20 validator green — satisfied at implementation head;
-- full regression green — satisfied at implementation head;
-- Ubuntu + Windows CI green — satisfied at implementation head;
-- provider calls 0 — satisfied;
-- provider writes 0 — satisfied;
-- broker writes 0 — satisfied;
-- deterministic replay/resume evidence — satisfied;
-- documentation synchronized — in closeout;
-- final docs-head CI green — pending;
-- PR #21 accepted/merged — pending.
+All locked Phase 20 exit criteria are satisfied:
 
-No target broker/provider run is required because Phase 20 explicitly has no provider-call authority.
+- focused Phase 20 tests green;
+- independent Phase 20 validator green;
+- full regression green;
+- Ubuntu + Windows CI green on the exact final PR head;
+- provider calls 0;
+- provider writes 0;
+- broker writes 0;
+- deterministic replay/resume evidence satisfied;
+- documentation synchronized at acceptance;
+- PR #21 accepted and merged.
+
+Phase 20 is therefore **ACCEPTED / MERGED**.
 
 ## Exit / next-phase rule
 
-After final docs-head CI is green and PR #21 is merged, Phase 20 may be marked **ACCEPTED / MERGED**. The next numbered work must be separately defined and authority-locked from the accepted Phase 20 baseline.
+The next numbered work must be separately defined and authority-locked from accepted Phase 20 merge `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`.
 
-No scheduler daemon, PostgreSQL runtime dependency, real provider execution, automatic broker switching/failover, or live promotion may be folded into Phase 20 after this acceptance boundary. Each requires a later explicit phase decision and corresponding evidence.
+The operational destination remains the end-to-end Webull-primary shadow/paper path. Choose the smallest coherent next increment that materially advances that objective without weakening any accepted safety/authority boundary.
+
+No scheduler daemon, PostgreSQL runtime dependency, real provider execution, automatic broker switching/failover, or live promotion is implied by Phase 20 acceptance. Each requires a later explicit phase decision and corresponding evidence.
