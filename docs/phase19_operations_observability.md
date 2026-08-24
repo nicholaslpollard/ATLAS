@@ -1,6 +1,6 @@
 # Phase 19 — Operations Dashboard & Paper/Shadow Observability
 
-**State: ACTIVE / REBASED TO ACCEPTED PHASE 18; FINAL REVALIDATION PENDING. Last synchronized: 2026-08-24.**
+**State: ACCEPTED; PR #19 MERGE VEHICLE. Last synchronized: 2026-08-24.**
 
 Phase 19 turns the accepted Phase 16 browser control plane into an end-to-end ATLAS operations dashboard without creating provider-write, live-trading, automatic-failover, model, strategy, or AI authority.
 
@@ -12,10 +12,13 @@ Phase 19 turns the accepted Phase 16 browser control plane into an end-to-end AT
 - accepted Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`
 - Phase 18 policy: `phase18-policy-v1-phase17-bound-explicit-paper-mutation-no-live`
 - Phase 18 target lifecycle: ACCEPTED / MERGED
+- clean rebased Phase 19 implementation head: `8c7d045af4f75cb734eeebbd76c84edaccdcc173`
 - live execution: disabled
 - automatic failover: disabled
 
-The old STACKED_PREP implementation/evidence is retained as development provenance. After Phase 18 merged, Phase 19 was rebuilt directly on the accepted Phase 18 `main` baseline and must repeat its validator, full regression, and Ubuntu/Windows CI before final acceptance.
+The old STACKED_PREP implementation/evidence is retained as development provenance. After Phase 18 merged, Phase 19 was rebuilt directly on the accepted Phase 18 `main` baseline, revalidated end-to-end on Ubuntu and Windows, and accepted. This documentation synchronization is the final PR closeout layer; the PR must remain green on the docs head before merge.
+
+If this file is read from `main` after PR #19 has merged, Phase 19 is fully ACCEPTED / MERGED.
 
 ## 2. Authority lock
 
@@ -147,13 +150,13 @@ Cross-cutting repository hardening retained in Phase 19 includes:
 - SHA-pinned GitHub Actions with `contents: read` and checkout credential persistence disabled;
 - PostgreSQL `database/` scaffold explicitly marked nonoperational.
 
-## 9. Feature-performance evidence retained from STACKED_PREP
+## 9. Feature-performance evidence retained
 
 Provider/broker-free benchmark:
 
 `scripts/benchmark_local_features.py`
 
-Accepted optimized target-machine evidence on validated code head `a6736de45de5d5d0aca5876b6b543f2a924a2111`:
+Accepted optimized target-machine evidence from STACKED_PREP:
 
 - 50,000 rows / 7,454 symbols / 7 sessions;
 - prior pandas batch baseline 594.58s / 84.09 rows/s;
@@ -204,25 +207,55 @@ CI run:
 - feature benchmark self-test PASS;
 - provider/broker calls/writes 0.
 
-This evidence established that the stacked implementation was internally sound, but it is not the final post-Phase18 acceptance boundary.
+This is provenance only; final acceptance is based on the clean post-Phase18 rebase evidence below.
 
-## 12. Final acceptance boundary
+## 12. Final post-Phase18 acceptance evidence
 
-Current required sequence:
+Clean rebased implementation head:
 
-1. Phase 18 accepted/merged — **COMPLETE** at `55bdd7446f0bbd4225de264187c7f5fb601991b0`;
-2. Phase 19 rebuilt/retargeted to merged `main` — **IN PROGRESS**;
-3. `scripts/validate_phase19.py` PASS;
-4. full regression PASS;
-5. Ubuntu + Windows CI PASS;
-6. resolve any integration drift;
-7. synchronize README/roadmap/current-status/this spec/PR with final evidence;
-8. run final docs-head CI if the head changes;
-9. mark PR #19 ready and merge only after green evidence;
+`8c7d045af4f75cb734eeebbd76c84edaccdcc173`
+
+CI run:
+
+`32738366242`
+
+Results:
+
+- Ubuntu: **932 passed in 16.08s**;
+- Windows: **932 passed in 23.74s**;
+- Phase 19 validator: PASS on both platforms;
+- every prior validator through Phase 18: PASS;
+- dependency lock: PASS;
+- secret hygiene: PASS;
+- ATLAS Doctor: PASS;
+- browser JavaScript syntax: PASS;
+- feature benchmark self-test: PASS;
+- exact 33-feature parity maximum absolute difference: 0.0;
+- provider calls: 0;
+- provider writes: 0;
+- broker writes: 0;
+- live promotion: disabled;
+- automatic failover: disabled.
+
+The rebase exposed no Phase 18 -> Phase 19 integration drift.
+
+**Phase 19 implementation/acceptance: ACCEPTED.**
+
+## 13. Final merge boundary
+
+1. Phase 18 accepted/merged — COMPLETE at `55bdd7446f0bbd4225de264187c7f5fb601991b0`;
+2. Phase 19 rebuilt/retargeted to merged `main` — COMPLETE;
+3. `scripts/validate_phase19.py` — PASS;
+4. full regression — PASS;
+5. Ubuntu + Windows CI — PASS;
+6. integration drift resolution — none required;
+7. synchronize README/roadmap/current-status/this spec/PR with final evidence — this docs closeout;
+8. require final docs-head CI green if head changes;
+9. mark PR #19 ready and merge after green evidence;
 10. verify merged `main`.
 
 No target-machine broker/provider test is required solely for Phase 19 observability. No Phase 18 provider mutation should be repeated for this phase.
 
-## 13. Explicit non-goals
+## 14. Explicit non-goals
 
 Phase 19 does not authorize or perform provider mutation, add submit/cancel/replace/flatten endpoints, automatically refresh brokers, start market-data sockets, enable automatic failover, promote live trading, alter ML/strategy/promotion authority, let AI create trade authority, activate the PostgreSQL scaffold, or expose the control plane publicly.
