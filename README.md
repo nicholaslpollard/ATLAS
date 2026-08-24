@@ -10,9 +10,9 @@ For a future development session, read in this order:
 
 1. [`docs/current_status.md`](docs/current_status.md) — exact current handoff/evidence/continuation.
 2. [`docs/roadmap.md`](docs/roadmap.md) — architecture, phase ledger, data/safety rules, authority transitions.
-3. [`docs/phase20_run_orchestration.md`](docs/phase20_run_orchestration.md) — active Phase 20 deterministic orchestration contract and acceptance evidence.
+3. [`docs/phase20_run_orchestration.md`](docs/phase20_run_orchestration.md) — accepted Phase 20 deterministic orchestration contract and evidence.
 4. [`docs/phase_flow.md`](docs/phase_flow.md) — mandatory phase execution/acceptance/merge rules.
-5. [`docs/post_phase19_stabilization.md`](docs/post_phase19_stabilization.md) — accepted baseline preceding Phase 20.
+5. [`docs/post_phase19_stabilization.md`](docs/post_phase19_stabilization.md) — stabilization baseline preceding Phase 20.
 6. [`docs/phase19_operations_observability.md`](docs/phase19_operations_observability.md) — accepted Phase 19 operations/observability contract and evidence.
 7. [`docs/phase18_operational_validation.md`](docs/phase18_operational_validation.md) — accepted Phase 18 broker-certification evidence.
 8. merged PRs for deeper historical evidence.
@@ -27,7 +27,7 @@ Core roles:
 
 - **Parquet** — durable analytical/history lake.
 - **DuckDB** — analytical/query engine.
-- **PostgreSQL** — target transactional operational state; current `database/` tree remains a nonoperational scaffold and is not a Phase 20 prerequisite.
+- **PostgreSQL** — target transactional operational state; current `database/` tree remains a nonoperational scaffold and is not an accepted runtime prerequisite.
 - **Massive** — primary broad-market/reference-data provider path.
 - **Webull** — primary execution broker; accepted downstream realtime L1 execution-evidence source where locally entitled.
 - **Alpaca** — manually selectable secondary/fallback; never automatic failover.
@@ -36,7 +36,7 @@ Core roles:
 - **Deep research** — promoted-candidate-only analogue/scenario/options/news work.
 - **AI** — independent audit/reviewer only.
 - **Browser** — monitoring/control plane only; it cannot create independent trading authority.
-- **Phase 20 orchestration** — deterministic local run control only; a registered job never creates provider, broker, scheduler, or live authority.
+- **Phase 20 orchestration** — accepted deterministic local run control only; a registered job never creates provider, broker, scheduler, or live authority.
 
 ## Strategic anti-drift anchor
 
@@ -52,22 +52,22 @@ Passing tests, configured credentials, available endpoints, connected accounts, 
 
 ## Current state — 2026-08-24
 
-- **Phases 1–19: ACCEPTED and merged.**
+- **Phases 1–20: ACCEPTED and merged.**
 - Phase 18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-- Phase 19 merge / accepted baseline: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
-- Final Phase 19 docs-head CI run `32739682576`: Ubuntu **932 passed in 13.78s**; Windows **932 passed in 25.80s**; every validator through Phase 19 PASS.
+- Phase 19 merge: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
 - Post-Phase19 stabilization baseline: `121503590d3c0b18fa9cc19e4c8210b04e2f8d47`.
-- Post-Phase19 stabilization CI run `32754626468`: Ubuntu **932 passed in 15.59s**; Windows **932 passed in 25.38s**; every validator through Phase 19 PASS.
-- Phase 19 policy fingerprint: `ecd30046a7a3258013a29f0a2982de133f3a4f801aee4ad5e24f79b6bd3b4c3d`.
-- Post-Phase19 stabilization/performance housekeeping: **COMPLETE**.
-- **Phase 20 is authority-locked and is an ACCEPTANCE CANDIDATE on PR #21.**
+- Phase 20 accepted merge: `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`.
+- Phase 20 policy fingerprint: `b4f9bd37c3c425e182e4a0da255e8a903d95101d119c833c38c7fd2c0cd3741a`.
 - Phase 20 tested implementation head: `6484f8a2eb5cc7e181544725d578b1206ec412df`.
 - Phase 20 implementation CI `32765179020`: Ubuntu **945 passed in 14.67s**; Windows **945 passed in 31.88s**; every validator through Phase 20 PASS.
+- Phase 20 final exact PR head: `e0f89c9cb362f25cf7c58bfc2c6554a0d687ae62`.
+- Phase 20 final exact-head CI `32766072120`: Ubuntu **945 passed in 14.69s**; Windows **945 passed in 23.46s**; every validator through Phase 20 PASS.
 - Phase 20 provider calls/writes: **0 / 0**; broker writes: **0**.
 - Live execution: **DISABLED**.
 - Automatic cross-broker failover: **DISABLED**.
+- **No Phase 21 authority lock exists yet.**
 
-Phase 20 still requires synchronized docs-head CI and PR merge before it is recorded as accepted/merged.
+The next numbered phase will be defined only after the accepted execution chain is independently audited for the smallest remaining gap to routine Webull-primary paper/shadow operation.
 
 ## Accepted data/model foundation
 
@@ -105,7 +105,7 @@ Zero supported strategies correctly yielded zero promotions on the locked case; 
 
 ### Phase 15
 
-Broker-neutral shadow/paper execution with fresh quote, preflight, reconciliation, current risk, protective geometry, deterministic client IDs/idempotency, uncertainty fail-closed, same-ticker add/flip disabled, Webull primary, Alpaca manual secondary, live disabled.
+Broker-neutral shadow/paper execution is already bound to accepted upstream Phase 14/13 lineage and includes fresh quote, preflight, reconciliation, current risk, protective geometry, deterministic client IDs/idempotency, uncertainty fail-closed, same-ticker add/flip disabled, Webull primary, Alpaca manual secondary, and live disabled. Descriptive outcome learning does not create model or execution authority.
 
 ### Phase 16
 
@@ -119,7 +119,7 @@ Real provider read-only readiness accepted for Webull sandbox and Alpaca paper w
 
 Accepted Webull sandbox mutation lifecycle:
 
-`submit once -> exact reconcile -> cancel once -> exact CANCELLED -> zero fill -> flat/zero-open`
+`fresh L1 -> explicit paper authorization -> pre-reconcile flat -> preview -> submit once -> exact reconcile -> cancel once -> bounded read-only reconciliation -> exact CANCELLED -> zero fill -> flat/zero-open`
 
 The target lifecycle used explicit paper mutation authorization and a fresh regular-session Webull L1 quote. Immediate post-cancel read uncertainty was handled fail-closed; later independent Order Detail and Order History reads both proved `CANCELLED`. The adapter was hardened to issue at most one cancel and then use bounded read-only reconciliation.
 
@@ -141,17 +141,9 @@ Accepted read-only local operations/observability layer:
 
 The accepted feature optimization preserves exact 33-feature parity and historical column order. Target evidence measured 50,000-row batch computation at ~4.00s versus ~594.58s prior baseline (~148.5x), with exact max feature difference 0.0 and zero provider/broker calls or writes.
 
-## Phase 20 acceptance candidate
+### Phase 20
 
-Policy contract:
-
-`phase20-policy-v1-phase19-stabilized-deterministic-run-orchestration-shadow-no-provider-calls`
-
-Policy fingerprint:
-
-`b4f9bd37c3c425e182e4a0da255e8a903d95101d119c833c38c7fd2c0cd3741a`
-
-Implemented provider-free orchestration foundation:
+Accepted provider-free orchestration foundation:
 
 - immutable typed stage definitions and deterministic dependency DAG/topological order;
 - canonical pipeline fingerprinting;
@@ -165,11 +157,15 @@ Implemented provider-free orchestration foundation:
 - interrupted `RUNNING` stages fail closed rather than blindly retry;
 - strict persisted-state type and semantic validation, including false-success/dependency/attempt conflicts;
 - plan-only default runner and explicit local shadow rehearsal;
-- independent Phase 20 validator and Ubuntu/Windows regression coverage.
+- independent validator and Ubuntu/Windows regression coverage.
 
-Implementation CI `32765179020` proves 945/945 tests on each OS, every validator through Phase 20 PASS, deterministic replay/resume PASS, external mutation-stage registration BLOCKED, persisted semantic conflict BLOCKED, and provider/broker calls/writes 0.
+Final exact-head CI `32766072120` proved 945/945 tests on each OS, every validator through Phase 20 PASS, deterministic replay/resume PASS, external mutation-stage registration BLOCKED, persisted semantic conflict BLOCKED, and provider/broker calls/writes 0.
 
-No target provider/broker run is required for Phase 20.
+## Independent next-phase audit
+
+The post-Phase20 audit is tracing the accepted execution chain rather than assuming another infrastructure component is next. Current evidence shows the repository already has substantial accepted linkage from Phase 14 AI-reviewed / Phase 13 risk-bound artifacts into the Phase 15 paper execution engine, while Phase 18 separately proves the hardened real Webull sandbox mutation/reconciliation lifecycle.
+
+The next phase should therefore **reuse and operationally bind accepted components rather than rebuild paper trading from scratch**. Exact Phase 21 scope and authority remain unactivated until this gap analysis is complete.
 
 ## Non-negotiable rules
 
@@ -187,7 +183,7 @@ No target provider/broker run is required for Phase 20.
 - Uncertain writes require exact reconciliation before any next mutation.
 - Automatic broker failover is forbidden.
 - Paper/shadow precede any future controlled live authority.
-- Phase 20 does not authorize autonomous scheduling, PostgreSQL runtime promotion, or provider/broker execution.
+- Accepted Phase 20 does not authorize autonomous scheduling, PostgreSQL runtime promotion, or provider/broker execution.
 
 ## Environment/security
 
@@ -199,14 +195,12 @@ Generated Webull SDK logs are local runtime artifacts and are ignored; they are 
 
 ## Exact continuation point
 
-Do **not** repeat accepted Phase 18 mutation merely to reconfirm it. Phase 19 and the post-Phase19 stabilization audit are closed.
+Do **not** repeat accepted Phase 18 mutation merely to reconfirm it, and do not reopen accepted Phase 19/20 work without new evidence.
 
-Phase 20 implementation is complete and independently green. Continue only with the Phase 20 closeout boundary:
+Continue from accepted Phase 20 merge `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`:
 
-1. finish synchronization of the living documentation and PR #21 evidence;
-2. require final docs-head Ubuntu + Windows CI green with every validator through Phase 20;
-3. mark PR #21 ready/accepted and merge it;
-4. verify/synchronize the accepted merge on `main`;
-5. only then define and authority-lock the next numbered phase, choosing the smallest coherent increment that materially advances the agreed end-to-end operational paper/shadow path toward real Webull-primary paper trading while preserving every existing authority and safety boundary.
-
-Until a later explicit phase changes an authority boundary, live execution remains disabled, broker switching remains explicit/manual, automatic failover remains forbidden, and autonomous scheduling/PostgreSQL runtime promotion remain out of scope.
+1. complete the independent end-to-end execution-gap audit across accepted Phase 14/15/18/19/20 components;
+2. identify the smallest missing operational binding rather than duplicating accepted paper-execution logic;
+3. DEFINE and LOCK Phase 21 only after its exact authority boundary and target evidence requirements are established;
+4. prioritize a coherent increment that materially advances routine **ATLAS -> accepted analysis/risk/AI -> Webull-primary shadow/paper execution -> exact reconciliation -> observability/outcome-learning** operation;
+5. preserve live disabled, manual-only broker switching, no automatic failover, and no implicit scheduler/PostgreSQL promotion unless a later phase explicitly changes those boundaries.
