@@ -16,6 +16,7 @@ DEFAULT_STATE_ROOT = REPO_ROOT / "data" / "runtime" / "phase20"
 def _registry() -> PipelineRegistry:
     return PipelineRegistry(
         "phase20-local-shadow-rehearsal",
+        "v1",
         (
             StageDefinition("foundation"),
             StageDefinition("living_docs", dependencies=("foundation",)),
@@ -80,6 +81,7 @@ def main() -> int:
         payload = {
             "mode": "LOCAL_SHADOW_REHEARSAL",
             "policy_fingerprint": phase20_policy_fingerprint(),
+            "pipeline_version": registry.pipeline_version,
             "plan": plan.to_payload(),
             "run_state": manifest["run_state"],
             "stage_states": {
@@ -96,6 +98,7 @@ def main() -> int:
         payload = {
             "mode": "PLAN_ONLY",
             "policy_fingerprint": phase20_policy_fingerprint(),
+            "pipeline_version": registry.pipeline_version,
             "plan": plan.to_payload(),
             "local_state_writes_performed": 0,
             "provider_calls_performed": 0,
@@ -111,7 +114,7 @@ def main() -> int:
         print("ATLAS Phase 20 deterministic run orchestration")
         print(f"Mode: {payload['mode']}")
         print(f"Run ID: {plan.run_id}")
-        print(f"Pipeline: {plan.pipeline_id}")
+        print(f"Pipeline: {plan.pipeline_id}@{registry.pipeline_version}")
         print(f"Logical slot: {plan.logical_slot}")
         print(f"Stage order: {' -> '.join(plan.topological_order)}")
         if args.execute_shadow:
