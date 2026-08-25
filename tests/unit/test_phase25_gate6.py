@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import inspect
 from datetime import date
 
 import pytest
 
-from packages.backtesting.phase25_gate6 import Phase25Gate6Error, _pair_state
+from packages.backtesting.phase25_gate6 import (
+    Phase25Gate6DiscoveryReconstruction,
+    Phase25Gate6Error,
+    _pair_state,
+)
 from packages.backtesting.phase25_gate6_policy import (
     ACCEPTED_GATE5_POLICY_FINGERPRINT,
     PHASE25_GATE6_DISCOVERY_OVERRIDES_ALLOWED,
@@ -17,6 +22,10 @@ from packages.backtesting.phase25_gate6_policy import (
     PHASE25_GATE6_STRATEGY_RULE_EVALUATION_ALLOWED,
     PHASE25_GATE6_SUPPORT_REPLACEMENT_ALLOWED,
     phase25_gate6_policy_fingerprint,
+)
+from packages.backtesting.phase25_gate6_repair import (
+    PHASE25_GATE6_REPAIR_CONTRACT_VERSION,
+    Phase25Gate6SafeDiscoveryReconstruction,
 )
 from packages.backtesting.phase25_gate5_policy import phase25_gate5_policy_fingerprint
 from packages.discovery.persistence import ACTIVE_DISCOVERY_PERSISTENCE_POLICY
@@ -70,3 +79,28 @@ def test_gate6_uses_accepted_discovery_hysteresis_semantics() -> None:
     assert warm_streak == 0
     assert demotion_streak == 0
     assert transition == "promote_warm"
+
+
+def test_gate6_repair_is_safe_entrypoint_and_preflights_existing_artifacts() -> None:
+    assert issubclass(
+        Phase25Gate6SafeDiscoveryReconstruction,
+        Phase25Gate6DiscoveryReconstruction,
+    )
+    assert PHASE25_GATE6_REPAIR_CONTRACT_VERSION.startswith("phase25-gate6-repair-v1-")
+    source = inspect.getsource(Phase25Gate6SafeDiscoveryReconstruction._materialize_stateless_session)
+    assert source.index("if universe_existing:") < source.index(
+        "UniverseManager(self.settings).build(session, force=False)"
+    )
+    assert source.index("if foundation_existing:") < source.index(
+        "DiscoveryFoundationScanner(self.settings).build(session)"
+    )
+    assert source.index("if score_existing:") < source.index(
+        "DiscoverySetupScanner(self.settings).build(session)"
+    )
+
+
+def test_gate6_repair_preserves_stale_score_only_after_exact_semantic_check() -> None:
+    source = inspect.getsource(Phase25Gate6SafeDiscoveryReconstruction._existing_score)
+    assert "_score_interface_mismatch_count" in source
+    assert "semantic mismatches=" in source
+    assert "PRESERVE_STALE_HASH_IF_SCORING_INTERFACE_EXACT" in source
