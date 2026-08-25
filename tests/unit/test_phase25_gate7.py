@@ -130,8 +130,8 @@ def test_gate7_sector_unavailable_is_nonblocking_in_production_router() -> None:
         ticker_state="UPTREND",
     )
     decisions = StrategyRouter().route(context)
-    long_decisions = [item for item in decisions if item.direction.value == "long"]
-    short_decisions = [item for item in decisions if item.direction.value == "short"]
+    long_decisions = [item for item in decisions if item.direction.value == "LONG"]
+    short_decisions = [item for item in decisions if item.direction.value == "SHORT"]
     assert len(long_decisions) == 4
     assert all(item.sector_fit.value == "unavailable" for item in decisions)
     assert all(item.eligible for item in long_decisions)
