@@ -8,38 +8,29 @@ Upstream authority: Phase24 accepted merge `15b77321d4815f9f52fe74d47ba32fee8127
 
 Phase24 established that tightening the existing simple daily strategy rules did not earn robust replacement support. It also exposed a population-fidelity mismatch: historical Phase11/24 strategy studies evaluate broad daily rows with broad market-regime routing, while production promotion is reached only after PIT universe routing, multi-timeframe discovery, discovery-state hysteresis, WARM/HOT direction, and market/ticker route compatibility.
 
-Phase25 therefore asks a narrower question before inventing new strategy families:
+Phase25 asks:
 
 **Does strategy evidence materially change when the historical population is reconstructed to match the production candidate path?**
 
 The initial experiment holds incumbent strategy rules and the three-session forward-return outcome fixed. The independent variable is the historical population/routing path.
 
-## Historical origin lock
+## Historical origin and authority lock
 
 - route-fidelity replay begins no earlier than **2021-08-16**;
 - pre-2021 1h/4h or ticker-regime context may not be synthesized;
 - market/sector daily regime history may legitimately begin at **2016-01-04**;
-- sector remains `UNAVAILABLE`/nonblocking unless authoritative PIT sector mapping is separately accepted.
+- sector remains `UNAVAILABLE`/nonblocking unless authoritative PIT sector mapping is separately accepted;
+- future metadata cannot be carried backward as authoritative PIT fact;
+- provider-native ticker case is preserved;
+- missing, partial, stale, or ambiguous state fails closed.
 
 Target production path:
 
 `PIT universe -> discovery foundation -> 1d/4h/1h discovery scoring -> discovery hysteresis -> WARM/HOT directional qualification -> market/ticker strategy route -> incumbent rule firing`
 
-## Authority boundary
+Gates0-3 permit no provider reads or writes. They also permit no broker reads/writes, order writes, PAPER submits, LIVE writes, Phase11 support changes, protected-strategy evidence reads, strategy-rule changes, or outcome-definition changes.
 
-Gates0-3 are provider-free local research/planning gates.
-
-Gate4 is the first Phase25 provider-read gate, but its authority is intentionally narrow:
-
-- exact interactive run-scoped authorization is required;
-- only the frozen **earliest missing session** may be queried;
-- only exact same-session Massive `/v3/reference/tickers` data with `market=stocks`, `active=true`, `order=asc`, `sort=ticker`, `limit=1000` may be read;
-- only one entitlement-probe session may be persisted;
-- bulk acquisition remains forbidden;
-- provider writes remain forbidden;
-- broker reads/writes, order writes, PAPER submits, LIVE, Phase11 support writes, protected strategy evidence, strategy-rule changes, and outcome changes remain forbidden.
-
-Provider-native ticker case must be preserved. Later metadata may never be carried backward as PIT authority. Missing or ambiguous state fails closed rather than being guessed.
+Gate4 is the first Phase25 provider-read boundary, but only for one exact entitlement-probe session. Bulk acquisition remains separately forbidden.
 
 ---
 
@@ -53,16 +44,16 @@ Accepted target evidence through 2026-08-21:
 
 - replay sessions: **1,260**;
 - cumulative market daily lineage sessions from 2016-01-04: **2,674**;
-- canonical 1d: 1,260/1,260;
-- derived 4h: 1,260/1,260;
-- derived 1h: 1,260/1,260;
-- features 1d/4h/1h: 1,260/1,260 each;
-- feature-manifest triplets: 1,260/1,260;
-- cumulative market daily feature lineage: 2,674/2,674;
+- canonical 1d: 1,260 / 1,260;
+- derived 4h: 1,260 / 1,260;
+- derived 1h: 1,260 / 1,260;
+- features 1d/4h/1h: 1,260 / 1,260 each;
+- feature-manifest triplets: 1,260 / 1,260;
+- cumulative market daily feature lineage: 2,674 / 2,674;
 - identity inputs complete: true;
-- exact PIT reference pairs: **7/1,260**;
-- exact PIT universe pairs: **7/1,260**;
-- exact route-fidelity locally available/replayable: **7/1,260**;
+- exact PIT reference pairs: **7 / 1,260**;
+- exact PIT universe pairs: **7 / 1,260**;
+- exact route-fidelity locally available/replayable: **7 / 1,260**;
 - sessions blocked by missing exact PIT reference/universe evidence: **1,253**;
 - provider/broker/order/PAPER/LIVE/support/protected-evidence activity: all zero;
 - Pass: true.
@@ -101,7 +92,9 @@ Accepted target evidence:
 - provider/broker/order/PAPER/LIVE/support/protected-evidence activity: all zero;
 - Pass: true.
 
-Accepted interpretation: the reference gap is broad. First-seen-only patching and backward-carry of later metadata are not authoritative enough for session-by-session Phase7 replay. Proxy candidates remain non-authoritative.
+Future-only reference observations may be measured but never treated as PIT authority. Bounded invariant proxy candidates also have zero Phase7, support, promotion, PAPER, or LIVE authority.
+
+Accepted interpretation: the reference gap is broad. First-seen-only patching and backward-carry of later metadata are not authoritative enough for session-by-session Phase7 replay.
 
 ---
 
@@ -120,7 +113,7 @@ Exact-head GitHub Actions run `32809757087`: Ubuntu and Windows success through 
 Accepted target proof across all seven locally materialized PIT dates:
 
 - full reference rows: **246,631**;
-- active rows: **89,755**;
+- active reference rows: **89,755**;
 - inactive rows removable: **156,876**;
 - observed row reduction using active-only data: **63.61%**;
 - full vs active-only discovery mismatch: zero on every date;
@@ -136,7 +129,7 @@ Accepted target proof across all seven locally materialized PIT dates:
 - provider/broker/order/PAPER/LIVE/support/protected-evidence activity: all zero;
 - Pass: true.
 
-Accepted interpretation: inactive reference rows are unnecessary for **discovery-only** historical replay under the locked experiment. Exact active-only PIT reference data may therefore be used by a separately authorized acquisition path.
+Gate2 does not grant provider-read authority. It only proves that exact active-only PIT reference data are sufficient for **discovery-only** historical replay under the locked experiment.
 
 ---
 
@@ -167,9 +160,9 @@ Accepted target-machine plan through 2026-08-21:
 - provider/broker/order/PAPER/LIVE/support/protected-evidence activity: all zero;
 - Pass: true.
 
-Accepted interpretation: the acquisition scope is large but finite and exactly defined. Existing seven valid pairs are preserved. The remaining 1,253 sessions are frozen; no full active+inactive replacement or arbitrary source widening is allowed.
+Gate3 does not grant provider-read authority. It freezes the exact acquisition source, exact XNYS session list, no-overwrite behavior, resumability requirements, and earliest-session entitlement probe requirement.
 
-Gate3 specifically requires the earliest missing session to prove historical-reference entitlement before any bulk acquisition.
+Accepted interpretation: the acquisition scope is large but finite and exactly defined. Existing valid pairs are preserved; no full active+inactive replacement, future-metadata substitution, or arbitrary source widening is allowed.
 
 ---
 
@@ -183,7 +176,7 @@ Gate4 implements only the first provider-read boundary needed by the accepted Ga
 
 1. load and hash the exact accepted Gate3 plan;
 2. confirm the Gate3 policy fingerprint and recommendation;
-3. confirm the frozen first acquisition session is 2021-08-17;
+3. confirm the frozen first acquisition session is **2021-08-17**;
 4. confirm the target has neither snapshot nor manifest locally;
 5. reject any partial or unexpectedly materialized target rather than overwrite it;
 6. bind the exact query, through date, Gate3 SHA/source fingerprint, and external-read class into a run scope;
@@ -209,22 +202,7 @@ It may then:
 
 ### Gate4 hard prohibitions
 
-Gate4 may not:
-
-- query a second historical session;
-- loop over the remaining acquisition list;
-- perform bulk acquisition;
-- change the frozen query shape;
-- use ticker-specific ad hoc queries;
-- overwrite an existing or partial reference pair;
-- carry later metadata backward;
-- read strategy returns or protected strategy evidence;
-- alter Phase11 support;
-- read/write a broker;
-- submit/cancel/replace/close orders;
-- submit PAPER orders;
-- write LIVE state;
-- invoke browser execution, scheduler authority, or PostgreSQL runtime promotion.
+Gate4 may not query a second historical session or perform bulk acquisition. It may not change the frozen query shape, overwrite an existing or partial reference pair, use ticker-specific ad hoc queries, carry later metadata backward, read strategy returns or protected strategy evidence, alter Phase11 support, access broker execution, submit PAPER orders, write LIVE state, invoke browser execution, scheduler authority, or PostgreSQL runtime promotion.
 
 ### Gate4 decision rule
 
@@ -243,7 +221,7 @@ A passing Gate4 target probe must prove:
 - zero provider writes;
 - zero broker/order/PAPER/LIVE/support/protected-evidence authority.
 
-Only after that target evidence is accepted may a later Gate5 implement a resumable bulk acquisition for the **remaining frozen sessions**. Gate5 must not silently rerun the entitlement probe or re-fetch already validated pairs.
+Only after that target evidence is accepted may Gate5 implement resumable bulk acquisition for the **remaining frozen sessions**. Gate5 must not silently rerun the entitlement probe or re-fetch already validated pairs.
 
 ---
 
