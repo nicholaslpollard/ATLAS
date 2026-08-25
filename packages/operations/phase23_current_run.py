@@ -22,11 +22,18 @@ from packages.discovery.current_candidates import CurrentCandidateMaterializer
 from packages.discovery.persistence import DiscoveryStateManager
 from packages.discovery.scanner import DiscoveryFoundationScanner
 from packages.discovery.scoring import DiscoverySetupScanner
+from packages.execution.phase15_foundation import (
+    PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END,
+    Phase15CumulativeFoundationResolver,
+)
 from packages.execution.phase15_source import Phase15ExecutionInputResolver
 from packages.features.historical_materializer import HistoricalFeatureMaterializer
 from packages.features.partition_store import sha256_file
 from packages.instruments.registry import InstrumentRegistryStore
-from packages.operations.phase23_handoff import Phase23AnalysisHandoffStore
+from packages.operations.phase23_handoff import (
+    Phase23AnalysisHandoffStore,
+    Phase23HandoffError,
+)
 from packages.operations.phase23_policy import (
     MASSIVE_MARKET_REFERENCE_READS,
     PHASE23_DEFAULT_BROKER,
@@ -145,26 +152,53 @@ class Phase23CurrentAnalysisCycle:
                 "Phase 23 requires a prior finalized exchange session; same-day provisional data is not accepted"
             )
 
-    def _discovery_dates(self) -> list[date]:
-        root = self.settings.resolved_path(self.settings.data.paths.derived) / "discovery" / "states"
-        dates: list[date] = []
-        if not root.exists():
-            return dates
-        for path in root.glob("year=*/date=*/part-000.parquet"):
-            text = path.parent.name.removeprefix("date=")
+    def _accepted_phase23_dates(self, as_of_date: date) -> list[date]:
+        store = Phase23AnalysisHandoffStore(self.settings)
+        if not store.root.exists():
+            return []
+        cumulative = Phase15CumulativeFoundationResolver(self.settings).resolve()
+        accepted: list[date] = []
+        for path in sorted(store.root.glob("year=*/*.json")):
             try:
-                dates.append(date.fromisoformat(text))
+                candidate = date.fromisoformat(path.stem)
             except ValueError:
                 continue
-        return sorted(set(dates))
+            if candidate > as_of_date:
+                continue
+            payload = _read_json(path, f"Phase 23 handoff candidate {candidate}")
+            expected_phase14_sha = str(payload.get("phase14_acceptance_sha256") or "")
+            if len(expected_phase14_sha) != 64:
+                continue
+            try:
+                store.resolve(
+                    as_of_date=candidate,
+                    cumulative=cumulative,
+                    expected_phase14_acceptance_sha256=expected_phase14_sha,
+                )
+            except Phase23HandoffError:
+                continue
+            if not self.paths.discovery_state_file(candidate).is_file():
+                continue
+            if not self.paths.discovery_state_manifest(candidate).is_file():
+                continue
+            accepted.append(candidate)
+        return sorted(set(accepted))
 
     def _baseline_discovery_date(self, as_of_date: date) -> date:
-        eligible = [item for item in self._discovery_dates() if item <= as_of_date]
-        if not eligible:
+        candidates: list[date] = []
+        frozen = PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END
+        if frozen <= as_of_date:
+            if not self.paths.discovery_state_file(frozen).is_file() or not self.paths.discovery_state_manifest(frozen).is_file():
+                raise Phase23CurrentRunError(
+                    "Phase 23 frozen cumulative discovery baseline is missing; silent operational rebootstrap is forbidden"
+                )
+            candidates.append(frozen)
+        candidates.extend(self._accepted_phase23_dates(as_of_date))
+        if not candidates:
             raise Phase23CurrentRunError(
-                "Phase 23 requires an accepted prior discovery-state baseline; silent operational rebootstrap is forbidden"
+                "Phase 23 requires an accepted operational discovery-state baseline; silent operational rebootstrap is forbidden"
             )
-        return eligible[-1]
+        return max(candidates)
 
     def prepare(
         self,
@@ -273,6 +307,39 @@ class Phase23CurrentAnalysisCycle:
                 fetched += 1
         return fetched
 
+    def _market_data_paths(self, trading_date: date) -> dict[str, Path]:
+        return {
+            "provider_daily": self.paths.provider_file(DatasetType.STOCK_DAILY_AGGREGATES, trading_date),
+            "provider_minute": self.paths.provider_file(DatasetType.STOCK_MINUTE_AGGREGATES, trading_date),
+            "canonical_1d": self.paths.canonical_file(Timeframe.DAY_1, trading_date),
+            "canonical_1m": self.paths.canonical_file(Timeframe.MINUTE_1, trading_date),
+            "bars_1h": self.paths.derived_file(Timeframe.HOUR_1, trading_date),
+            "bars_4h": self.paths.derived_file(Timeframe.HOUR_4, trading_date),
+        }
+
+    def _verify_market_data_completion(self, preparation: Phase23Preparation, result: object) -> None:
+        expected = len(preparation.sessions_to_advance)
+        if int(getattr(result, "inaccessible_sessions_skipped")) != 0:
+            raise Phase23CurrentRunError("Phase 23 provider entitlement skipped requested finalized sessions")
+        if int(getattr(result, "sessions_requested")) != expected:
+            raise Phase23CurrentRunError("Phase 23 market-data requested-session count changed")
+        if int(getattr(result, "sessions_processed")) != expected:
+            raise Phase23CurrentRunError("Phase 23 market-data did not process every requested session")
+        if preparation.sessions_to_advance:
+            if getattr(result, "effective_start_date") != preparation.sessions_to_advance[0]:
+                raise Phase23CurrentRunError("Phase 23 market-data effective start changed")
+            if getattr(result, "effective_end_date") != preparation.sessions_to_advance[-1]:
+                raise Phase23CurrentRunError("Phase 23 market-data effective end changed")
+        missing: list[str] = []
+        for trading_date in preparation.sessions_to_advance:
+            for label, path in self._market_data_paths(trading_date).items():
+                if not path.is_file():
+                    missing.append(f"{trading_date}:{label}")
+        if missing:
+            raise Phase23CurrentRunError(
+                "Phase 23 market-data advancement is incomplete: " + ", ".join(missing[:20])
+            )
+
     def _advance_market_data(self, preparation: Phase23Preparation) -> dict[str, object]:
         if not preparation.sessions_to_advance:
             return {"sessions_processed": 0, "downloads_planned": 0, "materialization_failures": 0}
@@ -288,13 +355,49 @@ class Phase23CurrentAnalysisCycle:
         )
         if result.failures:
             raise Phase23CurrentRunError("Phase 23 market-data materialization reported failures")
+        self._verify_market_data_completion(preparation, result)
         return {
+            "sessions_requested": result.sessions_requested,
             "sessions_processed": result.sessions_processed,
+            "inaccessible_sessions_skipped": result.inaccessible_sessions_skipped,
             "downloads_planned": result.daily_downloads_planned + result.minute_downloads_planned,
             "materialized_sessions": result.materialized_sessions,
             "skipped_materializations": result.skipped_materializations,
             "materialization_failures": len(result.failures),
         }
+
+    def _verify_feature_completion(
+        self,
+        preparation: Phase23Preparation,
+        *,
+        materializer: HistoricalFeatureMaterializer,
+        timeframe: Timeframe,
+        checkpoint_as_of: date | None,
+    ) -> None:
+        if checkpoint_as_of != preparation.as_of_date:
+            raise Phase23CurrentRunError(
+                f"Phase 23 {timeframe.value} feature checkpoint did not finish at {preparation.as_of_date}"
+            )
+        missing: list[str] = []
+        for trading_date in preparation.sessions_to_advance:
+            if not self.paths.feature_file(timeframe, trading_date).is_file():
+                missing.append(f"{trading_date}:feature")
+            if not self.paths.feature_manifest_file(timeframe, trading_date).is_file():
+                missing.append(f"{trading_date}:manifest")
+        if missing:
+            raise Phase23CurrentRunError(
+                f"Phase 23 {timeframe.value} feature persistence is incomplete: " + ", ".join(missing[:20])
+            )
+        stale = materializer.stale_source_sessions(
+            timeframe=timeframe,
+            start=preparation.sessions_to_advance[0],
+            end=preparation.as_of_date,
+        )
+        if stale:
+            raise Phase23CurrentRunError(
+                f"Phase 23 {timeframe.value} feature/source lineage is stale for: "
+                + ", ".join(item.isoformat() for item in stale[:20])
+            )
 
     def _advance_features(self, preparation: Phase23Preparation) -> dict[str, object]:
         if not preparation.sessions_to_advance:
@@ -310,6 +413,12 @@ class Phase23CurrentAnalysisCycle:
                 start=start,
                 end=preparation.as_of_date,
                 bootstrap_from_empty=False,
+            )
+            self._verify_feature_completion(
+                preparation,
+                materializer=materializer,
+                timeframe=timeframe,
+                checkpoint_as_of=result.checkpoint_as_of,
             )
             total_sessions += result.sessions_processed
             total_rows += result.rows_processed
