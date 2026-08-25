@@ -18,7 +18,10 @@ from packages.schemas.candidate_promotion import CandidatePromotionRecord
 from packages.strategies.base import StrategyContext
 from packages.strategies.registry import DEFAULT_STRATEGY_REGISTRY, StrategyRegistry
 
-from .historical_study import StrategyHistoricalStudy
+from .historical_study import (
+    STRATEGY_HISTORICAL_STUDY_CONTRACT_VERSION,
+    StrategyHistoricalStudy,
+)
 from .phase24_policy import (
     PHASE24_ACCEPTED_PHASE23_MERGE,
     PHASE24_COUNTERFACTUAL_CURRENT_RULES_ARE_AUTHORITY,
@@ -57,6 +60,8 @@ def phase11_support_policy_audit_fingerprint() -> str:
 
 
 def support_evidence_from_study(study: Mapping[str, Any]) -> list[dict[str, object]]:
+    if study.get("contract_version") != STRATEGY_HISTORICAL_STUDY_CONTRACT_VERSION:
+        raise Phase24Gate0Error("accepted Phase 11 historical-study contract changed")
     rows = study.get("studies")
     if not isinstance(rows, list):
         raise Phase24Gate0Error("accepted Phase 11 study has no studies list")
@@ -65,6 +70,10 @@ def support_evidence_from_study(study: Mapping[str, Any]) -> list[dict[str, obje
         if not isinstance(item, dict) or not isinstance(item.get("support"), dict):
             raise Phase24Gate0Error("accepted Phase 11 study contains malformed support evidence")
         support = dict(item["support"])
+        if support.get("contract_version") != STRATEGY_SUPPORT_POLICY_CONTRACT_VERSION:
+            raise Phase24Gate0Error("accepted Phase 11 support-policy contract changed")
+        if float(support.get("primary_cost_bps", -1.0)) != STRATEGY_SUPPORT_PRIMARY_COST_BPS:
+            raise Phase24Gate0Error("accepted Phase 11 primary support cost changed")
         evidence.append(
             {
                 "strategy_id": str(item.get("strategy_id") or support.get("strategy_id") or ""),
@@ -72,7 +81,7 @@ def support_evidence_from_study(study: Mapping[str, Any]) -> list[dict[str, obje
                 "eligible_for_candidate_promotion": bool(
                     support.get("eligible_for_candidate_promotion", False)
                 ),
-                "primary_cost_bps": float(support.get("primary_cost_bps", -1.0)),
+                "primary_cost_bps": float(support["primary_cost_bps"]),
                 "development_mean_return": support.get("development_mean_return"),
                 "first_half_mean_return": support.get("first_half_mean_return"),
                 "second_half_mean_return": support.get("second_half_mean_return"),
@@ -98,14 +107,11 @@ def evaluate_counterfactual_records(
         strategy.metadata.strategy_id: Counter() for strategy in registry.all()
     }
     candidates_with_fire: set[str] = set()
-
     for record in records:
         ticker = str(record.ticker)
         if ticker not in features_by_symbol:
             raise Phase24Gate0Error(f"current candidate is missing exact feature evidence: {ticker}")
-        support_by_id = {
-            str(item.strategy_id): item for item in tuple(record.historical_support)
-        }
+        support_by_id = {str(item.strategy_id): item for item in tuple(record.historical_support)}
         context = StrategyContext(
             instrument_id=str(record.instrument_id),
             ticker=ticker,
@@ -118,29 +124,27 @@ def evaluate_counterfactual_records(
                 continue
             strategy = registry.get(str(route.strategy_id))
             assessment = strategy.evaluate(context)
-            status = None
-            if str(route.strategy_id) in support_by_id:
-                status = str(support_by_id[str(route.strategy_id)].status)
-            row = {
-                "instrument_id": str(record.instrument_id),
-                "ticker": ticker,
-                "strategy_id": str(route.strategy_id),
-                "historical_support_status": status,
-                "route_eligible": True,
-                "fired": bool(assessment.fired),
-                "conditions_met": int(assessment.conditions_met),
-                "condition_count": int(assessment.condition_count),
-                "evidence_score": float(assessment.evidence_score),
-                "authoritative": False,
-            }
-            rows.append(row)
+            support = support_by_id.get(str(route.strategy_id))
+            rows.append(
+                {
+                    "instrument_id": str(record.instrument_id),
+                    "ticker": ticker,
+                    "strategy_id": str(route.strategy_id),
+                    "historical_support_status": None if support is None else str(support.status),
+                    "route_eligible": True,
+                    "fired": bool(assessment.fired),
+                    "conditions_met": int(assessment.conditions_met),
+                    "condition_count": int(assessment.condition_count),
+                    "evidence_score": float(assessment.evidence_score),
+                    "authoritative": False,
+                }
+            )
             by_strategy[str(route.strategy_id)]["eligible_routes"] += 1
             if assessment.fired:
                 by_strategy[str(route.strategy_id)]["fires"] += 1
                 candidates_with_fire.add(str(record.instrument_id))
-
     rows.sort(key=lambda item: (str(item["ticker"]), str(item["strategy_id"])))
-    summary = {
+    return rows, {
         "eligible_route_evaluations": len(rows),
         "counterfactual_fires": sum(1 for item in rows if item["fired"]),
         "candidates_with_counterfactual_fire": len(candidates_with_fire),
@@ -152,7 +156,6 @@ def evaluate_counterfactual_records(
             for key, value in sorted(by_strategy.items())
         },
     }
-    return rows, summary
 
 
 class Phase24Gate0Diagnostic:
@@ -209,9 +212,7 @@ class Phase24Gate0Diagnostic:
             }
         )
         select_features = ", ".join(f'f."{name}"' for name in required_features if name != "close")
-        select_prefix = "f.symbol, b.close"
-        if select_features:
-            select_prefix += ", " + select_features
+        select_prefix = "f.symbol, b.close" + (", " + select_features if select_features else "")
         con = connect_utc(":memory:")
         try:
             frame = con.execute(
@@ -230,12 +231,10 @@ class Phase24Gate0Diagnostic:
             raise Phase24Gate0Error("canonical/feature exact-key join changed row count")
         if frame["symbol"].duplicated().any():
             raise Phase24Gate0Error("current daily feature evidence contains duplicate symbols")
-        result: dict[str, dict[str, float]] = {}
-        for _, row in frame.iterrows():
-            symbol = str(row["symbol"])
-            values = {name: float(row[name]) for name in required_features}
-            result[symbol] = values
-        return result, {
+        return {
+            str(row["symbol"]): {name: float(row[name]) for name in required_features}
+            for _, row in frame.iterrows()
+        }, {
             "feature_1d_path": str(feature_path.resolve()),
             "feature_1d_sha256": feature_sha,
             "canonical_1d_path": str(canonical_path.resolve()),
@@ -256,7 +255,11 @@ class Phase24Gate0Diagnostic:
 
         handoff = self.phase23.resolve(as_of_date)
         study = self.phase23.verify_frozen_study(self.study.report_path)
-        if str(study.get("strategy_registry_fingerprint")) != DEFAULT_STRATEGY_REGISTRY.fingerprint():
+        study_sha = sha256_file(self.study.report_path)
+        registry_fingerprint = DEFAULT_STRATEGY_REGISTRY.fingerprint()
+        if study.get("contract_version") != STRATEGY_HISTORICAL_STUDY_CONTRACT_VERSION:
+            raise Phase24Gate0Error("accepted Phase 11 historical-study contract changed")
+        if str(study.get("strategy_registry_fingerprint")) != registry_fingerprint:
             raise Phase24Gate0Error("accepted Phase 11 strategy registry fingerprint changed")
         support_evidence = support_evidence_from_study(study)
 
@@ -266,6 +269,11 @@ class Phase24Gate0Diagnostic:
             raise Phase24Gate0Error("accepted Phase 23 current candidate manifest is not passing")
         if sha256_file(manifest_path) != handoff.current_candidate_manifest_sha256:
             raise Phase24Gate0Error("Phase 23 strategy handoff candidate-manifest hash changed")
+        manifest_lineage = dict(manifest.get("lineage") or {})
+        if manifest_lineage.get("historical_strategy_study_sha256") != study_sha:
+            raise Phase24Gate0Error("current candidate manifest historical-study hash changed")
+        if manifest_lineage.get("strategy_registry_fingerprint") != registry_fingerprint:
+            raise Phase24Gate0Error("current candidate manifest strategy registry changed")
         all_path = self.candidates.all_path(as_of_date)
         if str(manifest.get("all_sha256") or "") != sha256_file(all_path):
             raise Phase24Gate0Error("accepted current candidate population hash changed")
@@ -278,14 +286,14 @@ class Phase24Gate0Diagnostic:
             records,
             features_by_symbol,
         )
-
         support_counts = Counter(str(item["status"]) for item in support_evidence)
         lineage = {
             "accepted_phase23_merge": PHASE24_ACCEPTED_PHASE23_MERGE,
             "phase24_policy_fingerprint": phase24_policy_fingerprint(),
             "phase11_historical_study_path": str(self.study.report_path.resolve()),
-            "phase11_historical_study_sha256": sha256_file(self.study.report_path),
-            "phase11_strategy_registry_fingerprint": DEFAULT_STRATEGY_REGISTRY.fingerprint(),
+            "phase11_historical_study_sha256": study_sha,
+            "phase11_historical_study_contract": STRATEGY_HISTORICAL_STUDY_CONTRACT_VERSION,
+            "phase11_strategy_registry_fingerprint": registry_fingerprint,
             "phase11_support_policy_contract": STRATEGY_SUPPORT_POLICY_CONTRACT_VERSION,
             "phase11_support_policy_audit_fingerprint": phase11_support_policy_audit_fingerprint(),
             "phase23_strategy_handoff_path": str(handoff.path.resolve()),
@@ -299,8 +307,11 @@ class Phase24Gate0Diagnostic:
         checks = {
             "phase23_handoff_resolved": True,
             "phase11_frozen_study_verified": True,
+            "phase11_contract_exact": True,
+            "phase11_support_policy_exact": True,
             "strategy_registry_exact": True,
             "candidate_manifest_hash_bound": True,
+            "candidate_manifest_study_lineage_exact": True,
             "candidate_population_hash_bound": True,
             "candidate_population_count_exact": True,
             "counterfactual_non_authoritative": PHASE24_COUNTERFACTUAL_CURRENT_RULES_ARE_AUTHORITY is False,
