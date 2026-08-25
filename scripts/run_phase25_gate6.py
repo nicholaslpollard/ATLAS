@@ -9,8 +9,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from packages.backtesting.phase25_gate6 import Phase25Gate6DiscoveryReconstruction, Phase25Gate6Error
+from packages.backtesting.phase25_gate6 import Phase25Gate6Error
 from packages.backtesting.phase25_gate6_policy import phase25_gate6_policy_fingerprint
+from packages.backtesting.phase25_gate6_repair import Phase25Gate6SafeDiscoveryReconstruction
 from packages.backtesting.phase25_gate6_validation import (
     Phase25Gate6IndependentValidationError,
     Phase25Gate6IndependentValidator,
@@ -31,7 +32,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
             "ATLAS Phase25 Gate6 provider-free Phase7/discovery chronological reconstruction. "
-            "Materializes missing stateless historical artifacts and writes research-only discovery state."
+            "Materializes missing stateless historical artifacts, preflights all existing artifacts "
+            "before builders, and writes research-only discovery state."
         )
     )
     parser.add_argument("--through", required=True, type=date.fromisoformat)
@@ -39,16 +41,17 @@ def main() -> int:
 
     print("ATLAS Phase 25 Historical Production-Path Replay — Gate 6")
     print(f"Phase 25 Gate6 policy: {phase25_gate6_policy_fingerprint()}")
-    print(f"Replay origin: 2021-08-16")
+    print("Replay origin: 2021-08-16")
     print(f"Through session: {args.through}")
     print("Scope: PROVIDER-FREE PHASE7 + DISCOVERY CHRONOLOGICAL RECONSTRUCTION")
+    print("Existing artifact handling: PREFLIGHT BEFORE ANY BUILDER / NO OVERWRITE")
     print("Operational discovery-state writes: DISABLED")
     print("Regime routing / strategy returns / strategy rules: DISABLED / UNREAD")
     print("Provider/broker/order/PAPER/LIVE/support authority: NONE")
 
     settings = load_settings()
     try:
-        report = Phase25Gate6DiscoveryReconstruction(settings).run(
+        report = Phase25Gate6SafeDiscoveryReconstruction(settings).run(
             through_date=args.through,
             progress_callback=_progress,
         )
@@ -66,6 +69,7 @@ def main() -> int:
     print(f"Replay sessions: {report['replay_session_count']}")
     print(f"Existing artifacts preserved: {report['existing_artifact_counts']}")
     print(f"New historical artifacts materialized: {report['newly_materialized_artifact_counts']}")
+    print(f"Reconciliation events: {report.get('reconciliation_event_count', 0)}")
     print(f"Effective state row counts: {report['effective_state_row_counts']}")
     print(f"WARM/HOT direction counts: {report['warm_hot_direction_counts']}")
     print(f"WARM/HOT directional population rows: {report['warm_hot_directional_population_rows']}")
