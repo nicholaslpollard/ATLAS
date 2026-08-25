@@ -1,6 +1,6 @@
 # Phase 25 — Historical Production-Path Replay & Route-Fidelity Strategy Evidence
 
-**Status: ACTIVE / GATES 0-3 ACCEPTED / GATE 4 ENTITLEMENT PROBE IMPLEMENTATION**
+**Status: ACTIVE / GATES 0-4 ACCEPTED / GATE 5 RESUMABLE BULK ACQUISITION IMPLEMENTATION**
 
 Upstream authority: Phase24 accepted merge `15b77321d4815f9f52fe74d47ba32fee8127526a`; synchronized `main` handoff `71063b510953aca87b253f5b3b0d42954a6abf0a`.
 
@@ -30,7 +30,7 @@ Target production path:
 
 Gates0-3 permit no provider reads or writes. They also permit no broker reads/writes, order writes, PAPER submits, LIVE writes, Phase11 support changes, protected-strategy evidence reads, strategy-rule changes, or outcome-definition changes.
 
-Gate4 is the first Phase25 provider-read boundary, but only for one exact entitlement-probe session. Bulk acquisition remains separately forbidden.
+Gate4 was the first Phase25 provider-read boundary, limited to one exact entitlement-probe session. Gate5 may read only the remaining frozen active-only PIT reference sessions. Provider writes, broker/order mutations, PAPER/LIVE execution, support changes, and protected strategy evidence remain separately forbidden.
 
 ---
 
@@ -166,69 +166,127 @@ Accepted interpretation: the acquisition scope is large but finite and exactly d
 
 ---
 
-## Gate 4 — explicit earliest-session Massive entitlement probe — ACTIVE
+## Gate 4 — explicit earliest-session Massive entitlement probe — ACCEPTED
 
-Gate4 implements only the first provider-read boundary needed by the accepted Gate3 plan.
+Exact accepted target/code head: `f4e90bc41222e8db25146e0214bf4bd437b3b103`.
 
-### Prepare
+Frozen Gate4 policy fingerprint:
 
-`prepare --through 2026-08-21` is provider-free. It must:
+`e8ef1b2f0d020e579e4c8fc92dfa256fea307ce96ed89cee02c4a812b8398d16`
 
-1. load and hash the exact accepted Gate3 plan;
-2. confirm the Gate3 policy fingerprint and recommendation;
-3. confirm the frozen first acquisition session is **2021-08-17**;
-4. confirm the target has neither snapshot nor manifest locally;
-5. reject any partial or unexpectedly materialized target rather than overwrite it;
-6. bind the exact query, through date, Gate3 SHA/source fingerprint, and external-read class into a run scope;
-7. print the exact interactive confirmation string;
-8. make zero external calls.
+Exact-head GitHub Actions run `32852041021`: Ubuntu and Windows success through Gate4 plus full regression.
 
-### Probe
+Accepted provider-free prepare evidence:
 
-The `probe` command may proceed only after the operator types the exact run-scoped confirmation.
+- frozen acquisition sessions: **1,253**;
+- earliest entitlement probe: **2021-08-17**;
+- bulk acquisition disabled;
+- disposition: `PREPARED_ZERO_EXTERNAL_CALLS`.
 
-It may then:
+Accepted target-machine entitlement probe evidence:
 
-1. instantiate the accepted Massive REST/reference provider;
-2. request **only 2021-08-17** using the Gate3 active-only query;
-3. follow only same-host pagination using the accepted Massive REST client;
-4. use the accepted bounded provider retry behavior;
-5. require positive returned rows, nonblank provider-native tickers, and `active=true` on every returned row;
-6. recheck that no concurrent local snapshot/manifest appeared before persistence;
-7. persist exactly one active-only reference snapshot using the accepted instrument-registry store with `force=false`;
-8. validate exact session date, reference contract, identity contract, positive counts, and all-active rows;
-9. write a Gate4 research report;
-10. run a separate provider-free independent validator over the persisted pair and exact Gate3 lineage.
+- probe session: **2021-08-17**;
+- provider probe sessions: **1**;
+- **12 provider page reads**;
+- persisted rows: **11,027**;
+- persisted instruments: **11,027**;
+- bulk acquisition sessions: 0;
+- remaining frozen acquisition sessions: **1,252**;
+- provider writes: 0;
+- broker reads/writes: 0 / 0;
+- order/PAPER/LIVE writes: 0 / 0 / 0;
+- Phase11 support writes: 0;
+- independent validation: pass;
+- Pass: true.
 
-### Gate4 hard prohibitions
+Accepted interpretation: the account has entitlement to the exact historical active-only PIT reference source at the earliest required post-origin session, same-host pagination and bounded retry behavior work, and the accepted snapshot/identity persistence path produces valid active-only canonical evidence.
 
-Gate4 may not query a second historical session or perform bulk acquisition. It may not change the frozen query shape, overwrite an existing or partial reference pair, use ticker-specific ad hoc queries, carry later metadata backward, read strategy returns or protected strategy evidence, alter Phase11 support, access broker execution, submit PAPER orders, write LIVE state, invoke browser execution, scheduler authority, or PostgreSQL runtime promotion.
+Gate4 may not be silently rerun or used as a bulk path. The accepted 2021-08-17 snapshot/manifest pair is immutable input to Gate5.
 
-### Gate4 decision rule
+---
 
-A passing Gate4 target probe must prove:
+## Gate 5 — resumable frozen active-only PIT bulk acquisition — ACTIVE
 
-- exact interactive authorization;
-- exactly one provider probe session;
-- positive logical provider page reads;
-- positive persisted rows/instruments;
-- zero inactive persisted rows;
-- exact 2021-08-17 snapshot date;
-- exact active-only manifest;
-- exact snapshot/manifest SHA binding;
-- independent validation pass;
-- zero bulk acquisition sessions;
-- zero provider writes;
-- zero broker/order/PAPER/LIVE/support/protected-evidence authority.
+Gate5 acquires only the **1,252 remaining frozen sessions** from the accepted Gate3 plan. It does not expand the source, dates, market, activity filter, page limit, or provider.
 
-Only after that target evidence is accepted may Gate5 implement resumable bulk acquisition for the **remaining frozen sessions**. Gate5 must not silently rerun the entitlement probe or re-fetch already validated pairs.
+### Read-only authorization UX
+
+For Gate5, the explicit CLI subcommand is itself the provider-read authorization:
+
+`EXPLICIT_CLI_SUBCOMMAND`
+
+The operator runs `acquire --through 2026-08-21`; **no pasted confirmation** or second interactive prompt is required for this read-only acquisition. Provider reads remain default-deny unless the explicit `acquire` code path is invoked and its exact Gate3/Gate4 lineage validates.
+
+This convenience applies to the Gate5 read-only path only. It does not remove stronger confirmation requirements for provider mutations, broker/order mutations, PAPER/LIVE execution, destructive cleanup, or other irreversible authority boundaries.
+
+### Frozen acquisition behavior
+
+Gate5 must:
+
+1. bind the exact accepted Gate3 plan SHA and Gate4 report/independent-validation SHAs;
+2. verify the accepted 2021-08-17 probe pair has not changed;
+3. exclude the probe via the exact frozen `acquisition_sessions[1:]` scope;
+4. preserve all provider-native ticker case;
+5. request `GET /v3/reference/tickers` with `market=stocks`, `active=true`, exact session `date`, ascending ticker sort, and `limit=1000`;
+6. follow only same-host pagination through the accepted Massive REST client;
+7. reuse bounded provider retries including 429 handling;
+8. validate positive rows, nonblank tickers, and `active=true` before local persistence;
+9. persist each completed session using the accepted reference/identity contracts with `include_inactive=false`;
+10. never force-replace a valid pair;
+11. skip only complete, independently valid active-only pairs on resume;
+12. fail closed on unowned or unreconciled partial state;
+13. use a Gate5 inflight marker to safely reconcile an owned snapshot-only interruption without re-reading the provider;
+14. update local progress after every completed session;
+15. defer the expensive instrument-registry rebuild until the frozen bulk scope is fully complete;
+16. produce a final Gate5 report only when all **1,252 / 1,252** bulk sessions validate;
+17. run a separate provider-free independent validator across every frozen acquisition session before Gate6 may proceed.
+
+### Gate5 performance lock
+
+Gate5 deliberately does **not** call `InstrumentRegistryStore.sync_snapshot()` for every historical day because that method rebuilds the full derived registry after each snapshot. Gate5 reuses the accepted observation/snapshot format and atomic local write primitives, then runs one registry rebuild after all frozen sessions are complete. This is a performance optimization only; it does not change reference or identity semantics.
+
+### Gate5 resumability
+
+A failed network request before local persistence leaves the session missing and the same `acquire` command may resume later. A completed validated pair is never re-fetched. If an interruption occurs after a Gate5-owned snapshot is atomically promoted but before its manifest is written, the inflight marker permits provider-free validation and manifest reconstruction. Any state that cannot be proven as Gate5-owned and valid fails closed rather than being guessed or overwritten.
+
+### Gate5 hard prohibitions
+
+Gate5 may not:
+
+- re-fetch 2021-08-17;
+- fetch any date outside the frozen Gate3 acquisition list;
+- use inactive reference rows;
+- widen to another reference endpoint or provider;
+- use `force=true`;
+- read strategy returns or protected strategy evidence;
+- change strategy rules, outcomes, Phase11 support, Phase24 thresholds, or promotion rules;
+- read or mutate brokers;
+- submit orders or PAPER trades;
+- write LIVE state;
+- invoke browser execution, scheduler authority, or PostgreSQL runtime promotion.
+
+### Gate5 acceptance rule
+
+Gate5 is accepted only if:
+
+- every frozen acquisition session now has an exact reference snapshot/manifest pair;
+- all Gate3 acquisition sessions are active-only and contain zero blank tickers;
+- all manifest row/instrument counts match canonical data;
+- the accepted Gate4 probe pair remains unchanged and was not re-fetched;
+- the frozen bulk count is exactly 1,252 and remaining bulk count is zero;
+- provider writes remain zero;
+- broker/order/PAPER/LIVE/support/protected-evidence authority remains zero;
+- the deferred registry rebuild completes;
+- independent validation passes.
+
+Only after Gate5 target evidence is accepted may Gate6 rebuild and independently validate the missing Phase7 PIT universe lineage.
 
 ---
 
 ## Phase25 acceptance invariants
 
-- accepted Gate0-Gate3 policy fingerprints are immutable;
-- Gate4 may add a new policy fingerprint but may not retroactively change prior evidence;
+- accepted Gate0-Gate4 policy fingerprints are immutable;
+- Gate5 policy is isolated so it cannot retroactively change prior evidence;
 - exact exchange-session scope is required;
 - provider-native ticker case is preserved;
 - missing, partial, stale, or ambiguous state fails closed;
@@ -239,7 +297,7 @@ Only after that target evidence is accepted may Gate5 implement resumable bulk a
 
 ## Later sequence
 
-If Gate4 entitlement evidence passes, Gate5 may implement resumable acquisition of the remaining frozen active-only PIT sessions. A later independent validation/reconstruction gate must then prove every exact reference pair before rebuilding Phase7 universes, discovery, regimes, routing, and the historical production population.
+After Gate5 bulk reference evidence passes, Gate6 must independently validate complete PIT reference lineage and rebuild Phase7 universe snapshots/manifests for missing sessions without provider access. Later gates then reconstruct discovery, regimes, routing, and the historical production population.
 
 Only after that population is accepted may strategy evidence be compared along the attribution ladder while holding rules/outcomes fixed:
 
