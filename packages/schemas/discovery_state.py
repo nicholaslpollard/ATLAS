@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import date
+from math import isnan
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from packages.schemas.discovery_score import DiscoveryDirection, DiscoveryState
@@ -32,6 +34,25 @@ class DiscoveryStateRecord(BaseModel):
     direction: DiscoveryDirection
     scored_timeframes: int = Field(ge=0, le=3)
     top_setup: str = Field(min_length=1)
+
+    @field_validator("previous_effective_state", mode="before")
+    @classmethod
+    def normalize_persisted_optional_state_null(cls, value: object) -> object:
+        """Normalize Parquet/pandas float NaN back to the schema's explicit null.
+
+        DuckDB ``fetch_df()`` represents a null value in this optional enum column as
+        floating NaN. That is a storage/transport null, not a discovery state. Only
+        NaN is normalized here; all non-null values still pass through normal enum
+        validation and the model-level bootstrap/continuity checks below.
+        """
+        if value is None:
+            return None
+        try:
+            if isnan(value):  # type: ignore[arg-type]
+                return None
+        except (TypeError, ValueError):
+            pass
+        return value
 
     @field_validator("instrument_id", "ticker", "transition", "top_setup")
     @classmethod
