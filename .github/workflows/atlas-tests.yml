@@ -169,5 +169,8 @@ jobs:
       - name: Validate Phase 25 Gate 5 resumable bulk acquisition contracts
         run: python scripts/validate_phase25_gate5.py
 
+      - name: Validate Phase 25 Gate 6 discovery reconstruction contracts
+        run: python scripts/validate_phase25_gate6.py
+
       - name: Run tests
         run: python -m pytest -q
