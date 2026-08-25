@@ -2,261 +2,169 @@
 
 **Living operational handoff. Last synchronized: 2026-08-24.**
 
-This is the fastest recovery point for a future ATLAS development session.
-
 ## 1. Source-of-truth order
 
-When sources disagree, use:
-
-1. accepted code/artifacts on `main` for completed work;
-2. active phase/maintenance branch code and exact-head CI for in-progress work;
+1. accepted code/artifacts on `main`;
+2. active phase branch + exact-head CI;
 3. active phase specification;
 4. `docs/roadmap.md`;
 5. this file;
 6. `docs/phase_flow.md`;
-7. root `README.md`;
+7. README;
 8. merged PRs/historical docs as provenance.
 
 Repository: `nicholaslpollard/ATLAS`.
 
 ## 2. Exact repository state
 
-- **Phases 1–23 ACCEPTED / MERGED.**
-- Phase18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-- Phase19 merge: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
-- Phase20 merge: `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`.
+- **Phases 1–24 ACCEPTED / MERGED.**
 - Phase21 merge: `ed9e156437e3924293b90f06620ebbe9534fab15`.
 - Phase22 merge: `15c0a997ec847764e41fbd525ff52aa8c58f96ac`.
-- Phase23 merge: `2004338624766c42b5f4db2bb0976b2047a5c6b0` through PR #25.
-- Post-Phase23 synchronized `main`: `8fa832decc2f1be7762373f8ba4cc05a38b8404a`.
+- Phase23 merge: `2004338624766c42b5f4db2bb0976b2047a5c6b0`.
+- **Phase24 merge: `15b77321d4815f9f52fe74d47ba32fee8127526a` through PR #26.**
+- Phase24 disposition: **NO SUPPORT REPLACEMENT**.
+- Gate1 fingerprint: `9550dd572edb056be7ee06c7a4319f9c2057ac304c630fcd3a1382ebcf83007a`.
+- Gate2 target head: `f591942413973107d7abc9d21325623e2e7000f1`.
+- Final pre-merge living-doc head: `5ed3311d4ec1ac97cf841e160cf9c0987f731fe5`.
+- Final pre-merge CI `32806726958`: Ubuntu/Windows SUCCESS; all validators through Phase24 Gate2 and full regression passed.
 
-### Phase24 current state
+LIVE is **DISABLED**. Automatic broker failover is **DISABLED**.
 
-- Branch: `phase-24-strategy-evidence-challenger`.
-- PR: **#26 — Phase 24: strategy evidence challenger — no support replacement**.
-- State: **ACCEPTANCE EVIDENCE COMPLETE / NO SUPPORT REPLACEMENT / MERGE PENDING**.
-- Gate0 code head: `b2be471c983c1f4be3e23b83d06a561820b83145`.
-- Gate1 preregistration head: `7a4f5d599e39af65612a9e7e4609c959c97daf64`.
-- Gate1 policy fingerprint: `9550dd572edb056be7ee06c7a4319f9c2057ac304c630fcd3a1382ebcf83007a`.
-- Gate2 implementation/target head: `f591942413973107d7abc9d21325623e2e7000f1`.
-- Phase24 evidence-closeout head before living-doc sync: `ba0721dd717ae8bdda877a376549cdef69ca00d9`.
-- Closeout CI run `32806363124`: Ubuntu/Windows SUCCESS; every validator through Phase24 Gate2 and full regression passed.
-
-LIVE execution is **DISABLED**. Automatic cross-broker failover is **DISABLED**.
-
-## 3. Mandatory phase flow
-
-`DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST AS NEEDED -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
-
-Use coherent batches. Credentials, endpoints, passing tests, connected accounts, registered jobs, or local artifacts never silently expand provider, broker, support, automation, or LIVE authority.
-
-## 4. Architecture and anti-drift anchor
+## 3. Architecture lock
 
 `market/reference -> Parquet/DuckDB -> features -> broad discovery -> market/sector/ticker regimes -> ML probabilities -> deterministic strategy routing/evaluation -> promotion -> analogue/Monte Carlo/scenarios -> news/events -> instrument/geometry -> portfolio risk -> deterministic case -> independent AI audit -> alerts -> paper/shadow/live execution -> outcome learning -> browser control plane`
 
-Roles:
+Parquet is durable analytical history; DuckDB is analytics; PostgreSQL is future operational state; Massive is primary market/reference; Webull is primary PAPER/sandbox; Alpaca is manual secondary only.
 
-- Parquet: durable analytical/history lake.
-- DuckDB: analytical engine.
-- PostgreSQL: target operational state; not an accepted runtime prerequisite.
-- Massive: primary broad-market/reference provider.
-- Webull: primary PAPER/sandbox broker; future LIVE only under separate authority.
-- Alpaca: manual secondary/fallback only; never automatic failover.
-
-The destination remains the complete operational chain, especially accepted current evidence into safe Webull-primary SHADOW/PAPER execution, reconciliation, observability, and outcome learning before any LIVE transition.
-
-## 5. Non-negotiable rules
+## 4. Non-negotiable rules
 
 - Preserve provider-native ticker text/case; ticker text never proves identity continuity.
-- Historical populations remain PIT/observation-driven; current survivors are not projected backward.
-- Ambiguity is quarantined/excluded, never guessed.
-- No synthetic pre-2021 intraday history from daily data.
-- Finalized canonical facts outrank provisional live observations.
-- ML emits probability evidence; it does not create trade authority.
-- AI is independent audit only.
-- LONG: `stop < entry < target`; SHORT: `stop > entry > target`.
+- Historical populations are PIT; ambiguity is quarantined, never guessed.
+- No synthetic pre-2021 intraday history.
+- Finalized canonical facts outrank provisional live state.
+- ML is probability evidence only; AI is independent audit only.
+- LONG `stop < entry < target`; SHORT reverse.
 - Unknown provider/broker/run state fails closed.
 - Uncertain writes are never retried blindly; reconcile first.
 - Automatic cross-broker failover is forbidden.
-- PAPER/sandbox authority does not imply LIVE.
-- Zero-promotion, zero-execution-case, and zero-finalist states are valid.
-- Never weaken data/strategy/risk/authority thresholds to force activity.
-- Phase20 cannot create provider/broker/scheduler authority.
-- Phase21 central PAPER authority cannot be created by the browser/control plane.
-- Phase22 is the routine PAPER operator and creates no new raw submit seam.
-- Phase23 performs no broker/PAPER execution.
-- Phase24 research performs no provider/broker/order/PAPER/LIVE/support mutation.
+- PAPER does not imply LIVE.
+- Zero-promotion, zero-case, and zero-finalist states are valid.
+- Never weaken strategy/data/risk/authority gates merely to produce activity.
 
-## 6. Accepted data/model evidence
-
-Historical boundary:
+## 5. Accepted data/model evidence
 
 - Alpaca raw SIP daily controlled authority: **2016-01-04 through 2021-08-13**.
-- Massive authority: **2021-08-16 onward**.
-- Ticker/intraday regime history origin: **2021-08-16**.
-- No synthetic pre-2021 1h/4h history.
+- Massive authority and legitimate ticker/intraday history origin: **2021-08-16**.
+- Cumulative lineage: `6a3ff7ad3b6fc7dff95df42ec3cc89bfc38ab66f93bc4a125d4d1d87c85a63f6`.
+- Production ML: `mlmodel-hgb15-2026-08-14-d485e6c287bacce1`; HGB leaf15/iter100; 33 PIT predictors; exact accepted replay.
 
-Accepted cumulative lineage:
-
-`6a3ff7ad3b6fc7dff95df42ec3cc89bfc38ab66f93bc4a125d4d1d87c85a63f6`
-
-Accepted production ML:
-
-- model `mlmodel-hgb15-2026-08-14-d485e6c287bacce1`;
-- HGB `hgb_leaf15_iter100`;
-- 33 PIT predictors;
-- holdout 2026-05-12 through 2026-08-11;
-- 63 sessions / 454,773 rows;
-- log loss 0.948693;
-- Brier 0.560422;
-- macro OVR AUC 0.570016;
-- exact deterministic replay.
-
-Phase11 support remains the accepted production authority:
+Accepted Phase11 strategy support remains:
 
 - SUPPORTED: **0**;
 - MIXED: `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
 - UNSUPPORTED: `breakdown_short_v1`, `breakout_long_v1`, `momentum_short_v1`, `pullback_short_v1`, `trend_following_short_v1`.
 
-## 7. Accepted execution/control-plane foundation
+## 6. Accepted execution/control foundation
 
 ### Phase15
-
-Broker-neutral SHADOW/PAPER execution: fresh quote, provider preflight, broker reconciliation, current-risk revalidation, protective geometry, deterministic client-order IDs/idempotency, uncertainty fail-closed, same-ticker add/flip disabled, Webull primary, Alpaca manual secondary, LIVE disabled. Post-2026-08-14 input requires an exact Phase23 handoff.
+Broker-neutral SHADOW/PAPER execution with fresh quote/preflight, reconciliation, current-risk revalidation, protective geometry, deterministic IDs/idempotency, fail-closed uncertainty, Webull primary, Alpaca manual secondary, LIVE disabled. Post-2026-08-14 input requires exact Phase23 handoff.
 
 ### Phase16–19
-
-Accepted loopback browser control plane, audit/idempotency/recovery, explicit broker-switch/cleanup planning, Webull sandbox + Alpaca paper read-only reconciliation, real Phase18 Webull sandbox submit/reconcile/cancel certification, and local read-only observability. Do not repeat the accepted Phase18 mutation merely to reconfirm it.
+Loopback browser control plane, audit/idempotency/recovery, explicit broker-switch/cleanup planning, dual-broker read-only reconciliation, accepted Phase18 Webull sandbox submit/reconcile/cancel lifecycle, local observability. Do not repeat Phase18 mutation merely to reconfirm it.
 
 ### Phase20
-
-Accepted deterministic local orchestration substrate: immutable DAG, deterministic run identity, bounded local retry, atomic manifest/journal, fail-closed lease and resume. No provider mutation, scheduler authority, PostgreSQL runtime promotion, LIVE, or automatic failover.
+Deterministic local orchestration only: immutable DAG/run identity, bounded local retry, atomic manifest/journal, fail-closed leases/resume. No provider/broker/scheduler/PostgreSQL/LIVE authority.
 
 ### Phase21
-
-Policy fingerprint `0ad0add1345ceec62f65bab25ce43806dafac4a64177ffc9c219e9d6c87665e5`. Every new PAPER provider submit crosses `ExecutionEngine.submit_authorized_plan(...)`. Exactly one raw `adapter.submit(plan)` remains under `packages/`, in `packages/execution/engine.py`.
+Policy fingerprint `0ad0add1345ceec62f65bab25ce43806dafac4a64177ffc9c219e9d6c87665e5`. Every new real PAPER submit crosses `ExecutionEngine.submit_authorized_plan(...)`; exactly one raw `adapter.submit(plan)` exists under `packages/`.
 
 ### Phase22
-
-Policy fingerprint `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`. Routine PAPER operator: `scripts/run_phase22_paper.py prepare|execute`; Webull default; Alpaca manual; no arbitrary trade inputs; exact run-scoped authority only for nonzero accepted execution cases. Accepted zero-case prepare returned `PREPARED_ZERO_PROVIDER_CALLS`.
+Policy fingerprint `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`. Routine Webull-primary PAPER operator, Alpaca manual only, no arbitrary trade inputs, exact authority only for accepted nonzero cases. Accepted zero-case prepare returned `PREPARED_ZERO_PROVIDER_CALLS`.
 
 ### Phase23
+Policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`. Finalized-session analytical operator; provider-free prepare; only `MASSIVE_MARKET_REFERENCE_READS` may be authorized when missing; no broker/PAPER execution.
 
-Policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`. `scripts/run_phase23_analysis.py prepare|execute` advances an explicit prior finalized session from the latest accepted baseline. Only `MASSIVE_MARKET_REFERENCE_READS` may be authorized if finalized market/reference evidence is missing. No broker reads/writes, provider mutations, Phase21 submit, Phase22 execute, scheduler/PostgreSQL/browser/LIVE authority.
+## 7. Phase23 accepted target result
 
-## 8. Phase23 accepted target evidence
+Finalized 2026-08-21 from baseline 2026-08-14:
 
-Finalized `2026-08-21`, baseline `2026-08-14`:
-
-- sessions advanced: **5**;
-- current WARM/HOT directional cases: **23**;
-- promoted: **0**;
-- Phase12/13/14 cases: **0 / 0 / 0**;
-- Phase22-ready execution cases: **0**;
-- broker reads/writes: **0 / 0**;
-- order/PAPER/LIVE writes: **0 / 0 / 0**;
-- independent validation: **PASS**;
+- sessions advanced: 5;
+- WARM/HOT directional cases: 23;
+- promotions: 0;
+- Phase12/13/14: 0 / 0 / 0;
+- execution cases: 0;
+- broker/order/PAPER/LIVE activity: 0;
+- independent validation: PASS;
 - run scope: `a9f398fcd32e302af125bcf9d81789efadb417da879ff178942880580ab69209`.
 
-The first attempt exposed a real nullable persisted-state `NaN` defect; repair head `803d43e43e8931f03ba836a23b781a7c3d3ee687` fixed only persistence/recovery semantics without threshold/support/model/risk/authority changes.
+## 8. Phase24 accepted result — NO SUPPORT REPLACEMENT
 
-## 9. Phase24 evidence and decision
-
-Read `docs/phase24_strategy_evidence_challenger.md` for complete details.
+Read `docs/phase24_strategy_evidence_challenger.md` for complete evidence.
 
 ### Gate0
 
-Accepted target diagnostic:
-
-- WARM/HOT directional cases: **23**;
-- authoritative promotions: **0**;
-- eligible incumbent route evaluations: **92**;
-- counterfactual rule fires: **48**;
-- candidates with at least one fire: **21 / 23**;
-- all provider/broker/order/PAPER/LIVE/support writes: **0**;
+- 23 accepted current WARM/HOT directional cases;
+- 92 eligible incumbent route evaluations;
+- 48 counterfactual incumbent rule fires;
+- 21/23 cases with >=1 fire;
+- promotions/support/external/execution writes: 0;
 - PASS.
 
-This proved current rules are not dormant.
+This proved the current setup rules are not dormant.
 
 ### Gate1
 
-Before challenger results were read, Gate1 preregistered exactly 28 bounded variants and stronger evidence criteria: development-only chronological selection/internal validation, purge, session-level dependence handling, block bootstrap, 10/25 bps costs, distribution/uncertainty/year/regime gates, multiplicity control, and zero protected-read/support-replacement authority.
+Before challenger results were observed, exactly 28 bounded variants and the stronger methodology were locked: chronological selection/internal validation, purge, session-level dependence handling, block bootstrap, 10/25 bps costs, distribution/uncertainty/year/regime gates, multiplicity control, maximum one finalist per family/direction, and zero protected-read/support-replacement authority.
 
 ### Gate2
 
-Target-machine result on exact head `f591942413973107d7abc9d21325623e2e7000f1`:
+Target-machine result on `f591942413973107d7abc9d21325623e2e7000f1`:
 
-- challengers: **28**;
-- basic-pass: **0**;
-- multiplicity-pass: **0**;
-- frozen selections: **0**;
-- fresh finalists: **0**;
-- protected reads: **0**;
-- all external/execution/support writes: **0**;
-- independent validation: **PASS**;
-- overall: **PASS**.
+- challengers 28;
+- basic-pass 0;
+- multiplicity-pass 0;
+- selections/finalists 0;
+- protected reads 0;
+- provider/broker/order/PAPER/LIVE/support writes 0;
+- independent validation PASS;
+- overall PASS.
 
-Post-run forensic evidence:
+Forensics showed all 28 failed positive chronological folds, positive bootstrap LCB, and positive 25 bps stress mean. Most had abundant samples. Best long trend retained only ~+7.37 bps after 10 bps cost with negative LCB/stress; short trend/momentum/breakdown remained materially negative at 10 bps.
 
-- positive chronological folds failed **28/28**;
-- positive bootstrap LCB failed **28/28**;
-- positive 25 bps stress mean failed **28/28**;
-- year robustness failed **24/28**;
-- primary mean/median/positive-rate and regime robustness failed **20/28** each;
-- sample minimums failed only a small minority.
+Accepted decision: **Phase11 remains production support authority unchanged. No Gate3 protected evaluation occurred.**
 
-The strongest long trend variant had 1,188 signal sessions, +0.000737 mean after 10 bps, but LCB -0.000452 and 25 bps stress mean -0.000763. Short trend/momentum/breakdown families remained materially negative at the primary cost.
+## 9. Exact continuation — Phase25 definition boundary
 
-### Phase24 disposition
+The Phase24 post-evidence audit found a population-fidelity mismatch:
 
-**NO SUPPORT REPLACEMENT.**
+- historical support studies use broad daily rows with broad market-regime routing;
+- production promotion requires PIT universe -> discovery -> WARM/HOT directional qualification -> market/sector/ticker route -> support -> current rule fire.
 
-- Do not relax Gate1 thresholds after observing failures.
-- Do not open the protected interval for zero finalists.
-- Do not promote any v2 challenger.
-- Do not change Phase11 support.
-- Do not assume symmetric mirrored short rules are valid.
-- Do not continue blind threshold tightening of the same daily rule families.
+Historical support is therefore not yet measured on the same population ATLAS tries to trade.
 
-## 10. Methodological finding and exact continuation
+### Define next
 
-The post-evidence audit found a population-fidelity mismatch:
+**Phase25 — Historical Production-Path Replay & Route-Fidelity Strategy Evidence** should be defined and locked next.
 
-- historical Phase11/24 support studies evaluate rules across broad historical daily rows with a broad market-regime direction route;
-- production promotion first requires WARM/HOT discovery qualification, non-neutral discovery direction, then strategy routing using market/sector/ticker context before a supported rule can fire.
+Initial contract should:
 
-Current sector context is intentionally unavailable/nonblocking because no authoritative ticker-to-sector mapping is accepted. Market and ticker routing still matter. Historical support is therefore not yet estimated on the same population production tries to trade.
+1. remain provider/broker/order/PAPER/LIVE/support-authority free;
+2. begin no earlier than legitimate intraday/ticker-regime origin **2021-08-16**;
+3. reconstruct PIT universe, 1d/4h/1h discovery foundation/scoring, hysteresis, WARM/HOT direction, market/ticker strategy routing;
+4. keep sector `UNAVAILABLE` unless authoritative historical sector mapping exists;
+5. initially hold incumbent strategy rules and the three-session outcome fixed;
+6. produce an attribution ladder from broad population to production-route-conditioned population;
+7. independently validate the replay population before any support replacement;
+8. never use Phase24 failure results to loosen thresholds.
 
-### Next numbered phase
+If route-fidelity evidence still lacks robust edge, later strategy research should use a separately preregistered materially different family—relative strength, mean reversion, gap/event, volatility-normalized, multi-timeframe, or composite—rather than more v1 threshold tweaks.
 
-After Phase24 merges, DEFINE and LOCK **Phase25 — Historical Production-Path Replay & Route-Fidelity Strategy Evidence**.
+GUI remains monitoring/control only. Scheduler and PostgreSQL promotion remain separate future decisions.
 
-Initial Phase25 objective:
+## 10. Performance baseline
 
-1. no provider/broker/execution/support authority;
-2. preflight legitimate local historical inputs beginning no earlier than **2021-08-16**;
-3. reconstruct the production candidate path point-in-time: universe -> discovery foundation -> multi-timeframe scoring -> state hysteresis -> WARM/HOT direction -> market/ticker routing;
-4. preserve sector `UNAVAILABLE` semantics unless authoritative historical sector mapping exists;
-5. hold incumbent strategy rules and three-session outcome fixed initially;
-6. compare broad-population vs production-path-conditioned strategy evidence with exact attribution;
-7. independently validate the reconstructed population before considering any support replacement or new strategy family.
+Post-Phase19 retained feature evidence: 50,000 rows / 7,454 symbols / 7 sessions; optimized ~4.00265s vs prior ~594.58s; ~148.5x speedup; all 33 features exact parity.
 
-If route-fidelity conditioning still has no robust edge, the next challenger generation should move to materially different signal architectures such as relative strength, mean reversion, gap/event, volatility-normalized, multi-timeframe, or composite strategies.
+## 11. Security/recovery
 
-Do not assume scheduler/PostgreSQL or GUI work is next merely because those remain future goals. GUI may consume stable artifacts when scheduled but remains a monitoring/control surface.
-
-## 11. Performance baseline
-
-Retained post-Phase19 feature evidence:
-
-- 50,000 rows / 7,454 symbols / 7 sessions;
-- optimized batch ~4.00265s / 12,491.74 rows/s;
-- prior pandas baseline ~594.58s / 84.09 rows/s;
-- ~148.5x speedup;
-- all 33 features exact parity.
-
-## 12. Security/recovery
-
-Tracked `.env.example` is non-secret. Never commit API secrets, passwords, security codes, raw broker IDs, tokens, or signed request metadata.
-
-Future startup: inspect `main`, PRs/branches/latest CI; read this file, roadmap, Phase24 doc, Phase23 doc, Phase22/21 authority docs, and phase flow. Continue from section 10 rather than reopening accepted mutations or weakening evidence gates.
+Never commit secrets, raw broker IDs, tokens, signed metadata, passwords, or security codes. Future startup: inspect `main`, open PRs/branches/latest CI; read current status, roadmap, Phase24, Phase23, Phase22/21, and phase flow; continue from section 9 rather than reopening accepted work or weakening evidence gates.
