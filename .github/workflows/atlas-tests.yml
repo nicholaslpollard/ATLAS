@@ -154,5 +154,8 @@ jobs:
       - name: Validate Phase 25 Gate 0 route-fidelity feasibility contracts
         run: python scripts/validate_phase25.py
 
+      - name: Validate Phase 25 Gate 1 PIT reference scope-proof contracts
+        run: python scripts/validate_phase25_gate1.py
+
       - name: Run tests
         run: python -m pytest -q

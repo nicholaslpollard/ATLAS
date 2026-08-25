@@ -1,6 +1,6 @@
 # Phase 25 — Historical Production-Path Replay & Route-Fidelity Strategy Evidence
 
-**Status: ACTIVE / GATE 0 FEASIBILITY INVENTORY**
+**Status: ACTIVE / GATE 1 PIT REFERENCE SCOPE PROOF**
 
 Upstream authority: Phase24 accepted merge `15b77321d4815f9f52fe74d47ba32fee8127526a`; synchronized `main` handoff `71063b510953aca87b253f5b3b0d42954a6abf0a`.
 
@@ -16,13 +16,13 @@ The initial experiment holds incumbent strategy rules and the three-session forw
 
 ## Authority boundary
 
-Phase25 Gate0 and route-fidelity replay are local analytical research only.
+Phase25 Gate0 and Gate1 are local analytical research only.
 
 Allowed:
 
 - read accepted local canonical/reference/universe/feature/discovery/regime/identity artifacts;
 - inventory their PIT coverage and lineage;
-- replay deterministic local universe/discovery/regime/routing semantics when a later gate explicitly permits it;
+- measure provider-native ticker first-seen/reference/identity coverage;
 - write local Phase25 research/validation artifacts.
 
 Forbidden unless a later separately reviewed gate explicitly changes the contract:
@@ -40,7 +40,9 @@ Forbidden unless a later separately reviewed gate explicitly changes the contrac
 - production ML retraining/replacement;
 - Phase11 support replacement;
 - strategy-rule or outcome-definition changes in the initial route-fidelity experiment;
-- fabrication of unavailable pre-origin intraday/ticker context.
+- fabrication of unavailable pre-origin intraday/ticker context;
+- carrying later reference metadata backward and treating it as an authoritative PIT fact;
+- granting support authority to a research-only historical universe proxy.
 
 ## Historical origin lock
 
@@ -85,24 +87,84 @@ Gate0 must distinguish:
 
 It must not call Massive or any broker to fill a gap.
 
-## Gate 0 outputs
+### Accepted Gate0 target evidence — through 2026-08-21
 
-The report must include:
+Exact implementation head: `ce72ce8ee9b8828c07b9059bee0ff90948e8e48f`.
 
-- exact session count and origin/through dates;
-- artifact coverage counts by class;
-- bounded previews of missing sessions;
-- reference-backed universe reconstruction count;
-- sessions with complete local production-path base inputs;
-- contiguous complete/reconstructable replay ranges if any;
-- cumulative market daily-manifest coverage;
-- cumulative ticker 1d/4h/1h feature-manifest coverage;
-- global identity-file availability;
-- explicit blockers and recommended next action;
-- zero provider/broker/order/PAPER/LIVE/support authority counters;
-- deterministic policy/report fingerprint.
+Cross-platform code gate: GitHub Actions run `32807555482`, Ubuntu and Windows both success, including the Phase25 Gate0 validator and full repository regression suite.
 
-## Gate 0 acceptance criteria
+Target-machine report:
+
+- replay origin: 2021-08-16;
+- through session: 2026-08-21;
+- replay sessions: 1,260;
+- cumulative market daily lineage sessions from 2016-01-04: 2,674;
+- canonical 1d: 1,260 / 1,260;
+- derived 4h: 1,260 / 1,260;
+- derived 1h: 1,260 / 1,260;
+- features 1d / 4h / 1h: 1,260 / 1,260 each;
+- feature-manifest triplets: 1,260 / 1,260;
+- cumulative market daily feature lineage: 2,674 / 2,674;
+- identity input files present: true;
+- exact reference snapshot + manifest pairs: 7 / 1,260;
+- exact universe snapshot + manifest pairs: 7 / 1,260;
+- materialized discovery: 6 / 1,260;
+- materialized market-regime pairs: 2 / 1,260;
+- materialized ticker-regime pairs: 2 / 1,260;
+- exact route-fidelity available/replayable sessions under conservative Gate0 rules: 7 / 1,260;
+- 1,253 sessions have neither a materialized PIT universe nor an exact same-session PIT reference snapshot;
+- protected strategy evidence reads: 0;
+- provider reads/writes: 0 / 0;
+- broker reads/writes: 0 / 0;
+- order/PAPER/LIVE writes: 0 / 0 / 0;
+- Phase11 support writes: 0;
+- Gate0 pass: true.
+
+Accepted interpretation: the market-data/feature/regime-history foundation is complete. The exact-replay blocker is PIT reference/universe lineage, not missing price or feature history. Gate1 therefore narrows the problem before any provider authority is considered.
+
+## Gate 1 — provider-free PIT reference / identity scope proof
+
+Gate1 remains **provider-free, return-free, and non-authoritative**. It binds to the passing Gate0 report and reads only local canonical daily bars, local reference snapshots, ticker observations, authoritative ticker intervals, and the instrument registry.
+
+It inventories the historical gap at provider-native ticker level:
+
+- distinct canonical symbols and symbol-session count in replay scope;
+- each symbol's first and last observed trading session;
+- exact first-seen reference observations;
+- prior-or-same reference observations;
+- future-only local reference observations;
+- symbols never observed in any local reference snapshot;
+- distinct instrument identities associated with an exact provider ticker;
+- authoritative ticker-validity-interval coverage at the symbol's first-seen session;
+- local ticker-observation identity multiplicity;
+- consistency of the static classification fields (`market`, `locale`, `primary_exchange`, `security_type`) across available local observations;
+- number and concentration of first-seen dates that lack an exact reference anchor.
+
+Future-only reference observations may be measured but never treated as PIT authority.
+
+A symbol whose local observations bracket its first-seen date and agree on static metadata may be labeled a **bounded invariant metadata proxy candidate**. That label has zero Phase7, Phase11, promotion, PAPER, or LIVE authority. It is only evidence for deciding whether a later screening-only proxy experiment is worth preregistering.
+
+Gate1 explicitly preserves:
+
+- exact provider ticker case;
+- ambiguity quarantine rather than identity guessing;
+- no provider calls;
+- no strategy return reads;
+- no protected evidence reads;
+- no support replacement;
+- no backward-carry authority from a later reference snapshot;
+- exact PIT reference as the requirement for any claim of authoritative Phase7 historical replay.
+
+### Gate1 decision output
+
+Gate1 does **not** choose a provider backfill automatically. It produces the evidence needed for the next decision:
+
+1. if exact first-seen/reference coverage is unexpectedly complete, proceed to exact local reconstruction design;
+2. if the gap is concentrated, preregister the smallest exact reference acquisition scope that could close it;
+3. if exact daily reference reconstruction is impractical but local invariant evidence covers a large core, separately preregister a **non-authoritative screening proxy validation** against the seven exact reference/universe sessions;
+4. if neither path is defensible, Phase25 closes as exact route-fidelity replay infeasible with current sources.
+
+## Gate 0 and Gate 1 acceptance criteria
 
 - provider-free and broker-free by construction;
 - exact exchange-session enumeration;
@@ -111,15 +173,20 @@ The report must include:
 - no strategy returns or protected evidence are read;
 - no support/promotion artifact is modified;
 - missing prerequisites are reported rather than fabricated;
-- focused tests and a static validator pass;
+- future-only metadata never becomes PIT authority;
+- provider-native ticker case is preserved;
+- focused tests and static validators pass;
 - Ubuntu and Windows CI pass;
-- one target-machine inventory run is used only after code-side validation because local analytical artifacts are not stored in GitHub.
+- target-machine inventories are used only after code-side validation because local analytical artifacts are not stored in GitHub.
 
 ## Later gates — provisional sequence
 
-Gate1, only after Gate0 evidence is accepted, may implement a deterministic historical replay dataset over a proven feasible interval. It should replay discovery state sequentially, preserve exact identity and missing-sector semantics, and independently validate lineage/population counts.
+A later gate, only after Gate1 evidence is accepted, may authorize either:
 
-Gate2 may then compare an attribution ladder while holding rules/outcomes fixed:
+- a tightly scoped PIT reference acquisition/reconstruction path; or
+- a clearly non-authoritative proxy-validation experiment whose output cannot replace support.
+
+Only after the historical population itself is accepted may a later gate compare an attribution ladder while holding rules/outcomes fixed:
 
 1. broad historical population;
 2. PIT-universe eligible;
@@ -133,4 +200,4 @@ Any future support-replacement decision requires a separately preregistered evid
 
 ## Non-goals
 
-Phase25 is not a new-strategy-generation phase, model replacement phase, provider acquisition phase, broker/execution phase, GUI phase, scheduler phase, PostgreSQL phase, or LIVE phase.
+Phase25 is not a new-strategy-generation phase, model replacement phase, broker/execution phase, GUI phase, scheduler phase, PostgreSQL phase, or LIVE phase. Gate0/Gate1 are also not provider-acquisition phases.
