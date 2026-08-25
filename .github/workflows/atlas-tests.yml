@@ -142,5 +142,14 @@ jobs:
       - name: Validate Phase 23 operational current analysis cycle contracts
         run: python scripts/validate_phase23.py
 
+      - name: Validate Phase 24 strategy challenger Gate 0 contracts
+        run: python scripts/validate_phase24.py
+
+      - name: Validate Phase 24 Gate 1 preregistration contracts
+        run: python scripts/validate_phase24_gate1.py
+
+      - name: Validate Phase 24 Gate 2 development-only contracts
+        run: python scripts/validate_phase24_gate2.py
+
       - name: Run tests
         run: python -m pytest -q
