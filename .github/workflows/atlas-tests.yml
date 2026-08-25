@@ -166,5 +166,8 @@ jobs:
       - name: Validate Phase 25 Gate 4 entitlement probe contracts
         run: python scripts/validate_phase25_gate4.py
 
+      - name: Validate Phase 25 Gate 5 resumable bulk acquisition contracts
+        run: python scripts/validate_phase25_gate5.py
+
       - name: Run tests
         run: python -m pytest -q
