@@ -172,5 +172,8 @@ jobs:
       - name: Validate Phase 25 Gate 6 discovery reconstruction contracts
         run: python scripts/validate_phase25_gate6.py
 
+      - name: Validate Phase 25 Gate 7 exact-PIT route-context contracts
+        run: python scripts/validate_phase25_gate7.py
+
       - name: Run tests
         run: python -m pytest -q
