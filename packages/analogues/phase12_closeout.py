@@ -18,6 +18,7 @@ from packages.backtesting.phase11_closeout import PHASE11_CLOSEOUT_CONTRACT_VERS
 from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
 from packages.features.partition_store import sha256_file
+from packages.operations.phase23_strategy import PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION
 
 
 PHASE12_CLOSEOUT_CONTRACT_VERSION = (
@@ -91,7 +92,7 @@ class Phase12Closeout:
         research_input = self.input_resolver.resolve(as_of_date)
         if progress is not None:
             progress(
-                f"accepted Phase 11 promotions: {research_input.promoted_count} on {research_input.as_of_date}"
+                f"accepted strategy promotions: {research_input.promoted_count} on {research_input.as_of_date}"
             )
         research = self.engine.run(as_of_date=research_input.as_of_date, progress=progress)
         if research.get("pass") is not True:
@@ -106,14 +107,20 @@ class Phase12Closeout:
             failed = sorted(name for name, value in checks.items() if not value)
             raise Phase12CloseoutError("Phase 12 closeout checks failed: " + ", ".join(failed))
 
-        phase11_payload = json.loads(
+        strategy_payload = json.loads(
             research_input.phase11_acceptance_path.read_text(encoding="utf-8")
         )
-        if phase11_payload.get("contract_version") != PHASE11_CLOSEOUT_CONTRACT_VERSION:
-            raise Phase12CloseoutError("accepted Phase 11 contract changed during closeout")
+        strategy_contract = strategy_payload.get("contract_version")
+        if strategy_contract not in {
+            PHASE11_CLOSEOUT_CONTRACT_VERSION,
+            PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION,
+        }:
+            raise Phase12CloseoutError("accepted strategy-authority contract changed during closeout")
         source_payload = {
             "contract_version": PHASE12_CLOSEOUT_CONTRACT_VERSION,
             "as_of_date": research_input.as_of_date.isoformat(),
+            "strategy_authority_contract_version": strategy_contract,
+            "strategy_authority_sha256": research_input.phase11_acceptance_sha256,
             "phase11_acceptance_sha256": research_input.phase11_acceptance_sha256,
             "research_manifest_sha256": sha256_file(self.engine.manifest_path(research_input.as_of_date)),
             "validation_sha256": sha256_file(self.validator.report_path),
@@ -124,6 +131,8 @@ class Phase12Closeout:
             "generated_at_utc": datetime.now(UTC).isoformat(),
             "source_fingerprint": _stable_hash(source_payload),
             "as_of_date": research_input.as_of_date.isoformat(),
+            "strategy_authority_contract_version": strategy_contract,
+            "strategy_authority_sha256": research_input.phase11_acceptance_sha256,
             "phase11_acceptance_sha256": research_input.phase11_acceptance_sha256,
             "phase12_research_manifest_sha256": source_payload["research_manifest_sha256"],
             "phase12_validation_sha256": source_payload["validation_sha256"],
