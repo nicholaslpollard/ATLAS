@@ -175,23 +175,17 @@ Every meaningful boundary updates as applicable:
 
 Historical phase/fix docs remain provenance rather than current instructions.
 
-## 10. Current application — Phase23 Operational Current Analysis Cycle
+## 10. Current application — Phase23 accepted/merged
 
 Accepted upstream:
 
-- **Phases 1–22 ACCEPTED / MERGED**;
-- synchronized post-Phase22 `main` baseline `dd0d6838d76a15edde0783f471ad7e212453cd94`.
+- **Phases 1–23 ACCEPTED / MERGED**;
+- Phase23 PR #25 merged at `2004338624766c42b5f4db2bb0976b2047a5c6b0`;
+- Phase23 policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`;
+- implementation/repair head `803d43e43e8931f03ba836a23b781a7c3d3ee687`;
+- final pre-merge documentation head `99425a0fa04d2a4faf0b4477343d11434cebd885`.
 
-Current phase:
-
-- Phase23 — Operational Current Analysis Cycle;
-- branch `phase-23-operational-current-analysis-cycle`;
-- PR #25;
-- policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`;
-- validated implementation/repair head before documentation closeout `803d43e43e8931f03ba836a23b781a7c3d3ee687`;
-- state **VALIDATED / TARGET EVIDENCE COMPLETE / MERGE PENDING**.
-
-Phase23 authority:
+Phase23 accepted authority:
 
 - provider-free `prepare`;
 - external read authority, when needed, is **only** `MASSIVE_MARKET_REFERENCE_READS`;
@@ -208,23 +202,24 @@ Phase23 target evidence:
 2. exact market/reference read scope was authorized because finalized source files/snapshots were missing;
 3. first execute failed closed on a real persisted-null deserialization defect (`previous_effective_state=NaN`), not on a provider/broker/strategy threshold issue;
 4. repair normalized only that nullable persisted field and added recovery/completion guards without changing discovery thresholds, hysteresis, support, model, risk, or execution authority;
-5. exact-head cross-platform CI on the repair passed: push run `32802151860`, PR run `32802154831`, **988 tests on each OS**, every validator through Phase23 PASS;
+5. repair-head cross-platform CI passed: push run `32802151860`, PR run `32802154831`, **988 tests on each OS**, every validator through Phase23 PASS;
 6. repaired prepare retained the accepted 2026-08-14 baseline despite partial newer files, found all Massive/reference inputs local, and required no additional external authority;
-7. successful execute advanced Aug 17–21, considered **23 WARM/HOT directional cases**, promoted **0**, produced zero Phase12/13/14/Phase22-ready cases, recorded zero broker/order/PAPER/LIVE writes, and passed independent persisted validation.
+7. successful execute advanced Aug 17–21, considered **23 WARM/HOT directional cases**, promoted **0**, produced zero Phase12/13/14/Phase22-ready cases, recorded zero broker/order/PAPER/LIVE writes, and passed independent persisted validation;
+8. final docs-head CI `32803119880` passed **988 tests on Ubuntu and Windows**; Windows completed in 33.87s;
+9. PR #25 was marked ready and merged at `2004338624766c42b5f4db2bb0976b2047a5c6b0`.
 
 The zero-promotion result is accepted evidence. The frozen Phase11 support state has **0 SUPPORTED strategies**. No threshold or support class is to be relaxed merely to obtain activity.
 
-Current completion sequence:
+## 11. Next-phase boundary
 
-1. synchronize Phase23 living docs and PR evidence;
-2. run final Ubuntu/Windows CI on the documentation head;
-3. mark PR #25 ready and merge if green;
-4. verify authoritative `main` and record the merge SHA;
-5. audit the merged current evidence;
-6. define/lock the next numbered phase.
+No Phase24 scope is accepted yet.
 
-The likely next substantive analytical target is a formal **strategy challenger/support-replacement** phase, because Phase23 proves current data/orchestration works and the frozen zero-SUPPORTED strategy gate is now the principal exposed bottleneck. That conclusion must still be confirmed by the post-merge audit and must never be implemented by simply weakening thresholds.
+Before substantive next-phase implementation:
 
-GUI work may consume stable Phase23 artifacts when scheduled, but the browser remains a monitoring/control surface with no execution authority.
+1. audit authoritative merged Phase23 code/artifacts and the 2026-08-21 current strategy rejection evidence;
+2. verify no higher-priority correctness/data-integrity blocker remains;
+3. if the frozen zero-SUPPORTED set remains the principal blocker, DEFINE and LOCK a formal strategy challenger/support-replacement phase using preregistered historical/current out-of-sample evidence;
+4. do not lower thresholds or reclassify MIXED strategies merely to create trades;
+5. preserve Phase21/22 PAPER authority, Phase13/14 independence, LIVE disablement, and no automatic broker failover.
 
-LIVE remains disabled. Automatic broker failover remains disabled. Scheduler and PostgreSQL runtime promotion remain separate future authority decisions.
+GUI work may consume stable Phase23 artifacts when scheduled, but the browser remains a monitoring/control surface with no execution authority. Scheduler and PostgreSQL runtime promotion remain separate future authority decisions.

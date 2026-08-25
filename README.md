@@ -10,7 +10,7 @@ For a future development session, read in this order:
 
 1. [`docs/current_status.md`](docs/current_status.md) — exact current handoff and continuation.
 2. [`docs/roadmap.md`](docs/roadmap.md) — architecture, phase ledger, data/safety rules, and authority boundaries.
-3. [`docs/phase23_operational_current_analysis_cycle.md`](docs/phase23_operational_current_analysis_cycle.md) — current finalized-session analytical operator and Phase23 evidence.
+3. [`docs/phase23_operational_current_analysis_cycle.md`](docs/phase23_operational_current_analysis_cycle.md) — accepted current finalized-session analytical operator and Phase23 evidence.
 4. [`docs/phase22_operational_paper_runner.md`](docs/phase22_operational_paper_runner.md) — accepted routine Webull-primary PAPER operator contract.
 5. [`docs/phase21_unified_paper_execution_authority.md`](docs/phase21_unified_paper_execution_authority.md) — accepted centralized PAPER-submit authority.
 6. [`docs/phase20_run_orchestration.md`](docs/phase20_run_orchestration.md) — accepted provider-free deterministic orchestration contract.
@@ -39,7 +39,7 @@ Core roles:
 - **Phase20** — deterministic local orchestration only; no provider/broker/scheduler/LIVE authority.
 - **Phase21** — centralized default-deny authority for every new real PAPER provider submit.
 - **Phase22** — routine Webull-primary PAPER operator binding over accepted Phase15 + Phase21 authority.
-- **Phase23** — routine explicit-finalized-session analytical cycle; provider-free prepare, narrowly authorized Massive market/reference reads only when missing, and no broker/PAPER execution.
+- **Phase23** — accepted routine explicit-finalized-session analytical cycle; provider-free prepare, narrowly authorized Massive market/reference reads only when missing, and no broker/PAPER execution.
 
 ## Strategic anti-drift anchor
 
@@ -55,21 +55,14 @@ Credentials, endpoints, connected accounts, passing tests, locally present artif
 
 ## Current state — 2026-08-24
 
-Accepted/merged numbered work on the upstream baseline:
+- **Phases 1–23 ACCEPTED / MERGED.**
+- Phase23 PR #25 merged at `2004338624766c42b5f4db2bb0976b2047a5c6b0`.
+- Phase23 policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`.
+- Phase23 implementation/repair head `803d43e43e8931f03ba836a23b781a7c3d3ee687`.
+- Phase23 final documentation head before merge `99425a0fa04d2a4faf0b4477343d11434cebd885`.
+- **Next numbered phase is not yet locked.**
 
-- **Phases 1–22 ACCEPTED / MERGED.**
-- post-Phase22 synchronized `main`: `dd0d6838d76a15edde0783f471ad7e212453cd94`.
-
-Current work:
-
-- **Phase23 — Operational Current Analysis Cycle**;
-- branch `phase-23-operational-current-analysis-cycle`;
-- PR #25;
-- policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`;
-- validated implementation/repair head before documentation closeout `803d43e43e8931f03ba836a23b781a7c3d3ee687`;
-- state **VALIDATED / TARGET EVIDENCE COMPLETE / MERGE PENDING**.
-
-### Phase23 target result
+### Phase23 accepted target result
 
 ATLAS successfully ran a finalized current analytical cycle through **2026-08-21** from the accepted **2026-08-14** baseline.
 
@@ -80,11 +73,12 @@ The first authorized attempt exposed a real local persisted-null deserialization
 - prevented partial failed discovery artifacts from becoming an accepted baseline;
 - added exact market-session/entitlement and feature-checkpoint completion guards.
 
-Repair-head CI:
+Validation:
 
-- push run `32802151860`: Ubuntu/Windows SUCCESS;
-- PR run `32802154831`: Ubuntu/Windows SUCCESS;
-- **988 tests passed on each OS**;
+- repair push run `32802151860`: Ubuntu/Windows SUCCESS;
+- repair PR run `32802154831`: Ubuntu/Windows SUCCESS;
+- repair head: **988 tests passed on each OS**;
+- final docs-head run `32803119880`: Ubuntu **988 passed**, Windows **988 passed in 33.87s**;
 - every validator through Phase23 PASS.
 
 Final repaired target run:
@@ -166,7 +160,7 @@ Accepted Phase22 target prepare on 2026-08-14 found 0 execution cases and return
 
 ### Phase23
 
-`scripts/run_phase23_analysis.py` supplies the routine current finalized analytical operator:
+`scripts/run_phase23_analysis.py` supplies the accepted routine current finalized analytical operator:
 
 - provider-free `prepare`;
 - explicit prior finalized `as_of`;
@@ -208,14 +202,9 @@ Never commit or print API secrets, passwords, security codes, raw broker IDs, to
 
 ## Exact continuation point
 
-1. Complete Phase23 documentation synchronization on PR #25.
-2. Run final Ubuntu/Windows CI on the documentation head.
-3. If green, mark PR #25 ready/accepted and merge Phase23 to `main`.
-4. Verify authoritative `main` and record the merge SHA.
-5. Audit the merged 2026-08-21 discovery/regime/ML/current-strategy evidence.
-6. Define/lock the next numbered phase from that evidence.
+Phase23 is accepted/merged. Before defining Phase24, audit authoritative `main` and the merged 2026-08-21 discovery/regime/ML/current-strategy evidence and rejection reasons.
 
-The current principal analytical bottleneck is the frozen **0-SUPPORTED strategy set**. The likely next substantive analytical phase is a preregistered strategy challenger/support-replacement process; it must improve evidence legitimately rather than relax gates merely to create trades.
+The principal analytical bottleneck currently exposed is the frozen **0-SUPPORTED strategy set**. Unless the audit identifies a higher-priority correctness issue, the likely next substantive analytical phase is a preregistered strategy challenger/support-replacement process. It must improve evidence legitimately rather than relax gates merely to create trades.
 
 GUI development can consume the stable Phase23 current-artifact surface when scheduled, but the browser remains a monitoring/control plane and cannot create trading authority.
 

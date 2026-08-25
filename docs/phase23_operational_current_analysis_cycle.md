@@ -1,14 +1,18 @@
 # Phase 23 — Operational Current Analysis Cycle
 
-**Status: VALIDATED / TARGET EVIDENCE COMPLETE / MERGE PENDING**
+**Status: ACCEPTED / MERGED**
 
 Upstream baseline: `dd0d6838d76a15edde0783f471ad7e212453cd94` (post-Phase22 synchronized `main`).
 
-Final validated implementation head before documentation closeout: `803d43e43e8931f03ba836a23b781a7c3d3ee687`.
+Accepted implementation/repair head: `803d43e43e8931f03ba836a23b781a7c3d3ee687`.
 
-Phase23 closes the smallest operational gap exposed after accepted Phase22: ATLAS had accepted production primitives for market-data acquisition, canonicalization, features, universe, discovery, regimes, ML probabilities, deterministic strategy routing, promoted research, Phase13 planning/risk, Phase14 AI audit, and Phase22 PAPER execution, but it did not have one routine operator path that advances a **new finalized market session** through the analytical chain.
+Final pre-merge documentation head: `99425a0fa04d2a4faf0b4477343d11434cebd885`.
 
-Phase23 creates that current-session analytical binding. It stops before PAPER order execution. Phase22 remains the only routine PAPER operator entrypoint.
+Accepted merge: **`2004338624766c42b5f4db2bb0976b2047a5c6b0`** through PR #25.
+
+Phase23 closes the operational gap exposed after accepted Phase22: ATLAS had accepted production primitives for market-data acquisition, canonicalization, features, universe, discovery, regimes, ML probabilities, deterministic strategy routing, promoted research, Phase13 planning/risk, Phase14 AI audit, and Phase22 PAPER execution, but did not have one routine operator path that advances a **new finalized market session** through the analytical chain.
+
+Phase23 creates that current-session analytical binding and stops before PAPER order execution. Phase22 remains the only routine PAPER operator entrypoint.
 
 ## 1. Purpose
 
@@ -30,7 +34,7 @@ Repository audit after Phase22 established that:
 - Phase20 orchestration is intentionally provider-free and **must not** be expanded to provider work;
 - Phase22 consumes accepted Phase15 input but cannot create missing upstream current analytical evidence;
 - Phase11 historical support evidence is frozen and should be verified/reused rather than expensively recomputed during routine runs;
-- Phase15's cumulative foundation is frozen at `2026-08-14`, so later current evidence requires a separate hash-bound extension instead of pretending the original cumulative audit covers future sessions.
+- Phase15's cumulative foundation is frozen at `2026-08-14`, so later current evidence requires a separate hash-bound extension rather than pretending the original cumulative audit covers future sessions.
 
 ## 3. Locked authority boundary — Phase23 v2
 
@@ -44,7 +48,7 @@ That is the complete Phase23 external authority.
 
 ### Why downstream external scopes are absent
 
-Accepted Phase11 support contains **zero SUPPORTED strategies**. Under the accepted promotion contract, this means Phase23 cannot produce promoted research candidates. Therefore:
+Accepted Phase11 support contains **zero SUPPORTED strategies**. Under the accepted promotion contract, Phase23 cannot produce promoted research candidates. Therefore:
 
 - Phase12 remains a promoted-only no-op;
 - Phase13 performs no news/options/portfolio reads;
@@ -223,7 +227,7 @@ Phase23 remains separate from Phase20's provider-free stage registry. Each run c
 
 ## 14. Validation evidence
 
-Final repair head:
+Repair head:
 
 `803d43e43e8931f03ba836a23b781a7c3d3ee687`
 
@@ -237,6 +241,13 @@ Cross-platform repository validation on that head:
 - Phase23 policy fingerprint reproduced exactly: `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`;
 - exactly one raw `adapter.submit(plan)` remains under `packages/`, in `packages/execution/engine.py`;
 - repository validation performs zero real provider/broker/AI calls and zero broker/order writes.
+
+Final pre-merge documentation-head CI:
+
+- workflow run `32803119880`;
+- Ubuntu: **988 passed**;
+- Windows: **988 passed in 33.87s**;
+- every validator through Phase23 PASS.
 
 Independent Phase23 validation contract:
 
@@ -311,9 +322,9 @@ Persisted target evidence:
 
 The zero-promotion result is accepted evidence, not a failure. Twenty-three current directional WARM/HOT cases were evaluated, but none could pass the frozen historical-support gate because accepted Phase11 contains zero SUPPORTED strategies.
 
-## 16. Exit criteria disposition
+## 16. Acceptance disposition
 
-Phase23 exit criteria are satisfied by the implementation/evidence above, subject only to the normal documentation-head CI and merge procedure:
+Phase23 exit criteria are satisfied:
 
 - routine finalized-session operator path: PASS;
 - provider-free preparation: PASS;
@@ -329,7 +340,9 @@ Phase23 exit criteria are satisfied by the implementation/evidence above, subjec
 - local writes distinguished from external mutations: PASS;
 - full Ubuntu/Windows CI: PASS;
 - target-machine evidence: PASS;
-- provider/broker/order/PAPER/LIVE mutations: **0**.
+- provider/broker/order/PAPER/LIVE mutations: **0**;
+- PR #25: READY then MERGED;
+- authoritative merge: **`2004338624766c42b5f4db2bb0976b2047a5c6b0`**.
 
 ## 17. Non-goals retained
 
@@ -337,10 +350,10 @@ Phase23 does not improve or replace the model, redesign strategy rules, promote 
 
 ## 18. Post-Phase23 selection boundary
 
-After Phase23 is merged, the current evidence should drive the next explicit phase definition.
+Phase23 is authoritative on `main`. The next numbered phase is not yet locked.
 
-The primary analytical bottleneck now exposed is the frozen Phase11 support state: **0 SUPPORTED strategies**. That gate correctly blocks all expensive downstream research, Phase13/14 cases, and Phase22 execution cases despite 23 current WARM/HOT directional cases on 2026-08-21.
+The primary analytical bottleneck exposed by accepted current evidence is the frozen Phase11 support state: **0 SUPPORTED strategies**. That gate correctly blocks all expensive downstream research, Phase13/14 cases, and Phase22 execution cases despite 23 current WARM/HOT directional cases on 2026-08-21.
 
-The likely next substantive analytical phase is therefore an evidence-driven **strategy challenger / strategy-support replacement process** using current and historical out-of-sample evidence. It must not lower existing thresholds merely to create activity. GUI development may consume the stable Phase23 current-artifact contracts, but browser work remains a monitoring/control surface and cannot replace the strategy-evidence bottleneck or acquire execution authority.
+The next step is an authoritative-main audit of the current discovery/regime/ML/current-strategy artifacts and exact rejection reasons. If no higher-priority correctness issue is found, the likely next substantive analytical phase is an evidence-driven **strategy challenger / strategy-support replacement process** using preregistered historical/current out-of-sample evidence. It must not lower existing thresholds merely to create activity.
 
-The exact next phase is defined only after authoritative `main` contains Phase23 and a merged-code audit confirms that no higher-priority correctness blocker exists.
+GUI development may consume the stable Phase23 current-artifact contracts when scheduled, but browser work remains a monitoring/control surface and cannot replace the strategy-evidence bottleneck or acquire execution authority.
