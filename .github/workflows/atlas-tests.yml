@@ -160,5 +160,8 @@ jobs:
       - name: Validate Phase 25 Gate 2 active-only PIT equivalence contracts
         run: python scripts/validate_phase25_gate2.py
 
+      - name: Validate Phase 25 Gate 3 acquisition preregistration contracts
+        run: python scripts/validate_phase25_gate3.py
+
       - name: Run tests
         run: python -m pytest -q
