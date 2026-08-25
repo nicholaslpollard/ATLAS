@@ -23,6 +23,7 @@ from packages.operations.phase23_policy import (
     phase23_policy_payload,
 )
 from packages.operations.phase23_strategy import PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION
+from packages.operations.phase23_validation import PHASE23_INDEPENDENT_VALIDATION_CONTRACT_VERSION
 from packages.schemas.execution import BrokerName
 
 
@@ -66,6 +67,7 @@ def main() -> None:
     current_run = _text("packages/operations/phase23_current_run.py")
     handoff = _text("packages/operations/phase23_handoff.py")
     strategy = _text("packages/operations/phase23_strategy.py")
+    persisted_validation = _text("packages/operations/phase23_validation.py")
     phase12_source = _text("packages/analogues/source.py")
     phase12_closeout = _text("packages/analogues/phase12_closeout.py")
     phase15_source = _text("packages/execution/phase15_source.py")
@@ -80,6 +82,18 @@ def main() -> None:
         and "requested post-Phase11 date requires an accepted Phase 23 current-strategy handoff"
         in phase12_source
         and "PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION" in phase12_closeout
+    )
+    persisted_validator_is_readonly = all(
+        token not in persisted_validation
+        for token in (
+            ".submit(",
+            ".cancel(",
+            ".close_position(",
+            "MassiveRESTClient(",
+            "WebullSandboxBroker(",
+            "AlpacaPaperBroker(",
+            "Phase14AuditEngine(",
+        )
     )
     checks = {
         "policy_fingerprint_present": len(phase23_policy_fingerprint()) == 64,
@@ -140,6 +154,11 @@ def main() -> None:
         "phase15_requires_phase23_extension_after_frozen_endpoint": "Phase23AnalysisHandoffStore"
         in phase15_source
         and "phase23_handoff" in phase15_source,
+        "independent_persisted_validator_contract_present": PHASE23_INDEPENDENT_VALIDATION_CONTRACT_VERSION
+        in persisted_validation,
+        "independent_persisted_validator_readonly": persisted_validator_is_readonly,
+        "cli_runs_independent_validation_after_execute": "Phase23RunIndependentValidator(settings).run("
+        in cli,
         "cli_prepare_execute_only": 'choices=("prepare", "execute")' in cli,
         "cli_confirmation_not_shell_argument": "--confirmation" not in cli and "input(" in cli,
         "cli_no_arbitrary_trade_inputs": all(
@@ -151,6 +170,7 @@ def main() -> None:
     print(f"Phase 23 policy fingerprint: {phase23_policy_fingerprint()}")
     print(f"Phase 23 current strategy handoff: {PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION}")
     print(f"Phase 23 analysis handoff: {PHASE23_ANALYSIS_HANDOFF_CONTRACT_VERSION}")
+    print(f"Phase 23 independent validation: {PHASE23_INDEPENDENT_VALIDATION_CONTRACT_VERSION}")
     print(f"Phase 23 raw adapter.submit(plan) sites: {raw_submit_sites}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
