@@ -74,6 +74,13 @@ def main() -> None:
     raw_submit_sites = _raw_submit_sites()
 
     forbidden_phase23_mutation_calls = {"submit", "cancel", "close_position", "replace_order"}
+    phase12_uses_phase23_handoff = (
+        "Phase23CurrentStrategyHandoffStore" in phase12_source
+        and "self.phase23_strategy.resolve(as_of_date)" in phase12_source
+        and "requested post-Phase11 date requires an accepted Phase 23 current-strategy handoff"
+        in phase12_source
+        and "PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION" in phase12_closeout
+    )
     checks = {
         "policy_fingerprint_present": len(phase23_policy_fingerprint()) == 64,
         "webull_primary": PHASE23_DEFAULT_BROKER == BrokerName.WEBULL,
@@ -129,9 +136,7 @@ def main() -> None:
         "strategy_handoff_contract_present": PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION
         in strategy,
         "analysis_handoff_contract_present": PHASE23_ANALYSIS_HANDOFF_CONTRACT_VERSION in handoff,
-        "phase12_accepts_phase23_strategy_authority": "PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION"
-        in phase12_source
-        and "PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION" in phase12_closeout,
+        "phase12_accepts_phase23_strategy_authority": phase12_uses_phase23_handoff,
         "phase15_requires_phase23_extension_after_frozen_endpoint": "Phase23AnalysisHandoffStore"
         in phase15_source
         and "phase23_handoff" in phase15_source,
