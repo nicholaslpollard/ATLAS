@@ -1,6 +1,6 @@
 # Phase 24 — Strategy Evidence Challenger & Support Replacement
 
-**Status: ACTIVE / GATE 0 DIAGNOSTIC**
+**Status: ACTIVE / GATE 0 EVIDENCE COMPLETE / GATE 1 PREREGISTRATION LOCKED**
 
 Upstream authority: Phase23 accepted merge `2004338624766c42b5f4db2bb0976b2047a5c6b0`; synchronized `main` handoff `8fa832decc2f1be7762373f8ba4cc05a38b8404a`.
 
@@ -24,13 +24,13 @@ The authoritative-main audit established that Phase11 support v1 is intentionall
 - any nonempty slice is considered sufficient; there is no stronger minimum sample-size rule;
 - yearly and market-regime distributions are computed but do not participate in support classification;
 - the existing protected confirmation interval cannot change support classification;
-- under zero SUPPORTED strategies, current promotion skips strategy-rule evaluation for MIXED/UNSUPPORTED routes, so the 23 Phase23 cases do not tell us whether incumbent rules would currently fire.
+- under zero SUPPORTED strategies, current promotion skips strategy-rule evaluation for MIXED/UNSUPPORTED routes.
 
 This is a valid conservative v1 gate, but it is not a sufficient evidence framework for selecting a better production strategy set.
 
 ## Authority boundary
 
-Phase24 Gate 0 and challenger research are **local analytical work only**.
+Phase24 research is **local analytical work only** unless a later explicitly reviewed gate changes this contract.
 
 Allowed:
 
@@ -55,38 +55,80 @@ Forbidden unless a later Phase24 gate explicitly changes this contract after sep
 - changing Phase23 frozen support or promotion authority before Phase24 acceptance;
 - using current or protected results to silently tune thresholds after results are seen.
 
-## Gate 0 — forensic evidence diagnostic
+## Gate 0 — forensic evidence diagnostic — COMPLETE
 
-Before challenger variants or replacement thresholds are selected, produce a provider-free report that binds:
+Gate 0 produced a provider-free report binding:
 
 1. accepted Phase11 support decisions with development/half sample sizes and means;
-2. the exact Phase11 v1 policy and strategy-registry fingerprints;
+2. exact Phase11 study/support-policy/strategy-registry lineage;
 3. the accepted Phase23 2026-08-21 current candidate population;
-4. a **counterfactual diagnostic** that evaluates currently routed incumbent strategy rules even when their Phase11 status is MIXED/UNSUPPORTED.
+4. a non-authoritative counterfactual evaluation of currently routed incumbent rules even when their Phase11 status is MIXED/UNSUPPORTED.
 
-The counterfactual diagnostic is non-authoritative. It may answer questions such as “would this existing rule fire now if historical support were ignored?”, but it cannot promote a candidate, change support, or create a trade.
+### Accepted target-machine result
 
-Gate 0 deliberately does not use existing protected-confirmation results to select challenger rules.
+Finalized `2026-08-21` Gate 0 evidence:
 
-## Challenger process lock
+- accepted current WARM/HOT directional cases: **23**;
+- accepted authoritative promotions: **0**;
+- counterfactual eligible route evaluations: **92**;
+- counterfactual incumbent rule fires: **48**;
+- candidates with at least one counterfactual fire: **21**;
+- support status counts: **3 MIXED / 5 UNSUPPORTED / 0 SUPPORTED**;
+- provider reads/writes: **0 / 0**;
+- broker reads/writes: **0 / 0**;
+- order/PAPER/LIVE writes: **0 / 0 / 0**;
+- Phase11 support writes: **0**;
+- pass: **true**.
 
-After Gate 0 evidence is accepted, Phase24 will preregister the challenger search space and acceptance metrics before evaluating any challenger on protected evidence.
+This establishes that current zero promotion is not because incumbent setup logic is dormant. Existing rules fire frequently on current routed cases, but no incumbent has earned historically stable support under the frozen v1 authority.
 
-Required properties of the replacement evidence framework:
+The current Gate 0 results are **descriptive only** and may not be used to select or tune challengers.
 
-- development-only strategy/parameter selection;
-- explicit minimum effective sample-size requirements stronger than `rows > 0`;
-- chronological robustness beyond one two-half split;
-- year/regime diagnostics incorporated into acceptance or explicit robustness gates rather than collected and ignored;
-- realistic 10 bps primary cost with 25 bps stress evidence;
-- distribution/tail and uncertainty evidence, not mean sign alone;
-- controls for repeated correlated observations and overlapping three-session outcomes;
-- one-shot protected evaluation for newly preregistered challengers;
-- incumbent strategies evaluated under the same v2 framework for an apples-to-apples benchmark;
-- no support replacement unless independent validation reproduces the result exactly;
-- zero SUPPORTED strategies remains a valid final outcome if no challenger earns support.
+## Gate 1 — preregistered challenger methodology — LOCKED
 
-The existing Phase11 protected-confirmation results for incumbent v1 strategies are considered already observed and cannot be treated as fresh evidence for tuning those incumbents. Challenger handling of protected evidence must be explicitly preregistered before first evaluation.
+Gate 1 freezes the v2 research methodology **before any challenger is evaluated on protected evidence**.
+
+Canonical methodology document:
+
+`docs/phase24_gate1_preregistered_methodology.md`
+
+Code lock:
+
+`packages/backtesting/phase24_gate1_policy.py`
+
+Gate 1 requires:
+
+- development-only search and ranking;
+- chronological 75% selection / purged internal-validation split;
+- three-session purge at the split;
+- six chronological selection folds;
+- session-level dependence handling for same-day cross-sectional signals;
+- six-session moving/block bootstrap for three-session outcomes;
+- minimum raw-row and unique-signal-session requirements;
+- 10 bps primary and 25 bps stress costs;
+- positive mean, median, positive-rate and uncertainty evidence;
+- yearly and market-regime robustness gates;
+- Holm-Bonferroni multiplicity control within family/direction;
+- at most one selected finalist per family/direction before internal validation;
+- a bounded set of exactly **28 new v2 challenger variants** using only already accepted features/rules;
+- zero protected-evidence reads during Gate 1;
+- current Gate 0 evidence excluded from selection;
+- incumbent protected evidence treated as already observed/contaminated, never fresh;
+- Phase11 support authority unchanged.
+
+## Gate 2 — development-only challenger evaluation — NEXT
+
+Gate 2 may implement and execute the selection/internal-validation engine exactly against the locked Gate 1 fingerprint.
+
+Gate 2 may not:
+
+- alter the Gate 1 search space after seeing performance;
+- use Gate 0 current firing results for selection;
+- read protected evidence before the fresh finalist set is frozen;
+- promote a strategy or replace Phase11 support;
+- create provider/broker/order/PAPER/LIVE authority.
+
+If no challenger survives selection/internal validation, that is a valid result and the protected interval remains untouched.
 
 ## Promotion and downstream boundary
 
@@ -97,17 +139,6 @@ Until a Phase24 final acceptance explicitly replaces the support authority:
 - Phase12/13/14 remain zero-path when no candidate is legitimately promoted;
 - Phase21/22 remain the only PAPER authority/operator path;
 - no Phase24 research artifact is an order or execution case.
-
-## Gate 0 acceptance criteria
-
-- diagnostic is provider/broker/AI/execution free;
-- exact accepted Phase11 and Phase23 lineage is validated before reading evidence;
-- no protected-confirmation metric is used to choose or modify a challenger;
-- current counterfactual strategy firing is clearly labeled diagnostic/non-authoritative;
-- no production support/promotion files are modified;
-- focused tests and an independent static validator pass;
-- Ubuntu and Windows CI pass at the Gate 0 evidence boundary;
-- target-machine diagnostic is run once only because the accepted Phase11/Phase23 artifacts are local and not tracked in GitHub.
 
 ## Non-goals
 
