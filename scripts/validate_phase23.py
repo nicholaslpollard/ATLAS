@@ -42,7 +42,8 @@ def _raw_submit_sites() -> list[str]:
     for path in sorted((PROJECT_ROOT / "packages").rglob("*.py")):
         text = path.read_text(encoding="utf-8")
         if needle in text:
-            sites.extend([str(path.relative_to(PROJECT_ROOT))] * text.count(needle))
+            relative = path.relative_to(PROJECT_ROOT).as_posix()
+            sites.extend([relative] * text.count(needle))
     return sites
 
 
