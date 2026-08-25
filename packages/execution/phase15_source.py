@@ -25,13 +25,18 @@ from packages.execution.phase15_foundation import (
     Phase15CumulativeFoundationResolver,
 )
 from packages.features.partition_store import sha256_file
+from packages.operations.phase23_handoff import (
+    Phase23AnalysisHandoffBinding,
+    Phase23AnalysisHandoffStore,
+    Phase23HandoffError,
+)
 from packages.schemas.ai_review import AIReviewRecord, AlertArtifactRecord
 from packages.schemas.case_file import Phase13CaseFile
 from packages.schemas.deep_research import DeepResearchCase
 
 
 PHASE15_INPUT_CONTRACT_VERSION = (
-    "phase15-input-v2-cumulative-foundation-plus-accepted-phase14-immutable-phase13-lineage"
+    "phase15-input-v3-cumulative-foundation-plus-phase23-current-extension-plus-accepted-phase14"
 )
 
 
@@ -62,6 +67,7 @@ class Phase15ExecutionInput:
     source_fingerprint: str
     as_of_date: date
     cumulative_foundation: Phase15CumulativeFoundationBinding
+    phase23_handoff: Phase23AnalysisHandoffBinding | None
     phase14_acceptance_path: Path
     phase14_acceptance_sha256: str
     phase14_manifest_path: Path
@@ -89,6 +95,7 @@ class Phase15ExecutionInput:
             "source_fingerprint": self.source_fingerprint,
             "as_of_date": self.as_of_date.isoformat(),
             "cumulative_foundation": self.cumulative_foundation.public_dict(),
+            "phase23_handoff": None if self.phase23_handoff is None else self.phase23_handoff.public_dict(),
             "phase14_acceptance_path": str(self.phase14_acceptance_path.resolve()),
             "phase14_acceptance_sha256": self.phase14_acceptance_sha256,
             "phase14_manifest_path": str(self.phase14_manifest_path.resolve()),
@@ -104,7 +111,13 @@ class Phase15ExecutionInput:
 
 
 class Phase15ExecutionInputResolver:
-    """Resolve execution inputs only from accepted cumulative and Phase 14 authority."""
+    """Resolve execution inputs from the frozen cumulative baseline plus accepted current lineage.
+
+    The original Phase 15 acceptance remains valid at its frozen 2026-08-14 endpoint. A
+    later accepted date is permitted only when an exact Phase 23 current-analysis handoff
+    extends that same immutable cumulative foundation and binds the current Phase 14
+    acceptance. This does not rerun or rewrite the cumulative acceptance itself.
+    """
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
@@ -113,6 +126,7 @@ class Phase15ExecutionInputResolver:
         self.engine = Phase14AuditEngine(settings)
         self.validator = Phase14IndependentValidator(settings)
         self.phase14_input = Phase14ReviewInputResolver(settings)
+        self.phase23_handoffs = Phase23AnalysisHandoffStore(settings)
 
     def resolve(self, as_of_date: date | None = None) -> Phase15ExecutionInput:
         try:
@@ -138,8 +152,22 @@ class Phase15ExecutionInputResolver:
         accepted_date = date.fromisoformat(str(acceptance["as_of_date"]))
         if as_of_date is not None and as_of_date != accepted_date:
             raise Phase15InputError("requested Phase 15 date differs from accepted Phase 14 date")
-        if accepted_date != cumulative.history_end:
-            raise Phase15InputError("Phase 14 accepted date differs from cumulative foundation endpoint")
+        if accepted_date < cumulative.history_end:
+            raise Phase15InputError("Phase 14 accepted date predates the cumulative foundation endpoint")
+
+        phase14_acceptance_sha = sha256_file(self.closeout.report_path)
+        phase23_handoff: Phase23AnalysisHandoffBinding | None = None
+        if accepted_date > cumulative.history_end:
+            try:
+                phase23_handoff = self.phase23_handoffs.resolve(
+                    as_of_date=accepted_date,
+                    cumulative=cumulative,
+                    expected_phase14_acceptance_sha256=phase14_acceptance_sha,
+                )
+            except Phase23HandoffError as exc:
+                raise Phase15InputError(
+                    "post-foundation Phase 15 input requires an accepted Phase 23 current-analysis handoff"
+                ) from exc
 
         manifest_path = self.engine.manifest_path(accepted_date)
         manifest = _read_json(manifest_path, "Phase 14 manifest")
@@ -233,13 +261,14 @@ class Phase15ExecutionInputResolver:
             if manifest.get("provider_initialized") is not False or int(manifest.get("provider_calls", -1)) != 0:
                 raise Phase15InputError("zero-review Phase 14 unexpectedly initialized/called AI provider")
 
-        phase14_acceptance_sha = sha256_file(self.closeout.report_path)
         source_payload = {
             "contract_version": PHASE15_INPUT_CONTRACT_VERSION,
             "as_of_date": accepted_date.isoformat(),
             "cumulative_foundation_fingerprint": cumulative.foundation_fingerprint,
             "cumulative_acceptance_sha256": cumulative.acceptance_sha256,
             "cumulative_validation_sha256": cumulative.validation_sha256,
+            "phase23_handoff_fingerprint": None if phase23_handoff is None else phase23_handoff.source_fingerprint,
+            "phase23_handoff_sha256": None if phase23_handoff is None else phase23_handoff.sha256,
             "phase14_acceptance_sha256": phase14_acceptance_sha,
             "phase14_manifest_sha256": manifest_sha,
             "phase14_validation_sha256": validation_sha,
@@ -252,6 +281,7 @@ class Phase15ExecutionInputResolver:
             source_fingerprint=_stable_hash(source_payload),
             as_of_date=accepted_date,
             cumulative_foundation=cumulative,
+            phase23_handoff=phase23_handoff,
             phase14_acceptance_path=self.closeout.report_path,
             phase14_acceptance_sha256=phase14_acceptance_sha,
             phase14_manifest_path=manifest_path,

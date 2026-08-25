@@ -12,16 +12,16 @@ ATLAS advances by explicit numbered phases:
 
 The flow is a control framework, not a requirement to stop after every arrow. When a phase is sufficiently defined and no authority/external checkpoint interrupts it, implement the largest coherent batch and validate at the meaningful evidence boundary.
 
-No credential, endpoint, connected account, implementation detail, prior success, available adapter, or passing CI silently expands provider, broker, automation, or LIVE authority.
+No credential, endpoint, connected account, implementation detail, prior success, available adapter, local file, or passing CI silently expands provider, broker, automation, or LIVE authority.
 
 ## 2. Phase states
 
 - **PLANNED** — rough roadmap position known; implementation not started.
-- **STACKED_PREP** — next-phase work developed on a merge-blocked stacked branch while current phase is waiting on a genuine external condition.
+- **STACKED_PREP** — next-phase work developed on a merge-blocked stacked branch while current phase waits on a genuine external condition.
 - **ACTIVE** — scope/authority locked and implementation/evidence work underway.
 - **WAITING_EXTERNAL** — software is ready but acceptance requires market/provider/target-machine/user-authority evidence.
 - **BLOCKED** — a defect, missing prerequisite, or unresolved authority/data issue prevents progress.
-- **VALIDATED / MERGE PENDING** — implementation and its primary evidence boundary are green; documentation/final exact-head acceptance/merge work remains.
+- **VALIDATED / MERGE PENDING** — implementation and required evidence are green; documentation/final exact-head acceptance/merge work remains.
 - **ACCEPTED** — all implementation, validation, target evidence, documentation, and negative-path criteria are satisfied.
 - **MERGED** — accepted phase is merged to `main`.
 
@@ -31,14 +31,14 @@ Unnumbered maintenance/stabilization may occur between merged phases only when i
 
 When the current merge-authoritative phase is `WAITING_EXTERNAL`, independent next-phase preparation may proceed only if:
 
-1. current blocking condition is genuinely external rather than unfinished software;
-2. stacked branch is based on current phase head;
-3. stacked PR targets current phase branch, not `main`;
-4. stacked PR remains draft/merge-blocked;
-5. stacked work does not change/bypass current provider/LIVE authority;
-6. it performs no real provider mutation unless separately authorized by current phase;
+1. the blocking condition is genuinely external rather than unfinished software;
+2. the stacked branch is based on current phase head;
+3. the stacked PR targets the current phase branch, not `main`;
+4. stacked work remains draft/merge-blocked;
+5. it does not change/bypass current provider/LIVE authority;
+6. it performs no real provider mutation unless separately authorized by the current phase;
 7. after upstream merge it is rebased/retargeted and revalidated against merged upstream;
-8. next phase cannot be accepted/merged before its declared upstream is merged.
+8. the next phase cannot be accepted/merged before its declared upstream is merged.
 
 This exception improves throughput, not authority overlap.
 
@@ -101,7 +101,7 @@ Never weaken data, risk, provider, security, strategy, or trading gates merely t
 
 ## 7. Target-machine/provider rule
 
-Target-machine execution is required only when the required evidence cannot be established in CI/mocks, including real credentials, broker reads, realtime market state, or explicitly authorized provider mutations.
+Target-machine execution is required only when the required evidence cannot be established in CI/mocks, including real credentials, provider entitlements, realtime/finalized market state, broker reads, or explicitly authorized provider mutations.
 
 For provider mutations:
 
@@ -112,11 +112,26 @@ For provider mutations:
 - cleanup/flatten authority is separate when its contract says so;
 - LIVE authority is never inferred from PAPER/sandbox authority.
 
+For provider reads under an explicit phase scope:
+
+- provider-free prepare should identify the exact missing read class and deterministic run scope;
+- only the authorized read class may be performed;
+- stale/mismatched authority fails closed;
+- successful local acquisition does not silently expand downstream provider authority;
+- provider entitlement/session gaps must be surfaced, not hidden by silently changing the requested date.
+
 For zero-case target evidence:
 
 - a zero-case/no-provider disposition is valid when it follows accepted upstream evidence;
 - do not fabricate a case, weaken support thresholds, inject arbitrary ticker/order inputs, or repeat unrelated certification mutations merely to obtain a provider write;
 - preserve the zero-case result as evidence of fail-closed/no-op behavior.
+
+For failed/partial analytical runs:
+
+- newer local artifacts do not become accepted state merely because they exist;
+- the applicable accepted handoff/manifest remains the authority boundary;
+- reruns must recover from the last accepted baseline unless the phase explicitly supports a validated resumable checkpoint;
+- partial external reads may be reused only when their local evidence is valid and the next provider-free prepare re-inventories them.
 
 Authority boundaries override batching and stacked preparation.
 
@@ -141,7 +156,7 @@ After acceptance:
 3. merge to `main`;
 4. verify authoritative main state/CI as appropriate;
 5. delete merged branch when practical;
-6. synchronize living status to MERGED;
+6. synchronize living status to MERGED and record the authoritative merge SHA;
 7. define/lock the next numbered phase before substantive next-phase work.
 
 If implementation is merged before required documentation/target closeout due procedural error, do not silently pretend the sequence was followed. Record the drift explicitly, perform an unnumbered no-authority maintenance closeout, validate it, and restore synchronized living state before the next numbered phase.
@@ -160,60 +175,56 @@ Every meaningful boundary updates as applicable:
 
 Historical phase/fix docs remain provenance rather than current instructions.
 
-## 10. Current application — post-Phase22 documentation closeout
+## 10. Current application — Phase23 Operational Current Analysis Cycle
 
 Accepted upstream:
 
 - **Phases 1–22 ACCEPTED / MERGED**;
-- Phase18 merge `55bdd7446f0bbd4225de264187c7f5fb601991b0`;
-- Phase19 merge `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`;
-- Phase20 merge `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`;
-- Phase21 merge `ed9e156437e3924293b90f06620ebbe9534fab15`;
-- Phase22 merge `15c0a997ec847764e41fbd525ff52aa8c58f96ac`.
+- synchronized post-Phase22 `main` baseline `dd0d6838d76a15edde0783f471ad7e212453cd94`.
 
-Phase21 accepted authority:
+Current phase:
 
-- policy `phase21-policy-v1-unified-paper-execution-authority-run-scoped-default-deny`;
-- fingerprint `0ad0add1345ceec62f65bab25ce43806dafac4a64177ffc9c219e9d6c87665e5`;
-- final exact head `174110e3688a0b8c087555a56adafaab99905c66`;
-- final CI `32782618589`;
-- exactly one raw `adapter.submit(plan)` remains under `packages/`, in the execution engine;
-- every new PAPER provider submit requires exact centralized authority;
-- browser, Phase20, scheduler, LIVE, and automatic failover authority remain absent.
+- Phase23 — Operational Current Analysis Cycle;
+- branch `phase-23-operational-current-analysis-cycle`;
+- PR #25;
+- policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`;
+- validated implementation/repair head before documentation closeout `803d43e43e8931f03ba836a23b781a7c3d3ee687`;
+- state **VALIDATED / TARGET EVIDENCE COMPLETE / MERGE PENDING**.
 
-Phase22 accepted operator binding:
+Phase23 authority:
 
-- policy `phase22-policy-v1-operational-paper-runner-webull-primary-explicit-run-authority`;
-- fingerprint `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`;
-- implementation head `68f16256c8f9976ae5b6283dde437e93fbe70155`;
-- CI `32787337500`: Ubuntu **974 passed in 13.80s**, Windows **974 passed in 33.93s**, every validator through Phase22 PASS;
-- Webull default/primary; Alpaca explicit manual selection;
-- PAPER only;
-- exact interactive Phase21 run authority for nonzero cases;
-- no arbitrary ticker/quantity/price/geometry input;
-- no new submit seam;
-- provider calls/writes/broker writes during repository validation: 0/0/0.
+- provider-free `prepare`;
+- external read authority, when needed, is **only** `MASSIVE_MARKET_REFERENCE_READS`;
+- zero broker reads/writes;
+- zero broker/order mutations;
+- no Phase21 submit authority;
+- no Phase22 execution;
+- no downstream research/news/options/AI calls under the frozen zero-SUPPORTED path;
+- no scheduler/PostgreSQL/browser/LIVE/automatic-failover authority.
 
-Target-machine Phase22 evidence on 2026-08-24:
+Phase23 target evidence:
 
-`python scripts/run_phase22_paper.py prepare --broker webull`
+1. initial provider-free prepare for finalized 2026-08-21 resolved accepted baseline 2026-08-14 and five sessions to advance;
+2. exact market/reference read scope was authorized because finalized source files/snapshots were missing;
+3. first execute failed closed on a real persisted-null deserialization defect (`previous_effective_state=NaN`), not on a provider/broker/strategy threshold issue;
+4. repair normalized only that nullable persisted field and added recovery/completion guards without changing discovery thresholds, hysteresis, support, model, risk, or execution authority;
+5. exact-head cross-platform CI on the repair passed: push run `32802151860`, PR run `32802154831`, **988 tests on each OS**, every validator through Phase23 PASS;
+6. repaired prepare retained the accepted 2026-08-14 baseline despite partial newer files, found all Massive/reference inputs local, and required no additional external authority;
+7. successful execute advanced Aug 17–21, considered **23 WARM/HOT directional cases**, promoted **0**, produced zero Phase12/13/14/Phase22-ready cases, recorded zero broker/order/PAPER/LIVE writes, and passed independent persisted validation.
 
-resolved accepted as-of `2026-08-14`, found **0 accepted execution cases**, required no explicit mutation authority, and returned `PREPARED_ZERO_PROVIDER_CALLS`. This is the correct accepted zero-case path. No `execute` call or fabricated trade is required merely to create a mutation.
+The zero-promotion result is accepted evidence. The frozen Phase11 support state has **0 SUPPORTED strategies**. No threshold or support class is to be relaxed merely to obtain activity.
 
-Current maintenance:
+Current completion sequence:
 
-- branch `maintenance/post-phase22-closeout`;
-- documentation/status repair only;
-- no numbered-phase authority change;
-- must pass normal Ubuntu/Windows CI before merge.
+1. synchronize Phase23 living docs and PR evidence;
+2. run final Ubuntu/Windows CI on the documentation head;
+3. mark PR #25 ready and merge if green;
+4. verify authoritative `main` and record the merge SHA;
+5. audit the merged current evidence;
+6. define/lock the next numbered phase.
 
-After this maintenance merge:
+The likely next substantive analytical target is a formal **strategy challenger/support-replacement** phase, because Phase23 proves current data/orchestration works and the frozen zero-SUPPORTED strategy gate is now the principal exposed bottleneck. That conclusion must still be confirmed by the post-merge audit and must never be implemented by simply weakening thresholds.
 
-1. verify synchronized `main` through Phase22;
-2. audit the actual merged current-data/analysis runners and stage boundaries;
-3. identify the smallest missing binding toward a routine **current** end-to-end analytical run that can naturally produce accepted Phase13/14 cases for Phase22;
-4. define/lock Phase23 only from that evidence;
-5. do not assume scheduler/PostgreSQL work is next;
-6. keep LIVE and automatic failover disabled.
+GUI work may consume stable Phase23 artifacts when scheduled, but the browser remains a monitoring/control surface with no execution authority.
 
-Phase23 is not yet active.
+LIVE remains disabled. Automatic broker failover remains disabled. Scheduler and PostgreSQL runtime promotion remain separate future authority decisions.

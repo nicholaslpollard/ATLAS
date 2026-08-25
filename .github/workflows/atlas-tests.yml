@@ -139,5 +139,8 @@ jobs:
       - name: Validate Phase 22 operational PAPER runner contracts
         run: python scripts/validate_phase22.py
 
+      - name: Validate Phase 23 operational current analysis cycle contracts
+        run: python scripts/validate_phase23.py
+
       - name: Run tests
         run: python -m pytest -q
