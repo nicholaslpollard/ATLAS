@@ -46,6 +46,7 @@ def main() -> int:
 
     gate1_text = _source(gate1)
     cli_text = _source(cli)
+    test_text = _source(tests)
     spec_text = _source(spec)
     workflow_text = _source(workflow)
     imports = _imports(gate1_text) | _imports(cli_text)
@@ -83,6 +84,8 @@ def main() -> int:
         "no_provider_broker_execution_imports": not forbidden_imports,
         "no_provider_or_strategy_return_tokens": not any(token in gate1_text for token in forbidden_tokens),
         "gate1_binds_gate0_report": "gate0_report_sha256" in gate1_text and "Gate0 report contract mismatch" in gate1_text,
+        "gate1_uses_gate0_report_policy_field": 'report.get("policy_fingerprint")' in gate1_text and 'report.get("phase25_gate0_policy_fingerprint")' not in gate1_text,
+        "gate1_binding_regression_test_present": "test_gate1_binds_to_gate0_report_policy_fingerprint_field" in test_text and '"policy_fingerprint": phase25_gate0_policy_fingerprint()' in test_text,
         "gate1_preserves_provider_symbol_case": "upper(symbol)" not in gate1_text and "lower(symbol)" not in gate1_text,
         "gate1_future_only_is_non_authoritative": "FUTURE_ONLY_REFERENCE" in gate1_text and "bounded_invariant_metadata_proxy_authority" in gate1_text,
         "cli_requires_explicit_through": 'parser.add_argument("--through"' in cli_text and "required=True" in cli_text,
