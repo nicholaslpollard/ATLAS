@@ -5,10 +5,7 @@ from pathlib import Path
 
 from packages.operations.phase23_handoff import PHASE23_ANALYSIS_HANDOFF_CONTRACT_VERSION
 from packages.operations.phase23_policy import (
-    AI_REVIEW_CALLS,
     MASSIVE_MARKET_REFERENCE_READS,
-    MASSIVE_RESEARCH_READS,
-    PAPER_BROKER_READS,
     PHASE23_ALLOWED_BROKERS,
     PHASE23_ARBITRARY_CASE_INPUT_ALLOWED,
     PHASE23_AUTOMATIC_BROKER_FAILOVER,
@@ -82,13 +79,12 @@ def main() -> None:
         "webull_primary": PHASE23_DEFAULT_BROKER == BrokerName.WEBULL,
         "alpaca_manual_secondary_only": PHASE23_ALLOWED_BROKERS
         == (BrokerName.WEBULL, BrokerName.ALPACA),
-        "external_read_classes_exact": PHASE23_EXTERNAL_READ_CLASSES
-        == (
-            MASSIVE_MARKET_REFERENCE_READS,
-            MASSIVE_RESEARCH_READS,
-            PAPER_BROKER_READS,
-            AI_REVIEW_CALLS,
-        ),
+        "external_read_scope_narrowed_to_market_reference_only": PHASE23_EXTERNAL_READ_CLASSES
+        == (MASSIVE_MARKET_REFERENCE_READS,),
+        "downstream_external_reads_unreachable_under_frozen_support": policy.get(
+            "downstream_external_reads_reachable"
+        )
+        is False,
         "live_disabled": PHASE23_LIVE_EXECUTION_ENABLED is False,
         "automatic_failover_disabled": PHASE23_AUTOMATIC_BROKER_FAILOVER is False,
         "browser_execution_disabled": PHASE23_BROWSER_EXECUTION_ENABLED is False,
@@ -99,6 +95,10 @@ def main() -> None:
         "paper_submit_authority_disabled": PHASE23_PAPER_SUBMIT_AUTHORITY_ALLOWED is False,
         "arbitrary_case_input_disabled": PHASE23_ARBITRARY_CASE_INPUT_ALLOWED is False,
         "zero_supported_strategies_frozen": PHASE23_FROZEN_SUPPORTED_STRATEGIES == (),
+        "zero_promotion_expected_under_frozen_support": policy.get(
+            "zero_promotion_is_expected_under_frozen_support"
+        )
+        is True,
         "routine_historical_study_rerun_disabled": policy.get(
             "historical_strategy_study_rerun_in_routine_cycle"
         )
