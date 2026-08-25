@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from packages.operations.phase23_handoff import PHASE23_ANALYSIS_HANDOFF_CONTRACT_VERSION
 from packages.operations.phase23_policy import (
@@ -25,9 +30,6 @@ from packages.operations.phase23_policy import (
 from packages.operations.phase23_strategy import PHASE23_CURRENT_STRATEGY_HANDOFF_CONTRACT_VERSION
 from packages.operations.phase23_validation import PHASE23_INDEPENDENT_VALIDATION_CONTRACT_VERSION
 from packages.schemas.execution import BrokerName
-
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _text(path: str) -> str:
@@ -159,6 +161,10 @@ def main() -> None:
         "independent_persisted_validator_readonly": persisted_validator_is_readonly,
         "cli_runs_independent_validation_after_execute": "Phase23RunIndependentValidator(settings).run("
         in cli,
+        "validator_entrypoint_bootstraps_project_root": "sys.path.insert(0, str(PROJECT_ROOT))" in _text(
+            "scripts/validate_phase23.py"
+        ),
+        "cli_entrypoint_bootstraps_project_root": "sys.path.insert(0, str(PROJECT_ROOT))" in cli,
         "cli_prepare_execute_only": 'choices=("prepare", "execute")' in cli,
         "cli_confirmation_not_shell_argument": "--confirmation" not in cli and "input(" in cli,
         "cli_no_arbitrary_trade_inputs": all(
