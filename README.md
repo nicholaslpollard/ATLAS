@@ -10,12 +10,12 @@ For a future development session, read in this order:
 
 1. [`docs/current_status.md`](docs/current_status.md) — exact current handoff and continuation.
 2. [`docs/roadmap.md`](docs/roadmap.md) — architecture, phase ledger, data/safety rules, and authority boundaries.
-3. [`docs/post_phase22_closeout.md`](docs/post_phase22_closeout.md) — Phase22 merge/CI/target-machine closeout and documentation correction.
+3. [`docs/phase23_operational_current_analysis_cycle.md`](docs/phase23_operational_current_analysis_cycle.md) — current finalized-session analytical operator and Phase23 evidence.
 4. [`docs/phase22_operational_paper_runner.md`](docs/phase22_operational_paper_runner.md) — accepted routine Webull-primary PAPER operator contract.
 5. [`docs/phase21_unified_paper_execution_authority.md`](docs/phase21_unified_paper_execution_authority.md) — accepted centralized PAPER-submit authority.
 6. [`docs/phase20_run_orchestration.md`](docs/phase20_run_orchestration.md) — accepted provider-free deterministic orchestration contract.
 7. [`docs/phase_flow.md`](docs/phase_flow.md) — mandatory development/acceptance/merge flow.
-8. Phase18/19 and older phase documents for deeper provenance only.
+8. Older phase documents for deeper provenance only.
 
 When historical documents conflict with accepted code or the living handoff, accepted `main` and the current living documents control.
 
@@ -38,50 +38,70 @@ Core roles:
 - **Browser** — monitoring/control plane only; it cannot create trading authority.
 - **Phase20** — deterministic local orchestration only; no provider/broker/scheduler/LIVE authority.
 - **Phase21** — centralized default-deny authority for every new real PAPER provider submit.
-- **Phase22** — routine operator binding over accepted Phase15 + Phase21 PAPER execution; no new submit seam or authority class.
+- **Phase22** — routine Webull-primary PAPER operator binding over accepted Phase15 + Phase21 authority.
+- **Phase23** — routine explicit-finalized-session analytical cycle; provider-free prepare, narrowly authorized Massive market/reference reads only when missing, and no broker/PAPER execution.
 
 ## Strategic anti-drift anchor
 
 The destination remains the complete operational evidence chain: **broad-market discovery -> deterministic analysis/risk -> independent AI review -> safe Webull-primary SHADOW/PAPER execution -> exact reconciliation -> observability -> outcome learning**, before any separately authorized LIVE transition.
 
-Infrastructure is a means to that operational system, not a replacement destination. Scheduler, PostgreSQL, browser, or other infrastructure work must not silently displace the end-to-end paper/shadow objective.
+Infrastructure is a means to that system, not a replacement destination. Scheduler, PostgreSQL, browser, or other infrastructure work must not silently displace the end-to-end paper/shadow objective.
 
 ## Mandatory development flow
 
 `DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST AS NEEDED -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
 
-Credentials, endpoints, connected accounts, passing tests, or registered jobs never silently change provider, broker, automation, or LIVE authority.
+Credentials, endpoints, connected accounts, passing tests, locally present artifacts, or registered jobs never silently change provider, broker, automation, or LIVE authority.
 
 ## Current state — 2026-08-24
 
-Accepted/merged numbered work:
+Accepted/merged numbered work on the upstream baseline:
 
 - **Phases 1–22 ACCEPTED / MERGED.**
-- Phase18 merge: `55bdd7446f0bbd4225de264187c7f5fb601991b0`.
-- Phase19 merge: `8e697ca2cadbaf510291cafaa3dcb5f7a314ffbe`.
-- Phase20 merge: `3b34bc700f8a0241ca5716c6d18bcb89f0d45620`.
-- Phase21 merge: `ed9e156437e3924293b90f06620ebbe9534fab15`.
-- Phase22 merge: `15c0a997ec847764e41fbd525ff52aa8c58f96ac`.
+- post-Phase22 synchronized `main`: `dd0d6838d76a15edde0783f471ad7e212453cd94`.
 
-Phase21 final authority evidence:
+Current work:
 
-- policy fingerprint `0ad0add1345ceec62f65bab25ce43806dafac4a64177ffc9c219e9d6c87665e5`;
-- final exact head `174110e3688a0b8c087555a56adafaab99905c66`;
-- final CI `32782618589`;
-- exactly one raw `adapter.submit(plan)` seam remains in `packages/execution/engine.py`.
+- **Phase23 — Operational Current Analysis Cycle**;
+- branch `phase-23-operational-current-analysis-cycle`;
+- PR #25;
+- policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`;
+- validated implementation/repair head before documentation closeout `803d43e43e8931f03ba836a23b781a7c3d3ee687`;
+- state **VALIDATED / TARGET EVIDENCE COMPLETE / MERGE PENDING**.
 
-Phase22 evidence:
+### Phase23 target result
 
-- policy `phase22-policy-v1-operational-paper-runner-webull-primary-explicit-run-authority`;
-- fingerprint `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`;
-- implementation head `68f16256c8f9976ae5b6283dde437e93fbe70155`;
-- CI `32787337500`: Ubuntu **974 passed in 13.80s**, Windows **974 passed in 33.93s**, every validator through Phase22 PASS;
-- validation provider calls/writes/broker writes: `0 / 0 / 0`;
-- target-machine `prepare --broker webull` on accepted as-of `2026-08-14`: **0 accepted execution cases**, authority required `False`, disposition `PREPARED_ZERO_PROVIDER_CALLS`.
+ATLAS successfully ran a finalized current analytical cycle through **2026-08-21** from the accepted **2026-08-14** baseline.
 
-The Phase22 zero-case target result is correct. Phase11 has 0 `SUPPORTED` strategies, so no accepted downstream execution case exists. ATLAS must not weaken thresholds, manufacture a case, or run `execute` merely to force broker activity.
+The first authorized attempt exposed a real local persisted-null deserialization defect (`previous_effective_state=NaN`) after finalized Massive/reference evidence had been populated. The repair:
 
-The current work is an **unnumbered post-Phase22 documentation closeout** on `maintenance/post-phase22-closeout`; it changes no numbered-phase authority. No Phase23 scope is accepted yet.
+- normalized only the nullable persisted field;
+- preserved discovery thresholds/hysteresis and the frozen strategy-support gate;
+- prevented partial failed discovery artifacts from becoming an accepted baseline;
+- added exact market-session/entitlement and feature-checkpoint completion guards.
+
+Repair-head CI:
+
+- push run `32802151860`: Ubuntu/Windows SUCCESS;
+- PR run `32802154831`: Ubuntu/Windows SUCCESS;
+- **988 tests passed on each OS**;
+- every validator through Phase23 PASS.
+
+Final repaired target run:
+
+- sessions advanced: **5** — Aug 17–21;
+- WARM/HOT directional cases considered: **23**;
+- promoted candidates: **0**;
+- Phase12 research cases: **0**;
+- Phase13 case files: **0**;
+- Phase14 AI reviews: **0**;
+- Phase22-ready execution cases: **0**;
+- broker reads/writes: **0 / 0**;
+- order/PAPER/LIVE writes: **0 / 0 / 0**;
+- independent persisted validation: **PASS**;
+- overall run: **PASS**.
+
+The zero-promotion result is correct. Accepted Phase11 still has **0 SUPPORTED strategies**, so current directional evidence cannot pass the historical-support gate. ATLAS must not lower thresholds or manufacture a case merely to create downstream activity.
 
 LIVE execution remains **DISABLED**. Automatic cross-broker failover remains **DISABLED**.
 
@@ -109,13 +129,15 @@ Accepted production ML:
 - macro OVR AUC 0.570016;
 - exact deterministic replay.
 
-Phase11 strategy support remains: SUPPORTED 0; MIXED 3 (`momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`); UNSUPPORTED 5. Zero supported strategies correctly yields zero promotions under the accepted evidence.
+Phase11 strategy support remains: SUPPORTED 0; MIXED 3 (`momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`); UNSUPPORTED 5.
 
 ## Accepted execution/control-plane foundation
 
 ### Phase15
 
 Broker-neutral SHADOW/PAPER execution bound to accepted Phase13/14 lineage with fresh quotes, preflight, reconciliation, current-risk revalidation, protective geometry, deterministic client IDs/idempotency, and fail-closed provider uncertainty. Webull primary; Alpaca manual secondary; LIVE disabled.
+
+For dates after 2026-08-14, current Phase15 input is accepted only through the exact Phase23 current-analysis handoff.
 
 ### Phase16–19
 
@@ -127,20 +149,35 @@ Provider-free deterministic run substrate: immutable DAG/stage definitions, dete
 
 ### Phase21
 
-Every new PAPER provider submit crosses `ExecutionEngine.submit_authorized_plan(...)`. Missing, stale, false, malformed, or mismatched authority fails before submit. Exact deterministic existing-order reuse performs no new mutation and therefore requires no new submit authority. Phase18 retains its separate explicit certification gate. Browser and Phase20 cannot acquire this authority.
+Every new PAPER provider submit crosses `ExecutionEngine.submit_authorized_plan(...)`. Missing, stale, false, malformed, or mismatched authority fails before submit. Exactly one raw `adapter.submit(plan)` remains under `packages/`, in `packages/execution/engine.py`.
 
 ### Phase22
 
-`run_phase22_paper.py` supplies the routine PAPER operator entrypoint:
+`scripts/run_phase22_paper.py` supplies the routine PAPER operator entrypoint:
 
 - `prepare|execute` only;
 - Webull default/primary, Alpaca explicit manual selection;
 - accepted Phase13/14 -> Phase15 input only;
 - no arbitrary ticker, quantity, price, geometry, LIVE, or command-line confirmation input;
 - exact interactive Phase21 confirmation only when accepted executable cases exist;
-- no new adapter/quote/order-builder/submit path;
-- provider uncertainty stops with reconciliation required, no blind retry/failover;
-- Phase15 remains the immutable outcome store and Phase19 remains the read-only observability consumer.
+- provider uncertainty stops with reconciliation required, no blind retry/failover.
+
+Accepted Phase22 target prepare on 2026-08-14 found 0 execution cases and returned `PREPARED_ZERO_PROVIDER_CALLS`. Do not invoke Phase22 `execute` merely to fabricate mutation evidence.
+
+### Phase23
+
+`scripts/run_phase23_analysis.py` supplies the routine current finalized analytical operator:
+
+- provider-free `prepare`;
+- explicit prior finalized `as_of`;
+- accepted-baseline chronological advancement;
+- only `MASSIVE_MARKET_REFERENCE_READS` may be authorized when required;
+- no broker reads/writes;
+- no provider mutations;
+- no Phase21 submit authority;
+- no Phase22 execution;
+- no downstream research/news/options/AI external calls while the frozen zero-SUPPORTED gate makes them unreachable;
+- independent persisted validation and hash-bound current handoff.
 
 ## Non-negotiable rules
 
@@ -155,11 +192,13 @@ Every new PAPER provider submit crosses `ExecutionEngine.submit_authorized_plan(
 - LONG `stop < entry < target`; SHORT reverse.
 - Unknown broker/provider/run state fails closed.
 - Uncertain writes require reconciliation before any next mutation.
+- Partial failed analytical files do not become accepted state without the applicable handoff.
 - Automatic broker failover is forbidden.
 - PAPER does not imply LIVE.
 - Zero-case/no-promotion states are valid and must not be bypassed.
 - Phase20 does not authorize provider mutations, scheduler execution, or PostgreSQL runtime promotion.
 - Phase21/22 do not authorize browser execution, automatic failover, scheduler execution, cleanup/flatten beyond separately accepted gates, or LIVE.
+- Phase23 does not authorize broker activity or PAPER execution.
 
 ## Environment/security
 
@@ -169,11 +208,15 @@ Never commit or print API secrets, passwords, security codes, raw broker IDs, to
 
 ## Exact continuation point
 
-Do not repeat the accepted Phase18 mutation merely to reconfirm it and do not fabricate a Phase22 execution case.
+1. Complete Phase23 documentation synchronization on PR #25.
+2. Run final Ubuntu/Windows CI on the documentation head.
+3. If green, mark PR #25 ready/accepted and merge Phase23 to `main`.
+4. Verify authoritative `main` and record the merge SHA.
+5. Audit the merged 2026-08-21 discovery/regime/ML/current-strategy evidence.
+6. Define/lock the next numbered phase from that evidence.
 
-1. Complete cross-platform CI and merge the documentation-only `maintenance/post-phase22-closeout` branch.
-2. Verify authoritative `main` is synchronized through Phase22.
-3. Audit the merged code for the smallest remaining operator/run gap toward a **current** end-to-end ATLAS analytical run that can naturally produce accepted Phase13/14 cases.
-4. Define and authority-lock the next numbered phase from that evidence rather than assuming scheduler/PostgreSQL work is next.
+The current principal analytical bottleneck is the frozen **0-SUPPORTED strategy set**. The likely next substantive analytical phase is a preregistered strategy challenger/support-replacement process; it must improve evidence legitimately rather than relax gates merely to create trades.
 
-No Phase23 implementation should begin until that audit and definition are complete.
+GUI development can consume the stable Phase23 current-artifact surface when scheduled, but the browser remains a monitoring/control plane and cannot create trading authority.
+
+Do not assume scheduler or PostgreSQL promotion is next merely because those remain future infrastructure goals.
