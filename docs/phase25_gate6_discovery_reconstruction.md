@@ -1,6 +1,6 @@
 # Phase 25 Gate 6 — Provider-Free Phase7 + Discovery Reconstruction
 
-**Status: ACTIVE / GATE5 TARGET EVIDENCE ACCEPTED / GATE6 IMPLEMENTATION**
+**Status: ACTIVE / GATE5 TARGET EVIDENCE ACCEPTED / GATE6 FIRST TARGET BLOCKED / SAFE REPAIR IMPLEMENTED**
 
 ## Accepted Gate5 boundary
 
@@ -52,9 +52,46 @@ For each replay session Gate6 may materialize only missing deterministic product
 2. `DiscoveryFoundationScanner.build(session)`;
 3. `DiscoverySetupScanner.build(session)`.
 
-Existing complete artifact sets must validate and be returned as skipped. If an existing set would need recomputation, Gate6 blocks rather than overwriting it. Any partial snapshot/manifest/exclusion set fails closed.
+Existing complete artifact sets must be validated **before** a production builder is invoked. Builders may be called only when the corresponding artifact set is absent. Any partial snapshot/manifest/exclusion set fails closed.
 
 Gate6 performs **zero provider reads**. The reference snapshots produced by accepted Gates4/5 are local immutable inputs.
+
+## First target attempt — BLOCKED / reconciliation required
+
+The first Gate6 target run reconstructed successfully through the first **1,250 / 1,260** replay sessions and then stopped at **2026-08-14** with:
+
+`existing discovery foundation would require overwrite for 2026-08-14; Gate6 refuses`
+
+The run made zero provider calls and did not reach regime routing, strategy evidence, broker authority, or execution.
+
+Forensic review found a defect in the original Gate6 guard ordering. The original `_materialize_stateless_session()` invoked the production builder and checked the returned `skipped` flag afterward. Production builders intentionally refresh stale artifacts when their dependency fingerprint does not match, so an existing stale discovery foundation could be recomputed before Gate6 raised. The failure was therefore correctly bounded to the first stale existing foundation, but the guard was too late to guarantee the intended no-overwrite property.
+
+Production discovery/scoring code itself is unchanged from authoritative post-Phase24 `main`; this is not a strategy/scoring-policy drift. The mismatch is an artifact-lineage reconciliation boundary.
+
+### Safe repair contract
+
+Gate6 now enters through `Phase25Gate6SafeDiscoveryReconstruction`.
+
+For an existing artifact set it must:
+
+1. validate the existing Phase7 universe manifest, policy, exact reference SHA, no-override routing fingerprint, snapshot SHA, and exclusion SHA **without** calling `UniverseManager.build()`;
+2. validate an existing discovery foundation against the current unchanged production foundation dependency **without** calling `DiscoveryFoundationScanner.build()`;
+3. validate an existing discovery score against the current production score dependency **without** calling `DiscoverySetupScanner.build()`;
+4. call a production builder only when the corresponding complete artifact set is absent;
+5. preserve any partial-set fail-closed behavior.
+
+The 2026-08-14 foundation may already reflect the deterministic recomputation performed before the original late guard raised. If that causes the accepted existing score's physical dependency hash to be stale, the score may be preserved only if the exact scorer-facing interface is semantically identical between the current foundation and the preserved score:
+
+- `instrument_id`;
+- `ticker`;
+- `security_type`;
+- `routes`;
+- `activity_tier`;
+- `broad_discovery_ready`;
+- `mandatory_route`;
+- and exact consideration-required membership.
+
+Both-direction set difference must be exactly zero. This does **not** rewrite the accepted score manifest or dependency fingerprint; it records a research reconciliation event. Any semantic mismatch blocks Gate6 and requires a separate repair rather than an overwrite.
 
 ## Discovery hysteresis isolation
 
@@ -68,17 +105,17 @@ Research artifacts:
 
 - `session_summary.parquet` — one row per exact replay session with Phase7/discovery funnel and state counts;
 - `warm_hot_directional_population.parquet` — only effective WARM/HOT rows whose discovery direction is bullish or bearish;
-- `reconstruction_report.json` — exact Gate5 binding, artifact counts, lineage hashes, and authority counters;
+- `reconstruction_report.json` — exact Gate5 binding, artifact counts, lineage hashes, reconciliation events, and authority counters;
 - `independent_validation.json` — separate provider-free validation of the completed lineage and research population.
 
-This isolation is required because a full 2021–2026 chronological replay can legitimately have a different prior-state dependency chain than sparse current operational snapshots that were built before historical reconstruction existed. Gate6 studies route fidelity without rewriting accepted operational state.
+This isolation is required because a full 2021–2026 chronological replay can legitimately have a different prior-state dependency chain than sparse current operational snapshots that were built before historical reconstruction existed. Gate6 studies route fidelity without rewriting accepted operational discovery state.
 
 ## Gate6 authority lock
 
 Gate6 has no authority to:
 
 - call Massive or any other provider;
-- overwrite existing historical universe/foundation/score artifacts;
+- overwrite existing historical universe/foundation/score artifacts after the repair boundary;
 - write operational discovery-state snapshots;
 - use watchlist, position, custom, ticker, or manual exclusion overrides;
 - run market, sector, or ticker regime routing;
@@ -95,7 +132,8 @@ Gate6 has no authority to:
 Gate6 passes only if:
 
 - all exact replay sessions have complete reference, Phase7 universe, discovery-foundation, and discovery-score artifact sets;
-- existing artifact sets are preserved rather than force-replaced;
+- every existing artifact is preflighted before any builder call;
+- any preserved stale-hash score has exactly zero scorer-interface semantic mismatches;
 - the session summary contains exactly one row for every replay session from 2021-08-16 through 2026-08-21;
 - the WARM/HOT research population contains only effective `warm`/`hot` rows with `bullish`/`bearish` direction;
 - session+instrument keys in the research population are unique;
@@ -109,6 +147,6 @@ Gate6 passes only if:
 
 ## Next boundary
 
-Only after Gate6 target evidence is accepted may Gate7 reconstruct market/ticker route context on the accepted WARM/HOT directional population.
+Only after repaired Gate6 target evidence is accepted may Gate7 reconstruct market/ticker route context on the accepted WARM/HOT directional population.
 
 Gate7 must resolve ticker identity using exact same-session PIT evidence or another explicitly proven authoritative mapping. It may not silently reuse a stale authoritative-ticker-interval artifact derived from the former seven-snapshot reference state. Strategy returns and support replacement remain out of scope until the production-path population and routing context are independently accepted.
