@@ -40,6 +40,7 @@ def _imports(text: str) -> set[str]:
 
 def main() -> int:
     gate6 = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate6.py"
+    repair = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate6_repair.py"
     policy = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate6_policy.py"
     gate5_policy = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate5_policy.py"
     validation = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate6_validation.py"
@@ -47,12 +48,13 @@ def main() -> int:
     tests = PROJECT_ROOT / "tests" / "unit" / "test_phase25_gate6.py"
     spec = PROJECT_ROOT / "docs" / "phase25_gate6_discovery_reconstruction.md"
     workflow = PROJECT_ROOT / ".github" / "workflows" / "atlas-tests.yml"
-    required = (gate6, policy, gate5_policy, validation, cli, tests, spec, workflow)
+    required = (gate6, repair, policy, gate5_policy, validation, cli, tests, spec, workflow)
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise SystemExit("Phase25 Gate6 files missing: " + ", ".join(missing))
 
     gate6_text = _source(gate6)
+    repair_text = _source(repair)
     policy_text = _source(policy)
     gate5_policy_text = _source(gate5_policy)
     validation_text = _source(validation)
@@ -60,7 +62,7 @@ def main() -> int:
     tests_text = _source(tests)
     spec_text = _source(spec)
     workflow_text = _source(workflow)
-    imports = _imports(gate6_text) | _imports(validation_text) | _imports(cli_text)
+    imports = _imports(gate6_text) | _imports(repair_text) | _imports(validation_text) | _imports(cli_text)
 
     forbidden_import_prefixes = (
         "packages.execution",
@@ -86,8 +88,15 @@ def main() -> int:
         "adapter.submit",
         "submit_authorized_plan",
     )
-    combined = gate6_text + validation_text + cli_text
+    combined = gate6_text + repair_text + validation_text + cli_text
     frozen_policy_text = policy_text + gate5_policy_text
+
+    universe_existing_pos = repair_text.find("if universe_existing:")
+    universe_build_pos = repair_text.find("UniverseManager(self.settings).build(session, force=False)")
+    foundation_existing_pos = repair_text.find("if foundation_existing:")
+    foundation_build_pos = repair_text.find("DiscoveryFoundationScanner(self.settings).build(session)")
+    score_existing_pos = repair_text.find("if score_existing:")
+    score_build_pos = repair_text.find("DiscoverySetupScanner(self.settings).build(session)")
 
     checks = {
         "gate6_policy_fingerprint_sha256": len(phase25_gate6_policy_fingerprint()) == 64,
@@ -101,17 +110,24 @@ def main() -> int:
             "0e2060d91838c506d8b7c720fd38c06186dac8e4b4587385079b49cae519b8a0",
         )),
         "provider_activity_zero": PHASE25_GATE6_PROVIDER_READS == PHASE25_GATE6_PROVIDER_WRITES == 0,
-        "overwrite_forbidden": PHASE25_GATE6_OVERWRITE_EXISTING_ARTIFACTS_ALLOWED is False and "force=True" not in gate6_text,
-        "operational_discovery_state_writes_forbidden": PHASE25_GATE6_OPERATIONAL_DISCOVERY_STATE_WRITES_ALLOWED is False and "DiscoveryStateManager(" not in gate6_text,
+        "overwrite_forbidden": PHASE25_GATE6_OVERWRITE_EXISTING_ARTIFACTS_ALLOWED is False and "force=True" not in repair_text,
+        "operational_discovery_state_writes_forbidden": PHASE25_GATE6_OPERATIONAL_DISCOVERY_STATE_WRITES_ALLOWED is False and "DiscoveryStateManager(" not in repair_text,
         "regime_routing_forbidden": PHASE25_GATE6_REGIME_ROUTING_ALLOWED is False,
         "strategy_returns_forbidden": PHASE25_GATE6_STRATEGY_RETURNS_READ_ALLOWED is False,
         "strategy_rules_forbidden": PHASE25_GATE6_STRATEGY_RULE_EVALUATION_ALLOWED is False,
         "support_replacement_forbidden": PHASE25_GATE6_SUPPORT_REPLACEMENT_ALLOWED is False,
         "no_provider_broker_execution_regime_imports": not forbidden_imports,
         "no_provider_strategy_execution_tokens": not any(token in combined for token in forbidden_tokens),
-        "uses_production_phase7": "UniverseManager(self.settings).build(session, force=False)" in gate6_text,
-        "uses_production_foundation": "DiscoveryFoundationScanner(self.settings).build(session)" in gate6_text,
-        "uses_production_scoring": "DiscoverySetupScanner(self.settings).build(session)" in gate6_text,
+        "cli_uses_safe_reconstruction": "Phase25Gate6SafeDiscoveryReconstruction" in cli_text and "Phase25Gate6DiscoveryReconstruction(settings).run" not in cli_text,
+        "preflight_universe_before_builder": 0 <= universe_existing_pos < universe_build_pos,
+        "preflight_foundation_before_builder": 0 <= foundation_existing_pos < foundation_build_pos,
+        "preflight_score_before_builder": 0 <= score_existing_pos < score_build_pos,
+        "existing_universe_read_validation": "source_reference_sha256" in repair_text and "routing_input_fingerprint" in repair_text and "snapshot_sha" in repair_text,
+        "existing_foundation_read_validation": "_existing_current(" in repair_text and "Gate6 preflight refuses overwrite" in repair_text,
+        "semantic_score_reconciliation_locked": "_score_interface_mismatch_count" in repair_text and "PRESERVE_STALE_HASH_IF_SCORING_INTERFACE_EXACT" in repair_text and "semantic mismatches=" in repair_text,
+        "uses_production_phase7_for_missing_only": universe_build_pos >= 0,
+        "uses_production_foundation_for_missing_only": foundation_build_pos >= 0,
+        "uses_production_scoring_for_missing_only": score_build_pos >= 0,
         "uses_accepted_hysteresis_policy": "ACTIVE_DISCOVERY_PERSISTENCE_POLICY.bootstrap" in gate6_text and "ACTIVE_DISCOVERY_PERSISTENCE_POLICY.transition" in gate6_text,
         "research_population_only": "warm_hot_directional_population.parquet" in gate6_text and '"operational_discovery_state_writes": 0' in gate6_text,
         "binds_gate5_report_and_validation": "gate5_report_sha256" in gate6_text and "gate5_validation_sha256" in gate6_text,
