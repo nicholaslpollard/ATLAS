@@ -4,6 +4,7 @@ import json
 from datetime import date
 from types import SimpleNamespace
 
+from packages.backtesting.historical_study import STRATEGY_HISTORICAL_STUDY_CONTRACT_VERSION
 from packages.backtesting.phase24_gate0 import (
     evaluate_counterfactual_records,
     support_evidence_from_study,
@@ -19,6 +20,7 @@ from packages.backtesting.phase24_policy import (
     PHASE24_PAPER_SUBMITS,
     PHASE24_PHASE11_SUPPORT_REPLACEMENT_AUTHORITY,
 )
+from packages.backtesting.strategy_support import STRATEGY_SUPPORT_POLICY_CONTRACT_VERSION
 
 
 def test_phase24_gate0_has_no_external_execution_or_support_replacement_authority() -> None:
@@ -35,10 +37,12 @@ def test_phase24_gate0_has_no_external_execution_or_support_replacement_authorit
 
 def test_gate0_support_evidence_exposes_only_selection_evidence() -> None:
     study = {
+        "contract_version": STRATEGY_HISTORICAL_STUDY_CONTRACT_VERSION,
         "studies": [
             {
                 "strategy_id": "momentum_long_v1",
                 "support": {
+                    "contract_version": STRATEGY_SUPPORT_POLICY_CONTRACT_VERSION,
                     "strategy_id": "momentum_long_v1",
                     "status": "MIXED",
                     "eligible_for_candidate_promotion": False,
@@ -53,7 +57,7 @@ def test_gate0_support_evidence_exposes_only_selection_evidence() -> None:
                 },
                 "protected_confirmation": {"aggregate_by_cost_bps": {"10": {"mean_return": 99.0}}},
             }
-        ]
+        ],
     }
     evidence = support_evidence_from_study(study)
     encoded = json.dumps(evidence, sort_keys=True)
