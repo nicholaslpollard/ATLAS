@@ -23,6 +23,9 @@ PHASE25_GATE2_CONTRACT_VERSION = (
 PHASE25_GATE3_CONTRACT_VERSION = (
     "phase25-gate3-v1-provider-free-active-only-pit-acquisition-preregistration"
 )
+PHASE25_GATE4_CONTRACT_VERSION = (
+    "phase25-gate4-v1-explicit-run-scoped-earliest-session-entitlement-probe-no-bulk"
+)
 PHASE25_ROUTE_REPLAY_ORIGIN = TICKER_HISTORY_ORIGIN_DATE
 PHASE25_MARKET_DAILY_ORIGIN = MARKET_SECTOR_HISTORY_ORIGIN_DATE
 
@@ -71,6 +74,19 @@ PHASE25_GATE3_PROVIDER_NATIVE_TICKER_CASE_PRESERVED = True
 PHASE25_GATE3_ATOMIC_SESSION_PERSISTENCE_REQUIRED = True
 PHASE25_GATE3_RESUME_FROM_VALIDATED_PAIRS_ONLY = True
 
+# Gate4 introduces the first Phase25 provider-read authority, but only for the exact
+# earliest frozen Gate3 session. It is an entitlement probe, not bulk acquisition.
+# A passing probe must be independently accepted before a later gate may acquire the
+# remaining frozen sessions.
+PHASE25_GATE4_PROVIDER_READ_AUTHORITY_ALLOWED = True
+PHASE25_GATE4_PROVIDER_WRITES_ALLOWED = False
+PHASE25_GATE4_EXACT_INTERACTIVE_CONFIRMATION_REQUIRED = True
+PHASE25_GATE4_MAX_PROBE_SESSIONS = 1
+PHASE25_GATE4_BULK_ACQUISITION_ALLOWED = False
+PHASE25_GATE4_PERSIST_PROBE_SESSION_ON_SUCCESS = True
+PHASE25_GATE4_ABORT_IF_PROBE_TARGET_MATERIALIZED = True
+PHASE25_GATE4_REUSE_MASSIVE_BOUNDED_RETRIES = True
+
 
 @dataclass(frozen=True, slots=True)
 class Phase25Gate0Policy:
@@ -112,15 +128,9 @@ class Phase25Gate1Policy:
     live_writes: int = PHASE25_LIVE_WRITES
     phase11_support_writes: int = PHASE25_PHASE11_SUPPORT_WRITES
     protected_strategy_evidence_reads: int = PHASE25_PROTECTED_STRATEGY_EVIDENCE_READS
-    future_reference_metadata_authority_allowed: bool = (
-        PHASE25_FUTURE_REFERENCE_METADATA_AUTHORITY_ALLOWED
-    )
-    proxy_universe_support_authority_allowed: bool = (
-        PHASE25_PROXY_UNIVERSE_SUPPORT_AUTHORITY_ALLOWED
-    )
-    exact_pit_reference_required_for_authoritative_phase7_replay: bool = (
-        PHASE25_EXACT_PIT_REFERENCE_REQUIRED_FOR_AUTHORITATIVE_PHASE7_REPLAY
-    )
+    future_reference_metadata_authority_allowed: bool = PHASE25_FUTURE_REFERENCE_METADATA_AUTHORITY_ALLOWED
+    proxy_universe_support_authority_allowed: bool = PHASE25_PROXY_UNIVERSE_SUPPORT_AUTHORITY_ALLOWED
+    exact_pit_reference_required_for_authoritative_phase7_replay: bool = PHASE25_EXACT_PIT_REFERENCE_REQUIRED_FOR_AUTHORITATIVE_PHASE7_REPLAY
 
     def public_dict(self) -> dict[str, object]:
         payload = asdict(self)
@@ -142,13 +152,9 @@ class Phase25Gate2Policy:
     live_writes: int = PHASE25_LIVE_WRITES
     phase11_support_writes: int = PHASE25_PHASE11_SUPPORT_WRITES
     protected_strategy_evidence_reads: int = PHASE25_PROTECTED_STRATEGY_EVIDENCE_READS
-    provider_acquisition_authority_allowed: bool = (
-        PHASE25_GATE2_PROVIDER_ACQUISITION_AUTHORITY_ALLOWED
-    )
+    provider_acquisition_authority_allowed: bool = PHASE25_GATE2_PROVIDER_ACQUISITION_AUTHORITY_ALLOWED
     discovery_overrides_allowed: bool = PHASE25_GATE2_DISCOVERY_OVERRIDES_ALLOWED
-    requires_materialized_universe_equivalence: bool = (
-        PHASE25_GATE2_REQUIRES_MATERIALIZED_UNIVERSE_EQUIVALENCE
-    )
+    requires_materialized_universe_equivalence: bool = PHASE25_GATE2_REQUIRES_MATERIALIZED_UNIVERSE_EQUIVALENCE
 
     def public_dict(self) -> dict[str, object]:
         payload = asdict(self)
@@ -191,57 +197,77 @@ class Phase25Gate3Policy:
         return payload
 
 
+@dataclass(frozen=True, slots=True)
+class Phase25Gate4Policy:
+    contract_version: str = PHASE25_GATE4_CONTRACT_VERSION
+    gate3_policy_fingerprint: str = ""
+    replay_origin: date = PHASE25_ROUTE_REPLAY_ORIGIN
+    provider_read_authority_allowed: bool = PHASE25_GATE4_PROVIDER_READ_AUTHORITY_ALLOWED
+    provider_writes_allowed: bool = PHASE25_GATE4_PROVIDER_WRITES_ALLOWED
+    exact_interactive_confirmation_required: bool = PHASE25_GATE4_EXACT_INTERACTIVE_CONFIRMATION_REQUIRED
+    max_probe_sessions: int = PHASE25_GATE4_MAX_PROBE_SESSIONS
+    bulk_acquisition_allowed: bool = PHASE25_GATE4_BULK_ACQUISITION_ALLOWED
+    persist_probe_session_on_success: bool = PHASE25_GATE4_PERSIST_PROBE_SESSION_ON_SUCCESS
+    abort_if_probe_target_materialized: bool = PHASE25_GATE4_ABORT_IF_PROBE_TARGET_MATERIALIZED
+    reuse_massive_bounded_retries: bool = PHASE25_GATE4_REUSE_MASSIVE_BOUNDED_RETRIES
+    endpoint: str = PHASE25_GATE3_ENDPOINT
+    market: str = PHASE25_GATE3_MARKET
+    active: bool = PHASE25_GATE3_ACTIVE
+    order: str = PHASE25_GATE3_ORDER
+    sort: str = PHASE25_GATE3_SORT
+    page_limit: int = PHASE25_GATE3_PAGE_LIMIT
+    include_inactive: bool = PHASE25_GATE3_INCLUDE_INACTIVE
+    broker_reads: int = PHASE25_BROKER_READS
+    broker_writes: int = PHASE25_BROKER_WRITES
+    order_writes: int = PHASE25_ORDER_WRITES
+    paper_submits: int = PHASE25_PAPER_SUBMITS
+    live_writes: int = PHASE25_LIVE_WRITES
+    phase11_support_writes: int = PHASE25_PHASE11_SUPPORT_WRITES
+    protected_strategy_evidence_reads: int = PHASE25_PROTECTED_STRATEGY_EVIDENCE_READS
+
+    def public_dict(self) -> dict[str, object]:
+        payload = asdict(self)
+        payload["replay_origin"] = self.replay_origin.isoformat()
+        return payload
+
+
 PHASE25_GATE0_POLICY = Phase25Gate0Policy()
 
 
 def phase25_gate0_policy_fingerprint() -> str:
-    raw = json.dumps(
-        PHASE25_GATE0_POLICY.public_dict(),
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+    raw = json.dumps(PHASE25_GATE0_POLICY.public_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
-PHASE25_GATE1_POLICY = Phase25Gate1Policy(
-    gate0_policy_fingerprint=phase25_gate0_policy_fingerprint()
-)
+PHASE25_GATE1_POLICY = Phase25Gate1Policy(gate0_policy_fingerprint=phase25_gate0_policy_fingerprint())
 
 
 def phase25_gate1_policy_fingerprint() -> str:
-    raw = json.dumps(
-        PHASE25_GATE1_POLICY.public_dict(),
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+    raw = json.dumps(PHASE25_GATE1_POLICY.public_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
-PHASE25_GATE2_POLICY = Phase25Gate2Policy(
-    gate1_policy_fingerprint=phase25_gate1_policy_fingerprint()
-)
+PHASE25_GATE2_POLICY = Phase25Gate2Policy(gate1_policy_fingerprint=phase25_gate1_policy_fingerprint())
 
 
 def phase25_gate2_policy_fingerprint() -> str:
-    raw = json.dumps(
-        PHASE25_GATE2_POLICY.public_dict(),
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+    raw = json.dumps(PHASE25_GATE2_POLICY.public_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
-PHASE25_GATE3_POLICY = Phase25Gate3Policy(
-    gate2_policy_fingerprint=phase25_gate2_policy_fingerprint()
-)
+PHASE25_GATE3_POLICY = Phase25Gate3Policy(gate2_policy_fingerprint=phase25_gate2_policy_fingerprint())
 
 
 def phase25_gate3_policy_fingerprint() -> str:
-    raw = json.dumps(
-        PHASE25_GATE3_POLICY.public_dict(),
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+    raw = json.dumps(PHASE25_GATE3_POLICY.public_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+PHASE25_GATE4_POLICY = Phase25Gate4Policy(gate3_policy_fingerprint=phase25_gate3_policy_fingerprint())
+
+
+def phase25_gate4_policy_fingerprint() -> str:
+    raw = json.dumps(PHASE25_GATE4_POLICY.public_dict(), sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
 
 
@@ -280,3 +306,11 @@ assert PHASE25_GATE3_EARLIEST_SESSION_ENTITLEMENT_PROBE_REQUIRED is True
 assert PHASE25_GATE3_PROVIDER_NATIVE_TICKER_CASE_PRESERVED is True
 assert PHASE25_GATE3_ATOMIC_SESSION_PERSISTENCE_REQUIRED is True
 assert PHASE25_GATE3_RESUME_FROM_VALIDATED_PAIRS_ONLY is True
+assert PHASE25_GATE4_PROVIDER_READ_AUTHORITY_ALLOWED is True
+assert PHASE25_GATE4_PROVIDER_WRITES_ALLOWED is False
+assert PHASE25_GATE4_EXACT_INTERACTIVE_CONFIRMATION_REQUIRED is True
+assert PHASE25_GATE4_MAX_PROBE_SESSIONS == 1
+assert PHASE25_GATE4_BULK_ACQUISITION_ALLOWED is False
+assert PHASE25_GATE4_PERSIST_PROBE_SESSION_ON_SUCCESS is True
+assert PHASE25_GATE4_ABORT_IF_PROBE_TARGET_MATERIALIZED is True
+assert PHASE25_GATE4_REUSE_MASSIVE_BOUNDED_RETRIES is True
