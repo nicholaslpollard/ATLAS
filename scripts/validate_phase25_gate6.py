@@ -41,18 +41,20 @@ def _imports(text: str) -> set[str]:
 def main() -> int:
     gate6 = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate6.py"
     policy = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate6_policy.py"
+    gate5_policy = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate5_policy.py"
     validation = PROJECT_ROOT / "packages" / "backtesting" / "phase25_gate6_validation.py"
     cli = PROJECT_ROOT / "scripts" / "run_phase25_gate6.py"
     tests = PROJECT_ROOT / "tests" / "unit" / "test_phase25_gate6.py"
-    spec = PROJECT_ROOT / "docs" / "phase25_historical_production_path_route_fidelity.md"
+    spec = PROJECT_ROOT / "docs" / "phase25_gate6_discovery_reconstruction.md"
     workflow = PROJECT_ROOT / ".github" / "workflows" / "atlas-tests.yml"
-    required = (gate6, policy, validation, cli, tests, spec, workflow)
+    required = (gate6, policy, gate5_policy, validation, cli, tests, spec, workflow)
     missing = [str(path) for path in required if not path.is_file()]
     if missing:
         raise SystemExit("Phase25 Gate6 files missing: " + ", ".join(missing))
 
     gate6_text = _source(gate6)
     policy_text = _source(policy)
+    gate5_policy_text = _source(gate5_policy)
     validation_text = _source(validation)
     cli_text = _source(cli)
     tests_text = _source(tests)
@@ -85,11 +87,12 @@ def main() -> int:
         "submit_authorized_plan",
     )
     combined = gate6_text + validation_text + cli_text
+    frozen_policy_text = policy_text + gate5_policy_text
 
     checks = {
         "gate6_policy_fingerprint_sha256": len(phase25_gate6_policy_fingerprint()) == 64,
         "accepted_gate5_fingerprint_stable": phase25_gate5_policy_fingerprint() == ACCEPTED_GATE5_POLICY_FINGERPRINT == "0e2060d91838c506d8b7c720fd38c06186dac8e4b4587385079b49cae519b8a0",
-        "prior_fingerprints_literal_locked": all(value in policy_text for value in (
+        "prior_fingerprints_literal_locked": all(value in frozen_policy_text for value in (
             "994b05f2bc7fd8329578e0ca2a621de2602d2d71e7f8c06101a22b9ca9468604",
             "1c134efdb64ad8ccd527be2ca870d5f3eddba3f6538654e68ca06f0aa4f64207",
             "417ef8af0b463a6983e6b54cfb510d8f556245c87818f8b8e24d90737049f083",
