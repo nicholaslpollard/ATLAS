@@ -128,20 +128,14 @@ class Phase23AnalysisHandoffStore:
         path = self.path(as_of_date)
         path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(path, json.dumps(report, indent=2, sort_keys=True, default=str) + "\n")
-        return self.resolve(
+        return Phase23AnalysisHandoffBinding(
             as_of_date=as_of_date,
-            cumulative=Phase15CumulativeFoundationBinding(
-                contract_version="phase23-write-time-baseline-binding",
-                acceptance_path=Path("."),
-                acceptance_sha256="",
-                validation_path=Path("."),
-                validation_sha256="",
-                foundation_fingerprint=PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
-                policy_fingerprint="",
-                history_start=date.min,
-                history_end=PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END,
-            ),
-            expected_phase14_acceptance_sha256=phase14_sha,
+            path=path,
+            sha256=sha256_file(path),
+            source_fingerprint=str(report["source_fingerprint"]),
+            phase14_acceptance_sha256=phase14_sha,
+            baseline_foundation_fingerprint=PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
+            baseline_history_end=PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END,
         )
 
     def resolve(
