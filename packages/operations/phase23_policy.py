@@ -9,7 +9,7 @@ from packages.schemas.execution import BrokerName
 
 
 PHASE23_POLICY_CONTRACT_VERSION = (
-    "phase23-policy-v1-current-finalized-analysis-explicit-read-authority-no-execution"
+    "phase23-policy-v2-current-finalized-analysis-market-reference-reads-only-no-execution"
 )
 PHASE23_DEFAULT_BROKER = BrokerName.WEBULL
 PHASE23_ALLOWED_BROKERS = (BrokerName.WEBULL, BrokerName.ALPACA)
@@ -23,16 +23,13 @@ PHASE23_ORDER_WRITES_ALLOWED = False
 PHASE23_PAPER_SUBMIT_AUTHORITY_ALLOWED = False
 PHASE23_ARBITRARY_CASE_INPUT_ALLOWED = False
 
+# Phase 23 v2 is frozen to the accepted Phase 11 support state, which has zero
+# SUPPORTED strategies. Therefore promoted research, portfolio reconciliation, and
+# AI review external calls are unreachable by policy. Do not authorize dormant
+# scopes. A later accepted strategy-support replacement may explicitly introduce
+# additional read classes when downstream cases can actually exist.
 MASSIVE_MARKET_REFERENCE_READS = "MASSIVE_MARKET_REFERENCE_READS"
-MASSIVE_RESEARCH_READS = "MASSIVE_RESEARCH_READS"
-PAPER_BROKER_READS = "PAPER_BROKER_READS"
-AI_REVIEW_CALLS = "AI_REVIEW_CALLS"
-PHASE23_EXTERNAL_READ_CLASSES = (
-    MASSIVE_MARKET_REFERENCE_READS,
-    MASSIVE_RESEARCH_READS,
-    PAPER_BROKER_READS,
-    AI_REVIEW_CALLS,
-)
+PHASE23_EXTERNAL_READ_CLASSES = (MASSIVE_MARKET_REFERENCE_READS,)
 
 # Accepted Phase 11 support is frozen until a separate strategy-evaluation phase
 # explicitly replaces it. Routine operation may not reinterpret MIXED as SUPPORTED.
@@ -67,6 +64,7 @@ def phase23_policy_payload() -> dict[str, object]:
         "finalized_session_required": True,
         "prepare_provider_free": True,
         "external_read_classes": list(PHASE23_EXTERNAL_READ_CLASSES),
+        "downstream_external_reads_reachable": False,
         "live_execution_enabled": PHASE23_LIVE_EXECUTION_ENABLED,
         "automatic_broker_failover": PHASE23_AUTOMATIC_BROKER_FAILOVER,
         "browser_execution_enabled": PHASE23_BROWSER_EXECUTION_ENABLED,
@@ -83,6 +81,7 @@ def phase23_policy_payload() -> dict[str, object]:
         "frozen_supported_strategy_ids": list(PHASE23_FROZEN_SUPPORTED_STRATEGIES),
         "accepted_ml_model_id": PHASE23_ACCEPTED_ML_MODEL_ID,
         "zero_promotion_is_valid": True,
+        "zero_promotion_is_expected_under_frozen_support": True,
     }
 
 
@@ -134,7 +133,7 @@ def build_phase23_read_challenge(
 ) -> Phase23ReadChallenge:
     selected = BrokerName(broker)
     if selected not in PHASE23_ALLOWED_BROKERS:
-        raise Phase23AuthorizationError("Phase 23 supports only Webull or Alpaca PAPER read context")
+        raise Phase23AuthorizationError("Phase 23 supports only Webull or Alpaca PAPER context")
     unknown = sorted(set(external_read_classes).difference(PHASE23_EXTERNAL_READ_CLASSES))
     if unknown:
         raise Phase23AuthorizationError("unknown Phase 23 external-read class: " + ", ".join(unknown))
