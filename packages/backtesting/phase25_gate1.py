@@ -150,7 +150,7 @@ class Phase25Gate1ScopeInventory:
             raise Phase25Gate1Error("Gate0 report contract mismatch")
         if report.get("through_date") != through_date.isoformat():
             raise Phase25Gate1Error("Gate0 report through-date mismatch")
-        if report.get("phase25_gate0_policy_fingerprint") != phase25_gate0_policy_fingerprint():
+        if report.get("policy_fingerprint") != phase25_gate0_policy_fingerprint():
             raise Phase25Gate1Error("Gate0 policy fingerprint mismatch")
         if report.get("pass") is not True:
             raise Phase25Gate1Error("Gate0 evidence is not passing")
