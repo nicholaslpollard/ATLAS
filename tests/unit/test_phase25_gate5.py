@@ -91,6 +91,11 @@ def test_gate5_is_read_only_resumable_bulk_and_cannot_refetch_probe_or_force() -
 
 
 def test_gate5_addition_preserves_all_accepted_prior_policy_fingerprints() -> None:
+    assert ACCEPTED_GATE0_POLICY_FINGERPRINT == "994b05f2bc7fd8329578e0ca2a621de2602d2d71e7f8c06101a22b9ca9468604"
+    assert ACCEPTED_GATE1_POLICY_FINGERPRINT == "1c134efdb64ad8ccd527be2ca870d5f3eddba3f6538654e68ca06f0aa4f64207"
+    assert ACCEPTED_GATE2_POLICY_FINGERPRINT == "417ef8af0b463a6983e6b54cfb510d8f556245c87818f8b8e24d90737049f083"
+    assert ACCEPTED_GATE3_POLICY_FINGERPRINT == "d0e49829132c0c8f2a09c078863ea4871fe36da1067b04c3f367e880a24080b6"
+    assert ACCEPTED_GATE4_POLICY_FINGERPRINT == "e8ef1b2f0d020e579e4c8fc92dfa256fea307ce96ed89cee02c4a812b8398d16"
     assert phase25_gate0_policy_fingerprint() == ACCEPTED_GATE0_POLICY_FINGERPRINT
     assert phase25_gate1_policy_fingerprint() == ACCEPTED_GATE1_POLICY_FINGERPRINT
     assert phase25_gate2_policy_fingerprint() == ACCEPTED_GATE2_POLICY_FINGERPRINT
