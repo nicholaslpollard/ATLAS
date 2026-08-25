@@ -92,9 +92,7 @@ class Phase23AnalysisHandoffStore:
             raise Phase23HandoffError("Phase 23 operational handoff must extend beyond the frozen cumulative endpoint")
         if not phase14_acceptance_path.is_file():
             raise Phase23HandoffError("Phase 14 acceptance is missing for Phase 23 handoff")
-        bad_hashes = sorted(
-            key for key, value in stage_hashes.items() if len(str(value)) != 64
-        )
+        bad_hashes = sorted(key for key, value in stage_hashes.items() if len(str(value)) != 64)
         if bad_hashes:
             raise Phase23HandoffError("Phase 23 stage hashes are malformed: " + ", ".join(bad_hashes))
         phase14_sha = sha256_file(phase14_acceptance_path)
@@ -115,8 +113,11 @@ class Phase23AnalysisHandoffStore:
             **source_payload,
             "generated_at_utc": datetime.now(UTC).isoformat(),
             "source_fingerprint": _stable_hash(source_payload),
-            "canonical_writes": 0,
-            "model_writes": 0,
+            # Phase 23 is expected to write local canonical/features/analysis artifacts.
+            # These are analytical persistence, not provider or broker mutations.
+            "local_analytical_writes_allowed": True,
+            "production_model_writes": 0,
+            "external_provider_mutation_writes": 0,
             "broker_writes": 0,
             "order_writes": 0,
             "paper_submits": 0,
@@ -127,14 +128,20 @@ class Phase23AnalysisHandoffStore:
         path = self.path(as_of_date)
         path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(path, json.dumps(report, indent=2, sort_keys=True, default=str) + "\n")
-        return Phase23AnalysisHandoffBinding(
+        return self.resolve(
             as_of_date=as_of_date,
-            path=path,
-            sha256=sha256_file(path),
-            source_fingerprint=str(report["source_fingerprint"]),
-            phase14_acceptance_sha256=phase14_sha,
-            baseline_foundation_fingerprint=PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
-            baseline_history_end=PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END,
+            cumulative=Phase15CumulativeFoundationBinding(
+                contract_version="phase23-write-time-baseline-binding",
+                acceptance_path=Path("."),
+                acceptance_sha256="",
+                validation_path=Path("."),
+                validation_sha256="",
+                foundation_fingerprint=PHASE15_ACCEPTED_CUMULATIVE_FOUNDATION_FINGERPRINT,
+                policy_fingerprint="",
+                history_start=date.min,
+                history_end=PHASE15_ACCEPTED_CUMULATIVE_HISTORY_END,
+            ),
+            expected_phase14_acceptance_sha256=phase14_sha,
         )
 
     def resolve(
@@ -166,7 +173,16 @@ class Phase23AnalysisHandoffStore:
             raise Phase23HandoffError("Phase 23 handoff strategy-support authority changed")
         if payload.get("phase14_acceptance_sha256") != expected_phase14_acceptance_sha256:
             raise Phase23HandoffError("Phase 23 handoff no longer binds current Phase 14 acceptance")
-        for field in ("model_writes", "broker_writes", "order_writes", "paper_submits", "live_writes"):
+        if payload.get("local_analytical_writes_allowed") is not True:
+            raise Phase23HandoffError("Phase 23 handoff local analytical persistence boundary changed")
+        for field in (
+            "production_model_writes",
+            "external_provider_mutation_writes",
+            "broker_writes",
+            "order_writes",
+            "paper_submits",
+            "live_writes",
+        ):
             if int(payload.get(field, -1)) != 0:
                 raise Phase23HandoffError(f"Phase 23 handoff mutation boundary changed: {field}")
         if payload.get("automatic_broker_failover") is not False:
