@@ -154,7 +154,7 @@ def persist_exact_interval_ticker_states(
             previous = ordinal
         starts.append(len(data))
 
-        for left, right in zip(starts, starts[1:], strict=True):
+        for left, right in zip(starts[:-1], starts[1:], strict=True):
             segment = data.iloc[left:right].copy()
             structures = segment["daily_structure"].astype(str).tolist()
             alignments = segment["short_alignment"].astype(str).tolist()
