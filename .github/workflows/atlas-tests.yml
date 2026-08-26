@@ -175,5 +175,8 @@ jobs:
       - name: Validate Phase 25 Gate 7 exact-PIT route-context contracts
         run: python scripts/validate_phase25_gate7.py
 
+      - name: Validate Phase 25 cumulative Gates 8-11 contracts
+        run: python scripts/validate_phase25_remaining.py
+
       - name: Run tests
         run: python -m pytest -q
