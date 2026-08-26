@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import packages.backtesting.phase25_gate8 as phase25_gate8_module
 from packages.backtesting.phase24_gate2 import TrancheMetrics, holm_bonferroni
 from packages.backtesting.phase25_gate10 import protected_checks
 from packages.backtesting.phase25_gate8_policy import (
@@ -50,6 +51,7 @@ def test_remaining_gate_policies_are_preregistered_and_no_support_write() -> Non
     assert ACCEPTED_GATE7_POLICY_FINGERPRINT == "2800bd82670b8f763a9c5f5c080301e20ab6462f82dd949f7cec0a800e989c31"
     assert phase25_gate7_policy_fingerprint() == ACCEPTED_GATE7_POLICY_FINGERPRINT
     assert PHASE25_GATE8_DEVELOPMENT_END < PHASE25_GATE8_PROTECTED_START
+    assert phase25_gate8_module.PHASE25_GATE8_PROTECTED_START == PHASE25_GATE8_PROTECTED_START
     assert PHASE25_GATE8_PROTECTED_EVIDENCE_ALLOWED is False
     assert PHASE25_GATE8_SUPPORT_REPLACEMENT_ALLOWED is False
     assert PHASE25_GATE9_MULTIPLE_TESTING_METHOD == "HOLM_BONFERRONI_GLOBAL_8_INCUMBENTS"
