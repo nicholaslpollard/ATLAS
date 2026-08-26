@@ -84,8 +84,8 @@ class Phase25Gate8IndependentValidator:
                     count(*) AS rows,
                     count(DISTINCT CAST(session_date AS VARCHAR) || ':' || instrument_id || ':' || strategy_id) AS unique_rows,
                     count(*) FILTER (WHERE contract_version <> ?) AS bad_contract,
-                    count(*) FILTER (WHERE session_date < DATE ? OR session_date > DATE ?) AS outside_development,
-                    count(*) FILTER (WHERE session_date >= DATE ?) AS protected_rows,
+                    count(*) FILTER (WHERE session_date < CAST(? AS DATE) OR session_date > CAST(? AS DATE)) AS outside_development,
+                    count(*) FILTER (WHERE session_date >= CAST(? AS DATE)) AS protected_rows,
                     count(*) FILTER (WHERE forward_return IS NULL OR NOT isfinite(forward_return)) AS bad_return,
                     count(*) FILTER (
                         WHERE abs(directional_return - CASE WHEN strategy_direction='LONG' THEN forward_return ELSE -forward_return END) > 1e-12
