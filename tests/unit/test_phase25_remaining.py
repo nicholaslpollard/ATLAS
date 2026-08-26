@@ -83,9 +83,13 @@ def test_gate10_protected_checks_require_robust_positive_evidence() -> None:
 
 
 def test_gate9_global_holm_applies_across_all_eight_incumbents() -> None:
-    p_values = {f"s{i}": value for i, value in enumerate((0.001, 0.002, 0.003, 0.004, 0.006, 0.01, 0.02, 0.04), start=1)}
+    p_values = {
+        f"s{i}": value
+        for i, value in enumerate((0.001, 0.002, 0.003, 0.004, 0.006, 0.01, 0.03, 0.20), start=1)
+    }
     decisions = holm_bonferroni(p_values, alpha=0.05)
     assert len(decisions) == 8
     assert decisions["s1"]["threshold"] == 0.05 / 8
     assert decisions["s1"]["rejected_null"] is True
+    assert decisions["s7"]["rejected_null"] is False
     assert decisions["s8"]["rejected_null"] is False
