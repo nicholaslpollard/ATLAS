@@ -582,7 +582,10 @@ def _assign_fold(frame: pd.DataFrame, *, folds: int, field: str) -> pd.DataFrame
     sessions = tuple(sorted(set(pd.to_datetime(result["as_of_date"]).dt.date)))
     if len(sessions) < folds:
         raise Phase27ResearchError("too few internal sessions for Phase27 fold attribution")
-    blocks = [tuple(block.tolist()) for block in np.array_split(np.asarray(sessions, dtype=object), folds)]
+    blocks = [
+        tuple(block.tolist())
+        for block in np.array_split(np.asarray(sessions, dtype=object), folds)
+    ]
     mapping = {session: index for index, block in enumerate(blocks) for session in block}
     result["as_of_date"] = pd.to_datetime(result["as_of_date"]).dt.date
     result[field] = result["as_of_date"].map(mapping)
@@ -596,15 +599,19 @@ def _tranche(frame: pd.DataFrame, *, start: date, end: date) -> pd.DataFrame:
     return frame.loc[(frame["as_of_date"] >= start) & (frame["as_of_date"] <= end)].copy()
 
 
+def _metric_or_negative_infinity(value: float | None) -> float:
+    return float(value) if value is not None else -math.inf
+
+
 def _winner_sort_key(
     candidate: Phase27CandidateSpec,
     metrics: Phase27TrancheMetrics,
     candidate_index: Mapping[str, int],
 ) -> tuple[float, float, float, int]:
     return (
-        -float(metrics.primary_lcb or -math.inf),
-        -float(metrics.stress_mean_return or -math.inf),
-        -float(metrics.primary_mean_return or -math.inf),
+        -_metric_or_negative_infinity(metrics.primary_lcb),
+        -_metric_or_negative_infinity(metrics.stress_mean_return),
+        -_metric_or_negative_infinity(metrics.primary_mean_return),
         candidate_index[candidate.candidate_id],
     )
 
@@ -665,13 +672,20 @@ class Phase27DevelopmentResearch:
         frame["as_of_date"] = pd.to_datetime(frame["as_of_date"]).dt.date
         return frame, report, report_path
 
-    def _boundaries(self) -> Phase27DevelopmentBoundaries:
-        sessions = tuple(
+    def _boundaries(self, frame: pd.DataFrame) -> Phase27DevelopmentBoundaries:
+        sessions = tuple(sorted(set(frame["as_of_date"])))
+        accepted_calendar = set(
             self.calendar.sessions_in_range(
                 date.fromisoformat(PHASE27_RESEARCH_START),
                 date.fromisoformat(PHASE27_DEVELOPMENT_END),
             )
         )
+        if not sessions:
+            raise Phase27ResearchError("Phase27 eligible development session set is empty")
+        if not set(sessions).issubset(accepted_calendar):
+            raise Phase27ResearchError("Phase27 eligible sessions drift outside frozen calendar")
+        if max(sessions) > date.fromisoformat(PHASE27_DEVELOPMENT_END):
+            raise Phase27ResearchError("Phase27 eligible sessions exceed frozen development end")
         return chronological_boundaries(sessions)
 
     @staticmethod
@@ -682,7 +696,11 @@ class Phase27DevelopmentResearch:
         stage: str,
     ) -> pd.DataFrame:
         result = frame.copy()
-        result.insert(0, "prediction_contract_version", PHASE27_PREDICTION_ARTIFACT_CONTRACT_VERSION)
+        result.insert(
+            0,
+            "prediction_contract_version",
+            PHASE27_PREDICTION_ARTIFACT_CONTRACT_VERSION,
+        )
         result.insert(1, "candidate_id", candidate.candidate_id)
         result.insert(2, "candidate_family", candidate.family)
         result.insert(3, "strategy_direction", candidate.direction)
@@ -717,7 +735,7 @@ class Phase27DevelopmentResearch:
             raise Phase27ResearchError("Phase27 runner-up substitution must remain disabled")
 
         frame, population_report, population_report_path = self._load_development()
-        boundaries = self._boundaries()
+        boundaries = self._boundaries(frame)
         selection_frame = _tranche(
             frame, start=boundaries.selection_start, end=boundaries.selection_end
         )
@@ -768,7 +786,8 @@ class Phase27DevelopmentResearch:
         p_values = {
             candidate.candidate_id: (
                 selection_metrics[candidate.candidate_id].primary_bootstrap_p_value
-                if selection_metrics[candidate.candidate_id].primary_bootstrap_p_value is not None
+                if selection_metrics[candidate.candidate_id].primary_bootstrap_p_value
+                is not None
                 else 1.0
             )
             for candidate in PHASE27_CANDIDATES
@@ -782,7 +801,8 @@ class Phase27DevelopmentResearch:
         }
 
         candidate_index = {
-            candidate.candidate_id: index for index, candidate in enumerate(PHASE27_CANDIDATES)
+            candidate.candidate_id: index
+            for index, candidate in enumerate(PHASE27_CANDIDATES)
         }
         selection_winner_ids: list[str] = []
         for direction in ("LONG", "SHORT"):
