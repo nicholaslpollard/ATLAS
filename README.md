@@ -10,27 +10,73 @@ The legacy Chart Monitor remains preserved while ATLAS matures through SHADOW/PA
 
 Future ATLAS chats/work should read these in order before changing the system:
 
-1. [`docs/roadmap.md`](docs/roadmap.md) — **normative mission, anti-drift rules, and complete remaining roadmap**;
+1. [`docs/roadmap.md`](docs/roadmap.md) — **normative mission, anti-drift rules, GUI/web/deployment path, and complete remaining roadmap**;
 2. [`docs/current_status.md`](docs/current_status.md) — exact repository/current-phase handoff;
 3. active phase specification — frozen scope/evidence/authority for the current phase;
 4. [`docs/phase_flow.md`](docs/phase_flow.md) — **phase = acceptance gate** development contract;
-5. accepted code, validators, CI/PR evidence, and older phase documents for detailed provenance.
+5. [`docs/phase_plain_english_contract.md`](docs/phase_plain_english_contract.md) — required plain-English phase-start and phase-end explanation;
+6. accepted code, validators, CI/PR evidence, and older phase documents for detailed provenance.
 
 Accepted `main` controls what already exists. The master roadmap controls the intended destination and future sequence. Older phase documents never silently redefine either.
 
 ## Architecture
 
-`market/reference data -> Parquet lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> candidate promotion -> analogue/scenario/news research -> stock/options instrument selection -> entry/exit/geometry -> portfolio risk/sizing -> consolidated deterministic case -> independent AI audit -> alerts -> shadow/paper/live execution -> outcome/performance learning -> browser control plane`
+`market/reference data -> Parquet lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> candidate promotion -> analogue/scenario/news research -> stock/options instrument selection -> entry/exit/geometry -> portfolio risk/sizing -> consolidated deterministic case -> independent AI audit -> alerts -> shadow/paper/live execution -> outcome/performance learning -> browser/web control plane -> production deployment/operations`
 
-Massive is primary market/reference. Webull is primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance. Alpaca is manual secondary only. ML is predictive/probability evidence, AI is an independent audit, and the browser is the monitoring/control surface rather than a parallel trading engine.
+Massive is primary market/reference. Webull is primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance. Alpaca is manual secondary only. ML is predictive/probability evidence, AI is an independent audit, and the browser/web application is the operator control surface rather than a parallel trading engine.
 
 ## Phase execution model
 
 Starting with Phase26, **the numbered phase itself is the project gate**.
 
-`DEFINE/LOCK PHASE -> IMPLEMENT COHERENT WORK -> FOCUSED DEVELOPMENT TESTING -> FULL PHASE-END ACCEPTANCE GATE -> DOCUMENT -> ACCEPT/REPAIR -> MERGE -> NEXT PHASE`
+`PLAIN-ENGLISH PHASE START -> DEFINE/LOCK PHASE -> IMPLEMENT COHERENT WORK -> FOCUSED DEVELOPMENT TESTING -> FULL PHASE-END ACCEPTANCE GATE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT/REPAIR -> MERGE -> NEXT PHASE`
 
 Internal research splits, checkpoints, development tests, or protected-evidence steps are not separate project gates. Full regression, retained validators, Ubuntu/Windows CI, negative/recovery testing, independent validation, and target-machine/provider/broker evidence where required happen at the phase-end acceptance boundary.
+
+## Required plain-English communication
+
+The operator should never have to interpret raw technical logs to understand where ATLAS stands.
+
+At the **start of every phase**, explain in ordinary language:
+
+- where the project is now;
+- what the phase is trying to accomplish;
+- why it matters to the profit/account-growth end goal;
+- what will actually be built or changed;
+- what will be tested at the end;
+- what success means;
+- what happens if the phase fails or produces a negative result;
+- what is explicitly not happening yet.
+
+At the **end of every phase**, explain before technical evidence:
+
+- the goal;
+- what was built;
+- whether the full phase gate passed;
+- what the results mean in practical terms;
+- what ATLAS can do now that it could not do before, or `NONE`;
+- what is still missing/risky;
+- where the project now sits in the roadmap;
+- exactly what happens next and why.
+
+Hashes, p-values, fingerprints, row counts, test logs, and CI IDs may still follow when useful for auditability and continuation, but they never replace the plain-English explanation. See [`docs/phase_plain_english_contract.md`](docs/phase_plain_english_contract.md).
+
+## GUI, web development, and deployment are part of the product
+
+The ATLAS browser/GUI is not a cosmetic afterthought. It is the intended day-to-day operator experience and is built progressively without duplicating trading logic in the frontend.
+
+The planned track is:
+
+- **Phase26:** alpha work remains the critical path; only UI/API data-contract needs are identified where useful so research is not displaced by frontend work.
+- **Phase27:** stabilize trade/case/risk outputs into web-facing contracts and begin read-only interface prototypes for candidate/trade-plan inspection.
+- **Phase28:** add historical replay/stress-result dashboard views so full-system behavior can be inspected visually.
+- **Phase29:** operate a SHADOW/PAPER web beta for run status, candidates, cases, AI review, paper orders/positions, alerts, failures, and reconciliation. No LIVE authority.
+- **Phase30:** add outcome, performance, calibration, strategy/regime, drift, and learning dashboards.
+- **Phase31:** build/consolidate the full production web application, operational controls, authentication/security boundaries as applicable, PostgreSQL operational-state promotion, scheduler integration, host/service packaging, configuration, deployment, restart/recovery, logging, backups, and deployment documentation.
+- **Phase32:** harden the deployed application under outages, process restarts, stale data, broker/provider failures, reconciliation faults, and emergency controls.
+- **Phase33:** expose controlled LIVE activation/disable, risk-envelope visibility, reconciliation/health, and evidence-based scaling controls through the production GUI without allowing the GUI to bypass engine authority.
+
+Frontend controls call accepted backend/API contracts. The Python trading engine remains the source of analytical, risk, broker, and execution authority.
 
 ## Current state — 2026-08-26
 
@@ -54,16 +100,16 @@ If Phase26 produces no supported strategy, downstream LIVE progression stops and
 ## Remaining planned phases
 
 - **Phase26:** Production-Path-Native Alpha Discovery & Validation.
-- **Phase27:** Signal-to-Trade Construction & Portfolio Optimization.
-- **Phase28:** End-to-End Historical Replay & Stress Certification.
-- **Phase29:** Prospective SHADOW/PAPER Certification.
-- **Phase30:** Outcomes, Learning, Drift Monitoring & Governance.
-- **Phase31:** Production Operations & Browser Control Plane.
-- **Phase32:** LIVE Readiness, Reconciliation & Failure Certification.
-- **Phase33:** Controlled LIVE Activation & Evidence-Based Scaling.
+- **Phase27:** Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype.
+- **Phase28:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
+- **Phase29:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
+- **Phase30:** Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI.
+- **Phase31:** Production Web Application, Operations & Deployment.
+- **Phase32:** LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification.
+- **Phase33:** Controlled LIVE Activation & Evidence-Based Scaling through the production control plane.
 
-The full purpose, entry conditions, acceptance boundaries, and conditional progression rules are defined in [`docs/roadmap.md`](docs/roadmap.md).
+The full purpose, entry conditions, acceptance boundaries, web/deployment responsibilities, and conditional progression rules are defined in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Persistent boundaries
 
-Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never fabricate unavailable history; finalized facts outrank provisional state; unknown/uncertain mutation state fails closed and requires reconciliation; valid trade geometry and portfolio risk are mandatory; community trading ideas are hypotheses that must be tested rather than assumed; no automatic broker failover; PAPER does not imply LIVE; AI cannot create authority; and LIVE exists only after the final separately accepted phase.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never fabricate unavailable history; finalized facts outrank provisional state; unknown/uncertain mutation state fails closed and requires reconciliation; valid trade geometry and portfolio risk are mandatory; community trading ideas are hypotheses that must be tested rather than assumed; the frontend never duplicates or bypasses engine authority; no automatic broker failover; PAPER does not imply LIVE; AI cannot create authority; and LIVE exists only after the final separately accepted phase.
