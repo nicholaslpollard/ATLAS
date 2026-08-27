@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -11,6 +11,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from packages.backtesting.phase27_blindness import PHASE27_BLINDNESS_AUDIT_CONTRACT_VERSION
+from packages.backtesting.phase27_closeout import (
+    PHASE27_ARCHITECTURE_AUDIT_CONTRACT_VERSION,
+    PHASE27_CLOSEOUT_REPORT_CONTRACT_VERSION,
+    phase27_architecture_audit_checks,
+    phase27_disposition,
+)
 from packages.backtesting.phase27_confirmation import (
     PHASE27_CONFIRMATION_REPORT_CONTRACT_VERSION,
     PHASE27_PROTECTED_READ_PLAN_CONTRACT_VERSION,
@@ -78,6 +84,9 @@ def main() -> None:
         PHASE27_LIVE_WRITES,
         PHASE27_AUTOMATION_WRITES,
     )
+    architecture = phase27_architecture_audit_checks(PROJECT_ROOT)
+    negative_disposition, negative_next = phase27_disposition(())
+    positive_disposition, positive_next = phase27_disposition(("supported-alpha",))
     checks = {
         "phase27_policy_fingerprint_present": len(phase27_policy_fingerprint()) == 64,
         "frozen_global_candidate_count_8": len(PHASE27_CANDIDATES) == 8,
@@ -103,6 +112,13 @@ def main() -> None:
         ),
         "validation_contract_present": bool(PHASE27_VALIDATION_CONTRACT_VERSION),
         "cumulative_contract_present": bool(PHASE27_CUMULATIVE_REPORT_CONTRACT_VERSION),
+        "architecture_audit_contract_present": bool(PHASE27_ARCHITECTURE_AUDIT_CONTRACT_VERSION),
+        "closeout_contract_present": bool(PHASE27_CLOSEOUT_REPORT_CONTRACT_VERSION),
+        "architecture_audit_checks_pass": all(architecture.values()),
+        "negative_result_is_accepted_negative": negative_disposition == "ACCEPTED_NEGATIVE",
+        "negative_result_blocks_next_trade_construction_entry": negative_next is False,
+        "supported_result_is_accepted_positive": positive_disposition == "ACCEPTED_POSITIVE",
+        "supported_result_can_satisfy_next_alpha_entry": positive_next is True,
         "research_uses_nested_oos_selection": "selection_oos_signals(" in research_source
         and "outer_folds=PHASE27_SELECTION_FOLDS" in research_source,
         "blindness_checks_preexisting_confirmation_artifacts": (
@@ -123,12 +139,16 @@ def main() -> None:
     print(f"Phase 27 research contract: {PHASE27_RESEARCH_REPORT_CONTRACT_VERSION}")
     print(f"Phase 27 blindness contract: {PHASE27_BLINDNESS_AUDIT_CONTRACT_VERSION}")
     print(f"Phase 27 confirmation contract: {PHASE27_CONFIRMATION_REPORT_CONTRACT_VERSION}")
+    print(f"Phase 27 architecture audit contract: {PHASE27_ARCHITECTURE_AUDIT_CONTRACT_VERSION}")
+    print(f"Phase 27 closeout contract: {PHASE27_CLOSEOUT_REPORT_CONTRACT_VERSION}")
+    for name, value in architecture.items():
+        print(f"  audit.{name}: {value}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
     if not all(checks.values()):
         failed = sorted(name for name, passed in checks.items() if not passed)
         raise SystemExit("Phase 27 contract validation failed: " + ", ".join(failed))
-    print("Phase 27 cross-sectional alpha contracts: PASS")
+    print("Phase 27 cross-sectional alpha and closeout contracts: PASS")
 
 
 if __name__ == "__main__":
