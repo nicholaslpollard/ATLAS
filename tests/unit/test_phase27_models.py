@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from datetime import date, timedelta
 
 import numpy as np
@@ -82,10 +83,12 @@ def test_ridge_tuning_and_scoring_are_deterministic() -> None:
     assert np.isfinite(scores["phase27_score"].to_numpy(dtype=float)).all()
 
 
-def test_pairwise_rank_model_orders_simple_signal() -> None:
+def test_pairwise_rank_model_orders_simple_signal_without_deprecated_api_warning() -> None:
     frame = _model_frame(session_count=10)
     candidate = _candidate("pairwise_rank_long")
-    model = fit_learned_model(frame, candidate, {"C": 1.0})
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FutureWarning)
+        model = fit_learned_model(frame, candidate, {"C": 1.0})
     scored = score_candidate(frame, candidate, model=model)
     correlations = []
     for _, group in scored.groupby("as_of_date", sort=True):
