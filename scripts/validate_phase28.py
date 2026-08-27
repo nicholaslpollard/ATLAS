@@ -12,6 +12,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from packages.backtesting.phase28_blindness import PHASE28_BLINDNESS_AUDIT_CONTRACT_VERSION
+from packages.backtesting.phase28_closeout import (
+    PHASE28_ARCHITECTURE_AUDIT_CONTRACT_VERSION,
+    PHASE28_CLOSEOUT_REPORT_CONTRACT_VERSION,
+    phase28_architecture_audit_checks,
+    phase28_disposition,
+)
 from packages.backtesting.phase28_confirmation import (
     PHASE28_CONFIRMATION_REPORT_CONTRACT_VERSION,
     PHASE28_PROTECTED_READ_PLAN_CONTRACT_VERSION,
@@ -112,6 +118,9 @@ def main() -> None:
         PHASE28_LIVE_WRITES,
         PHASE28_AUTOMATION_WRITES,
     )
+    architecture = phase28_architecture_audit_checks(PROJECT_ROOT)
+    negative_disposition, negative_next = phase28_disposition(())
+    positive_disposition, positive_next = phase28_disposition(("supported-alpha",))
     checks = {
         "phase28_policy_fingerprint_present": len(phase28_policy_fingerprint()) == 64,
         "source_phase27_merge_frozen": PHASE28_SOURCE_PHASE27_MERGE
@@ -143,6 +152,13 @@ def main() -> None:
         ),
         "validation_contract_present": bool(PHASE28_VALIDATION_CONTRACT_VERSION),
         "cumulative_contract_present": bool(PHASE28_CUMULATIVE_REPORT_CONTRACT_VERSION),
+        "architecture_audit_contract_present": bool(PHASE28_ARCHITECTURE_AUDIT_CONTRACT_VERSION),
+        "closeout_contract_present": bool(PHASE28_CLOSEOUT_REPORT_CONTRACT_VERSION),
+        "architecture_audit_checks_pass": all(architecture.values()),
+        "negative_result_is_accepted_negative": negative_disposition == "ACCEPTED_NEGATIVE",
+        "negative_result_blocks_phase29_signal_to_trade_entry": negative_next is False,
+        "supported_result_is_accepted_positive": positive_disposition == "ACCEPTED_POSITIVE",
+        "supported_result_can_satisfy_phase29_entry": positive_next is True,
         "research_has_global_holm": "holm_bonferroni(" in research_source
         and "len(holm) == 8" in research_source,
         "research_has_no_model_tuning_loop": "tune_hyperparameters" not in research_source,
@@ -165,12 +181,16 @@ def main() -> None:
     print(f"Phase 28 confirmation contract: {PHASE28_CONFIRMATION_REPORT_CONTRACT_VERSION}")
     print(f"Phase 28 validation contract: {PHASE28_VALIDATION_CONTRACT_VERSION}")
     print(f"Phase 28 cumulative contract: {PHASE28_CUMULATIVE_REPORT_CONTRACT_VERSION}")
+    print(f"Phase 28 architecture audit contract: {PHASE28_ARCHITECTURE_AUDIT_CONTRACT_VERSION}")
+    print(f"Phase 28 closeout contract: {PHASE28_CLOSEOUT_REPORT_CONTRACT_VERSION}")
+    for name, value in architecture.items():
+        print(f"  audit.{name}: {value}")
     for name, value in checks.items():
         print(f"  {name}: {value}")
     if not all(checks.values()):
         failed = sorted(name for name, passed in checks.items() if not passed)
         raise SystemExit("Phase 28 contract validation failed: " + ", ".join(failed))
-    print("Phase 28 cross-stock lead-lag alpha contracts: PASS")
+    print("Phase 28 cross-stock lead-lag alpha and closeout contracts: PASS")
 
 
 if __name__ == "__main__":
