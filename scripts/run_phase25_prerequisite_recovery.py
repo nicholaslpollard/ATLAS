@@ -9,9 +9,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from packages.backtesting.phase25_gate6_recovery import (
-    Phase25Gate6RecoveredIndependentValidator,
-    Phase25Gate6RecoveredPrerequisiteReconstruction,
+from packages.backtesting.phase25_gate6_reference_rebind import (
+    Phase25Gate6ReferenceRebindIndependentValidator,
+    Phase25Gate6ReferenceRebindReconstruction,
 )
 from packages.backtesting.phase25_gate7 import Phase25Gate7RouteContextReplay
 from packages.backtesting.phase25_gate7_validation import (
@@ -109,7 +109,7 @@ def main() -> int:
     )
     print()
 
-    gate6 = Phase25Gate6RecoveredPrerequisiteReconstruction(settings)
+    gate6 = Phase25Gate6ReferenceRebindReconstruction(settings)
 
     def gate6_progress(**event):  # type: ignore[no-untyped-def]
         index = int(event["index"])
@@ -125,8 +125,13 @@ def main() -> int:
         through_date=args.through_date,
         progress_callback=gate6_progress,
     )
-    gate6_validation = Phase25Gate6RecoveredIndependentValidator(settings).run(
+    gate6_validation = Phase25Gate6ReferenceRebindIndependentValidator(settings).run(
         through_date=args.through_date
+    )
+    print(
+        "Recovered reference binding: PASS "
+        f"(sessions={gate6_report.get('reference_rebind_session_count', 0)}, "
+        f"semantic_drift={gate6_report.get('reference_rebind_semantic_drift_count', 0)})"
     )
     print(
         "Gate 6: PASS "
@@ -160,8 +165,8 @@ def main() -> int:
     print("Phase 26 was NOT run by this command.")
     print("Broker/order/PAPER/LIVE activity remained disabled.")
     print(
-        "Do not mix current-data catch-up into this frozen recovery; "
-        "catch-up is a separate next operation."
+        "Current-data catch-up is intentionally deferred; it can be done later when "
+        "it helps the testing/production transition."
     )
     return 0
 
