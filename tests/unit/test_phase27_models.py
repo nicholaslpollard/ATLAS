@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from packages.backtesting.phase27_models import (
+    _complexity_key,
     candidate_param_grid,
     expanding_walk_forward_folds,
     fit_learned_model,
@@ -48,6 +49,13 @@ def test_phase27_candidate_grids_are_finite() -> None:
     assert len(candidate_param_grid(_candidate("ridge_relative_long"))) == 4
     assert len(candidate_param_grid(_candidate("hgb_relative_long"))) == 16
     assert len(candidate_param_grid(_candidate("pairwise_rank_long"))) == 3
+
+
+def test_regularization_tie_breaks_prefer_simpler_models() -> None:
+    ridge = _candidate("ridge_relative_long")
+    assert _complexity_key(ridge, {"alpha": 100.0}) < _complexity_key(ridge, {"alpha": 0.01})
+    pairwise = _candidate("pairwise_rank_long")
+    assert _complexity_key(pairwise, {"C": 0.1}) < _complexity_key(pairwise, {"C": 10.0})
 
 
 def test_walk_forward_folds_are_chronological_with_purge() -> None:
