@@ -88,6 +88,14 @@ def main() -> None:
         "duckdb_connection",
         "phase26_observations",
     )
+    forbidden_external_authority_tokens = (
+        "packages.brokers",
+        "packages.execution",
+        "submit_order",
+        "place_order",
+        "paper_submit",
+        "live_write",
+    )
 
     checks = {
         "policy_contract_present": bool(PHASE30_POLICY_CONTRACT_VERSION),
@@ -136,11 +144,23 @@ def main() -> None:
         "monthly_acquisition_is_resumable": len(phase30_news_shard_windows()) > 1
         and "resumed_shards" in acquisition_source
         and "metadata_path" in acquisition_source,
+        "monthly_shard_completeness_fails_closed": "all_monthly_shards_nonempty"
+        in acquisition_source
+        and "all_monthly_shards_have_ticker_linked_news" in acquisition_source,
+        "acquisition_reconciles_authorized_feasibility_metadata": (
+            "feasibility_metadata_reconciled_" in acquisition_source
+            and "authorized news metadata drifted from immutable feasibility evidence"
+            in acquisition_source
+            and "feasibility_evidence_path" in acquisition_source
+        ),
         "acquisition_reuses_accepted_news_adapter": "MassivePhase30NewsClient"
         in acquisition_source
         and ".news_window(" in acquisition_source,
         "acquisition_has_no_market_outcome_reader": not any(
             token in acquisition_source.lower() for token in forbidden_acquisition_tokens
+        ),
+        "acquisition_has_no_broker_execution_authority": not any(
+            token in acquisition_source.lower() for token in forbidden_external_authority_tokens
         ),
         "runner_states_frozen_hypotheses_and_unread_outcomes": (
             "Scientific hypotheses: FROZEN (4 total; global Holm family = 4)"
