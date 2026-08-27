@@ -42,7 +42,11 @@ from .phase29_policy import (
     PHASE29_SOURCE_PHASE28_POLICY_FINGERPRINT,
     phase29_policy_fingerprint,
 )
-from .phase29_relative_value import nearest_pair_dislocations, pca_residual_dislocations
+from .phase29_relative_value import (
+    Phase29RelativeValueError,
+    nearest_pair_dislocations,
+    pca_residual_dislocations,
+)
 
 
 PHASE29_POPULATION_REPORT_CONTRACT_VERSION = (
@@ -377,7 +381,7 @@ class Phase29PopulationBuilder:
             pair_formation = formation_61.iloc[-60:]
             try:
                 pca = pca_residual_dislocations(formation_returns, current_returns)
-            except (ValueError, RuntimeError):
+            except Phase29RelativeValueError:
                 pca_fail_sessions += 1
                 continue
             pairs = nearest_pair_dislocations(pair_formation, numeric.iloc[-1])
