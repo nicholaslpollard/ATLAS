@@ -19,7 +19,7 @@ Validated trading edge is the current bottleneck. Better automation, a finished 
 Phase26 builds a production-path-native research table, calculates the accepted three-session outcome from canonical history, evaluates a frozen library of 24 materially different long/short strategy candidates, independently validates the research, and opens protected strategy returns only for finalists that survive frozen development/internal requirements.
 
 ### What will be tested at the end
-The complete Phase26 gate tests software correctness, identity/chronology integrity, realistic after-cost economics, time/regime robustness, concentration/dependence, multiple-testing risk, protected confirmation, independent persisted-artifact reconciliation, all retained historical validators, full regression, Ubuntu/Windows CI, and one target-machine cumulative evidence run.
+The complete Phase26 gate tests software correctness, identity/chronology integrity, realistic after-cost economics, time/regime robustness, concentration/dependence, multiple-testing risk, protected confirmation, independent persisted-artifact reconciliation, all retained historical validators, full regression, Ubuntu/Windows CI, one target-machine cumulative evidence run, and a bounded end-to-end architectural/integrity audit for workaround debt or duplicate authority paths.
 
 ### What success means
 A Phase26 candidate can earn historical analytical `SUPPORTED` status only if it survives every predeclared development, internal-validation, multiplicity, robustness, and protected-confirmation requirement. This permits Phase27 trade construction; it does not grant PAPER or LIVE authority.
@@ -223,6 +223,7 @@ Phase26 is one project gate and delivers one coherent batch:
 - independent persisted-evidence validator;
 - one cumulative target-machine runner;
 - focused tests and CI integration;
+- bounded end-to-end architectural/integrity audit of the critical data-to-execution authority path;
 - plain-English + technical closeout documentation.
 
 ## 12. Full Phase26 acceptance gate
@@ -237,6 +238,7 @@ Phase26 closes only after:
 7. lineage/reproducibility checks pass;
 8. forbidden external/broker/PAPER/LIVE activity remains zero;
 9. any support change is exactly explained by frozen evidence and independently reconciled;
-10. living docs synchronize and the user receives the required plain-English phase-end report.
+10. a bounded end-to-end architectural/integrity audit reviews the critical `provider data -> canonical data -> identity/universe -> features -> discovery -> regimes -> ML -> strategies -> promotion -> downstream case -> risk -> execution authority` chain for workaround-like fallbacks, duplicate implementations/validators, stale compatibility shims, wrapper proliferation, circular provenance/recovery logic, or alternate authority paths. Each finding must be classified as legitimate resilience/provenance, simplification debt, root-cause defect, or obsolete bypass. Anything compensating for an unresolved defect must be corrected at the owning layer; temporary containment cannot earn acceptance; material corrections require the full applicable acceptance suite again;
+11. living docs synchronize and the user receives the required plain-English phase-end report.
 
 A technically/scientifically valid zero-finalist or zero-confirmed result is `ACCEPTED — NEGATIVE`. It does not permit Phase27 to begin because Phase27's entry condition is at least one accepted supported strategy.
