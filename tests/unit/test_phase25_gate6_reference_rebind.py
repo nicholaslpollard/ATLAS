@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from pathlib import Path
 
 from packages.backtesting.phase25_gate6_recovery import (
     Phase25Gate6RecoveredIndependentValidator,
@@ -25,6 +26,27 @@ def test_reference_rebind_is_recovery_only_and_versioned() -> None:
         Phase25Gate6ReferenceRebindIndependentValidator,
         Phase25Gate6RecoveredIndependentValidator,
     )
+
+
+def test_reference_rebind_backup_paths_cannot_alias_same_basename() -> None:
+    backup_dir = Path("backup")
+    snapshot = Path("universe") / "part-000.parquet"
+    exclusion = Path("exclusions") / "part-000.parquet"
+    manifest = Path("universe") / "manifest.json"
+
+    backup_snapshot, backup_exclusion, backup_manifest = (
+        Phase25Gate6ReferenceRebindReconstruction._artifact_backup_paths(
+            backup_dir=backup_dir,
+            snapshot=snapshot,
+            exclusion=exclusion,
+            manifest_path=manifest,
+        )
+    )
+
+    assert backup_snapshot == backup_dir / "snapshot" / "part-000.parquet"
+    assert backup_exclusion == backup_dir / "exclusion" / "part-000.parquet"
+    assert backup_manifest == backup_dir / "manifest" / "manifest.json"
+    assert len({backup_snapshot, backup_exclusion, backup_manifest}) == 3
 
 
 def test_reference_rebind_backs_up_before_force_rebuild() -> None:
