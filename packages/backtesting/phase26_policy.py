@@ -10,7 +10,7 @@ PHASE26_POLICY_CONTRACT_VERSION = (
     "phase26-policy-v1-production-path-native-alpha-24-candidates-one-phase-gate"
 )
 PHASE26_RESEARCH_START = "2021-08-16"
-PHASE26_DEVELOPMENT_END = "2026-05-11"
+PHASE26_DEVELOPMENT_END = "2026-05-06"
 PHASE26_PROTECTED_START = "2026-05-12"
 PHASE26_PROTECTED_END = "2026-08-11"
 PHASE26_OUTCOME_HORIZON_SESSIONS = 3
@@ -442,7 +442,9 @@ def phase26_policy_payload() -> dict[str, object]:
             "horizon_sessions": PHASE26_OUTCOME_HORIZON_SESSIONS,
             "purge_sessions": PHASE26_PURGE_SESSIONS,
             "endpoint_only": True,
-            "same_exact_interval_required": True,
+            "observation_exact_interval_required": True,
+            "future_endpoint_same_provider_native_ticker_required": True,
+            "future_endpoint_must_remain_inside_observation_interval": False,
             "split_crossings_censored": True,
         },
         "economics": {
