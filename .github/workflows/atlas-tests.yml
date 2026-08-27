@@ -193,5 +193,8 @@ jobs:
       - name: Validate Phase 29 closeout and anti-workaround contracts
         run: python scripts/validate_phase29_closeout.py
 
+      - name: Validate Phase 30 historical-news feasibility contracts
+        run: python scripts/validate_phase30.py
+
       - name: Run tests
         run: python -m pytest -q
