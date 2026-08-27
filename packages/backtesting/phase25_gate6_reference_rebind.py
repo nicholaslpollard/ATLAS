@@ -86,6 +86,26 @@ class Phase25Gate6ReferenceRebindReconstruction(
             self.paths.universe_snapshot_manifest(session),
         )
 
+    @staticmethod
+    def _artifact_backup_paths(
+        *,
+        backup_dir: Path,
+        snapshot: Path,
+        exclusion: Path,
+        manifest_path: Path,
+    ) -> tuple[Path, Path, Path]:
+        """Return role-separated backup paths even when live basenames collide.
+
+        Phase7 snapshot and exclusion Parquet files can both be named part-000.parquet.
+        Keeping their artifact role in the backup path prevents aliasing while leaving
+        any legacy ambiguous partial backup untouched as historical recovery evidence.
+        """
+        return (
+            backup_dir / "snapshot" / snapshot.name,
+            backup_dir / "exclusion" / exclusion.name,
+            backup_dir / "manifest" / manifest_path.name,
+        )
+
     def _assert_only_reference_sha_is_stale(
         self,
         *,
@@ -163,9 +183,12 @@ class Phase25Gate6ReferenceRebindReconstruction(
         prior_exclusion_sha = sha256_file(exclusion)
 
         backup_dir = self._backup_root(through_date, source_lineage_sha256) / f"date={session}"
-        backup_snapshot = backup_dir / snapshot.name
-        backup_exclusion = backup_dir / exclusion.name
-        backup_manifest = backup_dir / manifest_path.name
+        backup_snapshot, backup_exclusion, backup_manifest = self._artifact_backup_paths(
+            backup_dir=backup_dir,
+            snapshot=snapshot,
+            exclusion=exclusion,
+            manifest_path=manifest_path,
+        )
         self._backup_file(snapshot, backup_snapshot)
         self._backup_file(exclusion, backup_exclusion)
         self._backup_file(manifest_path, backup_manifest)
