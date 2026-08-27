@@ -44,6 +44,7 @@ from .phase29_policy import (
     PHASE29_PCA_MIN_PEERS,
     PHASE29_PRIMARY_COST_BPS,
     PHASE29_PROTECTED_CONFIDENCE,
+    PHASE29_PROTECTED_FOLDS,
     PHASE29_PROTECTED_MIN_POSITIVE_FOLDS,
     PHASE29_PROTECTED_MIN_RAW_ROWS,
     PHASE29_PROTECTED_MIN_SIGNAL_SESSIONS,
@@ -218,6 +219,30 @@ def _keys(frame: pd.DataFrame) -> tuple[tuple[str, date, str], ...]:
             for row in work.itertuples(index=False)
         )
     )
+
+
+def _independent_fold_labels(
+    frame: pd.DataFrame, *, field: str, desired_folds: int
+) -> pd.DataFrame:
+    result = frame.copy()
+    if result.empty:
+        result[field] = pd.Series(dtype="int64")
+        return result
+    result["as_of_date"] = pd.to_datetime(result["as_of_date"]).dt.date
+    sessions = tuple(sorted(set(result["as_of_date"])))
+    fold_count = min(desired_folds, len(sessions))
+    blocks = [
+        tuple(block.tolist())
+        for block in np.array_split(np.asarray(sessions, dtype=object), fold_count)
+    ]
+    mapping = {session: index for index, block in enumerate(blocks) for session in block}
+    result[field] = result["as_of_date"].map(mapping)
+    if result[field].isna().any():
+        raise Phase29IndependentValidationError(
+            "independent protected fold attribution is incomplete"
+        )
+    result[field] = result[field].astype(int)
+    return result
 
 
 def _derived_seed(label: str) -> int:
@@ -689,25 +714,18 @@ class Phase29IndependentValidator:
                 observed = protected_signals.loc[
                     protected_signals["candidate_id"].astype(str) == candidate_id
                 ].copy()
-                if observed.empty:
-                    checks = _protected_checks(_metrics(
-                        observed,
-                        confidence=PHASE29_PROTECTED_CONFIDENCE,
-                        fold_field="protected_fold",
-                        label=f"protected:{candidate_id}",
-                    ))
-                else:
-                    if "protected_fold" not in observed.columns:
-                        protected_metric_match = False
-                        checks = {}
-                    else:
-                        metrics = _metrics(
-                            observed,
-                            confidence=PHASE29_PROTECTED_CONFIDENCE,
-                            fold_field="protected_fold",
-                            label=f"protected:{candidate_id}",
-                        )
-                        checks = _protected_checks(metrics)
+                observed = _independent_fold_labels(
+                    observed,
+                    field="protected_fold",
+                    desired_folds=PHASE29_PROTECTED_FOLDS,
+                )
+                metrics = _metrics(
+                    observed,
+                    confidence=PHASE29_PROTECTED_CONFIDENCE,
+                    fold_field="protected_fold",
+                    label=f"protected:{candidate_id}",
+                )
+                checks = _protected_checks(metrics)
                 protected_checks_match = protected_checks_match and checks == (
                     confirmation.get("protected_checks", {}).get(candidate_id, {})
                     if isinstance(confirmation.get("protected_checks"), dict)
