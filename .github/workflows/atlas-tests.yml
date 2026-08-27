@@ -181,5 +181,8 @@ jobs:
       - name: Validate Phase 26 closeout and anti-workaround contracts
         run: python scripts/validate_phase26.py
 
+      - name: Validate Phase 27 cross-sectional alpha contracts
+        run: python scripts/validate_phase27.py
+
       - name: Run tests
         run: python -m pytest -q
