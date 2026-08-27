@@ -6,8 +6,6 @@ ATLAS is the greenfield successor/redesign path for Chart Monitor. The legacy sy
 
 ## Start here
 
-Read in this order for future continuation:
-
 1. [`docs/current_status.md`](docs/current_status.md)
 2. [`docs/roadmap.md`](docs/roadmap.md)
 3. [`docs/phase25_historical_production_path_route_fidelity.md`](docs/phase25_historical_production_path_route_fidelity.md)
@@ -17,111 +15,67 @@ Read in this order for future continuation:
 7. [`docs/phase22_operational_paper_runner.md`](docs/phase22_operational_paper_runner.md)
 8. [`docs/phase21_unified_paper_execution_authority.md`](docs/phase21_unified_paper_execution_authority.md)
 9. [`docs/phase_flow.md`](docs/phase_flow.md)
-10. Older phase documents for provenance only.
 
 Accepted `main` and the living documents control when older material conflicts.
 
-## Architecture lock
+## Architecture
 
 `market/reference data -> Parquet lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability surface -> deterministic strategy routing/evaluation -> candidate promotion -> analogue/Monte Carlo/scenario research -> news/events/sentiment -> instrument/geometry -> portfolio risk -> consolidated deterministic case -> independent AI audit -> alerts -> paper/shadow/live execution -> outcome learning -> browser control plane`
 
-- Parquet: durable analytical/history lake.
-- DuckDB: analytical/query engine.
-- PostgreSQL: future operational state; not an accepted runtime prerequisite.
-- Massive: primary broad-market/reference provider.
-- Webull: primary PAPER/sandbox broker; future LIVE only after separate authority.
-- Alpaca: manually selectable secondary/fallback; never automatic failover.
-- ML: PIT probability evidence only.
-- Strategies/router: deterministic setup semantics and external regime routing.
-- AI: independent audit only.
-- Browser: monitoring/control plane only.
+Massive is primary market/reference. Webull is primary PAPER/sandbox. Alpaca is manual secondary only. ML is probability evidence; AI is independent audit; browser is monitoring/control only.
 
-## Mandatory development flow
+## Development flow
 
-`DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> DEVELOP/FOCUSED TEST -> INDEPENDENT VALIDATE -> FULL REGRESSION/CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
+`DEFINE -> LOCK -> IMPLEMENT COHERENT BATCH -> FOCUSED TEST -> INDEPENDENT VALIDATE -> FULL CI AT EVIDENCE BOUNDARY -> TARGET EVIDENCE IF REQUIRED -> DOCUMENT -> ACCEPT -> MERGE -> NEXT PHASE`
 
-Use the largest safe coherent batch. Adjacent research gates may be implemented and run cumulatively when thresholds/authority are frozen in advance. Credentials, endpoints, connected accounts, passing tests, locally present artifacts, or registered jobs never silently expand provider, broker, strategy-support, automation, or LIVE authority.
+Use cumulative research batches when adjacent gates can be preregistered together. Zero cases, promotions, selections, or finalists are valid outcomes. Never weaken evidence/risk/authority gates merely to create activity.
 
 ## Current state — 2026-08-26
 
-- **Phases 1–24: ACCEPTED / MERGED.**
-- Phase23 merge: `2004338624766c42b5f4db2bb0976b2047a5c6b0`.
-- Phase24 merge: `15b77321d4815f9f52fe74d47ba32fee8127526a` through PR #26.
-- **Phase25: VALIDATED / MERGE PENDING through PR #27.**
-- Phase25 final target-tested code head: `302bf6db5d807884f3b74cda049fc95864c5a194`.
-- Phase25 exact-head CI `32981080421`: Ubuntu/Windows SUCCESS; every validator through Gate11 and full regression passed.
-- Phase25 disposition: **NO SUPPORT REPLACEMENT — DEVELOPMENT ROBUSTNESS FAILED**.
+- **Phases 1–25: ACCEPTED / MERGED.**
+- Phase24 merge: `15b77321d4815f9f52fe74d47ba32fee8127526a`.
+- Phase25 merge: `ba0a1588d816c3f2c7d4c2f0754b5fb4a29c8950` through PR #27.
+- Phase25 target code head `302bf6db5d807884f3b74cda049fc95864c5a194`; CI `32981080421` passed Ubuntu/Windows.
+- Phase25 final docs head `f2d10465b71446b253b5d73a50845d2ea1e704d3`; CI `33025699177` passed Ubuntu/Windows.
+- Phase25 decision: **NO SUPPORT REPLACEMENT — DEVELOPMENT ROBUSTNESS FAILED.**
+- **Next: Phase26 — Materially Different Strategy Architecture Research.**
 
-LIVE execution remains **DISABLED**. Automatic cross-broker failover remains **DISABLED**.
+LIVE remains disabled and automatic broker failover remains disabled.
 
-## Phase25 result
+## Phase25 conclusion
 
-Phase25 rebuilt the historical production path instead of changing the incumbent rules.
+Phase25 rebuilt the historical production path while holding the eight incumbent v1 rules and accepted three-session outcome fixed.
 
-Accepted reconstruction evidence:
+- exact active-only PIT historical reference lineage completed;
+- 1,260 discovery replay sessions;
+- 23,177 WARM/HOT directional rows;
+- 15,283 fully route-eligible candidates;
+- 61,132 eligible strategy-route decisions;
+- 185,416 total route decisions;
+- Gate8 legacy research-source route coverage 43,456 / 57,160 = 76.0252%;
+- every non-empty incumbent had a negative 10 bps production-path mean and worsened versus broad evidence;
+- Gate9 selected 0 strategies and produced 0 internal finalists;
+- all eight failed the core chronology, mean/median, positive-rate, bootstrap-LCB, stress-cost, year, and regime robustness gates;
+- Gate10 protected reads: 0;
+- Gate11: `NO_SUPPORT_REPLACEMENT_DEVELOPMENT_ROBUSTNESS_FAILED`.
 
-- exact active-only PIT reference lineage acquired for all missing sessions;
-- Gate6 replay sessions: 1,260;
-- WARM/HOT directional population: 23,177;
-- Gate7 fully route-eligible candidates: 15,283;
-- eligible strategy-route decisions: 61,132;
-- total route decisions: 185,416;
-- exact PIT ticker intervals: 9,609;
-- independent validation PASS.
+The population-fidelity mismatch was not hiding robust incumbent edge. Phase11 support remains authoritative: SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
 
-Cumulative Gates8–11 then held the eight incumbent v1 rules and accepted three-session outcome fixed:
+## Phase26 direction
 
-- legacy research-source route coverage: 43,456 / 57,160 = 76.0252%;
-- development incumbent signal rows: 24,753;
-- candidates with >=1 incumbent fire: 10,521;
-- every non-empty incumbent had a negative 10 bps production-path mean and worsened vs its broad comparator;
-- Gate9 selections: 0;
-- internal finalists: 0;
-- every incumbent failed positive folds, mean, median, positive-rate, bootstrap-LCB, 25 bps stress, year robustness, and regime robustness;
-- Gate10 protected evidence reads: 0 because there were zero finalists;
-- Gate11 verdict: `NO_SUPPORT_REPLACEMENT_DEVELOPMENT_ROBUSTNESS_FAILED`;
-- Phase11 support unchanged.
+Phase26 will stop threshold-tuning the failed v1 families and investigate materially different architectures on a production-path-native research source.
 
-The route-fidelity hypothesis is therefore resolved: **the old research-population mismatch was not hiding robust edge in the incumbent strategies.**
+The initial cumulative batch must:
 
-## Strategy authority
+- build exact research observations from accepted Phase25 PIT identities/context plus canonical 1d/4h/1h features and the accepted outcome;
+- avoid the incomplete legacy Phase11/24 research table as primary input;
+- preregister architecture families/search dimensions before target performance;
+- retain 10 bps primary and 25 bps stress economics, chronological purge, session dependence handling, block bootstrap, year/regime robustness, concentration gates, and global multiplicity control;
+- investigate cross-sectional relative strength, volatility/liquidity-conditioned mean reversion, gap continuation/reversal, volatility-normalized trend structures, multi-timeframe confirmation, and composite feature-block signals;
+- design short-side candidates independently rather than mirroring long rules;
+- keep protected/future prospective evidence separate;
+- leave Phase11 support unchanged unless later evidence earns a separate replacement decision.
 
-Accepted Phase11 support remains:
+## Persistent boundaries
 
-- SUPPORTED: **0**;
-- MIXED: `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
-- UNSUPPORTED: `breakdown_short_v1`, `breakout_long_v1`, `momentum_short_v1`, `pullback_short_v1`, `trend_following_short_v1`.
-
-Do not lower Phase24/25 thresholds or keep tightening the same v1 families merely to create activity.
-
-## Next analytical boundary
-
-After Phase25 merge, define **Phase26 — Materially Different Strategy Architecture Research**.
-
-Phase26 should:
-
-- remain research-only with zero provider/broker/order/PAPER/LIVE/support authority;
-- use the accepted Phase25 PIT production-path lineage as the primary research population;
-- avoid the incomplete legacy Phase11/24 research join as primary input;
-- preregister materially different architecture families/search dimensions before target performance inspection;
-- retain realistic costs, temporal purge, session-level dependence handling, block bootstrap, year/regime robustness, concentration gates, and multiplicity control;
-- investigate cross-sectional relative strength, volatility/liquidity-conditioned mean reversion, gap/event continuation/reversal, volatility-normalized trend/breakout, multi-timeframe confirmation, and composite feature-block signals;
-- design short strategies independently rather than mirroring long rules;
-- preserve separate protected/future prospective evidence boundaries;
-- leave Phase11 support authoritative unless a later phase earns replacement.
-
-## Accepted data/model foundation
-
-- Alpaca raw SIP daily controlled authority: 2016-01-04 through 2021-08-13.
-- Massive authority: 2021-08-16 onward.
-- no synthetic pre-2021 1h/4h history.
-- cumulative lineage: `6a3ff7ad3b6fc7dff95df42ec3cc89bfc38ab66f93bc4a125d4d1d87c85a63f6`.
-- production ML: `mlmodel-hgb15-2026-08-14-d485e6c287bacce1`; HGB leaf15/iter100; 33 predictors; exact accepted replay.
-
-## Non-negotiable rules
-
-Preserve provider-native ticker case; PIT populations only; quarantine ambiguity; no fabricated intraday history; finalized facts outrank provisional live state; ML/AI never create trade authority; LONG `stop < entry < target`, SHORT reverse; uncertain mutation state requires reconciliation; no automatic failover; PAPER does not imply LIVE; zero-case/no-promotion/no-selection/no-finalist outcomes are valid; never lower evidence/risk/authority gates merely to create trades.
-
-## Security
-
-Tracked `.env.example` is non-secret. Never commit or expose API secrets, passwords, security codes, raw broker IDs, tokens, or signed request metadata. Real `.env` remains local/ignored.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; no synthetic pre-2021 intraday history; finalized facts outrank provisional state; unknown/uncertain state fails closed; no automatic failover; PAPER does not imply LIVE; browser remains monitoring/control only.
