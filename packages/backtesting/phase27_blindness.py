@@ -70,11 +70,11 @@ def _read_json(path: Path, label: str) -> dict[str, object]:
 
 
 def unexpected_protected_performance_keys(payload: object) -> tuple[str, ...]:
-    """Find protected-labelled payload fields other than explicit unread counters.
+    """Find protected-labelled fields that could contain performance evidence.
 
-    The audit intentionally allows persisted state such as ``protected_returns_read=0``.
-    Any other protected-labelled research/finalist field is treated as evidence that
-    protected performance may have been materialized before Phase27 confirmation.
+    Explicit zero read counters and positive ``...unread=True`` assertions are state
+    proofs rather than performance. Any other protected-labelled research/finalist
+    field is treated conservatively as evidence that the holdout may have been opened.
     """
 
     found: set[str] = set()
@@ -84,7 +84,11 @@ def unexpected_protected_performance_keys(payload: object) -> tuple[str, ...]:
             for raw_key, child in value.items():
                 key = str(raw_key)
                 path = f"{prefix}.{key}" if prefix else key
-                if "protected" in key.lower() and key not in _ALLOWED_UNREAD_PROTECTED_KEYS:
+                lowered = key.lower()
+                protected = "protected" in lowered
+                explicit_counter = key in _ALLOWED_UNREAD_PROTECTED_KEYS
+                explicit_unread_assertion = "unread" in lowered and child is True
+                if protected and not explicit_counter and not explicit_unread_assertion:
                     found.add(path)
                 visit(child, path)
         elif isinstance(value, list):
