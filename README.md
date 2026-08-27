@@ -19,6 +19,8 @@ Future ATLAS chats/work should read these in order before changing the system:
 
 Accepted `main` controls what already exists. The master roadmap controls the intended destination and future sequence. Older phase documents never silently redefine either.
 
+For the active Phase30, `docs/phase30_event_driven_public_information_alpha.md` preserves the original pre-performance feasibility contract and `docs/phase30_scientific_contract.md` contains the subsequently frozen scientific policy. The feasibility document intentionally remains historically unchanged after its target-machine PASS.
+
 ## Architecture
 
 `market/reference data -> Parquet lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> candidate promotion -> analogue/scenario/news research -> stock/options instrument selection -> entry/exit/geometry -> portfolio risk/sizing -> consolidated deterministic case -> independent AI audit -> alerts -> shadow/paper/live execution -> outcome/performance learning -> browser/web control plane -> production deployment/operations`
@@ -45,7 +47,7 @@ See [`docs/phase_plain_english_contract.md`](docs/phase_plain_english_contract.m
 
 The ATLAS browser/GUI is the intended day-to-day operator experience, but it remains a client of accepted backend authority rather than a second trading engine.
 
-Four consecutive modern alpha phases (26–29) closed as scientifically valid negatives, so the downstream product path remains gated on finding validated alpha. The rebaselined sequence is:
+Four consecutive modern price/market-data alpha phases (26–29) closed as scientifically valid negatives, so the downstream product path remains gated on finding validated alpha. The rebaselined sequence is:
 
 - **Phase30:** event-driven public-information alpha; no major frontend build.
 - **Phase31:** signal-to-trade/risk contracts + read-only complete-case web prototype.
@@ -61,25 +63,34 @@ Frontend controls call accepted backend/API contracts. The Python trading engine
 ## Current state — 2026-08-27
 
 - **Accepted foundation through Phase29.**
-- Phase28 merge: `285f112d51463dd1e06ea4e874a882ad98f71dc5` through PR #32; disposition `ACCEPTED_NEGATIVE`.
-- Phase29 frozen policy fingerprint: `5d40218c1c554117388d99362ce1343fde8a598aaa6d09b95e83fad7e625b30d`.
-- Phase29 target/closeout result: **14,523** development relative-value rows, **745** protected predictors, zero selection survivors, zero winners, zero finalists, zero supported candidates, zero protected candidate/return reads, inherited holdout unconsumed, independent validation PASS, anti-workaround audit PASS.
-- Phase29 disposition: **`ACCEPTED_NEGATIVE`**.
-- Phase29 accepted closeout head: `e078fe56cad4900be54bf39d7d88679d2f6dc4df`.
-- Workflow `33123195681` passed the complete retained stack, Phase29 closeout validator, and full regression on Ubuntu and Windows.
+- Phase29 PR #33 merged at `87c9450e1b21606b83489f16ff326235ae92eb2b`; disposition **`ACCEPTED_NEGATIVE`**.
+- Phase29 result: **14,523** development relative-value rows, **745** protected predictors, zero selection survivors, zero winners, zero finalists, zero supported candidates, zero protected candidate/return reads, inherited holdout unconsumed, independent validation PASS, anti-workaround audit PASS.
+- Phase29 post-merge workflow `33124971664` passed Ubuntu and Windows completely.
+- **Phase30 — Event-Driven Public-Information Alpha is active.**
+- Phase30 historical-news feasibility fingerprint: `04d31c5687c8da2892d017692b26ad930eff6af19f54a55294509e50d97bd312`.
+- Target-machine feasibility: **PASS** — 1,219 articles across the four frozen boundary windows, all 1,219 ticker-linked, zero target outcomes and zero protected returns read.
+- Phase30 scientific policy fingerprint: `341f3a5a97281f7878ab0c55f8ab5a33c9910abc47b69a0b5fef8e94771ce4f8`.
+- Exactly four hypotheses are frozen: aligned news-shock continuation LONG/SHORT and counterreaction reversal LONG/SHORT.
+- Only historical news `id`, `published_utc`, and exact provider-native `tickers` have alpha authority. Provider article text/content and provider-generated `insights` remain provenance only because historical revision/model-vintage semantics were not proven by the feasibility gate.
+- The next internal Phase30 action is full resumable immutable historical-news acquisition from `2021-07-16` through `2026-08-11`; it remains non-performance-bearing.
 - Phase11 strategy authority remains **SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5**.
-- The inherited protected predictor window remains `2026-05-12` through `2026-08-11` and is still genuinely outcome-unopened after Phases26–29.
-- **Next gate: Phase30 — Event-Driven Public-Information Alpha.**
+- The inherited protected predictor window remains `2026-05-12` through `2026-08-11` and is still genuinely outcome-unopened.
 - Signal-to-trade construction is Phase31 and remains blocked until at least one alpha candidate earns accepted historical analytical `SUPPORTED` authority.
 - LIVE remains disabled; automatic broker failover remains disabled.
 
-## Why Phase30 is next
+## Phase30 frozen mechanism
 
-Phase26 rejected deterministic/composite focal self-feature alpha. Phase27 rejected bounded cross-sectional expected-return/ranking models. Phase28 rejected cross-stock residual/lead-lag predictive relationships. Phase29 rejected PCA/nearest-pair relative-value mean-reversion confirmation. All four closed under frozen standards without consuming the protected outcomes.
+Phase26 rejected deterministic/composite focal self-feature alpha. Phase27 rejected bounded cross-sectional expected-return/ranking models. Phase28 rejected cross-stock residual/lead-lag predictive relationships. Phase29 rejected PCA/nearest-pair relative-value mean-reversion confirmation. Phase30 therefore changes the **information source** rather than retuning those failures.
 
-Phase30 therefore changes the **information source**. It will test event-driven public company information/news rather than another transformation of the same price-derived evidence. Massive's Stocks News API exposes ticker-linked articles with explicit publication timestamps and associated metadata, making historical PIT feasibility worth proving.
+The feasibility gate proved historical Massive news coverage, chronology, pagination, ticker linkage, and deterministic evidence at the required boundaries without inspecting market outcomes. The scientific contract was then frozen before any Phase30 performance read.
 
-Phase30 begins with a non-performance-bearing historical-news feasibility/provenance work package. It must prove coverage, entitlement, chronology, pagination, ticker linkage, deterministic replay, and PIT safety before freezing a finite hypothesis library. No target outcomes may be inspected during feasibility. Provider-derived historical model fields that cannot prove stable PIT semantics must be excluded or replaced with deterministic local transforms of contemporaneously observable text/metadata.
+For each exact ticker, Phase30 assigns an article to the first XNYS session whose official close is at least 30 minutes after publication. It measures unusual news arrival against the previous 20 zero-filled XNYS sessions using:
+
+`news_surprise = log1p(current_unique_article_count) - mean(log1p(previous_20_session_counts_with_zeros))`
+
+That news shock is combined only with the already-PIT-safe finalized Phase26 `d1_return_1` reaction to test the four frozen continuation/reversal hypotheses. The fixed research design retains the 2021-08-16 research start, 2026-05-06 development end, three-session purge, 2026-05-12 through 2026-08-11 protected window, `t+3` directional outcome, realistic costs, dependence-aware bootstrap, global four-hypothesis Holm correction, robustness/concentration gates, finalist-only protected confirmation, and no runner-up substitution.
+
+No retrospective NLP, provider sentiment, alternate news lookback, alternate event timing, fifth hypothesis, or post-result threshold change is authorized.
 
 A positive Phase30 result may grant historical analytical support only and unlock Phase31. A negative result is accepted rather than tuned away.
 
@@ -98,4 +109,4 @@ The full purpose, entry conditions, acceptance boundaries, web/deployment respon
 
 ## Persistent boundaries
 
-Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never fabricate unavailable history; finalized facts outrank provisional state; unknown/uncertain mutation state fails closed and requires reconciliation; valid trade geometry and portfolio risk are mandatory; community trading ideas are hypotheses that must be tested rather than assumed; the frontend never duplicates or bypasses engine authority; no automatic broker failover; PAPER does not imply LIVE; AI cannot create authority; negative research cannot satisfy a positive downstream gate; and LIVE exists only after the final separately accepted Phase37 authority gate.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never fabricate unavailable history; finalized facts outrank provisional state; unknown/uncertain mutation state fails closed and requires reconciliation; valid trade geometry and portfolio risk are mandatory; community trading ideas are hypotheses that must be tested rather than assumed; the frontend never duplicates or bypasses engine authority; no automatic broker failover; PAPER does not imply LIVE; AI cannot create authority; negative research cannot satisfy a positive downstream gate; protected performance is finalist-only; and LIVE exists only after the final separately accepted Phase37 authority gate.
