@@ -51,6 +51,15 @@ class Phase26IndependentValidationError(RuntimeError):
     pass
 
 
+def _require_native_bool_checks(checks: dict[str, object], *, context: str) -> dict[str, bool]:
+    non_native = sorted(name for name, value in checks.items() if type(value) is not bool)
+    if non_native:
+        raise Phase26IndependentValidationError(
+            f"{context} checks must use native Python bool values: " + ", ".join(non_native)
+        )
+    return {name: value for name, value in checks.items() if isinstance(value, bool)}
+
+
 def _load_json(path: Path) -> dict[str, object]:
     if not path.is_file():
         raise Phase26IndependentValidationError(f"missing Phase26 evidence: {path}")
@@ -163,7 +172,7 @@ class Phase26IndependentValidator:
         development["as_of_date"] = pd.to_datetime(development["as_of_date"]).dt.date
         development["future_date"] = pd.to_datetime(development["future_date"]).dt.date
         protected["as_of_date"] = pd.to_datetime(protected["as_of_date"]).dt.date
-        checks = {
+        checks: dict[str, object] = {
             "report_contract": report.get("contract_version") == PHASE26_OBSERVATION_REPORT_CONTRACT_VERSION,
             "report_pass": report.get("pass") is True,
             "policy_fingerprint": report.get("phase26_policy_fingerprint") == phase26_policy_fingerprint(),
@@ -173,16 +182,24 @@ class Phase26IndependentValidator:
             == {PHASE26_DEVELOPMENT_OBSERVATION_CONTRACT_VERSION},
             "protected_contract": set(protected["contract_version"].astype(str))
             == {PHASE26_PROTECTED_PREDICTOR_CONTRACT_VERSION},
-            "development_unique": not development.duplicated(["as_of_date", "instrument_id"]).any(),
-            "protected_unique": not protected.duplicated(["as_of_date", "instrument_id"]).any(),
+            "development_unique": not bool(
+                development.duplicated(["as_of_date", "instrument_id"]).any()
+            ),
+            "protected_unique": not bool(
+                protected.duplicated(["as_of_date", "instrument_id"]).any()
+            ),
             "development_future_preprotected": bool(
                 not development.empty
                 and development["future_date"].max() < date.fromisoformat(PHASE26_PROTECTED_START)
             ),
-            "protected_outcomes_absent": not any(field in protected.columns for field in PHASE26_OUTCOME_FIELDS),
+            "protected_outcomes_absent": not any(
+                field in protected.columns for field in PHASE26_OUTCOME_FIELDS
+            ),
             "protected_returns_unread": int(report.get("protected_return_reads", -1)) == 0,
         }
-        return development, protected, checks
+        return development, protected, _require_native_bool_checks(
+            checks, context="Phase26 observation validation"
+        )
 
     def _research(self, development: pd.DataFrame) -> tuple[dict[str, object], dict[str, bool], list[str]]:
         report = _load_json(self.research.report_path())
@@ -262,14 +279,15 @@ class Phase26IndependentValidator:
             (candidate_map[candidate_id].family, candidate_map[candidate_id].direction)
             for candidate_id in selected_ids
         ]
-        checks = {
+        checks: dict[str, object] = {
             "report_contract": report.get("contract_version") == PHASE26_RESEARCH_REPORT_CONTRACT_VERSION,
             "report_pass": report.get("pass") is True,
             "policy_fingerprint": report.get("phase26_policy_fingerprint") == phase26_policy_fingerprint(),
             "signals_sha": report.get("development_signals_sha256") == sha256_file(signals_path),
             "signal_contract": bool(
                 signals.empty
-                or set(signals["signal_contract_version"].astype(str)) == {PHASE26_SIGNAL_ARTIFACT_CONTRACT_VERSION}
+                or set(signals["signal_contract_version"].astype(str))
+                == {PHASE26_SIGNAL_ARTIFACT_CONTRACT_VERSION}
             ),
             "all_24_candidates_reported": len(selection_metrics) == 24,
             "holm_24": isinstance(report.get("holm_bonferroni"), dict)
@@ -283,7 +301,9 @@ class Phase26IndependentValidator:
             and int(finalists.get("protected_returns_read", -1)) == 0,
             "independent_reconciliation": not mismatches,
         }
-        return report, checks, mismatches
+        return report, _require_native_bool_checks(
+            checks, context="Phase26 research validation"
+        ), mismatches
 
     def _confirmation(
         self, protected: pd.DataFrame, research_report: dict[str, object]
@@ -295,7 +315,7 @@ class Phase26IndependentValidator:
         confirmed = [str(value) for value in report.get("confirmed_candidate_ids", [])]
         supported = [str(value) for value in support.get("supported_candidate_ids", [])]
         mismatches: list[str] = []
-        checks = {
+        checks: dict[str, object] = {
             "report_contract": report.get("contract_version") == PHASE26_CONFIRMATION_REPORT_CONTRACT_VERSION,
             "report_pass": report.get("pass") is True,
             "policy_fingerprint": report.get("phase26_policy_fingerprint") == phase26_policy_fingerprint(),
@@ -312,7 +332,9 @@ class Phase26IndependentValidator:
             checks["zero_finalist_skip"] = report.get("status") == "SKIPPED_ZERO_FINALISTS"
             checks["zero_finalist_protected_unread"] = int(report.get("protected_returns_read", -1)) == 0
             checks["zero_finalist_support_empty"] = not supported
-            return checks, mismatches, confirmed
+            return _require_native_bool_checks(
+                checks, context="Phase26 confirmation validation"
+            ), mismatches, confirmed
 
         signals_path = self.confirmation.protected_signals_path()
         signals = _load_parquet(signals_path, order_by="candidate_id, as_of_date, instrument_id")
@@ -346,12 +368,16 @@ class Phase26IndependentValidator:
             ):
                 mismatches.append(f"{candidate_id}:protected_stress")
         checks["protected_signals_sha"] = report.get("protected_signals_sha256") == sha256_file(signals_path)
-        checks["protected_only_finalists"] = set(signals["candidate_id"].astype(str).unique()).issubset(set(finalists))
+        checks["protected_only_finalists"] = set(
+            signals["candidate_id"].astype(str).unique()
+        ).issubset(set(finalists))
         checks["independent_reconciliation"] = not mismatches
         checks["protected_reads_bounded"] = int(report.get("protected_returns_read", -1)) == int(
             report.get("protected_candidate_rows_read", -2)
         )
-        return checks, mismatches, confirmed
+        return _require_native_bool_checks(
+            checks, context="Phase26 confirmation validation"
+        ), mismatches, confirmed
 
     def run(self) -> dict[str, object]:
         development, protected, observation_checks = self._observations()
