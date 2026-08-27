@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
+import pytest
 
 from packages.backtesting.phase26_policy import PHASE26_CANDIDATES
 from packages.backtesting.phase26_signals import candidate_mask
-from packages.backtesting.phase26_validation import independent_candidate_mask
+from packages.backtesting.phase26_validation import (
+    Phase26IndependentValidationError,
+    _require_native_bool_checks,
+    independent_candidate_mask,
+)
 
 
 def test_independent_validator_reproduces_candidate_mask_without_signal_engine_helper() -> None:
@@ -39,3 +45,11 @@ def test_independent_validator_fails_closed_on_nan_candidate_input() -> None:
         }
     )
     assert independent_candidate_mask(frame, candidate).tolist() == [False]
+
+
+def test_independent_validator_rejects_non_native_persisted_check_booleans() -> None:
+    with pytest.raises(Phase26IndependentValidationError, match="native Python bool"):
+        _require_native_bool_checks(
+            {"development_unique": np.bool_(True)},
+            context="test",
+        )
