@@ -11,6 +11,9 @@ from packages.backtesting.phase25_gate6_recovery import (
 from packages.backtesting.phase25_gate6_repair import (
     Phase25Gate6SafeDiscoveryReconstruction,
 )
+from packages.backtesting.phase25_gate6_validation import (
+    Phase25Gate6IndependentValidator,
+)
 from packages.backtesting.phase25_prerequisite_recovery import (
     PHASE25_PREREQUISITE_RECOVERY_CONTRACT_VERSION,
     PHASE25_PREREQUISITE_RECOVERY_VALIDATION_CONTRACT_VERSION,
@@ -123,15 +126,32 @@ def test_recovered_gate6_restores_originals_if_routed_universe_changes() -> None
     assert "authoritative reference recovery changes the routed Phase7 universe" in source
 
 
-def test_recovered_gate6_validator_preserves_gate6_zero_authority() -> None:
-    source = inspect.getsource(Phase25Gate6RecoveredIndependentValidator.run)
-    assert '"gate6_provider_activity_zero"' in source
-    assert '"protected_evidence_zero"' in source
-    assert '"broker_order_paper_live_zero"' in source
-    assert '"strategy_returns_unread"' in source
-    assert '"support_authority_false"' in source
-    assert '"recovered_reference_routed_universe_drift_zero"' in source
-    assert '"recovered_reference_exclusion_drift_diagnostic_only"' in source
+def test_gate6_validation_uses_one_engine_with_narrow_upstream_hook() -> None:
+    assert issubclass(
+        Phase25Gate6RecoveredIndependentValidator,
+        Phase25Gate6IndependentValidator,
+    )
+    standard = inspect.getsource(Phase25Gate6IndependentValidator._validate_upstream_evidence)
+    recovered = inspect.getsource(
+        Phase25Gate6RecoveredIndependentValidator._validate_upstream_evidence
+    )
+    assert "Phase25Gate5BulkAcquisition" in standard
+    assert "Phase25Gate5IndependentValidator" in standard
+    assert "self._validate_recovery_binding" in recovered
+    assert "Phase25Gate5BulkAcquisition" not in recovered
+
+
+def test_gate6_single_validation_engine_preserves_zero_authority_checks() -> None:
+    standard = inspect.getsource(Phase25Gate6IndependentValidator.run)
+    recovered = inspect.getsource(Phase25Gate6RecoveredIndependentValidator.run)
+    assert '"provider_activity_zero"' in standard
+    assert '"protected_evidence_zero"' in standard
+    assert '"broker_order_paper_live_zero"' in standard
+    assert '"strategy_returns_unread"' in standard
+    assert '"support_authority_false"' in standard
+    assert '"recovery_prerequisite_exact"' in recovered
+    assert '"recovered_reference_routed_universe_drift_zero"' in recovered
+    assert '"recovered_reference_exclusion_drift_diagnostic_only"' in recovered
 
 
 def test_recovery_lineage_hash_is_stable() -> None:
