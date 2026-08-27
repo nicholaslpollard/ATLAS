@@ -1,22 +1,21 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-27 after Phase29 full closeout and roadmap rebaseline.**
+**Last synchronized: 2026-08-27 after Phase30 historical-news feasibility PASS and scientific-policy freeze.**
 
-Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase source of truth. Read `docs/phase_plain_english_contract.md` before beginning/closing a numbered phase. Phase29's frozen historical specification is `docs/phase29_relative_value_statistical_arbitrage.md`; the next active specification is created when Phase30 begins.
+Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase source of truth. Then read this file, `docs/phase30_event_driven_public_information_alpha.md` for the immutable feasibility boundary, and `docs/phase30_scientific_contract.md` for the now-frozen Phase30 scientific contract.
 
 ## Repository state
 
 - **Accepted project foundation through Phase29.**
-- Phase25 merge: `ba0a1588d816c3f2c7d4c2f0754b5fb4a29c8950`.
 - Phase26 PR #30 merge: `2074808605cf85b5462e5999ed1836d68b0434c3` — `ACCEPTED_NEGATIVE`.
 - Phase27 PR #31 merge: `dc015f51232dc66ba94b6175c276a0227d5a3761` — `ACCEPTED_NEGATIVE`.
 - Phase28 PR #32 merge: `285f112d51463dd1e06ea4e874a882ad98f71dc5` — `ACCEPTED_NEGATIVE`.
-- Phase28 post-merge workflow `33114372397`: Ubuntu PASS / Windows PASS.
-- Phase29 accepted closeout head: `e078fe56cad4900be54bf39d7d88679d2f6dc4df` — `ACCEPTED_NEGATIVE`.
-- Phase29 exact-head workflow `33123195681`: Ubuntu PASS / Windows PASS, including the Phase29 closeout/anti-workaround validator and full pytest.
-- Phase29 merge is the current repository-closeout action; no further Phase29 performance read is required.
-- **Next gate after merge: Phase30 — Event-Driven Public-Information Alpha.**
-- Signal-to-trade construction is now Phase31 and remains blocked until >=1 alpha architecture earns accepted historical analytical `SUPPORTED` authority.
+- Phase29 PR #33 merge: `87c9450e1b21606b83489f16ff326235ae92eb2b` — `ACCEPTED_NEGATIVE`.
+- Phase29 post-merge workflow `33124971664`: Ubuntu PASS / Windows PASS.
+- **Active phase:** Phase30 — Event-Driven Public-Information Alpha.
+- Active branch: `phase-30-event-driven-public-information-alpha`.
+- Phase30 feasibility/scientific-freeze implementation commits include `21d53bdb76e37649a93d61057bfb113fd5448a81`, `b632e9d2bb1c550e74b63baf212882bdf2c2736e`, and CI integration `9dc03efb7018b8d68b9e26427d579b767bbbe133`.
+- Signal-to-trade construction is Phase31 and remains blocked until >=1 alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 
 ## Mission / authority lock
 
@@ -44,73 +43,131 @@ Phase11 support remains:
 
 Phases26–29 did not replace this map.
 
-## Alpha research evidence
+## Modern alpha research evidence
 
-### Phase26
+### Phase26 — focal self-feature/composite alpha
 
 Policy fingerprint `24e4f0e24d3e81dfc3dc572f0562337b2c156cd3ea22d6a7448b6ad6586016d2`.
 
-- development observations **21,483**;
-- protected predictors **1,096**;
-- survivors/finalists/supported **0 / 0 / 0**;
-- protected returns **0**;
-- independent + anti-workaround PASS;
-- disposition `ACCEPTED_NEGATIVE`.
+- development observations: **21,483**;
+- protected predictors: **1,096**;
+- survivors/finalists/supported: **0 / 0 / 0**;
+- protected returns: **0**;
+- disposition: `ACCEPTED_NEGATIVE`.
 
-### Phase27
+### Phase27 — cross-sectional learned ranking alpha
 
 Policy fingerprint `63030d55fbdb60ce61ea0c84081ae95d62d68fc717f494aa41a23d31c410aab0`.
 
-- development rows **18,111**;
-- protected predictors **920**;
-- survivors/winners/finalists/supported **0 / 0 / 0 / 0**;
-- protected candidate/return reads **0 / 0**;
-- holdout consumed **False**;
-- independent + anti-workaround PASS;
-- disposition `ACCEPTED_NEGATIVE`.
+- development rows: **18,111**;
+- protected predictors: **920**;
+- survivors/winners/finalists/supported: **0 / 0 / 0 / 0**;
+- protected candidate/return reads: **0 / 0**;
+- disposition: `ACCEPTED_NEGATIVE`.
 
-### Phase28
+### Phase28 — cross-stock lead-lag/residual-network alpha
 
 Policy fingerprint `0f15966f61a0baf52513cd46dc4fa8492c98e7dc8cf9ed3d551c2ebc955adea5`.
 
-- development network rows **14,466**;
-- protected network predictors **741**;
-- survivors/winners/finalists/supported **0 / 0 / 0 / 0**;
-- protected candidate/return reads **0 / 0**;
-- holdout consumed **False**;
-- independent + end-to-end anti-workaround PASS;
-- disposition `ACCEPTED_NEGATIVE`.
+- development network rows: **14,466**;
+- protected network predictors: **741**;
+- survivors/winners/finalists/supported: **0 / 0 / 0 / 0**;
+- protected candidate/return reads: **0 / 0**;
+- disposition: `ACCEPTED_NEGATIVE`.
 
-### Phase29
+### Phase29 — relative-value statistical-arbitrage confirmation
 
 Policy fingerprint `5d40218c1c554117388d99362ce1343fde8a598aaa6d09b95e83fad7e625b30d`.
 
-Frozen hypotheses were PCA-residual reversion and nearest-distance-pair reversion, independently LONG/SHORT. The target and full closeout were executed on the exact accepted implementation without post-result research changes.
+- development relative-value rows: **14,523**;
+- protected relative-value predictors: **745**;
+- selection survivors/winners/internal finalists/supported: **0 / 0 / 0 / 0**;
+- protected candidate rows read: **0**;
+- protected return rows read: **0**;
+- protected holdout consumed: **False**;
+- independent validation: **PASS**;
+- end-to-end anti-workaround audit: **PASS**;
+- disposition: **`ACCEPTED_NEGATIVE`**.
 
-- development relative-value rows **14,523**;
-- protected relative-value predictors **745**;
-- selection survivors **0**;
-- selection winners **0**;
-- internal-validation finalists **0**;
-- supported candidates **0**;
-- protected candidate rows read **0**;
-- protected return rows read **0**;
-- protected holdout consumed **False**;
-- independent validation **PASS**;
-- end-to-end anti-workaround audit **PASS**;
-- provider/broker/order/PAPER/LIVE activity **0**;
-- local cumulative + full closeout **PASS**;
-- disposition **`ACCEPTED_NEGATIVE`**.
+The four failed modern families may not be retuned after observing their results.
 
-The result is valid negative evidence. Formation length, PCA components, pair rule, tail, costs, chronology, and statistical gates are not to be retuned after this result.
+## Phase30 — current exact state
+
+### Feasibility/provenance gate — PASSED
+
+Target-machine command `scripts/run_phase30_news_feasibility.py` passed under feasibility fingerprint:
+
+`04d31c5687c8da2892d017692b26ad930eff6af19f54a55294509e50d97bd312`
+
+Observed coverage facts only:
+
+- `research_start`: 642 articles / 642 ticker-linked;
+- `development_end`: 251 / 251;
+- `protected_start`: 249 / 249;
+- `protected_end`: 77 / 77;
+- total articles: **1,219**;
+- total ticker-linked: **1,219**;
+- successful provider pages: **4**;
+- target outcome rows read: **0**;
+- protected return rows read: **0**;
+- provider writes / broker reads / broker writes / orders / PAPER / LIVE: **0 / 0 / 0 / 0 / 0 / 0**.
+
+This proves the historical Massive news source is readable at the frozen boundaries with exact publication timestamps/ticker linkage. It does **not** grant performance authority.
+
+### Scientific hypothesis contract — FROZEN
+
+Policy fingerprint:
+
+`341f3a5a97281f7878ab0c55f8ab5a33c9910abc47b69a0b5fef8e94771ce4f8`
+
+Phase30 deliberately authorizes only news-event metadata for alpha:
+
+- `id`;
+- `published_utc`;
+- exact provider-native `tickers`.
+
+Article text/content and provider-generated `insights` remain provenance only because the feasibility work did not establish historical revision/model-vintage semantics. Retrospective NLP/provider sentiment is therefore not allowed in this phase.
+
+Frozen event timing and signal construction:
+
+- first XNYS session whose official close is at least **30 minutes** after publication;
+- 20 prior XNYS sessions, zero-filled, as the news baseline;
+- `news_surprise = log1p(current_unique_article_count) - mean(log1p(previous_20_session_counts_with_zeros))`;
+- current market-reaction field = already-PIT-safe Phase26 `d1_return_1`;
+- same-session/direction minimum rows = 5;
+- fixed top 20% news-surprise tail;
+- exact `t+3` directional outcome;
+- 10 bps primary / 25 bps stress costs;
+- chronological 75% selection + 3-session purge + internal remainder;
+- 6 selection / 3 internal / 3 protected folds;
+- moving/block bootstrap 6 sessions / 2,000 reps / seed `300230`;
+- global Holm-Bonferroni across exactly **4** hypotheses;
+- year/regime/session/ticker concentration robustness;
+- at most one finalist per direction;
+- runner-up substitution forbidden.
+
+Exactly four frozen hypotheses:
+
+1. `news_shock_aligned_continuation_long`;
+2. `news_shock_aligned_continuation_short`;
+3. `news_shock_counterreaction_reversal_long`;
+4. `news_shock_counterreaction_reversal_short`.
+
+No fifth hypothesis, text variant, provider-sentiment variant, alternate lookback, alternate timing cutoff, or post-result threshold search is authorized.
+
+### Next internal Phase30 action
+
+Run the full historical **non-performance** news acquisition from `2021-07-16` through `2026-08-11`, sharded monthly with immutable local evidence and resumable metadata. This reads provider news only and must continue to report zero target/protected outcome rows.
+
+After acquisition passes, build development and protected **predictor-only** news-shock frames under the frozen policy. Development outcomes may then be joined only through the explicitly implemented development selection path. Protected returns remain finalist-only.
 
 ## Protected-holdout state
 
 Master protected predictor window: `2026-05-12` through `2026-08-11`.
 
-Phases26, 27, 28, and 29 read **zero protected returns**. Phase29 had zero finalists, so no protected read plan was created. The holdout remains genuinely outcome-unopened.
+Phases26, 27, 28, 29, and Phase30 feasibility/scientific freeze have read **zero protected returns**. The holdout remains genuinely outcome-unopened.
 
-A future alpha phase may use it only through its own independently validated finalist-only protected path. The first nonempty protected outcome read permanently consumes it for later alpha selection.
+A nonempty future Phase30 protected-return read is allowed only after development selection, internal validation, frozen finalists, independent blindness audit, and immutable finalist-only read plan. Any such read consumes the holdout for later alpha selection.
 
 ## Research failure map
 
@@ -121,22 +178,7 @@ Rejected under frozen standards:
 3. Phase28 — cross-stock residual/lead-lag predictive signals;
 4. Phase29 — trailing PCA/pair relative-value mean-reversion confirmation.
 
-These results must not be converted into another threshold/model search over the same information families.
-
-## Next Phase30 direction — Event-Driven Public-Information Alpha
-
-Phase30 changes the information source rather than retuning price-derived signals. Its first internal step is non-performance-bearing historical-news feasibility/provenance:
-
-- verify Massive historical ticker-news entitlement/coverage over the intended research windows;
-- prove exact `published_utc` chronology, pagination, ticker association, deterministic replay, and PIT-safe acquisition;
-- persist immutable raw article evidence and provenance;
-- exclude provider-derived historical fields whose model/vintage semantics cannot be proven PIT-safe, or derive deterministic local features from contemporaneously observable text/metadata;
-- inspect **no target outcomes** during that feasibility work;
-- only after feasibility passes, freeze the finite hypothesis library, feature transforms, chronology, costs, multiplicity/dependence treatment, robustness gates, winner/finalist rules, and protected-read boundary.
-
-Phase30 is still one project gate. Its feasibility, acquisition, development selection, internal validation, blindness audit, protected confirmation, independent validation, and closeout are internal work packages—not separate phases.
-
-Phase30 historical provider reads may be authorized only as bounded data acquisition/provenance. Broker writes, order writes, PAPER submits, LIVE writes, automatic broker failover, and frontend trading authority remain disabled.
+Phase30 changes the information mechanism to timestamped public-news arrival rather than searching another parameterization of those failures.
 
 ## Rebaselined downstream roadmap
 
@@ -151,4 +193,4 @@ Phase30 historical provider reads may be authorized only as bounded data acquisi
 
 ## Persistent non-negotiables
 
-Preserve provider-native ticker case and PIT identity; quarantine ambiguity; do not synthesize unavailable history; finalized facts outrank provisional state; ML/AI do not create trade authority; research ideas are hypotheses; uncertain mutation state requires reconciliation; UI never creates/bypasses authority; no automatic broker failover; PAPER does not imply LIVE; negative research is accepted rather than manipulated; LIVE authority exists only after a separately accepted activation phase.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; do not synthesize unavailable history; finalized facts outrank provisional state; ML/AI do not create trade authority; research ideas are hypotheses; uncertain mutation state requires reconciliation; UI never creates/bypasses authority; no automatic broker failover; PAPER does not imply LIVE; negative research is accepted rather than manipulated; protected performance is finalist-only; LIVE authority exists only after a separately accepted activation phase.
