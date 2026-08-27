@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-26.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-27.**
 
 Read `docs/roadmap.md` first for the mission and remaining phase sequence. Read `docs/phase_plain_english_contract.md` for the required operator-facing communication format. This file controls how each numbered phase is executed and accepted.
 
@@ -170,16 +170,18 @@ Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, validator
 
 ## 11. Current application
 
-- **Phases 1–25: ACCEPTED / MERGED.**
-- Phase25 merge: `ba0a1588d816c3f2c7d4c2f0754b5fb4a29c8950`.
-- Phase25 target-tested code: `302bf6db5d807884f3b74cda049fc95864c5a194`; CI `32981080421` passed Ubuntu/Windows.
-- Phase25 final docs head: `f2d10465b71446b253b5d73a50845d2ea1e704d3`; CI `33025699177` passed Ubuntu/Windows.
-- Phase25 accepted negative result: `NO_SUPPORT_REPLACEMENT_DEVELOPMENT_ROBUSTNESS_FAILED`.
+- **Phases 1–28: ACCEPTED / MERGED.**
+- Phase28 merge: `285f112d51463dd1e06ea4e874a882ad98f71dc5` through PR #32.
+- Phase28 disposition: `ACCEPTED_NEGATIVE`; zero supported candidates, zero protected candidate/return reads, inherited protected holdout unconsumed.
+- Phase28 post-merge workflow `33114372397` passed the complete retained stack and full regression on Ubuntu/Windows.
 - Phase11 support remains SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
-- **Phase26 is the active next gate: Production-Path-Native Alpha Discovery & Validation.**
+- **Phase29 is the active gate: Relative-Value Statistical-Arbitrage Confirmation Alpha.**
+- Phase29 is a preregistered single-stock confirmation experiment over exactly four PCA/pair LONG/SHORT hypotheses; it creates no market-neutral pair-execution, PAPER, or LIVE authority.
+- The inherited `2026-05-12` through `2026-08-11` protected predictor window remains outcome-unopened until the frozen finalist-only confirmation path legitimately requires a read.
+- Phase30 signal-to-trade construction remains blocked unless Phase29 produces at least one accepted historical analytical `SUPPORTED` candidate.
 
-Phase26 is responsible for the whole alpha-discovery/validation question defined in the master roadmap. Its internal research stages are work packages/checkpoints, not separate project gates. The phase ends only after the full Phase26 acceptance suite and any required protected evidence are complete.
+Phase29 is responsible for the whole relative-value confirmation question defined in the master roadmap and `docs/phase29_relative_value_statistical_arbitrage.md`. Its development selection, internal validation, blindness audit, and finalist-only protected confirmation are research steps inside one project gate, not separate project gates.
 
-GUI/web/deployment is now a locked progressive track across later phases: contracts/prototypes in Phase27, replay dashboard in Phase28, SHADOW/PAPER operator web beta in Phase29, performance/learning UI in Phase30, full production web application/deployment in Phase31, deployment/failure hardening in Phase32, and controlled LIVE controls in Phase33.
+GUI/web/deployment is now a locked progressive track across later phases: contracts/read-only prototype in Phase30, replay/stress dashboard in Phase31, SHADOW/PAPER operator web beta in Phase32, performance/learning/drift UI in Phase33, full production web application/PostgreSQL/scheduler/deployment in Phase34, deployment/failure/security/reconciliation hardening in Phase35, and controlled LIVE controls in Phase36.
 
 Preserve all existing data integrity, execution, risk, AI-independence, broker, browser, scheduler/PostgreSQL, deployment, and LIVE authority boundaries unless a later numbered phase explicitly earns a change.
