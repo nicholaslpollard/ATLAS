@@ -4,13 +4,13 @@
 
 **Target research evidence:** COMPLETE / VALID NEGATIVE
 
-**Full phase disposition:** PENDING TARGET CLOSEOUT BINDING
+**Full phase disposition:** ACCEPTED_NEGATIVE
 
-Phase 27 tested the frozen eight-hypothesis cross-sectional expected-return/ranking policy without changing its scientific gates after performance was observed.
+Phase 27 tested the frozen eight-hypothesis cross-sectional expected-return/ranking policy without changing its scientific gates after performance was observed. The complete target-machine phase-end closeout passed on 2026-08-27 and bound the already-produced research artifacts without rerunning model search or reading new protected performance.
 
 ## Target-machine research evidence
 
-The target run executed from pre-target research head:
+The target research run executed from pre-target research head:
 
 `55f8ca32ffd87904a22b206ef8d73120b4edf229`
 
@@ -35,11 +35,39 @@ Observed target result:
 
 This is valid negative evidence: Phase 27 ran correctly, but no frozen architecture earned historical analytical support.
 
+## Final target closeout evidence
+
+The final closeout executed from exact branch head:
+
+`bfc1c9898a6eb67bb6a9050c8d53802a887a940d`
+
+Target command:
+
+`python scripts/run_phase27_closeout.py`
+
+Observed closeout result:
+
+- Phase 27 closeout: `PASS`;
+- disposition: `ACCEPTED_NEGATIVE`;
+- selection survivors: `[]`;
+- selection winners: `[]`;
+- internal-validation finalists: `[]`;
+- supported candidates: `[]`;
+- protected candidate rows read: `0`;
+- protected return rows read: `0`;
+- protected holdout consumed: `False`;
+- end-to-end anti-workaround audit: `True`;
+- Phase 28 signal-to-trade entry satisfied: `False`;
+- provider/broker/order/PAPER/LIVE activity: `0 / 0 / 0 / 0 / 0`;
+- final pass: `True`.
+
+The target closeout therefore accepts the negative scientific result and explicitly keeps downstream signal-to-trade construction blocked because no validated `SUPPORTED` alpha exists.
+
 ## Protected-evidence state
 
-Because no candidate survived selection, the phase never created an internal finalist. The confirmation stage therefore used the zero-finalist path and did not open the inherited Phase 26 holdout. The holdout remains scientifically unopened and may only be used by a later separately preregistered alpha phase while this state remains provable.
+Because no candidate survived selection, the phase never created an internal finalist. The confirmation stage therefore used the zero-finalist path and did not open the inherited Phase 26 holdout. The final closeout independently confirmed that no protected read plan or protected outcome artifact was created and that the protected holdout remains scientifically unopened.
 
-A later phase must not treat “available” as permission to read it repeatedly. The first future protected-return read permanently consumes the holdout.
+The holdout may only be used by a later separately preregistered alpha phase while this zero-read state remains provable. A later phase must not treat “available” as permission to read it repeatedly. The first future protected-return read permanently consumes the holdout.
 
 ## Post-result maintenance correction
 
@@ -63,19 +91,10 @@ This maintenance correction does not modify:
 - selection/internal/protected gates;
 - target research artifacts or observed result.
 
-The Phase 27 research run is therefore not rerun merely to remove warning output.
+The Phase 27 research run was therefore not rerun merely to remove warning output.
 
-## Required final gate
+## Acceptance conclusion
 
-The full phase-end closeout must bind the already-produced target artifacts and prove:
+Phase 27 is complete and **ACCEPTED_NEGATIVE**. The phase answered its frozen scientific question correctly, earned no new trading authority, consumed no protected returns, and preserved all safety and authority boundaries.
 
-1. all Phase 27 artifact contracts and policy fingerprints match;
-2. cumulative SHA relationships bind population, research, blindness, confirmation, and independent validation;
-3. selection/winner/finalist/support relationships are consistent;
-4. the zero-finalist path preserved the protected holdout with no read plan or protected outcome artifact;
-5. historical support remains analytical-only with no PAPER or LIVE authority;
-6. provider/broker/order/PAPER/LIVE activity remains zero;
-7. the end-to-end anti-workaround audit passes;
-8. no validated supported alpha exists, so downstream trade construction remains blocked.
-
-If that gate passes, the formal Phase 27 disposition is `ACCEPTED_NEGATIVE`.
+The next numbered phase must remain an alpha-research phase rather than signal-to-trade construction. It must test a materially different source of predictive structure rather than retuning Phase 26 rule families or Phase 27 same-session self-feature ranking models.
