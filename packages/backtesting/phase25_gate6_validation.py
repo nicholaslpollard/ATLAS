@@ -65,6 +65,31 @@ class Phase25Gate6IndependentValidator:
     def report_path(self, through_date: date) -> Path:
         return self.root / f"through={through_date}" / "independent_validation.json"
 
+    def _validate_upstream_evidence(
+        self,
+        *,
+        through_date: date,
+        gate6: dict[str, object],
+    ) -> None:
+        """Validate the accepted Gate6 prerequisite binding.
+
+        The default implementation preserves the original Phase25 Gate5 requirement.
+        Recovery-only validators may override this narrow hook while reusing every
+        downstream Gate6 population, lineage-completeness, and authority check.
+        """
+        gate5_path = Phase25Gate5BulkAcquisition(self.settings).report_path(through_date)
+        gate5_validation_path = Phase25Gate5IndependentValidator(self.settings).report_path(
+            through_date
+        )
+        if gate6.get("gate5_report_sha256") != sha256_file(gate5_path):
+            raise Phase25Gate6IndependentValidationError(
+                "Gate6 is not bound to exact Gate5 report"
+            )
+        if gate6.get("gate5_validation_sha256") != sha256_file(gate5_validation_path):
+            raise Phase25Gate6IndependentValidationError(
+                "Gate6 is not bound to exact Gate5 validation"
+            )
+
     def run(self, *, through_date: date) -> dict[str, object]:
         gate = Phase25Gate6DiscoveryReconstruction(self.settings)
         gate6_path = gate.report_path(through_date)
@@ -74,14 +99,11 @@ class Phase25Gate6IndependentValidator:
         if gate6.get("phase25_gate6_policy_fingerprint") != phase25_gate6_policy_fingerprint():
             raise Phase25Gate6IndependentValidationError("Gate6 policy fingerprint mismatch")
         if gate6.get("through_date") != through_date.isoformat() or gate6.get("pass") is not True:
-            raise Phase25Gate6IndependentValidationError("Gate6 report is not passing for through-date")
+            raise Phase25Gate6IndependentValidationError(
+                "Gate6 report is not passing for through-date"
+            )
 
-        gate5_path = Phase25Gate5BulkAcquisition(self.settings).report_path(through_date)
-        gate5_validation_path = Phase25Gate5IndependentValidator(self.settings).report_path(through_date)
-        if gate6.get("gate5_report_sha256") != sha256_file(gate5_path):
-            raise Phase25Gate6IndependentValidationError("Gate6 is not bound to exact Gate5 report")
-        if gate6.get("gate5_validation_sha256") != sha256_file(gate5_validation_path):
-            raise Phase25Gate6IndependentValidationError("Gate6 is not bound to exact Gate5 validation")
+        self._validate_upstream_evidence(through_date=through_date, gate6=gate6)
 
         sessions = tuple(self.calendar.sessions_in_range(PHASE25_ROUTE_REPLAY_ORIGIN, through_date))
         if not sessions or sessions[-1] != through_date:
@@ -149,24 +171,56 @@ class Phase25Gate6IndependentValidator:
         population_rows = int(population[0])
         summed_directional = int(summary[5] or 0)
         checks = {
-            "gate6_exact_policy": gate6.get("phase25_gate6_policy_fingerprint") == phase25_gate6_policy_fingerprint(),
+            "gate6_exact_policy": (
+                gate6.get("phase25_gate6_policy_fingerprint")
+                == phase25_gate6_policy_fingerprint()
+            ),
             "complete_standard_lineage": not missing_standard,
-            "summary_exact_sessions": summary_rows == len(sessions) and int(summary[1]) == len(sessions),
-            "summary_exact_range": str(summary[2]) == sessions[0].isoformat() and str(summary[3]) == sessions[-1].isoformat(),
+            "summary_exact_sessions": (
+                summary_rows == len(sessions) and int(summary[1]) == len(sessions)
+            ),
+            "summary_exact_range": (
+                str(summary[2]) == sessions[0].isoformat()
+                and str(summary[3]) == sessions[-1].isoformat()
+            ),
             "summary_contract_exact": int(summary[4]) == 0,
-            "population_count_matches_summary": population_rows == summed_directional == int(gate6.get("warm_hot_directional_population_rows", -1)),
+            "population_count_matches_summary": (
+                population_rows
+                == summed_directional
+                == int(gate6.get("warm_hot_directional_population_rows", -1))
+            ),
             "population_contract_exact": int(population[2]) == 0,
             "population_states_exact": int(population[3]) == 0,
             "population_directional_exact": int(population[4]) == 0,
             "population_unique_session_instrument": int(population[5]) == 0,
-            "population_range_bounded": population_rows == 0 or (str(population[6]) >= sessions[0].isoformat() and str(population[7]) <= sessions[-1].isoformat()),
-            "provider_activity_zero": int(gate6.get("provider_reads", -1)) == 0 and int(gate6.get("provider_writes", -1)) == 0,
-            "operational_discovery_state_writes_zero": int(gate6.get("operational_discovery_state_writes", -1)) == 0,
+            "population_range_bounded": (
+                population_rows == 0
+                or (
+                    str(population[6]) >= sessions[0].isoformat()
+                    and str(population[7]) <= sessions[-1].isoformat()
+                )
+            ),
+            "provider_activity_zero": (
+                int(gate6.get("provider_reads", -1)) == 0
+                and int(gate6.get("provider_writes", -1)) == 0
+            ),
+            "operational_discovery_state_writes_zero": (
+                int(gate6.get("operational_discovery_state_writes", -1)) == 0
+            ),
             "strategy_returns_unread": gate6.get("strategy_returns_read") is False,
             "regime_routing_not_run": gate6.get("regime_routing_performed") is False,
-            "strategy_rules_not_run": gate6.get("strategy_rule_evaluation_performed") is False,
+            "strategy_rules_not_run": (
+                gate6.get("strategy_rule_evaluation_performed") is False
+            ),
             "support_authority_false": gate6.get("support_replacement_authority") is False,
-            "broker_order_paper_live_zero": PHASE25_BROKER_READS == PHASE25_BROKER_WRITES == PHASE25_ORDER_WRITES == PHASE25_PAPER_SUBMITS == PHASE25_LIVE_WRITES == 0,
+            "broker_order_paper_live_zero": (
+                PHASE25_BROKER_READS
+                == PHASE25_BROKER_WRITES
+                == PHASE25_ORDER_WRITES
+                == PHASE25_PAPER_SUBMITS
+                == PHASE25_LIVE_WRITES
+                == 0
+            ),
             "support_writes_zero": PHASE25_PHASE11_SUPPORT_WRITES == 0,
             "protected_evidence_zero": PHASE25_PROTECTED_STRATEGY_EVIDENCE_READS == 0,
         }

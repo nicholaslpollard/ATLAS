@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-26.**
+**Last synchronized: 2026-08-27.**
 
 Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase source of truth. Read `docs/phase_plain_english_contract.md` before beginning or closing any numbered phase. This file records the exact current project state and immediate handoff.
 
@@ -10,13 +10,15 @@ Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-p
 - Phase23 merge: `2004338624766c42b5f4db2bb0976b2047a5c6b0`.
 - Phase24 merge: `15b77321d4815f9f52fe74d47ba32fee8127526a`.
 - Phase25 merge: `ba0a1588d816c3f2c7d4c2f0754b5fb4a29c8950` through PR #27.
-- Phase25 target-tested code head: `302bf6db5d807884f3b74cda049fc95864c5a194`; cumulative CI `32981080421` passed Ubuntu/Windows through all Phase25 evidence plus full regression.
-- Phase25 final docs head: `f2d10465b71446b253b5d73a50845d2ea1e704d3`; CI `33025699177` passed Ubuntu/Windows.
-- Phase25 disposition: **NO SUPPORT REPLACEMENT — DEVELOPMENT ROBUSTNESS FAILED**.
-- Mission/roadmap rebaseline merged to `main` through PR #28 at `398bdba248bc196d619b8340d01851a3a4c63602`.
+- Mission/roadmap rebaseline merged through PR #28 at `398bdba248bc196d619b8340d01851a3a4c63602`.
+- GUI/web/deployment roadmap rebaseline merged through PR #29 at `a1ee179a18187723ad2b55a082db127e28914e4e`.
 - Active branch: `phase-26-materially-different-strategy-architectures`.
-- **Current next phase/gate: Phase26 — Production-Path-Native Alpha Discovery & Validation.**
-- Phase26 implementation has not yet been accepted or merged.
+- **Phase26 full phase-end gate: PASS / ACCEPTED_NEGATIVE.**
+- Phase26 target-machine closeout head: `0c22889d0e8d33f19aab9ac405478255d990bdb6`.
+- Exact-head CI workflow `33043048986`: Ubuntu PASS / Windows PASS, including the named Phase26 closeout/anti-workaround validator and complete regression suite.
+- Phase26 is ready to merge; its scientific result and acceptance standard are frozen.
+- Existing Phase27 signal-to-trade entry is **BLOCKED** because validated supported alpha remains zero.
+- After Phase26 merge, explicitly rebaseline the roadmap to insert the next separately preregistered alpha-research phase before any signal-to-trade progression.
 
 ## Mission lock
 
@@ -28,15 +30,23 @@ The system is not optimized for trade count. A PASS/no-trade decision is correct
 
 `market/reference -> Parquet/DuckDB -> features -> broad discovery -> market/sector/ticker regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> promotion -> deep research/news -> stock/options instrument selection -> geometry -> portfolio risk/sizing -> deterministic case -> independent AI audit -> alerts -> shadow/paper/live execution -> outcome learning -> browser/web control plane -> production deployment/operations`
 
-Parquet is durable analytical history; DuckDB is analytics; PostgreSQL is future operational state; Massive is primary market/reference; Webull is primary PAPER/sandbox and intended primary LIVE broker only after separate acceptance; Alpaca is manual secondary only. ML is probability/predictive evidence; AI is independent audit; the browser/web GUI is the operator experience rather than business-logic authority.
+Parquet is durable analytical history; DuckDB is analytics; PostgreSQL is future operational state; Massive is primary market/reference; Webull is primary PAPER/sandbox and intended primary LIVE broker only after separate acceptance; Alpaca is manual secondary only. ML is probability evidence; AI is independent audit; the browser/web GUI is operator experience rather than business-logic authority.
 
 LIVE remains **DISABLED**. Automatic broker failover remains **DISABLED**.
 
-## What has been proven through Phase25
+## Root-cause / no-workaround lock
 
-The data, analytical, execution-safety, and operator foundations are substantial and remain accepted. ATLAS already has PIT/reference/canonical data, features, broad discovery, regimes, ML probability evidence, deterministic strategy routing, promoted-only research, context/options/geometry/portfolio-risk planning, independent AI audit, broker-neutral SHADOW/PAPER execution, Webull sandbox lifecycle evidence, browser/API/observability primitives, restart-safe orchestration, central PAPER-submit authority, routine PAPER runner, and a current finalized-session analysis binding.
+A failed check must be traced to the component, data artifact, assumption, interface, or process that owns the failure and corrected there. ATLAS must not obtain acceptance by bypassing a validator, weakening an invariant, ignoring a discrepancy, adding a parallel special-case path, or changing a research threshold merely to turn failure into PASS.
 
-The unresolved problem is strategy edge.
+Temporary workarounds may be used only for diagnosis/containment and cannot confer acceptance. Repeated repair wrappers, duplicate validators, or circular recovery/provenance logic are architectural defects to simplify. After a root fix, the applicable validation suite must be rerun.
+
+A legitimate negative research result is not an engineering failure and must not be "repaired" into a positive result.
+
+## Accepted foundation through Phase25
+
+The data, analytical, execution-safety, and operator foundations remain accepted. ATLAS already has PIT/reference/canonical data, features, broad discovery, regimes, ML probability evidence, deterministic strategy routing, promoted-only research, context/options/geometry/portfolio-risk planning, independent AI audit, broker-neutral SHADOW/PAPER execution, Webull sandbox lifecycle evidence, browser/API/observability primitives, restart-safe orchestration, central PAPER-submit authority, routine PAPER runner, and a finalized-session current-analysis binding.
+
+The unresolved problem remains strategy edge.
 
 Accepted Phase11 support remains:
 
@@ -44,80 +54,133 @@ Accepted Phase11 support remains:
 - MIXED: `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
 - UNSUPPORTED: `breakdown_short_v1`, `breakout_long_v1`, `momentum_short_v1`, `pullback_short_v1`, `trend_following_short_v1`.
 
-Phase24 tested 28 bounded challenger variants and produced 0 acceptable replacements.
+Phase24 tested 28 bounded challenger variants and produced zero replacements.
 
-Phase25 reconstructed the actual historical production path:
+Phase25 reconstructed the actual production path and found every non-empty incumbent negative at 10 bps and worse versus its broad comparator. No strategy survived its preregistered robustness framework. Phase11 support remained unchanged.
 
-- 1,260 replay sessions;
-- 23,177 WARM/HOT directional rows;
-- 15,283 fully route-eligible candidates;
-- 61,132 eligible strategy-route decisions;
-- 185,416 total route decisions;
-- every non-empty incumbent had negative 10 bps production-path mean and worsened versus its broad comparator;
-- no strategy survived the preregistered robustness framework;
-- protected evidence remained unread because there were zero finalists;
-- Phase11 support therefore remained unchanged.
+## Phase25 prerequisite recovery for Phase26
 
-**Plain-English conclusion:** the lack of supported strategies is real under the evidence tested so far. The next priority is finding and validating genuinely different alpha, not weakening old rules or allowing GUI/infrastructure work to hide the trading bottleneck.
+Before Phase26 could run, missing local Phase25 derived prerequisites had to be restored from authoritative source lineage rather than fabricated.
 
-## Development-process and communication lock
+Final recovery evidence through 2026-08-11:
 
-Starting with Phase26, **the numbered phase itself is the project acceptance gate**.
+- PIT reference sessions: **1,252**;
+- reused: **1,251**;
+- authoritative Massive reacquisition: **1 session (2021-08-16)**;
+- routed-universe semantic drift: **0**;
+- exclusion-ledger diagnostic drift: **1** (non-routing diagnostic only);
+- Gate6: **PASS**, 23,019 directional rows;
+- Gate6 independent validation: **PASS**;
+- Gate7: **PASS**, 15,153 route-eligible rows / 184,152 route decisions;
+- Gate7 independent validation: **PASS**;
+- broker/order/PAPER/LIVE authority: **0**.
 
-Every phase must begin with a plain-English explanation of where we are, what the phase will do, why it matters, what will be built, what will be tested, what success means, what happens on failure/negative evidence, and what is not happening yet.
+The recovery implementation was simplified during this work: the redundant reference-rebind wrapper and duplicate validator path were removed. Historical recovery remains bounded provenance/rehydration functionality and is not runtime trading authority.
 
-Every phase must end with a plain-English explanation of the goal, what was built, PASS/ACCEPTED-NEGATIVE/NOT-ACCEPTED status, what the evidence means, what ATLAS can do now, what remains missing/risky, where the project stands, and what happens next.
+Current-data catch-up remains intentionally deferred until it is useful for a later testing/production transition.
 
-Technical evidence follows those explanations rather than replacing them. Read `docs/phase_flow.md` and `docs/phase_plain_english_contract.md` for the normative formats.
+## Phase26 frozen research design
 
-## GUI/web/deployment path is now explicit
+Frozen policy fingerprint:
 
-GUI/web development and deployment are required product work, developed progressively without moving trading logic into the frontend:
+`24e4f0e24d3e81dfc3dc572f0562337b2c156cd3ea22d6a7448b6ad6586016d2`
 
-- Phase26 — alpha remains critical path; identify/stabilize only useful future UI/API output needs.
-- Phase27 — case/trade/risk web contracts + read-only prototype.
-- Phase28 — historical replay/stress dashboard.
-- Phase29 — SHADOW/PAPER operator web beta.
-- Phase30 — outcome/performance/learning/drift dashboards.
-- Phase31 — complete production web application + PostgreSQL/scheduler/service/deployment/backup/recovery work.
-- Phase32 — deployed-stack failure/security/reconciliation hardening.
-- Phase33 — controlled LIVE visibility/actions and emergency/risk controls through the production control plane.
+Phase26 tested 24 materially different candidates across six families: cross-sectional relative strength, volatility/liquidity mean reversion, volatility-normalized breakout, multi-timeframe state transition, gap behavior, and independent feature-block composites.
 
-The Python backend remains authoritative throughout. A rendered button or deployed page never creates broker, PAPER, or LIVE authority by itself.
+The research used exact accepted Phase25 production-path identities/context, PIT-safe observation joins, t+3 outcomes, chronological selection/internal partitions with exact purge sessions, block-bootstrap session dependence, 10 bps primary / 25 bps stress costs, global Holm-Bonferroni multiplicity control across all 24 candidates, year/regime/concentration robustness, and finalist-only protected evidence.
 
-## Active Phase26 boundary
+Candidate definitions, thresholds, chronology, economics, bootstrap, multiplicity, and protected boundaries were frozen before target performance inspection.
 
-Phase26 solves the current alpha bottleneck as one coherent phase rather than exposing a chain of Gate0/Gate1/etc. project milestones.
+## Phase26 target result
 
-It must:
+Exact valid target-tested research head:
 
-1. construct its primary research population directly from accepted Phase25 production-path identities/context plus canonical features/outcomes;
-2. avoid using the incomplete legacy Phase11/24 broad research join as its primary source;
-3. preregister materially different architecture/hypothesis search spaces and validation methodology before protected performance inspection;
-4. test long and short ideas independently rather than assuming mirror symmetry;
-5. include realistic instrument/strategy-specific costs and liquidity constraints;
-6. control chronology, overlapping outcomes/session dependence, multiple testing/selection bias, concentration, year/regime robustness, and backtest overfitting;
-7. compare complex candidates against simpler baselines;
-8. allow community/market ideas such as relative strength, mean reversion, gaps/opening-range/VWAP/RVOL, multi-timeframe evidence, and volatility/option structures only as testable hypotheses;
-9. independently validate/protected-confirm any finalist before support can change;
-10. finish with one full Phase26 acceptance gate.
+`8c9153c966ada116199fc45867bf5734efafeee4`
 
-Phase26 may replace the Phase11 support map only if the preregistered evidence standard is met. It creates **no provider mutation, broker submit, PAPER, or LIVE authority**.
+Result:
 
-If Phase26 finds no acceptable edge, accept the negative result and keep downstream LIVE progression blocked; define the next alpha-research phase from the failure evidence instead of weakening standards.
+- development usable observations: **21,483**;
+- protected predictor observations: **1,096**;
+- selection survivors: **0**;
+- internal-validation finalists: **0**;
+- protected-confirmed supported candidates: **0**;
+- protected return rows read: **0**;
+- independent validation: **PASS**;
+- provider/broker/order/PAPER/LIVE activity: **0 / 0 / 0 / 0 / 0**;
+- cumulative target evidence: **PASS**.
 
-## Planned route after Phase26
+**Plain-English conclusion:** Phase26 ran correctly, but none of the frozen alpha hypotheses earned support. Because no candidate survived development selection, internal/protected evidence was not used to rescue a weak candidate. The negative result is scientifically valid and must not be threshold-tuned after the fact.
 
-Subject to the entry conditions in `docs/roadmap.md`:
+Phase11 support therefore remains unchanged with zero SUPPORTED strategies.
 
-- Phase27 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype;
-- Phase28 — End-to-End Historical Replay & Stress Certification + Replay Dashboard;
-- Phase29 — Prospective SHADOW/PAPER Certification + Operator Web Beta;
-- Phase30 — Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI;
-- Phase31 — Production Web Application, Operations & Deployment;
-- Phase32 — LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification;
-- Phase33 — Controlled LIVE Activation & Evidence-Based Scaling through the production control plane.
+## Phase26 full phase-end closeout
+
+Exact target-tested closeout head:
+
+`0c22889d0e8d33f19aab9ac405478255d990bdb6`
+
+Observed target-machine closeout:
+
+- disposition: **ACCEPTED_NEGATIVE**;
+- selection survivors: **0**;
+- internal-validation finalists: **0**;
+- supported candidates: **0**;
+- protected return rows read: **0**;
+- end-to-end anti-workaround audit: **PASS**;
+- existing Phase27 entry satisfied: **False**;
+- provider/broker/order/PAPER/LIVE activity: **0 / 0 / 0 / 0 / 0**;
+- overall closeout: **PASS**.
+
+The closeout did not rerun strategy search or expose any new protected performance. Exact-head workflow `33043048986` passed the complete retained validation stack and pytest suite on Ubuntu and Windows.
+
+**Phase26 is therefore ACCEPTED_NEGATIVE.** Acceptance means ATLAS trusts the negative result. It does not create strategy, PAPER, broker, or LIVE authority.
+
+## Phase26 implementation defects corrected before valid target evidence
+
+Two Phase26 implementation defects were caught by target execution and fixed at their owning boundaries before the valid result:
+
+1. Pandas/NumPy boolean scalars leaked through the observation-report JSON persistence boundary. The expressions were normalized and the artifact contract now rejects non-native booleans, with regression coverage.
+2. Development research had an impossible acceptance predicate that inserted `protected_returns_read=False` into an `all(checks.values())` map. The state/predicate confusion was removed and replaced with positive invariants that prove protected reads remain zero, with regression coverage.
+
+Neither correction changed strategy performance rules or evidence thresholds.
+
+## End-to-end anti-workaround audit
+
+The bounded provider-to-execution architectural audit required for Phase26 closeout is documented in `docs/phase26_end_to_end_anti_workaround_audit.md`.
+
+Conclusion: **PASS — no acceptance-blocking workaround or parallel trading authority found.**
+
+Key machine-verifiable conclusions include:
+
+- Phase25 recovery authority is not imported by routine discovery/operations/risk/control-plane/execution modules;
+- exactly one raw broker `adapter.submit(plan)` seam remains, in `packages/execution/engine.py`;
+- promotion still requires historically supported, routed, fired strategy evidence;
+- Phase22 is PAPER-only and delegates to the central authority path;
+- Phase23 routine analysis cannot mutate broker/order/PAPER/LIVE state and does not silently rebootstrap missing accepted baselines;
+- automatic broker failover remains disabled;
+- current browser control plane exposes no provider-write/LIVE execution endpoint;
+- ML remains probability evidence only;
+- conservative identity fallback preserves uncertainty instead of guessing continuity.
+
+## Immediate handoff
+
+No additional Phase26 research or target command is required.
+
+Next repository actions:
+
+1. merge the accepted-negative Phase26 branch after exact-head CI on the final provenance-only documentation head passes;
+2. verify post-merge `main` CI;
+3. explicitly update `docs/roadmap.md` to insert the next separately preregistered alpha-research phase before signal-to-trade construction;
+4. start that phase with the required plain-English phase-start explanation and a new frozen research specification derived from the Phase26 failure evidence.
+
+Do **not** tune Phase26 near-misses and do **not** enter the existing signal-to-trade Phase27 while supported strategy authority remains zero.
+
+## GUI/web/deployment path remains required
+
+The GUI/web/deployment destination remains unchanged, but its numbered placement must follow the explicit post-Phase26 roadmap rebaseline because alpha remains the blocking entry condition.
+
+The Python backend remains authoritative throughout. A rendered button or deployed page never creates broker, PAPER, or LIVE authority.
 
 ## Persistent non-negotiables
 
-Preserve provider-native ticker case and PIT identity; quarantine ambiguity; do not synthesize unavailable history; finalized facts outrank provisional state; ML/AI do not create trade authority; community trading ideas are hypotheses rather than assumed edge; uncertain mutation state requires reconciliation; frontend/UI controls never create or bypass authority; no automatic broker failover; PAPER does not imply LIVE; and downstream phases do not advance past a missing validated-alpha requirement merely because their GUI or infrastructure could be built.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; do not synthesize unavailable history; finalized facts outrank provisional state; ML/AI do not create trade authority; community ideas are hypotheses rather than assumed edge; uncertain mutation state requires reconciliation; frontend/UI controls never create or bypass authority; no automatic broker failover; PAPER does not imply LIVE; negative research is accepted rather than manipulated; and downstream phases do not advance past a missing validated-alpha requirement merely because their GUI or infrastructure could be built.

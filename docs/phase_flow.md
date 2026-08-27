@@ -16,6 +16,8 @@ Normal lifecycle:
 
 The goal is to move quickly through coherent work while keeping the final evidence bar high and keeping the operator able to understand where the project is and why the work matters.
 
+A failed check is evidence about the system, not an obstacle to route around. **Root cause must be identified and corrected at the layer that owns the defect before the phase can earn acceptance.** A bypass, relaxed validator, alternate special-case path, ignored discrepancy, changed threshold, or additional wrapper whose purpose is merely to convert a failure into a pass cannot satisfy this contract.
+
 ## 2. Plain-English phase start is mandatory
 
 Before material implementation begins, provide the operator a concise plain-English phase-start explanation covering:
@@ -65,6 +67,10 @@ During implementation:
 - add focused tests as code changes;
 - run local diagnostics when useful;
 - repair defects immediately when evidence is clear;
+- when a check fails, trace the causal chain to the component, data artifact, assumption, interface, or process that actually owns the failure and repair that cause rather than suppressing its symptom;
+- do not introduce a bypass, special-case validator, duplicate recovery path, relaxed criterion, ignored mismatch, or threshold change merely to make a failing check pass;
+- temporary diagnostic instrumentation or recovery tooling is allowed only when it helps establish or repair root cause, remains explicitly non-authoritative, and cannot itself grant phase acceptance;
+- repeated repair wrappers, duplicated validators, or circular provenance/recovery logic are themselves architectural defects to simplify rather than extend;
 - continue through ordinary read-only/reversible work without unnecessary operator stops;
 - keep frontend/web code as a client of accepted backend/API contracts rather than duplicating analytical or broker logic;
 - treat deployment configuration, service management, persistence, restart behavior, security, logging, and recovery as tested software where applicable.
@@ -98,7 +104,8 @@ Unless genuinely inapplicable and documented, the phase-end gate includes:
 11. frontend/API/security/permission tests when GUI/web controls are involved;
 12. deployment/startup/shutdown/restart/persistence/logging/rollback checks when deployment work is involved;
 13. confirmation that forbidden provider/broker/PAPER/LIVE/support/automation writes remained zero unless explicitly authorized by the phase;
-14. synchronization of the roadmap, current status, active phase document, README/other living docs where needed.
+14. documented closure of material failures encountered during the phase, showing the underlying cause was identified and corrected rather than bypassed or hidden;
+15. synchronization of the roadmap, current status, active phase document, README/other living docs where needed.
 
 The exact tested/documented head is the only candidate for acceptance and merge.
 
@@ -116,7 +123,9 @@ A preregistered research/question phase passed technically and scientifically bu
 
 ### NOT ACCEPTED
 
-Implementation, evidence, validation, CI, target/deployment evidence, recovery, or a mandatory acceptance criterion failed. Repair within the same phase and rerun the full phase-end gate. Do not create a new phase merely to avoid repairing the active phase.
+Implementation, evidence, validation, CI, target/deployment evidence, recovery, or a mandatory acceptance criterion failed. **Root-cause analysis and correction are mandatory before acceptance can be reconsidered.** Repair the defect in the same phase at the layer that owns it, remove unnecessary workaround layers introduced during diagnosis, and rerun the full phase-end gate. Do not create a new phase, alternate acceptance path, weaker test, special-case exemption, or changed scientific threshold merely to avoid repairing the active phase.
+
+A workaround may exist temporarily only as diagnostic or containment tooling when clearly labeled non-authoritative. It must not convert a failed requirement into an accepted capability, and it must be removed or incorporated into a principled permanent design before the phase closes unless the workaround itself is the documented root-cause fix and is validated as such.
 
 ## 8. Research-specific rules
 
@@ -157,7 +166,7 @@ Every phase completion report must first provide this summary:
 
 When GUI/web/deployment work is involved, also state what the operator can now see/control, where the application is deployed, whether it is development/test/PAPER/production, and what actions remain blocked.
 
-Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, validator outputs, and deployment logs follow afterward as the audit record.
+Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, validator outputs, deployment logs, and material failure/root-cause/repair evidence follow afterward as the audit record.
 
 ## 11. Current application
 

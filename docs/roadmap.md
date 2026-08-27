@@ -71,6 +71,7 @@ The following are mandatory:
 10. **Fail closed on uncertainty.** Ambiguous identity, stale/missing data, unknown broker/order state, invalid geometry, or uncertain mutation state blocks advancement until reconciled.
 11. **PAPER does not imply LIVE.** LIVE remains a separate final authority decision.
 12. **No automatic cross-broker failover.** Broker switching remains explicit and reconciled.
+13. **Root cause before workaround.** A failed check is evidence to investigate, not an obstacle to bypass. Trace failures to the owning data, code, assumption, interface, authority boundary, or process and correct that cause. Do not earn acceptance by weakening checks, ignoring discrepancies, adding parallel/special-case authority paths, changing research thresholds after results, or stacking repair wrappers whose purpose is merely to produce a pass. Temporary containment/diagnostic workarounds may help investigation but grant no capability or authority. Repeated wrappers, duplicate validators, circular provenance/recovery logic, or fallback paths that compensate for unresolved defects are themselves architectural defects to simplify. After root-cause correction, rerun the complete applicable acceptance suite.
 
 ## 5. Data, research, execution, GUI, and deployment standards
 
@@ -238,7 +239,7 @@ Before protected performance inspection, freeze search space, outcomes, economic
 
 Web work in Phase26 is limited to documenting/stabilizing research output contracts needed later; it must not displace alpha discovery.
 
-**Phase-end gate:** full software/regression/CI validation plus independent research validation and protected out-of-sample confirmation for any finalist.
+**Phase-end gate:** full software/regression/CI validation plus independent research validation and protected out-of-sample confirmation for any finalist. Before Phase26 can be accepted, perform a bounded end-to-end architectural/integrity audit of the critical data-to-execution authority path for workaround debt, duplicate authority/validation paths, stale compatibility shims, fallback semantics, and circular repair/provenance logic. Legitimate resilience/recovery may remain; any path that compensates for an unresolved defect must be root-caused and corrected, followed by the full acceptance suite.
 
 **Authority on success:** Phase26 may replace the Phase11 support map only for strategies that satisfy its predeclared acceptance standard. It creates no broker/PAPER/LIVE authority.
 
