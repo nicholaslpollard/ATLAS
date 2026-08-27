@@ -1,8 +1,8 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-27 after Phase27 acceptance and merge.**
+**Last synchronized: 2026-08-27 after Phase28 target closeout PASS / ACCEPTED_NEGATIVE.**
 
-Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase source of truth. Read `docs/phase_plain_english_contract.md` before beginning or closing any numbered phase. The active Phase28 specification is `docs/phase28_cross_stock_lead_lag_residual_network_alpha.md`.
+Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase source of truth. Read `docs/phase_plain_english_contract.md` before beginning or closing any numbered phase. Phase28 provenance is in `docs/phase28_cross_stock_lead_lag_residual_network_alpha.md`, `docs/phase28_end_to_end_anti_workaround_audit.md`, and `docs/phase28_closeout.md`.
 
 ## Repository state
 
@@ -12,10 +12,13 @@ Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-p
 - Phase25 merge: `ba0a1588d816c3f2c7d4c2f0754b5fb4a29c8950` through PR #27.
 - Phase26 merge: PR #30 / `2074808605cf85b5462e5999ed1836d68b0434c3` — `ACCEPTED_NEGATIVE`.
 - Phase27 merge: PR #31 / `dc015f51232dc66ba94b6175c276a0227d5a3761` — `ACCEPTED_NEGATIVE`.
-- Phase27 post-merge CI `33107544402`: Ubuntu PASS / Windows PASS, including all retained validators and full regression.
+- Phase27 post-merge CI `33107544402`: Ubuntu PASS / Windows PASS.
 - Active branch: `phase-28-cross-stock-lead-lag-residual-network-alpha`.
-- **Current phase/gate: Phase28 — Cross-Stock Lead-Lag & Residual Network Alpha.**
-- Signal-to-trade construction is now Phase29 and remains blocked until at least one alpha architecture earns accepted historical analytical `SUPPORTED` authority.
+- Phase28 target research and full local closeout are **PASS / ACCEPTED_NEGATIVE**.
+- Phase28 target closeout head: `945adf9b2722da3822e6dcc79467ae9620d5d439`.
+- Phase28 closeout-head CI `33113281485`: Ubuntu PASS / Windows PASS, including all retained validators and full regression.
+- Phase28 final provenance documentation is being certified before merge.
+- Signal-to-trade construction remains blocked until at least one alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 
 ## Mission lock
 
@@ -45,15 +48,13 @@ Accepted Phase11 support remains:
 - MIXED: `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
 - UNSUPPORTED: `breakdown_short_v1`, `breakout_long_v1`, `momentum_short_v1`, `pullback_short_v1`, `trend_following_short_v1`.
 
-Neither Phase26 nor Phase27 replaced this support map.
+Phases26, 27, and 28 did not replace this support map.
 
 ## Phase26 final evidence
 
-Frozen Phase26 policy fingerprint:
+Frozen policy fingerprint:
 
 `24e4f0e24d3e81dfc3dc572f0562337b2c156cd3ea22d6a7448b6ad6586016d2`
-
-Valid target result:
 
 - development usable observations: **21,483**;
 - protected predictor observations: **1,096**;
@@ -61,107 +62,96 @@ Valid target result:
 - internal-validation finalists: **0**;
 - supported candidates: **0**;
 - protected return rows read: **0**;
-- independent validation / anti-workaround: **PASS**.
+- independent validation / anti-workaround: **PASS**;
+- disposition: **ACCEPTED_NEGATIVE**.
 
 ## Phase27 final evidence
 
-Frozen Phase27 policy fingerprint:
+Frozen policy fingerprint:
 
 `63030d55fbdb60ce61ea0c84081ae95d62d68fc717f494aa41a23d31c410aab0`
 
-Valid target result:
-
 - development model rows: **18,111**;
 - protected predictor rows: **920**;
-- selection survivors: **0**;
-- selection winners: **0**;
-- internal-validation finalists: **0**;
-- supported candidates: **0**;
+- selection survivors/winners/finalists/supported: **0 / 0 / 0 / 0**;
 - protected candidate rows read: **0**;
 - protected return rows read: **0**;
 - protected holdout consumed: **False**;
 - independent validation: **PASS**;
-- end-to-end anti-workaround audit: **PASS**;
+- anti-workaround audit: **PASS**;
+- disposition: **ACCEPTED_NEGATIVE**.
+
+Target closeout head `bfc1c9898a6eb67bb6a9050c8d53802a887a940d`; PR #31 merged at `dc015f51232dc66ba94b6175c276a0227d5a3761`; post-merge workflow `33107544402` passed Ubuntu and Windows.
+
+## Phase28 final evidence
+
+Frozen policy fingerprint:
+
+`0f15966f61a0baf52513cd46dc4fa8492c98e7dc8cf9ed3d551c2ebc955adea5`
+
+Phase28 tested four relational/residual signal families independently LONG/SHORT: residual momentum 20d, peer lead 1d, peer lead 5d, and peer diffusion gap 1d. It used the frozen 60-pair asymmetric lead-lag network, top three qualifying leaders with at least two required, exact PIT/split-safe canonical daily history, fixed 20% tails, exact 3-session outcomes, 10 bps primary / 25 bps stress costs, chronological selection/internal validation, dependence-aware bootstrap statistics, robustness gates, and global Holm correction across eight hypotheses.
+
+Valid target result:
+
+- development network rows: **14,466**;
+- protected network predictor rows: **741**;
+- selection survivors: **0**;
+- selection winners: **0**;
+- internal-validation finalists: **0**;
+- supported candidates: **0**;
+- protected candidate rows queried/read: **0**;
+- protected return rows read: **0**;
+- protected holdout consumed: **False**;
+- independent validation: **PASS**;
 - provider/broker/order/PAPER/LIVE activity: **0**.
 
-Target closeout at branch head `bfc1c9898a6eb67bb6a9050c8d53802a887a940d` returned `PASS / ACCEPTED_NEGATIVE`. PR #31 merged at `dc015f51232dc66ba94b6175c276a0227d5a3761`; post-merge workflow `33107544402` passed Ubuntu and Windows.
+Final target closeout at `945adf9b2722da3822e6dcc79467ae9620d5d439` returned:
 
-**Practical conclusion:** both the tested hand-designed self-feature rules and the tested same-stock cross-sectional ML/ranking architectures failed to demonstrate acceptable after-cost alpha. The next phase therefore changes the information source.
+- `Phase 28 closeout: PASS`;
+- `Disposition: ACCEPTED_NEGATIVE`;
+- end-to-end anti-workaround audit: **True**;
+- Phase29 signal-to-trade entry satisfied: **False**;
+- protected candidate/return reads: **0 / 0**;
+- holdout consumed: **False**;
+- provider/broker/order/PAPER/LIVE activity: **0 / 0 / 0 / 0 / 0**;
+- `Pass: True`.
+
+Closeout-head workflow `33113281485` passed Ubuntu and Windows, including the complete retained validator stack and full pytest regression suite.
+
+**Scientific conclusion:** Phase28 was executed correctly but the tested cross-stock residual/lead-lag network signals did not demonstrate acceptable after-cost alpha. The network/window/leader/tail/cost/chronology/statistical policy is frozen historical provenance and must not be retuned after observing this result.
 
 ## Protected-holdout state
 
 The master protected predictor window remains `2026-05-12` through `2026-08-11`.
 
-Phases26 and 27 each read **zero protected returns**. Phase27's independent blindness/closeout evidence confirmed that the holdout is still outcome-unopened. Phase28 may use it only after its own policy/specification is frozen and an independent pre-read blindness audit proves the prior zero-read state and absence of Phase28 protected outcome artifacts.
+Phases26, 27, and 28 each read **zero protected returns**. Phase28 had zero finalists, so no protected read plan or future-return query was created. The holdout therefore remains genuinely outcome-unopened.
 
-The first future protected-return read permanently consumes this holdout for later strategy/model selection.
+A later separately preregistered alpha phase may use it only while this zero-read state remains independently provable. The first future protected-outcome read permanently consumes the holdout for subsequent strategy/model selection.
 
-## Phase28 rationale
+## Research failure map now established
 
-Phase28 asks a materially different question: **does the recent behavior of other production-relevant stocks contain information about a focal candidate's next move after common cross-sectional movement is removed?**
+ATLAS has now rejected three materially different tested alpha classes under rigorous frozen standards:
 
-The phase does not add another generic classifier over the same 29 Phase27 self-features. It builds observation-time relational information from the canonical daily lake and exact PIT candidate identities, using a frozen asymmetric lead-lag network and residual-return baselines.
+1. **Phase26:** hand-designed deterministic/composite self-feature rules;
+2. **Phase27:** same-stock cross-sectional expected-return/ranking ML architectures;
+3. **Phase28:** cross-stock residual/lead-lag relational signals.
 
-## Phase28 frozen high-level design
+This is useful scientific information. The next alpha phase must change the hypothesis class or information source in a way that is materially distinct from all three rather than tuning the rejected families.
 
-Active specification:
+## Immediate handoff
 
-`docs/phase28_cross_stock_lead_lag_residual_network_alpha.md`
+1. certify the final Phase28 provenance/documentation head on Ubuntu and Windows;
+2. open and merge the Phase28 PR only after exact-head green CI;
+3. verify post-merge `main` on both operating systems;
+4. rebaseline the roadmap so the next numbered phase remains an alpha gate rather than falsely entering signal-to-trade construction;
+5. preregister the next materially different alpha architecture before any protected or target performance is inspected.
 
-Frozen design:
+No PAPER or LIVE authority is granted by Phase28.
 
-- source focal population: accepted Phase26 production-path-native development/protected predictor rows;
-- peer universe at each observation session: all eligible same-session Phase26 WARM/HOT directional candidates, irrespective of focal direction;
-- daily history: canonical finalized 1d bars only, restricted to exact safe identity intervals;
-- split crossing in network lookback: fail/censor that ticker for the observation;
-- common-move residual: each peer's daily return minus the contemporaneous cross-sectional median peer return;
-- lead-lag estimation: fixed 60 lag pairs ending at `t-1`, at least 50 valid aligned observations;
-- edge strength: `corr(peer[s-1], focal[s]) - corr(focal[s-1], peer[s])`, requiring positive forward correlation and positive asymmetry;
-- fixed top 3 leaders, deterministic tie break, at least 2 leaders;
-- leader weights: normalized positive asymmetry;
-- four frozen raw signals: 20-session focal residual momentum, weighted leader 1-session residual return, weighted leader 5-session residual return, and 1-session leader-minus-focal diffusion gap;
-- LONG score = raw signal; SHORT score = negative raw signal;
-- every row must have all four signals finite; all eight hypotheses use the same complete-case population;
-- minimum 5 complete rows per session/direction;
-- fixed top 20% score tail with deterministic tie break;
-- eight hypotheses = four signal families × LONG/SHORT;
-- fixed 3-session outcome horizon;
-- 75% chronological selection, exact 3-session purge, internal remainder;
-- 10 bps primary / 25 bps stress economics;
-- global Holm-Bonferroni across all eight hypotheses;
-- session/block dependence handling, sample/concentration/year/regime robustness;
-- at most one winner/finalist per direction; no runner-up substitution after internal failure;
-- finalist-only protected confirmation after independent blindness audit;
-- provider/broker/order/PAPER/LIVE/automation activity zero.
+## Downstream roadmap before the next rebaseline
 
-No network window, leader count, signal formula, tail fraction, outcome horizon, costs, or acceptance threshold may change after Phase28 performance is observed.
-
-## Phase28 implementation path
-
-1. frozen spec + machine-readable policy/fingerprint;
-2. deterministic residual/lead-lag network primitives with unit tests;
-3. source-lineage and network-population reconstruction from accepted local artifacts;
-4. development selection + global multiplicity;
-5. internal validation and finalist freeze;
-6. independent pre-read protected blindness audit;
-7. zero-finalist skip or immutable finalist-only protected read plan/confirmation;
-8. independent persisted-artifact reconciliation;
-9. cumulative target runner;
-10. full phase-end closeout, anti-workaround audit, retained validators, pytest, Ubuntu/Windows CI, plain-English end, docs, accept/repair, merge.
-
-No user-local command is required until repository implementation and exact-head CI reach the genuine target-evidence boundary.
-
-## Rebaselined downstream roadmap
-
-- **Phase28:** Cross-Stock Lead-Lag & Residual Network Alpha — active alpha gate.
-- **Phase29:** Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype — requires supported alpha.
-- **Phase30:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
-- **Phase31:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
-- **Phase32:** Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI.
-- **Phase33:** Production Web Application, Operations & Deployment.
-- **Phase34:** LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification — LIVE still disabled.
-- **Phase35:** Controlled LIVE Activation & Evidence-Based Scaling.
+The currently numbered Phase29 signal-to-trade construction gate remains blocked because its entry condition is not satisfied. After Phase28 merge, the roadmap must insert the next alpha research phase ahead of that work and shift downstream phase numbers accordingly.
 
 ## Persistent non-negotiables
 
-Preserve provider-native ticker case and PIT identity; quarantine ambiguity; do not synthesize unavailable history; finalized facts outrank provisional state; ML/AI do not create trade authority; research ideas are hypotheses rather than assumed edge; uncertain mutation state requires reconciliation; frontend/UI controls never create or bypass authority; no automatic broker failover; PAPER does not imply LIVE; negative research is accepted rather than manipulated; and LIVE authority exists only after Phase35 acceptance.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; do not synthesize unavailable history; finalized facts outrank provisional state; ML/AI do not create trade authority; research ideas are hypotheses rather than assumed edge; uncertain mutation state requires reconciliation; frontend/UI controls never create or bypass authority; no automatic broker failover; PAPER does not imply LIVE; negative research is accepted rather than manipulated; and LIVE authority exists only after a separately accepted final activation phase.
