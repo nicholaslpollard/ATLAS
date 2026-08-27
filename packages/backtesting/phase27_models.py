@@ -244,7 +244,8 @@ def candidate_param_grid(candidate: Phase27CandidateSpec) -> tuple[dict[str, obj
 
 def _complexity_key(candidate: Phase27CandidateSpec, params: Mapping[str, object]) -> tuple[object, ...]:
     if candidate.family == "ridge_relative_return":
-        return (float(params["alpha"]),)
+        # If tuning IC ties, larger alpha is the more regularized/simpler Ridge model.
+        return (-float(params["alpha"]),)
     if candidate.family == "hgb_relative_return":
         return (
             int(params["max_leaf_nodes"]),
@@ -253,6 +254,7 @@ def _complexity_key(candidate: Phase27CandidateSpec, params: Mapping[str, object
             -float(params["l2_regularization"]),
         )
     if candidate.family == "pairwise_logistic_rank":
+        # Smaller C means stronger regularization for logistic ranking.
         return (float(params["C"]),)
     return ()
 
