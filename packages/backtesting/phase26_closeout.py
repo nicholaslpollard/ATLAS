@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Mapping
 
 from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
@@ -29,7 +28,7 @@ from .phase26_runner import (
     Phase26CumulativeRunner,
 )
 from .phase26_validation import (
-    PHASE26_INDEPENDENT_VALIDATION_CONTRACT_VERSION,
+    PHASE26_VALIDATION_CONTRACT_VERSION,
     Phase26IndependentValidator,
 )
 
@@ -68,12 +67,7 @@ def _raw_submit_sites(project_root: Path) -> list[str]:
 
 
 def _runtime_recovery_import_sites(project_root: Path) -> list[str]:
-    """Return runtime modules that import Phase25 research-recovery authority.
-
-    Recovery modules may exist for provenance/rehydration, but they must not become
-    callable authority from routine discovery, operations, risk, control-plane, or
-    execution code.
-    """
+    """Return runtime modules that import Phase25 research-recovery authority."""
 
     roots = (
         "packages/discovery",
@@ -101,11 +95,7 @@ def _runtime_recovery_import_sites(project_root: Path) -> list[str]:
 
 
 def phase26_architecture_audit_checks(project_root: Path) -> dict[str, bool]:
-    """Machine-check the highest-risk anti-workaround invariants.
-
-    This does not replace the documented layer-by-layer audit; it locks the critical
-    conclusions that can be verified directly from source structure.
-    """
+    """Machine-check the highest-risk anti-workaround invariants."""
 
     from packages.execution.phase22_operator import (
         PHASE22_AUTOMATIC_BROKER_FAILOVER,
@@ -224,18 +214,11 @@ class Phase26Closeout:
             "paper_submits",
             "live_writes",
         )
-        cumulative_authority_zero = all(int(cumulative.get(name, -1)) == 0 for name in zero_authority_fields)
+        cumulative_authority_zero = all(
+            int(cumulative.get(name, -1)) == 0 for name in zero_authority_fields
+        )
         confirmation_authority_zero = all(
-            int(confirmation.get(name, -1)) == 0
-            for name in (
-                "provider_reads",
-                "provider_writes",
-                "broker_reads",
-                "broker_writes",
-                "order_writes",
-                "paper_submits",
-                "live_writes",
-            )
+            int(confirmation.get(name, -1)) == 0 for name in zero_authority_fields
         )
 
         checks = {
@@ -243,16 +226,27 @@ class Phase26Closeout:
             == PHASE26_CUMULATIVE_REPORT_CONTRACT_VERSION,
             "observation_contract": observation.get("contract_version")
             == PHASE26_OBSERVATION_REPORT_CONTRACT_VERSION,
-            "research_contract": research.get("contract_version") == PHASE26_RESEARCH_REPORT_CONTRACT_VERSION,
-            "finalist_contract": finalists.get("contract_version") == PHASE26_FINALIST_ARTIFACT_CONTRACT_VERSION,
+            "research_contract": research.get("contract_version")
+            == PHASE26_RESEARCH_REPORT_CONTRACT_VERSION,
+            "finalist_contract": finalists.get("contract_version")
+            == PHASE26_FINALIST_ARTIFACT_CONTRACT_VERSION,
             "confirmation_contract": confirmation.get("contract_version")
             == PHASE26_CONFIRMATION_REPORT_CONTRACT_VERSION,
-            "support_contract": support.get("contract_version") == PHASE26_SUPPORT_OVERLAY_CONTRACT_VERSION,
+            "support_contract": support.get("contract_version")
+            == PHASE26_SUPPORT_OVERLAY_CONTRACT_VERSION,
             "validation_contract": validation.get("contract_version")
-            == PHASE26_INDEPENDENT_VALIDATION_CONTRACT_VERSION,
+            == PHASE26_VALIDATION_CONTRACT_VERSION,
             "policy_fingerprint_consistent": all(
                 payload.get("phase26_policy_fingerprint") == phase26_policy_fingerprint()
-                for payload in (cumulative, observation, research, finalists, confirmation, support, validation)
+                for payload in (
+                    cumulative,
+                    observation,
+                    research,
+                    finalists,
+                    confirmation,
+                    support,
+                    validation,
+                )
             ),
             "cumulative_pass": cumulative.get("pass") is True,
             "observation_pass": observation.get("pass") is True,
@@ -261,13 +255,16 @@ class Phase26Closeout:
             "independent_validation_pass": validation.get("pass") is True,
             "cumulative_observation_sha": cumulative.get("observation_report_sha256")
             == sha256_file(observation_path),
-            "cumulative_research_sha": cumulative.get("research_report_sha256") == sha256_file(research_path),
+            "cumulative_research_sha": cumulative.get("research_report_sha256")
+            == sha256_file(research_path),
             "cumulative_confirmation_sha": cumulative.get("confirmation_report_sha256")
             == sha256_file(confirmation_path),
             "cumulative_validation_sha": cumulative.get("independent_validation_sha256")
             == sha256_file(validation_path),
-            "research_finalist_sha": research.get("finalists_sha256") == sha256_file(finalist_path),
-            "confirmation_support_sha": confirmation.get("support_overlay_sha256") == sha256_file(support_path),
+            "research_finalist_sha": research.get("finalists_sha256")
+            == sha256_file(finalist_path),
+            "confirmation_support_sha": confirmation.get("support_overlay_sha256")
+            == sha256_file(support_path),
             "selection_relationship_consistent": tuple(
                 str(value) for value in cumulative.get("selected_candidate_ids", [])
             )
@@ -299,7 +296,8 @@ class Phase26Closeout:
             "confirmation_external_authority_zero": confirmation_authority_zero,
             "architecture_audit_pass": all(architecture_checks.values()),
             "negative_disposition_blocks_phase27": bool(supported) or not phase27_entry_satisfied,
-            "positive_disposition_requires_supported": disposition != "ACCEPTED_POSITIVE" or bool(supported),
+            "positive_disposition_requires_supported": disposition != "ACCEPTED_POSITIVE"
+            or bool(supported),
         }
         if not all(checks.values()):
             failed = sorted(name for name, value in checks.items() if not value)
