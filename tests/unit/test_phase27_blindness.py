@@ -6,20 +6,22 @@ from packages.backtesting.phase27_blindness import (
 )
 
 
-def test_blindness_allows_only_explicit_unread_counters() -> None:
+def test_blindness_allows_explicit_unread_counters_and_true_assertions() -> None:
     payload = {
         "protected_returns_read": 0,
         "nested": {
             "protected_return_reads": 0,
             "protected_candidate_rows_read": 0,
+            "protected_returns_unread": True,
+            "finalist_artifact_protected_returns_unread": True,
         },
     }
     assert unexpected_protected_performance_keys(payload) == ()
 
 
-def test_blindness_rejects_protected_performance_fields_recursively() -> None:
+def test_blindness_rejects_false_unread_assertion_or_performance_fields() -> None:
     payload = {
-        "protected_returns_read": 0,
+        "protected_returns_unread": False,
         "metrics": {
             "protected_mean_return": 0.01,
             "deeper": [{"protected_sharpe": 1.5}],
@@ -28,6 +30,7 @@ def test_blindness_rejects_protected_performance_fields_recursively() -> None:
     assert unexpected_protected_performance_keys(payload) == (
         "metrics.deeper[0].protected_sharpe",
         "metrics.protected_mean_return",
+        "protected_returns_unread",
     )
 
 
