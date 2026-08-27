@@ -196,5 +196,8 @@ jobs:
       - name: Validate Phase 30 historical-news feasibility contracts
         run: python scripts/validate_phase30.py
 
+      - name: Validate Phase 30 frozen scientific policy and acquisition contracts
+        run: python scripts/validate_phase30_policy.py
+
       - name: Run tests
         run: python -m pytest -q
