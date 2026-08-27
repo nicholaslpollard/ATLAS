@@ -6,6 +6,7 @@ import pandas as pd
 
 from packages.backtesting.phase26_research import (
     chronological_boundaries,
+    development_research_checks,
     holm_bonferroni,
     selection_checks,
     tranche_metrics,
@@ -92,3 +93,37 @@ def test_phase26_holm_is_global_and_step_down() -> None:
     assert result["b"]["rejected_null"] is True
     assert result["c"]["rejected_null"] is True
     assert result["d"]["rejected_null"] is False
+
+
+def test_phase26_development_stage_can_pass_only_while_protected_returns_are_unread() -> None:
+    holm = {f"candidate-{index}": {} for index in range(24)}
+    checks = development_research_checks(
+        observation_report={"pass": True, "protected_return_reads": 0},
+        holm=holm,
+        selected_ids=(),
+        internal_metrics={},
+        finalist_ids=(),
+        finalist_payload={"protected_returns_read": 0},
+    )
+    assert all(checks.values())
+    assert "protected_returns_read" not in checks
+
+    observation_leak = development_research_checks(
+        observation_report={"pass": True, "protected_return_reads": 1},
+        holm=holm,
+        selected_ids=(),
+        internal_metrics={},
+        finalist_ids=(),
+        finalist_payload={"protected_returns_read": 0},
+    )
+    assert observation_leak["protected_returns_unread"] is False
+
+    finalist_leak = development_research_checks(
+        observation_report={"pass": True, "protected_return_reads": 0},
+        holm=holm,
+        selected_ids=(),
+        internal_metrics={},
+        finalist_ids=(),
+        finalist_payload={"protected_returns_read": 1},
+    )
+    assert finalist_leak["finalist_artifact_protected_returns_unread"] is False
