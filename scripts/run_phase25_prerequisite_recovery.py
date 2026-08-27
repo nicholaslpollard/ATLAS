@@ -9,9 +9,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from packages.backtesting.phase25_gate6_reference_rebind import (
-    Phase25Gate6ReferenceRebindIndependentValidator,
-    Phase25Gate6ReferenceRebindReconstruction,
+from packages.backtesting.phase25_gate6_recovery import (
+    Phase25Gate6RecoveredIndependentValidator,
+    Phase25Gate6RecoveredPrerequisiteReconstruction,
 )
 from packages.backtesting.phase25_gate7 import Phase25Gate7RouteContextReplay
 from packages.backtesting.phase25_gate7_validation import (
@@ -109,7 +109,7 @@ def main() -> int:
     )
     print()
 
-    gate6 = Phase25Gate6ReferenceRebindReconstruction(settings)
+    gate6 = Phase25Gate6RecoveredPrerequisiteReconstruction(settings)
 
     def gate6_progress(**event):  # type: ignore[no-untyped-def]
         index = int(event["index"])
@@ -125,13 +125,15 @@ def main() -> int:
         through_date=args.through_date,
         progress_callback=gate6_progress,
     )
-    gate6_validation = Phase25Gate6ReferenceRebindIndependentValidator(settings).run(
+    gate6_validation = Phase25Gate6RecoveredIndependentValidator(settings).run(
         through_date=args.through_date
     )
     print(
-        "Recovered reference binding: PASS "
-        f"(sessions={gate6_report.get('reference_rebind_session_count', 0)}, "
-        f"semantic_drift={gate6_report.get('reference_rebind_semantic_drift_count', 0)})"
+        "Recovered routed-universe binding: PASS "
+        f"(sessions={gate6_report.get('recovered_reference_session_count', 0)}, "
+        f"routing_drift={gate6_report.get('recovered_reference_routing_drift_count', 0)}, "
+        "exclusion_diagnostic_drift="
+        f"{gate6_report.get('recovered_reference_exclusion_diagnostic_drift_count', 0)})"
     )
     print(
         "Gate 6: PASS "
