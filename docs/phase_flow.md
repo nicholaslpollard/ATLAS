@@ -165,14 +165,15 @@ Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, validator
 ## 11. Current application
 
 - **Accepted foundation through Phase29.**
-- Phase28 merge: `285f112d51463dd1e06ea4e874a882ad98f71dc5` through PR #32.
-- Phase29 disposition: `ACCEPTED_NEGATIVE` on accepted closeout head `e078fe56cad4900be54bf39d7d88679d2f6dc4df`.
+- Phase29 PR #33 merged at `87c9450e1b21606b83489f16ff326235ae92eb2b` with disposition `ACCEPTED_NEGATIVE`.
 - Phase29 target/closeout: 14,523 development relative-value rows; 745 protected predictors; zero survivors/winners/finalists/support; zero protected candidate/return reads; inherited holdout unconsumed; independent validation PASS; end-to-end anti-workaround PASS.
-- Exact-head workflow `33123195681` passed Ubuntu/Windows, all retained validators, Phase29 closeout contracts, and full regression.
+- Phase29 post-merge workflow `33124971664` passed Ubuntu/Windows and the complete retained regression stack.
 - Phase11 support remains SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
-- The `2026-05-12` through `2026-08-11` protected predictor window remains genuinely outcome-unopened after Phases26–29.
-- **Next project gate: Phase30 — Event-Driven Public-Information Alpha.**
-- Phase30 begins with non-performance-bearing historical-news PIT/coverage/provenance feasibility, then freezes a finite hypothesis/acceptance contract before any target outcome inspection.
+- **Active project gate: Phase30 — Event-Driven Public-Information Alpha.**
+- Phase30 historical-news feasibility fingerprint `04d31c5687c8da2892d017692b26ad930eff6af19f54a55294509e50d97bd312` passed on the authorized target machine with 1,219/1,219 ticker-linked boundary-window articles, zero target-outcome reads, and zero protected-return reads.
+- Phase30 scientific policy fingerprint `341f3a5a97281f7878ab0c55f8ab5a33c9910abc47b69a0b5fef8e94771ce4f8` is frozen before performance: exactly four metadata-only news-shock continuation/reversal hypotheses, no retrospective NLP/provider sentiment, fixed chronology/costs/statistical gates, and finalist-only protected confirmation.
+- The next internal Phase30 step is full resumable immutable historical-news acquisition from `2021-07-16` through `2026-08-11`; it remains non-performance-bearing.
+- The `2026-05-12` through `2026-08-11` protected predictor window remains genuinely outcome-unopened.
 - Signal-to-trade construction is Phase31 and remains blocked until at least one strategy/alpha candidate earns accepted historical analytical `SUPPORTED` authority.
 
 GUI/web/deployment remains a locked progressive track: contracts/read-only prototype in Phase31, replay/stress dashboard Phase32, SHADOW/PAPER operator web beta Phase33, performance/learning/drift UI Phase34, full production web application/PostgreSQL/scheduler/deployment Phase35, deployment/failure/security/reconciliation hardening Phase36, and controlled LIVE controls Phase37.
