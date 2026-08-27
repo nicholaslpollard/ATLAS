@@ -65,52 +65,54 @@ Hashes, p-values, fingerprints, row counts, test logs, and CI IDs may still foll
 
 The ATLAS browser/GUI is not a cosmetic afterthought. It is the intended day-to-day operator experience and is built progressively without duplicating trading logic in the frontend.
 
-After the Phase26 accepted-negative alpha result, the downstream product phases moved one number later so the failed alpha entry condition is not silently skipped:
+After the accepted-negative Phase26–28 alpha results, an additional materially different alpha gate became necessary before downstream trade construction can legitimately begin. The current progressive sequence is:
 
-- **Phase27:** cross-sectional expected-return/ranking alpha research; no major frontend build.
-- **Phase28:** stabilize trade/case/risk outputs into web-facing contracts and begin read-only interface prototypes.
-- **Phase29:** historical replay/stress dashboard views.
-- **Phase30:** SHADOW/PAPER operator web beta for runs, cases, AI review, paper orders/positions, alerts, failures, and reconciliation. No LIVE authority.
-- **Phase31:** outcome, performance, calibration, strategy/regime, drift, and learning dashboards.
-- **Phase32:** complete production web application, operational state, scheduler, host/service packaging, secure configuration, deployment, restart/recovery, logging, backups, and deployment documentation.
-- **Phase33:** deployed-stack outage/restart/stale-data/broker-provider/reconciliation/emergency hardening. LIVE still disabled.
-- **Phase34:** controlled LIVE activation/disable, risk-envelope visibility, reconciliation/health, and evidence-based scaling through backend-authorized GUI controls.
+- **Phase29:** relative-value/statistical-arbitrage alpha confirmation; no major frontend build.
+- **Phase30:** signal-to-trade/risk contracts + read-only complete-case web prototype.
+- **Phase31:** historical replay/stress dashboard.
+- **Phase32:** prospective SHADOW/PAPER operator web beta.
+- **Phase33:** outcome/performance/learning/drift dashboards and governance.
+- **Phase34:** complete production web application + PostgreSQL operational state + scheduler + deployment engineering.
+- **Phase35:** failure/security/reconciliation/deployment hardening; LIVE still disabled.
+- **Phase36:** controlled LIVE activation/disable and evidence-based scaling.
 
 Frontend controls call accepted backend/API contracts. The Python trading engine remains the source of analytical, risk, broker, and execution authority.
 
 ## Current state — 2026-08-27
 
-- **Phases 1–26: ACCEPTED / MERGED.**
-- Phase26 merge: `2074808605cf85b5462e5999ed1836d68b0434c3` through PR #30.
-- Phase26 disposition: **ACCEPTED_NEGATIVE**.
-- Phase26 target result: 21,483 development observations, zero selection survivors, zero finalists, zero supported candidates, zero protected-return reads, independent validation PASS.
-- Phase26 end-to-end anti-workaround audit: PASS.
-- Phase26 merge-head CI `33075333287` passed Ubuntu/Windows after merge.
+- **Phases 1–28: ACCEPTED / MERGED.**
+- Phase28 merge: `285f112d51463dd1e06ea4e874a882ad98f71dc5` through PR #32.
+- Phase28 disposition: **ACCEPTED_NEGATIVE**.
+- Phase28 target result: 14,466 development network rows, 741 protected predictors, zero selection survivors, zero winners, zero finalists, zero supported candidates, zero protected candidate/return reads, inherited holdout unconsumed, independent validation PASS, anti-workaround audit PASS.
+- Phase28 post-merge workflow `33114372397` passed the complete retained stack and full regression on Ubuntu and Windows.
 - Phase11 strategy authority remains **SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5**.
-- **Current gate: Phase27 — Cross-Sectional Expected-Return Learning & Ranking.**
+- **Current gate: Phase29 — Relative-Value Statistical-Arbitrage Confirmation Alpha.**
+- Phase29 is preregistered and implemented through the pre-target hardening boundary; no Phase29 performance has yet been accepted or used to change the frozen research contract.
+- The inherited protected predictor window remains `2026-05-12` through `2026-08-11` and remains outcome-unopened until the frozen finalist-only protected path legitimately requires a read.
+- Phase30 remains blocked unless Phase29 produces at least one accepted historical analytical `SUPPORTED` candidate.
 - LIVE remains disabled; automatic broker failover remains disabled.
 
-## Why Phase27 is the priority
+## Why Phase29 is the priority
 
-Phase24 showed bounded variants of the original strategy families were not robust. Phase25 showed the production-path population mismatch was not hiding incumbent edge. Phase26 then tested 24 materially different hand-designed deterministic/composite candidates and still produced zero selection survivors under frozen, dependence-aware, after-cost methodology.
+Phase26 rejected preregistered deterministic/composite focal self-feature alpha. Phase27 rejected bounded cross-sectional expected-return/ranking models. Phase28 rejected cross-stock residual/lead-lag predictive relationships. All three closed under frozen modern standards without consuming the inherited protected outcomes.
 
-The next scientific step is therefore not another threshold sweep. Phase27 tests whether the production-path-native feature set contains **continuous cross-sectional expected-return/ranking information** that finite preregistered statistical/ML models can learn and convert into robust after-cost long/short edge. Simple regularized baselines, bounded nonlinear tree-based prediction, and bounded ranking methods must compete under chronological walk-forward validation, dependence/multiplicity controls, and untouched protected confirmation.
+The next scientific step therefore changes the economic mechanism rather than retuning a failed family. Phase29 tests exactly four preregistered relative-value mean-reversion hypotheses: PCA residual reversion and nearest normalized-price-path pair reversion, independently LONG and SHORT. Formation windows, signal tails, focal-stock t+3 outcomes, economics, chronological selection/internal validation, dependence treatment, robustness requirements, global Holm correction, and finalist-only protected confirmation are frozen before performance.
 
-Phase27 creates no broker/PAPER/LIVE authority. If no model earns support, downstream Phase28 remains blocked and the negative result is accepted rather than tuned away.
+Phase29 creates no broker/PAPER/LIVE authority and does not claim ATLAS supports market-neutral pair execution. If no candidate earns support, the negative result is accepted rather than tuned away and Phase30 remains blocked.
 
 ## Remaining planned phases
 
-- **Phase27:** Cross-Sectional Expected-Return Learning & Ranking.
-- **Phase28:** Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype.
-- **Phase29:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
-- **Phase30:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
-- **Phase31:** Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI.
-- **Phase32:** Production Web Application, Operations & Deployment.
-- **Phase33:** LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification.
-- **Phase34:** Controlled LIVE Activation & Evidence-Based Scaling through the production control plane.
+- **Phase29:** Relative-Value Statistical-Arbitrage Confirmation Alpha.
+- **Phase30:** Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype.
+- **Phase31:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
+- **Phase32:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
+- **Phase33:** Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI.
+- **Phase34:** Production Web Application, Operations & Deployment.
+- **Phase35:** LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification.
+- **Phase36:** Controlled LIVE Activation & Evidence-Based Scaling through the production control plane.
 
 The full purpose, entry conditions, acceptance boundaries, web/deployment responsibilities, and conditional progression rules are defined in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Persistent boundaries
 
-Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never fabricate unavailable history; finalized facts outrank provisional state; unknown/uncertain mutation state fails closed and requires reconciliation; valid trade geometry and portfolio risk are mandatory; community trading ideas are hypotheses that must be tested rather than assumed; the frontend never duplicates or bypasses engine authority; no automatic broker failover; PAPER does not imply LIVE; AI cannot create authority; and LIVE exists only after the final separately accepted Phase34 authority gate.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never fabricate unavailable history; finalized facts outrank provisional state; unknown/uncertain mutation state fails closed and requires reconciliation; valid trade geometry and portfolio risk are mandatory; community trading ideas are hypotheses that must be tested rather than assumed; the frontend never duplicates or bypasses engine authority; no automatic broker failover; PAPER does not imply LIVE; AI cannot create authority; and LIVE exists only after the final separately accepted Phase36 authority gate.
