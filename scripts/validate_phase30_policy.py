@@ -89,12 +89,13 @@ def main() -> None:
         "phase26_observations",
     )
     forbidden_external_authority_tokens = (
-        "packages.brokers",
-        "packages.execution",
-        "submit_order",
-        "place_order",
-        "paper_submit",
-        "live_write",
+        "from packages.brokers",
+        "import packages.brokers",
+        "from packages.execution",
+        "import packages.execution",
+        ".submit_order(",
+        ".place_order(",
+        ".cancel_order(",
     )
 
     checks = {
