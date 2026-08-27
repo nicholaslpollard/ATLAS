@@ -347,11 +347,20 @@ def selection_oos_signals(
     candidate: Phase27CandidateSpec,
     *,
     outer_folds: int,
-) -> tuple[pd.DataFrame, list[dict[str, object]]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, list[dict[str, object]]]:
+    """Create strictly out-of-sample selection predictions and fixed-tail signals.
+
+    Each outer validation block is scored by a model trained only on earlier sessions.
+    Learned-model hyperparameters are chosen inside the corresponding training block.
+    The returned predictions retain every scored validation row so rank-correlation
+    diagnostics can be audited independently of the tail-selection economics.
+    """
+
     directional = candidate_direction_frame(selection_frame, candidate)
     sessions = tuple(sorted(set(directional["as_of_date"])))
     folds = expanding_walk_forward_folds(sessions, validation_folds=outer_folds)
     signals: list[pd.DataFrame] = []
+    predictions: list[pd.DataFrame] = []
     fold_evidence: list[dict[str, object]] = []
     for fold in folds:
         train = _slice_sessions(directional, fold.train_sessions)
@@ -362,6 +371,12 @@ def selection_oos_signals(
         else:
             params, tuning, model = {}, [], None
         scored = score_candidate(validation, candidate, model=model)
+        scored["selection_fold"] = fold.fold_index
+        predictions.append(scored)
+        validation_ic = _session_spearman(
+            scored,
+            pd.to_numeric(scored["phase27_score"], errors="coerce").to_numpy(dtype=np.float64),
+        )
         fired = select_fixed_tail(scored)
         if not fired.empty:
             fired["selection_fold"] = fold.fold_index
@@ -374,9 +389,14 @@ def selection_oos_signals(
                 "purge_sessions": [item.isoformat() for item in fold.purge_sessions],
                 "validation_start": fold.validation_sessions[0].isoformat(),
                 "validation_end": fold.validation_sessions[-1].isoformat(),
+                "validation_session_count": len(fold.validation_sessions),
+                "validation_mean_session_spearman_ic": validation_ic,
                 "chosen_params": params,
                 "tuning_trials": tuning,
             }
         )
-    combined = pd.concat(signals, ignore_index=True) if signals else directional.iloc[0:0].copy()
-    return combined, fold_evidence
+    combined_signals = pd.concat(signals, ignore_index=True) if signals else directional.iloc[0:0].copy()
+    combined_predictions = (
+        pd.concat(predictions, ignore_index=True) if predictions else directional.iloc[0:0].copy()
+    )
+    return combined_signals, combined_predictions, fold_evidence
