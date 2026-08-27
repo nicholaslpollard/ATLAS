@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import date
+
 import numpy as np
 import pandas as pd
 
 from packages.backtesting.phase29_validation import (
     _holm,
+    _independent_fold_labels,
     _independent_pairs,
     _independent_pca_residuals,
 )
@@ -65,3 +68,37 @@ def test_phase29_independent_holm_stops_after_first_nonrejection() -> None:
     assert result["b"]["rejected_null"] is False
     assert result["c"]["rejected_null"] is False
     assert result["d"]["rejected_null"] is False
+
+
+def test_phase29_protected_folds_are_reconstructed_from_chronology() -> None:
+    frame = pd.DataFrame(
+        {
+            "as_of_date": [
+                date(2026, 5, 15),
+                date(2026, 5, 12),
+                date(2026, 5, 14),
+                date(2026, 5, 13),
+                date(2026, 5, 16),
+                date(2026, 5, 12),
+            ],
+            "protected_fold": [99, 99, 99, 99, 99, 99],
+        }
+    )
+
+    rebuilt = _independent_fold_labels(frame, field="protected_fold", desired_folds=3)
+    by_date = (
+        rebuilt[["as_of_date", "protected_fold"]]
+        .drop_duplicates()
+        .sort_values("as_of_date")
+        .set_index("as_of_date")["protected_fold"]
+        .to_dict()
+    )
+
+    assert by_date == {
+        date(2026, 5, 12): 0,
+        date(2026, 5, 13): 0,
+        date(2026, 5, 14): 1,
+        date(2026, 5, 15): 1,
+        date(2026, 5, 16): 2,
+    }
+    assert set(rebuilt["protected_fold"]) == {0, 1, 2}
