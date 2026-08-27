@@ -205,7 +205,7 @@ def fit_learned_model(
         pair_x, pair_y = _pairwise_training_data(frame)
         estimator = LogisticRegression(
             C=float(params["C"]),
-            penalty="l2",
+            l1_ratio=0.0,
             solver="lbfgs",
             fit_intercept=True,
             max_iter=1000,
