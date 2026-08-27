@@ -2,7 +2,7 @@
 
 **Normative phase-as-gate development contract. Re-baselined: 2026-08-26.**
 
-Read `docs/roadmap.md` first for the mission and remaining phase sequence. This file controls how each numbered phase is executed and accepted.
+Read `docs/roadmap.md` first for the mission and remaining phase sequence. Read `docs/phase_plain_english_contract.md` for the required operator-facing communication format. This file controls how each numbered phase is executed and accepted.
 
 ## 1. Core rule — the phase is the gate
 
@@ -12,13 +12,30 @@ A phase can contain many implementation tasks, research steps, work packages, ch
 
 Normal lifecycle:
 
-`DEFINE/LOCK PHASE -> IMPLEMENT COHERENT WORK -> FOCUSED DEVELOPMENT TESTS -> COMPLETE FULL PHASE-END ACCEPTANCE GATE -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
+`PLAIN-ENGLISH PHASE START -> DEFINE/LOCK PHASE -> IMPLEMENT COHERENT WORK -> FOCUSED DEVELOPMENT TESTS -> COMPLETE FULL PHASE-END ACCEPTANCE GATE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
 
-The goal is to move quickly through coherent work while keeping the final evidence bar high.
+The goal is to move quickly through coherent work while keeping the final evidence bar high and keeping the operator able to understand where the project is and why the work matters.
 
-## 2. DEFINE / LOCK
+## 2. Plain-English phase start is mandatory
 
-Before material implementation or target-performance inspection, the active phase specification must state in plain language:
+Before material implementation begins, provide the operator a concise plain-English phase-start explanation covering:
+
+1. where ATLAS is now and what is blocking/progressing the project;
+2. what this phase is trying to accomplish;
+3. why it matters to the account-growth/profit objective;
+4. what will materially be built or changed;
+5. what will be tested at the end;
+6. what success means;
+7. what happens if the phase fails or produces a legitimate negative result;
+8. what is explicitly not happening yet.
+
+Technical implementation plans can follow. They do not replace this explanation.
+
+If GUI/web/deployment work is included, the start explanation must also identify what the operator will see/control, whether the UI is read-only or action-capable, the deployment maturity level, and which backend authority restrictions remain in force.
+
+## 3. DEFINE / LOCK
+
+Before material implementation or target-performance inspection, the active phase specification must state:
 
 - purpose and why it advances the ATLAS end goal;
 - entry conditions and accepted upstream evidence;
@@ -28,14 +45,16 @@ Before material implementation or target-performance inspection, the active phas
 - expected artifacts/deliverables;
 - success/failure/negative-result semantics;
 - phase-end acceptance criteria;
-- target-machine/provider/broker evidence required, if any;
+- target-machine/provider/broker/deployment evidence required, if any;
 - rollback/recovery expectations when state can mutate.
 
 For research phases, also freeze the search space/hypotheses, outcomes, chronology, costs, dependence treatment, multiplicity/selection-bias treatment, robustness checks, and protected-evidence boundary before protected results are inspected.
 
+For GUI/web/deployment phases, also freeze the backend/API authority boundary, frontend capabilities, security boundary, deployment target, restart/recovery behavior, and what actions remain prohibited.
+
 A phase definition may be corrected if it contains a factual or methodological defect, but it may not be weakened after seeing disappointing results merely to force acceptance or trading activity.
 
-## 3. IMPLEMENT COHERENT WORK
+## 4. IMPLEMENT COHERENT WORK
 
 Use the largest safe coherent work package rather than conversational micro-steps.
 
@@ -46,19 +65,21 @@ During implementation:
 - add focused tests as code changes;
 - run local diagnostics when useful;
 - repair defects immediately when evidence is clear;
-- continue through ordinary read-only/reversible work without unnecessary operator stops.
+- continue through ordinary read-only/reversible work without unnecessary operator stops;
+- keep frontend/web code as a client of accepted backend/API contracts rather than duplicating analytical or broker logic;
+- treat deployment configuration, service management, persistence, restart behavior, security, logging, and recovery as tested software where applicable.
 
-Operator interaction is reserved for facts that repository/CI cannot establish, genuine product decisions, credentials/provider evidence, real broker mutations, destructive actions, or authority-changing operations.
+Operator interaction is reserved for facts that repository/CI cannot establish, genuine product decisions, credentials/provider evidence, real broker mutations, destructive actions, deployment/environment choices requiring user authority, or authority-changing operations.
 
-## 4. Development testing is not acceptance
+## 5. Development testing is not acceptance
 
 Focused/unit tests during implementation are encouraged because they shorten feedback loops. A successful focused test does **not** mean the phase passed.
 
-Likewise, a script producing output, a provider responding successfully, a backtest producing profit, a paper order submitting, or an AI review completing does not independently accept a phase.
+Likewise, a script producing output, a provider responding successfully, a backtest producing profit, a paper order submitting, a GUI page rendering, a deployment starting, or an AI review completing does not independently accept a phase.
 
 Only the complete phase-end gate accepts the phase.
 
-## 5. Full phase-end acceptance gate
+## 6. Full phase-end acceptance gate
 
 Every phase must run the complete applicable validation stack **after the phase work is finished**.
 
@@ -72,14 +93,16 @@ Unless genuinely inapplicable and documented, the phase-end gate includes:
 6. Ubuntu + Windows CI on the exact acceptance head;
 7. negative/adversarial/error-path testing appropriate to the phase;
 8. restart/idempotency/recovery/reconciliation testing whenever stateful or external operations are involved;
-9. target-machine/provider/broker evidence only when mocks/CI cannot establish the required fact;
+9. target-machine/provider/broker/deployment evidence only when mocks/CI cannot establish the required fact;
 10. reproducibility/lineage checks for analytical/research/model results;
-11. confirmation that forbidden provider/broker/PAPER/LIVE/support/automation writes remained zero unless explicitly authorized by the phase;
-12. synchronization of the roadmap, current status, active phase document, README/other living docs where needed.
+11. frontend/API/security/permission tests when GUI/web controls are involved;
+12. deployment/startup/shutdown/restart/persistence/logging/rollback checks when deployment work is involved;
+13. confirmation that forbidden provider/broker/PAPER/LIVE/support/automation writes remained zero unless explicitly authorized by the phase;
+14. synchronization of the roadmap, current status, active phase document, README/other living docs where needed.
 
 The exact tested/documented head is the only candidate for acceptance and merge.
 
-## 6. Phase outcomes
+## 7. Phase outcomes
 
 A phase ends in one of three project states:
 
@@ -93,9 +116,9 @@ A preregistered research/question phase passed technically and scientifically bu
 
 ### NOT ACCEPTED
 
-Implementation, evidence, validation, CI, target evidence, recovery, or a mandatory acceptance criterion failed. Repair within the same phase and rerun the full phase-end gate. Do not create a new phase merely to avoid repairing the active phase.
+Implementation, evidence, validation, CI, target/deployment evidence, recovery, or a mandatory acceptance criterion failed. Repair within the same phase and rerun the full phase-end gate. Do not create a new phase merely to avoid repairing the active phase.
 
-## 7. Research-specific rules
+## 8. Research-specific rules
 
 Research phases must distinguish exploration from confirmation.
 
@@ -109,31 +132,34 @@ Research phases must distinguish exploration from confirmation.
 
 Internal labels such as `work package`, `checkpoint`, `development split`, `internal validation`, or `protected confirmation` are allowed. Do not create future project progress labels such as `Gate0`, `Gate1`, etc. inside a numbered phase unless an external technical standard requires that term. **The numbered phase is the gate.**
 
-## 8. Provider/broker/mutation authority
+## 9. Provider/broker/mutation authority
 
-Credentials, endpoints, connected accounts, local artifacts, passing tests, or prior successful calls never create authority.
+Credentials, endpoints, connected accounts, local artifacts, passing tests, rendered UI controls, successful deployments, or prior successful calls never create authority.
 
-Read-only provider work may use a bounded explicit CLI command as authorization when the active phase says so. Real mutations, destructive cleanup, PAPER submits, broker switching, order/position changes, and LIVE require the exact authority defined for that operation.
+Read-only provider work may use a bounded explicit CLI/API command as authorization when the active phase says so. Real mutations, destructive cleanup, PAPER submits, broker switching, order/position changes, and LIVE require the exact authority defined for that operation.
 
 Unknown or uncertain mutation state fails closed. Reconcile before retry. Never blindly retry an ambiguous submit/cancel/replace/close operation.
 
-Automatic cross-broker failover remains forbidden. PAPER never implies LIVE.
+Automatic cross-broker failover remains forbidden. PAPER never implies LIVE. Frontend controls never bypass these rules.
 
-## 9. User-facing phase closeout
+## 10. Plain-English phase end is mandatory
 
-Every phase completion report must first provide this plain-English summary:
+Every phase completion report must first provide this summary:
 
 1. **Goal** — what the phase was supposed to accomplish.
-2. **Built** — what changed.
-3. **Full gate** — PASS/FAIL and the full regression/CI result.
-4. **Evidence meaning** — what the result means without requiring the operator to interpret raw statistics/hashes.
-5. **Authority change** — what ATLAS may now do that it could not do before, or `NONE`.
-6. **Limitations/risks** — what remains unproven or blocked.
-7. **Next phase** — exact next objective and why.
+2. **What we built** — what materially changed.
+3. **Did the full phase gate pass?** — `PASS / ACCEPTED-POSITIVE`, `ACCEPTED-NEGATIVE`, or `NOT ACCEPTED`.
+4. **What the results mean** — the practical meaning without requiring the operator to interpret raw statistics/hashes.
+5. **What ATLAS can do now** — the real capability or authority change, or `NONE`.
+6. **What is still missing or risky** — what remains unproven or blocked.
+7. **Where this leaves the project** — the current roadmap position.
+8. **What happens next** — exact next objective and why.
 
-Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, and validator outputs follow afterward as the audit record.
+When GUI/web/deployment work is involved, also state what the operator can now see/control, where the application is deployed, whether it is development/test/PAPER/production, and what actions remain blocked.
 
-## 10. Current application
+Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, validator outputs, and deployment logs follow afterward as the audit record.
+
+## 11. Current application
 
 - **Phases 1–25: ACCEPTED / MERGED.**
 - Phase25 merge: `ba0a1588d816c3f2c7d4c2f0754b5fb4a29c8950`.
@@ -145,4 +171,6 @@ Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, and valid
 
 Phase26 is responsible for the whole alpha-discovery/validation question defined in the master roadmap. Its internal research stages are work packages/checkpoints, not separate project gates. The phase ends only after the full Phase26 acceptance suite and any required protected evidence are complete.
 
-Preserve all existing data integrity, execution, risk, AI-independence, broker, browser, scheduler/PostgreSQL, and LIVE authority boundaries unless a later numbered phase explicitly earns a change.
+GUI/web/deployment is now a locked progressive track across later phases: contracts/prototypes in Phase27, replay dashboard in Phase28, SHADOW/PAPER operator web beta in Phase29, performance/learning UI in Phase30, full production web application/deployment in Phase31, deployment/failure hardening in Phase32, and controlled LIVE controls in Phase33.
+
+Preserve all existing data integrity, execution, risk, AI-independence, broker, browser, scheduler/PostgreSQL, deployment, and LIVE authority boundaries unless a later numbered phase explicitly earns a change.
