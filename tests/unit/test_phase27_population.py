@@ -65,7 +65,11 @@ def test_population_requires_complete_frozen_predictors() -> None:
     frame = _frame()
     frame.loc[0, PHASE27_PREDICTOR_FIELDS[0]] = np.nan
     result = cross_sectional_model_frame(frame, development=True)
-    assert len(result) == 9
+    # The missing bullish predictor drops that direction below the frozen five-name
+    # same-session minimum, so the entire bullish side is excluded. The bearish side
+    # remains valid with five rows.
+    assert len(result) == 5
+    assert set(result["direction"].astype(str)) == {"bearish"}
     assert "ins-000" not in set(result["instrument_id"].astype(str))
 
 
