@@ -13,9 +13,12 @@ Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-p
 - Mission/roadmap rebaseline merged through PR #28 at `398bdba248bc196d619b8340d01851a3a4c63602`.
 - GUI/web/deployment roadmap rebaseline merged through PR #29 at `a1ee179a18187723ad2b55a082db127e28914e4e`.
 - Active branch: `phase-26-materially-different-strategy-architectures`.
-- Phase26 target research is **COMPLETE / VALID NEGATIVE**.
-- Phase26 full phase-end closeout gate is being finalized; Phase26 is not yet merged.
-- Phase27 entry is currently **BLOCKED** because validated supported alpha remains zero.
+- **Phase26 full phase-end gate: PASS / ACCEPTED_NEGATIVE.**
+- Phase26 target-machine closeout head: `0c22889d0e8d33f19aab9ac405478255d990bdb6`.
+- Exact-head CI workflow `33043048986`: Ubuntu PASS / Windows PASS, including the named Phase26 closeout/anti-workaround validator and complete regression suite.
+- Phase26 is ready to merge; its scientific result and acceptance standard are frozen.
+- Existing Phase27 signal-to-trade entry is **BLOCKED** because validated supported alpha remains zero.
+- After Phase26 merge, explicitly rebaseline the roadmap to insert the next separately preregistered alpha-research phase before any signal-to-trade progression.
 
 ## Mission lock
 
@@ -110,6 +113,28 @@ Result:
 
 Phase11 support therefore remains unchanged with zero SUPPORTED strategies.
 
+## Phase26 full phase-end closeout
+
+Exact target-tested closeout head:
+
+`0c22889d0e8d33f19aab9ac405478255d990bdb6`
+
+Observed target-machine closeout:
+
+- disposition: **ACCEPTED_NEGATIVE**;
+- selection survivors: **0**;
+- internal-validation finalists: **0**;
+- supported candidates: **0**;
+- protected return rows read: **0**;
+- end-to-end anti-workaround audit: **PASS**;
+- existing Phase27 entry satisfied: **False**;
+- provider/broker/order/PAPER/LIVE activity: **0 / 0 / 0 / 0 / 0**;
+- overall closeout: **PASS**.
+
+The closeout did not rerun strategy search or expose any new protected performance. Exact-head workflow `33043048986` passed the complete retained validation stack and pytest suite on Ubuntu and Windows.
+
+**Phase26 is therefore ACCEPTED_NEGATIVE.** Acceptance means ATLAS trusts the negative result. It does not create strategy, PAPER, broker, or LIVE authority.
+
 ## Phase26 implementation defects corrected before valid target evidence
 
 Two Phase26 implementation defects were caught by target execution and fixed at their owning boundaries before the valid result:
@@ -123,7 +148,7 @@ Neither correction changed strategy performance rules or evidence thresholds.
 
 The bounded provider-to-execution architectural audit required for Phase26 closeout is documented in `docs/phase26_end_to_end_anti_workaround_audit.md`.
 
-Current audit conclusion: **PASS — no acceptance-blocking workaround or parallel trading authority found.**
+Conclusion: **PASS — no acceptance-blocking workaround or parallel trading authority found.**
 
 Key machine-verifiable conclusions include:
 
@@ -139,29 +164,20 @@ Key machine-verifiable conclusions include:
 
 ## Immediate handoff
 
-The remaining Phase26 action is the full phase-end closeout validation over the already-produced target artifacts and the anti-workaround audit.
+No additional Phase26 research or target command is required.
 
-Run only after pulling the exact closeout head supplied in the active handoff:
+Next repository actions:
 
-```powershell
-.\.venv\Scripts\python.exe scripts\run_phase26_closeout.py
-```
+1. merge the accepted-negative Phase26 branch after exact-head CI on the final provenance-only documentation head passes;
+2. verify post-merge `main` CI;
+3. explicitly update `docs/roadmap.md` to insert the next separately preregistered alpha-research phase before signal-to-trade construction;
+4. start that phase with the required plain-English phase-start explanation and a new frozen research specification derived from the Phase26 failure evidence.
 
-The closeout command does not rerun strategy search or expose new protected performance. It validates artifact contracts/hashes/relationships, the support overlay, protected-read state, zero external authority, and the architecture audit.
+Do **not** tune Phase26 near-misses and do **not** enter the existing signal-to-trade Phase27 while supported strategy authority remains zero.
 
-Given the target evidence above, the correct expected disposition is **ACCEPTED_NEGATIVE** with `phase27_entry_satisfied=False`.
+## GUI/web/deployment path remains required
 
-After target closeout PASS and exact-head Ubuntu/Windows CI PASS: document final acceptance, merge Phase26, verify main post-merge CI, then define a separately preregistered next alpha-research phase. Do **not** enter Phase27 and do **not** tune Phase26 near-misses.
-
-## GUI/web/deployment path remains explicit
-
-- Phase27 — case/trade/risk web contracts + read-only prototype, but only after supported alpha exists.
-- Phase28 — historical replay/stress dashboard.
-- Phase29 — SHADOW/PAPER operator web beta.
-- Phase30 — outcome/performance/learning/drift dashboards.
-- Phase31 — complete production web application + PostgreSQL/scheduler/service/deployment/backup/recovery.
-- Phase32 — deployed-stack failure/security/reconciliation hardening.
-- Phase33 — controlled LIVE visibility/actions and emergency/risk controls through the production control plane.
+The GUI/web/deployment destination remains unchanged, but its numbered placement must follow the explicit post-Phase26 roadmap rebaseline because alpha remains the blocking entry condition.
 
 The Python backend remains authoritative throughout. A rendered button or deployed page never creates broker, PAPER, or LIVE authority.
 
