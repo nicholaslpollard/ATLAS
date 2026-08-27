@@ -17,6 +17,7 @@ from packages.providers.massive.phase30 import (
     validate_news_article,
 )
 
+from .phase30_feasibility import PHASE30_PROBE_WINDOWS
 from .phase30_policy import (
     PHASE30_NEWS_WARMUP_START,
     PHASE30_PROTECTED_END,
@@ -28,7 +29,7 @@ from .phase30_policy import (
 
 
 PHASE30_NEWS_ACQUISITION_CONTRACT_VERSION = (
-    "phase30-news-acquisition-v1-monthly-resumable-immutable-no-outcomes"
+    "phase30-news-acquisition-v2-monthly-resumable-immutable-feasibility-reconciled-no-outcomes"
 )
 
 
@@ -51,6 +52,17 @@ def _parse_day_end(value: str) -> datetime:
     return datetime.fromisoformat(value).replace(tzinfo=UTC) + timedelta(
         hours=23, minutes=59, seconds=59, microseconds=999999
     )
+
+
+def _parse_rfc3339_utc(value: str) -> datetime:
+    text = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError as exc:
+        raise Phase30NewsAcquisitionError(f"invalid frozen UTC bound: {value}") from exc
+    if parsed.tzinfo is None:
+        raise Phase30NewsAcquisitionError(f"frozen UTC bound is timezone-naive: {value}")
+    return parsed.astimezone(UTC)
 
 
 def phase30_news_acquisition_bounds() -> tuple[datetime, datetime]:
@@ -127,13 +139,39 @@ def _payload_sha(row: dict[str, Any]) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _authorized_metadata_projection(
+    rows: tuple[dict[str, Any], ...],
+    *,
+    start_utc: datetime,
+    end_utc: datetime,
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    projected: list[tuple[str, str, tuple[str, ...]]] = []
+    for row in rows:
+        published = parse_news_timestamp(row.get("published_utc"))
+        if published < start_utc or published > end_utc:
+            continue
+        article_id = row.get("id")
+        tickers = row.get("tickers")
+        if not isinstance(article_id, str) or not article_id.strip():
+            raise Phase30NewsAcquisitionError("authorized metadata projection found invalid article id")
+        if not isinstance(tickers, list):
+            raise Phase30NewsAcquisitionError(
+                f"authorized metadata projection found invalid ticker list for {article_id!r}"
+            )
+        ticker_values = tuple(sorted(str(ticker) for ticker in tickers))
+        projected.append((article_id, published.isoformat(), ticker_values))
+    return tuple(sorted(projected, key=lambda value: (value[1], value[0], value[2])))
+
+
 class Phase30NewsAcquisition:
     """Acquire the full Phase30 historical news predictor source without outcomes.
 
     Monthly immutable shards make the operation resumable. Completed shard metadata
     is validated against the local immutable evidence and skipped on later runs.
     Provider text/insights are retained in raw evidence only; Phase30 alpha authority
-    is restricted by the separately frozen scientific policy.
+    is restricted by the separately frozen scientific policy. The authorized
+    metadata fields are also reconciled against the immutable feasibility snapshots
+    so provider-side historical revision cannot silently change scientific lineage.
     """
 
     def __init__(self, settings: AtlasSettings, client: MassivePhase30NewsClient) -> None:
@@ -142,6 +180,7 @@ class Phase30NewsAcquisition:
         provider_root = settings.resolved_path(settings.data.paths.provider)
         derived_root = settings.resolved_path(settings.data.paths.derived)
         self.evidence_root = provider_root / "massive" / "phase30_news_history" / "v1"
+        self.feasibility_root = provider_root / "massive" / "phase30_news_feasibility" / "v1"
         self.report_root = derived_root / "strategy_evaluation" / "phase30" / "v1"
 
     def evidence_path(self, label: str) -> Path:
@@ -149,6 +188,9 @@ class Phase30NewsAcquisition:
 
     def metadata_path(self, label: str) -> Path:
         return self.evidence_root / f"{label}.meta.json"
+
+    def feasibility_evidence_path(self, label: str) -> Path:
+        return self.feasibility_root / f"{label}.jsonl"
 
     def report_path(self) -> Path:
         return self.report_root / "phase30_news_acquisition.json"
@@ -294,9 +336,43 @@ class Phase30NewsAcquisition:
         atomic_write_text(metadata_path, json.dumps(meta, indent=2, sort_keys=True) + "\n")
         return rows, meta, False
 
+    def _reconcile_feasibility_metadata(
+        self, all_rows: tuple[dict[str, Any], ...]
+    ) -> dict[str, bool]:
+        checks: dict[str, bool] = {}
+        for probe in PHASE30_PROBE_WINDOWS:
+            path = self.feasibility_evidence_path(probe.label)
+            if not path.is_file():
+                raise Phase30NewsAcquisitionError(
+                    f"missing immutable Phase30 feasibility evidence required for lineage: {path}"
+                )
+            start = _parse_rfc3339_utc(probe.start_utc)
+            end = _parse_rfc3339_utc(probe.end_utc)
+            feasibility_rows = _read_jsonl(path)
+            feasibility_projection = _authorized_metadata_projection(
+                feasibility_rows,
+                start_utc=start,
+                end_utc=end,
+            )
+            acquisition_projection = _authorized_metadata_projection(
+                all_rows,
+                start_utc=start,
+                end_utc=end,
+            )
+            matched = acquisition_projection == feasibility_projection
+            checks[f"feasibility_metadata_reconciled_{probe.label}"] = matched
+            if not matched:
+                raise Phase30NewsAcquisitionError(
+                    f"authorized news metadata drifted from immutable feasibility evidence "
+                    f"for {probe.label}: feasibility_rows={len(feasibility_projection)} "
+                    f"acquisition_rows={len(acquisition_projection)}"
+                )
+        return checks
+
     def run(self) -> dict[str, Any]:
         shard_reports: list[dict[str, Any]] = []
         seen_ids: dict[str, tuple[str, str]] = {}
+        all_rows: list[dict[str, Any]] = []
         total_articles = 0
         total_ticker_linked = 0
         recorded_pages = 0
@@ -318,6 +394,7 @@ class Phase30NewsAcquisition:
                         f"same_payload={previous_sha == payload_sha}"
                     )
                 seen_ids[article_id] = (window.label, payload_sha)
+                all_rows.append(row)
 
             articles = len(rows)
             ticker_linked = sum(1 for row in rows if bool(row.get("tickers")))
@@ -338,6 +415,7 @@ class Phase30NewsAcquisition:
             total_ticker_linked += ticker_linked
             recorded_pages += pages
 
+        feasibility_checks = self._reconcile_feasibility_metadata(tuple(all_rows))
         start, end = phase30_news_acquisition_bounds()
         checks = {
             "scientific_policy_frozen": len(phase30_policy_fingerprint()) == 64,
@@ -349,6 +427,12 @@ class Phase30NewsAcquisition:
             == "2026-08-11T23:59:59.999999+00:00",
             "all_monthly_shards_present": len(shard_reports)
             == len(phase30_news_shard_windows()),
+            "all_monthly_shards_nonempty": all(
+                int(report["articles"]) > 0 for report in shard_reports
+            ),
+            "all_monthly_shards_have_ticker_linked_news": all(
+                int(report["ticker_linked_articles"]) > 0 for report in shard_reports
+            ),
             "historical_news_nonempty": total_articles > 0,
             "ticker_linked_news_nonempty": total_ticker_linked > 0,
             "provider_content_has_no_alpha_authority": PHASE30_PROVIDER_CONTENT_ALPHA_AUTHORITY
@@ -358,6 +442,7 @@ class Phase30NewsAcquisition:
             "target_outcomes_unread": True,
             "protected_returns_unread": True,
             "external_mutation_authority_zero": True,
+            **feasibility_checks,
         }
 
         report_path = self.report_path()
