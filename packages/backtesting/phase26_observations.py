@@ -88,6 +88,17 @@ def _read_json(path: Path) -> dict[str, object]:
     return value
 
 
+def require_native_bool_checks(checks: dict[str, object]) -> dict[str, bool]:
+    """Reject NumPy/Pandas truth scalars at the persisted JSON contract boundary."""
+    non_native = sorted(name for name, value in checks.items() if type(value) is not bool)
+    if non_native:
+        raise Phase26ObservationError(
+            "Phase26 persisted checks must use native Python bool values: "
+            + ", ".join(non_native)
+        )
+    return {name: value for name, value in checks.items() if isinstance(value, bool)}
+
+
 def _rank_percentile(frame: pd.DataFrame, source: str, target: str) -> None:
     values = pd.to_numeric(frame[source], errors="coerce")
     frame[target] = values.groupby(frame["as_of_date"], sort=False).rank(
@@ -669,12 +680,12 @@ class Phase26ObservationBuilder:
         )
         purge_context_rows = int(predictors["as_of_date"].isin(purge_sessions).sum())
 
-        checks = {
+        checks: dict[str, object] = {
             "policy_frozen": len(PHASE26_CANDIDATES) == 24,
             "upstream_gate7_pass": gate7_report.get("pass") is True,
-            "candidate_context_unique": not predictors.duplicated(
-                ["as_of_date", "instrument_id"], keep=False
-            ).any(),
+            "candidate_context_unique": not bool(
+                predictors.duplicated(["as_of_date", "instrument_id"], keep=False).any()
+            ),
             "development_nonempty": len(development) > 0,
             "protected_predictors_nonempty": len(protected) > 0,
             "protected_outcome_fields_absent": not any(
@@ -683,9 +694,10 @@ class Phase26ObservationBuilder:
             "development_endpoints_preprotected": max(development["future_date"])
             < date.fromisoformat(PHASE26_PROTECTED_START),
             "protected_return_reads_zero": True,
-            "sector_mapping_not_fabricated": context["sector_state"].isna().all(),
+            "sector_mapping_not_fabricated": bool(context["sector_state"].isna().all()),
             "external_activity_zero": True,
         }
+        checks = require_native_bool_checks(checks)
         if not all(checks.values()):
             failed = [name for name, passed in checks.items() if not passed]
             raise Phase26ObservationError(
