@@ -187,5 +187,8 @@ jobs:
       - name: Validate Phase 28 cross-stock lead-lag alpha contracts
         run: python scripts/validate_phase28.py
 
+      - name: Validate Phase 29 relative-value statistical-arbitrage contracts
+        run: python scripts/validate_phase29.py
+
       - name: Run tests
         run: python -m pytest -q
