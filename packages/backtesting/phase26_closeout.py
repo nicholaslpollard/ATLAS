@@ -57,7 +57,9 @@ def _read_json(path: Path, label: str) -> dict[str, object]:
 
 def _raw_submit_sites(project_root: Path) -> list[str]:
     sites: list[str] = []
-    needle = "adapter.submit(plan)"
+    # Construct the raw seam token so this audit module does not self-match merely
+    # because it defines the scanner. The only literal seam should remain engine.py.
+    needle = "adapter." + "submit(plan)"
     for path in sorted((project_root / "packages").rglob("*.py")):
         text = path.read_text(encoding="utf-8")
         if needle in text:
