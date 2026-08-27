@@ -1,6 +1,6 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-baselined: 2026-08-26. Updated for GUI/web/deployment and plain-English phase communication.**
+**Normative project source of truth. Re-baselined: 2026-08-27 after Phase26 ACCEPTED_NEGATIVE.**
 
 This document controls the long-term destination, anti-drift rules, remaining phase sequence, GUI/web/deployment path, and phase acceptance model for ATLAS. Accepted code/evidence on `main` controls what already exists; this roadmap controls what the project is trying to become and what must happen next.
 
@@ -88,7 +88,7 @@ Accepted historical boundary remains Alpaca daily through `2021-08-13` and Massi
 
 ### 5.2 Strategy/alpha research
 
-New strategy research should use production-path-native observations and evaluate **economic edge**, not just classification accuracy or win rate.
+New strategy research should use production-path-native observations and evaluate **economic edge**, not just classification accuracy, rank correlation, win rate, or in-sample fit.
 
 As applicable, methodology must include:
 
@@ -160,7 +160,7 @@ Deployment is part of the roadmap and must eventually cover:
 
 The production deployment must run the accepted Python engine; it must not create a separate web-only implementation of trading logic.
 
-## 6. Audit of work completed through Phase25
+## 6. Audit of work completed through Phase26
 
 The project has built substantial useful foundation; this work is not discarded.
 
@@ -190,13 +190,17 @@ Twenty-eight variants were tested under stronger methodology. Zero earned select
 
 ### Phase25 — historical production-path route fidelity
 
-ATLAS reconstructed the actual production candidate/routing population and tested whether the old broad research population had hidden incumbent edge. It did not: all incumbent strategies still failed core economic/robustness tests. Phase11 remains SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
+ATLAS reconstructed the actual production candidate/routing population and tested whether the old broad research population had hidden incumbent edge. It did not: all incumbent strategies still failed core economic/robustness tests. Phase11 remained SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
+
+### Phase26 — production-path-native alpha discovery and validation
+
+ATLAS built an exact production-path-native research population and tested 24 preregistered materially different deterministic/composite alpha candidates across six families. On the valid target run there were 21,483 usable development observations, zero selection survivors, zero internal finalists, zero supported candidates, and zero protected-return reads. The independent validator and bounded provider-to-execution anti-workaround audit both passed. Phase26 closed **ACCEPTED_NEGATIVE** and merged to `main` at `2074808605cf85b5462e5999ed1836d68b0434c3` through PR #30.
 
 ### Audit conclusion
 
-**The architecture and end goal remain on track, but the project did drift in presentation and phase mechanics.** Phases23–25 were a justified analytical detour caused by a real bottleneck—no validated strategy edge—but internal research sub-gates became too visible as project progress.
+The project remains architecturally on track, but **validated alpha is still the blocking requirement**. Phase26 made the failure mode more specific: another hand-thresholded family of momentum/reversion/breakout/gap/composite rules is not justified by the tested evidence. The next research phase therefore changes the learning architecture rather than retuning Phase26 near-misses.
 
-The primary bottleneck is now **validated alpha**. GUI/web/deployment remain required end-product work, but they progress in parallel only where doing so does not displace the current alpha critical path.
+GUI/web/deployment remain required end-product work, but their downstream phase numbers move one step later because the alpha entry condition was not earned.
 
 ## 7. Phase = gate execution and communication model
 
@@ -214,40 +218,58 @@ The required communication format is defined in `docs/phase_plain_english_contra
 
 ## 8. Progressive GUI/web/deployment track
 
-GUI/web/deployment work is deliberately spread across the remaining roadmap instead of being deferred entirely to the end:
+GUI/web/deployment work remains deliberately spread across the roadmap, but the sequence is re-numbered after the inserted alpha phase:
 
-- **Phase26:** alpha remains the critical path; identify only the data/API/view contracts needed for future operator visibility where useful. No major frontend build should slow the research bottleneck.
-- **Phase27:** stabilize case/trade/risk outputs into web-facing contracts and build read-only interface prototypes for candidate/trade-plan/risk inspection.
-- **Phase28:** build historical replay/stress dashboard views so account behavior, drawdowns, regimes, trade decisions, and stress results are visually inspectable.
-- **Phase29:** run a SHADOW/PAPER operator web beta showing runs, candidates, complete cases, AI review, paper orders/positions, alerts, failures, health, and reconciliation. Only already-accepted PAPER actions may be exposed.
-- **Phase30:** add outcome/performance/learning dashboards for P&L, MAE/MFE, slippage, calibration, strategy/regime performance, drift, and degradation.
-- **Phase31:** consolidate the complete production web application and perform real deployment engineering: persistent operational state, scheduler, services, secure configuration, logging, recovery, backup, host setup, updates, and operator documentation.
-- **Phase32:** harden the deployed stack under outages, restarts, stale data, broker/provider failures, reconciliation faults, and emergency procedures.
-- **Phase33:** expose controlled LIVE activation/disable, risk-envelope visibility, reconciliation/health, and evidence-based scaling through the production control plane without allowing the frontend to bypass backend authority.
+- **Phase27:** alpha remains the critical path. No major frontend build; stabilize only research evidence/output contracts useful to later operator visibility.
+- **Phase28:** stabilize case/trade/risk outputs into web-facing contracts and build read-only interface prototypes for candidate/trade-plan/risk inspection.
+- **Phase29:** build historical replay/stress dashboard views so account behavior, drawdowns, regimes, trade decisions, and stress results are visually inspectable.
+- **Phase30:** run a SHADOW/PAPER operator web beta showing runs, candidates, complete cases, AI review, paper orders/positions, alerts, failures, health, and reconciliation. Only already-accepted PAPER actions may be exposed.
+- **Phase31:** add outcome/performance/learning dashboards for P&L, MAE/MFE, slippage, calibration, strategy/regime performance, drift, and degradation.
+- **Phase32:** consolidate the complete production web application and perform real deployment engineering: persistent operational state, scheduler, services, secure configuration, logging, recovery, backup, host setup, updates, and operator documentation.
+- **Phase33:** harden the deployed stack under outages, restarts, stale data, broker/provider failures, reconciliation faults, and emergency procedures.
+- **Phase34:** expose controlled LIVE activation/disable, risk-envelope visibility, reconciliation/health, and evidence-based scaling through the production control plane without allowing the frontend to bypass backend authority.
 
 ## 9. Remaining master roadmap
 
-### Phase26 — Production-Path-Native Alpha Discovery & Validation
+### Phase27 — Cross-Sectional Expected-Return Learning & Ranking
 
-**Purpose:** solve the current bottleneck: ATLAS has no SUPPORTED strategy.
+**Purpose:** attack the still-unresolved alpha bottleneck with a materially different architecture rather than tuning Phase26 rule thresholds.
 
-Build an exact research population directly from accepted Phase25 production-path identities/context and canonical features/outcomes. Research materially different architectures rather than another threshold sweep of failed v1/v2 families. Long and short designs are independent.
+**Entry condition:** Phase26 is accepted/merged as valid negative evidence with zero supported strategies and zero protected-return reads.
 
-Phase26 may evaluate the hypothesis backlog above plus other preregistered evidence-based designs. Deterministic rules, statistical/composite models, and conventional ML may be compared where appropriate, but complexity must earn its keep against simpler baselines.
+Use exact production-path-native candidate observations and point-in-time features to learn **continuous future relative return / cross-sectional ordering**, rather than deciding trades through a library of manually thresholded rule fires. Compare a finite preregistered set of interpretable and nonlinear approaches, including simple cross-sectional/regularized expected-return baselines, bounded tree-based prediction, and a bounded ranking formulation where technically appropriate. Complexity must outperform simple baselines after realistic costs and robustness controls.
 
-Before protected performance inspection, freeze search space, outcomes, economic assumptions, chronology, dependence handling, robustness requirements, and multiplicity/selection-bias handling. Legacy 10 bps/25 bps cost assumptions remain useful comparators for equity research where applicable, but final candidate economics must use realistic instrument/strategy-specific costs.
+The new alpha-learning layer is separate from the accepted Phase10 three-class ML probability model. Phase10 remains contextual probability evidence and does not automatically become strategy authority. Phase27 models can earn strategy/alpha support only through the Phase27 acceptance process.
 
-Web work in Phase26 is limited to documenting/stabilizing research output contracts needed later; it must not displace alpha discovery.
+The active specification must freeze before protected inspection:
 
-**Phase-end gate:** full software/regression/CI validation plus independent research validation and protected out-of-sample confirmation for any finalist. Before Phase26 can be accepted, perform a bounded end-to-end architectural/integrity audit of the critical data-to-execution authority path for workaround debt, duplicate authority/validation paths, stale compatibility shims, fallback semantics, and circular repair/provenance logic. Legitimate resilience/recovery may remain; any path that compensates for an unresolved defect must be root-caused and corrected, followed by the full acceptance suite.
+- exact feature set and transformations, including any cross-sectional normalization or market/residualized features;
+- prediction/target definition and any finite horizon set;
+- model classes and bounded hyperparameter/search budgets;
+- long and short portfolio/signal extraction from forecasts/ranks;
+- liquidity/eligibility rules and realistic cost assumptions;
+- nested chronological walk-forward/selection methodology with purge/embargo;
+- same-session/cross-sectional and overlapping-outcome dependence treatment;
+- multiplicity/model-selection and backtest-overfitting controls;
+- concentration/capacity and year/regime/direction robustness requirements;
+- simple baselines and economic acceptance criteria;
+- finalist-only protected confirmation and independent persisted-artifact reconciliation.
 
-**Authority on success:** Phase26 may replace the Phase11 support map only for strategies that satisfy its predeclared acceptance standard. It creates no broker/PAPER/LIVE authority.
+Prediction error, out-of-sample R-squared, rank information coefficient, or classification-style diagnostics are useful diagnostics but **cannot independently establish support**. Acceptance requires robust positive after-cost economic edge from the frozen forecast/ranking-to-signal policy.
 
-**If no strategy earns support:** accept the negative result, do not move toward LIVE, and define the next alpha-research phase from the documented failure modes rather than weakening thresholds.
+Because the Phase27 architecture is designed after seeing the Phase26 result, Phase26's old protected dates must not be silently relabeled as a newly independent Phase27 protected confirmation window merely because their returns were unread. The Phase27 specification must establish a scientifically defensible untouched protected boundary; if that requires extending current reference/canonical/features data, perform the catch-up as a separate validated prerequisite before protected performance is inspected.
 
-### Phase27 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
+Phase27 must not revive Phase26 losing candidates by small threshold or feature tweaks. Phase26 candidate definitions remain frozen historical evidence.
 
-**Entry condition:** at least one strategy has accepted SUPPORTED authority.
+**Phase-end gate:** full software/regression/CI validation, independent reconstruction of the research/model-selection evidence, chronology/leakage/dependence checks, baseline comparisons, model-selection/multiplicity controls, and finalist-only untouched protected confirmation. Provider reads required for a validated data catch-up may be explicitly authorized and bounded; provider mutation, broker writes, PAPER submits, and LIVE remain forbidden.
+
+**Authority on positive success:** only Phase27 candidates satisfying the preregistered full standard may receive historical analytical `SUPPORTED` authority and satisfy the entry condition for Phase28. This creates no PAPER or LIVE authority.
+
+**If no model earns support:** accept the negative result and keep Phase28 blocked. Define the next alpha-research direction from the observed failure evidence rather than widening/tuning the Phase27 search after results.
+
+### Phase28 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
+
+**Entry condition:** at least one strategy/alpha model has accepted SUPPORTED authority.
 
 Convert validated signal evidence into the best executable account decision using existing Phase12/13/14 capabilities rather than rebuilding them.
 
@@ -259,9 +281,9 @@ Stabilize the backend/API/view-model contract for candidate evidence, determinis
 
 **Phase-end gate:** deterministic and independent tests for geometry, sizing, options/risk handling, portfolio constraints, reproducible plans, API/view contracts, and read-only UI correctness. No LIVE authority.
 
-### Phase28 — End-to-End Historical Replay & Stress Certification + Replay Dashboard
+### Phase29 — End-to-End Historical Replay & Stress Certification + Replay Dashboard
 
-Run the full trading decision pipeline historically as one account-level system using frozen supported strategies and Phase27 construction/risk rules.
+Run the full trading decision pipeline historically as one account-level system using frozen supported strategies/alpha models and Phase28 construction/risk rules.
 
 Evaluate realistic execution/cost assumptions and declared benchmarks. Measure account-equity behavior and trade-level economics, including net expectancy, drawdown/tail loss, risk-adjusted return, turnover/cost drag, concentration, regime/year behavior, and capacity/liquidity. Stress high-volatility, crash, gap, low-liquidity, stale/missing-data, and execution-degradation scenarios. Options paths must include spread/slippage and expiration/assignment-specific risk where relevant.
 
@@ -269,7 +291,7 @@ Build replay/stress dashboard views backed by the same accepted results so the o
 
 **Phase-end gate:** predeclared portfolio/economic robustness requirements plus full software/regression/CI/reproducibility and replay-dashboard data-integrity/UI tests. Historical success alone still does not authorize LIVE.
 
-### Phase29 — Prospective SHADOW/PAPER Certification + Operator Web Beta
+### Phase30 — Prospective SHADOW/PAPER Certification + Operator Web Beta
 
 Operate the accepted end-to-end system on genuinely new, previously unseen market sessions using SHADOW and Webull-primary PAPER execution. Alpaca remains manual secondary.
 
@@ -281,7 +303,7 @@ Run an operator web beta that displays current runs, candidate funnel, complete 
 
 **Phase-end gate:** full cross-platform/target-machine certification, prospective evidence review, UI/API permission tests, PAPER action/idempotency tests, and web beta stability/recovery testing. PAPER success still does not authorize LIVE.
 
-### Phase30 — Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI
+### Phase31 — Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI
 
 Complete the original learning objective: every decision, rejected candidate, trade plan, order, fill, position, exit, and realized outcome must be traceable to exact data/model/strategy/risk versions.
 
@@ -293,7 +315,7 @@ Learning is **governed**, not self-authorizing: ATLAS may detect that a model/st
 
 **Phase-end gate:** complete lineage/outcome reconciliation, monitoring tests, drift-trigger validation, rollback/versioning tests, dashboard correctness, and full regression/CI.
 
-### Phase31 — Production Web Application, Operations & Deployment
+### Phase32 — Production Web Application, Operations & Deployment
 
 Turn the accepted trading system and accumulated web prototypes into the intended routine product without changing its analytical authority.
 
@@ -307,7 +329,7 @@ The deployed browser remains a control surface over the Python engine rather tha
 
 **Phase-end gate:** complete GUI/web/API, security, permission, restart/recovery, scheduler, state-store, migration, logging, backup/restore, deployment, cross-platform and target-host validation.
 
-### Phase32 — LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification
+### Phase33 — LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification
 
 **No LIVE trading authority yet.**
 
@@ -317,17 +339,17 @@ Verify that the GUI accurately reports degraded/unsafe state and cannot hide, ov
 
 Define the initial LIVE capital/risk envelope and rollback criteria before any real-money activation.
 
-**Phase-end gate:** adversarial/failure-injection tests across engine/API/UI/deployment, full regression/CI, target host/provider/broker readiness evidence, backup/recovery validation, and explicit independent reconciliation certification. LIVE remains disabled after this phase until Phase33 authority is granted.
+**Phase-end gate:** adversarial/failure-injection tests across engine/API/UI/deployment, full regression/CI, target host/provider/broker readiness evidence, backup/recovery validation, and explicit independent reconciliation certification. LIVE remains disabled after this phase until Phase34 authority is granted.
 
-### Phase33 — Controlled LIVE Activation & Evidence-Based Scaling through the Production Control Plane
+### Phase34 — Controlled LIVE Activation & Evidence-Based Scaling through the Production Control Plane
 
-This is the final planned build/authority phase.
+This is the final currently planned build/authority phase.
 
 Enable LIVE only through explicit authorization using a deliberately small initial capital/risk envelope, hard per-trade/portfolio/daily-loss limits, real-time health/reconciliation monitoring, kill/disable capability, manual fallback, and no automatic broker failover.
 
 Expose LIVE state, authority, risk envelope, positions/orders, reconciliation, health, emergency disable, and scaling evidence through the production GUI. The frontend can request only backend-authorized operations and cannot expand its own authority.
 
-Compare actual LIVE decisions, fills, slippage, costs, P&L distribution, and operational behavior with Phase28/29 expectations. Any material mismatch can pause/disable LIVE without waiting for further losses.
+Compare actual LIVE decisions, fills, slippage, costs, P&L distribution, and operational behavior with Phase29/30 expectations. Any material mismatch can pause/disable LIVE without waiting for further losses.
 
 Capital scaling is gradual and evidence-based. Increasing capital does not permit strategy/model/risk logic to change silently; such changes require a separately accepted future phase.
 
@@ -337,8 +359,9 @@ Capital scaling is gradual and evidence-based. Increasing capital does not permi
 
 The roadmap is **conditional, not schedule-driven**.
 
-- Phase26 is the current phase.
-- Phases27–33 describe the intended route to production, including the progressive GUI/web/deployment track.
+- Phase26 is accepted/merged as valid negative evidence.
+- Phase27 is the current alpha-research phase.
+- Phases28–34 describe the conditional route to trade construction, replay, prospective PAPER, learning, production deployment, LIVE readiness, and controlled LIVE activation.
 - If a required entry condition fails—especially validated alpha—downstream trading phases pause.
 - UI work may proceed only to the extent that it does not falsely imply unavailable trading authority or displace the active critical-path requirement.
 - A new numbered research/repair phase may be inserted only when evidence identifies a real blocker. The roadmap must be updated explicitly at that time; future chats must not silently redefine the sequence.
@@ -374,4 +397,4 @@ Raw hashes, row counts, fingerprints, p-values, CI IDs, validator outputs, and d
 
 ## 12. Persistent safety boundaries
 
-Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never synthesize unavailable history; finalized facts outrank provisional state; unknown/uncertain state fails closed; uncertain mutations require reconciliation before retry; valid geometry and portfolio risk are mandatory; AI never creates authority; frontend/UI controls never create or bypass authority; automatic broker failover remains disabled; PAPER never implies LIVE; and LIVE authority exists only after Phase33 acceptance.
+Preserve provider-native ticker case and PIT identity; quarantine ambiguity; never synthesize unavailable history; finalized facts outrank provisional state; unknown/uncertain state fails closed; uncertain mutations require reconciliation before retry; valid geometry and portfolio risk are mandatory; AI never creates authority; frontend/UI controls never create or bypass authority; automatic broker failover remains disabled; PAPER never implies LIVE; and LIVE authority exists only after Phase34 acceptance.
