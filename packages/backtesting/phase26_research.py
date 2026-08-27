@@ -340,6 +340,37 @@ def internal_checks(metrics: Phase26TrancheMetrics) -> dict[str, bool]:
     }
 
 
+def development_research_checks(
+    *,
+    observation_report: Mapping[str, object],
+    holm: Mapping[str, object],
+    selected_ids: tuple[str, ...],
+    internal_metrics: Mapping[str, Phase26TrancheMetrics],
+    finalist_ids: tuple[str, ...],
+    finalist_payload: Mapping[str, object],
+) -> dict[str, bool]:
+    """Validate the development-stage invariants before protected confirmation.
+
+    This stage must positively prove that protected returns are still unread. A
+    state value such as ``protected_returns_read=False`` must never be inserted as
+    a failing predicate into an ``all(checks.values())`` acceptance map.
+    """
+
+    return {
+        "observation_report_pass": observation_report.get("pass") is True,
+        "protected_returns_unread": int(observation_report.get("protected_return_reads", -1)) == 0,
+        "finalist_artifact_protected_returns_unread": int(
+            finalist_payload.get("protected_returns_read", -1)
+        ) == 0,
+        "exact_candidate_count": len(PHASE26_CANDIDATES) == 24,
+        "holm_global_candidate_count": len(holm) == 24,
+        "family_direction_limit": len(selected_ids) <= 12,
+        "internal_only_selected": set(internal_metrics) == set(selected_ids),
+        "finalists_subset_selected": set(finalist_ids).issubset(set(selected_ids)),
+        "no_runner_up_substitution": True,
+    }
+
+
 def holm_bonferroni(
     p_values: Mapping[str, float], *, alpha: float = PHASE26_MULTIPLE_TESTING_ALPHA
 ) -> dict[str, dict[str, object]]:
@@ -668,17 +699,14 @@ class Phase26DevelopmentResearch:
             json.dumps(finalist_payload, indent=2, sort_keys=True) + "\n",
         )
 
-        checks = {
-            "observation_report_pass": observation_report.get("pass") is True,
-            "protected_returns_unread": int(observation_report.get("protected_return_reads", -1)) == 0,
-            "exact_candidate_count": len(PHASE26_CANDIDATES) == 24,
-            "holm_global_candidate_count": len(holm) == 24,
-            "family_direction_limit": len(selected_ids) <= 12,
-            "internal_only_selected": set(internal_metrics) == set(selected_ids),
-            "finalists_subset_selected": set(finalist_ids).issubset(set(selected_ids)),
-            "no_runner_up_substitution": True,
-            "protected_returns_read": False,
-        }
+        checks = development_research_checks(
+            observation_report=observation_report,
+            holm=holm,
+            selected_ids=selected_ids,
+            internal_metrics=internal_metrics,
+            finalist_ids=finalist_ids,
+            finalist_payload=finalist_payload,
+        )
         if not all(checks.values()):
             failed = [name for name, passed in checks.items() if not passed]
             raise Phase26ResearchError("Phase26 development research failed: " + ", ".join(failed))
