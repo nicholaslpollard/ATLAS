@@ -83,6 +83,8 @@ No losing strategy was substituted after selection/internal failure. Independent
 
 ## Gate10 — frozen-finalist protected confirmation
 
+Gate10's protected evidence is explicitly **NON-FRESH** for Phase25 and could only be read for frozen finalists.
+
 Because Gate9 produced zero finalists:
 
 - disposition: `SKIPPED_ZERO_FINALISTS`;

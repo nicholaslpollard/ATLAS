@@ -66,6 +66,7 @@ Conclusion: exact same-session `active=true` PIT reference data are sufficient f
 - earliest entitlement probe: 2021-08-17;
 - locked Massive query: `/v3/reference/tickers`, `market=stocks`, `active=true`, exact date, ascending ticker, `limit=1000`;
 - projected pages/session: 12–14;
+- projected provider page requests: 15,036–17,542;
 - provider authority still zero;
 - PASS.
 
@@ -74,7 +75,7 @@ Conclusion: exact same-session `active=true` PIT reference data are sufficient f
 Accepted target result for 2021-08-17:
 
 - provider probe sessions: 1;
-- provider page reads: 12;
+- 12 provider page reads;
 - persisted active rows/instruments: 11,027 / 11,027;
 - independent validation: PASS;
 - broker/order/PAPER/LIVE/support activity: zero.
@@ -92,7 +93,7 @@ Accepted target result:
 - broker/order/PAPER/LIVE/support activity: zero;
 - independent validation: PASS.
 
-Read-only acquisition used the explicit `acquire` subcommand as authorization; no pasted confirmation was required. Stronger confirmation rules remain for mutations/trading/destructive actions.
+Read-only acquisition used authorization mode `EXPLICIT_CLI_SUBCOMMAND`: the explicit `acquire` command itself authorized the bounded provider-read scope, with no pasted confirmation required. Stronger confirmation rules remain for mutations/trading/destructive actions.
 
 ### Gate6 — chronological Phase7 + discovery reconstruction
 
@@ -189,6 +190,18 @@ Global Holm-Bonferroni across all eight incumbents selected none.
 - Phase11 support writes: 0;
 - independent validation: PASS;
 - cumulative PASS.
+
+## Historical contract statements retained after closeout
+
+These statements remain part of the accepted Gate0–Gate5 evidence contract even though Phase25 is now complete:
+
+- Gate0 permits no provider reads or writes, and pre-2021 1h/4h or ticker-regime context may not be synthesized.
+- The original Gate0 inventory had exact PIT reference pairs: 7 / 1,260, with 1,253 blocked sessions.
+- Future-only reference observations may be measured but never treated as PIT authority.
+- Gate2 does not grant provider-read authority.
+- Gate3 does not grant provider-read authority.
+- Gate4 was the separate one-session entitlement probe; bulk acquisition remained disabled at that boundary.
+- Gate5 subsequently authorized only the frozen read-only acquisition scope under `EXPLICIT_CLI_SUBCOMMAND`, with no pasted confirmation.
 
 ## Interpretation
 
