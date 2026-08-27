@@ -59,6 +59,10 @@ def test_phase26_candidate_search_space_is_exactly_balanced_and_frozen() -> None
 
 
 def test_phase26_chronology_and_economics_are_locked() -> None:
+    assert PHASE26_RESEARCH_START == "2021-08-16"
+    assert PHASE26_DEVELOPMENT_END == "2026-05-06"
+    assert PHASE26_PROTECTED_START == "2026-05-12"
+    assert PHASE26_PROTECTED_END == "2026-08-11"
     assert date.fromisoformat(PHASE26_RESEARCH_START) < date.fromisoformat(PHASE26_DEVELOPMENT_END)
     assert date.fromisoformat(PHASE26_DEVELOPMENT_END) < date.fromisoformat(PHASE26_PROTECTED_START)
     assert date.fromisoformat(PHASE26_PROTECTED_START) <= date.fromisoformat(PHASE26_PROTECTED_END)
@@ -99,3 +103,7 @@ def test_phase26_policy_fingerprint_is_deterministic_and_complete() -> None:
     assert len(payload["candidates"]) == 24
     assert payload["robustness"]["median_return_is_hard_gate"] is False
     assert payload["robustness"]["win_rate_is_hard_gate"] is False
+    assert payload["dates"]["development_end"] == "2026-05-06"
+    assert payload["outcome"]["observation_exact_interval_required"] is True
+    assert payload["outcome"]["future_endpoint_same_provider_native_ticker_required"] is True
+    assert payload["outcome"]["future_endpoint_must_remain_inside_observation_interval"] is False
