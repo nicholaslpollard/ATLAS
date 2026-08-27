@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Living operational handoff. Last synchronized: 2026-08-24.**
+**Living operational handoff. Last synchronized: 2026-08-26.**
 
 ## 1. Source-of-truth order
 
@@ -18,21 +18,18 @@ Repository: `nicholaslpollard/ATLAS`.
 ## 2. Exact repository state
 
 - **Phases 1–24 ACCEPTED / MERGED.**
-- Phase21 merge: `ed9e156437e3924293b90f06620ebbe9534fab15`.
-- Phase22 merge: `15c0a997ec847764e41fbd525ff52aa8c58f96ac`.
 - Phase23 merge: `2004338624766c42b5f4db2bb0976b2047a5c6b0`.
-- **Phase24 merge: `15b77321d4815f9f52fe74d47ba32fee8127526a` through PR #26.**
-- Phase24 disposition: **NO SUPPORT REPLACEMENT**.
-- Gate1 fingerprint: `9550dd572edb056be7ee06c7a4319f9c2057ac304c630fcd3a1382ebcf83007a`.
-- Gate2 target head: `f591942413973107d7abc9d21325623e2e7000f1`.
-- Final pre-merge living-doc head: `5ed3311d4ec1ac97cf841e160cf9c0987f731fe5`.
-- Final pre-merge CI `32806726958`: Ubuntu/Windows SUCCESS; all validators through Phase24 Gate2 and full regression passed.
+- Phase24 merge: `15b77321d4815f9f52fe74d47ba32fee8127526a` through PR #26.
+- **Phase25: VALIDATED / MERGE PENDING through PR #27.**
+- Phase25 final target-tested code head: `302bf6db5d807884f3b74cda049fc95864c5a194`.
+- Phase25 exact-head CI `32981080421`: Ubuntu/Windows SUCCESS; validators through Gate11 and full regression passed.
+- Phase25 disposition: **NO SUPPORT REPLACEMENT — DEVELOPMENT ROBUSTNESS FAILED**.
 
-LIVE is **DISABLED**. Automatic broker failover is **DISABLED**.
+LIVE remains **DISABLED**. Automatic broker failover remains **DISABLED**.
 
 ## 3. Architecture lock
 
-`market/reference -> Parquet/DuckDB -> features -> broad discovery -> market/sector/ticker regimes -> ML probabilities -> deterministic strategy routing/evaluation -> promotion -> analogue/Monte Carlo/scenarios -> news/events -> instrument/geometry -> portfolio risk -> deterministic case -> independent AI audit -> alerts -> paper/shadow/live execution -> outcome learning -> browser control plane`
+`market/reference -> Parquet/DuckDB -> features -> broad discovery -> market/sector/ticker regimes -> ML probabilities -> deterministic strategy routing/evaluation -> promotion -> deep research/news -> instrument/geometry -> portfolio risk -> deterministic case -> independent AI audit -> alerts -> paper/shadow/live execution -> outcome learning -> browser control plane`
 
 Parquet is durable analytical history; DuckDB is analytics; PostgreSQL is future operational state; Massive is primary market/reference; Webull is primary PAPER/sandbox; Alpaca is manual secondary only.
 
@@ -46,19 +43,19 @@ Parquet is durable analytical history; DuckDB is analytics; PostgreSQL is future
 - LONG `stop < entry < target`; SHORT reverse.
 - Unknown provider/broker/run state fails closed.
 - Uncertain writes are never retried blindly; reconcile first.
-- Automatic cross-broker failover is forbidden.
+- No automatic broker failover.
 - PAPER does not imply LIVE.
-- Zero-promotion, zero-case, and zero-finalist states are valid.
-- Never weaken strategy/data/risk/authority gates merely to produce activity.
+- Zero-promotion, zero-case, zero-selection, and zero-finalist states are valid.
+- Never weaken data/strategy/risk/authority gates merely to create trades.
 
 ## 5. Accepted data/model evidence
 
-- Alpaca raw SIP daily controlled authority: **2016-01-04 through 2021-08-13**.
-- Massive authority and legitimate ticker/intraday history origin: **2021-08-16**.
-- Cumulative lineage: `6a3ff7ad3b6fc7dff95df42ec3cc89bfc38ab66f93bc4a125d4d1d87c85a63f6`.
-- Production ML: `mlmodel-hgb15-2026-08-14-d485e6c287bacce1`; HGB leaf15/iter100; 33 PIT predictors; exact accepted replay.
+- Alpaca raw SIP daily controlled authority: 2016-01-04 through 2021-08-13.
+- Massive authority and legitimate ticker/intraday origin: 2021-08-16.
+- cumulative lineage: `6a3ff7ad3b6fc7dff95df42ec3cc89bfc38ab66f93bc4a125d4d1d87c85a63f6`.
+- production ML: `mlmodel-hgb15-2026-08-14-d485e6c287bacce1`; HGB leaf15/iter100; 33 PIT predictors; exact accepted replay.
 
-Accepted Phase11 strategy support remains:
+Accepted Phase11 strategy support remains authoritative:
 
 - SUPPORTED: **0**;
 - MIXED: `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
@@ -66,105 +63,94 @@ Accepted Phase11 strategy support remains:
 
 ## 6. Accepted execution/control foundation
 
-### Phase15
-Broker-neutral SHADOW/PAPER execution with fresh quote/preflight, reconciliation, current-risk revalidation, protective geometry, deterministic IDs/idempotency, fail-closed uncertainty, Webull primary, Alpaca manual secondary, LIVE disabled. Post-2026-08-14 input requires exact Phase23 handoff.
+Phase15–19: broker-neutral SHADOW/PAPER execution, reconciliation/idempotency, browser control plane, accepted Webull sandbox mutation lifecycle, local observability. Do not repeat accepted provider/broker mutation evidence merely to reconfirm it.
 
-### Phase16–19
-Loopback browser control plane, audit/idempotency/recovery, explicit broker-switch/cleanup planning, dual-broker read-only reconciliation, accepted Phase18 Webull sandbox submit/reconcile/cancel lifecycle, local observability. Do not repeat Phase18 mutation merely to reconfirm it.
+Phase20: deterministic local orchestration only; no provider/broker/scheduler/PostgreSQL/LIVE authority.
 
-### Phase20
-Deterministic local orchestration only: immutable DAG/run identity, bounded local retry, atomic manifest/journal, fail-closed leases/resume. No provider/broker/scheduler/PostgreSQL/LIVE authority.
+Phase21 fingerprint `0ad0add1345ceec62f65bab25ce43806dafac4a64177ffc9c219e9d6c87665e5`: centralized default-deny PAPER submit authority; exactly one raw `adapter.submit(plan)` under `packages/`.
 
-### Phase21
-Policy fingerprint `0ad0add1345ceec62f65bab25ce43806dafac4a64177ffc9c219e9d6c87665e5`. Every new real PAPER submit crosses `ExecutionEngine.submit_authorized_plan(...)`; exactly one raw `adapter.submit(plan)` exists under `packages/`.
+Phase22 fingerprint `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`: routine Webull-primary PAPER operator; Alpaca manual only; accepted zero-case/provider-free behavior.
 
-### Phase22
-Policy fingerprint `1866f132831c5cab4436163ddae6f67a7cc4768fb6dfe444e826567a6946f577`. Routine Webull-primary PAPER operator, Alpaca manual only, no arbitrary trade inputs, exact authority only for accepted nonzero cases. Accepted zero-case prepare returned `PREPARED_ZERO_PROVIDER_CALLS`.
-
-### Phase23
-Policy fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`. Finalized-session analytical operator; provider-free prepare; only `MASSIVE_MARKET_REFERENCE_READS` may be authorized when missing; no broker/PAPER execution.
+Phase23 fingerprint `00a33af23c1b5257280aee4ab08ec8b8f0444d5cae6dcb051ad4d029bff02518`: finalized-session analytical operator; provider-free prepare; only bounded Massive reads when missing; no broker/PAPER execution.
 
 ## 7. Phase23 accepted target result
 
-Finalized 2026-08-21 from baseline 2026-08-14:
+2026-08-21 from accepted 2026-08-14 baseline:
 
 - sessions advanced: 5;
 - WARM/HOT directional cases: 23;
 - promotions: 0;
-- Phase12/13/14: 0 / 0 / 0;
+- Phase12/13/14 cases: 0/0/0;
 - execution cases: 0;
 - broker/order/PAPER/LIVE activity: 0;
-- independent validation: PASS;
-- run scope: `a9f398fcd32e302af125bcf9d81789efadb417da879ff178942880580ab69209`.
+- independent validation: PASS.
 
-## 8. Phase24 accepted result — NO SUPPORT REPLACEMENT
+## 8. Phase24 accepted result
 
-Read `docs/phase24_strategy_evidence_challenger.md` for complete evidence.
+Phase24 tested 28 bounded threshold variants under stronger preregistered methodology. Results: 0 basic-pass, 0 selections/finalists, 0 protected reads. All 28 failed chronological-fold robustness, positive bootstrap LCB, and positive 25 bps stress mean. Decision: **NO SUPPORT REPLACEMENT**.
 
-### Gate0
+## 9. Phase25 validated result — route fidelity does not rescue incumbents
 
-- 23 accepted current WARM/HOT directional cases;
-- 92 eligible incumbent route evaluations;
-- 48 counterfactual incumbent rule fires;
-- 21/23 cases with >=1 fire;
-- promotions/support/external/execution writes: 0;
-- PASS.
+Read `docs/phase25_historical_production_path_route_fidelity.md` and `docs/phase25_remaining_evidence.md` for full evidence.
 
-This proved the current setup rules are not dormant.
+### Data/population reconstruction
 
-### Gate1
+- exact active-only PIT reference backfill: 1,253 sessions total, 15,442 provider pages including the 12-page probe;
+- Gate6 replay sessions: 1,260;
+- WARM/HOT directional population: 23,177;
+- Gate7 fully route-eligible candidates: 15,283;
+- eligible route decisions: 61,132;
+- total route decisions: 185,416;
+- all Gate6/7 external/execution/support authority zero;
+- independent validation PASS.
 
-Before challenger results were observed, exactly 28 bounded variants and the stronger methodology were locked: chronological selection/internal validation, purge, session-level dependence handling, block bootstrap, 10/25 bps costs, distribution/uncertainty/year/regime gates, multiplicity control, maximum one finalist per family/direction, and zero protected-read/support-replacement authority.
+### Incumbent strategy evidence
 
-### Gate2
+Gate8 development signals:
 
-Target-machine result on `f591942413973107d7abc9d21325623e2e7000f1`:
+- legacy research-source route coverage: 43,456 / 57,160 = 76.0252%;
+- development rule-fired rows: 24,753;
+- candidates with >=1 fire: 10,521.
 
-- challengers 28;
-- basic-pass 0;
-- multiplicity-pass 0;
-- selections/finalists 0;
-- protected reads 0;
-- provider/broker/order/PAPER/LIVE/support writes 0;
-- independent validation PASS;
-- overall PASS.
+Every non-empty incumbent had a negative 10 bps production-path mean and was materially worse than its broad comparator. Pullback long/short produced no production-path signals.
 
-Forensics showed all 28 failed positive chronological folds, positive bootstrap LCB, and positive 25 bps stress mean. Most had abundant samples. Best long trend retained only ~+7.37 bps after 10 bps cost with negative LCB/stress; short trend/momentum/breakdown remained materially negative at 10 bps.
+Gate9:
 
-Accepted decision: **Phase11 remains production support authority unchanged. No Gate3 protected evaluation occurred.**
+- selected after development + global Holm: 0;
+- finalists after internal validation: 0;
+- all eight failed positive folds, mean, median, positive-rate, bootstrap-LCB, 25 bps stress, year robustness, and regime robustness;
+- pullbacks additionally failed sample/session/concentration requirements.
 
-## 9. Exact continuation — Phase25 definition boundary
+Gate10: `SKIPPED_ZERO_FINALISTS`; protected reads 0.
 
-The Phase24 post-evidence audit found a population-fidelity mismatch:
+Gate11 verdict: `NO_SUPPORT_REPLACEMENT_DEVELOPMENT_ROBUSTNESS_FAILED`.
 
-- historical support studies use broad daily rows with broad market-regime routing;
-- production promotion requires PIT universe -> discovery -> WARM/HOT directional qualification -> market/sector/ticker route -> support -> current rule fire.
+Phase11 support map unchanged: true.
 
-Historical support is therefore not yet measured on the same population ATLAS tries to trade.
+## 10. Exact continuation — Phase26 definition boundary
 
-### Define next
+Phase25 answered the population-fidelity question. Do **not** continue threshold tuning of the v1 trend/momentum/breakout/pullback families and do not relax Phase24/25 gates.
 
-**Phase25 — Historical Production-Path Replay & Route-Fidelity Strategy Evidence** should be defined and locked next.
+Define next:
 
-Initial contract should:
+**Phase26 — Materially Different Strategy Architecture Research**.
 
-1. remain provider/broker/order/PAPER/LIVE/support-authority free;
-2. begin no earlier than legitimate intraday/ticker-regime origin **2021-08-16**;
-3. reconstruct PIT universe, 1d/4h/1h discovery foundation/scoring, hysteresis, WARM/HOT direction, market/ticker strategy routing;
-4. keep sector `UNAVAILABLE` unless authoritative historical sector mapping exists;
-5. initially hold incumbent strategy rules and the three-session outcome fixed;
-6. produce an attribution ladder from broad population to production-route-conditioned population;
-7. independently validate the replay population before any support replacement;
-8. never use Phase24 failure results to loosen thresholds.
+Initial direction:
 
-If route-fidelity evidence still lacks robust edge, later strategy research should use a separately preregistered materially different family—relative strength, mean reversion, gap/event, volatility-normalized, multi-timeframe, or composite—rather than more v1 threshold tweaks.
+1. research-only; no provider/broker/order/PAPER/LIVE/support authority;
+2. use the accepted PIT production-path lineage as the primary population source rather than the incomplete legacy Phase11/24 research join;
+3. preregister all candidate architectures/search dimensions before target performance inspection;
+4. retain 10 bps primary and 25 bps stress economics unless a separately justified cost model supersedes them;
+5. retain temporal purging, session-level dependence handling, block bootstrap, year/regime robustness, concentration limits, and global multiplicity control;
+6. investigate structurally different families such as cross-sectional relative strength, volatility/liquidity-conditioned mean reversion, gap/event continuation/reversal, volatility-normalized trend/breakout, multi-timeframe confirmation, and composite feature-block signals;
+7. short-side strategies must not be mechanical mirrors of long-side rules;
+8. use development/internal evidence first; protected/future prospective authority remains separate;
+9. Phase11 support remains production authority unless a later separately accepted replacement decision occurs.
 
-GUI remains monitoring/control only. Scheduler and PostgreSQL promotion remain separate future decisions.
+The Gate8 76% legacy join must be treated as a comparator limitation. Phase26 should construct its own exact production-path research table from accepted PIT canonical features/returns and Gate6/7 identities.
 
-## 10. Performance baseline
-
-Post-Phase19 retained feature evidence: 50,000 rows / 7,454 symbols / 7 sessions; optimized ~4.00265s vs prior ~594.58s; ~148.5x speedup; all 33 features exact parity.
+GUI remains monitoring/control only. Scheduler/PostgreSQL promotion remain separate future decisions.
 
 ## 11. Security/recovery
 
-Never commit secrets, raw broker IDs, tokens, signed metadata, passwords, or security codes. Future startup: inspect `main`, open PRs/branches/latest CI; read current status, roadmap, Phase24, Phase23, Phase22/21, and phase flow; continue from section 9 rather than reopening accepted work or weakening evidence gates.
+Never commit secrets, raw broker IDs, tokens, signed metadata, passwords, or security codes. Future startup: inspect authoritative `main`, open PRs/branches/latest CI; read current status, roadmap, Phase25, Phase24, Phase23, Phase22/21, and phase flow. Continue from Phase26 rather than reopening Phase25 or weakening accepted evidence gates.

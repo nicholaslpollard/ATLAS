@@ -151,5 +151,32 @@ jobs:
       - name: Validate Phase 24 Gate 2 development-only contracts
         run: python scripts/validate_phase24_gate2.py
 
+      - name: Validate Phase 25 Gate 0 route-fidelity feasibility contracts
+        run: python scripts/validate_phase25.py
+
+      - name: Validate Phase 25 Gate 1 PIT reference scope-proof contracts
+        run: python scripts/validate_phase25_gate1.py
+
+      - name: Validate Phase 25 Gate 2 active-only PIT equivalence contracts
+        run: python scripts/validate_phase25_gate2.py
+
+      - name: Validate Phase 25 Gate 3 acquisition preregistration contracts
+        run: python scripts/validate_phase25_gate3.py
+
+      - name: Validate Phase 25 Gate 4 entitlement probe contracts
+        run: python scripts/validate_phase25_gate4.py
+
+      - name: Validate Phase 25 Gate 5 resumable bulk acquisition contracts
+        run: python scripts/validate_phase25_gate5.py
+
+      - name: Validate Phase 25 Gate 6 discovery reconstruction contracts
+        run: python scripts/validate_phase25_gate6.py
+
+      - name: Validate Phase 25 Gate 7 exact-PIT route-context contracts
+        run: python scripts/validate_phase25_gate7.py
+
+      - name: Validate Phase 25 cumulative Gates 8-11 contracts
+        run: python scripts/validate_phase25_remaining.py
+
       - name: Run tests
         run: python -m pytest -q
