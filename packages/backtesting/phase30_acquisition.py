@@ -132,13 +132,6 @@ def _read_jsonl(path: Path) -> tuple[dict[str, Any], ...]:
     return tuple(rows)
 
 
-def _payload_sha(row: dict[str, Any]) -> str:
-    raw = json.dumps(
-        row, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
-    return hashlib.sha256(raw).hexdigest()
-
-
 def _authorized_metadata_projection(
     rows: tuple[dict[str, Any], ...],
     *,
@@ -337,7 +330,8 @@ class Phase30NewsAcquisition:
         return rows, meta, False
 
     def _reconcile_feasibility_metadata(
-        self, all_rows: tuple[dict[str, Any], ...]
+        self,
+        probe_rows: dict[str, tuple[dict[str, Any], ...]],
     ) -> dict[str, bool]:
         checks: dict[str, bool] = {}
         for probe in PHASE30_PROBE_WINDOWS:
@@ -355,7 +349,7 @@ class Phase30NewsAcquisition:
                 end_utc=end,
             )
             acquisition_projection = _authorized_metadata_projection(
-                all_rows,
+                probe_rows[probe.label],
                 start_utc=start,
                 end_utc=end,
             )
@@ -371,8 +365,17 @@ class Phase30NewsAcquisition:
 
     def run(self) -> dict[str, Any]:
         shard_reports: list[dict[str, Any]] = []
-        seen_ids: dict[str, tuple[str, str]] = {}
-        all_rows: list[dict[str, Any]] = []
+        seen_ids: dict[str, str] = {}
+        probe_bounds = {
+            probe.label: (
+                _parse_rfc3339_utc(probe.start_utc),
+                _parse_rfc3339_utc(probe.end_utc),
+            )
+            for probe in PHASE30_PROBE_WINDOWS
+        }
+        probe_rows: dict[str, list[dict[str, Any]]] = {
+            label: [] for label in probe_bounds
+        }
         total_articles = 0
         total_ticker_linked = 0
         recorded_pages = 0
@@ -384,17 +387,18 @@ class Phase30NewsAcquisition:
                 resumed_shards += 1
             for row in rows:
                 article_id = str(row["id"])
-                payload_sha = _payload_sha(row)
-                previous = seen_ids.get(article_id)
-                if previous is not None:
-                    previous_label, previous_sha = previous
+                previous_label = seen_ids.get(article_id)
+                if previous_label is not None:
                     raise Phase30NewsAcquisitionError(
                         f"duplicate article id crossed disjoint monthly shards: "
-                        f"id={article_id!r} previous={previous_label} current={window.label} "
-                        f"same_payload={previous_sha == payload_sha}"
+                        f"id={article_id!r} previous={previous_label} current={window.label}"
                     )
-                seen_ids[article_id] = (window.label, payload_sha)
-                all_rows.append(row)
+                seen_ids[article_id] = window.label
+
+                published = parse_news_timestamp(row["published_utc"])
+                for label, (start, end) in probe_bounds.items():
+                    if start <= published <= end:
+                        probe_rows[label].append(row)
 
             articles = len(rows)
             ticker_linked = sum(1 for row in rows if bool(row.get("tickers")))
@@ -415,7 +419,9 @@ class Phase30NewsAcquisition:
             total_ticker_linked += ticker_linked
             recorded_pages += pages
 
-        feasibility_checks = self._reconcile_feasibility_metadata(tuple(all_rows))
+        feasibility_checks = self._reconcile_feasibility_metadata(
+            {label: tuple(rows) for label, rows in probe_rows.items()}
+        )
         start, end = phase30_news_acquisition_bounds()
         checks = {
             "scientific_policy_frozen": len(phase30_policy_fingerprint()) == 64,
