@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import json
 from datetime import date
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from packages.backtesting.phase26_observations import add_phase26_derived_fields
+from packages.backtesting.phase26_observations import (
+    Phase26ObservationError,
+    add_phase26_derived_fields,
+    require_native_bool_checks,
+)
 
 
 def _row(*, ticker: str, close: float, close20: float, vol: float) -> dict[str, object]:
@@ -67,3 +73,15 @@ def test_phase26_cross_sectional_rank_excludes_missing_values() -> None:
     assert pd.isna(result.loc[2, "cs_return_20d_pct"])
     assert result.loc[0, "cs_return_20d_pct"] == 1.0
     assert result.loc[1, "cs_return_20d_pct"] == 0.5
+
+
+def test_phase26_persisted_checks_reject_numpy_boolean_scalars() -> None:
+    with pytest.raises(Phase26ObservationError, match="native Python bool"):
+        require_native_bool_checks({"sector_mapping_not_fabricated": np.bool_(True)})
+
+
+def test_phase26_native_check_map_is_json_serializable() -> None:
+    checks = require_native_bool_checks({"first": True, "second": False})
+    assert json.loads(json.dumps({"checks": checks})) == {
+        "checks": {"first": True, "second": False}
+    }
