@@ -18,7 +18,7 @@ from packages.core.exceptions import ProviderError
 from packages.core.settings import load_settings
 from packages.providers.massive.phase32 import MassivePhase32SECIndexClient
 from packages.providers.massive.rest import MassiveRESTClient
-from packages.providers.sec_edgar import SECEDGARClient
+from packages.providers.sec_edgar import SECEDGARClient, SEC_EDGAR_CONTACT_EMAIL_ENV
 
 
 def main() -> int:
@@ -27,6 +27,7 @@ def main() -> int:
     print(f"Declared Massive plan: {PHASE32_DECLARED_MASSIVE_PLAN}")
     print("Discovery source: MassiveRESTClient -> /stocks/filings/vX/index (form_type=8-K)")
     print("Timestamp/item source: official SEC EDGAR submission headers")
+    print(f"SEC fair-access identity: ATLAS + local {SEC_EDGAR_CONTACT_EMAIL_ENV} contact")
     print(f"Conservative public-availability rule: {PHASE32_PUBLIC_AVAILABILITY_RULE}")
     print("Scope: source access/history/ticker linkage/acceptance timestamp/item-label provenance only")
     print("Alpha hypotheses: NOT YET FROZEN")
@@ -34,10 +35,10 @@ def main() -> int:
     print("Broker/order/PAPER/LIVE activity: DISABLED")
     print()
 
-    settings = load_settings()
-    index_client = MassivePhase32SECIndexClient(MassiveRESTClient(settings))
-    sec_client = SECEDGARClient()
     try:
+        settings = load_settings()
+        index_client = MassivePhase32SECIndexClient(MassiveRESTClient(settings))
+        sec_client = SECEDGARClient()
         report = Phase32EightKFeasibility(settings, index_client, sec_client).run()
     except (Phase32FeasibilityError, ProviderError, OSError, ValueError) as exc:
         print("Phase 32 8-K feasibility: NOT ACCEPTED")

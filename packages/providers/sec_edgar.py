@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -14,9 +15,10 @@ from zoneinfo import ZoneInfo
 from packages.core.exceptions import ProviderError
 
 
-SEC_EDGAR_ALLOWED_HOSTS = {"www.sec.gov", "sec.gov"}
+SEC_EDGAR_ALLOWED_HOSTS = {"www.sec.gov"}
 SEC_EDGAR_ARCHIVES_PREFIX = "/Archives/edgar/"
-SEC_EDGAR_USER_AGENT = "ATLAS/0.1 research github.com/nicholaslpollard/ATLAS"
+SEC_EDGAR_USER_AGENT_PREFIX = "ATLAS Research"
+SEC_EDGAR_CONTACT_EMAIL_ENV = "SEC_EDGAR_CONTACT_EMAIL"
 SEC_EDGAR_MAX_REQUESTS_PER_SECOND = 5
 SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS = 1.0 / SEC_EDGAR_MAX_REQUESTS_PER_SECOND
 SEC_EDGAR_REQUEST_TIMEOUT_SECONDS = 30.0
@@ -29,6 +31,7 @@ _ACCESSION_RE = re.compile(r"(?im)^\s*ACCESSION NUMBER:\s*([^\s]+)\s*$")
 _CIK_RE = re.compile(r"(?im)^\s*CENTRAL INDEX KEY:\s*([^\s]+)\s*$")
 _HEADER_RE = re.compile(r"(?is)<SEC-HEADER>(.*?)</SEC-HEADER>")
 _ACCESSION_FORMAT_RE = re.compile(r"^\d{10}-\d{2}-\d{6}$")
+_CONTACT_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +57,23 @@ def _validate_accession(accession_number: str) -> str:
     if not _ACCESSION_FORMAT_RE.fullmatch(text):
         raise ProviderError(f"SEC accession_number has unexpected format: {accession_number!r}")
     return text
+
+
+def _resolve_contact_email(contact_email: str | None) -> str:
+    value = (contact_email or os.getenv(SEC_EDGAR_CONTACT_EMAIL_ENV) or "").strip()
+    if not value:
+        raise ProviderError(
+            "SEC EDGAR fair-access identity is missing; set SEC_EDGAR_CONTACT_EMAIL "
+            "in the local environment or .env before running Phase32 feasibility"
+        )
+    if not _CONTACT_EMAIL_RE.fullmatch(value):
+        raise ProviderError("SEC_EDGAR_CONTACT_EMAIL is not a valid contact email address")
+    return value
+
+
+def sec_declared_user_agent(contact_email: str) -> str:
+    contact = _resolve_contact_email(contact_email)
+    return f"{SEC_EDGAR_USER_AGENT_PREFIX} {contact} github.com/nicholaslpollard/ATLAS"
 
 
 def sec_submission_url(*, cik: object, accession_number: str) -> str:
@@ -108,8 +128,9 @@ class SECEDGARClient:
     """Bounded read-only SEC EDGAR submission-header client.
 
     The client is intentionally limited to official SEC Archives submission text,
-    advertises ATLAS in its User-Agent, and throttles below the SEC's public maximum.
-    It exposes no market outcomes or mutation authority.
+    declares an ATLAS fair-access identity with a locally supplied contact email,
+    and throttles below the SEC's public maximum. It exposes no market outcomes
+    or mutation authority.
     """
 
     RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
@@ -117,9 +138,12 @@ class SECEDGARClient:
     def __init__(
         self,
         *,
+        contact_email: str | None = None,
         opener: Callable[..., Any] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
+        self._contact_email = _resolve_contact_email(contact_email)
+        self._user_agent = sec_declared_user_agent(self._contact_email)
         self._opener = opener or urlopen
         self._sleep = sleeper
 
@@ -135,6 +159,10 @@ class SECEDGARClient:
         if parts.query or parts.fragment:
             raise ProviderError("SEC EDGAR archive request must not contain query/fragment")
 
+    @property
+    def declared_user_agent(self) -> str:
+        return self._user_agent
+
     def get_text(self, url: str) -> str:
         self._validate_url(url)
         delay = SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS
@@ -145,8 +173,9 @@ class SECEDGARClient:
                 url,
                 method="GET",
                 headers={
-                    "User-Agent": SEC_EDGAR_USER_AGENT,
+                    "User-Agent": self._user_agent,
                     "Accept": "text/plain,text/html;q=0.9,*/*;q=0.1",
+                    "Host": "www.sec.gov",
                 },
             )
             try:
@@ -157,6 +186,12 @@ class SECEDGARClient:
                 return raw.decode("utf-8", errors="replace")
             except HTTPError as exc:
                 last_error = exc
+                if exc.code == 403:
+                    raise ProviderError(
+                        "SEC EDGAR request denied with HTTP 403 under fair-access controls; "
+                        "ATLAS did not retry the denial. Verify SEC_EDGAR_CONTACT_EMAIL and "
+                        "the current public-IP access state before rerunning."
+                    ) from exc
                 if exc.code not in self.RETRYABLE_HTTP or attempt >= SEC_EDGAR_MAX_ATTEMPTS:
                     raise ProviderError(f"SEC EDGAR request failed with HTTP {exc.code}") from exc
             except (URLError, TimeoutError, OSError) as exc:

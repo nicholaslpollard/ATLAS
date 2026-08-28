@@ -50,6 +50,7 @@ def main() -> int:
     flow = read("docs/phase_flow.md")
     readme = read("README.md")
     workflow = read(".github/workflows/phase32-tests.yml")
+    env_example = read(".env.example")
 
     from packages.backtesting.phase32_feasibility import (
         PHASE32_ALPHA_HYPOTHESES_FROZEN,
@@ -67,8 +68,9 @@ def main() -> int:
         PHASE32_SEC_INDEX_SORT,
     )
     from packages.providers.sec_edgar import (
+        SEC_EDGAR_CONTACT_EMAIL_ENV,
         SEC_EDGAR_MAX_REQUESTS_PER_SECOND,
-        SEC_EDGAR_USER_AGENT,
+        SEC_EDGAR_USER_AGENT_PREFIX,
     )
 
     if PHASE32_SOURCE_PHASE31_MERGE != EXPECTED_SOURCE_MERGE:
@@ -89,8 +91,10 @@ def main() -> int:
         raise AssertionError("Phase32 feasibility may not read market outcomes")
     if SEC_EDGAR_MAX_REQUESTS_PER_SECOND > 5:
         raise AssertionError("Phase32 SEC client rate cap drifted above conservative bound")
-    if "ATLAS" not in SEC_EDGAR_USER_AGENT:
-        raise AssertionError("Phase32 SEC User-Agent no longer identifies ATLAS")
+    if SEC_EDGAR_CONTACT_EMAIL_ENV != "SEC_EDGAR_CONTACT_EMAIL":
+        raise AssertionError("Phase32 SEC fair-access contact environment key drifted")
+    if "ATLAS" not in SEC_EDGAR_USER_AGENT_PREFIX:
+        raise AssertionError("Phase32 SEC User-Agent prefix no longer identifies ATLAS")
     fingerprint = phase32_feasibility_fingerprint()
     if len(fingerprint) != 64:
         raise AssertionError("Phase32 feasibility fingerprint is malformed")
@@ -110,16 +114,23 @@ def main() -> int:
         forbid(massive, bad, "ticker normalization")
 
     for token in (
+        'SEC_EDGAR_ALLOWED_HOSTS = {"www.sec.gov"}',
         'SEC_EDGAR_ARCHIVES_PREFIX = "/Archives/edgar/"',
+        'SEC_EDGAR_CONTACT_EMAIL_ENV = "SEC_EDGAR_CONTACT_EMAIL"',
         "SEC_EDGAR_MAX_REQUESTS_PER_SECOND = 5",
         "SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS",
         'ZoneInfo("America/New_York")',
         "<ACCEPTANCE-DATETIME>",
         "ITEM INFORMATION:",
         "sec_submission_url",
-        '"User-Agent": SEC_EDGAR_USER_AGENT',
+        "_resolve_contact_email",
+        "sec_declared_user_agent",
+        '"User-Agent": self._user_agent',
+        '"Host": "www.sec.gov"',
+        "ATLAS did not retry the denial",
     ):
-        require(sec, token, "SEC EDGAR provenance contract")
+        require(sec, token, "SEC EDGAR provenance/fair-access contract")
+    require(env_example, "SEC_EDGAR_CONTACT_EMAIL=", "local SEC fair-access contact configuration")
 
     require(feasibility, EXPECTED_SOURCE_MERGE, "Phase31 accepted-negative merge lineage")
     require(feasibility, f'PHASE32_DECLARED_MASSIVE_PLAN = "{EXPECTED_PLAN}"', "Massive plan")
@@ -152,6 +163,7 @@ def main() -> int:
     require(runner, "Alpha hypotheses: NOT YET FROZEN", "runner hypothesis boundary")
     require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "runner outcome boundary")
     require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "runner trading boundary")
+    require(runner, "SEC fair-access identity: ATLAS + local", "runner fair-access declaration")
 
     require(roadmap, "Accepted foundation through Phase31", "roadmap accepted foundation")
     require(roadmap, "Active Phase32 — SEC 8-K Material Corporate-Event Alpha", "roadmap active phase")
@@ -182,7 +194,8 @@ def main() -> int:
     print(f"- source Phase31 merge is pinned: {EXPECTED_SOURCE_MERGE}")
     print("- Massive 8-K index discovery and official SEC acceptance/item provenance are read-only")
     print("- exact acceptance timestamps are interpreted in America/New_York")
-    print("- SEC requests are bounded to <=5 requests/second with an identifying User-Agent")
+    print("- SEC requests are bounded to <=5 requests/second and require a local fair-access contact identity")
+    print("- SEC HTTP 403 denials are fail-closed and are not automatically retried")
     print("- hypotheses remain unfrozen and all target/protected market outcomes remain unread")
     print("- Phase33 signal-to-trade and all broker/order/PAPER/LIVE authority remain blocked")
     return 0

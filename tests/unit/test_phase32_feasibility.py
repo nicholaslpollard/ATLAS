@@ -12,9 +12,11 @@ from packages.backtesting.phase32_feasibility import (
     Phase32FeasibilityError,
     phase32_feasibility_fingerprint,
 )
+from packages.core.exceptions import ProviderError
 from packages.providers.massive.phase32 import Phase32SECIndexWindowResult
 from packages.providers.sec_edgar import (
     SECEDGARClient,
+    SEC_EDGAR_CONTACT_EMAIL_ENV,
     SECFilingHeader,
     parse_sec_filing_header,
     sec_submission_url,
@@ -112,9 +114,28 @@ def test_sec_submission_url_and_header_parser() -> None:
     )
 
 
+def test_sec_client_requires_declared_contact(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(SEC_EDGAR_CONTACT_EMAIL_ENV, raising=False)
+    with pytest.raises(ProviderError, match="fair-access identity is missing"):
+        SECEDGARClient(opener=lambda *args, **kwargs: io.BytesIO(b""), sleeper=lambda _: None)
+
+
+def test_sec_client_declared_user_agent_contains_project_and_contact() -> None:
+    client = SECEDGARClient(
+        contact_email="research@example.com",
+        opener=lambda *args, **kwargs: io.BytesIO(b""),
+        sleeper=lambda _: None,
+    )
+    assert "ATLAS Research" in client.declared_user_agent
+    assert "research@example.com" in client.declared_user_agent
+    assert "github.com/nicholaslpollard/ATLAS" in client.declared_user_agent
+
+
 def test_sec_client_rejects_non_sec_host() -> None:
     client = SECEDGARClient(
-        opener=lambda *args, **kwargs: io.BytesIO(b""), sleeper=lambda _: None
+        contact_email="research@example.com",
+        opener=lambda *args, **kwargs: io.BytesIO(b""),
+        sleeper=lambda _: None,
     )
     with pytest.raises(Exception, match="changed host"):
         client.get_text("https://example.com/Archives/edgar/data/1/a.txt")
