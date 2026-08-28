@@ -13,7 +13,7 @@ from typing import Any, Iterable
 import pandas as pd
 
 from packages.core.atomic_io import atomic_write_text
-from packages.core.market_calendar import MarketCalendar, get_market_calendar
+from packages.core.market_calendar import get_market_calendar
 from packages.core.settings import AtlasSettings
 from packages.data.atomic import atomic_target, promote
 from packages.data.duckdb_connection import connect_utc
@@ -42,6 +42,7 @@ from .phase31_policy import (
     PHASE31_EXCLUDE_NOT_SUBJECT_TO_SECTION16_TRUE,
     PHASE31_OUTCOME_HORIZON_SESSIONS,
     PHASE31_PROTECTED_LAST_SIGNAL,
+    PHASE31_PROTECTED_OUTCOME_END,
     PHASE31_PROTECTED_START,
     PHASE31_PURCHASE_ACQUIRED_DISPOSED,
     PHASE31_REQUIRE_ANY_SECTION16_ROLE,
@@ -52,7 +53,6 @@ from .phase31_policy import (
     PHASE31_RESEARCH_SIGNAL_START,
     PHASE31_SALE_ACQUIRED_DISPOSED,
     PHASE31_SOURCE_HISTORY_START,
-    PHASE31_PROTECTED_OUTCOME_END,
     phase31_policy_fingerprint,
 )
 
@@ -101,7 +101,6 @@ PHASE31_PREDICTOR_FIELDS = (
     "transaction_shares_sum",
     "transaction_gross_value_sum",
 )
-
 PHASE31_FORBIDDEN_MARKET_FIELDS = (
     "entry_open",
     "exit_close",
@@ -164,34 +163,28 @@ def _finite_positive(value: object) -> float | None:
         result = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
-    if not math.isfinite(result) or result <= 0.0:
-        return None
-    return result
+    return result if math.isfinite(result) and result > 0.0 else None
 
 
 def classify_accession(
     rows: Iterable[dict[str, Any]],
 ) -> tuple[QualifiedAccession | None, str | None]:
     materialized = tuple(rows)
-    if not materialized:
-        return None, "EMPTY_ACCESSION"
-
-    transaction_rows = tuple(
+    transactions = tuple(
         row for row in materialized if row.get("record_type") == PHASE31_ELIGIBLE_RECORD_TYPE
     )
-    if not transaction_rows:
+    if not transactions:
         return None, "NO_TRANSACTION_ROWS"
 
-    accession_values = {_nonblank(row.get("accession_number")) for row in transaction_rows}
-    if None in accession_values or len(accession_values) != 1:
+    accessions = {_nonblank(row.get("accession_number")) for row in transactions}
+    if None in accessions or len(accessions) != 1:
         return None, "ACCESSION_ID_INCONSISTENT"
-    accession = next(iter(accession_values))
+    accession = next(iter(accessions))
     assert accession is not None
 
-    if any(row.get("form_type") != PHASE31_ELIGIBLE_FORM_TYPE for row in transaction_rows):
+    if any(row.get("form_type") != PHASE31_ELIGIBLE_FORM_TYPE for row in transactions):
         return None, "FORM_TYPE_INELIGIBLE"
-
-    codes = {_nonblank(row.get("transaction_code")) for row in transaction_rows}
+    codes = {_nonblank(row.get("transaction_code")) for row in transactions}
     if None in codes or len(codes) != 1 or next(iter(codes)) not in PHASE31_ELIGIBLE_TRANSACTION_CODES:
         return None, "TRANSACTION_CODE_NOT_PURE_P_OR_S"
     if not PHASE31_ACCESSION_CODE_PURITY_REQUIRED:
@@ -199,27 +192,28 @@ def classify_accession(
     code = next(iter(codes))
     assert code is not None
     direction = "PURCHASE" if code == "P" else "SALE"
-    required_acquired_disposed = (
-        PHASE31_PURCHASE_ACQUIRED_DISPOSED if direction == "PURCHASE" else PHASE31_SALE_ACQUIRED_DISPOSED
+    acquired_disposed = (
+        PHASE31_PURCHASE_ACQUIRED_DISPOSED
+        if direction == "PURCHASE"
+        else PHASE31_SALE_ACQUIRED_DISPOSED
     )
 
     filing_dates: set[date] = set()
-    ticker_values: set[str] = set()
-    owner_values: set[str] = set()
-    issuer_values: set[str] = set()
+    tickers: set[str] = set()
+    owners: set[str] = set()
+    issuers: set[str] = set()
     shares_sum = 0.0
-    gross_value_sum = 0.0
+    gross_sum = 0.0
     any_role = False
 
-    for row in transaction_rows:
+    for row in transactions:
         try:
             filing_dates.add(parse_form4_date(row.get("filing_date"), field="filing_date"))
         except Exception:
             return None, "FILING_DATE_INVALID"
-
         if row.get("security_type") not in PHASE31_ELIGIBLE_SECURITY_TYPE_VALUES:
             return None, "SECURITY_TYPE_INELIGIBLE"
-        if row.get("transaction_acquired_disposed") != required_acquired_disposed:
+        if row.get("transaction_acquired_disposed") != acquired_disposed:
             return None, "ACQUIRED_DISPOSED_MISMATCH"
 
         shares = _finite_positive(row.get("transaction_shares"))
@@ -230,11 +224,10 @@ def classify_accession(
             return None, "PRICE_NOT_POSITIVE"
         assert shares is not None and price is not None
         shares_sum += shares
-        gross_value_sum += shares * price
+        gross_sum += shares * price
 
         if row.get("transaction_timeliness") != PHASE31_REQUIRED_TRANSACTION_TIMELINESS:
             return None, "TRANSACTION_NOT_TIMELY_O"
-
         aff = row.get("aff_10b5_one")
         if PHASE31_EXCLUDE_AFF_10B5_ONE_TRUE and aff is True:
             return None, "AFF_10B5_ONE_TRUE"
@@ -252,52 +245,48 @@ def classify_accession(
             row.get(field) is True
             for field in ("is_officer", "is_director", "is_ten_percent_owner")
         )
-
-        tickers = row.get("tickers")
+        row_tickers = row.get("tickers")
         if (
             PHASE31_REQUIRE_EXACTLY_ONE_PROVIDER_NATIVE_TICKER
-            and (not isinstance(tickers, list) or len(tickers) != 1)
+            and (not isinstance(row_tickers, list) or len(row_tickers) != 1)
         ):
             return None, "TICKER_ASSOCIATION_NOT_EXACTLY_ONE"
-        if not isinstance(tickers, list) or len(tickers) != 1:
+        if not isinstance(row_tickers, list) or len(row_tickers) != 1:
             return None, "TICKER_ASSOCIATION_NOT_EXACTLY_ONE"
-        ticker = _nonblank(tickers[0])
+        ticker = _nonblank(row_tickers[0])
         if ticker is None:
             return None, "TICKER_ASSOCIATION_INVALID"
-        ticker_values.add(ticker)
+        tickers.add(ticker)
 
         owner = _nonblank(row.get("owner_cik"))
         issuer = _nonblank(row.get("issuer_cik"))
         if owner is None or issuer is None:
             return None, "CIK_MISSING"
-        owner_values.add(owner)
-        issuer_values.add(issuer)
+        owners.add(owner)
+        issuers.add(issuer)
 
     if PHASE31_REQUIRE_ANY_SECTION16_ROLE and not any_role:
         return None, "NO_SECTION16_ROLE"
     if len(filing_dates) != 1:
         return None, "FILING_DATE_INCONSISTENT"
-    if len(ticker_values) != 1:
+    if len(tickers) != 1:
         return None, "ACCESSION_TICKER_INCONSISTENT"
-    if len(owner_values) != 1:
+    if len(owners) != 1:
         return None, "OWNER_CIK_INCONSISTENT"
-    if len(issuer_values) != 1:
+    if len(issuers) != 1:
         return None, "ISSUER_CIK_INCONSISTENT"
 
-    return (
-        QualifiedAccession(
-            accession_number=accession,
-            filing_date=next(iter(filing_dates)),
-            ticker=next(iter(ticker_values)),
-            direction=direction,
-            owner_cik=next(iter(owner_values)),
-            issuer_cik=next(iter(issuer_values)),
-            transaction_row_count=len(transaction_rows),
-            transaction_shares_sum=shares_sum,
-            transaction_gross_value_sum=gross_value_sum,
-        ),
-        None,
-    )
+    return QualifiedAccession(
+        accession_number=accession,
+        filing_date=next(iter(filing_dates)),
+        ticker=next(iter(tickers)),
+        direction=direction,
+        owner_cik=next(iter(owners)),
+        issuer_cik=next(iter(issuers)),
+        transaction_row_count=len(transactions),
+        transaction_shares_sum=shares_sum,
+        transaction_gross_value_sum=gross_sum,
+    ), None
 
 
 def resolve_identity_interval(
@@ -315,8 +304,7 @@ def resolve_identity_interval(
     ]
     if not candidates:
         return None, "PIT_IDENTITY_NOT_RESOLVED"
-    identities = {item.instrument_id for item in candidates}
-    if len(candidates) != 1 or len(identities) != 1:
+    if len(candidates) != 1 or len({item.instrument_id for item in candidates}) != 1:
         return None, "PIT_IDENTITY_AMBIGUOUS"
     item = candidates[0]
     if item.valid_to_date_exclusive is not None and exit_session >= item.valid_to_date_exclusive:
@@ -337,15 +325,12 @@ def _write_immutable_parquet(
     con = connect_utc(":memory:")
     try:
         con.register("phase31_predictor_write", frame)
-        compression = settings.data.parquet.compression.upper()
-        row_group_size = int(settings.data.parquet.row_group_size)
         con.execute(
             f"""
-            COPY (
-                SELECT * FROM phase31_predictor_write
-                ORDER BY decision_session, ticker, direction
-            ) TO {sql_string(temp)}
-            (FORMAT PARQUET, COMPRESSION {compression}, ROW_GROUP_SIZE {row_group_size})
+            COPY (SELECT * FROM phase31_predictor_write ORDER BY decision_session, ticker, direction)
+            TO {sql_string(temp)}
+            (FORMAT PARQUET, COMPRESSION {settings.data.parquet.compression.upper()},
+             ROW_GROUP_SIZE {int(settings.data.parquet.row_group_size)})
             """
         )
     finally:
@@ -359,10 +344,9 @@ def _write_immutable_parquet(
         temp.unlink(missing_ok=True)
         return existing, True
     promote(temp, target)
-    actual = sha256_file(target)
-    if actual != new_sha:
+    if sha256_file(target) != new_sha:
         raise Phase31PredictorError(f"Phase31 predictor hash mismatch after write: {target}")
-    return actual, False
+    return new_sha, False
 
 
 class Phase31Form4PredictorBuilder:
@@ -392,43 +376,39 @@ class Phase31Form4PredictorBuilder:
 
     def _validate_acquisition(self) -> tuple[dict[str, Any], str]:
         report = _read_json(self.acquisition_report_path(), label="Phase31 acquisition report")
-        exact = {
+        checks = {
             "contract": report.get("contract_version") == PHASE31_ACQUISITION_V3_CONTRACT_VERSION,
             "policy": report.get("phase31_policy_fingerprint") == phase31_policy_fingerprint(),
             "pass": report.get("pass") is True,
             "months": int(report.get("month_shards", -1)) == PHASE31_ACCEPTED_FULL_HISTORY_MONTH_SHARDS,
             "raw": int(report.get("raw_rows", -1)) == PHASE31_ACCEPTED_FULL_HISTORY_RAW_ROWS,
-            "authoritative": int(report.get("authoritative_rows", -1))
-            == PHASE31_ACCEPTED_FULL_HISTORY_AUTHORITATIVE_ROWS,
-            "quarantine": int(report.get("quarantined_rows", -1))
-            == PHASE31_ACCEPTED_FULL_HISTORY_QUARANTINED_ROWS,
-            "contaminated": int(report.get("contaminated_accessions", -1))
-            == PHASE31_ACCEPTED_FULL_HISTORY_CONTAMINATED_ACCESSIONS,
-            "chronology_seeds": int(report.get("chronology_violation_seed_rows", -1))
-            == PHASE31_ACCEPTED_FULL_HISTORY_CHRONOLOGY_SEEDS,
-            "missing_code_seeds": int(report.get("missing_transaction_code_seed_rows", -1))
-            == PHASE31_ACCEPTED_FULL_HISTORY_MISSING_CODE_SEEDS,
+            "authoritative": int(report.get("authoritative_rows", -1)) == PHASE31_ACCEPTED_FULL_HISTORY_AUTHORITATIVE_ROWS,
+            "quarantine": int(report.get("quarantined_rows", -1)) == PHASE31_ACCEPTED_FULL_HISTORY_QUARANTINED_ROWS,
+            "contaminated": int(report.get("contaminated_accessions", -1)) == PHASE31_ACCEPTED_FULL_HISTORY_CONTAMINATED_ACCESSIONS,
+            "chronology": int(report.get("chronology_violation_seed_rows", -1)) == PHASE31_ACCEPTED_FULL_HISTORY_CHRONOLOGY_SEEDS,
+            "missing_code": int(report.get("missing_transaction_code_seed_rows", -1)) == PHASE31_ACCEPTED_FULL_HISTORY_MISSING_CODE_SEEDS,
             "target_outcomes": int(report.get("target_outcome_rows_read", -1)) == 0,
             "protected_candidates": int(report.get("protected_candidate_rows_read", -1)) == 0,
             "protected_returns": int(report.get("protected_return_rows_read", -1)) == 0,
-            "provider_writes": int(report.get("provider_writes", -1)) == 0,
-            "broker_reads": int(report.get("broker_reads", -1)) == 0,
-            "broker_writes": int(report.get("broker_writes", -1)) == 0,
-            "orders": int(report.get("order_writes", -1)) == 0,
-            "paper": int(report.get("paper_submits", -1)) == 0,
-            "live": int(report.get("live_writes", -1)) == 0,
-            "automation": int(report.get("automation_writes", -1)) == 0,
+            "external_authority": all(
+                int(report.get(key, -1)) == 0
+                for key in (
+                    "provider_writes", "broker_reads", "broker_writes", "order_writes",
+                    "paper_submits", "live_writes", "automation_writes",
+                )
+            ),
         }
-        if not all(exact.values()):
-            failed = sorted(name for name, ok in exact.items() if not ok)
+        if not all(checks.values()):
+            failed = sorted(name for name, ok in checks.items() if not ok)
             raise Phase31PredictorError("Phase31 acquisition lineage failed closed: " + ", ".join(failed))
 
         shard_records = report.get("shards")
         if not isinstance(shard_records, list) or len(shard_records) != 62:
             raise Phase31PredictorError("Phase31 acquisition shard lineage is incomplete")
-        expected_labels = tuple(item.label for item in phase31_month_shards())
         hasher = hashlib.sha256()
-        for expected, item in zip(expected_labels, shard_records, strict=True):
+        for expected, item in zip(
+            (shard.label for shard in phase31_month_shards()), shard_records, strict=True
+        ):
             if not isinstance(item, dict) or item.get("label") != expected:
                 raise Phase31PredictorError("Phase31 acquisition shard order drifted")
             expected_sha = str(item.get("authoritative_sha256") or "")
@@ -436,23 +416,20 @@ class Phase31Form4PredictorBuilder:
             path = self.authoritative_root / f"{expected}.jsonl"
             if not path.is_file() or len(expected_sha) != 64:
                 raise Phase31PredictorError(f"missing authoritative Phase31 shard: {expected}")
-            actual_sha = sha256_file(path)
-            if actual_sha != expected_sha:
+            if sha256_file(path) != expected_sha:
                 raise Phase31PredictorError(f"authoritative Phase31 shard hash mismatch: {expected}")
             if expected_rows < 0:
                 raise Phase31PredictorError(f"invalid authoritative row count: {expected}")
-            hasher.update(expected.encode("utf-8"))
-            hasher.update(b"\0")
-            hasher.update(expected_sha.encode("ascii"))
-            hasher.update(b"\0")
-            hasher.update(str(expected_rows).encode("ascii"))
-            hasher.update(b"\n")
+            hasher.update(f"{expected}\0{expected_sha}\0{expected_rows}\n".encode("utf-8"))
         return report, hasher.hexdigest()
 
     def _session_grid(self) -> tuple[tuple[date, ...], dict[date, int]]:
-        start = date.fromisoformat(PHASE31_SOURCE_HISTORY_START)
-        end = date.fromisoformat(PHASE31_PROTECTED_OUTCOME_END)
-        sessions = tuple(self.calendar.sessions_in_range(start, end))
+        sessions = tuple(
+            self.calendar.sessions_in_range(
+                date.fromisoformat(PHASE31_SOURCE_HISTORY_START),
+                date.fromisoformat(PHASE31_PROTECTED_OUTCOME_END),
+            )
+        )
         if not sessions:
             raise Phase31PredictorError("Phase31 XNYS session grid is empty")
         return sessions, {session: index for index, session in enumerate(sessions)}
@@ -468,7 +445,7 @@ class Phase31Form4PredictorBuilder:
             rows = con.execute(
                 f"""
                 SELECT instrument_id, ticker, valid_from_date, valid_to_date_exclusive,
-                       query_identifier, query_identifier_type, continuity_authority, evidence_source
+                       query_identifier
                 FROM read_parquet({sql_string(path)})
                 WHERE continuity_authority = true
                   AND query_identifier_type = 'composite_figi'
@@ -479,30 +456,26 @@ class Phase31Form4PredictorBuilder:
         finally:
             con.close()
         by_ticker: dict[str, list[IdentityInterval]] = defaultdict(list)
-        for instrument_id, ticker, valid_from, valid_to, query_id, _, _, _ in rows:
+        for instrument_id, ticker, valid_from, valid_to, query_id in rows:
             ticker_text = _nonblank(ticker)
             figi = _nonblank(query_id)
-            if ticker_text is None or figi is None:
-                continue
-            by_ticker[ticker_text].append(
-                IdentityInterval(
-                    instrument_id=str(instrument_id),
-                    ticker=ticker_text,
-                    valid_from_date=valid_from,
-                    valid_to_date_exclusive=valid_to,
-                    composite_figi=figi,
+            if ticker_text is not None and figi is not None:
+                by_ticker[ticker_text].append(
+                    IdentityInterval(
+                        instrument_id=str(instrument_id),
+                        ticker=ticker_text,
+                        valid_from_date=valid_from,
+                        valid_to_date_exclusive=valid_to,
+                        composite_figi=figi,
+                    )
                 )
-            )
         return {key: tuple(value) for key, value in by_ticker.items()}, sha256_file(path)
 
-    def _qualified_accessions(
-        self,
-    ) -> tuple[list[QualifiedAccession], Counter[str], int]:
+    def _qualified_accessions(self) -> tuple[list[QualifiedAccession], Counter[str], int]:
         qualified: list[QualifiedAccession] = []
         exclusions: Counter[str] = Counter()
         rows_seen = 0
         seen_accessions: set[str] = set()
-
         for shard in phase31_month_shards():
             path = self.authoritative_root / f"{shard.label}.jsonl"
             groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -529,12 +502,10 @@ class Phase31Form4PredictorBuilder:
                         raise Phase31PredictorError("authoritative Form-4 row lacks accession_number")
                     groups[accession].append(row)
                     rows_seen += 1
-
             overlap = seen_accessions.intersection(groups)
             if overlap:
                 raise Phase31PredictorError(
-                    "Form-4 accession spans monthly filing-date shards; predictor refuses implicit merge: "
-                    + sorted(overlap)[0]
+                    "Form-4 accession spans monthly filing-date shards: " + sorted(overlap)[0]
                 )
             seen_accessions.update(groups)
             for accession in sorted(groups):
@@ -543,7 +514,6 @@ class Phase31Form4PredictorBuilder:
                     exclusions[reason or "UNKNOWN_ACCESSION_EXCLUSION"] += 1
                 else:
                     qualified.append(result)
-
         if rows_seen != PHASE31_ACCEPTED_FULL_HISTORY_AUTHORITATIVE_ROWS:
             raise Phase31PredictorError(
                 f"authoritative row scan mismatch: {rows_seen} != {PHASE31_ACCEPTED_FULL_HISTORY_AUTHORITATIVE_ROWS}"
@@ -562,28 +532,27 @@ class Phase31Form4PredictorBuilder:
         protected_last = date.fromisoformat(PHASE31_PROTECTED_LAST_SIGNAL)
 
         grouped: dict[tuple[str, date, str], list[QualifiedAccession]] = defaultdict(list)
+        directions_by_slot: dict[tuple[str, date], set[str]] = defaultdict(set)
         for item in qualified:
             decision_pos = bisect_right(sessions, item.filing_date)
             if decision_pos >= len(sessions):
                 exclusions["NO_DECISION_SESSION_IN_FROZEN_GRID"] += 1
                 continue
             decision = sessions[decision_pos]
-            exit_pos = decision_pos + PHASE31_OUTCOME_HORIZON_SESSIONS
-            if exit_pos >= len(sessions):
+            if decision_pos + PHASE31_OUTCOME_HORIZON_SESSIONS >= len(sessions):
                 exclusions["NO_T20_EXIT_IN_FROZEN_GRID"] += 1
                 continue
             if decision > protected_last:
                 exclusions["DECISION_AFTER_LAST_COMPLETE_SIGNAL"] += 1
                 continue
             grouped[(item.ticker, decision, item.direction)].append(item)
+            directions_by_slot[(item.ticker, decision)].add(item.direction)
 
-        contradictory = {
-            (ticker, decision)
-            for ticker, decision, _ in grouped
-            if len({direction for t, d, direction in grouped if t == ticker and d == decision}) > 1
-        }
         if PHASE31_CONTRADICTORY_TICKER_SESSION_POLICY != "EXCLUDE":
             raise Phase31PredictorError("Phase31 contradictory ticker/session policy drifted")
+        contradictory = {
+            slot for slot, directions in directions_by_slot.items() if len(directions) > 1
+        }
 
         resolved_events: list[dict[str, Any]] = []
         for (ticker, decision, direction), accessions in sorted(
@@ -603,14 +572,6 @@ class Phase31Form4PredictorBuilder:
             if identity is None:
                 exclusions[reason or "PIT_IDENTITY_EXCLUDED"] += 1
                 continue
-
-            accession_ids = sorted({item.accession_number for item in accessions})
-            owners = sorted({item.owner_cik for item in accessions})
-            issuers = sorted({item.issuer_cik for item in accessions})
-            filing_dates = sorted({item.filing_date.isoformat() for item in accessions})
-            tx_rows = sum(item.transaction_row_count for item in accessions)
-            shares = sum(item.transaction_shares_sum for item in accessions)
-            gross = sum(item.transaction_gross_value_sum for item in accessions)
             resolved_events.append(
                 {
                     "ticker": ticker,
@@ -621,13 +582,13 @@ class Phase31Form4PredictorBuilder:
                     "decision_session": decision,
                     "decision_index": dpos,
                     "exit_session": exit_session,
-                    "accession_numbers": accession_ids,
-                    "owner_ciks": owners,
-                    "issuer_ciks": issuers,
-                    "filing_dates": filing_dates,
-                    "transaction_row_count": tx_rows,
-                    "transaction_shares_sum": shares,
-                    "transaction_gross_value_sum": gross,
+                    "accession_numbers": sorted({x.accession_number for x in accessions}),
+                    "owner_ciks": sorted({x.owner_cik for x in accessions}),
+                    "issuer_ciks": sorted({x.issuer_cik for x in accessions}),
+                    "filing_dates": sorted({x.filing_date.isoformat() for x in accessions}),
+                    "transaction_row_count": sum(x.transaction_row_count for x in accessions),
+                    "transaction_shares_sum": sum(x.transaction_shares_sum for x in accessions),
+                    "transaction_gross_value_sum": sum(x.transaction_gross_value_sum for x in accessions),
                 }
             )
 
@@ -641,17 +602,16 @@ class Phase31Form4PredictorBuilder:
             key = (str(event["ticker"]), str(event["event_direction"]))
             current_index = int(event["decision_index"])
             lower = current_index - PHASE31_CLUSTER_LOOKBACK_SESSIONS + 1
-            prior = [item for item in history[key] if int(item["decision_index"]) >= lower]
+            history[key] = [x for x in history[key] if int(x["decision_index"]) >= lower]
             cluster_accessions = set(event["accession_numbers"])
             cluster_owners = set(event["owner_ciks"])
-            for item in prior:
-                cluster_accessions.update(item["accession_numbers"])
-                cluster_owners.update(item["owner_ciks"])
+            for prior in history[key]:
+                cluster_accessions.update(prior["accession_numbers"])
+                cluster_owners.update(prior["owner_ciks"])
             clustered = (
                 len(cluster_owners) >= PHASE31_CLUSTER_MIN_DISTINCT_OWNERS
                 and len(cluster_accessions) >= PHASE31_CLUSTER_MIN_DISTINCT_ACCESSIONS
             )
-
             if event["event_direction"] == "PURCHASE":
                 broad_id = "open_market_purchase_long"
                 cluster_id = "clustered_open_market_purchase_long" if clustered else None
@@ -660,16 +620,16 @@ class Phase31Form4PredictorBuilder:
                 cluster_id = "clustered_open_market_sale_short" if clustered else None
 
             decision = event["decision_session"]
-            contract = None
-            target_list: list[dict[str, Any]] | None = None
+            target: list[dict[str, Any]] | None = None
+            contract: str | None = None
             if research_start <= decision <= development_last:
+                target = development_records
                 contract = PHASE31_DEVELOPMENT_PREDICTOR_CONTRACT_VERSION
-                target_list = development_records
             elif protected_start <= decision <= protected_last:
+                target = protected_records
                 contract = PHASE31_PROTECTED_PREDICTOR_CONTRACT_VERSION
-                target_list = protected_records
 
-            if target_list is not None and contract is not None:
+            if target is not None and contract is not None:
                 record = {
                     "contract_version": contract,
                     "phase31_policy_fingerprint": policy_fp,
@@ -699,17 +659,11 @@ class Phase31Form4PredictorBuilder:
                     raise Phase31PredictorError("Phase31 predictor field order drifted")
                 if any(field in record for field in PHASE31_FORBIDDEN_MARKET_FIELDS):
                     raise Phase31PredictorError("Phase31 predictor contains a forbidden market field")
-                target_list.append(record)
+                target.append(record)
                 candidate_counts[broad_id] += 1
                 if cluster_id:
                     candidate_counts[cluster_id] += 1
-
             history[key].append(event)
-            history[key] = [
-                item
-                for item in history[key]
-                if int(item["decision_index"]) > current_index - PHASE31_CLUSTER_LOOKBACK_SESSIONS
-            ]
 
         dev_sha, dev_reused = _write_immutable_parquet(
             self.settings, records=development_records, target=self.development_path()
@@ -717,20 +671,14 @@ class Phase31Form4PredictorBuilder:
         protected_sha, protected_reused = _write_immutable_parquet(
             self.settings, records=protected_records, target=self.protected_path()
         )
-
         checks = {
-            "acquisition_exactly_matches_accepted_full_history": rows_seen
-            == PHASE31_ACCEPTED_FULL_HISTORY_AUTHORITATIVE_ROWS,
+            "accepted_authoritative_rows_exact": rows_seen == PHASE31_ACCEPTED_FULL_HISTORY_AUTHORITATIVE_ROWS,
             "event_unit_frozen": PHASE31_EVENT_UNIT == "ONE_EXACT_TICKER_DECISION_SESSION_DIRECTION",
             "cluster_window_frozen_20": PHASE31_CLUSTER_LOOKBACK_SESSIONS == 20,
             "cluster_owner_min_frozen_2": PHASE31_CLUSTER_MIN_DISTINCT_OWNERS == 2,
             "cluster_accession_min_frozen_2": PHASE31_CLUSTER_MIN_DISTINCT_ACCESSIONS == 2,
             "development_predictors_nonempty": bool(development_records),
             "protected_predictors_nonempty": bool(protected_records),
-            "predictor_rows_have_no_market_fields": all(
-                not any(field in row for field in PHASE31_FORBIDDEN_MARKET_FIELDS)
-                for row in development_records + protected_records
-            ),
             "identity_is_composite_figi_authoritative": bool(intervals),
             "target_outcomes_unread": True,
             "protected_returns_unread": True,
@@ -781,17 +729,15 @@ class Phase31Form4PredictorBuilder:
             raise Phase31PredictorError("Phase31 predictor construction failed: " + ", ".join(failed))
 
         self.predictor_root.mkdir(parents=True, exist_ok=True)
-        text = json.dumps(report, indent=2, sort_keys=True) + "\n"
         if self.report_path().is_file():
-            existing = self.report_path().read_text(encoding="utf-8")
-            # Reuse flags may differ on a deterministic rerun; normalize them before
-            # comparing scientific content.
-            old = json.loads(existing)
+            old = _read_json(self.report_path(), label="existing Phase31 predictor report")
             old["development_artifact_reused"] = report["development_artifact_reused"]
             old["protected_artifact_reused"] = report["protected_artifact_reused"]
             if old != report:
                 raise Phase31PredictorError("immutable Phase31 predictor report drifted")
         else:
-            atomic_write_text(self.report_path(), text)
+            atomic_write_text(
+                self.report_path(), json.dumps(report, indent=2, sort_keys=True) + "\n"
+            )
         report["report_path"] = str(self.report_path().resolve())
         return report
