@@ -61,6 +61,26 @@ Complete final record: `docs/phase31_closeout.md`.
 
 Original Form-4 feasibility `FEASIBILITY_FAIL` and its repair history remain permanent provenance. Root cause remains a **Massive beta source-association/data-quality defect**, not an ATLAS parser bug.
 
+Original failed feasibility target head:
+
+`b59a64938eb84c0c1e7df3aaea390cc437326f94`
+
+Original failed feasibility fingerprint:
+
+`edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc`
+
+Historical chronology diagnostic implementation head:
+
+`80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7`
+
+Historical chronology violation artifact SHA:
+
+`3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
+
+Source-quality policy:
+
+`RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
+
 Source-quality fingerprint:
 
 `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`
