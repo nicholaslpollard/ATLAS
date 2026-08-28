@@ -63,6 +63,10 @@ Root cause was classified as a **Massive beta source-association/data-quality de
 
 ## Source-quality repair — TARGET PASS
 
+Historical target result label:
+
+`SOURCE_QUALITY_REPAIR_PASS`
+
 Frozen source-quality policy:
 
 `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
