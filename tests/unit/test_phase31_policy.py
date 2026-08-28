@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from packages.backtesting.phase31_acquisition import (
+    PHASE31_ACQUISITION_CONTRACT_VERSION,
     PHASE31_EXPECTED_MONTH_SHARDS,
+    _partition_global_quarantine,
     phase31_month_shards,
 )
 from packages.backtesting.phase31_policy import (
@@ -56,3 +58,15 @@ def test_phase31_month_shards_cover_frozen_source_scope() -> None:
     assert shards[-1].start_date == "2026-08-01"
     assert shards[-1].end_date == PHASE31_PROTECTED_OUTCOME_END == "2026-08-11"
     assert len({shard.label for shard in shards}) == len(shards)
+
+
+def test_phase31_acquisition_is_memory_bounded_and_global_accession_quarantine() -> None:
+    assert "memory-bounded-global-accession-quarantine" in PHASE31_ACQUISITION_CONTRACT_VERSION
+    rows = (
+        {"accession_number": "A", "filing_date": "2023-08-17"},
+        {"accession_number": "B", "filing_date": "2023-08-17"},
+        {"accession_number": "A", "filing_date": "2023-09-19"},
+    )
+    authoritative, quarantined = _partition_global_quarantine(rows, {"A"})
+    assert [row["accession_number"] for row in authoritative] == ["B"]
+    assert [row["accession_number"] for row in quarantined] == ["A", "A"]

@@ -11,6 +11,9 @@ if str(PROJECT_ROOT) not in sys.path:
 EXPECTED_POLICY_FINGERPRINT = "e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67"
 EXPECTED_SOURCE_QUALITY_FINGERPRINT = "2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83"
 EXPECTED_QUARANTINE_SHA = "586df9eb91fb8a9a949a0dc44e0765f7c4b7db54c2b383037012d0fb17aaf1eb"
+EXPECTED_ACQUISITION_CONTRACT = (
+    "phase31-form4-acquisition-v2-monthly-memory-bounded-global-accession-quarantine"
+)
 EXPECTED_CANDIDATES = (
     "open_market_purchase_long",
     "clustered_open_market_purchase_long",
@@ -56,14 +59,16 @@ def main() -> int:
     status = _read("docs/current_status.md")
     workflow = _read(".github/workflows/atlas-tests.yml")
 
-    from packages.backtesting.phase31_policy import (
-        PHASE31_CANDIDATES,
-        phase31_policy_fingerprint,
+    from packages.backtesting.phase31_policy import PHASE31_CANDIDATES, phase31_policy_fingerprint
+    from packages.backtesting.phase31_acquisition import (
+        PHASE31_ACQUISITION_CONTRACT_VERSION,
+        phase31_month_shards,
     )
-    from packages.backtesting.phase31_acquisition import phase31_month_shards
 
     if phase31_policy_fingerprint() != EXPECTED_POLICY_FINGERPRINT:
         raise AssertionError("Phase31 scientific policy fingerprint drifted")
+    if PHASE31_ACQUISITION_CONTRACT_VERSION != EXPECTED_ACQUISITION_CONTRACT:
+        raise AssertionError("Phase31 acquisition contract drifted")
     if tuple(candidate.candidate_id for candidate in PHASE31_CANDIDATES) != EXPECTED_CANDIDATES:
         raise AssertionError("Phase31 candidate family drifted")
     if len(phase31_month_shards()) != 62:
@@ -85,13 +90,20 @@ def main() -> int:
     _require(policy, 'PHASE31_PROVIDER_TEXT_ALPHA_AUTHORITY = False', "no provider text authority")
     _require(policy, 'PHASE31_TRANSACTION_VALUE_THRESHOLD_USED = False', "no trade-size threshold search")
 
+    _require(acquisition, EXPECTED_ACQUISITION_CONTRACT, "memory-bounded acquisition contract")
     _require(acquisition, "phase31_month_shards", "monthly acquisition")
     _require(acquisition, "classify_form4_source_quality", "source-quality application")
+    _require(acquisition, "_partition_global_quarantine", "global accession quarantine")
+    _require(acquisition, "raw_metadata_path", "raw shard sidecar metadata")
+    _require(acquisition, "Pass 1: raw acquisition/resume + global contamination discovery", "two-pass acquisition")
+    _require(acquisition, "Pass 2: apply the global accession quarantine", "global second pass")
     _require(acquisition, "probe_raw_reconciliation_exact", "raw overlap reconciliation")
     _require(acquisition, "probe_authoritative_reconciliation_exact", "authoritative overlap reconciliation")
     _require(acquisition, "immutable Phase31 acquisition artifact drifted", "immutable shard protection")
     _require(acquisition, '"target_outcome_rows_read": 0', "zero target outcome reads")
     _require(acquisition, '"protected_return_rows_read": 0', "zero protected return reads")
+    _forbid(acquisition, "all_raw.extend", "full-history in-memory accumulation")
+    _forbid(acquisition, "all_raw_rows", "full-history in-memory tuple")
     for forbidden in (
         "forward_return",
         "directional_return",
@@ -130,9 +142,10 @@ def main() -> int:
 
     print("ATLAS Phase 31 frozen scientific policy/acquisition contracts: PASS")
     print("- exact source-quality target evidence is bound before performance")
-    print("- exactly four Form-4 hypotheses are frozen")
-    print("- 20-session decision-open outcome, SPY-relative primary, costs, sample gates, Holm and robustness are frozen")
-    print("- full historical acquisition is immutable, resumable, source-quality filtered and probe-reconciled")
+    print("- exactly four Form-4 hypotheses remain frozen")
+    print("- 20-session decision-open outcome, SPY-relative primary, costs, sample gates, Holm and robustness remain frozen")
+    print("- acquisition is monthly, resumable, memory-bounded and globally quarantines contaminated accessions")
+    print("- raw shards have immutable SHA-bound sidecars and accepted probe windows must reconcile exactly")
     print("- acquisition has no market-outcome or broker/order/PAPER/LIVE authority")
     return 0
 

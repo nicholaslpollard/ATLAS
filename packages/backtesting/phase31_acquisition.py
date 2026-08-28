@@ -5,7 +5,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
@@ -34,7 +34,7 @@ from .phase31_source_quality import (
 
 
 PHASE31_ACQUISITION_CONTRACT_VERSION = (
-    "phase31-form4-acquisition-v1-monthly-raw-preserved-source-quality-authoritative"
+    "phase31-form4-acquisition-v2-monthly-memory-bounded-global-accession-quarantine"
 )
 PHASE31_EXPECTED_MONTH_SHARDS = 62
 
@@ -115,17 +115,16 @@ def phase31_month_shards() -> tuple[Phase31MonthShard, ...]:
     current = date(start.year, start.month, 1)
     shards: list[Phase31MonthShard] = []
     while current <= end:
-        if current.month == 12:
-            next_month = date(current.year + 1, 1, 1)
-        else:
-            next_month = date(current.year, current.month + 1, 1)
-        shard_start = max(start, current)
-        shard_end = min(end, next_month - timedelta(days=1))
+        next_month = (
+            date(current.year + 1, 1, 1)
+            if current.month == 12
+            else date(current.year, current.month + 1, 1)
+        )
         shards.append(
             Phase31MonthShard(
                 label=f"{current.year:04d}-{current.month:02d}",
-                start_date=shard_start.isoformat(),
-                end_date=shard_end.isoformat(),
+                start_date=max(start, current).isoformat(),
+                end_date=min(end, next_month - timedelta(days=1)).isoformat(),
             )
         )
         current = next_month
@@ -149,18 +148,32 @@ def _chronology_violation_count(rows: Iterable[dict[str, Any]]) -> int:
 
 
 def _filing_date_in_range(row: dict[str, Any], start: date, end: date) -> bool:
-    try:
-        filing = parse_form4_date(row.get("filing_date"), field="filing_date")
-    except Exception as exc:  # provider evidence must fail closed
-        raise Phase31AcquisitionError(f"invalid filing_date in historical Form-4 row: {exc}") from exc
+    filing = parse_form4_date(row.get("filing_date"), field="filing_date")
     return start <= filing <= end
 
 
-class Phase31Form4HistoricalAcquisition:
-    """Acquire full Form-4 history while retaining raw beta-feed provenance.
+def _partition_global_quarantine(
+    rows: Iterable[dict[str, Any]], contaminated_accessions: set[str]
+) -> tuple[tuple[dict[str, Any], ...], tuple[dict[str, Any], ...]]:
+    authoritative: list[dict[str, Any]] = []
+    quarantined: list[dict[str, Any]] = []
+    for row in rows:
+        accession = row.get("accession_number")
+        if isinstance(accession, str) and accession in contaminated_accessions:
+            quarantined.append(row)
+        else:
+            authoritative.append(row)
+    return tuple(authoritative), tuple(quarantined)
 
-    Raw provider evidence is immutable. Source-quality rules create separate
-    authoritative and quarantine artifacts. No market prices or returns are read.
+
+class Phase31Form4HistoricalAcquisition:
+    """Acquire full Form-4 history without retaining the full corpus in memory.
+
+    Pass 1 acquires/resumes immutable monthly raw shards, verifies per-shard sidecars,
+    discovers chronology-invalid accessions globally, and retains only the four small
+    feasibility overlap windows for replay. Pass 2 writes authoritative/quarantine
+    shards using the global contaminated-accession set. No market prices or returns
+    are read.
     """
 
     def __init__(self, settings: AtlasSettings, client: MassivePhase31Form4Client) -> None:
@@ -174,22 +187,19 @@ class Phase31Form4HistoricalAcquisition:
         self.quarantine_root = self.root / "quarantine"
         self.report_path = self.root / "phase31_form4_acquisition.json"
         self.source_repair_path = (
-            derived_root
-            / "strategy_evaluation"
-            / "phase31"
-            / "v1"
+            derived_root / "strategy_evaluation" / "phase31" / "v1"
             / "phase31_form4_source_quality_repair.json"
         )
         self.source_feasibility_path = (
-            derived_root
-            / "strategy_evaluation"
-            / "phase31"
-            / "v1"
+            derived_root / "strategy_evaluation" / "phase31" / "v1"
             / "phase31_form4_feasibility.json"
         )
 
     def raw_path(self, label: str) -> Path:
         return self.raw_root / f"{label}.jsonl"
+
+    def raw_metadata_path(self, label: str) -> Path:
+        return self.raw_root / f"{label}.meta.json"
 
     def authoritative_path(self, label: str) -> Path:
         return self.authoritative_root / f"{label}.jsonl"
@@ -229,10 +239,103 @@ class Phase31Form4HistoricalAcquisition:
             raise Phase31AcquisitionError("missing original feasibility fingerprint")
         return repair, feasibility
 
+    def _raw_metadata_payload(
+        self,
+        *,
+        shard: Phase31MonthShard,
+        rows: tuple[dict[str, Any], ...],
+        raw_sha: str,
+        page_count: int,
+        request_ids: tuple[str, ...],
+    ) -> dict[str, Any]:
+        return {
+            "contract_version": PHASE31_ACQUISITION_CONTRACT_VERSION,
+            "phase31_policy_fingerprint": phase31_policy_fingerprint(),
+            "source_quality_fingerprint": PHASE31_SOURCE_QUALITY_FINGERPRINT,
+            "label": shard.label,
+            "start_date": shard.start_date,
+            "end_date": shard.end_date,
+            "rows": len(rows),
+            "raw_sha256": raw_sha,
+            "successful_provider_pages": page_count,
+            "request_ids": list(request_ids),
+            "target_outcome_rows_read": 0,
+            "protected_return_rows_read": 0,
+        }
+
+    def _load_or_fetch_raw_shard(
+        self, shard: Phase31MonthShard
+    ) -> tuple[tuple[dict[str, Any], ...], int, tuple[str, ...], bool]:
+        raw_path = self.raw_path(shard.label)
+        meta_path = self.raw_metadata_path(shard.label)
+        if raw_path.is_file() != meta_path.is_file():
+            raise Phase31AcquisitionError(
+                f"raw shard/metadata pair is incomplete for {shard.label}"
+            )
+
+        if raw_path.is_file():
+            rows = _load_jsonl(raw_path)
+            meta = _load_json(meta_path)
+            raw_sha = sha256_file(raw_path)
+            checks = {
+                "contract": meta.get("contract_version") == PHASE31_ACQUISITION_CONTRACT_VERSION,
+                "policy": meta.get("phase31_policy_fingerprint") == phase31_policy_fingerprint(),
+                "source_quality": meta.get("source_quality_fingerprint") == PHASE31_SOURCE_QUALITY_FINGERPRINT,
+                "label": meta.get("label") == shard.label,
+                "start": meta.get("start_date") == shard.start_date,
+                "end": meta.get("end_date") == shard.end_date,
+                "rows": meta.get("rows") == len(rows),
+                "sha": meta.get("raw_sha256") == raw_sha,
+                "no_target_outcomes": meta.get("target_outcome_rows_read") == 0,
+                "no_protected_returns": meta.get("protected_return_rows_read") == 0,
+            }
+            if not all(checks.values()):
+                failed = sorted(name for name, passed in checks.items() if not passed)
+                raise Phase31AcquisitionError(
+                    f"existing raw shard failed immutable metadata validation for {shard.label}: "
+                    + ", ".join(failed)
+                )
+            return rows, 0, (), True
+
+        result = self.client.form4_window(
+            start_date=date.fromisoformat(shard.start_date),
+            end_date=date.fromisoformat(shard.end_date),
+        )
+        rows = tuple(dict(row) for row in result.rows)
+        text = _jsonl(rows)
+        raw_sha = _immutable_write(raw_path, text)
+        meta = self._raw_metadata_payload(
+            shard=shard,
+            rows=rows,
+            raw_sha=raw_sha,
+            page_count=int(result.page_count),
+            request_ids=tuple(str(value) for value in result.request_ids),
+        )
+        atomic_write_text(meta_path, json.dumps(meta, indent=2, sort_keys=True) + "\n")
+        return rows, int(result.page_count), tuple(str(v) for v in result.request_ids), False
+
+    def _collect_probe_rows(
+        self,
+        shard: Phase31MonthShard,
+        raw_rows: tuple[dict[str, Any], ...],
+        probe_rows: dict[str, list[dict[str, Any]]],
+    ) -> None:
+        shard_start = date.fromisoformat(shard.start_date)
+        shard_end = date.fromisoformat(shard.end_date)
+        for window in PHASE31_PROBE_WINDOWS:
+            start = date.fromisoformat(window.start_date)
+            end = date.fromisoformat(window.end_date)
+            if shard_end < start or shard_start > end:
+                continue
+            probe_rows[window.label].extend(
+                row for row in raw_rows if _filing_date_in_range(row, start, end)
+            )
+
     def _probe_reconciliation(
         self,
-        all_raw_rows: tuple[dict[str, Any], ...],
+        probe_rows: dict[str, list[dict[str, Any]]],
         feasibility: dict[str, Any],
+        contaminated_accessions: set[str],
     ) -> list[dict[str, Any]]:
         source_windows = feasibility.get("windows")
         if not isinstance(source_windows, list):
@@ -244,14 +347,15 @@ class Phase31Form4HistoricalAcquisition:
         }
         reports: list[dict[str, Any]] = []
         for window in PHASE31_PROBE_WINDOWS:
-            start = date.fromisoformat(window.start_date)
-            end = date.fromisoformat(window.end_date)
-            raw_subset = tuple(
-                row for row in all_raw_rows if _filing_date_in_range(row, start, end)
+            raw_subset = tuple(probe_rows[window.label])
+            # Re-run the generic classifier so impossible rows still fail closed, then
+            # apply the full-history global accession set to the overlap window.
+            classify_form4_source_quality(raw_subset)
+            authoritative, quarantined = _partition_global_quarantine(
+                raw_subset, contaminated_accessions
             )
-            classified = classify_form4_source_quality(raw_subset)
             raw_sha = _sha_text(_jsonl(raw_subset))
-            authoritative_sha = _sha_text(_jsonl(classified.authoritative_rows))
+            authoritative_sha = _sha_text(_jsonl(authoritative))
             source_window = source_by_label.get(window.label)
             if not isinstance(source_window, dict):
                 raise Phase31AcquisitionError(f"missing original probe lineage: {window.label}")
@@ -264,8 +368,8 @@ class Phase31Form4HistoricalAcquisition:
                     "raw_sha256": raw_sha,
                     "expected_raw_sha256": expected_raw_sha,
                     "raw_exact": raw_sha == expected_raw_sha,
-                    "authoritative_rows": len(classified.authoritative_rows),
-                    "quarantined_rows": len(classified.quarantined_rows),
+                    "authoritative_rows": len(authoritative),
+                    "quarantined_rows": len(quarantined),
                     "authoritative_sha256": authoritative_sha,
                     "expected_authoritative_sha256": expected_authoritative_sha,
                     "authoritative_exact": authoritative_sha == expected_authoritative_sha,
@@ -273,94 +377,94 @@ class Phase31Form4HistoricalAcquisition:
             )
         return reports
 
-    def run(self, *, progress: callable | None = None) -> dict[str, Any]:
+    def run(self, *, progress: Callable[[str], None] | None = None) -> dict[str, Any]:
         repair, feasibility = self._validate_source_repair()
-        shard_reports: list[dict[str, Any]] = []
-        all_raw: list[dict[str, Any]] = []
-        total_provider_pages = 0
-        total_fresh_shards = 0
-        total_reused_shards = 0
-        total_raw = 0
-        total_authoritative = 0
-        total_quarantined = 0
+        shards = phase31_month_shards()
+        probe_rows: dict[str, list[dict[str, Any]]] = {
+            window.label: [] for window in PHASE31_PROBE_WINDOWS
+        }
+        first_pass: list[dict[str, Any]] = []
         contaminated_accessions: set[str] = set()
+        total_provider_pages = 0
+        fresh_shards = 0
+        reused_shards = 0
 
-        for shard in phase31_month_shards():
-            raw_path = self.raw_path(shard.label)
-            if raw_path.is_file():
-                raw_rows = _load_jsonl(raw_path)
-                page_count = 0
-                request_ids: tuple[str, ...] = ()
-                reused = True
-                total_reused_shards += 1
-                if progress is not None:
-                    progress(f"{shard.label}: reuse immutable raw shard rows={len(raw_rows)}")
-            else:
-                if progress is not None:
-                    progress(f"{shard.label}: provider acquisition {shard.start_date}..{shard.end_date}")
-                result = self.client.form4_window(
-                    start_date=date.fromisoformat(shard.start_date),
-                    end_date=date.fromisoformat(shard.end_date),
-                )
-                raw_rows = tuple(dict(row) for row in result.rows)
-                page_count = int(result.page_count)
-                request_ids = tuple(str(value) for value in result.request_ids)
-                _immutable_write(raw_path, _jsonl(raw_rows))
-                reused = False
-                total_fresh_shards += 1
-                total_provider_pages += page_count
-
-            raw_sha = sha256_file(raw_path)
+        # Pass 1: raw acquisition/resume + global contamination discovery.
+        for shard in shards:
+            if progress is not None:
+                progress(f"{shard.label}: raw acquisition/resume")
+            raw_rows, page_count, request_ids, reused = self._load_or_fetch_raw_shard(shard)
             classified = classify_form4_source_quality(raw_rows)
-            authoritative_path = self.authoritative_path(shard.label)
-            quarantine_path = self.quarantine_path(shard.label)
-            authoritative_sha = _immutable_write(
-                authoritative_path, _jsonl(classified.authoritative_rows)
-            )
-            quarantine_envelopes = tuple(
-                {
-                    "month_shard": shard.label,
-                    "quarantine_reason": PHASE31_QUARANTINE_REASON,
-                    "quarantine_scope": "ENTIRE_ACCESSION",
-                    "raw_row": row,
-                }
-                for row in classified.quarantined_rows
-            )
-            quarantine_sha = _immutable_write(quarantine_path, _jsonl(quarantine_envelopes))
-            invalid_authoritative = _chronology_violation_count(classified.authoritative_rows)
-            if invalid_authoritative:
-                raise Phase31AcquisitionError(
-                    f"authoritative shard still has chronology violations: {shard.label}"
-                )
-
             contaminated_accessions.update(classified.contaminated_accessions)
-            all_raw.extend(raw_rows)
-            total_raw += len(raw_rows)
-            total_authoritative += len(classified.authoritative_rows)
-            total_quarantined += len(classified.quarantined_rows)
-            shard_reports.append(
+            self._collect_probe_rows(shard, raw_rows, probe_rows)
+            total_provider_pages += page_count
+            reused_shards += int(reused)
+            fresh_shards += int(not reused)
+            first_pass.append(
                 {
                     **asdict(shard),
                     "reused_raw_shard": reused,
                     "provider_pages_this_run": page_count,
                     "request_ids_this_run": list(request_ids),
                     "raw_rows": len(raw_rows),
-                    "raw_path": str(raw_path.resolve()),
-                    "raw_sha256": raw_sha,
-                    "chronology_violation_seed_rows": len(classified.violating_seed_rows),
-                    "contaminated_accessions": list(classified.contaminated_accessions),
-                    "quarantined_rows": len(classified.quarantined_rows),
-                    "quarantine_path": str(quarantine_path.resolve()),
+                    "raw_path": str(self.raw_path(shard.label).resolve()),
+                    "raw_metadata_path": str(self.raw_metadata_path(shard.label).resolve()),
+                    "raw_sha256": sha256_file(self.raw_path(shard.label)),
+                    "local_chronology_violation_seed_rows": len(classified.violating_seed_rows),
+                    "local_contaminated_accessions": list(classified.contaminated_accessions),
+                }
+            )
+
+        # Pass 2: apply the global accession quarantine to every monthly shard.
+        shard_reports: list[dict[str, Any]] = []
+        total_raw = 0
+        total_authoritative = 0
+        total_quarantined = 0
+        for source in first_pass:
+            label = str(source["label"])
+            raw_rows = _load_jsonl(self.raw_path(label))
+            authoritative, quarantined = _partition_global_quarantine(
+                raw_rows, contaminated_accessions
+            )
+            invalid_authoritative = _chronology_violation_count(authoritative)
+            if invalid_authoritative:
+                raise Phase31AcquisitionError(
+                    f"authoritative shard still has chronology violations: {label}"
+                )
+            authoritative_sha = _immutable_write(
+                self.authoritative_path(label), _jsonl(authoritative)
+            )
+            quarantine_envelopes = tuple(
+                {
+                    "month_shard": label,
+                    "quarantine_reason": PHASE31_QUARANTINE_REASON,
+                    "quarantine_scope": "ENTIRE_ACCESSION_GLOBAL_HISTORY",
+                    "raw_row": row,
+                }
+                for row in quarantined
+            )
+            quarantine_sha = _immutable_write(
+                self.quarantine_path(label), _jsonl(quarantine_envelopes)
+            )
+            total_raw += len(raw_rows)
+            total_authoritative += len(authoritative)
+            total_quarantined += len(quarantined)
+            shard_reports.append(
+                {
+                    **source,
+                    "quarantined_rows": len(quarantined),
+                    "quarantine_path": str(self.quarantine_path(label).resolve()),
                     "quarantine_sha256": quarantine_sha,
-                    "authoritative_rows": len(classified.authoritative_rows),
-                    "authoritative_path": str(authoritative_path.resolve()),
+                    "authoritative_rows": len(authoritative),
+                    "authoritative_path": str(self.authoritative_path(label).resolve()),
                     "authoritative_sha256": authoritative_sha,
                     "authoritative_chronology_violations": invalid_authoritative,
                 }
             )
 
-        all_raw_rows = tuple(all_raw)
-        probe_reconciliation = self._probe_reconciliation(all_raw_rows, feasibility)
+        probe_reconciliation = self._probe_reconciliation(
+            probe_rows, feasibility, contaminated_accessions
+        )
         checks = {
             "source_quality_target_replay_exact": repair.get("pass") is True,
             "scientific_policy_frozen": len(phase31_policy_fingerprint()) == 64,
@@ -371,11 +475,18 @@ class Phase31Form4HistoricalAcquisition:
             "all_authoritative_shards_chronology_clean": all(
                 item["authoritative_chronology_violations"] == 0 for item in shard_reports
             ),
-            "all_raw_shards_hashed": all(len(str(item["raw_sha256"])) == 64 for item in shard_reports),
+            "all_raw_shards_hashed": all(
+                len(str(item["raw_sha256"])) == 64 for item in shard_reports
+            ),
             "all_authoritative_shards_hashed": all(
                 len(str(item["authoritative_sha256"])) == 64 for item in shard_reports
             ),
-            "probe_raw_reconciliation_exact": all(item["raw_exact"] for item in probe_reconciliation),
+            "all_raw_sidecars_present": all(
+                Path(str(item["raw_metadata_path"])).is_file() for item in shard_reports
+            ),
+            "probe_raw_reconciliation_exact": all(
+                item["raw_exact"] for item in probe_reconciliation
+            ),
             "probe_authoritative_reconciliation_exact": all(
                 item["authoritative_exact"] for item in probe_reconciliation
             ),
@@ -392,8 +503,8 @@ class Phase31Form4HistoricalAcquisition:
             "source_history_start": PHASE31_SOURCE_HISTORY_START,
             "source_history_end": PHASE31_PROTECTED_OUTCOME_END,
             "month_shards": len(shard_reports),
-            "fresh_provider_shards_this_run": total_fresh_shards,
-            "reused_raw_shards_this_run": total_reused_shards,
+            "fresh_provider_shards_this_run": fresh_shards,
+            "reused_raw_shards_this_run": reused_shards,
             "successful_provider_pages_this_run": total_provider_pages,
             "raw_rows": total_raw,
             "authoritative_rows": total_authoritative,
