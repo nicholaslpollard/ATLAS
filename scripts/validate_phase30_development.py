@@ -67,6 +67,26 @@ def main() -> None:
         ".place_order(",
         ".cancel_order(",
     )
+    # This guard is intentionally scoped to ticker semantics. Generic `.upper()` /
+    # `.lower()` checks are invalid here because unrelated configuration handling
+    # (for example Parquet compression names) legitimately uses case conversion.
+    forbidden_ticker_transform_or_remap = (
+        '["ticker"].str.upper(',
+        '["ticker"].str.lower(',
+        "['ticker'].str.upper(",
+        "['ticker'].str.lower(",
+        "ticker.upper(",
+        "ticker.lower(",
+        "upper(n.ticker)",
+        "lower(n.ticker)",
+        "upper(p.ticker)",
+        "lower(p.ticker)",
+        "collate nocase",
+        "ticker_alias",
+        "symbol_map",
+        "ticker_map",
+        "ticker_remap",
+    )
 
     checks = {
         "policy_fingerprint_exact": phase30_policy_fingerprint()
@@ -107,14 +127,7 @@ def main() -> None:
             in development_source
         ),
         "no_ticker_normalization_or_remap": not any(
-            token in development_source
-            for token in (
-                ".upper()",
-                ".lower()",
-                "ticker_alias",
-                "symbol_map",
-                "ticker_map",
-            )
+            token in lowered for token in forbidden_ticker_transform_or_remap
         ),
         "direction_tail_precedes_reaction_split": (
             "def direction_tail_frame" in development_source
