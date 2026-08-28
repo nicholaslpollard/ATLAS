@@ -7,10 +7,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from packages.backtesting.phase31_acquisition import (
-    Phase31AcquisitionError,
-    Phase31Form4HistoricalAcquisition,
-)
+from packages.backtesting.phase31_acquisition import Phase31AcquisitionError
+from packages.backtesting.phase31_acquisition_v3 import Phase31Form4HistoricalAcquisitionV3
 from packages.backtesting.phase31_policy import phase31_policy_fingerprint
 from packages.backtesting.phase31_source_quality import Phase31SourceQualityError
 from packages.core.exceptions import ProviderError
@@ -24,8 +22,12 @@ def main() -> int:
     print(f"Frozen scientific policy fingerprint: {phase31_policy_fingerprint()}")
     print("Scope: 2021-07-16 through 2026-08-11, monthly immutable shards")
     print("Provider mode: authenticated Massive read-only GET")
-    print("Raw provider evidence: immutable / retained")
-    print("Source quality: fail-closed whole-accession chronology quarantine")
+    print("Raw provider evidence: immutable / retained, including malformed source rows")
+    print(
+        "Source quality: fail-closed whole-accession global quarantine for impossible chronology "
+        "or missing transaction classification"
+    )
+    print("Raw-shard resumability: existing v2 SHA-bound sidecars remain authoritative")
     print("Probe-window replay: must match the accepted target evidence exactly")
     print("Market outcomes/protected returns: FORBIDDEN / UNREAD")
     print("Broker/order/PAPER/LIVE: DISABLED")
@@ -33,7 +35,7 @@ def main() -> int:
 
     settings = load_settings()
     client = MassivePhase31Form4Client(MassiveRESTClient(settings))
-    acquisition = Phase31Form4HistoricalAcquisition(settings, client)
+    acquisition = Phase31Form4HistoricalAcquisitionV3(settings, client)
 
     try:
         report = acquisition.run(progress=lambda message: print(f"  {message}"))
@@ -54,6 +56,8 @@ def main() -> int:
     print(f"Authoritative rows: {report['authoritative_rows']}")
     print(f"Quarantined rows: {report['quarantined_rows']}")
     print(f"Contaminated accessions: {report['contaminated_accessions']}")
+    print(f"Chronology violation seed rows: {report['chronology_violation_seed_rows']}")
+    print(f"Missing transaction_code seed rows: {report['missing_transaction_code_seed_rows']}")
     print("Probe reconciliation:")
     for item in report["probe_reconciliation"]:
         print(
