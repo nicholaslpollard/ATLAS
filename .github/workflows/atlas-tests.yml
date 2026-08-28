@@ -208,5 +208,8 @@ jobs:
       - name: Validate Phase 30 independent negative closeout contracts
         run: python scripts/validate_phase30_closeout.py
 
+      - name: Validate Phase 31 Form-4 feasibility contracts
+        run: python scripts/validate_phase31.py
+
       - name: Run tests
         run: python -m pytest -q

@@ -1,29 +1,63 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-28 after the target Phase30 independent closeout returned `ACCEPTED_NEGATIVE` with zero protected returns and the Alpaca historical-news entitlement probe returned HTTP 200.**
+**Last synchronized: 2026-08-28 after Phase30 merged `ACCEPTED_NEGATIVE`, the post-merge suite passed on Ubuntu/Windows, and Phase31 was rebaselined to SEC Form-4 insider-transaction alpha.**
 
-Read `docs/roadmap.md` first. It remains the normative mission/anti-drift/remaining-phase authority. Then read `docs/phase30_event_driven_public_information_alpha.md`, `docs/phase30_scientific_contract.md`, `docs/phase30_end_to_end_anti_workaround_audit.md`, and this file. `docs/future_news_sentiment_and_option_fair_value.md` records downstream news-sentiment, Alpaca/Benzinga, Massive live-news provider-selection, and option fair-value requirements and does not alter Phase30.
+Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase authority. Then read the active `docs/phase31_sec_insider_transaction_alpha.md`. Phase30's frozen scientific and closeout documents remain provenance. `docs/future_news_sentiment_and_option_fair_value.md` remains a downstream Phase32+ design requirement and does not alter the active alpha gate.
 
 ## Repository / authority state
 
-- Accepted project foundation: **through Phase30** once the Phase30 branch is merged.
-- Phase26 PR #30 merge `2074808605cf85b5462e5999ed1836d68b0434c3`: `ACCEPTED_NEGATIVE`.
-- Phase27 PR #31 merge `dc015f51232dc66ba94b6175c276a0227d5a3761`: `ACCEPTED_NEGATIVE`.
-- Phase28 PR #32 merge `285f112d51463dd1e06ea4e874a882ad98f71dc5`: `ACCEPTED_NEGATIVE`.
+- Accepted foundation: **through Phase30**.
+- Phase26 PR #30: `ACCEPTED_NEGATIVE`.
+- Phase27 PR #31: `ACCEPTED_NEGATIVE`.
+- Phase28 PR #32: `ACCEPTED_NEGATIVE`.
 - Phase29 PR #33 merge `87c9450e1b21606b83489f16ff326235ae92eb2b`: `ACCEPTED_NEGATIVE`.
-- Phase30 target closeout: **PASS / `ACCEPTED_NEGATIVE`**.
-- Phase30 target closeout head: `49af61f54cf2a849d1e6c88210c468f613f414f4`.
-- Current Phase30 branch documentation head may be later because post-run evidence/documentation was synchronized after the target closeout.
-- Phase31 remains blocked until >=1 alpha architecture earns accepted historical analytical `SUPPORTED` authority.
+- Phase30 PR #34 merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e`: `ACCEPTED_NEGATIVE`.
+- Phase30 post-merge workflow `33141442154`: Ubuntu SUCCESS / Windows SUCCESS.
+- Active branch: `phase-31-sec-insider-transaction-alpha`.
+- Active gate: **Phase31 — SEC Form-4 Insider-Transaction Alpha**.
+- Phase32 signal-to-trade remains blocked until >=1 alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 - LIVE remains **DISABLED**. Automatic broker failover remains **DISABLED**.
 
 ## Mission / anti-drift lock
 
 ATLAS exists to make evidence-driven stock/options trading decisions with the objective of growing account equity and producing profit over time after realistic costs while controlling drawdown, tail risk, concentration, execution risk, and risk of ruin.
 
-`market/reference -> Parquet/DuckDB -> features -> broad discovery -> regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> promotion -> deep research/news -> stock/options selection -> geometry -> portfolio risk/sizing -> deterministic case -> independent AI audit -> alerts -> shadow/paper/live execution -> learning -> browser control plane -> deployment`
+`market/reference/regulatory -> Parquet/DuckDB -> features -> discovery/regimes -> ML probability evidence -> deterministic alpha evaluation -> promotion -> deep research/news -> stock/options selection -> geometry -> portfolio risk/sizing -> deterministic case -> independent AI audit -> alerts -> shadow/paper/live execution -> learning -> browser control plane -> deployment`
 
 Never weaken a validator, threshold, chronology rule, multiplicity rule, protected boundary, identity rule, or authority rule to obtain PASS. Legitimate negative research is accepted. Provider-native ticker text/case and PIT identity are preserved. ML/AI do not independently create trade authority. PAPER does not imply LIVE.
+
+## Provider/subscription facts relevant to the active gate
+
+### Massive
+
+The current Massive subscription is **Stocks Starter**.
+
+Current official plan documentation describes Stocks Starter as including all US stock tickers, five years of historical market data, 15-minute-delayed market data, reference data, corporate actions, technical indicators, minute/second aggregates, flat files, WebSockets, and snapshot access.
+
+For the active Phase31 source specifically, Massive currently documents `GET /stocks/filings/vX/form-4` as:
+
+- included in **all Stocks plans**, including Stocks Starter;
+- updated daily;
+- early-access/beta, so schema/plan movement is possible and must trigger revalidation;
+- structured around SEC filing/accession/insider transaction data.
+
+Do **not** assume the current subscription includes:
+
+- Financials & Ratios Expansion;
+- Massive Options Starter/Developer/Advanced;
+- paid Massive/Benzinga partner datasets;
+- stock trades/quotes unavailable to Stocks Starter;
+- any other asset-class subscription not separately proven.
+
+### Alpaca news
+
+A bounded authenticated probe using the configured paper credentials proved historical Benzinga news access:
+
+- HTTP 200;
+- full article content available;
+- observed `X-Ratelimit-Limit: 200` requests/minute.
+
+This proves historical REST news access only; it does not prove Alpaca real-time news WebSocket entitlement or latency. Future live-news provider choice remains prospective and configurable between Massive Standard, Alpaca/Benzinga, and optional separately entitled Massive/Benzinga real-time partner data.
 
 ## Accepted alpha evidence through Phase30
 
@@ -33,190 +67,121 @@ Phase11 authority remains:
 - MIXED: `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
 - UNSUPPORTED: `breakdown_short_v1`, `breakout_long_v1`, `momentum_short_v1`, `pullback_short_v1`, `trend_following_short_v1`.
 
-Modern alpha research:
+Modern research:
 
-- Phase26 deterministic/composite self-feature: 21,483 development observations; zero survivors/finalists/support; zero protected returns — `ACCEPTED_NEGATIVE`.
-- Phase27 cross-sectional ranking: 18,111 development rows; zero survivors/winners/finalists/support; zero protected reads — `ACCEPTED_NEGATIVE`.
-- Phase28 lead-lag/residual network: 14,466 development rows; zero survivors/winners/finalists/support; zero protected reads — `ACCEPTED_NEGATIVE`.
-- Phase29 relative-value/stat-arb: 14,523 development rows; zero survivors/winners/finalists/support; zero protected reads; independent/anti-workaround PASS — `ACCEPTED_NEGATIVE`.
-- Phase30 metadata-only public-news shock: 3,057 joined development rows; zero survivors/winners/finalists/support; independent negative reconstruction PASS; zero protected reads — `ACCEPTED_NEGATIVE`.
+- Phase26 self-feature deterministic/composite: 21,483 development observations; zero support — `ACCEPTED_NEGATIVE`.
+- Phase27 cross-sectional learned ranking: 18,111 development rows; zero support — `ACCEPTED_NEGATIVE`.
+- Phase28 cross-stock lead-lag/residual network: 14,466 development rows; zero support — `ACCEPTED_NEGATIVE`.
+- Phase29 PCA/distance relative value: 14,523 development rows; zero support — `ACCEPTED_NEGATIVE`.
+- Phase30 public-news metadata shock: 3,057 joined development rows; zero survivors/winners/finalists/support; independent negative reconstruction PASS — `ACCEPTED_NEGATIVE`.
 
-These failed families may not be retuned after observing their results.
+Failed families may not be retuned after observing their results.
 
-## Phase30 frozen scientific contract
+## Phase30 final evidence
 
-Policy fingerprint:
+Frozen policy fingerprint:
 
 `341f3a5a97281f7878ab0c55f8ab5a33c9910abc47b69a0b5fef8e94771ce4f8`
 
-Only `id`, `published_utc`, and exact provider-native `tickers` had Phase30 news alpha authority. Article text/content, provider sentiment, and provider insights remained provenance only because historical revision/model-vintage semantics were not proven before the freeze.
+Key target evidence:
 
-Key frozen rules:
+- 775,164 Massive historical news articles;
+- 1,917,356 ticker links;
+- 1,012,022 development predictor rows / 16,749 tickers;
+- 23,183 protected predictor rows / 4,828 tickers;
+- development join 3,057 rows / 1,736 tickers / 953 sessions;
+- zero selection survivors;
+- zero winners;
+- zero finalists;
+- zero supported candidates;
+- independent validation `PASS_NEGATIVE_SAMPLE_GATE_PROOF`;
+- protected candidate rows read 0;
+- protected return rows read 0;
+- holdout consumed False.
 
-- news warmup `2021-07-16`; research start `2021-08-16`; development end `2026-05-06`;
-- outer purge `2026-05-07`, `2026-05-08`, `2026-05-11`;
-- protected window `2026-05-12` through `2026-08-11`;
-- assign an article to the first XNYS session whose official close is >=30 minutes after publication;
-- 20-session zero-filled news baseline;
-- `news_surprise = log1p(current_unique_article_count) - mean(log1p(previous_20_session_counts_with_zeros))`;
-- reaction field `d1_return_1`;
-- outcome horizon exact `t+3` directional return;
-- minimum five same-session/direction candidate rows;
-- fixed top 20% news-surprise tail inside exact session/direction;
-- tie-break `news_surprise DESC, instrument_id ASC`;
-- reaction-sign split occurs **after** tail selection;
-- primary cost 10 bps; stress cost 25 bps;
-- chronological 75% selection / 3-session purge / internal validation remainder;
-- selection minimum 750 raw rows / 250 signal sessions / >=5 of 6 positive folds;
-- internal minimum 250 / 80 / >=2 of 3;
-- protected minimum 75 / 24 / >=2 of 3;
-- global Holm-Bonferroni across exactly four hypotheses at alpha .05;
-- at most one winner/finalist per direction;
-- runner-up substitution forbidden;
-- protected performance finalist-only.
-
-Exactly four frozen hypotheses:
-
-1. `news_shock_aligned_continuation_long` — LONG + positive `d1_return_1`;
-2. `news_shock_aligned_continuation_short` — SHORT + negative `d1_return_1`;
-3. `news_shock_counterreaction_reversal_long` — LONG + negative `d1_return_1`;
-4. `news_shock_counterreaction_reversal_short` — SHORT + positive `d1_return_1`.
-
-No post-result text/sentiment variant, lookback change, event cutoff change, threshold search, fifth hypothesis, or runner-up substitution is allowed.
-
-## Phase30 completed target evidence
-
-### Historical-news feasibility — PASS
-
-Fingerprint `04d31c5687c8da2892d017692b26ad930eff6af19f54a55294509e50d97bd312`.
-
-Four frozen boundary probes returned 1,219 articles / 1,219 ticker-linked articles / four provider pages. Target outcomes and protected returns remained zero.
-
-### Full Massive historical-news acquisition — PASS
-
-- 775,164 articles;
-- 62 immutable/resumable monthly shards;
-- 804 successful provider pages;
-- full acquisition reconciled the four feasibility snapshots on alpha-authorized metadata;
-- target outcomes 0; protected returns 0; external mutation 0.
-
-### Predictor-only metadata news shocks — PASS
-
-Target head `58c846ba04b8e769c7dbb356c42c945e23de3d76`:
-
-- articles scanned: **775,164**;
-- ticker links scanned: **1,917,356**;
-- development predictor rows/tickers: **1,012,022 / 16,749**;
-- protected predictor rows/tickers: **23,183 / 4,828**;
-- source-lineage SHA256 `557d34878c394bc626235ef4dd76604ba8eb6fab67ec0aeea43b26399ff88d00`;
-- development SHA256 `2ef164e06768f5ba90f78cfcce6c5d2406de306496be766a110cf752843073dd`;
-- protected SHA256 `84166de8961665b376a61ca0e9164d6eef224b0d34bdc741bdfa2b6a7e5e91df`;
-- target outcomes 0; protected returns 0; external activity 0.
-
-### Development-only selection + internal validation — PASS / NEGATIVE
-
-Target run on exact head `34ebbca0d2a94cd4637987b0591707f30980d133`:
-
-- exact joined development population: **3,057 rows / 1,736 tickers / 953 sessions**;
-- selection interval `2021-08-16..2025-02-28`;
-- purge `2025-03-03`, `2025-03-04`, `2025-03-05`;
-- internal interval `2025-03-06..2026-05-06`;
-- development target rows read: **3,057**;
-- protected candidate rows read: **0**;
-- protected return rows read: **0**;
-- protected holdout consumed: **False**.
-
-Frozen selection results:
-
-- `news_shock_aligned_continuation_long`: **171 rows / 112 sessions**, mean10 `-0.05516706`, LCB `-0.08436764`, Holm reject false.
-- `news_shock_aligned_continuation_short`: **8 / 6**, mean10 `-0.01477761`, Holm reject false.
-- `news_shock_counterreaction_reversal_long`: **30 / 28**, mean10 `0.07203060`, LCB `0.00857746`, raw bootstrap p `0.04347826`, but Holm reject false and mandatory sample/year/regime gates fail.
-- `news_shock_counterreaction_reversal_short`: **1 / 1**, mean10 `-0.01977370`, Holm reject false.
-
-Selection survivors: `[]`.
-Selection winners: `[]`.
-Internal-validation candidates: none.
-Frozen finalists: `[]`.
-
-The positive reversal-long diagnostic is **not** authority and may not be chased or retuned: 30 rows / 28 sessions is far below the frozen 750 / 250 selection minimum and it also failed multiplicity/robustness gates.
-
-### Independent negative reconstruction + full closeout — PASS
-
-Target run on exact head `49af61f54cf2a849d1e6c88210c468f613f414f4` returned:
-
-- independent validation: `PASS_NEGATIVE_SAMPLE_GATE_PROOF`;
-- reconstructed population: **3,057 rows / 1,736 tickers / 953 sessions**;
-- reconstructed aligned continuation LONG: **171 / 112**, mean10 `-0.05516705767603842`;
-- reconstructed aligned continuation SHORT: **8 / 6**, mean10 `-0.014777611974925359`;
-- reconstructed counterreaction reversal LONG: **30 / 28**, mean10 `0.07203060058543764`;
-- reconstructed counterreaction reversal SHORT: **1 / 1**, mean10 `-0.019773702682967076`;
-- selection survivors `[]`;
-- selection winners `[]`;
-- frozen finalists `[]`;
-- supported candidates `[]`;
-- disposition **`ACCEPTED_NEGATIVE`**;
-- Phase31 entry satisfied **False**;
-- protected candidate rows read **0**;
-- protected return rows read **0**;
-- protected holdout consumed **False**;
-- provider/broker/order/PAPER/LIVE activity all **0**;
-- target closeout `Pass: True`.
-
-The independent validator does not import `phase30_development.py`. It independently reconstructs the accepted Phase26 + Phase30 development join and the frozen session/direction eligibility, top-20%-before-reaction signal formation, and primary 10-bps results. Because every reconstructed candidate fails the preregistered 750-row/250-session sample gate, none can legally survive regardless of inferential details.
+The positive-looking reversal-LONG diagnostic had only 30 rows / 28 sessions and failed the preregistered minimum sample, Holm, and robustness requirements. It is not support and may not be chased.
 
 ## Protected-holdout state
 
-Master protected outcome window: `2026-05-12` through `2026-08-11`.
+Master protected outcome window:
 
-Phases26–30 have read **zero protected returns**. The Phase30 protected predictor artifact contains no market outcomes. With zero Phase30 finalists, Phase30 closed without opening protected performance. The inherited outcome holdout remains unopened and unconsumed for a genuinely different future alpha architecture.
+`2026-05-12` through `2026-08-11`
 
-## Future news sentiment / provider / option fair-value requirements
+Phases26–30 read **zero protected returns**. Phase30 produced a protected predictor artifact with no protected market outcomes. The holdout remains genuinely unopened and may be reused only under a materially different, pre-frozen future alpha architecture.
 
-`docs/future_news_sentiment_and_option_fair_value.md` is downstream-only and does not modify Phase30.
+## Active Phase31 — SEC Form-4 Insider-Transaction Alpha
 
-- News sentiment defaults to **Supporting Evidence** with asymmetric treatment of credible contradictory/thesis-invalidating news.
-- Historical provider text/sentiment remains non-authoritative for leakage-sensitive backtests until exact historical revision/model-vintage semantics are proven.
-- Prospectively captured first-receipt news with immutable versioning is the preferred future PIT-safe sentiment dataset path.
+### Plain-English purpose
 
-### Alpaca/Benzinga historical news — actual credential access PROVEN
+Instead of asking price patterns or news-arrival counts to predict themselves, Phase31 asks whether legally reported ownership decisions by corporate insiders contain future-return information after the trades become public through SEC Form 4 filings.
 
-A bounded read-only target probe on 2026-08-28 using the configured **paper** credential profile returned:
+This is a genuinely different information mechanism. It uses insiders' disclosed capital-allocation behavior and ownership changes rather than another transformation of price, cross-stock relationships, relative value, or news frequency.
 
-- HTTP `200`;
-- one historical-news row for the requested 2026-08-01..2026-08-02 interval;
-- `created_at` and `updated_at`;
-- headline and symbols;
-- full article content available;
-- `X-Ratelimit-Limit: 200`;
-- `X-Ratelimit-Remaining: 199`.
+### Current stage: feasibility/provenance only
 
-Therefore Alpaca historical Benzinga news is **PROVEN READ-ONLY AVAILABLE** on the current paper profile at the observed 200-request/minute limit. This does not yet prove real-time WebSocket entitlement or acceptable live latency.
+No Phase31 performance has been inspected and no Phase31 hypothesis library is yet frozen.
 
-### Massive live/prospective news — provider-selectable future path
+The initial feasibility step must prove:
 
-- ATLAS already has proven access to Massive standard `/v2/reference/news`.
-- Current Massive documentation lists standard Stocks News as included in all Stocks plans.
-- Massive's Starter/Developer pricing labels **market data** as 15-minute delayed, but the standard news endpoint documentation itself does not state that news is 15-minute delayed; ATLAS must not infer either real-time or delayed-news behavior from the market-data label alone.
-- Massive separately offers a paid Benzinga real-time partner News endpoint `/benzinga/v2/news`; this is distinct from the standard Stocks News endpoint and must not be assumed included in the existing subscription.
-- Future live-news provider modes should be explicit: `MassiveStandard`, `AlpacaBenzinga`, and optional `MassiveBenzingaRealtime` only if separately entitled.
-- Default selection must be based on prospective measured publication-to-first-receipt latency, reliability, coverage, update behavior, content availability, duplicate/syndication rate, and cost.
-- No silent cross-provider double counting. Preserve provider provenance and deterministic dedup/source-priority rules.
+- the actual Stocks Starter credential can read Form 4;
+- historical coverage exists around the required ATLAS research/protected boundaries;
+- pagination is deterministic;
+- accession number, filing date, issuer CIK, owner CIK, ticker linkage, record type, transaction code, shares/price/value, insider role, security type, ownership, 10b5-1 flag, and timeliness coverage can be measured;
+- purchase (`P`) and sale (`S`) transaction populations are large enough to design a finite study;
+- immutable raw evidence can be replayed;
+- zero market outcomes are read.
 
-### Option fair value
+### Conservative PIT rule
 
-- Phase31 option selection must include the explicit Option Fair-Value Engine.
-- BSM is a reference rather than sole authority; IV surface/skew/term structure, independent volatility/fair-value estimates, rates/dividends, executable pricing/liquidity, Greeks, and American-style pricing are incorporated where applicable.
-- Planned fair-value modes: `Off`, `Rank Boost` (default), `Require Positive Valuation Edge`.
+Massive Form 4 currently exposes `filing_date` as a date, not an exact acceptance timestamp. Therefore, until exact SEC acceptance timestamps are independently proven **before performance**, a Form 4 filing may first influence an ATLAS signal on the **next XNYS trading session strictly after its filing date**.
+
+This may sacrifice some reaction speed, but it prevents hidden same-day timing leakage. Exact SEC timing can only replace this rule if a separate non-performance feasibility step proves authoritative, reproducible acceptance timestamps before any Phase31 outcome read.
+
+### Why Form 4 is the lead regulatory mechanism
+
+Research literature has repeatedly found corporate-insider purchases to be more informative than insider sales and to contain predictive information beyond simple contrarian behavior. This motivates testing only; it does not grant ATLAS support.
+
+Form 4 is preferable to short interest as the first regulatory gate because short-interest `settlement_date` is not the same as the date FINRA released the data to the public. Phase31 will not create a lookahead bug by treating settlement date as publication date.
+
+### Phase31 authority boundary
+
+Allowed now:
+
+- bounded read-only Massive Form-4 queries;
+- immutable local/provider evidence writes;
+- metadata/field-completeness analysis;
+- tests/validators/documentation.
+
+Forbidden now:
+
+- development/target future-return reads;
+- protected candidate/return reads;
+- broker reads or writes;
+- order writes;
+- PAPER submissions;
+- LIVE writes;
+- automatic broker failover;
+- frontend trading authority;
+- performance-driven threshold/hypothesis selection.
+
+## Downstream design requirements already preserved
+
+`docs/future_news_sentiment_and_option_fair_value.md` remains binding once signal-to-trade becomes reachable:
+
+- news sentiment defaults to **Supporting Evidence** and can force thesis re-evaluation when materially contradictory;
+- prospectively versioned first-receipt news is preferred for PIT-safe sentiment authority;
+- live-news provider is configurable and selected by measured latency/reliability/coverage rather than brand preference;
+- Phase32 option selection must include an explicit Option Fair-Value Engine;
+- BSM is a reference, not sole valuation authority;
+- valuation must account for IV surface/skew/term structure, independent vol estimates, rates/dividends, executable prices/liquidity, Greeks, and American-style exercise where relevant.
 
 ## Remaining roadmap
 
-- Phase30: Event-Driven Public-Information Alpha — **`ACCEPTED_NEGATIVE`; ready for merge**.
-- Phase31: Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — **blocked until supported alpha exists**.
-- Phase32: End-to-End Historical Replay & Stress Certification + Replay Dashboard.
-- Phase33: Prospective SHADOW/PAPER Certification + Operator Web Beta.
-- Phase34: Outcomes/Learning/Drift/Governance + Performance UI.
-- Phase35: Production Web App/Operations/Deployment.
-- Phase36: LIVE Readiness/Deployment Hardening/Reconciliation/Failure Certification — LIVE still disabled.
-- Phase37: Controlled LIVE Activation & Evidence-Based Scaling.
-
-Because Phase30 is negative, the next research phase must be rebaselined to a genuinely different alpha-information mechanism before Phase31. Phase30 itself may not be retuned from its observed result.
+- **Phase31:** SEC Form-4 Insider-Transaction Alpha — active feasibility/provenance stage.
+- **Phase32:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked until supported alpha exists.
+- **Phase33:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
+- **Phase34:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
+- **Phase35:** Outcomes/Learning/Drift/Governance + Performance UI.
+- **Phase36:** Production Web App/Operations/Deployment.
+- **Phase37:** LIVE Readiness/Deployment Hardening/Reconciliation/Failure Certification — LIVE still disabled.
+- **Phase38:** Controlled LIVE Activation & Evidence-Based Scaling.
