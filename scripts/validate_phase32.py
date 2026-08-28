@@ -128,9 +128,13 @@ def main() -> int:
         "SEC_EDGAR_MAX_REQUESTS_PER_SECOND = 1",
         "SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS",
         'ZoneInfo("America/New_York")',
+        "from html import unescape",
+        "_normalize_presentation_fields",
         "<ACCEPTANCE-DATETIME>",
         "ITEM\\s+INFORMATION",
         "ACCESSION\\s+NUMBER",
+        "contains_ACCESSION=",
+        "header_sha256=",
         "sec_index_headers_url",
         "SEC_EDGAR_INDEX_HEADERS_SUFFIX",
         "_resolve_contact_email",
@@ -188,6 +192,7 @@ def main() -> int:
     require(roadmap, "Phase33 — Signal-to-Trade Construction", "shifted signal-to-trade")
     require(roadmap, "Phase39 — Controlled LIVE Activation", "shifted LIVE phase")
     require(status, "phase-32-sec-8k-material-event-alpha", "active branch status")
+    require(status, "five source-format attempts", "current target failure count")
     require(status, "-index-headers.html", "current official SEC index-header source")
     require(status, "Phase31", "Phase31 closeout provenance")
     require(status, "ACCEPTED_NEGATIVE", "Phase31 accepted-negative status")
@@ -201,9 +206,10 @@ def main() -> int:
     require(phase_doc, "-index-headers.html", "bounded SEC header artifact")
     require(phase_doc, EXPECTED_PUBLIC_RULE, "Phase32 timing rule")
     require(phase_doc, "zero market outcomes", "Phase32 feasibility blindness")
-    require(incident, "FOURTH SOURCE-FORMAT FAILURE", "fourth source-format incident provenance")
+    require(incident, "FIFTH SOURCE-FORMAT FAILURE", "fifth source-format incident provenance")
+    require(incident, "d18aa3592f5a3718f91aeee1291e98c8dcf535ec", "fifth failed target head")
     require(incident, "missing ACCESSION NUMBER", "target parser failure provenance")
-    require(incident, "presentation-tolerant", "parser repair provenance")
+    require(incident, "HTML-unescape", "entity-aware parser repair provenance")
     require(flow, "predictor-only Form-4 event construction", "retained Phase31 flow provenance")
     require(flow, "Phase32 — SEC 8-K Material Corporate-Event Alpha", "active flow")
     require(readme, "Active Phase32: SEC 8-K Material Corporate-Event Alpha", "README active phase")
@@ -219,7 +225,8 @@ def main() -> int:
     print("- exact acceptance timestamps remain SEC-header Eastern wall-clock values")
     print("- SEC transport targets only the bounded listed -index-headers.html artifact")
     print("- SEC requests use the declared fair-access identity shape, gzip/deflate, and one request/second")
-    print("- SEC presentation parsing tolerates HTML trailing markup but keeps strict accession reconciliation")
+    print("- SEC parsing normalizes HTML entities/presentation tags in a separate view while preserving raw evidence")
+    print("- parsed accession remains strict and must reconcile exactly to the requested Massive accession")
     print("- SEC HTTP 403 denials remain fail-closed and are not automatically retried")
     print("- hypotheses remain unfrozen and all target/protected market outcomes remain unread")
     print("- Phase33 signal-to-trade and all broker/order/PAPER/LIVE authority remain blocked")
