@@ -1,126 +1,148 @@
 # Phase 30 — Event-Driven Public-Information Alpha
 
-**Status:** ACTIVE — historical-news feasibility/provenance contract frozen; alpha hypotheses are **NOT YET FROZEN**.
+**Status:** DEVELOPMENT RESULT NEGATIVE; independent negative closeout pending target PASS. Protected returns remain unread.
 
 **Source foundation:** Phase29 merge `87c9450e1b21606b83489f16ff326235ae92eb2b` (`ACCEPTED_NEGATIVE`).
 
 ## Plain-English purpose
 
-ATLAS has correctly rejected four modern price-derived alpha families under frozen standards. Phase30 changes the information source rather than retuning those failures. It asks whether timestamped public company information—initially financial news—contains repeatable directional value after realistic costs.
+Phase30 deliberately changed the information mechanism after four price-derived modern-alpha families failed. It tested whether timestamped public company news-arrival intensity, combined with the already point-in-time-safe Phase26 same-session reaction field, added repeatable directional value after realistic costs.
 
-The first Phase30 work package is deliberately not a backtest. Before ATLAS is allowed to define or test news alpha, it must prove that the historical news evidence is actually available, timestamped, ticker-linked, replayable, and point-in-time defensible. A data source that cannot pass that provenance test cannot be used to claim edge.
+The experiment is now frozen and has been run on development outcomes. It produced zero selection survivors, zero winners, and zero finalists. The correct remaining work is independent negative reconstruction and full phase-end closeout without opening protected returns.
 
-## Entry condition
+## Frozen scientific contract
 
-Satisfied:
+Policy fingerprint:
 
-- Phase29 full closeout PASS / `ACCEPTED_NEGATIVE`;
-- Phase29 supported candidates = 0;
-- protected candidate rows read = 0;
-- protected return rows read = 0;
-- inherited `2026-05-12` through `2026-08-11` holdout remains outcome-unopened;
-- post-merge Phase29 `main` workflow `33124971664` passed Ubuntu and Windows.
+`341f3a5a97281f7878ab0c55f8ab5a33c9910abc47b69a0b5fef8e94771ce4f8`
 
-## Current contract boundary
+Only the following news fields have Phase30 alpha authority:
 
-### Frozen now — feasibility/provenance only
+- `id`;
+- `published_utc`;
+- exact provider-native `tickers`.
 
-The following are frozen before any Phase30 target outcome is inspected:
+Historical title/description/content, provider sentiment, and provider insights remain provenance only. Their historical revision/model-vintage semantics were not proven before the freeze, so they may not be introduced after observing Phase30 performance.
 
-- source provider path: accepted `MassiveRESTClient` -> `/v2/reference/news`;
-- all-ticker historical query; no current-universe ticker list is projected backward;
-- sort = `published_utc`, order = ascending;
-- page limit = 1000;
-- provider `next_url` pagination must remain on the configured Massive REST host through the accepted REST adapter;
-- exact UTC/RFC3339 publication timestamps are required;
-- provider-native ticker text/case is preserved;
-- article IDs are the deduplication key; conflicting duplicate IDs fail closed;
-- raw provider article objects, including optional provider `insights`, are retained as provenance;
-- provider `insights` have **NO ALPHA AUTHORITY** during feasibility and may not become historical alpha features unless their point-in-time model/vintage semantics are separately proven before the scientific hypothesis freeze;
-- no market outcomes, future closes, directional returns, forward returns, candidate performance, protected outcomes, or alpha rankings may be read during feasibility;
-- no broker reads/writes, order writes, PAPER submits, LIVE writes, automation writes, or automatic broker failover.
+Frozen chronology and signal rules:
 
-### Exact non-performance probe windows
+- news warmup start `2021-07-16`;
+- research start `2021-08-16`;
+- development end `2026-05-06`;
+- outer purge `2026-05-07`, `2026-05-08`, `2026-05-11`;
+- protected window `2026-05-12` through `2026-08-11`;
+- article maps to first XNYS session whose official regular close is at least 30 minutes after publication;
+- news shock uses current unique-article count versus the prior 20 XNYS sessions with zero-news sessions included;
+- reaction field is accepted Phase26 `d1_return_1`;
+- outcome is exact `t+3` directional return from the accepted Phase26 development observation artifact;
+- at least five exact session/direction rows are required before ranking;
+- signal is fixed top 20% by `news_surprise` within exact session/direction;
+- deterministic tie-break `news_surprise DESC, instrument_id ASC`;
+- positive/negative reaction split occurs only after the direction tail is determined;
+- primary cost 10 bps; stress cost 25 bps;
+- chronological 75% selection, exact three-session purge, then internal validation;
+- selection minimum 750 raw rows / 250 signal sessions / >=5 of 6 positive folds;
+- internal minimum 250 / 80 / >=2 of 3;
+- protected minimum 75 / 24 / >=2 of 3;
+- global Holm-Bonferroni across exactly four hypotheses at alpha .05;
+- maximum one winner/finalist per direction;
+- runner-up substitution forbidden;
+- protected returns finalist-only.
 
-These windows are tied mechanically to already-frozen research boundaries rather than chosen from price outcomes:
+Exactly four hypotheses were frozen before performance inspection:
 
-1. `research_start`: `2021-08-16T00:00:00Z` through `2021-08-16T23:59:59Z`;
-2. `development_end`: `2026-05-06T00:00:00Z` through `2026-05-06T23:59:59Z`;
-3. `protected_start`: `2026-05-12T00:00:00Z` through `2026-05-12T23:59:59Z`;
-4. `protected_end`: `2026-08-11T00:00:00Z` through `2026-08-11T23:59:59Z`.
+1. `news_shock_aligned_continuation_long` — LONG + `d1_return_1 > 0`;
+2. `news_shock_aligned_continuation_short` — SHORT + `d1_return_1 < 0`;
+3. `news_shock_counterreaction_reversal_long` — LONG + `d1_return_1 < 0`;
+4. `news_shock_counterreaction_reversal_short` — SHORT + `d1_return_1 > 0`.
 
-The probe asks only whether usable contemporaneous news evidence exists and whether its provider contract is internally consistent. Counts are coverage facts, not alpha evidence.
+No fifth hypothesis, alternate text/sentiment signal, alternate lookback, alternate event cutoff, cost change, threshold search, or runner-up substitution is allowed after observing the result.
 
-## Feasibility acceptance criteria
+## Evidence completed
 
-The historical-news feasibility work package passes only if all of the following hold on the authorized target machine/account:
+### Historical-news feasibility — PASS
 
-1. every exact probe window can be read successfully through the accepted Massive REST adapter;
-2. every probe window returns at least one article and at least one ticker-linked article;
-3. every retained article has a nonblank provider ID, nonblank title, parseable timezone-aware `published_utc`, and a ticker array;
-4. every publication timestamp lies within the exact requested window;
-5. provider-native ticker strings are preserved without uppercasing/remapping;
-6. repeated article IDs are identical or fail closed as conflicting evidence;
-7. pagination completes deterministically and request IDs/page counts are recorded;
-8. raw article evidence is written deterministically and hashed;
-9. repeated runs over unchanged provider evidence produce the same content hashes;
-10. target outcomes/protected returns remain unread;
-11. external mutation authority remains zero.
+The accepted Massive REST path `/v2/reference/news` was proven on four frozen boundary windows with exact publication timestamps, ticker linkage, deterministic pagination/evidence hashing, and zero market-outcome/protected reads.
 
-An empty/denied 2021 boundary is a legitimate feasibility failure. ATLAS will not fabricate history, substitute current news, or silently shrink the research interval merely to continue.
+Feasibility fingerprint:
 
-## Evidence artifacts
+`04d31c5687c8da2892d017692b26ad930eff6af19f54a55294509e50d97bd312`
 
-Provider evidence:
+### Full historical acquisition — PASS
 
-`data/provider/massive/phase30_news_feasibility/v1/<window>.jsonl`
+- 775,164 articles;
+- 62 immutable/resumable monthly shards;
+- 804 successful provider pages;
+- all four feasibility snapshots reconciled against the full acquisition on the authorized metadata fields;
+- target outcomes 0; protected returns 0; external mutation 0.
 
-Feasibility report:
+### Predictor-only construction — PASS
 
-`data/derived/strategy_evaluation/phase30/v1/phase30_news_feasibility.json`
+Target head `58c846ba04b8e769c7dbb356c42c945e23de3d76`:
 
-The report records the feasibility fingerprint, exact windows, article/page counts, timestamp range, ticker-linked counts, evidence SHA-256 hashes, request IDs, and zero outcome/mutation authority.
+- 775,164 articles scanned;
+- 1,917,356 ticker links scanned;
+- 1,012,022 development predictor rows / 16,749 tickers;
+- 23,183 protected predictor rows / 4,828 tickers;
+- target outcome rows 0;
+- protected return rows 0;
+- external activity 0.
 
-## What is explicitly NOT frozen yet
+The protected predictor artifact contains only metadata-derived news shocks; it does not contain protected market outcomes.
 
-**ALPHA HYPOTHESES: NOT YET FROZEN.**
+### Development-only study — PASS / NEGATIVE
 
-No Phase30 signal family, text transform, event aggregation window, tail/threshold, outcome horizon, cost assumption, bootstrap setting, multiplicity rule, winner rule, or support threshold is defined by this feasibility contract.
+Target head `34ebbca0d2a94cd4637987b0591707f30980d133`:
 
-That is intentional. Historical field availability and PIT semantics must be established first. Once feasibility passes, Phase30 will freeze a finite scientific contract **before** reading development or protected performance.
+- joined development population: 3,057 rows / 1,736 tickers / 953 sessions;
+- selection `2021-08-16..2025-02-28`;
+- purge `2025-03-03`, `2025-03-04`, `2025-03-05`;
+- internal `2025-03-06..2026-05-06`;
+- protected candidate rows read 0;
+- protected return rows read 0;
+- holdout consumed false.
 
-Potential fields/ideas mentioned in literature or provider documentation are hypotheses only and carry no authority.
+Frozen selection results:
 
-## Post-feasibility scientific freeze
+- aligned continuation LONG: 171 rows / 112 sessions, primary mean after 10 bps `-0.05516706`;
+- aligned continuation SHORT: 8 / 6, primary mean `-0.01477761`;
+- counterreaction reversal LONG: 30 / 28, primary mean `0.07203060`, 95% LCB `0.00857746`, raw bootstrap p `0.04347826`, but Holm reject false and mandatory sample/year/regime gates failed;
+- counterreaction reversal SHORT: 1 / 1, primary mean `-0.01977370`.
 
-If feasibility passes, the next internal Phase30 work package must freeze, before performance inspection:
+Selection survivors `[]`; selection winners `[]`; internal-validation candidates none; frozen finalists `[]`.
 
-- exact article fields allowed for historical features;
-- deterministic local text/metadata transforms;
-- duplicate/staleness/freshness semantics if used;
-- article-to-market-session timing rule using the accepted exchange calendar;
-- finite LONG/SHORT hypothesis family;
-- exact development/internal/protected chronology and purge/embargo;
-- outcome horizon(s);
-- realistic costs;
-- dependence-aware statistical method;
-- multiplicity/selection-bias correction;
-- sample/year/regime/concentration/liquidity robustness;
-- winner/finalist cardinality and no-runner-up rule;
-- independent blindness audit;
-- immutable finalist-only protected read plan;
-- independent reconstruction and full Phase30 closeout.
+The reversal-LONG diagnostic is not support. Its 30 rows / 28 sessions are far below the preregistered 750 / 250 selection minimum and it failed multiplicity/robustness gates. It may not be retuned or promoted after the fact.
 
-Only then may target performance be read.
+## Independent negative closeout
+
+The closeout path now consists of:
+
+- `packages/backtesting/phase30_validation.py`;
+- `packages/backtesting/phase30_closeout.py`;
+- `scripts/run_phase30_closeout.py`;
+- `scripts/validate_phase30_closeout.py`;
+- `tests/unit/test_phase30_validation.py`;
+- `tests/unit/test_phase30_closeout.py`;
+- `docs/phase30_end_to_end_anti_workaround_audit.md`.
+
+The independent validator does not import `phase30_development.py`. It reconstructs the exact source join directly from the accepted Phase26 development observation artifact plus immutable Phase30 development predictor artifact and independently applies the frozen tail-before-reaction logic.
+
+For the negative conclusion, the decisive independent proof is the mandatory sample gate: every independently reconstructed candidate is below at least one frozen selection minimum (`750` rows / `250` sessions). The validator also reconciles raw-row count, signal-session count, and primary 10-bps mean return against the target development report.
+
+If this independent target reconstruction and full closeout pass, Phase30 disposition is `ACCEPTED_NEGATIVE`. Protected returns remain unopened and the inherited holdout remains unconsumed. Phase31 remains blocked because supported alpha is still zero.
+
+## Future news work is separate
+
+`docs/future_news_sentiment_and_option_fair_value.md` records future sentiment and Alpaca/Benzinga research requirements. They do not alter or rescue Phase30. Historical text from any provider requires proven point-in-time revision semantics before leakage-sensitive alpha authority; prospective real-time capture is the preferred future vintage-safe path.
 
 ## Authority
 
-Current Phase30 authority:
+During closeout:
 
-- bounded historical Massive news **reads** for feasibility/provenance: ALLOWED;
-- local immutable evidence/provenance writes: ALLOWED;
-- target outcome reads: FORBIDDEN;
-- protected outcome reads: FORBIDDEN;
+- local development evidence reads: allowed;
+- protected predictor metadata existence: allowed;
+- protected candidate outcome reads: **FORBIDDEN**;
+- protected return reads: **FORBIDDEN**;
 - provider writes: 0;
 - broker reads/writes: 0;
 - order writes: 0;
@@ -130,4 +152,4 @@ Current Phase30 authority:
 - automatic broker failover: disabled;
 - frontend trading authority: none.
 
-A future positive Phase30 closeout may grant historical analytical `SUPPORTED` authority only and unlock Phase31. It cannot grant PAPER/LIVE authority.
+A negative Phase30 closeout grants no alpha, PAPER, or LIVE authority and does not satisfy Phase31's supported-alpha entry condition.
