@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-27 after Phase29 closeout.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-28 during Phase31 research.**
 
 Read `docs/roadmap.md` first for the mission and remaining phase sequence. Read `docs/phase_plain_english_contract.md` for the required operator-facing communication format. This file controls how each numbered phase is executed and accepted.
 
@@ -164,18 +164,18 @@ Detailed row counts, fingerprints, hashes, statistical tables, CI IDs, validator
 
 ## 11. Current application
 
-- **Accepted foundation through Phase29.**
-- Phase29 PR #33 merged at `87c9450e1b21606b83489f16ff326235ae92eb2b` with disposition `ACCEPTED_NEGATIVE`.
-- Phase29 target/closeout: 14,523 development relative-value rows; 745 protected predictors; zero survivors/winners/finalists/support; zero protected candidate/return reads; inherited holdout unconsumed; independent validation PASS; end-to-end anti-workaround PASS.
-- Phase29 post-merge workflow `33124971664` passed Ubuntu/Windows and the complete retained regression stack.
+- **Accepted project foundation through Phase30.**
+- Phase30 historical-news alpha completed as `ACCEPTED_NEGATIVE`: its frozen metadata-only news-shock family produced no supported alpha and remains preserved as negative evidence.
 - Phase11 support remains SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
-- **Active project gate: Phase30 — Event-Driven Public-Information Alpha.**
-- Phase30 historical-news feasibility fingerprint `04d31c5687c8da2892d017692b26ad930eff6af19f54a55294509e50d97bd312` passed on the authorized target machine with 1,219/1,219 ticker-linked boundary-window articles, zero target-outcome reads, and zero protected-return reads.
-- Phase30 scientific policy fingerprint `341f3a5a97281f7878ab0c55f8ab5a33c9910abc47b69a0b5fef8e94771ce4f8` is frozen before performance: exactly four metadata-only news-shock continuation/reversal hypotheses, no retrospective NLP/provider sentiment, fixed chronology/costs/statistical gates, and finalist-only protected confirmation.
-- The next internal Phase30 step is full resumable immutable historical-news acquisition from `2021-07-16` through `2026-08-11`; it remains non-performance-bearing.
-- The `2026-05-12` through `2026-08-11` protected predictor window remains genuinely outcome-unopened.
-- Signal-to-trade construction is Phase31 and remains blocked until at least one strategy/alpha candidate earns accepted historical analytical `SUPPORTED` authority.
+- **Active project gate: Phase31 — SEC Insider Transaction Alpha.**
+- Phase31 scientific policy fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67` was frozen before any governed performance read: exactly four pure open-market Form-4 purchase/sale hypotheses, fixed 20-session horizon, SPY-relative primary, fixed costs/statistics, and finalist-only protected-return access.
+- Full historical Form-4 acquisition passed on the target machine: 62 monthly shards, 2,993,648 raw rows, 2,992,608 authoritative rows, 1,040 quarantined rows across 187 contaminated accessions, with all four frozen probe windows reproducing exactly and zero target/protected return reads.
+- The deterministic **predictor-only Form-4 event construction** step has now passed on the target machine: 5,400 frozen development predictor rows and 343 frozen protected predictor rows were produced from 5,870 resolved noncontradictory events, with zero market outcome reads. Development SHA `a82ff3114febc0c6f7c13d5f045549b714edbf0fd66157ef93853be9ae90c49f`; protected SHA `d3bcd2696463ec1e384919007a36570475f8cb0bf1e393f109f0accd24224e27`.
+- The active internal Phase31 step is development-only performance evaluation. It is the first stage allowed to read development stock/SPY outcomes and must use exact decision-open to t+20-close geometry, accepted split/corporate-action censoring, previous-session accepted market/ticker regimes, chronological selection/purge/internal validation, global four-hypothesis Holm, and the frozen no-runner-up rule.
+- The development stage may bind the protected predictor SHA but may not parse protected predictor rows or read protected returns. The protected return holdout remains unconsumed.
+- If development produces zero finalists, Phase31 proceeds to independent negative closeout without opening the holdout. If it produces finalists, an independent blindness/lineage audit and immutable finalist-only protected-return plan are required before protected confirmation.
+- **Signal-to-trade construction is Phase32 and remains blocked until at least one strategy/alpha candidate earns accepted historical analytical `SUPPORTED` authority.**
 
-GUI/web/deployment remains a locked progressive track: contracts/read-only prototype in Phase31, replay/stress dashboard Phase32, SHADOW/PAPER operator web beta Phase33, performance/learning/drift UI Phase34, full production web application/PostgreSQL/scheduler/deployment Phase35, deployment/failure/security/reconciliation hardening Phase36, and controlled LIVE controls Phase37.
+GUI/web/deployment sequencing after supported alpha remains subordinate to the roadmap and does not override the research/execution authority gates.
 
 Preserve all existing data integrity, execution, risk, AI-independence, broker, browser, scheduler/PostgreSQL, deployment, and LIVE authority boundaries unless a later numbered phase explicitly earns a change.
