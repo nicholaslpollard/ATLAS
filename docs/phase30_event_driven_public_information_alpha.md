@@ -1,6 +1,6 @@
 # Phase 30 — Event-Driven Public-Information Alpha
 
-**Status:** DEVELOPMENT RESULT NEGATIVE; independent negative closeout pending target PASS. Protected returns remain unread.
+**Status:** `ACCEPTED_NEGATIVE`. Independent negative reconstruction and full target closeout passed. Protected returns remain unread and the inherited holdout remains unconsumed.
 
 **Source foundation:** Phase29 merge `87c9450e1b21606b83489f16ff326235ae92eb2b` (`ACCEPTED_NEGATIVE`).
 
@@ -8,7 +8,7 @@
 
 Phase30 deliberately changed the information mechanism after four price-derived modern-alpha families failed. It tested whether timestamped public company news-arrival intensity, combined with the already point-in-time-safe Phase26 same-session reaction field, added repeatable directional value after realistic costs.
 
-The experiment is now frozen and has been run on development outcomes. It produced zero selection survivors, zero winners, and zero finalists. The correct remaining work is independent negative reconstruction and full phase-end closeout without opening protected returns.
+The experiment produced zero selection survivors, zero winners, and zero finalists. Independent reconstruction confirmed the negative result without opening protected returns. Phase30 is therefore formally accepted as a legitimate negative research phase and may not be retuned after the observed result.
 
 ## Frozen scientific contract
 
@@ -113,9 +113,28 @@ Selection survivors `[]`; selection winners `[]`; internal-validation candidates
 
 The reversal-LONG diagnostic is not support. Its 30 rows / 28 sessions are far below the preregistered 750 / 250 selection minimum and it failed multiplicity/robustness gates. It may not be retuned or promoted after the fact.
 
-## Independent negative closeout
+## Independent negative closeout — PASS
 
-The closeout path now consists of:
+Target closeout ran on exact head `49af61f54cf2a849d1e6c88210c468f613f414f4` and returned:
+
+- independent validation: `PASS_NEGATIVE_SAMPLE_GATE_PROOF`;
+- reconstructed population: 3,057 rows / 1,736 tickers / 953 sessions;
+- aligned continuation LONG: 171 rows / 112 sessions, mean10 `-0.05516705767603842`;
+- aligned continuation SHORT: 8 / 6, mean10 `-0.014777611974925359`;
+- counterreaction reversal LONG: 30 / 28, mean10 `0.07203060058543764`;
+- counterreaction reversal SHORT: 1 / 1, mean10 `-0.019773702682967076`;
+- selection survivors `[]`;
+- selection winners `[]`;
+- frozen finalists `[]`;
+- supported candidates `[]`;
+- Phase30 disposition `ACCEPTED_NEGATIVE`;
+- Phase31 entry satisfied `False`;
+- protected candidate rows read `0`;
+- protected return rows read `0`;
+- protected holdout consumed `False`;
+- provider reads/writes, broker reads/writes, orders, PAPER, LIVE: all `0`.
+
+The closeout path consists of:
 
 - `packages/backtesting/phase30_validation.py`;
 - `packages/backtesting/phase30_closeout.py`;
@@ -129,27 +148,27 @@ The independent validator does not import `phase30_development.py`. It reconstru
 
 For the negative conclusion, the decisive independent proof is the mandatory sample gate: every independently reconstructed candidate is below at least one frozen selection minimum (`750` rows / `250` sessions). The validator also reconciles raw-row count, signal-session count, and primary 10-bps mean return against the target development report.
 
-If this independent target reconstruction and full closeout pass, Phase30 disposition is `ACCEPTED_NEGATIVE`. Protected returns remain unopened and the inherited holdout remains unconsumed. Phase31 remains blocked because supported alpha is still zero.
+## Protected holdout
+
+Because Phase30 produced zero finalists, protected performance was never opened. The inherited `2026-05-12` through `2026-08-11` protected outcome window remains unopened and unconsumed for a genuinely new future alpha architecture.
 
 ## Future news work is separate
 
-`docs/future_news_sentiment_and_option_fair_value.md` records future sentiment and Alpaca/Benzinga research requirements. They do not alter or rescue Phase30. Historical text from any provider requires proven point-in-time revision semantics before leakage-sensitive alpha authority; prospective real-time capture is the preferred future vintage-safe path.
+`docs/future_news_sentiment_and_option_fair_value.md` records future sentiment, Alpaca/Benzinga, Massive live-news provider selection, and option fair-value requirements. They do not alter or rescue Phase30. Historical text from any provider requires proven point-in-time revision semantics before leakage-sensitive alpha authority; prospective real-time first-receipt capture is the preferred future vintage-safe path.
 
-## Authority
+## Authority after closeout
 
-During closeout:
-
-- local development evidence reads: allowed;
-- protected predictor metadata existence: allowed;
-- protected candidate outcome reads: **FORBIDDEN**;
-- protected return reads: **FORBIDDEN**;
-- provider writes: 0;
-- broker reads/writes: 0;
-- order writes: 0;
-- PAPER submits: 0;
-- LIVE writes: 0;
-- automation writes: 0;
+- Phase30 historical analytical support: **NONE**;
+- Phase31 entry condition: **NOT SATISFIED**;
+- protected candidate outcome reads: `0`;
+- protected return reads: `0`;
+- provider writes: `0`;
+- broker reads/writes: `0`;
+- order writes: `0`;
+- PAPER submits: `0`;
+- LIVE writes: `0`;
+- automation writes: `0`;
 - automatic broker failover: disabled;
 - frontend trading authority: none.
 
-A negative Phase30 closeout grants no alpha, PAPER, or LIVE authority and does not satisfy Phase31's supported-alpha entry condition.
+Phase30 is complete as `ACCEPTED_NEGATIVE`. The next project action is to merge this accepted negative phase and rebaseline to a genuinely different alpha-information mechanism before Phase31.
