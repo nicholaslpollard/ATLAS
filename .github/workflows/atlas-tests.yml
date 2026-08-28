@@ -211,5 +211,8 @@ jobs:
       - name: Validate Phase 31 Form-4 feasibility contracts
         run: python scripts/validate_phase31.py
 
+      - name: Validate Phase 31 frozen scientific policy and acquisition contracts
+        run: python scripts/validate_phase31_policy.py
+
       - name: Run tests
         run: python -m pytest -q
