@@ -47,7 +47,7 @@ Internal feasibility, acquisition, predictor, development, blindness, and protec
 - Master protected outcome window remains `2026-05-12..2026-08-11`; Phase31 protected returns remain unopened.
 - **Active Phase31: SEC Form-4 Insider-Transaction Alpha.**
 - Active branch: `phase-31-sec-insider-transaction-alpha`.
-- Original feasibility `FEASIBILITY_FAIL` is permanently preserved; the beta-source chronology defect was repaired only through generic fail-closed source-quality quarantine.
+- Original feasibility `FEASIBILITY_FAIL` is permanently preserved. Root cause is preserved as a **Massive early-access/beta source-association/data-quality defect**; it was repaired only through generic fail-closed source-quality quarantine, never by weakening chronology.
 - Frozen source-quality fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`.
 - Frozen scientific policy fingerprint: `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
 - Exactly four Phase31 hypotheses remain frozen: broad/clustered purchase LONG and broad/clustered sale SHORT.
