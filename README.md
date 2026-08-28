@@ -14,9 +14,10 @@ Every new ATLAS work session should read:
 2. `docs/current_status.md` — exact current handoff;
 3. active phase spec — `docs/phase31_sec_insider_transaction_alpha.md`;
 4. Phase31 source/provenance records — `docs/phase31_form4_feasibility_incident.md`, `docs/phase31_form4_source_quality_repair.md`, `docs/phase31_full_historical_acquisition.md`;
-5. frozen scientific contract — `docs/phase31_scientific_contract.md`;
-6. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-7. accepted code, validators, CI/PR evidence.
+5. frozen predictor evidence — `docs/phase31_predictor_evidence.md`;
+6. frozen scientific contract — `docs/phase31_scientific_contract.md`;
+7. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
+8. accepted code, validators, CI/PR evidence.
 
 ## Locked architecture
 
@@ -53,10 +54,13 @@ Internal feasibility, acquisition, predictor, development, blindness, and protec
 - Exactly four Phase31 hypotheses remain frozen: broad/clustered purchase LONG and broad/clustered sale SHORT.
 - Historical entry = first post-filing XNYS session open; primary exit = t+20 XNYS close; primary performance = SPY-relative after-cost return with positive unhedged mean also required.
 - **Full historical Form-4 acquisition PASSED** on the target machine: 62 monthly shards, 2,993,648 raw rows, 2,992,608 authoritative rows, 1,040 quarantined rows, 187 contaminated accessions, 233 chronology seed rows, 15 missing-`transaction_code` seed rows.
-- Accepted acquisition reused 42 SHA-bound raw shards and fetched 20 new shards; all four frozen probe windows reconciled exactly.
-- Acquisition read 0 target outcomes, 0 protected candidate rows, and 0 protected returns; provider/broker/order/PAPER/LIVE/automation authority remained zero.
-- Current internal target = **predictor-only Form-4 event construction** with exact P/S eligibility, contradiction handling, 20-session clustering, and Composite-FIGI-authoritative PIT identity. This stage remains market-outcome blind.
-- Corporate-action/path admissibility still must be completed before development returns are opened.
+- Acquisition read 0 target outcomes, 0 protected candidate rows, and 0 protected returns; all four frozen probe windows reconciled exactly.
+- **Predictor-only Form-4 event construction PASSED** on target head `dbde716b79ae882bcfec412e1a13e1bb3c274f6a`: 2,992,608 authoritative rows scanned, 103,773 qualified accessions, 5,870 resolved noncontradictory events, 5,400 development predictor rows, and 343 protected predictor rows.
+- Frozen development predictor SHA: `a82ff3114febc0c6f7c13d5f045549b714edbf0fd66157ef93853be9ae90c49f`.
+- Frozen protected predictor SHA: `d3bcd2696463ec1e384919007a36570475f8cb0bf1e393f109f0accd24224e27`.
+- Predictor construction read **0 target outcomes and 0 protected returns** and performed zero provider/broker/order/PAPER/LIVE/automation writes.
+- Current internal target = **development-only Phase31 performance evaluation** under the frozen four-hypothesis contract. Development stock/SPY outcomes may now be read only through the dedicated exact-session, split-censored, previous-session-regime path; protected predictor rows/returns remain unread.
+- Development selection remains chronological first 75%, then 20-session purge, then internal validation; global Holm is across all four hypotheses; no runner-up substitution is allowed.
 - Phase32 remains blocked until supported alpha exists.
 - LIVE remains disabled. Automatic broker failover remains disabled.
 

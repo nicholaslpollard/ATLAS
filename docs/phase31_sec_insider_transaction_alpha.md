@@ -1,6 +1,6 @@
 # Phase 31 — SEC Form-4 Insider-Transaction Alpha
 
-**Status:** ACTIVE — SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION PASS / PREDICTOR-ONLY CONSTRUCTION NEXT. No Phase31 market outcomes have been read. Phase31 is not accepted and Phase32 remains blocked.
+**Status:** ACTIVE — SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION PASS / PREDICTOR-ONLY PASS / DEVELOPMENT-ONLY PERFORMANCE NEXT. Phase31 is not accepted, protected returns remain unopened, and Phase32 remains blocked.
 
 **Source foundation:** Phase30 merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
@@ -9,6 +9,7 @@
 - `docs/phase31_form4_feasibility_incident.md`
 - `docs/phase31_form4_source_quality_repair.md`
 - `docs/phase31_full_historical_acquisition.md`
+- `docs/phase31_predictor_evidence.md`
 - `docs/phase31_scientific_contract.md`.
 
 ## Plain-English phase start
@@ -170,6 +171,10 @@ Accepted acquisition implementation head:
 
 `069cca8a76446cc33b5fcf4931612e56a315f5b8`
 
+Accepted acquisition runner retained for provenance:
+
+`scripts/run_phase31_form4_acquisition.py`
+
 Evidence:
 
 - 62 monthly immutable shards covering `2021-07-16..2026-08-11`
@@ -188,25 +193,62 @@ Evidence:
 
 The full-history historical-admissibility rule is generic: an entire accession is quarantined if any transaction row has impossible chronology or lacks the transaction classification required by the frozen P/S hypotheses. Raw evidence is retained unchanged; no code or field is inferred.
 
-A full-history acquisition PASS authorizes predictor-only construction only. It does not accept Phase31, grant support, consume protected returns, or unlock Phase32.
+A full-history acquisition PASS authorized predictor-only construction only. It did not accept Phase31, grant support, consume protected returns, or unlock Phase32.
 
-## Predictor-only construction — active next step
+## Predictor-only Form-4 event construction — PASS
+
+Accepted target-machine run date: 2026-08-28.
+
+Accepted predictor implementation head:
+
+`dbde716b79ae882bcfec412e1a13e1bb3c274f6a`
 
 Runner:
 
 `scripts/run_phase31_form4_predictors.py`
 
-This stage consumes the accepted authoritative shards and existing Composite-FIGI-authoritative PIT ticker intervals only. It enforces the frozen accession eligibility, first-strictly-later-XNYS decision timing, same-ticker/session contradiction exclusion, event aggregation, and 20-session cluster definition.
+Target evidence:
 
-It may write deterministic development and protected **predictor metadata**. It may not read stock/SPY prices or returns and has no provider, broker, order, PAPER, LIVE, or automation authority.
+- authoritative rows scanned **2,992,608**
+- qualified accessions before session/identity **103,773**
+- resolved noncontradictory events **5,870**
+- development predictor rows **5,400**
+- protected predictor rows **343**
+- `open_market_purchase_long` membership **2,482**
+- `clustered_open_market_purchase_long` membership **1,009**
+- `open_market_sale_short` membership **3,261**
+- `clustered_open_market_sale_short` membership **1,724**
+- authoritative lineage SHA `a9a385828b436fde7bf2297d1f8b987c4899eaff7500d79fd0b6c4abf6de7918`
+- identity interval SHA `beabae4416f8444a5a062d3c3d49cdab46dec7919a545850ac0808ed94cfe3de`
+- development predictor SHA `a82ff3114febc0c6f7c13d5f045549b714edbf0fd66157ef93853be9ae90c49f`
+- protected predictor SHA `d3bcd2696463ec1e384919007a36570475f8cb0bf1e393f109f0accd24224e27`
+- target outcome rows read **0**
+- protected return rows read **0**
+- provider/broker/order/PAPER/LIVE/automation writes **0**.
 
-A predictor PASS freezes predictor evidence before development-performance reads. It does **not** yet authorize those reads: the frozen corporate-action/path-admissibility requirement must also be satisfied first.
+Complete evidence: `docs/phase31_predictor_evidence.md`.
+
+The predictor PASS freezes deterministic event and candidate membership before performance. It does not establish alpha. The broad and clustered hypotheses overlap by design and remain in the same four-hypothesis global multiplicity family.
+
+## Development-only performance evaluation — active next step
+
+Runner:
+
+`scripts/run_phase31_development.py`
+
+This is the first Phase31 stage allowed to read development stock/SPY outcomes. The dedicated path binds the frozen predictor evidence first, reads only development predictor rows, uses exact decision-session-open to t+20-close stock/SPY geometry, censors focal-stock split/corporate-action crossings using already accepted read-only evidence, and reconstructs accepted market/ticker robustness state from the **previous XNYS session**.
+
+The stage then applies the frozen chronology, folds, bootstrap, profitability/stress/unhedged gates, year/regime robustness, concentration limits, global four-hypothesis Holm, deterministic winner rule, and internal validation. At most one winner/finalist per direction can survive. If a winner fails internal validation, no runner-up substitution is permitted.
+
+The protected predictor artifact is hash-bound only in this stage. Protected candidate rows and protected stock/SPY returns remain unread. A development `Pass: True` means the study executed under its frozen integrity contract; it does not by itself mean Phase31 found supported alpha.
+
+If there are zero finalists, the next internal action is independent negative closeout with the protected holdout still unconsumed. If there are finalists, the next action is an independent blindness/lineage audit and immutable finalist-only protected-return plan before any protected return is opened.
 
 ## Protected evidence boundary
 
 Master protected outcome window remains `2026-05-12..2026-08-11` and protected returns remain outcome-unopened.
 
-Protected Form-4 metadata may be acquired/transformed into predictor-only artifacts without outcomes. Protected stock/SPY returns may be read only for frozen finalists after independent blindness validation. Any nonempty protected return read consumes the holdout for later alpha selection.
+Protected Form-4 metadata may exist in frozen predictor-only artifacts without outcomes. Protected stock/SPY returns may be read only for frozen finalists after independent blindness validation. Any nonempty protected return read consumes the holdout for later alpha selection.
 
 ## Current authority
 
@@ -214,15 +256,19 @@ Allowed:
 
 - immutable accepted Form-4 source artifacts
 - source-quality quarantine/reconciliation
-- deterministic predictor-only Form-4 construction
+- frozen deterministic predictor evidence
 - PIT identity resolution using accepted Composite-FIGI-authoritative intervals
+- development-only market outcome reads through `scripts/run_phase31_development.py`
+- accepted read-only corporate-action evidence for path censoring
+- previous-session accepted market/ticker regime reconstruction
 - tests/validators/docs.
 
 Forbidden:
 
-- development market returns until predictor and path-admissibility gates pass
-- protected returns before finalists/blindness gate
+- protected predictor-row parsing during development performance
+- protected stock/SPY returns before frozen finalists and blindness audit
 - performance-driven filtering or hypothesis changes
+- runner-up substitution
 - provider writes
 - broker reads/writes
 - order writes
