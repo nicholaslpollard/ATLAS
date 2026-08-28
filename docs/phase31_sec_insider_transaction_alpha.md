@@ -49,9 +49,23 @@ Failed feasibility fingerprint:
 
 `edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc`
 
-The provider-free diagnostic later found one impossible target row: WISH accession `0000950170-23-043337`, filing `2023-08-17`, returned transaction `2023-09-15`. Root cause was classified as a Massive beta source-association/data-quality defect, not an ATLAS parser bug. The chronology rule remains unchanged.
+## Chronology diagnostic — complete
+
+Diagnostic implementation head:
+
+`80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7`
+
+The provider-free diagnostic found one impossible target row: WISH accession `0000950170-23-043337`, filing `2023-08-17`, returned transaction `2023-09-15`. The diagnostic evidence SHA is:
+
+`3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
+
+Root cause was classified as a **Massive beta source-association/data-quality defect**, not an ATLAS parser bug. The chronology rule remains unchanged. Diagnostic provider calls = 0; target/protected market outcomes read = 0.
 
 ## Source-quality repair — TARGET PASS
+
+Frozen source-quality policy:
+
+`RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
 
 Source-quality fingerprint:
 
