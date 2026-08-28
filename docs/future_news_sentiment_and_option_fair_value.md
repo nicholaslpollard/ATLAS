@@ -90,19 +90,35 @@ Neither layer creates alpha, PAPER, or LIVE authority by itself. Both remain sub
 
 ## 4. Alpaca/Benzinga News as a Future Independent Source
 
-Alpaca's current Market Data documentation exposes historical news at `https://data.alpaca.markets/v1beta1/news`, states that the history dates back to **2015**, identifies **Benzinga** as the current source, and explicitly lists sentiment-model training and real-time news trading as supported use cases. Alpaca also exposes a real-time news WebSocket. The news schema includes article identity, symbols, headline/summary/content, `created_at`, and `updated_at` timestamps.
+Alpaca's current Market Data documentation exposes historical news at `https://data.alpaca.markets/v1beta1/news`, states that the history dates back to **2015**, identifies **Benzinga** as the current source, and explicitly lists sentiment-model training and real-time news trading as supported use cases. Alpaca also documents a real-time news WebSocket. The news schema includes article identity, symbols, headline/summary/content, `created_at`, and `updated_at` timestamps.
 
 This is a useful future ATLAS source for three distinct reasons:
 
 1. **Longer research corpus:** the 2015 start extends well before the current Massive Phase30 research interval and could support future language/event-model research if point-in-time safety is established.
 2. **Cross-provider evidence:** Alpaca/Benzinga can be compared with Massive coverage for missing articles, ticker linkage, timestamp disagreement, duplicate/syndicated stories, and source-specific bias rather than silently replacing one provider with the other.
-3. **Prospective vintage capture:** the real-time WebSocket can be archived exactly as received, including later updates, giving ATLAS a genuinely point-in-time text corpus for future sentiment/event models.
+3. **Prospective vintage capture:** if the actual ATLAS credentials are entitled to the real-time WebSocket, it can be archived exactly as received, including later updates, giving ATLAS a genuinely point-in-time text corpus for future sentiment/event models.
 
-### Entitlement must be proved, not assumed
+### Historical REST entitlement — PROVEN on actual ATLAS credentials
 
-As of the 2026-08-28 documentation review, Alpaca's Trading API market-data page lists the default **Basic** plan as free with **200 historical API calls/minute**, while Algo Trader Plus is listed at 10,000 calls/minute. The current historical-news page and endpoint reference do not publish a separate Basic-versus-paid news entitlement matrix. Historical news therefore remains **candidate available** rather than accepted available until an authenticated read-only request succeeds with the actual ATLAS Alpaca credentials and its returned rate-limit/entitlement behavior is recorded.
+On 2026-08-28, the target ATLAS machine made one bounded read-only request with the configured **paper** credential profile to Alpaca historical news and received:
 
-A future feasibility probe must be read-only and record HTTP status, request/rate-limit headers where available, earliest retrievable article time, pagination behavior, content availability, and whether both paper and live Trading API credentials have equivalent market-data entitlement. A `401`, `403`, or plan restriction is a legitimate feasibility result; ATLAS must not silently upgrade plans or substitute a different source to manufacture PASS.
+- HTTP status `200`;
+- one news row from the requested 2026-08-01..2026-08-02 interval;
+- article `created_at` and `updated_at` timestamps;
+- headline and symbols;
+- full article content available;
+- `X-Ratelimit-Limit: 200` and `X-Ratelimit-Remaining: 199`.
+
+Therefore historical Alpaca/Benzinga news access is no longer hypothetical for the configured paper profile: it is **PROVEN READ-ONLY AVAILABLE** at the observed 200-request/minute ceiling.
+
+This proof does **not** yet prove:
+
+- real-time WebSocket entitlement on the same credential profile;
+- equivalent entitlement for any future live Trading API profile;
+- exact historical text-vintage semantics;
+- acceptable live delivery latency/reliability for ATLAS production decisions.
+
+Those questions require separate bounded prospective probes and are not Phase30 work.
 
 ### Point-in-time warning
 
@@ -111,6 +127,39 @@ A future feasibility probe must be read-only and record HTTP status, request/rat
 - retrospective Alpaca headline/content must not be granted historical alpha authority until revision/vintage semantics are demonstrated;
 - an `updated_at` timestamp after the trading decision time is a warning, not proof that the returned content can be safely rolled back;
 - historical Alpaca text may be useful for non-authoritative corpus exploration/model pretraining, but not for a leakage-sensitive backtest merely because the article date is old;
-- the strongest path for future sentiment authority is prospective WebSocket capture with immutable versioning from first receipt forward.
+- the strongest path for future sentiment authority is prospective first-receipt capture with immutable versioning from receipt forward.
 
-This Alpaca/Benzinga requirement does not alter Phase30, does not rescue or retune its negative result, and does not unlock Phase31 without accepted supported alpha.
+## 5. Massive News as a Future Live/Prospective Source
+
+ATLAS already uses the standard Massive Stocks News endpoint `/v2/reference/news`, and Phase30 proved extensive historical access through that accepted path. Massive's current documentation lists the standard Stocks News endpoint as **included in all individual Stocks plans** and describes it as providing recent/up-to-date financial news with ticker association and sentiment insights.
+
+Massive's current Stocks Starter and Developer plan pages label their **market data** as 15-minute delayed, while Advanced is labeled real-time. The standard `/v2/reference/news` documentation itself does **not** state that news articles are delayed by 15 minutes. ATLAS therefore must not infer either real-time or 15-minute-delayed news delivery solely from the market-data plan label.
+
+Massive also offers a separate **Benzinga Real-time News** partner product at `/benzinga/v2/news`. Current Massive documentation identifies this as real-time structured Benzinga news with full text and timestamps; Massive pricing lists Benzinga partner datasets separately from ordinary Stocks plans. That partner feed should be treated as a distinct optional paid source, not assumed to be included in the existing ATLAS Massive subscription.
+
+### Required provider-selection design
+
+Future live news ingestion should be **provider-selectable and evidence-driven**, not hardwired:
+
+- `MassiveStandard`
+- `AlpacaBenzinga`
+- optional `MassiveBenzingaRealtime` only if separately subscribed/entitled
+
+No provider should become the default merely because its documentation says "real-time" or because another market-data feed is delayed. Before production authority, ATLAS should prospectively measure on the actual credentials:
+
+- provider publication timestamp;
+- ATLAS first-receipt timestamp using a monotonic/UTC receipt clock;
+- publication-to-first-receipt latency distribution;
+- update/revision behavior;
+- ticker coverage;
+- full-text availability;
+- duplicate/syndication rate;
+- outage/error rate;
+- rate limits and reconnect behavior;
+- source diversity and whether two providers are actually redistributing the same Benzinga story.
+
+The selected source should be the provider that satisfies the accepted latency, reliability, coverage, provenance, and cost requirements. Alpaca may remain the operational default if its real-time entitlement and latency are adequate. Existing Massive Standard may be preferable if prospective measurement shows materially better or equivalent first-receipt performance and reliability. The optional Massive/Benzinga paid feed is justified only if measured incremental value warrants its separate cost.
+
+ATLAS should preserve explicit provider provenance on every article and must not silently merge provider streams in a way that double-counts the same story or changes decision authority. If multiple feeds are enabled for redundancy or research, deduplication and source-priority rules must be deterministic and validated.
+
+This future provider strategy does not alter Phase30, does not rescue or retune its negative result, and does not unlock Phase31 without accepted supported alpha.
