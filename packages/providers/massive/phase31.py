@@ -65,10 +65,14 @@ def validate_form4_row(item: dict[str, Any], *, start_date: date, end_date: date
                 )
 
     if item.get("record_type") == "transaction":
+        # Preserve provider-native missing/blank transaction_code evidence unchanged.
+        # Whether the accession is scientifically admissible is a downstream,
+        # outcome-free source-quality decision; the transport layer must not erase
+        # the raw row before that classifier can quarantine it fail-closed.
         code = item.get("transaction_code")
-        if not isinstance(code, str) or not code.strip():
+        if code is not None and not isinstance(code, str):
             raise ProviderError(
-                f"Massive Form 4 transaction row {accession!r} is missing transaction_code"
+                f"Massive Form 4 transaction row {accession!r} has non-string transaction_code"
             )
         transaction_date = item.get("transaction_date")
         if transaction_date is not None:
@@ -97,7 +101,8 @@ class MassivePhase31Form4Client:
 
     The adapter deliberately exposes no market outcomes, broker/account state, or
     trading authority. Provider-native ticker strings and full raw row objects are
-    preserved exactly as returned.
+    preserved exactly as returned, including source-quality defects that must be
+    classified downstream rather than silently repaired or dropped.
     """
 
     def __init__(self, rest: MassiveRESTClient) -> None:
