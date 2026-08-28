@@ -34,16 +34,16 @@ Current Massive subscription declaration: **Stocks Starter**. Actual credential 
 
 Authoritative timestamp/item source:
 
-`official SEC EDGAR -> https://www.sec.gov/Archives/edgar/data/<CIK>/<accession-no-dashes>/<accession>-index-headers.html`
+`official SEC EDGAR -> https://www.sec.gov/Archives/edgar/data/<CIK>/<accession-no-dashes>/<accession>.hdr.sgml`
 
-The official filing-index header artifact is used only for source provenance:
+The official raw SGML filing-header artifact is used only for source provenance:
 
 - `ACCESSION NUMBER`
 - `<ACCEPTANCE-DATETIME>`
 - `ITEM INFORMATION` labels
-- exact raw `<SEC-HEADER>` evidence.
+- exact bounded raw filing-header evidence.
 
-The bounded header URL is derived generically from Massive CIK + accession. No accession-specific URL override is allowed. ATLAS does not need or request the complete submission `.txt` during feasibility.
+The raw header URL is derived generically from Massive CIK + accession. No accession-specific URL override is allowed. ATLAS does not request the complete submission `.txt` or the HTML `-index-headers.html` presentation during feasibility.
 
 ## Conservative public-availability rule
 
@@ -71,11 +71,11 @@ The target run must prove, without market outcomes:
 - all four windows return original 8-K rows;
 - all windows have provider-native ticker linkage;
 - Massive pagination/request provenance is retained;
-- all sampled SEC filings have exact acceptance timestamps from official filing-index headers;
+- all sampled SEC filings have exact acceptance timestamps from official raw filing headers;
 - sampled SEC accessions reconcile exactly to Massive accessions;
 - all windows demonstrate populated `ITEM INFORMATION` evidence;
 - immutable Massive index and SEC-header evidence reproduces exactly on rerun;
-- SEC reads stay on official `www.sec.gov/Archives/edgar/` paths, identify ATLAS with a local contact, target only `-index-headers.html`, advertise gzip/deflate support, and are limited to one request/second;
+- SEC reads stay on official `www.sec.gov/Archives/edgar/` paths, identify ATLAS with a local contact, target only `.hdr.sgml`, advertise gzip/deflate support, and are limited to one request/second;
 - alpha hypotheses remain unfrozen;
 - target/protected market outcomes remain zero;
 - provider writes, broker reads/writes, orders, PAPER, LIVE, automation, and automatic broker failover remain zero/disabled.
@@ -108,7 +108,7 @@ If feasibility fails, diagnose source/provenance root cause generically. Do not 
 Allowed in feasibility:
 
 - bounded read-only Massive SEC-index calls;
-- bounded read-only official SEC EDGAR filing-index-header calls;
+- bounded read-only official SEC EDGAR raw filing-header calls;
 - immutable local source evidence and feasibility report writes.
 
 Forbidden:
