@@ -49,6 +49,10 @@ def main() -> None:
     ).read_text(encoding="utf-8")
     spec_path = PROJECT_ROOT / "docs" / "phase30_event_driven_public_information_alpha.md"
     spec_text = spec_path.read_text(encoding="utf-8") if spec_path.is_file() else ""
+    scientific_path = PROJECT_ROOT / "docs" / "phase30_scientific_contract.md"
+    scientific_text = (
+        scientific_path.read_text(encoding="utf-8") if scientific_path.is_file() else ""
+    )
 
     exact_windows = tuple(
         (window.label, window.start_utc, window.end_utc) for window in PHASE30_PROBE_WINDOWS
@@ -117,10 +121,17 @@ def main() -> None:
         in runner_source
         and "Target/protected market outcomes: FORBIDDEN / UNREAD" in runner_source,
         "phase30_spec_present": spec_path.is_file(),
+        "scientific_freeze_document_present": scientific_path.is_file(),
+        # Durable retained proof of gate ordering. The feasibility module/runner remain the
+        # immutable pre-freeze code snapshot, while the scientific contract records that
+        # the later freeze occurred only after feasibility passed with zero outcome reads.
+        # Do not require transient 'NOT YET FROZEN' wording to remain in the evolving phase
+        # status document after the phase has legitimately advanced.
         "phase30_spec_separates_feasibility_from_scientific_freeze": (
-            "ALPHA HYPOTHESES: NOT YET FROZEN" in spec_text
-            and "Only then may target performance be read." in spec_text
-            and "target outcome reads: FORBIDDEN" in spec_text
+            "### Historical-news feasibility — PASS" in spec_text
+            and "FROZEN BEFORE ANY PHASE30 MARKET-OUTCOME READ" in scientific_text
+            and phase30_feasibility_fingerprint() in scientific_text
+            and "zero target/protected outcome reads" in scientific_text
         ),
     }
 
