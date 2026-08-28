@@ -217,5 +217,8 @@ jobs:
       - name: Validate Phase 31 predictor-only Form-4 contracts
         run: python scripts/validate_phase31_predictors.py
 
+      - name: Validate Phase 31 development-only Form-4 contracts
+        run: python scripts/validate_phase31_development.py
+
       - name: Run tests
         run: python -m pytest -q
