@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-28 after Phase31 closed `ACCEPTED_NEGATIVE` and PR #35 merged. Phase32 SEC 8-K source feasibility remains the active gate; the target machine has proven SEC Archives reachability but four source-format attempts have not yet completed feasibility, and no Phase32 market outcomes have been read.**
+**Last synchronized: 2026-08-28 after Phase31 closed `ACCEPTED_NEGATIVE` and PR #35 merged. Phase32 SEC 8-K source feasibility remains the active gate; the target machine has proven SEC Archives reachability but five source-format attempts have not yet completed feasibility, and no Phase32 market outcomes have been read.**
 
 Read `docs/roadmap.md` first, then this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_sec_edgar_access_incident.md`, `docs/phase31_closeout.md`, and retained Phase31 provenance records.
 
@@ -132,9 +132,12 @@ Target-machine source history on 2026-08-28:
 - original complete-submission transport: HTTP 403;
 - declared-contact complete-submission transport: HTTP 403;
 - bounded `-index-headers.html` transport: SEC request succeeded, then strict parsing failed with `SEC submission header is missing ACCESSION NUMBER`;
-- `.hdr.sgml` transport attempt: SEC request again reached filing-header content far enough to recover acceptance time, but strict accession parsing again failed with the same message.
+- `.hdr.sgml` transport attempt: SEC request again reached filing-header content far enough to recover acceptance time, but strict accession parsing again failed with the same message;
+- presentation-tolerant `-index-headers.html` parser at `d18aa3592f5a3718f91aeee1291e98c8dcf535ec`: SEC request succeeded, but accession extraction still failed with the same message.
 
-The HTTP 403 problem is therefore resolved. The remaining defect is representation parsing. Official SEC accession directory listings enumerate `-index-headers.html`, so the current repair returns to that bounded listed artifact and makes field extraction presentation-tolerant while preserving strict accession format and exact requested-accession reconciliation.
+The HTTP 403 problem is resolved. Official SEC 8-K index-header examples from the frozen-era history visibly contain the required fields, so the source remains appropriate. The current repair therefore keeps the same bounded `-index-headers.html` artifact but HTML-unescapes and removes browser presentation markup in a separate parser view before extracting human-readable fields. The original bounded SEC text remains unchanged for evidence hashing, parsed accession format remains strict, and the parsed accession must still equal the requested Massive accession exactly.
+
+If another parse failure occurs, the error now returns only safe structural diagnostics: source URL, header SHA-256, normalized character count, and boolean presence of the `ACCESSION` and `NUMBER` tokens. It does not print credentials or infer an accession from the URL.
 
 The declared contact identity, gzip/deflate support, one-request-per-second rate, fail-closed 403 behavior, frozen feasibility fingerprint, four probe windows, no-outcome blindness, and all downstream authority gates remain unchanged.
 
