@@ -104,8 +104,8 @@ def main() -> int:
     _require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "runner outcome boundary")
     _require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "runner trading boundary")
 
-    _require(phase_doc, "next XNYS trading session", "conservative next-session explanation")
-    _require(phase_doc, "strictly after", "strict later-session timing")
+    _require(phase_doc, "first XNYS session", "conservative next-session explanation")
+    _require(phase_doc, "strictly later", "strict later-session timing")
     _require(phase_doc, "transaction_date", "transaction-date warning")
     _require(phase_doc, "early-access/beta", "beta endpoint warning")
     _require(phase_doc, "No Phase31 market outcomes have been read", "no performance read")
