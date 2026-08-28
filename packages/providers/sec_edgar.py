@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import json
 import os
 import re
 import time
 import zlib
 from dataclasses import dataclass
-from datetime import datetime
-from html import unescape
+from datetime import datetime, timezone
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -18,51 +18,40 @@ from zoneinfo import ZoneInfo
 from packages.core.exceptions import ProviderError
 
 
-SEC_EDGAR_ALLOWED_HOSTS = {"www.sec.gov"}
-SEC_EDGAR_ARCHIVES_PREFIX = "/Archives/edgar/"
+SEC_EDGAR_ALLOWED_HOSTS = {"data.sec.gov"}
+SEC_EDGAR_SUBMISSIONS_PREFIX = "/submissions/"
 SEC_EDGAR_USER_AGENT_PREFIX = "ATLAS Research"
 SEC_EDGAR_CONTACT_EMAIL_ENV = "SEC_EDGAR_CONTACT_EMAIL"
 SEC_EDGAR_MAX_REQUESTS_PER_SECOND = 1
 SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS = 1.0 / SEC_EDGAR_MAX_REQUESTS_PER_SECOND
 SEC_EDGAR_REQUEST_TIMEOUT_SECONDS = 30.0
 SEC_EDGAR_MAX_ATTEMPTS = 4
-SEC_EDGAR_HEADER_MAX_BYTES = 256_000
-SEC_EDGAR_INDEX_HEADERS_SUFFIX = "-index-headers.html"
+SEC_EDGAR_MAX_RESPONSE_BYTES = 8_000_000
+SEC_EDGAR_MAX_ARCHIVE_SHARDS_PER_LOOKUP = 2
 
-_ACCEPTANCE_RE = re.compile(r"(?i)<ACCEPTANCE-DATETIME>\s*(\d{14})")
-_ITEM_RE = re.compile(r"(?im)ITEM\s+INFORMATION\s*:\s*([^\r\n]+)")
-_ACCESSION_RE = re.compile(
-    r"(?im)ACCESSION\s+NUMBER\s*:\s*(\d{10}-\d{2}-\d{6})"
-)
-_CIK_RE = re.compile(r"(?im)CENTRAL\s+INDEX\s+KEY\s*:\s*(\d+)")
-_HEADER_RE = re.compile(r"(?is)<SEC-HEADER>(.*?)</SEC-HEADER>")
 _ACCESSION_FORMAT_RE = re.compile(r"^\d{10}-\d{2}-\d{6}$")
 _CONTACT_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-_BR_TAG_RE = re.compile(r"(?is)<br\s*/?>")
-_BLOCK_TAG_RE = re.compile(
-    r"(?is)</?(?:html|body|pre|div|p|table|tr|td|th|li|ul|ol|section|article|"
-    r"header|footer|h[1-6])\b[^>]*>"
-)
-_ANY_TAG_RE = re.compile(r"(?is)<[^>]+>")
-_HORIZONTAL_WS_RE = re.compile(r"[^\S\r\n]+")
 
 
 @dataclass(frozen=True, slots=True)
-class SECFilingHeader:
+class SECSubmissionRecord:
     accession_number: str
-    first_cik: str | None
+    issuer_cik: str
+    filing_date: str
     acceptance_datetime: str
-    item_information: tuple[str, ...]
-    raw_header: str
-    raw_header_sha256: str
+    form: str
+    item_codes: tuple[str, ...]
+    primary_document: str | None
     source_url: str
+    source_record_json: str
+    source_record_sha256: str
 
 
 def _normalize_cik(value: object) -> str:
     text = str(value).strip()
     if not text.isdigit():
         raise ProviderError(f"SEC CIK is not numeric: {value!r}")
-    return str(int(text))
+    return str(int(text)).zfill(10)
 
 
 def _validate_accession(accession_number: str) -> str:
@@ -89,92 +78,128 @@ def sec_declared_user_agent(contact_email: str) -> str:
     return f"{SEC_EDGAR_USER_AGENT_PREFIX} {contact}"
 
 
-def sec_index_headers_url(*, cik: object, accession_number: str) -> str:
-    accession = _validate_accession(accession_number)
-    cik_path = _normalize_cik(cik)
-    accession_path = accession.replace("-", "")
-    return (
-        "https://www.sec.gov/Archives/edgar/data/"
-        f"{cik_path}/{accession_path}/{accession}{SEC_EDGAR_INDEX_HEADERS_SUFFIX}"
-    )
+def sec_company_submissions_url(*, cik: object) -> str:
+    padded = _normalize_cik(cik)
+    return f"https://data.sec.gov/submissions/CIK{padded}.json"
 
 
-def sec_submission_url(*, cik: object, accession_number: str) -> str:
-    """Compatibility alias for the bounded SEC filing-index-header URL."""
-    return sec_index_headers_url(cik=cik, accession_number=accession_number)
+def _validate_shard_name(name: object) -> str:
+    text = str(name or "").strip()
+    expected = re.compile(r"^CIK\d{10}-submissions-\d{3}\.json$")
+    if not expected.fullmatch(text):
+        raise ProviderError(f"SEC submissions archive shard has unexpected name: {name!r}")
+    return text
 
 
-def _extract_header(raw: str) -> str:
-    text = raw.lstrip("\ufeff")
-    match = _HEADER_RE.search(text)
-    if match is not None:
-        text = match.group(1)
-    header = text.strip()
-    if not header:
-        raise ProviderError("SEC filing-index header response is empty")
-    return header + "\n"
+def sec_submission_shard_url(name: object) -> str:
+    shard = _validate_shard_name(name)
+    return f"https://data.sec.gov/submissions/{shard}"
 
 
-def _normalize_presentation_fields(header: str) -> str:
-    """Normalize SEC presentation markup without changing provenance evidence.
-
-    ``-index-headers.html`` is a browser presentation of EDGAR header metadata.
-    Across presentation variants, HTML tags/entities can surround or split the
-    human-readable labels even though the underlying filing-header fields are
-    unchanged. Parsing therefore uses a normalized text view while retaining
-    the original bounded SEC header text unchanged for hashing/evidence.
-    """
-    text = unescape(header)
-    text = _BR_TAG_RE.sub("\n", text)
-    text = _BLOCK_TAG_RE.sub("\n", text)
-    text = _ANY_TAG_RE.sub(" ", text)
-    text = text.replace("\xa0", " ")
-    text = _HORIZONTAL_WS_RE.sub(" ", text)
-    return "\n".join(line.strip() for line in text.splitlines())
-
-
-def parse_sec_filing_header(raw_submission: str, *, source_url: str) -> SECFilingHeader:
-    header = _extract_header(raw_submission)
-    decoded_header = unescape(header)
-
-    acceptance_match = _ACCEPTANCE_RE.search(decoded_header)
-    if acceptance_match is None:
-        raise ProviderError("SEC submission header is missing ACCEPTANCE-DATETIME")
-    raw_acceptance = acceptance_match.group(1)
+def _parse_acceptance(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        raise ProviderError("SEC submissions metadata is missing acceptanceDateTime")
+    normalized = text.replace("Z", "+00:00")
     try:
-        local_dt = datetime.strptime(raw_acceptance, "%Y%m%d%H%M%S").replace(
-            tzinfo=ZoneInfo("America/New_York")
-        )
+        dt = datetime.fromisoformat(normalized)
     except ValueError as exc:
-        raise ProviderError("SEC ACCEPTANCE-DATETIME is invalid") from exc
+        raise ProviderError(f"SEC acceptanceDateTime is invalid: {text!r}") from exc
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    eastern = dt.astimezone(ZoneInfo("America/New_York"))
+    return eastern.isoformat()
 
-    field_text = _normalize_presentation_fields(header)
-    accession_match = _ACCESSION_RE.search(field_text)
-    if accession_match is None:
-        field_upper = field_text.upper()
-        header_sha = hashlib.sha256(header.encode("utf-8")).hexdigest()
-        raise ProviderError(
-            "SEC submission header is missing ACCESSION NUMBER after presentation normalization; "
-            f"source_url={source_url}; header_sha256={header_sha}; "
-            f"contains_ACCESSION={'ACCESSION' in field_upper}; "
-            f"contains_NUMBER={'NUMBER' in field_upper}; normalized_chars={len(field_text)}"
-        )
-    accession = _validate_accession(accession_match.group(1))
 
-    cik_match = _CIK_RE.search(field_text)
-    first_cik = None if cik_match is None else cik_match.group(1).strip()
-    items = tuple(
-        dict.fromkeys(item.strip() for item in _ITEM_RE.findall(field_text) if item.strip())
+def _split_items(value: object) -> tuple[str, ...]:
+    text = str(value or "").strip()
+    if not text:
+        return ()
+    values = [part.strip() for part in re.split(r"[,;]", text) if part.strip()]
+    return tuple(dict.fromkeys(values))
+
+
+def _columnar_rows(block: object) -> tuple[dict[str, object], ...]:
+    if not isinstance(block, dict):
+        raise ProviderError("SEC submissions filing block is not an object")
+    accessions = block.get("accessionNumber")
+    if not isinstance(accessions, list):
+        raise ProviderError("SEC submissions filing block is missing accessionNumber array")
+    fields = (
+        "accessionNumber",
+        "filingDate",
+        "acceptanceDateTime",
+        "form",
+        "items",
+        "primaryDocument",
     )
+    rows: list[dict[str, object]] = []
+    for index in range(len(accessions)):
+        row: dict[str, object] = {}
+        for field in fields:
+            values = block.get(field)
+            if isinstance(values, list) and index < len(values):
+                row[field] = values[index]
+            else:
+                row[field] = ""
+        rows.append(row)
+    return tuple(rows)
 
-    return SECFilingHeader(
+
+def _find_accession(block: object, accession_number: str) -> dict[str, object] | None:
+    for row in _columnar_rows(block):
+        if str(row["accessionNumber"]).strip() == accession_number:
+            return row
+    return None
+
+
+def _canonical_json(value: object) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
+
+
+def _record_from_row(
+    *,
+    row: dict[str, object],
+    issuer_cik: str,
+    expected_accession: str,
+    source_url: str,
+) -> SECSubmissionRecord:
+    accession = _validate_accession(str(row.get("accessionNumber") or ""))
+    if accession != expected_accession:
+        raise ProviderError("SEC submissions accession does not match requested accession")
+    form = str(row.get("form") or "").strip()
+    if form != "8-K":
+        raise ProviderError(
+            f"SEC submissions accession {accession} is not original 8-K metadata: form={form!r}"
+        )
+    filing_date = str(row.get("filingDate") or "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", filing_date):
+        raise ProviderError(f"SEC submissions filingDate is invalid: {filing_date!r}")
+    acceptance_datetime = _parse_acceptance(row.get("acceptanceDateTime"))
+    item_codes = _split_items(row.get("items"))
+    primary_document = str(row.get("primaryDocument") or "").strip() or None
+    source_record = {
+        "accessionNumber": accession,
+        "issuerCIK": issuer_cik,
+        "filingDate": filing_date,
+        "acceptanceDateTime": str(row.get("acceptanceDateTime") or "").strip(),
+        "form": form,
+        "items": str(row.get("items") or "").strip(),
+        "primaryDocument": primary_document,
+        "sourceUrl": source_url,
+    }
+    source_record_json = _canonical_json(source_record)
+    return SECSubmissionRecord(
         accession_number=accession,
-        first_cik=first_cik,
-        acceptance_datetime=local_dt.isoformat(),
-        item_information=items,
-        raw_header=header,
-        raw_header_sha256=hashlib.sha256(header.encode("utf-8")).hexdigest(),
+        issuer_cik=issuer_cik,
+        filing_date=filing_date,
+        acceptance_datetime=acceptance_datetime,
+        form=form,
+        item_codes=item_codes,
+        primary_document=primary_document,
         source_url=source_url,
+        source_record_json=source_record_json,
+        source_record_sha256=hashlib.sha256(source_record_json.encode("utf-8")).hexdigest(),
     )
 
 
@@ -199,13 +224,7 @@ def _decode_content(raw: bytes, content_encoding: str | None) -> bytes:
 
 
 class SECEDGARClient:
-    """Bounded read-only SEC EDGAR filing-index-header client.
-
-    The client is intentionally limited to official ``-index-headers.html``
-    artifacts, declares the fair-access identity requested by SEC, advertises
-    gzip/deflate support, and runs at a conservative one request per second.
-    It exposes no market outcomes or mutation authority.
-    """
+    """Bounded read-only client for official SEC company submissions metadata."""
 
     RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
 
@@ -220,6 +239,7 @@ class SECEDGARClient:
         self._user_agent = sec_declared_user_agent(self._contact_email)
         self._opener = opener or urlopen
         self._sleep = sleeper
+        self._cache: dict[str, tuple[dict[str, Any], str]] = {}
 
     @staticmethod
     def _validate_url(url: str) -> None:
@@ -228,21 +248,22 @@ class SECEDGARClient:
             raise ProviderError("SEC EDGAR request must use https")
         if parts.netloc.lower() not in SEC_EDGAR_ALLOWED_HOSTS:
             raise ProviderError("SEC EDGAR request changed host")
-        if not parts.path.startswith(SEC_EDGAR_ARCHIVES_PREFIX):
-            raise ProviderError("SEC EDGAR request must stay under /Archives/edgar/")
-        if not parts.path.endswith(SEC_EDGAR_INDEX_HEADERS_SUFFIX):
-            raise ProviderError(
-                "SEC EDGAR request must target the filing -index-headers.html artifact"
-            )
+        if not parts.path.startswith(SEC_EDGAR_SUBMISSIONS_PREFIX):
+            raise ProviderError("SEC EDGAR request must stay under /submissions/")
+        if not parts.path.endswith(".json"):
+            raise ProviderError("SEC EDGAR submissions request must target JSON")
         if parts.query or parts.fragment:
-            raise ProviderError("SEC EDGAR archive request must not contain query/fragment")
+            raise ProviderError("SEC EDGAR submissions request must not contain query/fragment")
 
     @property
     def declared_user_agent(self) -> str:
         return self._user_agent
 
-    def get_text(self, url: str) -> str:
+    def get_json(self, url: str) -> tuple[dict[str, Any], str]:
         self._validate_url(url)
+        cached = self._cache.get(url)
+        if cached is not None:
+            return cached
         delay = SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS
         last_error: Exception | None = None
         for attempt in range(1, SEC_EDGAR_MAX_ATTEMPTS + 1):
@@ -252,50 +273,106 @@ class SECEDGARClient:
                 method="GET",
                 headers={
                     "User-Agent": self._user_agent,
-                    "Accept": "text/html,text/plain;q=0.9,*/*;q=0.1",
+                    "Accept": "application/json",
                     "Accept-Encoding": "gzip, deflate",
-                    "Host": "www.sec.gov",
+                    "Host": "data.sec.gov",
                 },
             )
             try:
                 with self._opener(request, timeout=SEC_EDGAR_REQUEST_TIMEOUT_SECONDS) as response:
-                    raw = response.read(SEC_EDGAR_HEADER_MAX_BYTES + 1)
+                    raw = response.read(SEC_EDGAR_MAX_RESPONSE_BYTES + 1)
                     content_encoding = response.headers.get("Content-Encoding")
-                if len(raw) > SEC_EDGAR_HEADER_MAX_BYTES:
-                    raise ProviderError("SEC EDGAR filing-index-header response exceeded bounded size")
+                if len(raw) > SEC_EDGAR_MAX_RESPONSE_BYTES:
+                    raise ProviderError("SEC EDGAR submissions response exceeded bounded size")
                 decoded = _decode_content(raw, content_encoding)
-                if len(decoded) > SEC_EDGAR_HEADER_MAX_BYTES:
-                    raise ProviderError("SEC EDGAR decoded filing-index header exceeded bounded size")
-                return decoded.decode("utf-8", errors="replace")
+                if len(decoded) > SEC_EDGAR_MAX_RESPONSE_BYTES:
+                    raise ProviderError("SEC EDGAR decoded submissions response exceeded bounded size")
+                text = decoded.decode("utf-8", errors="strict")
+                try:
+                    payload = json.loads(text)
+                except json.JSONDecodeError as exc:
+                    raise ProviderError("SEC EDGAR submissions response is not valid JSON") from exc
+                if not isinstance(payload, dict):
+                    raise ProviderError("SEC EDGAR submissions response root is not an object")
+                result = (payload, text)
+                self._cache[url] = result
+                return result
             except HTTPError as exc:
                 last_error = exc
                 if exc.code == 403:
                     raise ProviderError(
-                        "SEC EDGAR request denied with HTTP 403 under fair-access controls; "
-                        "ATLAS did not retry the denial. The declared contact identity was "
-                        "validated locally; persistent denial is treated as a source-access "
-                        "state, not as scientific evidence."
+                        "SEC EDGAR submissions request denied with HTTP 403 under fair-access "
+                        "controls; ATLAS did not retry the denial."
                     ) from exc
                 if exc.code not in self.RETRYABLE_HTTP or attempt >= SEC_EDGAR_MAX_ATTEMPTS:
-                    raise ProviderError(f"SEC EDGAR request failed with HTTP {exc.code}") from exc
-            except (URLError, TimeoutError, OSError) as exc:
+                    raise ProviderError(f"SEC EDGAR submissions request failed with HTTP {exc.code}") from exc
+            except (URLError, TimeoutError, OSError, UnicodeDecodeError) as exc:
                 last_error = exc
                 if attempt >= SEC_EDGAR_MAX_ATTEMPTS:
                     raise ProviderError(
-                        f"SEC EDGAR request failed: {type(exc).__name__}"
+                        f"SEC EDGAR submissions request failed: {type(exc).__name__}"
                     ) from exc
             self._sleep(delay)
             delay = min(4.0, delay * 2.0)
         raise ProviderError(
-            f"SEC EDGAR request failed after retries: {type(last_error).__name__}"
+            f"SEC EDGAR submissions request failed after retries: {type(last_error).__name__}"
         )
 
-    def filing_header(self, *, cik: object, accession_number: str) -> SECFilingHeader:
+    def filing_metadata(
+        self,
+        *,
+        cik: object,
+        accession_number: str,
+        filing_date: str,
+    ) -> SECSubmissionRecord:
+        issuer_cik = _normalize_cik(cik)
         expected_accession = _validate_accession(accession_number)
-        url = sec_index_headers_url(cik=cik, accession_number=expected_accession)
-        header = parse_sec_filing_header(self.get_text(url), source_url=url)
-        if header.accession_number != expected_accession:
-            raise ProviderError(
-                "SEC filing-index header accession does not match the requested accession"
+        root_url = sec_company_submissions_url(cik=issuer_cik)
+        root, _ = self.get_json(root_url)
+        filings = root.get("filings")
+        if not isinstance(filings, dict):
+            raise ProviderError("SEC company submissions response is missing filings object")
+        recent = filings.get("recent")
+        row = _find_accession(recent, expected_accession)
+        if row is not None:
+            return _record_from_row(
+                row=row,
+                issuer_cik=issuer_cik,
+                expected_accession=expected_accession,
+                source_url=root_url,
             )
-        return header
+
+        files = filings.get("files")
+        if not isinstance(files, list):
+            files = []
+        candidates: list[dict[str, object]] = []
+        for item in files:
+            if not isinstance(item, dict):
+                continue
+            start = str(item.get("filingFrom") or "")
+            end = str(item.get("filingTo") or "")
+            if start and end and start <= filing_date <= end:
+                candidates.append(item)
+        if not candidates:
+            raise ProviderError(
+                f"SEC submissions metadata does not cover requested accession/date: "
+                f"{expected_accession} / {filing_date}"
+            )
+        if len(candidates) > SEC_EDGAR_MAX_ARCHIVE_SHARDS_PER_LOOKUP:
+            raise ProviderError("SEC submissions archive lookup exceeded bounded shard count")
+        for item in candidates:
+            shard_url = sec_submission_shard_url(item.get("name"))
+            shard, _ = self.get_json(shard_url)
+            row = _find_accession(shard, expected_accession)
+            if row is None and isinstance(shard.get("filings"), dict):
+                row = _find_accession(shard["filings"].get("recent"), expected_accession)
+            if row is not None:
+                return _record_from_row(
+                    row=row,
+                    issuer_cik=issuer_cik,
+                    expected_accession=expected_accession,
+                    source_url=shard_url,
+                )
+        raise ProviderError(
+            f"SEC submissions metadata did not contain requested accession {expected_accession}"
+        )

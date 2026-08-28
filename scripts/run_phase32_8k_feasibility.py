@@ -26,10 +26,10 @@ def main() -> int:
     print(f"Frozen feasibility fingerprint: {phase32_feasibility_fingerprint()}")
     print(f"Declared Massive plan: {PHASE32_DECLARED_MASSIVE_PLAN}")
     print("Discovery source: MassiveRESTClient -> /stocks/filings/vX/index (form_type=8-K)")
-    print("Timestamp/item source: official SEC EDGAR filing-index headers")
+    print("Timestamp/item source: official SEC data.sec.gov company submissions metadata")
     print(f"SEC fair-access identity: ATLAS + local {SEC_EDGAR_CONTACT_EMAIL_ENV} contact")
     print(f"Conservative public-availability rule: {PHASE32_PUBLIC_AVAILABILITY_RULE}")
-    print("Scope: source access/history/ticker linkage/acceptance timestamp/item-label provenance only")
+    print("Scope: source access/history/ticker linkage/acceptance timestamp/item-code provenance only")
     print("Alpha hypotheses: NOT YET FROZEN")
     print("Target/protected market outcomes: FORBIDDEN / UNREAD")
     print("Broker/order/PAPER/LIVE activity: DISABLED")
@@ -51,22 +51,26 @@ def main() -> int:
         print(
             f"  {window['label']}: index_rows={window['index_rows']} "
             f"tickers={window['unique_tickers']} massive_pages={window['successful_massive_pages']} "
-            f"sec_headers={window['sec_headers_fetched']} item_headers={window['sec_headers_with_item_information']} "
-            f"date_mismatches={window['acceptance_date_filing_date_mismatch_count']} "
+            f"sec_records={window['sec_records_fetched']} item_records={window['sec_records_with_item_codes']} "
+            f"acceptance_date_mismatches={window['acceptance_date_massive_filing_date_mismatch_count']} "
+            f"sec_filing_date_mismatches={window['sec_filing_date_massive_filing_date_mismatch_count']} "
             f"index_sha256={window['massive_index_sha256']}"
         )
-        print(f"    item_information={window['unique_item_information']}")
+        print(f"    item_codes={window['unique_item_codes']}")
     print(f"Total 8-K index rows: {report['total_index_rows']}")
     print(f"Total ticker-linked rows: {report['total_ticker_linked_rows']}")
-    print(f"Total sampled SEC headers: {report['total_sec_headers_fetched']}")
-    print(f"Total sampled item labels: {report['total_item_labels']}")
+    print(f"Total sampled SEC records: {report['total_sec_records_fetched']}")
+    print(f"Total sampled SEC item codes: {report['total_item_codes']}")
     print(f"Successful Massive pages: {report['successful_massive_pages']}")
     print(f"Target outcome rows read: {report['target_outcome_rows_read']}")
     print(f"Protected candidate rows read: {report['protected_candidate_rows_read']}")
     print(f"Protected return rows read: {report['protected_return_rows_read']}")
     print("Provider writes / broker reads / broker writes / orders / PAPER / LIVE: 0 / 0 / 0 / 0 / 0 / 0")
     print(f"Feasibility report: {report['report_path']}")
-    print("Next scientific action: freeze a finite item-defined Phase32 hypothesis family only after this non-performance source evidence is accepted.")
+    print(
+        "Next scientific action: freeze a finite SEC-item-code Phase32 hypothesis family "
+        "only after this non-performance source evidence is accepted."
+    )
     print(f"Pass: {report['pass']}")
     return 0
 

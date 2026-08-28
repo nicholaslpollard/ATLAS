@@ -1,132 +1,110 @@
 # Phase 32 — SEC 8-K Material Corporate-Event Alpha
 
-**Status:** ACTIVE — SOURCE FEASIBILITY / PROVENANCE ONLY. Alpha hypotheses are not frozen; zero market outcomes are authorized; Phase33 signal-to-trade remains blocked.
+**Status:** ACTIVE — SOURCE FEASIBILITY / PROVENANCE ONLY. Alpha hypotheses remain unfrozen, zero market outcomes are authorized, and Phase33 signal-to-trade remains blocked.
 
 **Source foundation:** Phase31 PR #35 merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
-## Plain-English phase start
+## Feasibility V2 contract
 
-ATLAS has now tested six materially different modern alpha mechanisms and none earned support. Phase32 changes the information mechanism again: structured SEC 8-K material corporate-event disclosures.
+Contract version:
 
-An 8-K is the issuer's regulatory disclosure of specified material events. The research question is whether particular structured event classes create robust post-disclosure repricing/drift after the filing is publicly accepted by the SEC. This is different from Phase30's metadata-only news-arrival shock and Phase31's insider transactions.
+`phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
 
-The phase is allowed to fail. Nothing may be tuned into a positive result after performance is observed.
+Frozen V2 feasibility fingerprint:
 
-## Entry condition
+`978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
-Phase31 closed `ACCEPTED_NEGATIVE` with `PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF`, zero supported candidates, zero protected candidate rows, zero protected returns, and an unconsumed master holdout. Entry satisfied by merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+V1 archive-header feasibility remains retained as failed source-history evidence. V2 does not reinterpret any V1 result and does not authorize market outcomes.
 
-## Feasibility source boundary
+## Source boundary
 
-Massive discovery source:
+Massive discovery remains unchanged:
 
 `MassiveRESTClient -> GET /stocks/filings/vX/index`
 
-Frozen feasibility query:
+with the frozen query:
 
 - `form_type=8-K`
-- `filing_date.gte/lte` by frozen probe window
+- frozen `filing_date.gte/lte` probe windows
 - `sort=filing_date.asc`
 - `limit=10000`
-- deterministic pagination through `next_url`.
+- deterministic `next_url` pagination.
 
-Current Massive subscription declaration: **Stocks Starter**. Actual credential access must be proven by the target run; documentation or prior endpoint access does not substitute for that evidence.
+Current Massive subscription declaration remains **Stocks Starter**.
 
-Authoritative timestamp/item source:
+Authoritative SEC metadata source for V2:
 
-`official SEC EDGAR -> https://www.sec.gov/Archives/edgar/data/<CIK>/<accession-no-dashes>/<accession>-index-headers.html`
+`official SEC EDGAR -> https://data.sec.gov/submissions/CIK##########.json`
 
-The official filing-index-header artifact is used only for source provenance:
+For an older accession not present in the root `filings.recent` arrays, ATLAS may follow only SEC-declared `filings.files` archive JSON whose `filingFrom..filingTo` range contains the requested Massive filing date. At most two matching archive shards may be read for one lookup.
 
-- `ACCESSION NUMBER`
-- `<ACCEPTANCE-DATETIME>`
-- `ITEM INFORMATION` labels
-- filing CIK metadata
-- exact bounded filing-header evidence.
+For every sampled Massive original 8-K, SEC metadata must independently confirm:
 
-The bounded SEC URL is derived generically from Massive CIK + accession. No accession-specific URL override is allowed. ATLAS does not request the complete submission `.txt` during feasibility. Standalone `.hdr.sgml` transport is also not used because it is not consistently enumerated as an archive file in SEC accession directory listings.
+- exact `accessionNumber` equality;
+- exact original form `8-K` — not `8-K/A`;
+- SEC `filingDate` equal to Massive `filing_date`;
+- nonempty `acceptanceDateTime`;
+- structured SEC `items` codes;
+- issuer CIK provenance and primary-document metadata when supplied.
 
-SEC presentation markup is treated as representation only. Parser tolerance may allow trailing HTML markup around a field, but the field values themselves remain strict. In particular, the SEC accession must parse in canonical accession format and must equal the requested Massive accession before the header is accepted.
+SEC `acceptanceDateTime` is parsed as an offset-aware timestamp and converted to `America/New_York` for the unchanged timing rule. ATLAS does not infer accession, filing date, form, acceptance time, or item codes from the requested URL.
+
+Because the root SEC company-submissions JSON legitimately changes as new filings arrive, V2 does not make the entire live company JSON an immutable artifact. Instead, ATLAS preserves an exact canonical JSON record containing only the sampled filing's authoritative SEC metadata plus its source URL. Historical changes to that filing record therefore still produce immutable-evidence drift without unrelated future filings invalidating the artifact.
 
 ## Conservative public-availability rule
 
-Feasibility timing boundary:
+The feasibility timing boundary remains exactly:
 
 `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
 
-`<ACCEPTANCE-DATETIME>` is interpreted in `America/New_York`. Filing date alone cannot move the signal earlier. Even an intraday SEC acceptance cannot authorize same-session entry under this feasibility boundary.
+An intraday SEC acceptance still cannot authorize same-session entry. A later scientific contract may be more conservative but may not choose an earlier entry after inspecting returns.
 
-A later frozen scientific contract may be more conservative but cannot choose an earlier decision time after inspecting returns.
+## Frozen feasibility windows and sampling
 
-## Frozen feasibility windows
+The four probe windows remain unchanged:
 
 1. research boundary `2021-08-16..2021-08-20`
 2. mid-history `2023-08-14..2023-08-18`
 3. development boundary `2026-05-04..2026-05-08`
 4. protected boundary `2026-08-07..2026-08-11`.
 
-For each window ATLAS will preserve the complete returned Massive 8-K index frame and fetch a deterministic bounded SEC sample of at most 12 unique accessions (all when <=12; otherwise first six + last six by filing date/accession).
+For each window, ATLAS preserves the complete Massive index frame and samples at most 12 unique accessions: all when there are 12 or fewer, otherwise the first six and last six by filing date/accession.
+
+V2 evidence is namespaced separately under `data/provider/phase32_sec_8k_feasibility/v2/`, with its report under `data/derived/strategy_evaluation/phase32/v2/`.
 
 ## Feasibility acceptance criteria
 
 The target run must prove, without market outcomes:
 
-- all four windows return original 8-K rows;
-- all windows have provider-native ticker linkage;
+- all four windows contain original Massive 8-K rows;
+- every window has provider-native ticker linkage;
 - Massive pagination/request provenance is retained;
-- all sampled SEC filings have exact acceptance timestamps from official filing-index headers;
-- sampled SEC accessions reconcile exactly to Massive accessions;
-- all windows demonstrate populated `ITEM INFORMATION` evidence;
-- immutable Massive index and SEC-header evidence reproduces exactly on rerun;
-- SEC reads stay on official `www.sec.gov/Archives/edgar/` paths, identify ATLAS with a local contact, target only `-index-headers.html`, advertise gzip/deflate support, and are limited to one request/second;
+- every sampled accession is independently found in official SEC submissions metadata;
+- SEC accession, original `8-K` form, and filing date reconcile exactly to Massive;
+- every sampled filing has an exact SEC acceptance timestamp;
+- every probe window has at least some structured SEC item-code evidence;
+- immutable Massive frames and canonical sampled SEC records reproduce exactly;
+- SEC reads remain read-only on `data.sec.gov/submissions/`, identify ATLAS using the local contact, support gzip/deflate, and run at one request per second;
 - alpha hypotheses remain unfrozen;
 - target/protected market outcomes remain zero;
 - provider writes, broker reads/writes, orders, PAPER, LIVE, automation, and automatic broker failover remain zero/disabled.
 
-A mismatch between SEC acceptance local date and Massive `filing_date` is a diagnostic to preserve, not automatically a source failure. Exact acceptance time is the authoritative timing input for later scientific design.
+## What remains unfrozen
 
-## What is not frozen yet
+No Phase32 alpha candidate exists yet. Event ideas such as bankruptcy/receivership, defaults or accelerated obligations, material impairments, listing deficiencies, financial-statement non-reliance/restatements, and unregistered equity issuance/dilution remain ideas only.
 
-No Phase32 alpha candidate exists yet. Potential event ideas—including bankruptcy/receivership, default or accelerated financial obligations, material impairment, delisting/listing deficiency, financial-statement non-reliance/restatement, or unregistered equity issuance/dilution—are **ideas only** during feasibility.
-
-Do not inspect returns, rank item labels, choose a direction, pick a horizon, or select thresholds until feasibility is accepted and a finite scientific contract is frozen.
+Do not inspect returns, assign directions, select horizons, rank item codes, or choose thresholds until V2 feasibility is accepted and a finite scientific hypothesis family is frozen.
 
 ## Post-feasibility sequence
 
-If feasibility passes:
+If V2 feasibility passes, ATLAS will freeze the finite SEC-item-code hypothesis family, event-unit and amendment rules, exact PIT identity, decision session, horizons, benchmark, costs, sample/concentration/robustness gates, multiplicity, development/internal/protected chronology, purge, finalist-only protected reads, and no-runner-up rule before any governed performance read. Predictor-only event construction follows before development outcomes.
 
-1. freeze a finite original-8-K item-defined hypothesis family;
-2. freeze event-unit/contradiction/amendment rules and exact PIT identity;
-3. freeze decision session, horizon(s), benchmark, costs, dependence/multiplicity, robustness and concentration gates;
-4. freeze development/internal/protected chronology and no-runner-up rules;
-5. build predictor-only event frames before outcomes;
-6. only then read development performance;
-7. protected returns remain finalist-only after independent blindness/lineage audit;
-8. independently reconstruct and close Phase32.
-
-If feasibility fails, diagnose source/provenance root cause generically. Do not inspect market outcomes or change the information family merely to manufacture a PASS.
+If feasibility fails, diagnose the source/provenance defect generically. Do not inspect market outcomes or weaken chronology/identity rules to rescue the source.
 
 ## Authority boundary
 
-Allowed in feasibility:
+Allowed during V2 feasibility: bounded read-only Massive 8-K discovery, bounded read-only official SEC submissions metadata, and immutable local source/report writes.
 
-- bounded read-only Massive SEC-index calls;
-- bounded read-only official SEC EDGAR filing-index-header calls;
-- immutable local source evidence and feasibility report writes.
+Forbidden: stock/SPY/options outcomes, protected candidate/return reads, provider mutations, broker/account reads or writes, orders, PAPER submits, LIVE writes, frontend trading authority, automation writes, and automatic broker failover.
 
-Forbidden:
-
-- stock/SPY/option target outcomes;
-- protected candidate/return reads;
-- provider writes;
-- broker/account reads or writes;
-- orders, PAPER submits, LIVE writes;
-- frontend trading authority;
-- automation writes;
-- automatic broker failover.
-
-## Success semantics
-
-A feasibility PASS means the structured 8-K source is suitable to define a scientific test. It does **not** establish alpha, does not satisfy Phase33 entry, and creates no trading authority.
-
-A later positive Phase32 closeout requires at least one fully confirmed candidate to earn historical analytical `SUPPORTED` authority. A legitimate negative result will close `ACCEPTED_NEGATIVE` and keep Phase33 blocked.
+A feasibility PASS means only that the source is suitable for a scientific test. It does not establish alpha, does not satisfy Phase33 entry, and grants no trading authority.

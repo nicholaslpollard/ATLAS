@@ -11,11 +11,11 @@ from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
 from packages.features.partition_store import sha256_file
 from packages.providers.massive.phase32 import MassivePhase32SECIndexClient
-from packages.providers.sec_edgar import SECEDGARClient, SECFilingHeader
+from packages.providers.sec_edgar import SECEDGARClient, SECSubmissionRecord
 
 
 PHASE32_FEASIBILITY_CONTRACT_VERSION = (
-    "phase32-feasibility-v1-sec-8k-index-acceptance-item-provenance-no-market-outcomes"
+    "phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes"
 )
 PHASE32_SOURCE_PHASE31_MERGE = "ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4"
 PHASE32_DECLARED_MASSIVE_PLAN = "Stocks Starter"
@@ -70,7 +70,7 @@ def _fingerprint_payload() -> dict[str, object]:
         "declared_massive_plan": PHASE32_DECLARED_MASSIVE_PLAN,
         "probe_windows": [asdict(window) for window in PHASE32_PROBE_WINDOWS],
         "massive_source": "MassiveRESTClient:/stocks/filings/vX/index:form_type=8-K",
-        "sec_source": "SECEDGARClient:www.sec.gov/Archives/edgar/data",
+        "sec_source": "SECEDGARClient:data.sec.gov/submissions",
         "sec_sample_per_window": PHASE32_SEC_SAMPLE_PER_WINDOW,
         "public_availability_rule": PHASE32_PUBLIC_AVAILABILITY_RULE,
         "alpha_hypotheses_frozen": PHASE32_ALPHA_HYPOTHESES_FROZEN,
@@ -142,28 +142,36 @@ def _sample_rows(rows: tuple[dict[str, Any], ...]) -> tuple[dict[str, Any], ...]
     return ordered[:half] + ordered[-half:]
 
 
-def _sec_record(row: dict[str, Any], header: SECFilingHeader, header_sha: str) -> dict[str, object]:
+def _sec_record(
+    row: dict[str, Any],
+    metadata: SECSubmissionRecord,
+    source_record_sha: str,
+) -> dict[str, object]:
     filing_date = str(row["filing_date"])
-    acceptance_date = header.acceptance_datetime[:10]
+    acceptance_date = metadata.acceptance_datetime[:10]
     return {
         "accession_number": str(row["accession_number"]),
         "cik": str(row["cik"]),
         "ticker": row.get("ticker"),
-        "filing_date": filing_date,
+        "massive_filing_date": filing_date,
         "massive_filing_url": str(row["filing_url"]),
-        "sec_submission_url": header.source_url,
-        "sec_header_accession_number": header.accession_number,
-        "sec_header_first_cik": header.first_cik,
-        "acceptance_datetime": header.acceptance_datetime,
+        "sec_source_url": metadata.source_url,
+        "sec_accession_number": metadata.accession_number,
+        "sec_issuer_cik": metadata.issuer_cik,
+        "sec_filing_date": metadata.filing_date,
+        "sec_form": metadata.form,
+        "acceptance_datetime": metadata.acceptance_datetime,
         "acceptance_local_date": acceptance_date,
-        "acceptance_date_differs_from_filing_date": acceptance_date != filing_date,
-        "item_information": list(header.item_information),
-        "sec_header_sha256": header_sha,
+        "acceptance_date_differs_from_massive_filing_date": acceptance_date != filing_date,
+        "sec_filing_date_differs_from_massive_filing_date": metadata.filing_date != filing_date,
+        "item_codes": list(metadata.item_codes),
+        "primary_document": metadata.primary_document,
+        "sec_source_record_sha256": source_record_sha,
     }
 
 
 class Phase32EightKFeasibility:
-    """Prove 8-K discovery and exact SEC acceptance/item provenance without outcomes."""
+    """Prove 8-K discovery and official SEC metadata provenance without outcomes."""
 
     def __init__(
         self,
@@ -176,8 +184,8 @@ class Phase32EightKFeasibility:
         self.sec_client = sec_client
         provider_root = settings.resolved_path(settings.data.paths.provider)
         derived_root = settings.resolved_path(settings.data.paths.derived)
-        self.evidence_root = provider_root / "phase32_sec_8k_feasibility" / "v1"
-        self.report_root = derived_root / "strategy_evaluation" / "phase32" / "v1"
+        self.evidence_root = provider_root / "phase32_sec_8k_feasibility" / "v2"
+        self.report_root = derived_root / "strategy_evaluation" / "phase32" / "v2"
 
     def report_path(self) -> Path:
         return self.report_root / "phase32_8k_feasibility.json"
@@ -185,16 +193,16 @@ class Phase32EightKFeasibility:
     def index_path(self, label: str) -> Path:
         return self.evidence_root / "massive_index" / f"{label}.jsonl"
 
-    def header_path(self, label: str, accession: str) -> Path:
+    def sec_record_path(self, label: str, accession: str) -> Path:
         safe = accession.replace("/", "_").replace("\\", "_")
-        return self.evidence_root / "sec_headers" / label / f"{safe}.txt"
+        return self.evidence_root / "sec_submissions" / label / f"{safe}.json"
 
     def run(self) -> dict[str, object]:
         window_reports: list[dict[str, object]] = []
         total_index_rows = 0
         total_ticker_linked = 0
-        total_sec_headers = 0
-        total_item_labels = 0
+        total_sec_records = 0
+        total_item_codes = 0
         total_pages = 0
 
         for window in PHASE32_PROBE_WINDOWS:
@@ -208,15 +216,17 @@ class Phase32EightKFeasibility:
             sample = _sample_rows(rows)
             sec_records: list[dict[str, object]] = []
             for row in sample:
-                header = self.sec_client.filing_header(
-                    cik=row["cik"], accession_number=str(row["accession_number"])
+                metadata = self.sec_client.filing_metadata(
+                    cik=row["cik"],
+                    accession_number=str(row["accession_number"]),
+                    filing_date=str(row["filing_date"]),
                 )
-                header_sha = _immutable_write(
-                    self.header_path(window.label, str(row["accession_number"])),
-                    header.raw_header,
-                    label="SEC header",
+                source_record_sha = _immutable_write(
+                    self.sec_record_path(window.label, str(row["accession_number"])),
+                    metadata.source_record_json,
+                    label="SEC submissions record",
                 )
-                sec_records.append(_sec_record(row, header, header_sha))
+                sec_records.append(_sec_record(row, metadata, source_record_sha))
 
             ticker_values = {
                 str(row["ticker"])
@@ -224,22 +234,32 @@ class Phase32EightKFeasibility:
                 if isinstance(row.get("ticker"), str) and str(row["ticker"]).strip()
             }
             accession_matches = all(
-                record["accession_number"] == record["sec_header_accession_number"]
+                record["accession_number"] == record["sec_accession_number"]
+                for record in sec_records
+            )
+            form_matches = all(record["sec_form"] == "8-K" for record in sec_records)
+            filing_date_matches = all(
+                record["sec_filing_date"] == record["massive_filing_date"]
                 for record in sec_records
             )
             acceptance_complete = all(bool(record["acceptance_datetime"]) for record in sec_records)
-            item_bearing = sum(1 for record in sec_records if record["item_information"])
+            item_bearing = sum(1 for record in sec_records if record["item_codes"])
             unique_items = sorted(
                 {
                     str(item)
                     for record in sec_records
-                    for item in record["item_information"]  # type: ignore[union-attr]
+                    for item in record["item_codes"]  # type: ignore[union-attr]
                 }
             )
             mismatch_count = sum(
                 1
                 for record in sec_records
-                if bool(record["acceptance_date_differs_from_filing_date"])
+                if bool(record["acceptance_date_differs_from_massive_filing_date"])
+            )
+            sec_date_mismatch_count = sum(
+                1
+                for record in sec_records
+                if bool(record["sec_filing_date_differs_from_massive_filing_date"])
             )
             window_reports.append(
                 {
@@ -257,17 +277,20 @@ class Phase32EightKFeasibility:
                     "massive_request_ids": list(result.request_ids),
                     "massive_index_sha256": index_sha,
                     "sec_sample_rows": len(sample),
-                    "sec_headers_fetched": len(sec_records),
+                    "sec_records_fetched": len(sec_records),
                     "sec_accession_matches": accession_matches,
+                    "sec_original_8k_matches": form_matches,
+                    "sec_filing_date_matches": filing_date_matches,
                     "acceptance_datetime_complete": acceptance_complete,
-                    "sec_headers_with_item_information": item_bearing,
-                    "unique_item_information": unique_items,
-                    "acceptance_date_filing_date_mismatch_count": mismatch_count,
+                    "sec_records_with_item_codes": item_bearing,
+                    "unique_item_codes": unique_items,
+                    "acceptance_date_massive_filing_date_mismatch_count": mismatch_count,
+                    "sec_filing_date_massive_filing_date_mismatch_count": sec_date_mismatch_count,
                     "sec_records": sec_records,
                     "nonempty": bool(rows),
                     "ticker_linked_nonempty": bool(ticker_values),
                     "sec_sample_nonempty": bool(sec_records),
-                    "item_information_present": item_bearing > 0,
+                    "item_codes_present": item_bearing > 0,
                 }
             )
             total_index_rows += len(rows)
@@ -276,8 +299,8 @@ class Phase32EightKFeasibility:
                 for row in rows
                 if isinstance(row.get("ticker"), str) and str(row["ticker"]).strip()
             )
-            total_sec_headers += len(sec_records)
-            total_item_labels += sum(len(record["item_information"]) for record in sec_records)  # type: ignore[arg-type]
+            total_sec_records += len(sec_records)
+            total_item_codes += sum(len(record["item_codes"]) for record in sec_records)  # type: ignore[arg-type]
             total_pages += result.page_count
 
         checks = {
@@ -293,11 +316,17 @@ class Phase32EightKFeasibility:
             "all_sampled_accessions_reconcile": all(
                 bool(w["sec_accession_matches"]) for w in window_reports
             ),
+            "all_sampled_forms_are_original_8k": all(
+                bool(w["sec_original_8k_matches"]) for w in window_reports
+            ),
+            "all_sampled_sec_filing_dates_match_massive": all(
+                bool(w["sec_filing_date_matches"]) for w in window_reports
+            ),
             "all_sampled_acceptance_datetimes_complete": all(
                 bool(w["acceptance_datetime_complete"]) for w in window_reports
             ),
-            "all_probe_windows_have_item_information": all(
-                bool(w["item_information_present"]) for w in window_reports
+            "all_probe_windows_have_item_codes": all(
+                bool(w["item_codes_present"]) for w in window_reports
             ),
             "alpha_hypotheses_not_frozen": PHASE32_ALPHA_HYPOTHESES_FROZEN is False,
             "target_outcomes_forbidden": PHASE32_TARGET_OUTCOME_READS_ALLOWED is False,
@@ -328,14 +357,14 @@ class Phase32EightKFeasibility:
             "declared_massive_plan": PHASE32_DECLARED_MASSIVE_PLAN,
             "massive_endpoint": "/stocks/filings/vX/index",
             "massive_form_type": "8-K",
-            "sec_source": "www.sec.gov/Archives/edgar/data",
+            "sec_source": "data.sec.gov/submissions",
             "public_availability_rule": PHASE32_PUBLIC_AVAILABILITY_RULE,
             "alpha_hypotheses_frozen": False,
             "windows": window_reports,
             "total_index_rows": total_index_rows,
             "total_ticker_linked_rows": total_ticker_linked,
-            "total_sec_headers_fetched": total_sec_headers,
-            "total_item_labels": total_item_labels,
+            "total_sec_records_fetched": total_sec_records,
+            "total_item_codes": total_item_codes,
             "successful_massive_pages": total_pages,
             "target_outcome_rows_read": 0,
             "protected_candidate_rows_read": 0,
@@ -359,6 +388,6 @@ class Phase32EightKFeasibility:
         if not report["pass"]:
             failed = sorted(name for name, passed in checks.items() if not passed)
             raise Phase32FeasibilityError(
-                "Phase32 8-K feasibility failed closed: " + ", ".join(failed)
+                "Phase32 SEC 8-K feasibility checks failed: " + ", ".join(failed)
             )
         return report
