@@ -65,6 +65,7 @@ def classify_form4_historical_source_quality(
     For the larger historical corpus, an accession is quarantined globally if either:
     1) any transaction has impossible transaction_date > filing_date chronology, or
     2) any transaction lacks the transaction_code required to classify P/S hypotheses.
+    The entire accession is then excluded from authoritative historical construction.
 
     Raw provider rows are copied without correction, imputation, ticker normalization,
     accession-specific exceptions, or performance-dependent decisions.
