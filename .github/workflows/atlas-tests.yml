@@ -202,5 +202,8 @@ jobs:
       - name: Validate Phase 30 predictor-only news-shock contracts
         run: python scripts/validate_phase30_predictors.py
 
+      - name: Validate Phase 30 development-only selection contracts
+        run: python scripts/validate_phase30_development.py
+
       - name: Run tests
         run: python -m pytest -q
