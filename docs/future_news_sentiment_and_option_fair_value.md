@@ -87,3 +87,30 @@ Planned operator modes:
 - **Phase34:** measure realized calibration, option-selection quality, news-event outcomes, drift, and degradation; no silent self-reweighting.
 
 Neither layer creates alpha, PAPER, or LIVE authority by itself. Both remain subordinate to the accepted ATLAS authority, risk, chronology, provenance, and no-workaround rules.
+
+## 4. Alpaca/Benzinga News as a Future Independent Source
+
+Alpaca's current Market Data documentation exposes historical news at `https://data.alpaca.markets/v1beta1/news`, states that the history dates back to **2015**, identifies **Benzinga** as the current source, and explicitly lists sentiment-model training and real-time news trading as supported use cases. Alpaca also exposes a real-time news WebSocket. The news schema includes article identity, symbols, headline/summary/content, `created_at`, and `updated_at` timestamps.
+
+This is a useful future ATLAS source for three distinct reasons:
+
+1. **Longer research corpus:** the 2015 start extends well before the current Massive Phase30 research interval and could support future language/event-model research if point-in-time safety is established.
+2. **Cross-provider evidence:** Alpaca/Benzinga can be compared with Massive coverage for missing articles, ticker linkage, timestamp disagreement, duplicate/syndicated stories, and source-specific bias rather than silently replacing one provider with the other.
+3. **Prospective vintage capture:** the real-time WebSocket can be archived exactly as received, including later updates, giving ATLAS a genuinely point-in-time text corpus for future sentiment/event models.
+
+### Entitlement must be proved, not assumed
+
+As of the 2026-08-28 documentation review, Alpaca's Trading API market-data page lists the default **Basic** plan as free with **200 historical API calls/minute**, while Algo Trader Plus is listed at 10,000 calls/minute. The current historical-news page and endpoint reference do not publish a separate Basic-versus-paid news entitlement matrix. Historical news therefore remains **candidate available** rather than accepted available until an authenticated read-only request succeeds with the actual ATLAS Alpaca credentials and its returned rate-limit/entitlement behavior is recorded.
+
+A future feasibility probe must be read-only and record HTTP status, request/rate-limit headers where available, earliest retrievable article time, pagination behavior, content availability, and whether both paper and live Trading API credentials have equivalent market-data entitlement. A `401`, `403`, or plan restriction is a legitimate feasibility result; ATLAS must not silently upgrade plans or substitute a different source to manufacture PASS.
+
+### Point-in-time warning
+
+`created_at` and `updated_at` are valuable provenance, but they do **not by themselves prove that a historical REST response contains the exact text version visible at the original publication time**. Historical REST text may reflect a later article revision. Therefore:
+
+- retrospective Alpaca headline/content must not be granted historical alpha authority until revision/vintage semantics are demonstrated;
+- an `updated_at` timestamp after the trading decision time is a warning, not proof that the returned content can be safely rolled back;
+- historical Alpaca text may be useful for non-authoritative corpus exploration/model pretraining, but not for a leakage-sensitive backtest merely because the article date is old;
+- the strongest path for future sentiment authority is prospective WebSocket capture with immutable versioning from first receipt forward.
+
+This Alpaca/Benzinga requirement does not alter Phase30, does not rescue or retune its negative result, and does not unlock Phase31 without accepted supported alpha.
