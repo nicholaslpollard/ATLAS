@@ -164,6 +164,45 @@ def test_sec_parser_accepts_plain_header_without_line_end_anchors() -> None:
     assert parsed.item_information == ("Regulation FD Disclosure",)
 
 
+def test_sec_parser_normalizes_entities_and_split_presentation_markup() -> None:
+    accession = "0000000001-21-000001"
+    raw = """<html><body><pre>
+<SEC-HEADER>fixture.hdr.sgml : 20210816
+&lt;ACCEPTANCE-DATETIME&gt;20210816183045
+<div><span>ACCESSION</span>&nbsp;<b>NUMBER:</b>&nbsp;<em>0000000001-21-000001</em></div>
+<div><span>ITEM</span>&nbsp;<b>INFORMATION:</b>&nbsp;<span>Regulation FD Disclosure</span></div>
+<div><span>CENTRAL</span>&nbsp;<span>INDEX</span>&nbsp;<b>KEY:</b>&nbsp;<span>0000000001</span></div>
+</SEC-HEADER>
+</pre></body></html>
+"""
+    parsed = parse_sec_filing_header(
+        raw,
+        source_url=sec_index_headers_url(cik="1", accession_number=accession),
+    )
+    assert parsed.accession_number == accession
+    assert parsed.first_cik == "0000000001"
+    assert parsed.acceptance_datetime == "2021-08-16T18:30:45-04:00"
+    assert parsed.item_information == ("Regulation FD Disclosure",)
+    assert "&nbsp;" in parsed.raw_header
+
+
+def test_sec_parser_missing_accession_has_safe_structure_diagnostics() -> None:
+    accession = "0000000001-21-000001"
+    raw = """<SEC-HEADER>fixture.hdr.sgml : 20210816
+<ACCEPTANCE-DATETIME>20210816183045
+ITEM INFORMATION: Regulation FD Disclosure
+</SEC-HEADER>
+"""
+    with pytest.raises(
+        ProviderError,
+        match=r"after presentation normalization; .*header_sha256=.*contains_ACCESSION=False",
+    ):
+        parse_sec_filing_header(
+            raw,
+            source_url=sec_index_headers_url(cik="1", accession_number=accession),
+        )
+
+
 def test_sec_client_requires_declared_contact(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(SEC_EDGAR_CONTACT_EMAIL_ENV, raising=False)
     with pytest.raises(ProviderError, match="fair-access identity is missing"):
