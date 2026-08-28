@@ -11,8 +11,14 @@ if str(PROJECT_ROOT) not in sys.path:
 EXPECTED_POLICY_FINGERPRINT = "e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67"
 EXPECTED_SOURCE_QUALITY_FINGERPRINT = "2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83"
 EXPECTED_QUARANTINE_SHA = "586df9eb91fb8a9a949a0dc44e0765f7c4b7db54c2b383037012d0fb17aaf1eb"
-EXPECTED_ACQUISITION_CONTRACT = (
+EXPECTED_RAW_ACQUISITION_CONTRACT = (
     "phase31-form4-acquisition-v2-monthly-memory-bounded-global-accession-quarantine"
+)
+EXPECTED_ACQUISITION_V3_CONTRACT = (
+    "phase31-form4-acquisition-v3-v2-raw-resume-global-historical-admissibility-quarantine"
+)
+EXPECTED_HISTORICAL_SOURCE_QUALITY_CONTRACT = (
+    "phase31-form4-historical-source-quality-v1-chronology-required-code-global-accession-quarantine"
 )
 EXPECTED_CANDIDATES = (
     "open_market_purchase_long",
@@ -46,6 +52,9 @@ def main() -> int:
     python_files = (
         "packages/backtesting/phase31_policy.py",
         "packages/backtesting/phase31_acquisition.py",
+        "packages/backtesting/phase31_acquisition_v3.py",
+        "packages/backtesting/phase31_historical_source_quality.py",
+        "packages/providers/massive/phase31.py",
         "scripts/run_phase31_form4_acquisition.py",
     )
     for path in python_files:
@@ -53,6 +62,9 @@ def main() -> int:
 
     policy = _read("packages/backtesting/phase31_policy.py")
     acquisition = _read("packages/backtesting/phase31_acquisition.py")
+    acquisition_v3 = _read("packages/backtesting/phase31_acquisition_v3.py")
+    historical_source_quality = _read("packages/backtesting/phase31_historical_source_quality.py")
+    provider = _read("packages/providers/massive/phase31.py")
     runner = _read("scripts/run_phase31_form4_acquisition.py")
     scientific = _read("docs/phase31_scientific_contract.md")
     phase_doc = _read("docs/phase31_sec_insider_transaction_alpha.md")
@@ -64,11 +76,19 @@ def main() -> int:
         PHASE31_ACQUISITION_CONTRACT_VERSION,
         phase31_month_shards,
     )
+    from packages.backtesting.phase31_acquisition_v3 import PHASE31_ACQUISITION_V3_CONTRACT_VERSION
+    from packages.backtesting.phase31_historical_source_quality import (
+        PHASE31_HISTORICAL_SOURCE_QUALITY_CONTRACT_VERSION,
+    )
 
     if phase31_policy_fingerprint() != EXPECTED_POLICY_FINGERPRINT:
         raise AssertionError("Phase31 scientific policy fingerprint drifted")
-    if PHASE31_ACQUISITION_CONTRACT_VERSION != EXPECTED_ACQUISITION_CONTRACT:
-        raise AssertionError("Phase31 acquisition contract drifted")
+    if PHASE31_ACQUISITION_CONTRACT_VERSION != EXPECTED_RAW_ACQUISITION_CONTRACT:
+        raise AssertionError("Phase31 v2 raw-shard acquisition contract drifted")
+    if PHASE31_ACQUISITION_V3_CONTRACT_VERSION != EXPECTED_ACQUISITION_V3_CONTRACT:
+        raise AssertionError("Phase31 v3 historical acquisition contract drifted")
+    if PHASE31_HISTORICAL_SOURCE_QUALITY_CONTRACT_VERSION != EXPECTED_HISTORICAL_SOURCE_QUALITY_CONTRACT:
+        raise AssertionError("Phase31 historical source-quality contract drifted")
     if tuple(candidate.candidate_id for candidate in PHASE31_CANDIDATES) != EXPECTED_CANDIDATES:
         raise AssertionError("Phase31 candidate family drifted")
     if len(phase31_month_shards()) != 62:
@@ -90,33 +110,80 @@ def main() -> int:
     _require(policy, 'PHASE31_PROVIDER_TEXT_ALPHA_AUTHORITY = False', "no provider text authority")
     _require(policy, 'PHASE31_TRANSACTION_VALUE_THRESHOLD_USED = False', "no trade-size threshold search")
 
-    _require(acquisition, EXPECTED_ACQUISITION_CONTRACT, "memory-bounded acquisition contract")
-    _require(acquisition, "phase31_month_shards", "monthly acquisition")
-    _require(acquisition, "classify_form4_source_quality", "source-quality application")
-    _require(acquisition, "_partition_global_quarantine", "global accession quarantine")
+    # The accepted v2 raw-shard contract remains frozen specifically so already
+    # acquired SHA-bound shards can be reused without a scientific/source rewrite.
+    _require(acquisition, EXPECTED_RAW_ACQUISITION_CONTRACT, "v2 raw acquisition contract")
     _require(acquisition, "raw_metadata_path", "raw shard sidecar metadata")
-    _require(acquisition, "Pass 1: raw acquisition/resume + global contamination discovery", "two-pass acquisition")
-    _require(acquisition, "Pass 2: apply the global accession quarantine", "global second pass")
-    _require(acquisition, "probe_raw_reconciliation_exact", "raw overlap reconciliation")
-    _require(acquisition, "probe_authoritative_reconciliation_exact", "authoritative overlap reconciliation")
     _require(acquisition, "immutable Phase31 acquisition artifact drifted", "immutable shard protection")
-    _require(acquisition, '"target_outcome_rows_read": 0', "zero target outcome reads")
-    _require(acquisition, '"protected_return_rows_read": 0', "zero protected return reads")
     _forbid(acquisition, "all_raw.extend", "full-history in-memory accumulation")
     _forbid(acquisition, "all_raw_rows", "full-history in-memory tuple")
-    for forbidden in (
-        "forward_return",
-        "directional_return",
-        "future_close",
-        "read_parquet",
-        "packages.execution",
-        "packages.brokers",
-        "Webull",
-        "AlpacaTrading",
+
+    _require(acquisition_v3, EXPECTED_ACQUISITION_V3_CONTRACT, "v3 acquisition contract")
+    _require(
+        acquisition_v3,
+        "classify_form4_historical_source_quality",
+        "historical source-admissibility classifier",
+    )
+    _require(
+        acquisition_v3,
+        "required_transaction_code_violation_count",
+        "authoritative required-code recheck",
+    )
+    _require(acquisition_v3, "raw_shard_contract_retained_v2", "v2 raw resumability guard")
+    _require(acquisition_v3, "probe_raw_reconciliation_exact", "raw overlap reconciliation")
+    _require(
+        acquisition_v3,
+        "probe_authoritative_reconciliation_exact",
+        "authoritative overlap reconciliation",
+    )
+    _require(acquisition_v3, '"target_outcome_rows_read": 0', "zero target outcome reads")
+    _require(acquisition_v3, '"protected_return_rows_read": 0', "zero protected return reads")
+
+    _require(
+        historical_source_quality,
+        EXPECTED_HISTORICAL_SOURCE_QUALITY_CONTRACT,
+        "historical source-quality contract",
+    )
+    _require(
+        historical_source_quality,
+        "SOURCE_TRANSACTION_ROW_MISSING_TRANSACTION_CODE",
+        "missing-code quarantine reason",
+    )
+    _require(
+        historical_source_quality,
+        "classify_form4_source_quality(materialized)",
+        "accepted chronology classifier reuse",
+    )
+    _require(
+        historical_source_quality,
+        "entire accession",
+        "whole-accession quarantine semantics",
+    )
+    _forbid(historical_source_quality, "0000752642-25-000004", "accession-specific workaround")
+
+    _require(provider, "Preserve provider-native missing/blank transaction_code evidence unchanged", "raw malformed-row preservation")
+    _forbid(provider, "is missing transaction_code", "transport-level missing-code abort")
+
+    for source_name, source in (
+        ("v2 acquisition", acquisition),
+        ("v3 acquisition", acquisition_v3),
+        ("historical source quality", historical_source_quality),
     ):
-        _forbid(acquisition, forbidden, "market outcome/trading dependency in acquisition")
+        for forbidden in (
+            "forward_return",
+            "directional_return",
+            "future_close",
+            "read_parquet",
+            "packages.execution",
+            "packages.brokers",
+            "Webull",
+            "AlpacaTrading",
+        ):
+            _forbid(source, forbidden, f"market outcome/trading dependency in {source_name}")
 
     _require(runner, "MassiveRESTClient(settings)", "accepted Massive client")
+    _require(runner, "Phase31Form4HistoricalAcquisitionV3", "v3 acquisition runner")
+    _require(runner, "existing v2 SHA-bound sidecars remain authoritative", "resume boundary")
     _require(runner, "Market outcomes/protected returns: FORBIDDEN / UNREAD", "runner blindness boundary")
     _require(runner, "Broker/order/PAPER/LIVE: DISABLED", "runner trading boundary")
 
@@ -141,11 +208,12 @@ def main() -> int:
     _require(workflow, "python scripts/validate_phase31_policy.py", "CI policy validator command")
 
     print("ATLAS Phase 31 frozen scientific policy/acquisition contracts: PASS")
-    print("- exact source-quality target evidence is bound before performance")
+    print("- exact source-quality target evidence remains bound before performance")
     print("- exactly four Form-4 hypotheses remain frozen")
     print("- 20-session decision-open outcome, SPY-relative primary, costs, sample gates, Holm and robustness remain frozen")
-    print("- acquisition is monthly, resumable, memory-bounded and globally quarantines contaminated accessions")
-    print("- raw shards have immutable SHA-bound sidecars and accepted probe windows must reconcile exactly")
+    print("- existing v2 raw shards remain SHA-bound and resumable")
+    print("- v3 historical admission globally quarantines chronology defects and missing transaction classification")
+    print("- accepted probe windows must still reconcile exactly")
     print("- acquisition has no market-outcome or broker/order/PAPER/LIVE authority")
     return 0
 
