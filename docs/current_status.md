@@ -1,8 +1,8 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-28 after the Phase31 source-quality target replay passed and the finite Form-4 scientific contract was frozen before any market-outcome read. Full historical Form-4 acquisition is next.**
+**Last synchronized: 2026-08-28 after full historical Phase31 Form-4 acquisition passed. Predictor-only event construction is the active internal step; no Phase31 market returns have been opened.**
 
-Read `docs/roadmap.md` first, then this file, `docs/phase31_sec_insider_transaction_alpha.md`, `docs/phase31_form4_feasibility_incident.md`, `docs/phase31_form4_source_quality_repair.md`, and `docs/phase31_scientific_contract.md`.
+Read `docs/roadmap.md` first, then this file, `docs/phase31_sec_insider_transaction_alpha.md`, `docs/phase31_form4_feasibility_incident.md`, `docs/phase31_form4_source_quality_repair.md`, `docs/phase31_full_historical_acquisition.md`, and `docs/phase31_scientific_contract.md`.
 
 ## Authority state
 
@@ -11,7 +11,7 @@ Read `docs/roadmap.md` first, then this file, `docs/phase31_sec_insider_transact
 - Phase30 PR #34 merge: `bf673ad82886e7172db0d54a33dd9612fa9ea29e`.
 - Active branch: `phase-31-sec-insider-transaction-alpha`.
 - Active gate: **Phase31 — SEC Form-4 Insider-Transaction Alpha**.
-- Current Phase31 state: **SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION NEXT**.
+- Current Phase31 state: **SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION PASS / PREDICTOR-ONLY CONSTRUCTION NEXT**.
 - Phase32 remains blocked until >=1 alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 - LIVE remains disabled. Automatic broker failover remains disabled.
 
@@ -23,7 +23,7 @@ Master protected outcome window:
 
 `2026-05-12` through `2026-08-11`
 
-Phases26–30 read zero protected returns. Phase31 feasibility, diagnostic, source-quality repair, and scientific-policy work have read **zero Phase31 market outcomes** and zero protected returns. The holdout remains outcome-unopened.
+Phases26–30 read zero protected returns. Phase31 feasibility, diagnostics, source-quality work, policy freeze, and acquisition have read **zero Phase31 market outcomes** and zero protected returns. Predictor-only protected metadata may be constructed without returns; protected stock/SPY returns remain finalist-only.
 
 ## Provider facts
 
@@ -70,7 +70,7 @@ Target evidence:
 
 Root cause: **Massive beta source-association/data-quality defect**, not an ATLAS parser bug. The chronology invariant remains unchanged.
 
-## Source-quality repair — TARGET PASS
+## Source-quality target repair — preserved PASS
 
 Policy:
 
@@ -88,23 +88,15 @@ Historical replay runner retained for provenance:
 
 `scripts/run_phase31_form4_source_quality_repair.py`
 
-Workflow `33143971229`: Ubuntu SUCCESS / Windows SUCCESS.
-
 Target-machine result:
 
-- `SOURCE_QUALITY_REPAIR_PASS`
 - raw rows **45,921**
-- violation seed rows **1**
+- chronology seed rows **1**
 - contaminated accessions **1**
 - quarantined accession rows **6**
 - authoritative rows **45,915**
 - quarantine SHA `586df9eb91fb8a9a949a0dc44e0765f7c4b7db54c2b383037012d0fb17aaf1eb`
-- target outcomes 0
-- protected candidates 0
-- protected returns 0
-- broker/order/PAPER/LIVE activity 0
-- scientific-policy freeze authorized True
-- Phase32 entry satisfied False.
+- target/protected outcomes 0.
 
 Accepted authoritative probe SHAs:
 
@@ -128,84 +120,79 @@ Exactly four hypotheses:
 
 No fifth hypothesis, alternate horizon, trade-value tail, role-specific rescue, text/footnote model, or runner-up substitution is authorized.
 
-### Eligibility
+Eligibility is source-quality-clean pure original Form-4 `P` or `S`, non-derivative, correct acquired/disposed direction, positive shares/price, timely `O`, no affirmative 10b5-1 flag, no equity swap, Section-16 role, exactly one provider-native ticker, unique PIT identity, and a safe corporate-action-clean decision-to-exit path. `transaction_value` is diagnostic only.
 
-Only source-quality-clean, pure original Form-4 `P` or `S` accessions may contribute. Eligible accessions require non-derivative securities, correct acquired/disposed direction, positive shares/price, timely `O` reporting, no affirmative 10b5-1 flag, no equity swap, Section-16 role, exactly one provider-native ticker, unique PIT identity, and a safe corporate-action-clean decision-to-exit interval.
-
-Mixed grant/exercise/withholding/gift accessions are excluded. Multi-ticker filings are preserved raw but excluded from alpha authority. `transaction_value` is diagnostic only. A null 10b5-1 flag is unknown/not affirmatively flagged, not proof of no plan.
-
-### Timing and event construction
-
-Public availability:
-
-`NEXT_XNYS_SESSION_STRICTLY_AFTER_FILING_DATE`
+Public availability: `NEXT_XNYS_SESSION_STRICTLY_AFTER_FILING_DATE`.
 
 Entry: `DECISION_SESSION_OPEN`.
 
 Exit: `CLOSE_20_XNYS_SESSIONS_AFTER_DECISION`.
 
-One exact ticker × decision session × direction = one statistical event. Same ticker/session purchase and sale evidence is excluded as contradictory.
+Event unit: one exact ticker × decision session × direction. Same ticker/session purchase and sale evidence is excluded as contradictory.
 
-Cluster = current + previous 19 XNYS sessions with >=2 distinct owner CIKs and >=2 distinct qualifying accessions.
+Cluster: current + previous 19 XNYS sessions with >=2 distinct owner CIKs and >=2 distinct qualifying accessions.
 
-### Primary evaluation
-
-Primary:
+Primary evaluation after predictor/path gates:
 
 `direction * (stock open-to-t+20 close return - SPY open-to-t+20 close return) - cost`
 
-Unhedged directional after-cost mean must also be positive.
+Unhedged directional after-cost mean must also be positive. Costs: 0/5/10/25/50 bps; primary 10; stress 25.
 
-Costs: 0/5/10/25/50 bps; primary 10; stress 25.
+## Full historical Form-4 acquisition — PASS
 
-### Chronology
+Accepted target-machine run: 2026-08-28.
 
-- source warmup `2021-07-16`
-- research signals `2021-08-16..2026-04-13`
-- development t+20 endpoint `2026-05-11`
-- outer embargo `2026-04-14..2026-05-11`
-- protected signal start `2026-05-12`
-- last complete protected signal `2026-07-14`
-- protected t+20 endpoint `2026-08-11`
-- development split: chronological 75% selection, 20-session purge, remaining internal validation.
+Accepted implementation head:
 
-### Statistics
+`069cca8a76446cc33b5fcf4931612e56a315f5b8`
 
-- folds 6 / 3 / 3
-- bootstrap block 20 sessions, 2,000 reps, seed 310231
-- confidence 95% / 90% / 80%
-- selection minima 750 rows / 250 sessions / 250 tickers / >=5-of-6 positive folds
-- internal minima 250 / 80 / 80 / >=2-of-3
-- protected minima 75 / 24 / 24 / >=2-of-3
-- global Holm-Bonferroni across exactly 4, alpha .05
-- year robustness >=60%
-- previous-session market/ticker-state robustness >=50%
-- max session concentration 10%
-- max ticker concentration 5%
-- max one winner/finalist per direction
-- winner = highest selection LCB then candidate ID
-- no runner-up substitution
-- protected returns finalist-only.
+Evidence:
 
-Complete contract: `docs/phase31_scientific_contract.md`.
+- scope `2021-07-16..2026-08-11`
+- month shards **62**
+- fresh provider shards **20**
+- reused SHA-bound raw shards **42**
+- successful provider pages **105**
+- raw rows **2,993,648**
+- authoritative rows **2,992,608**
+- quarantined rows **1,040**
+- contaminated accessions **187**
+- chronology violation seed rows **233**
+- missing `transaction_code` seed rows **15**
+- target outcome rows read **0**
+- protected candidate rows read **0**
+- protected return rows read **0**
+- provider/broker/order/PAPER/LIVE/automation writes **0**.
+
+Historical admissibility now generically quarantines an entire accession if any transaction row has impossible chronology or lacks required transaction classification. Raw evidence remains unchanged; no field is imputed. The original target source-quality fingerprint remains unchanged.
+
+Probe replay:
+
+- research boundary raw/authoritative `13,645 / 13,645`, exact
+- mid-history `12,066 / 12,060`, 6 quarantined, exact
+- development boundary `13,884 / 13,884`, exact
+- protected boundary `6,326 / 6,326`, exact.
+
+Complete record: `docs/phase31_full_historical_acquisition.md`.
 
 ## Exact next target
 
-`scripts/run_phase31_form4_acquisition.py`
+`scripts/run_phase31_form4_predictors.py`
 
-The full historical acquisition must:
+Predictor-only construction must:
 
-- cover `2021-07-16..2026-08-11`
-- use exactly 62 monthly immutable raw shards
-- create separate authoritative/quarantine shards
-- be resumable without rewriting raw evidence
-- reproduce all four accepted probe windows exactly
-- read zero market outcomes/protected returns
-- perform no provider writes, broker activity, orders, PAPER, LIVE, or automation.
+- consume only the accepted authoritative Form-4 shards and accepted PIT identity evidence
+- enforce the frozen accession P/S eligibility rules
+- map filing availability to the first strictly later XNYS session
+- aggregate one ticker/session/direction event
+- exclude contradictory purchase+sale ticker/session evidence
+- construct the frozen 20-session owner/accession cluster state
+- resolve only Composite-FIGI-authoritative PIT ticker intervals
+- write deterministic development and protected **predictor metadata only**
+- read zero stock/SPY prices or returns
+- perform zero provider/broker/order/PAPER/LIVE/automation activity.
 
-A beta-provider history mismatch against any frozen probe SHA is a source-drift failure, not permission to update the accepted evidence.
-
-Acquisition PASS authorizes predictor-only event construction. It does not accept Phase31 or unlock Phase32.
+A predictor PASS freezes predictor evidence before any development-performance read. Corporate-action/path admissibility remains required before development returns are opened.
 
 ## Remaining roadmap
 

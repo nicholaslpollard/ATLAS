@@ -13,7 +13,7 @@ Every new ATLAS work session should read:
 1. `docs/roadmap.md` — normative mission, architecture, acceptance model, and remaining roadmap;
 2. `docs/current_status.md` — exact current handoff;
 3. active phase spec — `docs/phase31_sec_insider_transaction_alpha.md`;
-4. Phase31 incident/source-quality records — `docs/phase31_form4_feasibility_incident.md`, `docs/phase31_form4_source_quality_repair.md`;
+4. Phase31 source/provenance records — `docs/phase31_form4_feasibility_incident.md`, `docs/phase31_form4_source_quality_repair.md`, `docs/phase31_full_historical_acquisition.md`;
 5. frozen scientific contract — `docs/phase31_scientific_contract.md`;
 6. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
 7. accepted code, validators, CI/PR evidence.
@@ -44,21 +44,19 @@ Internal feasibility, acquisition, predictor, development, blindness, and protec
 - Phases26–30 are scientifically valid `ACCEPTED_NEGATIVE` alpha phases.
 - Phase30 PR #34 merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e`; post-merge workflow `33141442154` passed Ubuntu/Windows.
 - Phase11 strategy authority remains SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
-- Master protected outcome window remains `2026-05-12..2026-08-11`; it remains outcome-unopened.
+- Master protected outcome window remains `2026-05-12..2026-08-11`; Phase31 protected returns remain unopened.
 - **Active Phase31: SEC Form-4 Insider-Transaction Alpha.**
 - Active branch: `phase-31-sec-insider-transaction-alpha`.
-- Original raw feasibility target remains `FEASIBILITY_FAIL` on `transaction_dates_do_not_postdate_filings`.
-- Diagnostic found one impossible Massive beta row among 36,854 dated transactions.
-- Root cause: **Massive early-access/beta source-association/data-quality defect**.
-- Source-quality policy: `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`.
-- Source-quality fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`.
-- `docs/phase31_form4_source_quality_repair.md` records the target PASS: 45,921 raw rows, 6 whole-accession rows quarantined, 45,915 authoritative rows, zero market outcomes.
+- Original feasibility `FEASIBILITY_FAIL` is permanently preserved; the beta-source chronology defect was repaired only through generic fail-closed source-quality quarantine.
+- Frozen source-quality fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`.
 - Frozen scientific policy fingerprint: `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
-- Exactly four Phase31 hypotheses are frozen: broad/clustered purchase LONG and broad/clustered sale SHORT.
+- Exactly four Phase31 hypotheses remain frozen: broad/clustered purchase LONG and broad/clustered sale SHORT.
 - Historical entry = first post-filing XNYS session open; primary exit = t+20 XNYS close; primary performance = SPY-relative after-cost return with positive unhedged mean also required.
-- Full historical Form-4 acquisition uses **62 immutable monthly raw shards**, SHA-bound sidecar metadata, a memory-bounded two-pass scan, and **global whole-accession quarantine** before authoritative shards are written.
-- Next target = `scripts/run_phase31_form4_acquisition.py`, full `2021-07-16..2026-08-11` Form-4 history with exact source-overlap reconciliation.
-- No Phase31 market outcome, protected candidate return, or protected return has been read.
+- **Full historical Form-4 acquisition PASSED** on the target machine: 62 monthly shards, 2,993,648 raw rows, 2,992,608 authoritative rows, 1,040 quarantined rows, 187 contaminated accessions, 233 chronology seed rows, 15 missing-`transaction_code` seed rows.
+- Accepted acquisition reused 42 SHA-bound raw shards and fetched 20 new shards; all four frozen probe windows reconciled exactly.
+- Acquisition read 0 target outcomes, 0 protected candidate rows, and 0 protected returns; provider/broker/order/PAPER/LIVE/automation authority remained zero.
+- Current internal target = **predictor-only Form-4 event construction** with exact P/S eligibility, contradiction handling, 20-session clustering, and Composite-FIGI-authoritative PIT identity. This stage remains market-outcome blind.
+- Corporate-action/path admissibility still must be completed before development returns are opened.
 - Phase32 remains blocked until supported alpha exists.
 - LIVE remains disabled. Automatic broker failover remains disabled.
 

@@ -1,6 +1,6 @@
 # Phase 31 — SEC Form-4 Insider-Transaction Alpha
 
-**Status:** ACTIVE — SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION NEXT. No Phase31 market outcomes have been read. Phase31 is not accepted and Phase32 remains blocked.
+**Status:** ACTIVE — SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION PASS / PREDICTOR-ONLY CONSTRUCTION NEXT. No Phase31 market returns have been read. Phase31 is not accepted and Phase32 remains blocked.
 
 **Source foundation:** Phase30 merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
@@ -8,6 +8,7 @@
 
 - `docs/phase31_form4_feasibility_incident.md`
 - `docs/phase31_form4_source_quality_repair.md`
+- `docs/phase31_full_historical_acquisition.md`
 - `docs/phase31_scientific_contract.md`.
 
 ## Plain-English phase start
@@ -28,13 +29,11 @@ Lead source:
 
 Current Massive subscription: **Stocks Starter**.
 
-The endpoint is early-access/beta. Do not assume Financials & Ratios Expansion, a Massive Options plan, paid partner data, or unavailable stock trade/quote entitlements.
-
-Provider-native ticker strings/case and full raw row provenance are preserved.
+The endpoint is early-access/beta. Provider-native ticker strings/case and full raw row provenance are preserved. No unavailable entitlement is assumed.
 
 ## Conservative PIT rule
 
-Until authoritative exact historical SEC acceptance timestamps are proven before performance, a filing may first influence ATLAS on the **first XNYS session strictly later than `filing_date`**.
+A filing may first influence ATLAS on the **first XNYS session strictly later than `filing_date`**.
 
 Frozen constant:
 
@@ -44,80 +43,27 @@ Never use `transaction_date`, `period_of_report`, or `deemed_execution_date` as 
 
 ## Original feasibility — failed and preserved
 
-Target head:
+Target head `b59a64938eb84c0c1e7df3aaea390cc437326f94` produced `FEASIBILITY_FAIL` on `transaction_dates_do_not_postdate_filings`. This failure is permanent provenance and is not rewritten.
 
-`b59a64938eb84c0c1e7df3aaea390cc437326f94`
-
-Feasibility fingerprint:
-
-`edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc`
-
-Result:
-
-`FEASIBILITY_FAIL`
-
-Sole failed check:
-
-`transaction_dates_do_not_postdate_filings`
-
-This failure is permanent provenance and is not rewritten to PASS.
-
-## Chronology diagnostic — complete
-
-Diagnostic implementation head:
-
-`80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7`
-
-The provider-free target diagnostic found:
-
-- 36,854 transaction rows with filing + transaction dates
-- 33,510 transaction before filing
-- 3,343 same day
-- 1 transaction after filing
-- one WISH accession with filing `2023-08-17` and returned transaction `2023-09-15`
-- violation artifact SHA `3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
-- provider calls = 0
-- market/protected outcome reads = 0
-- broker/order/PAPER/LIVE = 0.
-
-The root cause is classified as a **Massive beta source-association/data-quality defect**. The chronology rule remains unchanged and ATLAS does not fabricate a corrected accession.
+The provider-free diagnostic later found one impossible target row: WISH accession `0000950170-23-043337`, filing `2023-08-17`, returned transaction `2023-09-15`. Root cause was classified as a Massive beta source-association/data-quality defect, not an ATLAS parser bug. The chronology rule remains unchanged.
 
 ## Source-quality repair — TARGET PASS
-
-Policy:
-
-`RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
 
 Source-quality fingerprint:
 
 `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`
 
-Repair implementation head:
-
-`03dcd371e79554cc9e52a1bb4ed3b642a067ca4b`
-
 Target result:
 
-`SOURCE_QUALITY_REPAIR_PASS`
+- raw rows preserved **45,921**
+- chronology violation seeds **1**
+- contaminated accessions **1**
+- whole-accession rows quarantined **6**
+- authoritative rows **45,915**
+- quarantine SHA `586df9eb91fb8a9a949a0dc44e0765f7c4b7db54c2b383037012d0fb17aaf1eb`
+- target/protected outcomes **0**.
 
-- raw rows preserved: **45,921**
-- chronology violation seeds: **1**
-- contaminated accessions: **1**
-- whole-accession rows quarantined: **6**
-- authoritative rows: **45,915**
-- quarantine SHA: `586df9eb91fb8a9a949a0dc44e0765f7c4b7db54c2b383037012d0fb17aaf1eb`
-- target outcomes: 0
-- protected candidates/returns: 0 / 0
-- trading authority: 0.
-
-Authoritative probe SHAs:
-
-- `research_boundary` `0378adc4364b0b49812f95f700ff47eb52d55b2cf2c17bbecad77a48d6f8a4d5`
-- `mid_history` `d8acaf8834ce166901388b437d5df1adf097d798fefb2e86449d92683acd7afd`
-- `development_boundary` `76c250af73a5694751eeb5974dbc55410c3ec63335d57632ab39d4a80d4edd8c`
-- `protected_boundary` `a3b1b23c00ffbc7372f779d48171fa0a7aac04a5b3bf028c7b2e9bf74d0bb6e0`.
-
-The generic source-quality rule quarantines an entire accession whenever any transaction row has `transaction_date > filing_date`. It contains no WISH, code-M, security-type, role, or performance exception and no bad-row tolerance.
+Authoritative probe SHAs remain frozen exactly as recorded in `docs/phase31_form4_source_quality_repair.md` and `packages/backtesting/phase31_policy.py`.
 
 ## Frozen scientific policy
 
@@ -150,21 +96,15 @@ Cluster = current + previous 19 XNYS decision sessions, >=2 distinct owner CIKs 
 
 ### Outcome
 
-Entry:
+Entry: `DECISION_SESSION_OPEN`.
 
-`DECISION_SESSION_OPEN`
-
-Exit:
-
-`CLOSE_20_XNYS_SESSIONS_AFTER_DECISION`
+Exit: `CLOSE_20_XNYS_SESSIONS_AFTER_DECISION`.
 
 Primary after-cost alpha:
 
 `direction * (stock_return - SPY_return) - cost`
 
-Unhedged directional mean after primary cost must also be positive.
-
-Costs: 0/5/10/25/50 bps; primary 10; stress 25.
+Unhedged directional mean after primary cost must also be positive. Costs: 0/5/10/25/50 bps; primary 10; stress 25.
 
 ### Chronology / holdout
 
@@ -200,47 +140,68 @@ Development uses chronological 75% selection, 20-session purge, then internal va
 - deflated-performance diagnostic required
 - protected returns finalist-only.
 
-## Full historical Form-4 acquisition — next
+## Full historical Form-4 acquisition — PASS
 
-The next target is **full historical Form-4 acquisition** under the frozen contract:
+Accepted target-machine run date: 2026-08-28.
 
-`scripts/run_phase31_form4_acquisition.py`
+Accepted acquisition implementation head:
 
-Required scope:
+`069cca8a76446cc33b5fcf4931612e56a315f5b8`
 
-- `2021-07-16` through `2026-08-11`
-- 62 monthly immutable raw shards
-- separate authoritative/quarantine shards
-- resumable raw evidence
+Evidence:
+
+- 62 monthly immutable shards covering `2021-07-16..2026-08-11`
+- 42 reused SHA-bound raw shards / 20 fresh shards
+- 105 successful provider pages in the accepted resume run
+- **2,993,648** raw rows
+- **2,992,608** authoritative rows
+- **1,040** quarantined rows
+- **187** contaminated accessions
+- **233** chronology violation seed rows
+- **15** missing-`transaction_code` seed rows
 - exact reproduction of all four accepted probe windows
-- zero target/protected market-outcome reads
-- zero provider writes/broker/order/PAPER/LIVE/automation authority.
+- target outcome rows read 0
+- protected candidate/return rows read 0 / 0
+- provider/broker/order/PAPER/LIVE/automation authority 0.
 
-Because Massive Form 4 is beta, any disagreement with the frozen probe-window source hashes is a source-history drift incident and must fail closed.
+The full-history historical-admissibility rule is generic: an entire accession is quarantined if any transaction row has impossible chronology or lacks the transaction classification required by the frozen P/S hypotheses. Raw evidence is retained unchanged; no code or field is inferred.
 
-A full-history acquisition PASS authorizes predictor-only construction. It does not accept Phase31, grant support, consume the holdout, or unlock Phase32.
+A full-history acquisition PASS authorizes predictor-only construction only. It does not accept Phase31, grant support, consume protected returns, or unlock Phase32.
+
+## Predictor-only construction — active next step
+
+Runner:
+
+`scripts/run_phase31_form4_predictors.py`
+
+This stage consumes the accepted authoritative shards and existing Composite-FIGI-authoritative PIT ticker intervals only. It enforces the frozen accession eligibility, first-strictly-later-XNYS decision timing, same-ticker/session contradiction exclusion, event aggregation, and 20-session cluster definition.
+
+It may write deterministic development and protected **predictor metadata**. It may not read stock/SPY prices or returns and has no provider, broker, order, PAPER, LIVE, or automation authority.
+
+A predictor PASS freezes predictor evidence before development-performance reads. It does **not** yet authorize those reads: the frozen corporate-action/path-admissibility requirement must also be satisfied first.
 
 ## Protected evidence boundary
 
-Master protected outcome window remains `2026-05-12..2026-08-11` and remains outcome-unopened.
+Master protected outcome window remains `2026-05-12..2026-08-11` and protected returns remain outcome-unopened.
 
-Protected Form-4 metadata may be acquired and later transformed into predictor-only artifacts without outcomes. Protected stock/SPY returns may be read only for frozen finalists after independent blindness validation. Any nonempty protected return read consumes the holdout for later alpha selection.
+Protected Form-4 metadata may be acquired/transformed into predictor-only artifacts without outcomes. Protected stock/SPY returns may be read only for frozen finalists after independent blindness validation. Any nonempty protected return read consumes the holdout for later alpha selection.
 
 ## Current authority
 
 Allowed:
 
-- Massive read-only historical Form-4 acquisition under the frozen policy
-- immutable raw/derived source artifacts
+- immutable accepted Form-4 source artifacts
 - source-quality quarantine/reconciliation
-- metadata-only predictor engineering after acquisition PASS
+- deterministic predictor-only Form-4 construction
+- PIT identity resolution using accepted Composite-FIGI-authoritative intervals
 - tests/validators/docs.
 
 Forbidden:
 
-- development/target market returns before predictor/source gates
+- development market returns until predictor and path-admissibility gates pass
 - protected returns before finalists/blindness gate
 - performance-driven filtering or hypothesis changes
+- provider writes
 - broker reads/writes
 - order writes
 - PAPER/LIVE submits
