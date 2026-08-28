@@ -26,7 +26,7 @@ def main() -> int:
     print(f"Frozen feasibility fingerprint: {phase32_feasibility_fingerprint()}")
     print(f"Declared Massive plan: {PHASE32_DECLARED_MASSIVE_PLAN}")
     print("Discovery source: MassiveRESTClient -> /stocks/filings/vX/index (form_type=8-K)")
-    print("Timestamp/item source: official SEC EDGAR raw filing-header SGML")
+    print("Timestamp/item source: official SEC EDGAR filing-index headers")
     print(f"SEC fair-access identity: ATLAS + local {SEC_EDGAR_CONTACT_EMAIL_ENV} contact")
     print(f"Conservative public-availability rule: {PHASE32_PUBLIC_AVAILABILITY_RULE}")
     print("Scope: source access/history/ticker linkage/acceptance timestamp/item-label provenance only")

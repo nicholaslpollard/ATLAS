@@ -70,8 +70,8 @@ def main() -> int:
     )
     from packages.providers.sec_edgar import (
         SEC_EDGAR_CONTACT_EMAIL_ENV,
+        SEC_EDGAR_INDEX_HEADERS_SUFFIX,
         SEC_EDGAR_MAX_REQUESTS_PER_SECOND,
-        SEC_EDGAR_RAW_HEADER_SUFFIX,
         SEC_EDGAR_USER_AGENT_PREFIX,
         sec_declared_user_agent,
     )
@@ -94,8 +94,8 @@ def main() -> int:
         raise AssertionError("Phase32 feasibility may not read market outcomes")
     if SEC_EDGAR_MAX_REQUESTS_PER_SECOND != 1:
         raise AssertionError("Phase32 SEC client must remain at one request/second during feasibility")
-    if SEC_EDGAR_RAW_HEADER_SUFFIX != ".hdr.sgml":
-        raise AssertionError("Phase32 SEC raw-header artifact drifted")
+    if SEC_EDGAR_INDEX_HEADERS_SUFFIX != "-index-headers.html":
+        raise AssertionError("Phase32 SEC index-header artifact drifted")
     if SEC_EDGAR_CONTACT_EMAIL_ENV != "SEC_EDGAR_CONTACT_EMAIL":
         raise AssertionError("Phase32 SEC fair-access contact environment key drifted")
     if "ATLAS" not in SEC_EDGAR_USER_AGENT_PREFIX:
@@ -123,27 +123,31 @@ def main() -> int:
     for token in (
         'SEC_EDGAR_ALLOWED_HOSTS = {"www.sec.gov"}',
         'SEC_EDGAR_ARCHIVES_PREFIX = "/Archives/edgar/"',
-        'SEC_EDGAR_RAW_HEADER_SUFFIX = ".hdr.sgml"',
+        'SEC_EDGAR_INDEX_HEADERS_SUFFIX = "-index-headers.html"',
         'SEC_EDGAR_CONTACT_EMAIL_ENV = "SEC_EDGAR_CONTACT_EMAIL"',
         "SEC_EDGAR_MAX_REQUESTS_PER_SECOND = 1",
         "SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS",
         'ZoneInfo("America/New_York")',
         "<ACCEPTANCE-DATETIME>",
-        "ITEM INFORMATION:",
-        "sec_raw_header_url",
-        "SEC_EDGAR_RAW_HEADER_SUFFIX",
+        "ITEM\\s+INFORMATION",
+        "ACCESSION\\s+NUMBER",
+        "sec_index_headers_url",
+        "SEC_EDGAR_INDEX_HEADERS_SUFFIX",
         "_resolve_contact_email",
         "sec_declared_user_agent",
         '"User-Agent": self._user_agent',
         '"Accept-Encoding": "gzip, deflate"',
         '"Host": "www.sec.gov"',
         "_decode_content",
+        "does not match the requested accession",
         "ATLAS did not retry the denial",
     ):
         require(sec, token, "SEC EDGAR provenance/fair-access contract")
     forbid(sec, 'f"{cik_path}/{accession_path}/{accession}.txt"', "complete-submission transport")
-    forbid(sec, '"-index-headers.html"', "HTML presentation-header transport")
+    forbid(sec, 'SEC_EDGAR_RAW_HEADER_SUFFIX', "raw SGML transport")
     require(env_example, "SEC_EDGAR_CONTACT_EMAIL=", "local SEC fair-access contact configuration")
+    if "SEC_EDGAR_CONTACT_EMAIL=\n" not in env_example:
+        raise AssertionError(".env.example must keep the SEC contact value blank")
 
     require(feasibility, EXPECTED_SOURCE_MERGE, "Phase31 accepted-negative merge lineage")
     require(feasibility, f'PHASE32_DECLARED_MASSIVE_PLAN = "{EXPECTED_PLAN}"', "Massive plan")
@@ -177,14 +181,14 @@ def main() -> int:
     require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "runner outcome boundary")
     require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "runner trading boundary")
     require(runner, "SEC fair-access identity: ATLAS + local", "runner fair-access declaration")
-    require(runner, "raw filing-header SGML", "runner raw SEC-header source")
+    require(runner, "filing-index headers", "runner SEC-header source")
 
     require(roadmap, "Accepted foundation through Phase31", "roadmap accepted foundation")
     require(roadmap, "Active Phase32 — SEC 8-K Material Corporate-Event Alpha", "roadmap active phase")
     require(roadmap, "Phase33 — Signal-to-Trade Construction", "shifted signal-to-trade")
     require(roadmap, "Phase39 — Controlled LIVE Activation", "shifted LIVE phase")
     require(status, "phase-32-sec-8k-material-event-alpha", "active branch status")
-    require(status, ".hdr.sgml", "current official SEC raw-header source")
+    require(status, "-index-headers.html", "current official SEC index-header source")
     require(status, "Phase31", "Phase31 closeout provenance")
     require(status, "ACCEPTED_NEGATIVE", "Phase31 accepted-negative status")
     require(status, "PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF", "Phase31 independent proof")
@@ -194,12 +198,12 @@ def main() -> int:
     require(status, "scripts/run_phase31_form4_source_quality_repair.py", "retained Phase31 repair runner")
     require(phase_doc, EXPECTED_MASSIVE_ENDPOINT, "Phase32 source endpoint")
     require(phase_doc, "official SEC EDGAR", "official SEC source")
-    require(phase_doc, ".hdr.sgml", "bounded raw SEC header artifact")
+    require(phase_doc, "-index-headers.html", "bounded SEC header artifact")
     require(phase_doc, EXPECTED_PUBLIC_RULE, "Phase32 timing rule")
     require(phase_doc, "zero market outcomes", "Phase32 feasibility blindness")
-    require(incident, "SEC REACHABLE", "third source-format incident provenance")
+    require(incident, "FOURTH SOURCE-FORMAT FAILURE", "fourth source-format incident provenance")
     require(incident, "missing ACCESSION NUMBER", "target parser failure provenance")
-    require(incident, ".hdr.sgml", "raw SGML repair provenance")
+    require(incident, "presentation-tolerant", "parser repair provenance")
     require(flow, "predictor-only Form-4 event construction", "retained Phase31 flow provenance")
     require(flow, "Phase32 — SEC 8-K Material Corporate-Event Alpha", "active flow")
     require(readme, "Active Phase32: SEC 8-K Material Corporate-Event Alpha", "README active phase")
@@ -213,9 +217,9 @@ def main() -> int:
     print(f"- source Phase31 merge is pinned: {EXPECTED_SOURCE_MERGE}")
     print("- Massive 8-K index discovery and official SEC acceptance/item provenance are read-only")
     print("- exact acceptance timestamps remain SEC-header Eastern wall-clock values")
-    print("- SEC transport targets only the bounded raw .hdr.sgml filing-header artifact")
+    print("- SEC transport targets only the bounded listed -index-headers.html artifact")
     print("- SEC requests use the declared fair-access identity shape, gzip/deflate, and one request/second")
-    print("- parser accepts the raw SGML header payload directly and wrapped SGML fixtures deterministically")
+    print("- SEC presentation parsing tolerates HTML trailing markup but keeps strict accession reconciliation")
     print("- SEC HTTP 403 denials remain fail-closed and are not automatically retried")
     print("- hypotheses remain unfrozen and all target/protected market outcomes remain unread")
     print("- Phase33 signal-to-trade and all broker/order/PAPER/LIVE authority remain blocked")

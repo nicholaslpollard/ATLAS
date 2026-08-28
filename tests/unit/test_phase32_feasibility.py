@@ -20,7 +20,7 @@ from packages.providers.sec_edgar import (
     SEC_EDGAR_CONTACT_EMAIL_ENV,
     SECFilingHeader,
     parse_sec_filing_header,
-    sec_raw_header_url,
+    sec_index_headers_url,
 )
 
 
@@ -71,7 +71,7 @@ class FakeSECClient:
             item_information=("Results of Operations and Financial Condition",),
             raw_header=raw,
             raw_header_sha256="0" * 64,
-            source_url=sec_raw_header_url(cik=cik, accession_number=accession_number),
+            source_url=sec_index_headers_url(cik=cik, accession_number=accession_number),
         )
 
 
@@ -118,18 +118,25 @@ def test_phase32_feasibility_reuses_immutable_evidence_and_fails_drift(tmp_path:
         Phase32EightKFeasibility(settings, FakeIndexClient(drift=True), FakeSECClient()).run()  # type: ignore[arg-type]
 
 
-def test_sec_raw_header_url_and_raw_sgml_parser() -> None:
+def test_sec_index_headers_url_and_parser() -> None:
     accession = "0000000001-21-000001"
-    url = sec_raw_header_url(cik="0000000001", accession_number=accession)
-    assert url.endswith("/1/000000000121000001/0000000001-21-000001.hdr.sgml")
-    raw = """<ACCEPTANCE-DATETIME>20210816183045
-ACCESSION NUMBER: 0000000001-21-000001
-CONFORMED SUBMISSION TYPE: 8-K
-ITEM INFORMATION: Results of Operations and Financial Condition
-ITEM INFORMATION: Regulation FD Disclosure
-FILER:
-    COMPANY DATA:
-        CENTRAL INDEX KEY: 0000000001
+    url = sec_index_headers_url(cik="0000000001", accession_number=accession)
+    assert url.endswith(
+        "/1/000000000121000001/0000000001-21-000001-index-headers.html"
+    )
+    raw = """<html><body><pre>
+<SEC-DOCUMENT>0000000001-21-000001-index.html : 20210816
+<SEC-HEADER>0000000001-21-000001.hdr.sgml : 20210816
+<ACCEPTANCE-DATETIME>20210816183045
+ACCESSION NUMBER: 0000000001-21-000001<br>
+CONFORMED SUBMISSION TYPE: 8-K<br>
+ITEM INFORMATION: Results of Operations and Financial Condition<br>
+ITEM INFORMATION: Regulation FD Disclosure<br>
+FILER:<br>
+    COMPANY DATA:<br>
+        CENTRAL INDEX KEY: 0000000001<br>
+</SEC-HEADER>
+</pre></body></html>
 """
     parsed = parse_sec_filing_header(raw, source_url=url)
     assert parsed.accession_number == accession
@@ -141,22 +148,19 @@ FILER:
     )
 
 
-def test_sec_parser_retains_wrapped_header_compatibility() -> None:
+def test_sec_parser_accepts_plain_header_without_line_end_anchors() -> None:
     accession = "0000000001-21-000001"
-    raw = """<SEC-DOCUMENT>
-<SEC-HEADER>fixture.hdr.sgml : 20210816
-<ACCEPTANCE-DATETIME>20210816183045
-ACCESSION NUMBER: 0000000001-21-000001
-CENTRAL INDEX KEY: 0000000001
-ITEM INFORMATION: Regulation FD Disclosure
-</SEC-HEADER>
-</SEC-DOCUMENT>
+    raw = """<ACCEPTANCE-DATETIME>20210816183045
+<div>ACCESSION NUMBER: 0000000001-21-000001</div>
+<div>ITEM INFORMATION: Regulation FD Disclosure</div>
+<div>CENTRAL INDEX KEY: 0000000001</div>
 """
     parsed = parse_sec_filing_header(
         raw,
-        source_url=sec_raw_header_url(cik="1", accession_number=accession),
+        source_url=sec_index_headers_url(cik="1", accession_number=accession),
     )
     assert parsed.accession_number == accession
+    assert parsed.first_cik == "0000000001"
     assert parsed.item_information == ("Regulation FD Disclosure",)
 
 
@@ -176,12 +180,16 @@ def test_sec_client_declared_user_agent_matches_sec_sample_shape() -> None:
     assert "github.com" not in client.declared_user_agent
 
 
-def test_sec_client_sends_fair_access_headers_and_decodes_gzip_raw_sgml() -> None:
+def test_sec_client_sends_fair_access_headers_and_decodes_gzip_index_headers() -> None:
     accession = "0000000001-21-000001"
-    raw = b"""<ACCEPTANCE-DATETIME>20210816183045
-ACCESSION NUMBER: 0000000001-21-000001
-CENTRAL INDEX KEY: 0000000001
-ITEM INFORMATION: Regulation FD Disclosure
+    raw = b"""<SEC-DOCUMENT>0000000001-21-000001-index.html : 20210816
+<SEC-HEADER>0000000001-21-000001.hdr.sgml : 20210816
+<ACCEPTANCE-DATETIME>20210816183045
+ACCESSION NUMBER: 0000000001-21-000001<br>
+CENTRAL INDEX KEY: 0000000001<br>
+ITEM INFORMATION: Regulation FD Disclosure<br>
+</SEC-HEADER>
+</SEC-DOCUMENT>
 """
     captured = {}
 
@@ -200,9 +208,28 @@ ITEM INFORMATION: Regulation FD Disclosure
     assert sent["user-agent"] == "ATLAS Research research@example.com"
     assert sent["accept-encoding"] == "gzip, deflate"
     assert sent["host"] == "www.sec.gov"
-    assert header.source_url.endswith(".hdr.sgml")
+    assert header.source_url.endswith("-index-headers.html")
     assert header.accession_number == accession
     assert header.item_information == ("Regulation FD Disclosure",)
+
+
+def test_sec_client_fails_if_returned_accession_differs() -> None:
+    requested = "0000000001-21-000001"
+    returned = "0000000002-21-000002"
+    raw = f"""<SEC-HEADER>fixture.hdr.sgml : 20210816
+<ACCEPTANCE-DATETIME>20210816183045
+ACCESSION NUMBER: {returned}
+ITEM INFORMATION: Regulation FD Disclosure
+</SEC-HEADER>
+""".encode()
+
+    client = SECEDGARClient(
+        contact_email="research@example.com",
+        opener=lambda *args, **kwargs: FakeResponse(raw),
+        sleeper=lambda _: None,
+    )
+    with pytest.raises(ProviderError, match="does not match"):
+        client.filing_header(cik="1", accession_number=requested)
 
 
 def test_sec_client_rejects_non_sec_host() -> None:
@@ -214,11 +241,11 @@ def test_sec_client_rejects_non_sec_host() -> None:
     with pytest.raises(Exception, match="changed host"):
         client.get_text(
             "https://example.com/Archives/edgar/data/1/"
-            "000000000121000001/0000000001-21-000001.hdr.sgml"
+            "000000000121000001/0000000001-21-000001-index-headers.html"
         )
 
 
-def test_sec_client_rejects_non_raw_header_targets() -> None:
+def test_sec_client_rejects_non_index_header_targets() -> None:
     client = SECEDGARClient(
         contact_email="research@example.com",
         opener=lambda *args, **kwargs: io.BytesIO(b""),
@@ -226,9 +253,9 @@ def test_sec_client_rejects_non_raw_header_targets() -> None:
     )
     for suffix in (
         "0000000001-21-000001.txt",
-        "0000000001-21-000001-index-headers.html",
+        "0000000001-21-000001.hdr.sgml",
     ):
-        with pytest.raises(Exception, match=r"\.hdr\.sgml"):
+        with pytest.raises(Exception, match="index-headers"):
             client.get_text(
                 "https://www.sec.gov/Archives/edgar/data/1/"
                 f"000000000121000001/{suffix}"

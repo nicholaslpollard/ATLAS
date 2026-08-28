@@ -26,12 +26,18 @@ SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS = 1.0 / SEC_EDGAR_MAX_REQUESTS_PER_SECOND
 SEC_EDGAR_REQUEST_TIMEOUT_SECONDS = 30.0
 SEC_EDGAR_MAX_ATTEMPTS = 4
 SEC_EDGAR_HEADER_MAX_BYTES = 256_000
-SEC_EDGAR_RAW_HEADER_SUFFIX = ".hdr.sgml"
+SEC_EDGAR_INDEX_HEADERS_SUFFIX = "-index-headers.html"
 
-_ACCEPTANCE_RE = re.compile(r"(?im)^\s*<ACCEPTANCE-DATETIME>\s*(\d{14})\s*$")
-_ITEM_RE = re.compile(r"(?im)^\s*ITEM INFORMATION:\s*(.+?)\s*$")
-_ACCESSION_RE = re.compile(r"(?im)^\s*ACCESSION NUMBER:\s*([^\s]+)\s*$")
-_CIK_RE = re.compile(r"(?im)^\s*CENTRAL INDEX KEY:\s*([^\s]+)\s*$")
+# SEC index-header pages are an HTML presentation of SGML-like filing metadata.
+# The field labels are authoritative, but presentation markup may appear on the
+# same line. Keep extraction tolerant to trailing HTML while preserving strict
+# field values and accession format checks.
+_ACCEPTANCE_RE = re.compile(r"(?i)<ACCEPTANCE-DATETIME>\s*(\d{14})")
+_ITEM_RE = re.compile(r"(?im)ITEM\s+INFORMATION:\s*([^\r\n<]+)")
+_ACCESSION_RE = re.compile(
+    r"(?im)ACCESSION\s+NUMBER:\s*(\d{10}-\d{2}-\d{6})"
+)
+_CIK_RE = re.compile(r"(?im)CENTRAL\s+INDEX\s+KEY:\s*(\d+)")
 _HEADER_RE = re.compile(r"(?is)<SEC-HEADER>(.*?)</SEC-HEADER>")
 _ACCESSION_FORMAT_RE = re.compile(r"^\d{10}-\d{2}-\d{6}$")
 _CONTACT_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -79,40 +85,35 @@ def sec_declared_user_agent(contact_email: str) -> str:
     return f"{SEC_EDGAR_USER_AGENT_PREFIX} {contact}"
 
 
-def sec_raw_header_url(*, cik: object, accession_number: str) -> str:
+def sec_index_headers_url(*, cik: object, accession_number: str) -> str:
     accession = _validate_accession(accession_number)
     cik_path = _normalize_cik(cik)
     accession_path = accession.replace("-", "")
     return (
         "https://www.sec.gov/Archives/edgar/data/"
-        f"{cik_path}/{accession_path}/{accession}{SEC_EDGAR_RAW_HEADER_SUFFIX}"
+        f"{cik_path}/{accession_path}/{accession}{SEC_EDGAR_INDEX_HEADERS_SUFFIX}"
     )
 
 
 def sec_submission_url(*, cik: object, accession_number: str) -> str:
-    """Compatibility alias for the bounded SEC raw filing-header artifact URL."""
-    return sec_raw_header_url(cik=cik, accession_number=accession_number)
+    """Compatibility alias for the bounded SEC filing-index-header URL."""
+    return sec_index_headers_url(cik=cik, accession_number=accession_number)
 
 
 def _extract_header(raw: str) -> str:
-    """Return the filing header body from either raw .hdr.sgml or wrapped SGML.
-
-    Official ``.hdr.sgml`` files are already the header payload and therefore
-    do not require a surrounding ``<SEC-HEADER>`` element. The wrapped form is
-    retained for deterministic parser compatibility and fixtures.
-    """
     text = raw.lstrip("\ufeff")
     match = _HEADER_RE.search(text)
     if match is not None:
         text = match.group(1)
     header = text.strip()
     if not header:
-        raise ProviderError("SEC raw filing header is empty")
+        raise ProviderError("SEC filing-index header response is empty")
     return header + "\n"
 
 
 def parse_sec_filing_header(raw_submission: str, *, source_url: str) -> SECFilingHeader:
     header = _extract_header(raw_submission)
+
     acceptance_match = _ACCEPTANCE_RE.search(header)
     if acceptance_match is None:
         raise ProviderError("SEC submission header is missing ACCEPTANCE-DATETIME")
@@ -128,9 +129,13 @@ def parse_sec_filing_header(raw_submission: str, *, source_url: str) -> SECFilin
     if accession_match is None:
         raise ProviderError("SEC submission header is missing ACCESSION NUMBER")
     accession = _validate_accession(accession_match.group(1))
+
     cik_match = _CIK_RE.search(header)
     first_cik = None if cik_match is None else cik_match.group(1).strip()
-    items = tuple(dict.fromkeys(item.strip() for item in _ITEM_RE.findall(header) if item.strip()))
+    items = tuple(
+        dict.fromkeys(item.strip() for item in _ITEM_RE.findall(header) if item.strip())
+    )
+
     return SECFilingHeader(
         accession_number=accession,
         first_cik=first_cik,
@@ -163,10 +168,10 @@ def _decode_content(raw: bytes, content_encoding: str | None) -> bytes:
 
 
 class SECEDGARClient:
-    """Bounded read-only SEC EDGAR raw filing-header client.
+    """Bounded read-only SEC EDGAR filing-index-header client.
 
-    The client is intentionally limited to official ``.hdr.sgml`` artifacts,
-    declares the fair-access identity format requested by SEC, advertises
+    The client is intentionally limited to official ``-index-headers.html``
+    artifacts, declares the fair-access identity requested by SEC, advertises
     gzip/deflate support, and runs at a conservative one request per second.
     It exposes no market outcomes or mutation authority.
     """
@@ -194,8 +199,10 @@ class SECEDGARClient:
             raise ProviderError("SEC EDGAR request changed host")
         if not parts.path.startswith(SEC_EDGAR_ARCHIVES_PREFIX):
             raise ProviderError("SEC EDGAR request must stay under /Archives/edgar/")
-        if not parts.path.endswith(SEC_EDGAR_RAW_HEADER_SUFFIX):
-            raise ProviderError("SEC EDGAR request must target the raw .hdr.sgml filing header")
+        if not parts.path.endswith(SEC_EDGAR_INDEX_HEADERS_SUFFIX):
+            raise ProviderError(
+                "SEC EDGAR request must target the filing -index-headers.html artifact"
+            )
         if parts.query or parts.fragment:
             raise ProviderError("SEC EDGAR archive request must not contain query/fragment")
 
@@ -214,7 +221,7 @@ class SECEDGARClient:
                 method="GET",
                 headers={
                     "User-Agent": self._user_agent,
-                    "Accept": "text/plain,text/sgml;q=0.9,*/*;q=0.1",
+                    "Accept": "text/html,text/plain;q=0.9,*/*;q=0.1",
                     "Accept-Encoding": "gzip, deflate",
                     "Host": "www.sec.gov",
                 },
@@ -224,10 +231,10 @@ class SECEDGARClient:
                     raw = response.read(SEC_EDGAR_HEADER_MAX_BYTES + 1)
                     content_encoding = response.headers.get("Content-Encoding")
                 if len(raw) > SEC_EDGAR_HEADER_MAX_BYTES:
-                    raise ProviderError("SEC EDGAR raw filing-header response exceeded bounded size")
+                    raise ProviderError("SEC EDGAR filing-index-header response exceeded bounded size")
                 decoded = _decode_content(raw, content_encoding)
                 if len(decoded) > SEC_EDGAR_HEADER_MAX_BYTES:
-                    raise ProviderError("SEC EDGAR decoded raw filing header exceeded bounded size")
+                    raise ProviderError("SEC EDGAR decoded filing-index header exceeded bounded size")
                 return decoded.decode("utf-8", errors="replace")
             except HTTPError as exc:
                 last_error = exc
@@ -253,5 +260,11 @@ class SECEDGARClient:
         )
 
     def filing_header(self, *, cik: object, accession_number: str) -> SECFilingHeader:
-        url = sec_raw_header_url(cik=cik, accession_number=accession_number)
-        return parse_sec_filing_header(self.get_text(url), source_url=url)
+        expected_accession = _validate_accession(accession_number)
+        url = sec_index_headers_url(cik=cik, accession_number=expected_accession)
+        header = parse_sec_filing_header(self.get_text(url), source_url=url)
+        if header.accession_number != expected_accession:
+            raise ProviderError(
+                "SEC filing-index header accession does not match the requested accession"
+            )
+        return header

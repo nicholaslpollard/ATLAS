@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-28 after Phase31 closed `ACCEPTED_NEGATIVE` and PR #35 merged. Phase32 SEC 8-K source feasibility remains the active gate; the target machine has now proven SEC Archives reachability but exposed a filing-header presentation/parser mismatch, and no Phase32 market outcomes have been read.**
+**Last synchronized: 2026-08-28 after Phase31 closed `ACCEPTED_NEGATIVE` and PR #35 merged. Phase32 SEC 8-K source feasibility remains the active gate; the target machine has proven SEC Archives reachability but four source-format attempts have not yet completed feasibility, and no Phase32 market outcomes have been read.**
 
 Read `docs/roadmap.md` first, then this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_sec_edgar_access_incident.md`, `docs/phase31_closeout.md`, and retained Phase31 provenance records.
 
@@ -119,7 +119,7 @@ Discovery source:
 
 Authoritative timestamp/item source:
 
-`official SEC EDGAR -> www.sec.gov/Archives/edgar/data/.../<accession>.hdr.sgml`
+`official SEC EDGAR -> www.sec.gov/Archives/edgar/data/.../<accession>-index-headers.html`
 
 Feasibility public-availability rule:
 
@@ -131,11 +131,22 @@ Target-machine source history on 2026-08-28:
 
 - original complete-submission transport: HTTP 403;
 - declared-contact complete-submission transport: HTTP 403;
-- bounded `-index-headers.html` transport: SEC request succeeded, then strict parsing failed with `SEC submission header is missing ACCESSION NUMBER`.
+- bounded `-index-headers.html` transport: SEC request succeeded, then strict parsing failed with `SEC submission header is missing ACCESSION NUMBER`;
+- `.hdr.sgml` transport attempt: SEC request again reached filing-header content far enough to recover acceptance time, but strict accession parsing again failed with the same message.
 
-The third result proves SEC Archives reachability. The current generic repair therefore uses the official raw `.hdr.sgml` filing-header artifact rather than the HTML presentation. The declared contact identity, gzip/deflate support, one-request-per-second rate, fail-closed 403 behavior, frozen feasibility fingerprint, four probe windows, no-outcome blindness, and all downstream authority gates remain unchanged.
+The HTTP 403 problem is therefore resolved. The remaining defect is representation parsing. Official SEC accession directory listings enumerate `-index-headers.html`, so the current repair returns to that bounded listed artifact and makes field extraction presentation-tolerant while preserving strict accession format and exact requested-accession reconciliation.
 
-The SEC raw-header path is derived generically from CIK + accession; no accession-specific exceptions are allowed. No market outcomes or protected returns have been read.
+The declared contact identity, gzip/deflate support, one-request-per-second rate, fail-closed 403 behavior, frozen feasibility fingerprint, four probe windows, no-outcome blindness, and all downstream authority gates remain unchanged.
+
+The SEC header path is derived generically from CIK + accession; no accession-specific exceptions are allowed. No market outcomes or protected returns have been read.
+
+## Local SEC contact configuration
+
+`.env.example` intentionally contains only the blank template:
+
+`SEC_EDGAR_CONTACT_EMAIL=`
+
+The real contact address belongs only in local `.env`, which is gitignored. `load_settings()` loads `.env` before the Phase32 SEC client is constructed, so a local `.env` value persists across PowerShell sessions without being committed.
 
 ## Exact next target — Phase32 8-K feasibility
 
