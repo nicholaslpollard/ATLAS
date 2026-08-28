@@ -62,6 +62,8 @@ The provider-free diagnostic found one impossible target row: WISH accession `00
 
 Root cause was classified as a **Massive beta source-association/data-quality defect**, not an ATLAS parser bug. The chronology rule remains unchanged. Diagnostic provider calls = 0; target/protected market outcomes read = 0.
 
+No Phase31 market outcomes have been read.
+
 ## Source-quality repair — TARGET PASS
 
 Historical target result label:
