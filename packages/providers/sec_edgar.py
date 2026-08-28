@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import os
 import re
 import time
+import zlib
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable
@@ -19,11 +21,11 @@ SEC_EDGAR_ALLOWED_HOSTS = {"www.sec.gov"}
 SEC_EDGAR_ARCHIVES_PREFIX = "/Archives/edgar/"
 SEC_EDGAR_USER_AGENT_PREFIX = "ATLAS Research"
 SEC_EDGAR_CONTACT_EMAIL_ENV = "SEC_EDGAR_CONTACT_EMAIL"
-SEC_EDGAR_MAX_REQUESTS_PER_SECOND = 5
+SEC_EDGAR_MAX_REQUESTS_PER_SECOND = 1
 SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS = 1.0 / SEC_EDGAR_MAX_REQUESTS_PER_SECOND
 SEC_EDGAR_REQUEST_TIMEOUT_SECONDS = 30.0
 SEC_EDGAR_MAX_ATTEMPTS = 4
-SEC_EDGAR_HEADER_MAX_BYTES = 512_000
+SEC_EDGAR_HEADER_MAX_BYTES = 256_000
 
 _ACCEPTANCE_RE = re.compile(r"(?im)^\s*<ACCEPTANCE-DATETIME>\s*(\d{14})\s*$")
 _ITEM_RE = re.compile(r"(?im)^\s*ITEM INFORMATION:\s*(.+?)\s*$")
@@ -73,23 +75,28 @@ def _resolve_contact_email(contact_email: str | None) -> str:
 
 def sec_declared_user_agent(contact_email: str) -> str:
     contact = _resolve_contact_email(contact_email)
-    return f"{SEC_EDGAR_USER_AGENT_PREFIX} {contact} github.com/nicholaslpollard/ATLAS"
+    return f"{SEC_EDGAR_USER_AGENT_PREFIX} {contact}"
 
 
-def sec_submission_url(*, cik: object, accession_number: str) -> str:
+def sec_index_headers_url(*, cik: object, accession_number: str) -> str:
     accession = _validate_accession(accession_number)
     cik_path = _normalize_cik(cik)
     accession_path = accession.replace("-", "")
     return (
         "https://www.sec.gov/Archives/edgar/data/"
-        f"{cik_path}/{accession_path}/{accession}.txt"
+        f"{cik_path}/{accession_path}/{accession}-index-headers.html"
     )
+
+
+def sec_submission_url(*, cik: object, accession_number: str) -> str:
+    """Compatibility alias for the bounded SEC filing-header artifact URL."""
+    return sec_index_headers_url(cik=cik, accession_number=accession_number)
 
 
 def _extract_header(raw: str) -> str:
     match = _HEADER_RE.search(raw)
     if match is None:
-        raise ProviderError("SEC submission is missing <SEC-HEADER> block")
+        raise ProviderError("SEC filing-index headers are missing <SEC-HEADER> block")
     return match.group(1).strip() + "\n"
 
 
@@ -124,13 +131,33 @@ def parse_sec_filing_header(raw_submission: str, *, source_url: str) -> SECFilin
     )
 
 
-class SECEDGARClient:
-    """Bounded read-only SEC EDGAR submission-header client.
+def _decode_content(raw: bytes, content_encoding: str | None) -> bytes:
+    encoding = (content_encoding or "").strip().lower()
+    if not encoding or encoding == "identity":
+        return raw
+    if encoding == "gzip":
+        try:
+            return gzip.decompress(raw)
+        except OSError as exc:
+            raise ProviderError("SEC EDGAR gzip response could not be decoded") from exc
+    if encoding == "deflate":
+        try:
+            return zlib.decompress(raw)
+        except zlib.error:
+            try:
+                return zlib.decompress(raw, -zlib.MAX_WBITS)
+            except zlib.error as exc:
+                raise ProviderError("SEC EDGAR deflate response could not be decoded") from exc
+    raise ProviderError(f"SEC EDGAR returned unsupported Content-Encoding {content_encoding!r}")
 
-    The client is intentionally limited to official SEC Archives submission text,
-    declares an ATLAS fair-access identity with a locally supplied contact email,
-    and throttles below the SEC's public maximum. It exposes no market outcomes
-    or mutation authority.
+
+class SECEDGARClient:
+    """Bounded read-only SEC EDGAR filing-header client.
+
+    The client is intentionally limited to official SEC filing-index header
+    artifacts, declares the fair-access identity format requested by SEC,
+    advertises gzip/deflate support, and runs at a conservative one request
+    per second. It exposes no market outcomes or mutation authority.
     """
 
     RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
@@ -156,6 +183,8 @@ class SECEDGARClient:
             raise ProviderError("SEC EDGAR request changed host")
         if not parts.path.startswith(SEC_EDGAR_ARCHIVES_PREFIX):
             raise ProviderError("SEC EDGAR request must stay under /Archives/edgar/")
+        if not parts.path.endswith("-index-headers.html"):
+            raise ProviderError("SEC EDGAR request must target the filing index-headers artifact")
         if parts.query or parts.fragment:
             raise ProviderError("SEC EDGAR archive request must not contain query/fragment")
 
@@ -174,23 +203,29 @@ class SECEDGARClient:
                 method="GET",
                 headers={
                     "User-Agent": self._user_agent,
-                    "Accept": "text/plain,text/html;q=0.9,*/*;q=0.1",
+                    "Accept": "text/html,text/plain;q=0.9,*/*;q=0.1",
+                    "Accept-Encoding": "gzip, deflate",
                     "Host": "www.sec.gov",
                 },
             )
             try:
                 with self._opener(request, timeout=SEC_EDGAR_REQUEST_TIMEOUT_SECONDS) as response:
                     raw = response.read(SEC_EDGAR_HEADER_MAX_BYTES + 1)
+                    content_encoding = response.headers.get("Content-Encoding")
                 if len(raw) > SEC_EDGAR_HEADER_MAX_BYTES:
-                    raw = raw[:SEC_EDGAR_HEADER_MAX_BYTES]
-                return raw.decode("utf-8", errors="replace")
+                    raise ProviderError("SEC EDGAR filing-index header response exceeded bounded size")
+                decoded = _decode_content(raw, content_encoding)
+                if len(decoded) > SEC_EDGAR_HEADER_MAX_BYTES:
+                    raise ProviderError("SEC EDGAR decoded filing-index header exceeded bounded size")
+                return decoded.decode("utf-8", errors="replace")
             except HTTPError as exc:
                 last_error = exc
                 if exc.code == 403:
                     raise ProviderError(
                         "SEC EDGAR request denied with HTTP 403 under fair-access controls; "
-                        "ATLAS did not retry the denial. Verify SEC_EDGAR_CONTACT_EMAIL and "
-                        "the current public-IP access state before rerunning."
+                        "ATLAS did not retry the denial. The declared contact identity was "
+                        "validated locally; persistent denial is treated as a source-access "
+                        "state, not as scientific evidence."
                     ) from exc
                 if exc.code not in self.RETRYABLE_HTTP or attempt >= SEC_EDGAR_MAX_ATTEMPTS:
                     raise ProviderError(f"SEC EDGAR request failed with HTTP {exc.code}") from exc
@@ -201,11 +236,11 @@ class SECEDGARClient:
                         f"SEC EDGAR request failed: {type(exc).__name__}"
                     ) from exc
             self._sleep(delay)
-            delay = min(2.0, delay * 2.0)
+            delay = min(4.0, delay * 2.0)
         raise ProviderError(
             f"SEC EDGAR request failed after retries: {type(last_error).__name__}"
         )
 
     def filing_header(self, *, cik: object, accession_number: str) -> SECFilingHeader:
-        url = sec_submission_url(cik=cik, accession_number=accession_number)
+        url = sec_index_headers_url(cik=cik, accession_number=accession_number)
         return parse_sec_filing_header(self.get_text(url), source_url=url)
