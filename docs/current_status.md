@@ -1,8 +1,8 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-27 after Phase30 historical-news feasibility PASS and scientific-policy freeze.**
+**Last synchronized: 2026-08-27 after Phase30 frozen scientific-policy acquisition PASS; predictor-only construction is next.**
 
-Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase source of truth. Then read this file, `docs/phase30_event_driven_public_information_alpha.md` for the immutable feasibility boundary, and `docs/phase30_scientific_contract.md` for the now-frozen Phase30 scientific contract.
+Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-phase source of truth. Then read this file, `docs/phase30_event_driven_public_information_alpha.md` for the immutable feasibility boundary, `docs/phase30_scientific_contract.md` for the frozen Phase30 scientific contract, and `docs/future_news_sentiment_and_option_fair_value.md` for explicit Phase31+ news-sentiment and option-fair-value requirements. The future-design document does not alter Phase30.
 
 ## Repository state
 
@@ -14,7 +14,8 @@ Read `docs/roadmap.md` first. It is the normative mission/anti-drift/remaining-p
 - Phase29 post-merge workflow `33124971664`: Ubuntu PASS / Windows PASS.
 - **Active phase:** Phase30 — Event-Driven Public-Information Alpha.
 - Active branch: `phase-30-event-driven-public-information-alpha`.
-- Phase30 feasibility/scientific-freeze implementation commits include `21d53bdb76e37649a93d61057bfb113fd5448a81`, `b632e9d2bb1c550e74b63baf212882bdf2c2736e`, and CI integration `9dc03efb7018b8d68b9e26427d579b767bbbe133`.
+- Phase30 acquisition-tested branch head: `65208611b1f441a667bd95e8ed7a740ab42c6e79`.
+- Exact-head workflow `33127882772`: PASS.
 - Signal-to-trade construction is Phase31 and remains blocked until >=1 alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 
 ## Mission / authority lock
@@ -93,7 +94,7 @@ The four failed modern families may not be retuned after observing their results
 
 ## Phase30 — current exact state
 
-### Feasibility/provenance gate — PASSED
+### Feasibility/provenance — PASSED
 
 Target-machine command `scripts/run_phase30_news_feasibility.py` passed under feasibility fingerprint:
 
@@ -155,17 +156,49 @@ Exactly four frozen hypotheses:
 
 No fifth hypothesis, text variant, provider-sentiment variant, alternate lookback, alternate timing cutoff, or post-result threshold search is authorized.
 
+### Full historical news acquisition — PASSED
+
+Target-machine command `scripts/run_phase30_news_acquisition.py` passed on branch head `65208611b1f441a667bd95e8ed7a740ab42c6e79`:
+
+- total articles: **775,164**;
+- total ticker-linked articles: **775,164**;
+- immutable monthly shards: **62**;
+- resumed shards on first complete run: **0**;
+- successful provider pages recorded: **804**;
+- target outcome rows read: **0**;
+- protected return rows read: **0**;
+- provider writes / broker reads / broker writes / orders / PAPER / LIVE: **0 / 0 / 0 / 0 / 0 / 0**;
+- acquisition result: **PASS**.
+
+The acquisition is an internal evidence/provenance step. It is **not** Phase30 acceptance and grants no `SUPPORTED`, PAPER, or LIVE authority.
+
 ### Next internal Phase30 action
 
-Run the full historical **non-performance** news acquisition from `2021-07-16` through `2026-08-11`, sharded monthly with immutable local evidence and resumable metadata. This reads provider news only and must continue to report zero target/protected outcome rows.
+Build development and protected **predictor-only** metadata news-shock frames from the immutable 62-shard history under the frozen policy. This stage must:
 
-After acquisition passes, build development and protected **predictor-only** news-shock frames under the frozen policy. Development outcomes may then be joined only through the explicitly implemented development selection path. Protected returns remain finalist-only.
+- reuse the accepted XNYS `MarketCalendar` authority and official shortened-session closes;
+- map each publication to the first session with at least 30 minutes remaining;
+- count unique article IDs by exact provider-native ticker/session;
+- compute the exact zero-filled 20-session surprise transform;
+- output no Phase26 market field and no future/outcome field;
+- read no provider network and perform no external mutation.
+
+Only after this predictor-only evidence passes may the development path join the frozen observation-time Phase26 candidate fields and then read development outcomes. Protected returns remain finalist-only.
+
+## Future news sentiment and option fair-value requirements
+
+`docs/future_news_sentiment_and_option_fair_value.md` is the explicit downstream design lock. It does not modify Phase30.
+
+- News sentiment defaults to **Supporting Evidence**. Strong credible contradictory news must force thesis re-evaluation before a new entry and may reduce expected profitability/confidence, reduce admission/sizing under accepted risk policy, or turn the decision into PASS/no-trade. Severe event classes use a dedicated event-risk gate rather than a small linear penalty.
+- Option selection in Phase31 must include an explicit **Option Fair-Value Engine**. Black-Scholes-Merton is a reference model, not sole authority; independent volatility/fair-value estimates, IV surface/skew/term structure, realized/forecast/event volatility, rates/dividends, executable pricing, liquidity, Greeks, and American-style pricing where early exercise matters are required as applicable.
+- Planned option fair-value modes are `Off`, `Rank Boost` (default), and `Require Positive Valuation Edge`.
+- These downstream layers create no alpha/PAPER/LIVE authority by themselves and must be validated with PIT-safe or prospective evidence.
 
 ## Protected-holdout state
 
 Master protected predictor window: `2026-05-12` through `2026-08-11`.
 
-Phases26, 27, 28, 29, and Phase30 feasibility/scientific freeze have read **zero protected returns**. The holdout remains genuinely outcome-unopened.
+Phases26, 27, 28, 29, and all completed Phase30 feasibility/scientific-freeze/acquisition work have read **zero protected returns**. The holdout remains genuinely outcome-unopened.
 
 A nonempty future Phase30 protected-return read is allowed only after development selection, internal validation, frozen finalists, independent blindness audit, and immutable finalist-only read plan. Any such read consumes the holdout for later alpha selection.
 
@@ -183,7 +216,7 @@ Phase30 changes the information mechanism to timestamped public-news arrival rat
 ## Rebaselined downstream roadmap
 
 - **Phase30:** Event-Driven Public-Information Alpha.
-- **Phase31:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — requires supported alpha.
+- **Phase31:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — requires supported alpha; explicitly includes governed news-sentiment re-evaluation and the Option Fair-Value Engine.
 - **Phase32:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
 - **Phase33:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
 - **Phase34:** Outcomes/Learning/Drift/Governance + Performance UI.
