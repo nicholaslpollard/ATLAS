@@ -8,6 +8,7 @@ import time
 import zlib
 from dataclasses import dataclass
 from datetime import datetime
+from html import unescape
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -28,19 +29,22 @@ SEC_EDGAR_MAX_ATTEMPTS = 4
 SEC_EDGAR_HEADER_MAX_BYTES = 256_000
 SEC_EDGAR_INDEX_HEADERS_SUFFIX = "-index-headers.html"
 
-# SEC index-header pages are an HTML presentation of SGML-like filing metadata.
-# The field labels are authoritative, but presentation markup may appear on the
-# same line. Keep extraction tolerant to trailing HTML while preserving strict
-# field values and accession format checks.
 _ACCEPTANCE_RE = re.compile(r"(?i)<ACCEPTANCE-DATETIME>\s*(\d{14})")
-_ITEM_RE = re.compile(r"(?im)ITEM\s+INFORMATION:\s*([^\r\n<]+)")
+_ITEM_RE = re.compile(r"(?im)ITEM\s+INFORMATION\s*:\s*([^\r\n]+)")
 _ACCESSION_RE = re.compile(
-    r"(?im)ACCESSION\s+NUMBER:\s*(\d{10}-\d{2}-\d{6})"
+    r"(?im)ACCESSION\s+NUMBER\s*:\s*(\d{10}-\d{2}-\d{6})"
 )
-_CIK_RE = re.compile(r"(?im)CENTRAL\s+INDEX\s+KEY:\s*(\d+)")
+_CIK_RE = re.compile(r"(?im)CENTRAL\s+INDEX\s+KEY\s*:\s*(\d+)")
 _HEADER_RE = re.compile(r"(?is)<SEC-HEADER>(.*?)</SEC-HEADER>")
 _ACCESSION_FORMAT_RE = re.compile(r"^\d{10}-\d{2}-\d{6}$")
 _CONTACT_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+_BR_TAG_RE = re.compile(r"(?is)<br\s*/?>")
+_BLOCK_TAG_RE = re.compile(
+    r"(?is)</?(?:html|body|pre|div|p|table|tr|td|th|li|ul|ol|section|article|"
+    r"header|footer|h[1-6])\b[^>]*>"
+)
+_ANY_TAG_RE = re.compile(r"(?is)<[^>]+>")
+_HORIZONTAL_WS_RE = re.compile(r"[^\S\r\n]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,10 +115,29 @@ def _extract_header(raw: str) -> str:
     return header + "\n"
 
 
+def _normalize_presentation_fields(header: str) -> str:
+    """Normalize SEC presentation markup without changing provenance evidence.
+
+    ``-index-headers.html`` is a browser presentation of EDGAR header metadata.
+    Across presentation variants, HTML tags/entities can surround or split the
+    human-readable labels even though the underlying filing-header fields are
+    unchanged. Parsing therefore uses a normalized text view while retaining
+    the original bounded SEC header text unchanged for hashing/evidence.
+    """
+    text = unescape(header)
+    text = _BR_TAG_RE.sub("\n", text)
+    text = _BLOCK_TAG_RE.sub("\n", text)
+    text = _ANY_TAG_RE.sub(" ", text)
+    text = text.replace("\xa0", " ")
+    text = _HORIZONTAL_WS_RE.sub(" ", text)
+    return "\n".join(line.strip() for line in text.splitlines())
+
+
 def parse_sec_filing_header(raw_submission: str, *, source_url: str) -> SECFilingHeader:
     header = _extract_header(raw_submission)
+    decoded_header = unescape(header)
 
-    acceptance_match = _ACCEPTANCE_RE.search(header)
+    acceptance_match = _ACCEPTANCE_RE.search(decoded_header)
     if acceptance_match is None:
         raise ProviderError("SEC submission header is missing ACCEPTANCE-DATETIME")
     raw_acceptance = acceptance_match.group(1)
@@ -125,15 +148,23 @@ def parse_sec_filing_header(raw_submission: str, *, source_url: str) -> SECFilin
     except ValueError as exc:
         raise ProviderError("SEC ACCEPTANCE-DATETIME is invalid") from exc
 
-    accession_match = _ACCESSION_RE.search(header)
+    field_text = _normalize_presentation_fields(header)
+    accession_match = _ACCESSION_RE.search(field_text)
     if accession_match is None:
-        raise ProviderError("SEC submission header is missing ACCESSION NUMBER")
+        field_upper = field_text.upper()
+        header_sha = hashlib.sha256(header.encode("utf-8")).hexdigest()
+        raise ProviderError(
+            "SEC submission header is missing ACCESSION NUMBER after presentation normalization; "
+            f"source_url={source_url}; header_sha256={header_sha}; "
+            f"contains_ACCESSION={'ACCESSION' in field_upper}; "
+            f"contains_NUMBER={'NUMBER' in field_upper}; normalized_chars={len(field_text)}"
+        )
     accession = _validate_accession(accession_match.group(1))
 
-    cik_match = _CIK_RE.search(header)
+    cik_match = _CIK_RE.search(field_text)
     first_cik = None if cik_match is None else cik_match.group(1).strip()
     items = tuple(
-        dict.fromkeys(item.strip() for item in _ITEM_RE.findall(header) if item.strip())
+        dict.fromkeys(item.strip() for item in _ITEM_RE.findall(field_text) if item.strip())
     )
 
     return SECFilingHeader(
