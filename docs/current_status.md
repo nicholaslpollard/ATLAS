@@ -146,6 +146,10 @@ Accepted implementation head:
 
 `069cca8a76446cc33b5fcf4931612e56a315f5b8`
 
+Accepted acquisition runner retained for provenance:
+
+`scripts/run_phase31_form4_acquisition.py`
+
 Evidence:
 
 - scope `2021-07-16..2026-08-11`
