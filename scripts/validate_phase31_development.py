@@ -43,6 +43,7 @@ def main() -> int:
         PHASE31_INTERNAL_MIN_UNIQUE_TICKERS,
         PHASE31_MULTIPLE_TESTING_METHOD,
         PHASE31_PROTECTED_RETURNS_BEFORE_FINALISTS_ALLOWED,
+        PHASE31_ROBUSTNESS_STATE_TIMING,
         PHASE31_RUNNER_UP_SUBSTITUTION_ALLOWED,
         PHASE31_SELECTION_MIN_UNIQUE_TICKERS,
         PHASE31_SELECTION_WINNER_RULE,
@@ -158,7 +159,12 @@ def main() -> int:
             "Development market outcomes: AUTHORIZED / READ IN THIS STEP" in runner
             and "Protected candidate rows/returns: FORBIDDEN / UNREAD" in runner
         ),
-        "scientific_contract_requires_prior_state": "previous XNYS session's accepted state" in scientific,
+        "scientific_contract_requires_prior_state": (
+            PHASE31_ROBUSTNESS_STATE_TIMING == "PREVIOUS_XNYS_SESSION_ONLY"
+            and "previous XNYS session's" in scientific
+            and "accepted state" in scientific
+            and "Decision-session close-derived state is forbidden" in scientific
+        ),
         "unit_tests_present": (PROJECT_ROOT / "tests" / "unit" / "test_phase31_development.py").is_file(),
         "ci_validator_present": (
             "Validate Phase 31 development-only Form-4 contracts" in workflow
