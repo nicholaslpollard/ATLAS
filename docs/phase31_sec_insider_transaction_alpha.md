@@ -45,6 +45,10 @@ Never use `transaction_date`, `period_of_report`, or `deemed_execution_date` as 
 
 Target head `b59a64938eb84c0c1e7df3aaea390cc437326f94` produced `FEASIBILITY_FAIL` on `transaction_dates_do_not_postdate_filings`. This failure is permanent provenance and is not rewritten.
 
+Failed feasibility fingerprint:
+
+`edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc`
+
 The provider-free diagnostic later found one impossible target row: WISH accession `0000950170-23-043337`, filing `2023-08-17`, returned transaction `2023-09-15`. Root cause was classified as a Massive beta source-association/data-quality defect, not an ATLAS parser bug. The chronology rule remains unchanged.
 
 ## Source-quality repair — TARGET PASS
