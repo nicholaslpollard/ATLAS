@@ -162,7 +162,7 @@ Development uses chronological 75% selection, 20-session purge, then internal va
 - deflated-performance diagnostic required
 - protected returns finalist-only.
 
-## Full historical Form-4 acquisition — PASS
+## full historical Form-4 acquisition — PASS
 
 Accepted target-machine run date: 2026-08-28.
 
