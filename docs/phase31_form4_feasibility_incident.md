@@ -23,6 +23,8 @@ Implementation head:
 
 `80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7`
 
+Diagnostic violation artifact SHA256: `3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
+
 Target diagnostic:
 
 - 36,854 transaction rows with both dates
@@ -36,7 +38,7 @@ Target diagnostic:
 - returned transaction `2023-09-15`
 - 29-day impossible gap
 - code M / derivative RSU / acquired A / direct D / 10b5-1 false / timeliness O
-- violation SHA `3fac83bf60206e4056d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
+- violation SHA `3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
 - provider calls 0
 - market outcomes 0
 - broker/order/PAPER/LIVE 0.
