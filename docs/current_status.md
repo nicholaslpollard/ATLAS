@@ -10,9 +10,11 @@ Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`
 - Phase26–31: all `ACCEPTED_NEGATIVE`.
 - Accepted historical alpha support: **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+- Historical Phase31 branch: `phase-31-sec-insider-transaction-alpha`.
 - Active branch: `phase-32-sec-8k-material-event-alpha`.
 - Active gate: **Phase32 — SEC 8-K Material Corporate-Event Alpha**.
 - Active internal step: **V2 source feasibility/provenance only**.
+- Current Massive subscription declaration: **Stocks Starter**.
 - Phase33 signal-to-trade remains blocked until at least one alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 - LIVE and automatic broker failover remain disabled.
 
@@ -24,13 +26,41 @@ Master protected outcome window remains `2026-05-12` through `2026-08-11`.
 
 Phases26–31 read zero protected returns. Phase31 closeout confirmed protected candidate rows **0**, protected return rows **0**, and holdout consumed **False**. Phase32 feasibility remains forbidden from reading any target or protected market outcomes.
 
-## Phase31 closeout retained
+## Phase31 retained closeout and source provenance
 
 Phase31 closed `ACCEPTED_NEGATIVE` with independent result `PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF` and closeout head `92e61b74d3c6cf95db122b1981ed2b53ab1c7b07`.
 
 Development predictor / usable rows were **5,400 / 5,371**. All four frozen Form-4 candidates failed mandatory gates; survivors, winners, finalists, and supported candidates were all zero. Do not retune or reinterpret Phase31.
 
-Retained source facts include 2,992,608 authoritative full-history rows and 45,915 authoritative source-quality target rows. Full detail remains in `docs/phase31_closeout.md` and retained Phase31 provenance documents.
+The original target feasibility disposition remains **`FEASIBILITY_FAIL`**. Its root cause remains a **Massive beta source-association/data-quality defect**, not an ATLAS chronology-parser failure. Retained diagnostic head:
+
+`80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7`
+
+Retained chronology-violation artifact SHA:
+
+`3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
+
+Accepted source-quality policy:
+
+`RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
+
+Accepted source-quality fingerprint:
+
+`2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`
+
+Accepted source-quality target retained **45,915** authoritative rows. Historical repair runner remains:
+
+`scripts/run_phase31_form4_source_quality_repair.py`
+
+Full historical acquisition retained **2,993,648** raw rows, **2,992,608** authoritative rows, **1,040** quarantined rows, **187** contaminated accessions, **233** chronology seeds, **15** missing-code seeds, and **62** monthly shards. Historical acquisition runner remains:
+
+`scripts/run_phase31_form4_acquisition.py`
+
+Frozen Phase31 scientific policy fingerprint:
+
+`e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`
+
+These retained facts exist for regression/lineage validation; they do not make Phase31 active again.
 
 ## Phase32 V1 source history — not accepted
 
