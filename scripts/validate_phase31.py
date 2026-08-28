@@ -15,6 +15,10 @@ EXPECTED_PLAN = "Stocks Starter"
 EXPECTED_FAILED_TARGET_HEAD = "b59a64938eb84c0c1e7df3aaea390cc437326f94"
 EXPECTED_FAILED_FINGERPRINT = "edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc"
 EXPECTED_FAILED_CHECK = "transaction_dates_do_not_postdate_filings"
+EXPECTED_DIAGNOSTIC_HEAD = "80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7"
+EXPECTED_VIOLATION_SHA = "3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044"
+EXPECTED_SOURCE_QUALITY_FINGERPRINT = "2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83"
+EXPECTED_SOURCE_QUALITY_POLICY = "RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE"
 EXPECTED_WINDOWS = (
     ("research_boundary", "2021-08-16", "2021-08-20"),
     ("mid_history", "2023-08-14", "2023-08-18"),
@@ -46,8 +50,10 @@ def main() -> int:
         "packages/providers/massive/phase31.py",
         "packages/backtesting/phase31_feasibility.py",
         "packages/backtesting/phase31_diagnostics.py",
+        "packages/backtesting/phase31_source_quality.py",
         "scripts/run_phase31_form4_feasibility.py",
         "scripts/diagnose_phase31_form4_lag.py",
+        "scripts/run_phase31_form4_source_quality_repair.py",
     )
     for path in python_files:
         _assert_parseable(path)
@@ -55,10 +61,13 @@ def main() -> int:
     provider = _read("packages/providers/massive/phase31.py")
     feasibility = _read("packages/backtesting/phase31_feasibility.py")
     diagnostic = _read("packages/backtesting/phase31_diagnostics.py")
+    source_quality = _read("packages/backtesting/phase31_source_quality.py")
     runner = _read("scripts/run_phase31_form4_feasibility.py")
     diagnostic_runner = _read("scripts/diagnose_phase31_form4_lag.py")
+    repair_runner = _read("scripts/run_phase31_form4_source_quality_repair.py")
     phase_doc = _read("docs/phase31_sec_insider_transaction_alpha.md")
     incident_doc = _read("docs/phase31_form4_feasibility_incident.md")
+    repair_doc = _read("docs/phase31_form4_source_quality_repair.md")
     roadmap = _read("docs/roadmap.md")
     status = _read("docs/current_status.md")
     readme = _read("README.md")
@@ -86,7 +95,7 @@ def main() -> int:
     _require(feasibility, "PHASE31_ALPHA_HYPOTHESES_FROZEN = False", "hypotheses not frozen")
     _require(feasibility, "PHASE31_TARGET_OUTCOME_READS_ALLOWED = False", "target outcomes forbidden")
     _require(feasibility, "PHASE31_PROTECTED_OUTCOME_READS_ALLOWED = False", "protected outcomes forbidden")
-    _require(feasibility, f'"{EXPECTED_FAILED_CHECK}": negative_lag_rows == 0', "chronology gate retained")
+    _require(feasibility, f'"{EXPECTED_FAILED_CHECK}": negative_lag_rows == 0', "original chronology gate retained")
     _require(feasibility, '"target_outcome_rows_read": 0', "zero target outcome reads")
     _require(feasibility, '"protected_candidate_rows_read": 0', "zero protected candidate reads")
     _require(feasibility, '"protected_return_rows_read": 0', "zero protected return reads")
@@ -94,7 +103,7 @@ def main() -> int:
     for label, start, end in EXPECTED_WINDOWS:
         _require(feasibility, f'Phase31ProbeWindow("{label}", "{start}", "{end}")', f"probe {label}")
 
-    for forbidden in (
+    forbidden_research_authority = (
         "phase26_development",
         "phase27",
         "phase28",
@@ -103,14 +112,15 @@ def main() -> int:
         "forward_return",
         "directional_return",
         "future_close",
-        "future_date",
         "packages.execution",
         "packages.brokers",
         "Webull",
         "AlpacaTrading",
-    ):
+    )
+    for forbidden in forbidden_research_authority:
         _forbid(feasibility, forbidden, "outcome/trading authority in feasibility")
         _forbid(diagnostic, forbidden, "outcome/trading authority in diagnostic")
+        _forbid(source_quality, forbidden, "outcome/trading authority in source-quality repair")
 
     _require(diagnostic, EXPECTED_FAILED_TARGET_HEAD, "failed target head pinned")
     _require(diagnostic, EXPECTED_FAILED_FINGERPRINT, "failed feasibility fingerprint pinned")
@@ -132,8 +142,40 @@ def main() -> int:
     _require(diagnostic_runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "diagnostic outcome boundary")
     _require(diagnostic_runner, "Chronology acceptance rule: UNCHANGED", "diagnostic no-gate-weakening boundary")
 
-    _require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "runner outcome boundary")
-    _require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "runner trading boundary")
+    _require(source_quality, EXPECTED_FAILED_TARGET_HEAD, "repair failed target lineage")
+    _require(source_quality, EXPECTED_FAILED_FINGERPRINT, "repair failed fingerprint lineage")
+    _require(source_quality, EXPECTED_VIOLATION_SHA, "repair exact diagnostic evidence SHA")
+    _require(source_quality, EXPECTED_SOURCE_QUALITY_POLICY, "frozen source-quality policy")
+    _require(source_quality, "transaction > filing", "general chronology trigger")
+    _require(source_quality, '"quarantine_scope": "ENTIRE_ACCESSION"', "accession-level quarantine")
+    _require(source_quality, "contaminated.add(accession)", "generic contaminated-accession classifier")
+    _require(source_quality, "authoritative_corpus_has_zero_post_filing_transactions", "zero-invalid authoritative corpus")
+    _require(source_quality, "raw_row_conservation_exact", "raw row conservation")
+    _require(source_quality, "all_original_nonchronology_checks_remain_pass", "retained original feasibility checks")
+    _require(source_quality, '"provider_reads": 0', "repair zero provider reads")
+    _require(source_quality, '"target_outcome_rows_read": 0', "repair zero target outcomes")
+    _require(source_quality, '"protected_return_rows_read": 0', "repair zero protected returns")
+    _require(source_quality, '"alpha_support_granted": False', "repair grants no alpha")
+    _require(source_quality, '"phase32_entry_satisfied": False', "repair does not unlock Phase32")
+    _require(source_quality, '"scientific_policy_freeze_authorized": all(checks.values())', "repair authority boundary")
+    _forbid(source_quality, "WISH", "ticker-specific quarantine")
+    _forbid(source_quality, "0000950170-23-043337", "accession-specific quarantine")
+    _forbid(source_quality, "MassiveRESTClient", "provider call in repair")
+    _forbid(repair_runner, "MassiveRESTClient", "provider call in repair runner")
+
+    from packages.backtesting.phase31_source_quality import phase31_source_quality_fingerprint
+    if phase31_source_quality_fingerprint() != EXPECTED_SOURCE_QUALITY_FINGERPRINT:
+        raise AssertionError("Phase31 source-quality fingerprint drifted")
+
+    _require(repair_runner, "Provider calls: DISABLED / ZERO", "repair runner provider boundary")
+    _require(repair_runner, "Chronology rule: UNCHANGED", "repair runner chronology boundary")
+    _require(repair_runner, "Raw provider evidence: PRESERVED", "repair runner raw preservation")
+    _require(repair_runner, "entire accession", "repair runner accession quarantine")
+    _require(repair_runner, "Scientific-policy freeze authorized", "repair runner next authority")
+    _require(repair_runner, "Phase32 entry satisfied", "repair runner downstream lock")
+
+    _require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "original runner outcome boundary")
+    _require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "original runner trading boundary")
 
     _require(phase_doc, "first XNYS session", "conservative next-session explanation")
     _require(phase_doc, "strictly later", "strict later-session timing")
@@ -142,41 +184,61 @@ def main() -> int:
     _require(phase_doc, "No Phase31 market outcomes have been read", "no performance read")
     _require(phase_doc, EXPECTED_FAILED_TARGET_HEAD, "phase doc failed target head")
     _require(phase_doc, EXPECTED_FAILED_FINGERPRINT, "phase doc failed fingerprint")
-    _require(phase_doc, EXPECTED_FAILED_CHECK, "phase doc failed chronology check")
-    _require(phase_doc, "provider calls: 0", "phase doc provider-free diagnostic")
+    _require(phase_doc, EXPECTED_VIOLATION_SHA, "phase doc diagnostic evidence")
+    _require(phase_doc, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "phase doc repair fingerprint")
+    _require(phase_doc, EXPECTED_SOURCE_QUALITY_POLICY, "phase doc repair policy")
+    _require(phase_doc, "Massive beta source-association/data-quality defect", "phase doc root-cause classification")
+    _require(phase_doc, "provider calls = 0", "phase doc provider-free diagnostic")
 
     _require(incident_doc, "FEASIBILITY_FAIL", "incident failed status")
     _require(incident_doc, EXPECTED_FAILED_TARGET_HEAD, "incident target head")
     _require(incident_doc, EXPECTED_FAILED_FINGERPRINT, "incident fingerprint")
-    _require(incident_doc, EXPECTED_FAILED_CHECK, "incident failed check")
+    _require(incident_doc, EXPECTED_VIOLATION_SHA, "incident diagnostic artifact")
+    _require(incident_doc, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "incident repair fingerprint")
+    _require(incident_doc, "Massive early-access/beta source-association/data-quality defect", "incident classification")
     _require(incident_doc, "chronology invariant remains intact", "incident gate retention")
-    _require(incident_doc, "zero provider calls", "incident provider-free diagnostic")
+    _require(incident_doc, "There is **no** \"one bad row is acceptable\" tolerance", "incident no numeric exception")
+
+    _require(repair_doc, EXPECTED_VIOLATION_SHA, "repair doc diagnostic artifact")
+    _require(repair_doc, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "repair doc fingerprint")
+    _require(repair_doc, EXPECTED_SOURCE_QUALITY_POLICY, "repair doc policy")
+    _require(repair_doc, "quarantine the **entire accession_number**", "repair doc accession scope")
+    _require(repair_doc, "There is no numeric anomaly tolerance", "repair doc no threshold weakening")
+    _require(repair_doc, "zero provider calls", "repair doc provider-free target")
+    _require(repair_doc, "does **not** erase or reinterpret the original failed feasibility run", "repair doc provenance")
 
     _require(roadmap, "Active Phase31 — SEC Form-4 Insider-Transaction Alpha", "roadmap Phase31 rebaseline")
     _require(roadmap, "Phase32 — Signal-to-Trade Construction", "shifted signal-to-trade phase")
     _require(roadmap, "Phase38 — Controlled LIVE Activation", "shifted LIVE phase")
+
     _require(status, "Stocks Starter", "subscription status")
     _require(status, "phase-31-sec-insider-transaction-alpha", "active branch status")
-    _require(status, "FEASIBILITY_FAIL", "current failed feasibility status")
-    _require(status, EXPECTED_FAILED_TARGET_HEAD, "status failed target head")
-    _require(status, EXPECTED_FAILED_FINGERPRINT, "status failed fingerprint")
-    _require(status, EXPECTED_FAILED_CHECK, "status failed check")
-    _require(status, "scripts/diagnose_phase31_form4_lag.py", "status diagnostic handoff")
+    _require(status, "FEASIBILITY_FAIL", "original failed feasibility status")
+    _require(status, EXPECTED_DIAGNOSTIC_HEAD, "status diagnostic head")
+    _require(status, EXPECTED_VIOLATION_SHA, "status violation artifact")
+    _require(status, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "status repair fingerprint")
+    _require(status, EXPECTED_SOURCE_QUALITY_POLICY, "status repair policy")
+    _require(status, "Massive beta source-association/data-quality defect", "status root cause")
+    _require(status, "scripts/run_phase31_form4_source_quality_repair.py", "status exact next handoff")
+
     _require(readme, "Active Phase31: SEC Form-4 Insider-Transaction Alpha", "README active phase")
-    _require(readme, "phase31_form4_feasibility_incident.md", "README incident handoff")
+    _require(readme, "phase31_form4_source_quality_repair.md", "README repair handoff")
+    _require(readme, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "README repair fingerprint")
+    _require(readme, "Massive early-access/beta source-association/data-quality defect", "README root cause")
     _require(readme, "Phase38", "README current downstream numbering")
 
     _require(workflow, "Validate Phase 31 Form-4 feasibility contracts", "CI Phase31 validator step")
     _require(workflow, "python scripts/validate_phase31.py", "CI Phase31 validator command")
 
-    print("ATLAS Phase 31 Form-4 feasibility/repair contracts: PASS")
-    print("- roadmap remains rebaselined after Phase30 accepted-negative closeout")
-    print("- first target feasibility failure is preserved as NOT ACCEPTED evidence")
-    print("- chronology gate remains unchanged")
-    print("- root-cause diagnostic is frozen-evidence-only and makes zero provider calls")
-    print("- target/protected market outcomes remain unread")
-    print("- README/status/phase/incident handoff documents are synchronized")
-    print("- broker/order/PAPER/LIVE/automatic-failover authority remains disabled")
+    print("ATLAS Phase 31 Form-4 feasibility/diagnostic/source-quality contracts: PASS")
+    print("- original target FEASIBILITY_FAIL remains preserved as historical evidence")
+    print("- chronology rule remains unchanged and correctly detected a provider-beta defect")
+    print("- root cause is classified before repair; no performance evidence was consulted")
+    print("- source-quality repair preserves raw rows and quarantines contaminated accessions fail-closed")
+    print("- repair classifier has no ticker/accession-specific exception and no numeric bad-row tolerance")
+    print("- repair replay is provider-free and target/protected outcomes remain unread")
+    print("- source-quality PASS can authorize only scientific-policy freeze; Phase31/Phase32/trading authority remain locked")
+    print("- README/status/phase/incident/repair handoff documents are synchronized")
     return 0
 
 

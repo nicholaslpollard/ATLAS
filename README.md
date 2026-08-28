@@ -13,7 +13,7 @@ Every new ATLAS chat/work session must read these in order before changing the s
 1. [`docs/roadmap.md`](docs/roadmap.md) — **normative mission, anti-drift rules, architecture, acceptance model, and remaining roadmap**;
 2. [`docs/current_status.md`](docs/current_status.md) — exact repository/current-phase handoff and latest target evidence;
 3. active phase specification — currently [`docs/phase31_sec_insider_transaction_alpha.md`](docs/phase31_sec_insider_transaction_alpha.md);
-4. any open active-phase incident/repair record — currently [`docs/phase31_form4_feasibility_incident.md`](docs/phase31_form4_feasibility_incident.md);
+4. active incident/repair records — currently [`docs/phase31_form4_feasibility_incident.md`](docs/phase31_form4_feasibility_incident.md) and [`docs/phase31_form4_source_quality_repair.md`](docs/phase31_form4_source_quality_repair.md);
 5. [`docs/phase_flow.md`](docs/phase_flow.md) — phase = acceptance-gate development contract;
 6. [`docs/phase_plain_english_contract.md`](docs/phase_plain_english_contract.md) — required operator-facing phase start/end explanation;
 7. accepted code, validators, CI/PR evidence, and older phase documents for provenance.
@@ -51,19 +51,24 @@ Internal feasibility, acquisition, predictor, development, blindness, or protect
 - **Active Phase31: SEC Form-4 Insider-Transaction Alpha.**
 - Active branch: `phase-31-sec-insider-transaction-alpha`.
 - Massive planning entitlement: **Stocks Starter**.
-- Frozen Phase31 feasibility fingerprint: `edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc`.
-- First real Phase31 target run at head `b59a64938eb84c0c1e7df3aaea390cc437326f94` reached authenticated Form-4 retrieval but returned **`FEASIBILITY_FAIL`** on `transaction_dates_do_not_postdate_filings`.
-- Phase31 is therefore **NOT ACCEPTED** and no alpha hypothesis/support/trading authority was granted.
-- Root-cause investigation uses the immutable provider JSONL written by that failed run; the next diagnostic makes zero provider calls and reads zero market outcomes.
-- The conservative public-availability rule remains `NEXT_XNYS_SESSION_STRICTLY_AFTER_FILING_DATE` and has not been weakened.
+- Frozen original Phase31 feasibility fingerprint: `edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc`.
+- First real target at `b59a64938eb84c0c1e7df3aaea390cc437326f94` remains **`FEASIBILITY_FAIL`** on `transaction_dates_do_not_postdate_filings`.
+- Frozen-evidence diagnostic at repair head `80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7` found **1 impossible row among 36,854 dated transactions**: accession `0000950170-23-043337`, filing `2023-08-17`, transaction `2023-09-15`.
+- Root cause is classified as a **Massive early-access/beta source-association/data-quality defect**, not an ATLAS parser bug or entitlement failure.
+- The chronology rule remains unchanged.
+- Frozen repair policy: `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`.
+- Frozen source-quality fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`.
+- Raw provider evidence remains immutable; any accession containing `transaction_date > filing_date` is quarantined from the alpha-authoritative corpus. No WISH/code-M/derivative special case exists.
+- The next target action is provider-free: `scripts/run_phase31_form4_source_quality_repair.py`.
+- No Phase31 market outcomes have been read. No Phase31 alpha hypothesis/support/trading authority exists.
 - Phase32 signal-to-trade remains blocked until at least one alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 - LIVE remains disabled. Automatic broker failover remains disabled.
 
-See [`docs/current_status.md`](docs/current_status.md) and [`docs/phase31_form4_feasibility_incident.md`](docs/phase31_form4_feasibility_incident.md) for exact handoff evidence.
+See [`docs/current_status.md`](docs/current_status.md), [`docs/phase31_form4_feasibility_incident.md`](docs/phase31_form4_feasibility_incident.md), and [`docs/phase31_form4_source_quality_repair.md`](docs/phase31_form4_source_quality_repair.md) for exact handoff evidence.
 
 ## Remaining roadmap
 
-- **Phase31:** SEC Form-4 Insider-Transaction Alpha — active; feasibility chronology root cause unresolved.
+- **Phase31:** SEC Form-4 Insider-Transaction Alpha — active; source-quality repair replay precedes scientific-policy freeze.
 - **Phase32:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked on supported alpha.
 - **Phase33:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
 - **Phase34:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
