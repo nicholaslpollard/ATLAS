@@ -56,7 +56,8 @@ Internal feasibility, acquisition, predictor, development, blindness, and protec
 - Frozen scientific policy fingerprint: `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
 - Exactly four Phase31 hypotheses are frozen: broad/clustered purchase LONG and broad/clustered sale SHORT.
 - Historical entry = first post-filing XNYS session open; primary exit = t+20 XNYS close; primary performance = SPY-relative after-cost return with positive unhedged mean also required.
-- Next target = `scripts/run_phase31_form4_acquisition.py`, full `2021-07-16..2026-08-11` Form-4 history in 62 immutable monthly shards with exact source-overlap reconciliation.
+- Full historical Form-4 acquisition uses **62 immutable monthly raw shards**, SHA-bound sidecar metadata, a memory-bounded two-pass scan, and **global whole-accession quarantine** before authoritative shards are written.
+- Next target = `scripts/run_phase31_form4_acquisition.py`, full `2021-07-16..2026-08-11` Form-4 history with exact source-overlap reconciliation.
 - No Phase31 market outcome, protected candidate return, or protected return has been read.
 - Phase32 remains blocked until supported alpha exists.
 - LIVE remains disabled. Automatic broker failover remains disabled.
