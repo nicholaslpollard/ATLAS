@@ -1,6 +1,6 @@
 # Phase 31 — SEC Form-4 Insider-Transaction Alpha
 
-**Status:** ACTIVE — SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION PASS / PREDICTOR-ONLY CONSTRUCTION NEXT. No Phase31 market returns have been read. Phase31 is not accepted and Phase32 remains blocked.
+**Status:** ACTIVE — SOURCE QUALITY PASS / SCIENTIFIC POLICY FROZEN / FULL-HISTORY ACQUISITION PASS / PREDICTOR-ONLY CONSTRUCTION NEXT. No Phase31 market outcomes have been read. Phase31 is not accepted and Phase32 remains blocked.
 
 **Source foundation:** Phase30 merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
