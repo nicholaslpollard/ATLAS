@@ -1,198 +1,170 @@
 # Phase 31 — SEC Form-4 Insider-Transaction Alpha
 
-**Status:** ACTIVE — FEASIBILITY / PROVENANCE ONLY. No Phase31 market outcomes have been read. No Phase31 alpha hypotheses are frozen yet.
+**Status:** ACTIVE — FEASIBILITY REPAIR / ROOT-CAUSE ONLY. The first real target feasibility run is **NOT ACCEPTED**. No Phase31 market outcomes have been read. No Phase31 alpha hypotheses are frozen yet.
 
 **Source foundation:** Phase30 merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e` (`ACCEPTED_NEGATIVE`) with zero protected return reads and the master holdout unconsumed.
 
+**Open continuity record:** `docs/phase31_form4_feasibility_incident.md`.
+
 ## Plain-English phase start
 
-ATLAS has tested five different modern alpha mechanisms and none earned support. Phase31 deliberately changes the information source again.
+ATLAS has tested five materially different modern alpha mechanisms and none earned support. Phase31 changes the information source again.
 
-Corporate insiders—officers, directors, and certain large owners—must publicly report changes in beneficial ownership on SEC Form 4. An insider who spends personal capital buying shares may be revealing information or conviction that is not fully captured by our existing price, cross-stock, relative-value, or news-arrival signals. Insider sales are more ambiguous because they can happen for diversification, taxes, compensation, or preplanned 10b5-1 programs, so purchases and sales must not be assumed symmetric.
+Corporate insiders—officers, directors, and certain large owners—must publicly report beneficial-ownership changes on SEC Form 4. Insider purchases may convey information or conviction not captured by existing price, cross-stock, relative-value, or news-arrival signals. Insider sales are more ambiguous because they can reflect diversification, taxes, compensation, or preplanned Rule 10b5-1 programs.
 
-Phase31 will test whether structured, publicly filed insider transactions contain robust future-return information **after the filing is publicly available** and after realistic trading costs. The phase is allowed to fail. We will not tune it into a positive result.
+Phase31 will test whether structured, publicly filed insider transactions contain robust future-return information **after the filing is public** and after realistic trading costs. The phase is allowed to fail. Nothing will be tuned into a positive result.
 
-The first work package is only feasibility. It proves that the actual Massive Stocks Starter credential can retrieve enough historical Form-4 data with trustworthy provenance and useful fields. It reads no future returns.
+The current work remains feasibility only. Market outcomes are forbidden until feasibility passes and a finite scientific policy is frozen.
 
 ## 1. Entry condition
 
-Phase30 must be accepted negative with:
+Phase30 accepted negative with zero selection survivors/winners/finalists/support, zero protected candidate/return reads, holdout unconsumed, and independent negative reconstruction PASS. Satisfied by Phase30 PR #34 / merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e`.
 
-- selection survivors `[]`;
-- winners `[]`;
-- finalists `[]`;
-- supported candidates `[]`;
-- protected candidate rows read `0`;
-- protected return rows read `0`;
-- holdout consumed `False`;
-- independent negative reconstruction PASS.
-
-Satisfied by Phase30 PR #34 / merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e`.
-
-## 2. Information mechanism
+## 2. Information mechanism and entitlement boundary
 
 Lead source:
 
 `MassiveRESTClient -> GET /stocks/filings/vX/form-4`
 
-Current Massive documentation describes Form 4 as an early-access/beta endpoint included in all Stocks plans and updated daily. The configured user subscription is **Stocks Starter**. Phase31 does not assume the Financials & Ratios Expansion, a Massive Options plan, paid partner data, or stock trade/quote entitlements unavailable on Starter.
+Current planning subscription: **Stocks Starter**.
 
-Relevant structured fields include:
+The Form-4 endpoint is treated as early-access/beta and must be revalidated if schema, field semantics, or entitlement behavior changes. Phase31 does not assume Financials & Ratios Expansion, a Massive Options plan, paid partner data, or stock trade/quote entitlements unavailable to Starter.
 
-- `accession_number`;
-- `form_type`;
-- `filing_date`;
-- `date_of_original_submission`;
-- `issuer_cik` / `issuer_name`;
-- `owner_cik` / `owner_name`;
-- exact provider-native `tickers` array;
-- `record_type`;
-- `transaction_code`;
-- `transaction_date`;
-- `transaction_acquired_disposed`;
-- `transaction_shares`;
-- `transaction_price_per_share`;
-- `transaction_value`;
-- `shares_owned_following_transaction`;
-- `direct_or_indirect`;
-- `security_type` / `security_title`;
-- `is_officer`, `officer_title`, `is_director`, `is_ten_percent_owner`;
-- `aff_10b5_one`;
-- `transaction_timeliness`;
-- `filing_url` and source footnotes/remarks as provenance.
+Relevant structured fields include accession number, filing date, original-submission date, issuer/owner CIK, exact provider-native ticker associations, record type, transaction code/date, acquired/disposed flag, shares/price/value, post-transaction ownership, direct/indirect ownership, security type/title, officer/director/10% owner roles, Rule 10b5-1 flag, timeliness, filing URL, footnotes, and remarks.
 
-These fields are not automatically alpha-authorized merely because the API returns them. The feasibility stage measures coverage and semantics first.
+Returned fields are not automatically alpha-authorized. Feasibility must establish chronology, completeness, provenance, and semantics first.
 
 ## 3. Point-in-time chronology rule before performance
 
-Massive Form 4 exposes `filing_date` as a calendar date, not an exact SEC acceptance timestamp.
+Massive exposes Form-4 `filing_date` as a calendar date rather than an exact SEC acceptance timestamp.
 
-Therefore the default conservative Phase31 timing rule is:
+Therefore the frozen conservative timing rule remains:
 
-> A filing may first affect an ATLAS signal on the first XNYS session whose session date is **strictly later** than the Form 4 `filing_date`.
+> A filing may first affect an ATLAS signal on the **first XNYS session** whose session date is **strictly later** than the Form-4 `filing_date`.
 
-This eliminates same-day ambiguity. A filing submitted before the opening bell and a filing submitted after the closing bell receive the same conservative treatment: both become usable the next trading session.
+Frozen constant:
 
-A later pre-performance feasibility step may replace this rule only if exact SEC acceptance timestamps are proven authoritative, reproducible, and historically available from original SEC evidence. That decision must occur before any Phase31 outcome read and become part of the frozen scientific fingerprint.
+`NEXT_XNYS_SESSION_STRICTLY_AFTER_FILING_DATE`
 
-Never use `transaction_date`, `period_of_report`, or `deemed_execution_date` as the public-availability timestamp. Those dates describe the underlying transaction/event, which can precede public filing by days.
+This eliminates same-day timing ambiguity. Exact SEC acceptance timestamps may replace this rule only if authoritative, reproducible historical timestamps are proven in a separate non-performance step before any Phase31 outcome read.
 
-## 4. Why Form 4 before short interest / other regulatory data
+Never use `transaction_date`, `period_of_report`, or `deemed_execution_date` as the public-availability timestamp. Those fields describe the transaction/event, not when the filing became public.
 
-Form 4 is the first regulatory mechanism because:
+## 4. Why Form 4 is the lead regulatory mechanism
 
-- it reports economically meaningful insider ownership decisions;
-- purchase/sale transaction codes are explicit;
-- filing date is explicit;
-- accession number and SEC source URL provide auditable provenance;
-- there is a large historical research literature motivating purchases as potentially informative;
-- data should be frequent enough to support a broad cross-sectional study.
+Form 4 is first because it reports economically meaningful insider ownership decisions with explicit transaction codes, filing dates, accession/source provenance, role flags, and frequent cross-sectional events. Research literature motivates testing purchases as potentially more informative than sales, but literature grants no ATLAS authority.
 
-Short interest is deferred because its `settlement_date` is not the public release date. Treating settlement date as decision time would create lookahead. 13-F is also viable later but has quarterly cadence and statutory reporting lag. 8-K disclosures remain a separate future event mechanism if Form 4 fails; Phase31 will not silently expand into 8-K after seeing results.
+Short interest is deferred because settlement date is not automatically public-release time. 13-F remains possible later but is quarterly and delayed. 8-K remains a separate mechanism and may not be silently added after seeing Form-4 results.
 
-## 5. Feasibility contract — no performance
+## 5. Frozen initial feasibility contract — no performance
 
-The initial feasibility stage must prove:
+The feasibility stage must prove actual authenticated read-only access, nonempty historical coverage, deterministic pagination, original Form 4 (`form_type=4`) retrieval, useful identity/ticker/transaction fields, purchase (`P`) and sale (`S`) populations, field completeness, filing-to-transaction lag semantics, immutable replayable raw evidence, same-host pagination, zero market outcomes, zero protected performance, and zero broker/order/PAPER/LIVE authority.
 
-1. actual authenticated read-only access on the configured Massive credential;
-2. nonempty historical coverage near the ATLAS research boundary and recent boundaries;
-3. deterministic pagination on `/stocks/filings/vX/form-4`;
-4. original Form 4 (`form_type=4`) data can be retrieved without relying on amendments;
-5. accession number, filing date, issuer CIK, owner CIK, provider-native ticker association, and record type are present at useful rates;
-6. transaction rows expose usable transaction-code populations, especially `P` and `S`;
-7. availability/completeness can be measured for transaction value, shares, price, ownership following transaction, role flags, security type, 10b5-1 flag, and timeliness;
-8. filing-to-transaction lag can be measured without using market outcomes;
-9. immutable raw evidence can be persisted and replayed with SHA-256 lineage;
-10. provider pagination URLs remain on the Massive host;
-11. target future-return rows read remain exactly zero;
-12. protected candidate/return reads remain exactly zero;
-13. broker/order/PAPER/LIVE/automation authority remains zero.
-
-### Frozen feasibility probe windows
-
-These windows are frozen only for the feasibility gate and contain no performance information:
+### Frozen probe windows
 
 - `research_boundary`: `2021-08-16` through `2021-08-20`;
 - `mid_history`: `2023-08-14` through `2023-08-18`;
 - `development_boundary`: `2026-05-04` through `2026-05-08`;
 - `protected_boundary`: `2026-08-07` through `2026-08-11`.
 
-The purpose is to prove historical depth and modern schema/population coverage across time. These are not the final Phase31 development/protected split dates.
+These are feasibility windows only, not the eventual development/protected study split.
 
-### Feasibility query contract
+### Frozen query contract
 
-- endpoint: `/stocks/filings/vX/form-4`;
+- endpoint `/stocks/filings/vX/form-4`;
 - `form_type=4` only;
-- `filing_date.gte/lte` exact probe bounds;
+- exact `filing_date.gte/lte` bounds;
 - sort `filing_date.asc`;
 - page limit `10000`;
-- read-only GET only;
-- preserve provider-native ticker text/case exactly;
-- preserve full raw result objects as immutable provenance;
-- no ticker aliases/remapping during feasibility;
+- read-only GET;
+- provider-native ticker text/case preserved exactly;
+- full raw result objects retained as immutable provenance;
+- no ticker aliases/remapping;
 - no market-data joins;
 - no future returns.
 
+## 5A. First real target evidence — FAILED / NOT ACCEPTED
+
+The user executed the frozen feasibility package locally on:
+
+- branch `phase-31-sec-insider-transaction-alpha`;
+- exact head `b59a64938eb84c0c1e7df3aaea390cc437326f94`;
+- feasibility fingerprint `edb2af8b5c0f0d9273aa8120cf878f11ccc1b8fbdce31dbbf6b5fe39df366bdc`.
+
+Result:
+
+`FEASIBILITY_FAIL`
+
+Failed check:
+
+`transaction_dates_do_not_postdate_filings`
+
+The check computes `filing_date - transaction_date`; a negative value means a returned transaction row says `transaction_date > filing_date`.
+
+Important conclusions already locked:
+
+- authenticated Form-4 retrieval occurred and immutable raw evidence was persisted, so this is not presently classified as a Stocks Starter entitlement failure;
+- the provider adapter maps `filing_date` and `transaction_date` directly;
+- the chronology invariant remains intact;
+- no fields will be swapped, dates clamped, rows silently discarded, or check weakened to manufacture PASS;
+- alpha hypotheses remain unfrozen;
+- target market outcomes read = 0;
+- protected candidate rows read = 0;
+- protected return rows read = 0;
+- protected holdout remains unconsumed;
+- no trading authority was created.
+
+See `docs/phase31_form4_feasibility_incident.md`.
+
+## 5B. Frozen-evidence root-cause diagnostic
+
+Before any new provider call, Phase31 now diagnoses the exact immutable JSONL written by the failed target:
+
+`scripts/diagnose_phase31_form4_lag.py`
+
+The diagnostic verifies every evidence SHA against the failed feasibility report and then reports the violating population by window, transaction code, security type, acquired/disposed flag, direct/indirect ownership, Rule 10b5-1 flag, timeliness, insider role, future gap days, accession, date pair, and provider-native ticker. It emits deterministic public-filing samples for root-cause inspection.
+
+Diagnostic authority is strictly:
+
+- local frozen provider evidence reads: allowed;
+- provider calls: 0;
+- target outcome reads: 0;
+- protected candidate reads: 0;
+- protected return reads: 0;
+- broker/order/PAPER/LIVE writes: 0.
+
+After diagnostics, the only acceptable classifications are:
+
+1. ATLAS parser/mapping bug — repair mapping, keep gate;
+2. authoritatively legitimate Form-4 semantic category — document authoritative semantics and freeze category-aware handling before performance;
+3. Massive beta data defect — define a fail-closed, provenance-preserving quality rule only if defensible and frozen before performance;
+4. unresolved ambiguity — feasibility remains failed.
+
+Performance may not be consulted to choose the treatment.
+
 ## 6. Scientific contract after feasibility
 
-The Phase31 hypothesis library is intentionally **not frozen yet**. Freezing before field/population feasibility would encourage arbitrary thresholds or unusable features.
+The Phase31 hypothesis library is intentionally **not frozen yet**. If feasibility is eventually accepted, the next internal package must freeze, before any return read: original/amendment handling, public-availability/session rule, eligible transaction/security/role types, purchase-vs-sale treatment, multi-row/accession aggregation, 10b5-1/late/derivative/grant/exercise/gift/trust/indirect ownership handling, finite candidate signal transforms, deterministic-vs-learned method, outcome horizon(s), development/internal/protected chronology, purge/embargo, costs, sample/concentration minimums, dependence-aware inference, global multiplicity family, robustness gates, winner/finalist limits, independent reconstruction, and finalist-only protected confirmation.
 
-If feasibility passes, the next internal work package must freeze a finite study before performance. It will decide, before any return read:
+No rule may be selected because it produced a favorable return in exploratory performance.
 
-- original-filing handling and amendment exclusion;
-- exact public-availability/session rule;
-- eligible transaction/security/role types;
-- purchase versus sale treatment;
-- aggregation of multiple rows per accession/owner/issuer;
-- handling of 10b5-1 plans, late filings, derivatives, grants/exercises, gifts, trusts, and indirect ownership;
-- candidate signal transforms such as transaction value, ownership change, multi-insider clustering, or role weighting;
-- whether hypotheses are deterministic or learned;
-- outcome horizon(s) consistent with the economic mechanism;
-- development/internal/protected chronology and purge/embargo;
-- realistic costs;
-- sample/concentration minimums;
-- dependence-aware bootstrap/inference;
-- global multiplicity family;
-- year/regime/liquidity robustness;
-- winner/finalist limits;
-- independent blindness/reconstruction;
-- finalist-only protected confirmation.
-
-No rule may be selected because it produced a favorable return in an exploratory outcome read.
-
-## 7. Research motivation only
-
-Phase31 is motivated by—not validated by—existing findings that:
-
-- insider purchases are generally more informative than sales;
-- insider activity can predict cross-sectional returns beyond simple contrarian effects;
-- officers/directors can be more informative than broad insider categories;
-- discretionary/open-market activity may be more informative than compensation/exercise-related ownership changes.
-
-Literature is hypothesis motivation, not ATLAS evidence. Modern ATLAS acceptance still requires its own frozen, PIT-safe, after-cost, dependence-aware validation.
-
-## 8. Protected-evidence boundary
+## 7. Protected-evidence boundary
 
 Master protected outcome window remains:
 
 `2026-05-12` through `2026-08-11`
 
-It is still outcome-unopened after Phases26–30.
+It remains outcome-unopened after Phases26–30 and the current Phase31 feasibility work.
 
-During Phase31 feasibility:
+Reading Form-4 metadata whose filing dates fall inside the protected calendar window is allowed because it contains no ATLAS market outcomes. Joining those records to protected prices/returns, candidate performance, or return labels is forbidden until a later frozen finalist-only plan authorizes it.
 
-- reading Form-4 metadata with filing dates inside the protected calendar window is allowed because it contains no ATLAS market outcomes;
-- joining those records to protected prices/returns is forbidden;
-- protected candidate performance is forbidden;
-- protected return reads are forbidden;
-- no protected confirmation plan exists until a later frozen scientific contract and finalist set justify one.
+## 8. Authority
 
-## 9. Authority
+During the active feasibility repair stage:
 
-During the active feasibility stage:
-
-- Massive Form-4 provider reads: **BOUNDED / ALLOWED**;
-- local immutable provider evidence writes: **ALLOWED**;
+- existing local immutable Form-4 evidence reads: **ALLOWED**;
+- bounded Massive Form-4 provider reads: **ONLY WHEN EXPLICITLY REQUIRED BY A LATER FROZEN FEASIBILITY REPAIR**;
+- local provider/derived diagnostic writes: **ALLOWED**;
 - target market-outcome reads: **0 / FORBIDDEN**;
 - protected candidate reads: **0 / FORBIDDEN**;
 - protected return reads: **0 / FORBIDDEN**;
@@ -206,10 +178,10 @@ During the active feasibility stage:
 - automatic broker failover: **DISABLED**;
 - frontend trading authority: **NONE**.
 
-## 10. Acceptance logic
+## 9. Acceptance logic
 
-Feasibility PASS does **not** accept Phase31 and does not grant alpha support. It only authorizes the next internal step: scientific-policy freeze and predictor construction.
+A repaired feasibility PASS would not accept Phase31 and would not grant alpha support. It would only authorize scientific-policy freeze and later predictor construction.
 
-A later full Phase31 positive closeout requires at least one candidate to pass every frozen selection, internal, protected, robustness, multiplicity, concentration, independent-validation, and anti-workaround requirement.
+A full positive Phase31 closeout requires at least one candidate to pass every subsequently frozen selection, internal, protected, robustness, multiplicity, concentration, independent-validation, and anti-workaround requirement.
 
 A legitimate zero-finalist result is `ACCEPTED_NEGATIVE`. It does not unlock Phase32.
