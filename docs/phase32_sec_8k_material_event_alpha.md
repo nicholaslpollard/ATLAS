@@ -158,9 +158,46 @@ The corrected Text invariant is:
 
 Behavioral validator and unit regressions cover both the accepted ticker-only multiplicity case and a negative conflicting-text case. Full incident evidence is retained in `docs/phase32_massive_text_multiplicity_incident.md`.
 
+### Abrupt crash-cache corruption repair before outcomes
+
+An unrelated Windows system crash interrupted the source-only acquisition. A complete read-only cache scan later found exactly two reconstructible JSON cache files with nonzero file lengths but all-null byte contents. Their exact paths, sizes, and SHA-256 hashes were pinned before mutation. Under `phase32-crash-corrupted-cache-targeted-quarantine-v1`, only those two diagnosed payloads were moved into quarantine; their original paths were then reacquired through the normal authoritative source path. The post-repair complete cache parse passed with zero integrity problems. See `docs/phase32_crash_cache_corruption_incident.md`.
+
+### SEC submissions declared-shard rollover-boundary correction before outcomes
+
+The resumed acquisition reached `27,225 / 36,309` filing entities and stopped on News Corp accession `0001564708-23-000471`, filing date `2023-10-05` because `SECEDGARClient.filing_metadata()` found neither the accession in `filings.recent` nor a root-declared historical shard whose `filingFrom..filingTo` included that date.
+
+Read-only official SEC diagnosis established:
+
+- Massive index/disclosure source rows agree on accession `0001564708-23-000471`, CIK `0001564708`, filing date `2023-10-05`, original `8-K`;
+- SEC root `filings.recent` begins `2023-10-06`;
+- SEC root declares `CIK0001564708-submissions-001.json` through only `2023-10-04`;
+- the SEC-declared shard's actual row span extends through `2023-10-05`;
+- that shard contains the exact target accession with `filingDate=2023-10-05`, `acceptanceDateTime=2023-10-04T22:16:27.000Z`, form `8-K`, items `8.01,9.01`, and primary document `nws-20231004.htm`.
+
+Diagnostic result:
+
+`EXACT_ACCESSION_PRESENT_IN_NEAREST_SEC_DECLARED_SHARD_DESPITE_RANGE_GAP`
+
+This proves a one-day SEC root/shard summary-boundary mismatch. The corrected source-reconciliation contract is:
+
+`phase32-sec-submissions-declared-shard-rollover-boundary-v1`
+
+The bounded rule is:
+
+- exact-accession `filings.recent` remains first;
+- SEC-declared shards whose summary range covers the requested filing date remain primary;
+- only when no covering shard exists may an SEC-declared shard exactly one calendar day away be inspected;
+- no shard URL may be guessed; the candidate must be named by the official SEC root;
+- the pre-existing maximum of two archive-shard reads remains unchanged;
+- more-distant shards remain forbidden;
+- an existing covering shard suppresses adjacent fallback even if the accession is absent, preserving fail-closed diagnosis rather than silently substituting another shard;
+- after a shard read, the row must still match exact accession, exact requested filing date, and original form `8-K`.
+
+Focused validation is provided by `scripts/validate_phase32_sec_shard_boundary.py`; regression coverage is in `tests/unit/test_phase32_sec_shard_boundary.py`; retained evidence is in `docs/phase32_sec_submissions_shard_boundary_incident.md`.
+
 All source corrections above change no frozen policy fingerprint, hypotheses, directions, chronology, costs, outcomes, thresholds, multiplicity controls, identity-v4 rules, or protected-evidence rules. **No development or protected market outcome has been read.** Existing source caches remain reusable.
 
-The production runner now also emits lightweight periodic `x / total filing entities completed` progress. This is operator observability only and cannot alter source/scientific logic.
+The production runner emits lightweight periodic `x / total filing entities completed` progress. This is operator observability only and cannot alter source/scientific logic.
 
 This acquisition must read **zero stock/SPY/options outcomes**. No development return may be opened until the full-history predictor/source gate passes without changing the frozen policy.
 
