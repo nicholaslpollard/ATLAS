@@ -50,5 +50,7 @@ jobs:
         run: python scripts/validate_phase32_predictor_acquisition.py
       - name: Validate Phase 32 Massive Text multiplicity contract
         run: python scripts/validate_phase32_text_multiplicity.py
+      - name: Validate Phase 32 SEC submissions shard-boundary contract
+        run: python scripts/validate_phase32_sec_shard_boundary.py
       - name: Run Phase 32 focused unit tests
-        run: python -m pytest -q tests/unit/test_phase32_feasibility.py tests/unit/test_phase32_semantic_feasibility.py tests/unit/test_phase32_semantic_feasibility_v2.py tests/unit/test_phase32_semantic_source_census.py tests/unit/test_phase32_policy.py tests/unit/test_phase32_predictor_acquisition.py tests/unit/test_phase32_text_multiplicity.py
+        run: python -m pytest -q tests/unit/test_phase32_feasibility.py tests/unit/test_phase32_semantic_feasibility.py tests/unit/test_phase32_semantic_feasibility_v2.py tests/unit/test_phase32_semantic_source_census.py tests/unit/test_phase32_policy.py tests/unit/test_phase32_predictor_acquisition.py tests/unit/test_phase32_text_multiplicity.py tests/unit/test_phase32_sec_shard_boundary.py
