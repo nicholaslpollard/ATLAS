@@ -12,11 +12,16 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.backtesting.phase32_predictor_acquisition import PHASE32_EVIDENCE_RELATIVE
 from packages.core.settings import load_settings
-from packages.providers.sec_edgar import SECEDGARClient, sec_company_submissions_url
+from packages.providers.sec_edgar import (
+    SECEDGARClient,
+    sec_company_submissions_url,
+    sec_submission_shard_url,
+)
 
 
 TARGET_ACCESSION = "0001564708-23-000471"
 TARGET_FILING_DATE = date(2023, 10, 5)
+MAX_NEAREST_SHARDS_TO_INSPECT = 2
 
 
 def _normalize_cik(value: object) -> str | None:
@@ -40,10 +45,10 @@ def _read_matching_jsonl(directory: Path) -> list[dict[str, Any]]:
     return matches
 
 
-def _recent_rows(recent: object) -> list[dict[str, object]]:
-    if not isinstance(recent, dict):
+def _filing_rows(block: object) -> list[dict[str, object]]:
+    if not isinstance(block, dict):
         return []
-    accessions = recent.get("accessionNumber")
+    accessions = block.get("accessionNumber")
     if not isinstance(accessions, list):
         return []
     fields = (
@@ -58,7 +63,7 @@ def _recent_rows(recent: object) -> list[dict[str, object]]:
     for index in range(len(accessions)):
         row: dict[str, object] = {}
         for field in fields:
-            values = recent.get(field)
+            values = block.get(field)
             row[field] = values[index] if isinstance(values, list) and index < len(values) else ""
         rows.append(row)
     return rows
@@ -97,6 +102,58 @@ def _compact_source_row(row: dict[str, Any]) -> dict[str, Any]:
     return {key: row.get(key) for key in keys if key in row}
 
 
+def _inspect_nearest_shard(
+    client: SECEDGARClient,
+    *,
+    item: dict[str, object],
+    cik: str,
+) -> dict[str, Any]:
+    name = str(item.get("name") or "").strip()
+    url = sec_submission_shard_url(name)
+    payload, _ = client.get_json(url)
+    rows = _filing_rows(payload)
+    exact = [
+        row
+        for row in rows
+        if str(row.get("accessionNumber") or "").strip() == TARGET_ACCESSION
+    ]
+    dates = sorted(
+        str(row.get("filingDate") or "").strip()
+        for row in rows
+        if str(row.get("filingDate") or "").strip()
+    )
+    target_date_rows = [
+        row
+        for row in rows
+        if str(row.get("filingDate") or "").strip() == TARGET_FILING_DATE.isoformat()
+    ]
+
+    print(f"  shard URL: {url}")
+    print(f"  declared range: {item.get('filingFrom')}..{item.get('filingTo')}")
+    print(f"  actual row count: {len(rows)}")
+    if dates:
+        print(f"  actual filing-date span: {dates[0]} .. {dates[-1]}")
+    else:
+        print("  actual filing-date span: none")
+    print(f"  rows on target filing date: {len(target_date_rows)}")
+    print(f"  exact target accession present: {bool(exact)}")
+    for row in exact:
+        print(f"    exact row: {json.dumps(row, sort_keys=True, ensure_ascii=False)}")
+
+    return {
+        "cik": cik,
+        "name": name,
+        "declared_from": str(item.get("filingFrom") or ""),
+        "declared_to": str(item.get("filingTo") or ""),
+        "distance_days": _range_distance(item)[0],
+        "actual_min_date": dates[0] if dates else None,
+        "actual_max_date": dates[-1] if dates else None,
+        "target_date_rows": len(target_date_rows),
+        "exact_accession": bool(exact),
+        "exact_rows": exact,
+    }
+
+
 def _inspect_sec_root(client: SECEDGARClient, cik: str, *, role: str) -> dict[str, Any]:
     url = sec_company_submissions_url(cik=cik)
     root, _ = client.get_json(url)
@@ -104,7 +161,7 @@ def _inspect_sec_root(client: SECEDGARClient, cik: str, *, role: str) -> dict[st
     if not isinstance(filings, dict):
         raise RuntimeError(f"SEC root for CIK {cik} is missing filings object")
 
-    recent_rows = _recent_rows(filings.get("recent"))
+    recent_rows = _filing_rows(filings.get("recent"))
     exact_recent = [
         row
         for row in recent_rows
@@ -155,11 +212,21 @@ def _inspect_sec_root(client: SECEDGARClient, cik: str, *, role: str) -> dict[st
             f"distance_days={_range_distance(item)[0]}"
         )
 
+    nearest_inspections: list[dict[str, Any]] = []
+    if not exact_recent and not covering and nearest:
+        print(
+            f"Nearest-shard content inspection (diagnostic only; bounded to "
+            f"{MAX_NEAREST_SHARDS_TO_INSPECT} SEC-declared shard file(s)):"
+        )
+        for item in nearest[:MAX_NEAREST_SHARDS_TO_INSPECT]:
+            nearest_inspections.append(_inspect_nearest_shard(client, item=item, cik=cik))
+
     return {
         "role": role,
         "cik": cik,
         "exact_recent": bool(exact_recent),
         "covering_shards": len(covering),
+        "nearest_inspections": nearest_inspections,
     }
 
 
@@ -172,7 +239,8 @@ def main() -> int:
     print(f"Target accession: {TARGET_ACCESSION}")
     print(f"Target filing date: {TARGET_FILING_DATE}")
     print(f"Evidence root: {evidence_root}")
-    print("Scope: local source lineage + official SEC submissions metadata only")
+    print("Scope: local source lineage + official SEC submissions metadata/shard content only")
+    print("Nearest-shard reads are diagnostic only and do not change the accepted acquisition rule")
     print("Stock/SPY/options outcomes / broker / orders / PAPER / LIVE: FORBIDDEN / DISABLED")
 
     index_rows = _read_matching_jsonl(evidence_root / "massive_index")
@@ -220,6 +288,37 @@ def main() -> int:
         )
         return 0
 
+    exact_in_nearest = [
+        inspected
+        for row in observed_results
+        for inspected in row["nearest_inspections"]
+        if inspected["exact_accession"]
+    ]
+    if exact_in_nearest:
+        print()
+        print("Result: EXACT_ACCESSION_PRESENT_IN_NEAREST_SEC_DECLARED_SHARD_DESPITE_RANGE_GAP")
+        print(
+            "The official SEC root's filingFrom/filingTo metadata excludes the requested date, but the SEC-declared "
+            "nearest shard itself contains the exact accession. This demonstrates a root/shard boundary-metadata "
+            "mismatch. Preserve this evidence and repair the reconciliation rule explicitly before rerunning acquisition."
+        )
+        return 0
+
+    target_date_in_nearest = [
+        inspected
+        for row in observed_results
+        for inspected in row["nearest_inspections"]
+        if inspected["target_date_rows"]
+    ]
+    if target_date_in_nearest:
+        print()
+        print("Result: TARGET_DATE_PRESENT_IN_NEAREST_SHARD_BUT_EXACT_ACCESSION_ABSENT")
+        print(
+            "The nearest SEC-declared shard contains filings on the target date despite its declared range, but not "
+            "the exact accession. Diagnose filing identity/source coverage further before changing acquisition logic."
+        )
+        return 0
+
     owner_result = next((row for row in results if row["cik"] == accession_owner_cik), None)
     print()
     if owner_result and owner_result["exact_recent"]:
@@ -235,11 +334,11 @@ def main() -> int:
             "source rule until the accession-owner shard is inspected under a bounded diagnostic."
         )
     else:
-        print("Result: SEC_ROOT_METADATA_HAS_NO_DECLARED_COVERAGE_FOR_TARGET_DATE")
+        print("Result: SEC_ROOT_AND_NEAREST_SHARD_DO_NOT_EXPOSE_TARGET")
         print(
-            "Neither observed filing-CIK roots nor the accession-owner diagnostic root expose the target accession "
-            "in recent metadata or a declared historical shard covering the filing date. Diagnose SEC root/shard "
-            "metadata semantics before changing the accepted source contract."
+            "The root metadata has a date-coverage gap and the bounded nearest-shard inspection did not find the "
+            "exact accession or target date. Diagnose another official SEC structured source or filing lineage before "
+            "changing the accepted source contract."
         )
     return 0
 
