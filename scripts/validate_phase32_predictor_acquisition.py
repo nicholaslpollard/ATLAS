@@ -85,6 +85,11 @@ def main() -> int:
         "massive_reference",
         "candidate_accession_records.jsonl",
         "phase32_predictor_rows.jsonl",
+        "issuer_index_row_count",
+        "co_filer_index_row_count",
+        "index_filer_ciks",
+        "co_filer_index_ciks",
+        "for row in issuer_index_rows:",
         "target_outcome_rows_read\": 0",
         "protected_return_rows_read\": 0",
         "stock_price_rows_read\": 0",
@@ -101,6 +106,7 @@ def main() -> int:
     for token in (
         "exactly one Massive Text row",
         "candidate disclosure accession is absent from original-8-K index",
+        "candidate accession has no original-8-K index row for disclosure CIK",
         "SEC CIK mismatch",
         "SEC filing-date mismatch",
         "SEC original-form mismatch",
@@ -153,6 +159,16 @@ def main() -> int:
         "test_production_semantic_adapter_binds_accepted_provider_interface",
         "production semantic adapter regression test",
     )
+    _require(
+        tests,
+        "test_joint_filer_index_rows_are_preserved_but_do_not_contaminate_issuer_tickers",
+        "joint-filer provenance/ticker-isolation regression test",
+    )
+    _require(
+        tests,
+        "test_joint_filer_reconciliation_fails_closed_when_disclosure_cik_is_absent",
+        "joint-filer missing-issuer fail-closed regression test",
+    )
     _require(tests, "def disclosures_window", "accepted semantic provider-interface fixture")
 
     _require(workflow, "Validate Phase 32 full-history predictor acquisition contracts", "CI acquisition validator step")
@@ -166,6 +182,7 @@ def main() -> int:
     print("- full source range pinned: 2021-08-16..2026-08-11")
     print("- dependency-injected acquisition engine and concrete production source wiring are validated separately")
     print("- production semantic adapter explicitly binds disclosures_window to the acquisition disclosure port")
+    print("- joint/multi-filer accessions require an issuer-CIK-matching index row; co-filer rows are preserved but cannot supply issuer tickers")
     print("- monthly/index/disclosure plus accession SEC/Text and ticker/date reference caches are resumable")
     print("- stock/SPY/options outcomes and broker/order/PAPER/LIVE authority remain absent")
     return 0
