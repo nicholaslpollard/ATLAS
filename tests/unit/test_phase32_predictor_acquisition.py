@@ -243,9 +243,12 @@ def test_source_acquisition_builds_predictor_without_market_outcomes(
 
     assert report["pass"] is True
     assert report["frozen_candidate_source_accessions"] == 1
+    assert report["candidate_filing_entity_records"] == 1
+    assert report["multi_filer_candidate_accessions"] == 0
     assert report["eligible_predictor_rows"] == 1
     assert report["candidate_predictor_counts"] == {"share_repurchase_long": 1}
     assert report["stage_predictor_counts"] == {"development": 1}
+    assert report["source_stage_filing_entity_counts"] == {"development": 1}
     assert report["target_outcome_rows_read"] == 0
     assert report["protected_return_rows_read"] == 0
     assert report["stock_price_rows_read"] == 0
@@ -297,7 +300,7 @@ def test_joint_filer_index_rows_are_preserved_but_do_not_contaminate_issuer_tick
     assert reference.calls == 2
     evidence_path = (
         tmp_path
-        / "data/provider/phase32_sec_8k_predictor_acquisition/v1/candidate_accession_records.jsonl"
+        / "data/provider/phase32_sec_8k_predictor_acquisition/v1/candidate_filing_entity_records.jsonl"
     )
     record = json.loads(evidence_path.read_text(encoding="utf-8").strip())
     assert record["index_row_count"] == 2
@@ -305,7 +308,146 @@ def test_joint_filer_index_rows_are_preserved_but_do_not_contaminate_issuer_tick
     assert record["co_filer_index_row_count"] == 1
     assert record["index_filer_ciks"] == ["0000000001", "0000000002"]
     assert record["co_filer_index_ciks"] == ["0000000002"]
+    assert record["disclosure_filer_ciks"] == ["0000000001"]
+    assert record["co_filer_disclosure_ciks"] == []
     assert record["provider_tickers"] == ["ABC"]
+
+
+def test_multi_filer_disclosure_rows_partition_by_exact_issuer_cik(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_range_and_taxonomy(monkeypatch)
+    co_disclosure = dict(DISCLOSURE)
+    co_disclosure["cik"] = "0000000002"
+    co_disclosure["tickers"] = ["XYZ"]
+    co_disclosure["supporting_text"] = "Co-registrant authorized a share repurchase program."
+
+    co_index = dict(INDEX)
+    co_index["cik"] = "0000000002"
+    co_index["ticker"] = "XYZ"
+
+    co_text = dict(TEXT)
+    co_text["cik"] = "0000000002"
+    co_text["ticker"] = "XYZ"
+    co_text["items_text"] = "Item 8.01. Co-registrant authorized a share repurchase program."
+
+    class MultiFilerIndexClient(FakeIndexClient):
+        def eight_k_window(self, *, start_date: date, end_date: date) -> Result:
+            self.calls += 1
+            if start_date.month == 8 and start_date.year == 2021:
+                return Result([INDEX, co_index])
+            return Result([])
+
+    class MultiFilerSemanticClient(FakeSemanticClient):
+        def eight_k_disclosures(self, *, start_date: date, end_date: date) -> Result:
+            self.disclosure_calls += 1
+            if start_date.month == 8 and start_date.year == 2021:
+                return Result([DISCLOSURE, co_disclosure])
+            return Result([])
+
+        def eight_k_text(
+            self, *, cik: object, filing_date: date
+        ) -> tuple[dict[str, object], ...]:
+            self.text_calls += 1
+            assert filing_date == date(2021, 8, 16)
+            if str(cik) == "0000000001":
+                return (TEXT,)
+            if str(cik) == "0000000002":
+                return (co_text,)
+            raise AssertionError(f"unexpected CIK {cik}")
+
+    class MultiFilerSECClient(FakeSECClient):
+        def filing_metadata(
+            self, *, cik: object, accession_number: str, filing_date: str
+        ) -> dict[str, object]:
+            self.calls += 1
+            normalized_cik = str(cik).zfill(10)
+            assert accession_number == ACCESSION
+            assert filing_date == "2021-08-16"
+            return {
+                "accession_number": ACCESSION,
+                "issuer_cik": normalized_cik,
+                "filing_date": filing_date,
+                "acceptance_datetime": "2021-08-16T08:00:00-04:00",
+                "form": "8-K",
+                "item_codes": ["8.01"],
+                "primary_document": "abc.htm",
+                "source_url": f"https://data.sec.gov/submissions/CIK{normalized_cik}.json",
+                "source_record_json": "{}\n",
+                "source_record_sha256": ("a" if normalized_cik.endswith("1") else "b") * 64,
+            }
+
+    class MultiFilerReferenceProvider(FakeReferenceProvider):
+        def ticker_overview(self, ticker: str, as_of_date: date) -> dict[str, object]:
+            self.calls += 1
+            row = dict(REFERENCE)
+            row["ticker"] = ticker
+            if ticker == "XYZ":
+                row["name"] = "XYZ Corp"
+                row["cik"] = "0000000002"
+                row["composite_figi"] = "BBG000000002"
+                row["share_class_figi"] = "BBG001000002"
+            return row
+
+    reference = MultiFilerReferenceProvider()
+    report = Phase32PredictorSourceAcquisition(
+        FakeSettings(tmp_path),
+        MultiFilerIndexClient(),
+        MultiFilerSemanticClient(),
+        MultiFilerSECClient(),
+        reference,
+    ).run()
+
+    assert report["frozen_candidate_source_accessions"] == 1
+    assert report["multi_filer_candidate_accessions"] == 1
+    assert report["candidate_filing_entity_records"] == 2
+    assert report["eligible_predictor_rows"] == 2
+    assert report["candidate_predictor_counts"] == {"share_repurchase_long": 2}
+    assert report["source_stage_filing_entity_counts"] == {"development": 2}
+    assert reference.calls == 4
+
+    evidence_path = (
+        tmp_path
+        / "data/provider/phase32_sec_8k_predictor_acquisition/v1/candidate_filing_entity_records.jsonl"
+    )
+    records = [json.loads(line) for line in evidence_path.read_text(encoding="utf-8").splitlines()]
+    records.sort(key=lambda row: row["issuer_cik"])
+    assert [row["issuer_cik"] for row in records] == ["0000000001", "0000000002"]
+    assert all(row["accession_number"] == ACCESSION for row in records)
+    assert all(
+        row["disclosure_filer_ciks"] == ["0000000001", "0000000002"] for row in records
+    )
+    assert records[0]["co_filer_disclosure_ciks"] == ["0000000002"]
+    assert records[1]["co_filer_disclosure_ciks"] == ["0000000001"]
+    assert records[0]["provider_tickers"] == ["ABC"]
+    assert records[1]["provider_tickers"] == ["XYZ"]
+
+
+def test_multi_filer_disclosure_still_fails_closed_on_accession_date_conflict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_range_and_taxonomy(monkeypatch)
+    conflicting = dict(DISCLOSURE)
+    conflicting["filing_date"] = "2021-08-17"
+
+    class ConflictingDateSemanticClient(FakeSemanticClient):
+        def eight_k_disclosures(self, *, start_date: date, end_date: date) -> Result:
+            self.disclosure_calls += 1
+            if start_date.month == 8 and start_date.year == 2021:
+                return Result([DISCLOSURE, conflicting])
+            return Result([])
+
+    with pytest.raises(
+        Phase32PredictorAcquisitionError,
+        match="candidate disclosure accession has inconsistent filing dates",
+    ):
+        Phase32PredictorSourceAcquisition(
+            FakeSettings(tmp_path),
+            FakeIndexClient(),
+            ConflictingDateSemanticClient(),
+            FakeSECClient(),
+            FakeReferenceProvider(),
+        ).run()
 
 
 def test_joint_filer_reconciliation_fails_closed_when_disclosure_cik_is_absent(
