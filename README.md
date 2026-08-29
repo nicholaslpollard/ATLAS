@@ -39,7 +39,7 @@ One numbered phase is one acceptance gate:
 
 `PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT -> FOCUSED TESTS -> FULL PHASE-END ACCEPTANCE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
 
-If an error occurs, ATLAS stops progression, identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. A workaround/different method is considered only after the intended method is shown infeasible. Material decisions and completed gates must be synchronized into the roadmap/status/phase docs/README before the work is considered complete.
+If an error occurs, ATLAS stops progression, identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. A workaround/different method is considered only after the intended method is shown infeasible. Material decisions and completed gates must be synchronized into the roadmap/status/phase docs/README before work is complete.
 
 ## Current state — 2026-08-28
 
@@ -50,36 +50,46 @@ If an error occurs, ATLAS stops progression, identifies the root cause, implemen
 - **Active Phase32: SEC 8-K Material Corporate-Event Alpha.**
 - Active branch: `phase-32-sec-8k-material-event-alpha`.
 
-### Phase32 core source feasibility
+### Accepted Phase32 core source
 
-Accepted V2 fingerprint:
+Core V2 fingerprint:
 
 `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
-Target-machine result: **PASS** with **6,048** Massive original-8-K index rows, **48** reconciled official SEC records, **94** item codes, **0** SEC filing-date mismatches, and **0** target/protected return reads.
+Target-machine result: **PASS** with 6,048 Massive original-8-K index rows, 48 reconciled official SEC records, 94 item codes, zero SEC filing-date mismatches, and zero target/protected return reads.
 
 Accepted core source = Massive `/stocks/filings/vX/index?form_type=8-K` plus official SEC `data.sec.gov/submissions`. Timing remains `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
 
-### Exact active target — semantic V1 diagnosis
+### Semantic source progression
 
-Semantic V1 fingerprint:
+Rejected semantic V1 fingerprint:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-Target-machine result: **NOT ACCEPTED**. Failed checks:
+V1 remains `NOT ACCEPTED`. Its diagnostic established that exact cross-endpoint ticker equality and exact `supporting_text` substring-in-`items_text` were invalid source-scope invariants. It also established empirical semantic coverage at the `2021-08-16` Phase32 research boundary. V1 remains preserved; zero outcomes were read.
 
-- `all_sampled_tickers_align`;
-- `all_sampled_supporting_text_is_grounded`.
+Corrected semantic V2 contract:
 
-A contract defect was also found: the V1 January-2022 history assumption was not supported by the supplied Massive endpoint docs and is rejected. V1 is retained as failed source-only evidence; it read zero market outcomes.
+`phase32-semantic-feasibility-v2-source-scope-aware-no-market-outcomes`
 
-Current diagnostic:
+Fingerprint:
 
-`scripts/diagnose_phase32_semantic_failure.py`
+`eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`
 
-Do not modify grounding/ticker rules, freeze hypotheses, or inspect returns until the diagnostic identifies the actual cause.
+V2 filing identity = exact accession + zero-padded issuer CIK + filing date + official SEC reconciliation. Ticker fields are mapping metadata only; empty or historical mappings are recorded without normalization. `supporting_text` must be nonblank and taxonomy-linked to the exact filing; `items_text` lexical comparison is diagnostic because `items_text` is only the core-Items projection.
 
-Phase33 signal-to-trade remains blocked. LIVE and automatic broker failover remain disabled.
+Exact target:
+
+```text
+scripts/validate_phase32.py
+scripts/validate_phase32_semantic.py
+scripts/validate_phase32_semantic_v2.py
+scripts/run_phase32_semantic_feasibility_v2.py
+```
+
+If semantic V2 passes, the next action is to freeze the complete finite Phase32 scientific hypothesis contract—including point-in-time instrument resolution—before any development return read.
+
+Phase33 remains blocked. LIVE and automatic broker failover remain disabled.
 
 ## Remaining roadmap
 
