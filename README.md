@@ -73,9 +73,11 @@ The source/taxonomy census then passed with 119 taxonomy rows, 112 observed taxo
 
 ### Frozen Phase32 scientific policy
 
-Policy fingerprint:
+Corrected policy fingerprint:
 
-`0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
+
+The earlier proposed `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88` fingerprint was superseded before acceptance and before any market-outcome read after a pre-performance audit corrected its medium-identity semantics.
 
 Exactly **five hypotheses** are frozen before performance:
 
@@ -85,13 +87,15 @@ Exactly **five hypotheses** are frozen before performance:
 - `listing_distress_short`;
 - `solvency_distress_short`.
 
-Frozen methodology includes first XNYS regular open strictly after official SEC `acceptanceDateTime`, decision-open entry, five-session close exit, exact PIT CIK-bound unique instrument identity, SPY-relative primary plus required unhedged profitability, 10-bps primary / 25-bps stress costs, five-session purge/block bootstrap, mandatory sample/concentration gates, global `HOLM_BONFERRONI_GLOBAL_5`, no runner-up substitution, and finalist-only protected returns.
+Frozen methodology includes first XNYS regular open strictly after official SEC `acceptanceDateTime`, decision-open entry, five-session close exit, SPY-relative primary plus required unhedged profitability, 10-bps primary / 25-bps stress costs, five-session purge/block bootstrap, mandatory sample/concentration gates, global `HOLM_BONFERRONI_GLOBAL_5`, no runner-up substitution, and finalist-only protected returns.
+
+PIT instrument identity is bound to `instrument-identity-v4-no-issuer-level-medium-collapse`: strong = Composite FIGI / Share Class FIGI; medium = CIK + exact provider-native ticker + primary exchange + security type. Only strong/medium identity is eligible; exactly one filing-CIK-matching instrument must resolve. Ticker+snapshot fallback, current-universe backprojection, and ticker alias backfill are forbidden.
 
 Phase32 market outcomes remain unread.
 
 ### Exact active target — full-history source/predictor acquisition
 
-Build and validate **full-history** Phase32 predictor/source evidence for `2021-08-16..2026-08-11` under the frozen fingerprint. This must reconcile original 8-K discovery, semantic disclosure taxonomy, official SEC acceptance metadata, accession/CIK provenance, and point-in-time instrument mapping while reading zero stock/SPY/options outcomes.
+Build and validate **full-history** Phase32 predictor/source evidence for `2021-08-16..2026-08-11` under the corrected frozen fingerprint. This must reconcile original 8-K discovery, semantic disclosure taxonomy, official SEC acceptance metadata, accession/CIK provenance, and point-in-time identity-v4 instrument mapping while reading zero stock/SPY/options outcomes.
 
 Only after that source/predictor gate passes may development returns be opened under the unchanged contract.
 
