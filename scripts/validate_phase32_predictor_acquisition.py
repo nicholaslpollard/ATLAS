@@ -51,6 +51,7 @@ def main() -> int:
         PHASE32_PREDICTOR_ACQUISITION_CONTRACT,
     )
     from packages.instruments.identity import IDENTITY_CONTRACT_VERSION
+    from packages.providers.massive.phase32_semantic import MassivePhase32SemanticClient
 
     if phase32_policy_fingerprint() != EXPECTED_POLICY_FINGERPRINT:
         raise AssertionError("frozen Phase32 policy drifted before predictor acquisition")
@@ -66,6 +67,8 @@ def main() -> int:
         raise AssertionError("Phase32 full-history acquisition start drifted")
     if PHASE32_ACQUISITION_END.isoformat() != "2026-08-11":
         raise AssertionError("Phase32 full-history acquisition end drifted")
+    if not hasattr(MassivePhase32SemanticClient, "disclosures_window"):
+        raise AssertionError("accepted Massive Phase32 semantic disclosure-window interface drifted")
 
     # Core acquisition is intentionally dependency-injected. Validate the source-only
     # acquisition invariants in the core module and validate concrete production
@@ -134,6 +137,9 @@ def main() -> int:
         "MassiveRESTClient",
         "PHASE32_PREDICTOR_ACQUISITION_CONTRACT",
         "Phase32PredictorSourceAcquisition(",
+        "_Phase32SemanticAcquisitionAdapter",
+        "self.client.disclosures_window(start_date=start_date, end_date=end_date)",
+        "_Phase32SemanticAcquisitionAdapter(semantic_client)",
     ):
         _require(runner, token, "production source dependency wiring")
 
@@ -142,6 +148,12 @@ def main() -> int:
     _require(tests, "test_source_acquisition_is_resumable_from_atomic_local_evidence", "resumability test")
     _require(tests, "test_multiple_pit_instruments_are_excluded_not_guessed", "ambiguity test")
     _require(tests, "test_acceptance_time_uses_first_regular_open_strictly_after_acceptance", "acceptance timing test")
+    _require(
+        tests,
+        "test_production_semantic_adapter_binds_accepted_provider_interface",
+        "production semantic adapter regression test",
+    )
+    _require(tests, "def disclosures_window", "accepted semantic provider-interface fixture")
 
     _require(workflow, "Validate Phase 32 full-history predictor acquisition contracts", "CI acquisition validator step")
     _require(workflow, "python scripts/validate_phase32_predictor_acquisition.py", "CI acquisition validator command")
@@ -153,6 +165,7 @@ def main() -> int:
     print(f"- accepted identity contract pinned: {EXPECTED_IDENTITY}")
     print("- full source range pinned: 2021-08-16..2026-08-11")
     print("- dependency-injected acquisition engine and concrete production source wiring are validated separately")
+    print("- production semantic adapter explicitly binds disclosures_window to the acquisition disclosure port")
     print("- monthly/index/disclosure plus accession SEC/Text and ticker/date reference caches are resumable")
     print("- stock/SPY/options outcomes and broker/order/PAPER/LIVE authority remain absent")
     return 0
