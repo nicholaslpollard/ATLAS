@@ -39,7 +39,7 @@ def test_targeted_repair_quarantines_only_exact_diagnosed_files(tmp_path: Path, 
     for spec in repair.EXPECTED_CORRUPT:
         relative = Path(str(spec["relative_path"]))
         assert not (evidence / relative).exists()
-        preserved = quarantine / (relative.as_posix().replace("/", "__") + ".corrupt.bin")
+        preserved = quarantine / str(spec["quarantine_name"])
         assert preserved.read_bytes() == b"\x00" * int(spec["size"])
 
     manifest = json.loads((quarantine / "manifest.json").read_text(encoding="utf-8"))
@@ -47,6 +47,9 @@ def test_targeted_repair_quarantines_only_exact_diagnosed_files(tmp_path: Path, 
     assert manifest["market_outcomes_read"] == 0
     assert manifest["protected_returns_read"] == 0
     assert len(manifest["files"]) == 2
+    assert {Path(row["quarantine_relative_path"]).name for row in manifest["files"]} == {
+        str(spec["quarantine_name"]) for spec in repair.EXPECTED_CORRUPT
+    }
 
     # Idempotent rerun verifies the already-quarantined exact evidence.
     assert repair.main() == 0
