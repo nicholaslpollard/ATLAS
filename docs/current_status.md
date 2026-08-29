@@ -1,8 +1,8 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-28. Phase31 remains closed `ACCEPTED_NEGATIVE`. Phase32 SEC 8-K source feasibility is active; six archive/header source attempts failed without reading any market outcomes, and the active repair is a separately fingerprinted V2 feasibility contract using the official SEC Submissions API.**
+**Last synchronized: 2026-08-28. Phase31 remains closed `ACCEPTED_NEGATIVE`. Phase32 core 8-K source feasibility V2 has passed on the target machine; the active step is now semantic 8-K source qualification with zero market outcomes authorized.**
 
-Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_sec_edgar_access_incident.md`, and `docs/phase31_closeout.md` before continuing.
+Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_semantic_source_qualification.md`, `docs/phase32_sec_edgar_access_incident.md`, and `docs/phase31_closeout.md` before continuing.
 
 ## Authority state
 
@@ -10,115 +10,92 @@ Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`
 - Phase26–31: all `ACCEPTED_NEGATIVE`.
 - Accepted historical alpha support: **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
-- Historical Phase31 branch: `phase-31-sec-insider-transaction-alpha`.
 - Active branch: `phase-32-sec-8k-material-event-alpha`.
 - Active gate: **Phase32 — SEC 8-K Material Corporate-Event Alpha**.
-- Active internal step: **V2 source feasibility/provenance only**.
+- Active internal step: **semantic source qualification only**.
 - Current Massive subscription declaration: **Stocks Starter**.
 - Phase33 signal-to-trade remains blocked until at least one alpha architecture earns accepted historical analytical `SUPPORTED` authority.
 - LIVE and automatic broker failover remain disabled.
 
-Never weaken chronology, identity, statistical, multiplicity, protected, or authority gates to obtain PASS. Zero finalists/trades remains a valid result.
+Root cause before workaround remains mandatory. A failed source/check stops progression until the defect is understood and corrected; validators, chronology, identity, multiplicity, protected rules, and authority are never weakened to force PASS.
 
 ## Protected holdout
 
 Master protected outcome window remains `2026-05-12` through `2026-08-11`.
 
-Phases26–31 read zero protected returns. Phase31 closeout confirmed protected candidate rows **0**, protected return rows **0**, and holdout consumed **False**. Phase32 feasibility remains forbidden from reading any target or protected market outcomes.
+Phases26–31 read zero protected returns. Phase32 V2 and the active semantic source gate read zero target/protected market outcomes. The holdout remains outcome-unopened.
 
-## Phase31 retained closeout and source provenance
+## Phase31 retained closeout
 
 Phase31 closed `ACCEPTED_NEGATIVE` with independent result `PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF` and closeout head `92e61b74d3c6cf95db122b1981ed2b53ab1c7b07`.
 
 Development predictor / usable rows were **5,400 / 5,371**. All four frozen Form-4 candidates failed mandatory gates; survivors, winners, finalists, and supported candidates were all zero. Do not retune or reinterpret Phase31.
 
-The original target feasibility disposition remains **`FEASIBILITY_FAIL`**. Its root cause remains a **Massive beta source-association/data-quality defect**, not an ATLAS chronology-parser failure. Retained diagnostic head:
+Original Phase31 feasibility disposition remains `FEASIBILITY_FAIL`; accepted source-quality fingerprint remains `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`; full acquisition retained **2,993,648** raw / **2,992,608** authoritative rows. Frozen scientific policy fingerprint remains `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
 
-`80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7`
+## Phase32 V1 source history — retained failure evidence
 
-Retained chronology-violation artifact SHA:
+Six SEC archive/header attempts failed before any market outcome read. The final entity-aware parser showed an exact historical SEC URL normalizing to only **524** characters with required accession fields absent. These failures established that the presentation/archive-header method was unreliable; they did not establish alpha failure.
 
-`3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`
+The source change was formally versioned rather than silently worked around. See `docs/phase32_sec_edgar_access_incident.md`.
 
-Accepted source-quality policy:
+## Phase32 V2 core source feasibility — ACCEPTED PASS
 
-`RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
-
-Accepted source-quality fingerprint:
-
-`2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`
-
-Accepted source-quality target retained **45,915** authoritative rows. Historical repair runner remains:
-
-`scripts/run_phase31_form4_source_quality_repair.py`
-
-Full historical acquisition retained **2,993,648** raw rows, **2,992,608** authoritative rows, **1,040** quarantined rows, **187** contaminated accessions, **233** chronology seeds, **15** missing-code seeds, and **62** monthly shards. Historical acquisition runner remains:
-
-`scripts/run_phase31_form4_acquisition.py`
-
-Frozen Phase31 scientific policy fingerprint:
-
-`e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`
-
-These retained facts exist for regression/lineage validation; they do not make Phase31 active again.
-
-## Phase32 V1 source history — not accepted
-
-The failed V1 feasibility fingerprint remains:
-
-`e8fb25e3b1e8a81bd87761024ac692edcaf29d59c64547ee46f833725c972c10`
-
-Six target attempts established:
-
-1. complete-submission transport: HTTP 403;
-2. declared-contact complete-submission transport: HTTP 403;
-3. `-index-headers.html`: SEC reachable, required accession field not recovered;
-4. `.hdr.sgml` attempt: required accession field not recovered;
-5. first presentation-tolerant index-header parser: required accession field not recovered;
-6. entity/markup-normalizing parser at `a88ac62d43bd3a960489c3e0a262cf4609444eb2`: exact historical SEC URL returned only **524** normalized characters with `ACCESSION=False` and `NUMBER=False`.
-
-All six were source failures only. No Phase32 hypothesis was frozen and no market/protected outcome was read.
-
-## Phase32 V2 source contract
-
-V2 contract:
+Contract:
 
 `phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
 
-Frozen V2 fingerprint:
+Fingerprint:
 
 `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
-Massive discovery remains:
+Target-machine runner `scripts/run_phase32_8k_feasibility.py` returned **PASS** with:
 
-`MassiveRESTClient -> GET /stocks/filings/vX/index?form_type=8-K`
+- original 8-K index rows: **6,048**;
+- ticker-linked rows: **5,272**;
+- sampled official SEC records: **48**;
+- sampled SEC item codes: **94**;
+- successful Massive pages: **4**;
+- SEC filing-date mismatches: **0**;
+- target outcome rows: **0**;
+- protected candidate rows: **0**;
+- protected return rows: **0**;
+- provider/broker/order/PAPER/LIVE writes: **0**.
 
-Official SEC metadata source is now:
+Two samples had SEC acceptance local-calendar dates differing from filing dates. This is not a source mismatch: all 48 exact SEC filing dates matched Massive, and exact SEC `acceptanceDateTime` remains authoritative for timing.
 
-`https://data.sec.gov/submissions/CIK##########.json`
+Accepted core source boundary:
 
-For older history, ATLAS may follow only SEC-declared `filings.files` JSON shards whose `filingFrom..filingTo` range contains the requested Massive filing date, with at most two candidate shards per lookup.
+- discovery: Massive `/stocks/filings/vX/index?form_type=8-K`;
+- authoritative metadata: `data.sec.gov/submissions/CIK##########.json` plus at most two SEC-declared date-matching historical submission shards;
+- public-availability rule: `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
 
-Every sampled filing must independently reconcile exact SEC accession, exact original `8-K` form, SEC filing date equal to Massive filing date, nonempty acceptance timestamp, and structured SEC item codes. SEC acceptance time is converted to `America/New_York` for the unchanged rule:
+## Active Phase32 semantic source qualification
 
-`FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
+Massive semantic sources being qualified:
 
-The four probe windows and max-12 deterministic sample remain unchanged. V2 evidence/report paths use separate `/v2/` namespaces, so the failed V1 evidence remains intact.
+- `/stocks/filings/8-K/vX/disclosures`;
+- `/stocks/filings/8-K/vX/text`;
+- `/stocks/taxonomies/vX/disclosures`.
 
-## Local SEC contact configuration
+Massive endpoint docs say Plan History is not applicable; a July 22, 2026 Massive provider article states disclosure coverage starts in January 2022. ATLAS is therefore empirically verifying the source and conservatively freezes semantic study history to begin no earlier than `2022-01-03`.
 
-The tracked `.env.example` template should contain the blank key:
+Contract:
 
-`SEC_EDGAR_CONTACT_EMAIL=`
+`phase32-semantic-feasibility-v1-massive-8k-disclosures-text-no-market-outcomes`
 
-The real value belongs only in the gitignored local `.env`. A local `M .env.example` is expected when adding only that blank template key and is not, by itself, secret exposure.
+Frozen semantic fingerprint:
+
+`ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
+
+The gate verifies taxonomy/versioning, original-8-K accession overlap, provider-native ticker alignment, supporting-text grounding in parsed 8-K Item text, SEC accession/form/filing-date/acceptance reconciliation, immutable evidence, and zero outcome/trading authority.
 
 ## Exact next target
 
 Runner:
 
-`scripts/run_phase32_8k_feasibility.py`
+`scripts/run_phase32_semantic_feasibility.py`
 
-The V2 target may perform bounded read-only Massive and `data.sec.gov/submissions` calls and write immutable source evidence/report artifacts. It may not read stock/SPY/options outcomes, protected returns, broker/account state, or submit orders/PAPER/LIVE actions.
+If it passes, freeze the finite Phase32 hypothesis family and complete the full scientific contract **before** any development return read.
 
-If V2 feasibility passes, use only its non-performance SEC item-code coverage to freeze a finite scientific hypothesis family before any governed return read. If it fails, diagnose the source/provenance issue generically; do not inspect outcomes to rescue it.
+If it fails, stop. Diagnose and repair the actual source/provenance defect first; do not weaken the gate or substitute a workaround. Only after the intended method is shown infeasible may a different source method be defined.
