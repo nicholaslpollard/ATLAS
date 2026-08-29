@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -24,6 +26,22 @@ from packages.providers.massive.rest import MassiveRESTClient
 from packages.providers.sec_edgar import SECEDGARClient
 
 
+class _Phase32SemanticAcquisitionAdapter:
+    """Bind the accepted Massive semantic API to the Phase32 acquisition port."""
+
+    def __init__(self, client: MassivePhase32SemanticClient) -> None:
+        self.client = client
+
+    def taxonomy(self) -> Any:
+        return self.client.taxonomy()
+
+    def eight_k_disclosures(self, *, start_date: date, end_date: date) -> Any:
+        return self.client.disclosures_window(start_date=start_date, end_date=end_date)
+
+    def eight_k_text(self, *, cik: object, filing_date: date) -> tuple[dict[str, Any], ...]:
+        return self.client.eight_k_text(cik=cik, filing_date=filing_date)
+
+
 def main() -> int:
     print("ATLAS Phase 32 — Full-History 8-K Predictor/Source Acquisition")
     print(f"Contract: {PHASE32_PREDICTOR_ACQUISITION_CONTRACT}")
@@ -39,10 +57,11 @@ def main() -> int:
     try:
         settings = load_settings()
         rest = MassiveRESTClient(settings)
+        semantic_client = MassivePhase32SemanticClient(rest)
         report = Phase32PredictorSourceAcquisition(
             settings,
             MassivePhase32SECIndexClient(rest),
-            MassivePhase32SemanticClient(rest),
+            _Phase32SemanticAcquisitionAdapter(semantic_client),
             SECEDGARClient(),
             MassiveReferenceProvider(settings, client=rest),
         ).run()
