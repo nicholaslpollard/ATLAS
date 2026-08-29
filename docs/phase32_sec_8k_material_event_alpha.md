@@ -14,7 +14,7 @@ Accepted core V2 contract:
 
 Fingerprint:
 
-`978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
+`978353878cfa10c98450a6e0abab2a6d2ff00e039f7d7f28a025112d3ed80`
 
 Target-machine core V2 result: **PASS** with 6,048 original-8-K index rows, 5,272 ticker-linked rows, 48 official SEC records, 94 SEC item codes, zero SEC filing-date mismatches, and **zero market outcomes** read.
 
@@ -107,11 +107,11 @@ It must acquire and reconcile:
 5. point-in-time instrument mapping under the accepted identity-v4 strong/medium uniqueness rule;
 6. immutable lineage and source hashes.
 
-### Joint/multi-filer accession correction before outcomes
+### Joint/multi-filer index correction before outcomes
 
 The target-machine acquisition stopped at accession `0000034903-25-000028` before any market-outcome read. The initial implementation required every Massive index row under one accession to have the semantic disclosure CIK. Official SEC evidence shows that accession is a valid joint 8-K containing Federal Realty Investment Trust (`CIK 0000034903`) and Federal Realty OP LP (`CIK 0001901876`), so accession multiplicity by filing entity is legitimate source provenance rather than corruption.
 
-The corrected source-reconciliation rule is now frozen for this acquisition implementation:
+The corrected index-side source-reconciliation rule is:
 
 - exact accession remains the filing-level join key;
 - the semantic disclosure CIK remains the issuer identity being evaluated;
@@ -121,7 +121,29 @@ The corrected source-reconciliation rule is now frozen for this acquisition impl
 - only index rows whose CIK equals the disclosure issuer CIK may contribute index ticker mappings to PIT instrument resolution;
 - a missing issuer-CIK match remains a hard fail-closed source defect.
 
-Regression coverage verifies both the valid joint-filer case and the missing-issuer failure case. This correction changes no frozen policy fingerprint, hypotheses, directions, chronology, costs, outcomes, thresholds, multiplicity controls, identity-v4 rules, or protected-evidence rules.
+Regression coverage verifies both the valid joint-filer index case and the missing-issuer failure case.
+
+### Multi-filer disclosure partition correction before outcomes
+
+A later target-machine rerun at head `96bacd387bca81cad0cdb014db759a5be67fb9c5` stopped at accession `0001057877-22-000019` with `candidate disclosure accession has inconsistent CIK/date`. This exposed the same legitimate multi-registrant filing structure on the semantic-disclosure side: the acquisition still grouped all frozen-candidate disclosure rows by accession alone even though the accepted semantic identity rule is exact accession + issuer CIK + filing date + official SEC reconciliation.
+
+The corrected full-history filing-entity source key is now explicitly pinned as:
+
+`EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE`
+
+The production acquisition now:
+
+- requires exactly one filing date across all frozen-candidate disclosure rows sharing an accession; a date conflict remains a hard failure;
+- partitions those disclosure rows by zero-padded issuer CIK and processes each `(accession, issuer CIK)` filing entity independently;
+- reconciles SEC metadata, Massive Text evidence, and original-8-K index membership independently for each filing entity;
+- requires an issuer-CIK-matching index row and exact issuer-CIK Massive Text row for each filing entity;
+- allows only that filing entity's disclosure rows, issuer-matching index rows, and issuer-matching Text row to contribute ticker mappings;
+- preserves other disclosure/index CIKs as co-filer provenance instead of allowing them to contaminate issuer identity;
+- writes source evidence as `candidate_filing_entity_records.jsonl`, distinguishing unique source accessions from filing-entity records and reporting source-stage counts at the filing-entity level.
+
+Regression coverage now includes both a valid accession containing multiple disclosure CIKs and a negative same-accession conflicting-date case. The production runner is also pinned to the new filing-entity report schema so a successful acquisition cannot fail while rendering stale accession-only summary fields.
+
+Neither multi-filer correction changes the frozen policy fingerprint, hypotheses, directions, chronology, costs, outcomes, thresholds, multiplicity controls, identity-v4 rules, or protected-evidence rules. **No development or protected market outcome has been read.** Existing monthly source caches remain reusable.
 
 This acquisition must read **zero stock/SPY/options outcomes**. No development return may be opened until the full-history predictor/source gate passes without changing the frozen policy.
 
