@@ -12,6 +12,9 @@ EXPECTED_POLICY_FINGERPRINT = "4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b2
 EXPECTED_CONTRACT = "phase32-predictor-source-acquisition-v1-resumable-no-market-outcomes"
 EXPECTED_IDENTITY = "instrument-identity-v4-no-issuer-level-medium-collapse"
 EXPECTED_TAXONOMY_SHA = "b1bcb0037d2d17a36f1b72b8e260b32a611a81b36b831af5c5a6423e660d28a6"
+EXPECTED_FILING_ENTITY_RULE = (
+    "EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE"
+)
 
 
 def _read(path: str) -> str:
@@ -47,6 +50,7 @@ def main() -> int:
         PHASE32_ACCEPTED_TAXONOMY_SHA256,
         PHASE32_ACQUISITION_END,
         PHASE32_ACQUISITION_START,
+        PHASE32_FILING_ENTITY_KEY_RULE,
         PHASE32_FROZEN_POLICY_FINGERPRINT,
         PHASE32_PREDICTOR_ACQUISITION_CONTRACT,
     )
@@ -59,6 +63,8 @@ def main() -> int:
         raise AssertionError("predictor acquisition does not pin frozen policy fingerprint")
     if PHASE32_PREDICTOR_ACQUISITION_CONTRACT != EXPECTED_CONTRACT:
         raise AssertionError("predictor acquisition contract drifted")
+    if PHASE32_FILING_ENTITY_KEY_RULE != EXPECTED_FILING_ENTITY_RULE:
+        raise AssertionError("Phase32 filing-entity source key rule drifted")
     if IDENTITY_CONTRACT_VERSION != EXPECTED_IDENTITY:
         raise AssertionError("accepted identity-v4 contract drifted")
     if PHASE32_ACCEPTED_TAXONOMY_SHA256 != EXPECTED_TAXONOMY_SHA:
@@ -83,13 +89,22 @@ def main() -> int:
         "massive_text",
         "sec_submissions",
         "massive_reference",
-        "candidate_accession_records.jsonl",
+        "candidate_filing_entity_records.jsonl",
         "phase32_predictor_rows.jsonl",
+        "filing_entity_key",
+        "filing_entity_key_rule",
+        "assignments_by_cik",
+        "disclosure_filer_ciks",
+        "co_filer_disclosure_ciks",
+        "accession_disclosure_row_count",
         "issuer_index_row_count",
         "co_filer_index_row_count",
         "index_filer_ciks",
         "co_filer_index_ciks",
         "for row in issuer_index_rows:",
+        "multi_filer_candidate_accessions",
+        "candidate_filing_entity_records",
+        "source_stage_filing_entity_counts",
         "target_outcome_rows_read\": 0",
         "protected_return_rows_read\": 0",
         "stock_price_rows_read\": 0",
@@ -104,7 +119,8 @@ def main() -> int:
         _require(module, token, "predictor-acquisition invariant")
 
     for token in (
-        "exactly one Massive Text row",
+        "candidate disclosure accession has inconsistent filing dates",
+        "candidate filing entity requires exactly one Massive Text row",
         "candidate disclosure accession is absent from original-8-K index",
         "candidate accession has no original-8-K index row for disclosure CIK",
         "SEC CIK mismatch",
@@ -162,7 +178,17 @@ def main() -> int:
     _require(
         tests,
         "test_joint_filer_index_rows_are_preserved_but_do_not_contaminate_issuer_tickers",
-        "joint-filer provenance/ticker-isolation regression test",
+        "joint-filer index provenance/ticker-isolation regression test",
+    )
+    _require(
+        tests,
+        "test_multi_filer_disclosure_rows_partition_by_exact_issuer_cik",
+        "multi-filer disclosure filing-entity partition regression test",
+    )
+    _require(
+        tests,
+        "test_multi_filer_disclosure_still_fails_closed_on_accession_date_conflict",
+        "multi-filer accession-date fail-closed regression test",
     )
     _require(
         tests,
@@ -179,11 +205,13 @@ def main() -> int:
     print(f"- frozen policy fingerprint pinned: {EXPECTED_POLICY_FINGERPRINT}")
     print(f"- acquisition contract pinned: {EXPECTED_CONTRACT}")
     print(f"- accepted identity contract pinned: {EXPECTED_IDENTITY}")
+    print(f"- filing-entity source key pinned: {EXPECTED_FILING_ENTITY_RULE}")
     print("- full source range pinned: 2021-08-16..2026-08-11")
     print("- dependency-injected acquisition engine and concrete production source wiring are validated separately")
     print("- production semantic adapter explicitly binds disclosures_window to the acquisition disclosure port")
-    print("- joint/multi-filer accessions require an issuer-CIK-matching index row; co-filer rows are preserved but cannot supply issuer tickers")
-    print("- monthly/index/disclosure plus accession SEC/Text and ticker/date reference caches are resumable")
+    print("- joint/multi-filer disclosure rows are partitioned by exact issuer CIK while filing date remains accession-wide")
+    print("- co-filer disclosure/index provenance is preserved but cannot contaminate issuer ticker mapping")
+    print("- monthly/index/disclosure plus filing-entity SEC/Text and ticker/date reference caches are resumable")
     print("- stock/SPY/options outcomes and broker/order/PAPER/LIVE authority remain absent")
     return 0
 
