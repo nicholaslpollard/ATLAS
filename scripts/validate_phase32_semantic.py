@@ -102,8 +102,9 @@ def main() -> int:
 
     require(runner, "Stop here. Diagnose and repair", "V1 failure-stop rule")
     require(diagnostic, "Market outcomes read: 0", "diagnostic zero-outcome declaration")
-    require(diagnostic, "disclosure_tickers", "ticker mismatch diagnostic")
-    require(diagnostic, "support_token_coverage_in_items", "text-grounding diagnostic")
+    require(diagnostic, "WINDOW COVERAGE FROM RETAINED V1 EVIDENCE", "retained-window diagnostic")
+    require(diagnostic, "ticker_relation", "ticker mapping diagnostic")
+    require(diagnostic, "support_ordered_token_coverage_in_items", "source-scope diagnostic")
 
     docs = "\n".join(
         read(path)
@@ -120,19 +121,19 @@ def main() -> int:
         "NOT ACCEPTED",
         "all_sampled_tickers_align",
         "all_sampled_supporting_text_is_grounded",
-        "scripts/diagnose_phase32_semantic_failure.py",
-        "Plan History is **not applicable**",
     ):
-        require(docs, token, "synchronized Phase32 semantic failure docs")
+        require(docs, token, "synchronized retained Phase32 semantic V1 docs")
     require(docs.lower(), "root cause", "root-cause-before-workaround documentation")
     require(docs.lower(), "january-2022", "rejected unsupported history-boundary documentation")
+    require(docs.lower(), "ticker", "ticker mapping diagnosis documentation")
+    require(docs.lower(), "items_text", "text-scope diagnosis documentation")
 
-    print("ATLAS Phase 32 semantic source diagnostic state: PASS")
+    print("ATLAS Phase 32 semantic V1 retained diagnostic state: PASS")
     print(f"- accepted core V2 fingerprint pinned: {EXPECTED_V2}")
     print(f"- rejected semantic V1 fingerprint retained: {EXPECTED_SEMANTIC_V1}")
-    print("- V1 ticker and supporting-text failures are preserved, not weakened")
-    print("- unsupported January-2022 history assumption is explicitly rejected")
-    print("- local diagnostic reads source evidence only; hypotheses and outcomes remain unopened")
+    print("- original V1 ticker/text failures remain preserved")
+    print("- enhanced local diagnosis is retained and reads zero market outcomes")
+    print("- V1 grants no alpha/trading authority and is not rewritten by V2")
     return 0
 
 
