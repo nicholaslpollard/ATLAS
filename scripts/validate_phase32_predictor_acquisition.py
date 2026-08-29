@@ -93,7 +93,9 @@ def main() -> int:
         "phase32_predictor_rows.jsonl",
         "filing_entity_key",
         "filing_entity_key_rule",
+        "disclosures_by_accession",
         "assignments_by_cik",
+        "candidate_disclosure_filer_ciks",
         "disclosure_filer_ciks",
         "co_filer_disclosure_ciks",
         "accession_disclosure_row_count",
@@ -102,6 +104,7 @@ def main() -> int:
         "index_filer_ciks",
         "co_filer_index_ciks",
         "for row in issuer_index_rows:",
+        'f"{accession}|{issuer_cik}|{filing_date.isoformat()}"',
         "multi_filer_candidate_accessions",
         "candidate_filing_entity_records",
         "source_stage_filing_entity_counts",
@@ -192,6 +195,11 @@ def main() -> int:
     )
     _require(
         tests,
+        "test_accession_wide_disclosure_provenance_keeps_non_candidate_co_filer_out_of_mapping",
+        "accession-wide non-candidate co-filer provenance isolation regression test",
+    )
+    _require(
+        tests,
         "test_multi_filer_disclosure_rows_partition_by_exact_issuer_cik",
         "multi-filer disclosure filing-entity partition regression test",
     )
@@ -219,6 +227,8 @@ def main() -> int:
     print("- full source range pinned: 2021-08-16..2026-08-11")
     print("- dependency-injected acquisition engine and concrete production source wiring are validated separately")
     print("- production semantic adapter explicitly binds disclosures_window to the acquisition disclosure port")
+    print("- filing-entity keys serialize exact accession + zero-padded issuer CIK + accession-wide filing date")
+    print("- accession-wide semantic disclosure provenance includes non-candidate co-filers while candidate assignment remains frozen-taxonomy-only")
     print("- joint/multi-filer disclosure rows are partitioned by exact issuer CIK while filing date remains accession-wide")
     print("- co-filer disclosure/index provenance is preserved but cannot contaminate issuer ticker mapping")
     print("- production runner consumes filing-entity report fields and rejects the stale accession-only summary key")
