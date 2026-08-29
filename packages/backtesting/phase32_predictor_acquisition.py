@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from dataclasses import asdict, is_dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 import exchange_calendars as xcals
 
@@ -221,6 +221,49 @@ def _reference_missing(exc: ProviderError) -> bool:
     return "HTTP 404" in text or "HTTP 400" in text
 
 
+def _reconcile_massive_text_filing_entity_rows(
+    rows: list[dict[str, Any]], *, accession: str, issuer_cik: str
+) -> dict[str, Any]:
+    if not rows:
+        raise Phase32PredictorAcquisitionError(
+            f"candidate filing entity requires at least one Massive Text row: {accession} cik={issuer_cik}"
+        )
+
+    normalized_rows: list[dict[str, Any]] = []
+    baseline_non_ticker: dict[str, Any] | None = None
+    for row in rows:
+        normalized = dict(row)
+        if _normalize_cik(normalized.get("cik")) != issuer_cik:
+            raise Phase32PredictorAcquisitionError(
+                f"Massive Text CIK mismatch: {accession} expected={issuer_cik}"
+            )
+        non_ticker = {key: value for key, value in normalized.items() if key != "ticker"}
+        if baseline_non_ticker is None:
+            baseline_non_ticker = non_ticker
+        elif non_ticker != baseline_non_ticker:
+            raise Phase32PredictorAcquisitionError(
+                f"Massive Text rows conflict beyond ticker: {accession} cik={issuer_cik} count={len(rows)}"
+            )
+        normalized_rows.append(normalized)
+
+    ordered_rows = sorted(normalized_rows, key=_canonical_json)
+    tickers = sorted(
+        {
+            str(row.get("ticker") or "").strip()
+            for row in ordered_rows
+            if str(row.get("ticker") or "").strip()
+        }
+    )
+    if baseline_non_ticker is None:  # pragma: no cover - guarded by rows above
+        raise Phase32PredictorAcquisitionError("Massive Text reconciliation lost baseline record")
+    return {
+        "row_count": len(ordered_rows),
+        "tickers": tickers,
+        "aggregate_sha256": _sha256_text(_canonical_jsonl(ordered_rows)),
+        "non_ticker_sha256": _sha256_text(_canonical_json(baseline_non_ticker)),
+    }
+
+
 class Phase32PredictorSourceAcquisition:
     """Resumable, source-only Phase32 full-history predictor builder."""
 
@@ -233,6 +276,7 @@ class Phase32PredictorSourceAcquisition:
         reference_provider: Any,
         *,
         identity_resolver: InstrumentIdentityResolver | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> None:
         self.settings = settings
         self.index_client = index_client
@@ -240,6 +284,7 @@ class Phase32PredictorSourceAcquisition:
         self.sec_client = sec_client
         self.reference_provider = reference_provider
         self.identity = identity_resolver or InstrumentIdentityResolver()
+        self.progress_callback = progress_callback
         self.provider_root = settings.resolved_path(settings.data.paths.provider)
         self.derived_root = settings.resolved_path(settings.data.paths.derived)
         self.evidence_root = self.provider_root / PHASE32_EVIDENCE_RELATIVE
@@ -508,6 +553,17 @@ class Phase32PredictorSourceAcquisition:
         exclusion_counts: Counter[str] = Counter()
         source_counts: Counter[str] = Counter()
         multi_filer_candidate_accessions = 0
+        total_filing_entities = sum(
+            len({_normalize_cik(item[0].get("cik")) for item in assignments})
+            for assignments in candidate_rows_by_accession.values()
+        )
+        completed_filing_entities = 0
+
+        def emit_progress() -> None:
+            nonlocal completed_filing_entities
+            completed_filing_entities += 1
+            if self.progress_callback is not None:
+                self.progress_callback(completed_filing_entities, total_filing_entities)
 
         for accession in source_accessions:
             accession_assignments = candidate_rows_by_accession[accession]
@@ -584,15 +640,9 @@ class Phase32PredictorSourceAcquisition:
                     for row in text_rows
                     if str(row.get("accession_number") or "").strip() == accession
                 ]
-                if len(matching_text) != 1:
-                    raise Phase32PredictorAcquisitionError(
-                        f"candidate filing entity requires exactly one Massive Text row: {accession} cik={issuer_cik} count={len(matching_text)}"
-                    )
-                text_row = matching_text[0]
-                if _normalize_cik(text_row.get("cik")) != issuer_cik:
-                    raise Phase32PredictorAcquisitionError(
-                        f"Massive Text CIK mismatch: {accession} expected={issuer_cik}"
-                    )
+                text_evidence = _reconcile_massive_text_filing_entity_rows(
+                    matching_text, accession=accession, issuer_cik=issuer_cik
+                )
 
                 tickers: set[str] = set()
                 for row in disclosure_rows:
@@ -603,9 +653,7 @@ class Phase32PredictorSourceAcquisition:
                     value = row.get("ticker")
                     if isinstance(value, str) and value.strip():
                         tickers.add(value.strip())
-                text_ticker = text_row.get("ticker")
-                if isinstance(text_ticker, str) and text_ticker.strip():
-                    tickers.add(text_ticker.strip())
+                tickers.update(str(value) for value in text_evidence["tickers"])
                 provider_tickers = tuple(sorted(tickers))
 
                 candidate_ids = sorted({candidate_id for _, candidate_id, _ in assignments})
@@ -643,7 +691,10 @@ class Phase32PredictorSourceAcquisition:
                     "provider_tickers": list(provider_tickers),
                     "supporting_text_sha256": support_sha256,
                     "sec_source_record_sha256": sec.get("source_record_sha256"),
-                    "massive_text_sha256": _sha256_text(_canonical_json(text_row)),
+                    "massive_text_sha256": text_evidence["aggregate_sha256"],
+                    "massive_text_row_count": text_evidence["row_count"],
+                    "massive_text_tickers": text_evidence["tickers"],
+                    "massive_text_non_ticker_sha256": text_evidence["non_ticker_sha256"],
                     "accession_disclosure_row_count": len(accession_disclosure_rows),
                     "disclosure_row_count": len(disclosure_rows),
                     "candidate_disclosure_filer_ciks": candidate_disclosure_filer_ciks,
@@ -662,12 +713,14 @@ class Phase32PredictorSourceAcquisition:
                     base["exclusion_reason"] = stage.upper()
                     exclusion_counts[stage.upper()] += 1
                     filing_entity_records.append(base)
+                    emit_progress()
                     continue
                 if not provider_tickers:
                     base["eligibility"] = "excluded"
                     base["exclusion_reason"] = "NO_PROVIDER_TICKER_MAPPING"
                     exclusion_counts["NO_PROVIDER_TICKER_MAPPING"] += 1
                     filing_entity_records.append(base)
+                    emit_progress()
                     continue
 
                 resolved, exclusion = self._resolve_instrument(
@@ -684,6 +737,7 @@ class Phase32PredictorSourceAcquisition:
                     base["eligibility"] = "eligible"
                     base["instrument"] = resolved
                 filing_entity_records.append(base)
+                emit_progress()
 
         grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
         for row in filing_entity_records:
