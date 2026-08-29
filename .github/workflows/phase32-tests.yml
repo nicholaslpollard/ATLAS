@@ -44,5 +44,7 @@ jobs:
         run: python scripts/validate_phase32_semantic_v2.py
       - name: Validate Phase 32 semantic V2 source census contracts
         run: python scripts/validate_phase32_semantic_source_census.py
+      - name: Validate Phase 32 frozen scientific policy
+        run: python scripts/validate_phase32_policy.py
       - name: Run Phase 32 focused unit tests
-        run: python -m pytest -q tests/unit/test_phase32_feasibility.py tests/unit/test_phase32_semantic_feasibility.py tests/unit/test_phase32_semantic_feasibility_v2.py tests/unit/test_phase32_semantic_source_census.py
+        run: python -m pytest -q tests/unit/test_phase32_feasibility.py tests/unit/test_phase32_semantic_feasibility.py tests/unit/test_phase32_semantic_feasibility_v2.py tests/unit/test_phase32_semantic_source_census.py tests/unit/test_phase32_policy.py
