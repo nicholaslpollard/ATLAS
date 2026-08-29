@@ -36,6 +36,9 @@ PHASE32_FROZEN_POLICY_FINGERPRINT = (
 PHASE32_ACCEPTED_TAXONOMY_SHA256 = (
     "b1bcb0037d2d17a36f1b72b8e260b32a611a81b36b831af5c5a6423e660d28a6"
 )
+PHASE32_FILING_ENTITY_KEY_RULE = (
+    "EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE"
+)
 PHASE32_ACQUISITION_START = date.fromisoformat(PHASE32_RESEARCH_SIGNAL_START)
 PHASE32_ACQUISITION_END = date(2026, 8, 11)
 PHASE32_DEVELOPMENT_LAST_SIGNAL_DATE = date.fromisoformat(PHASE32_DEVELOPMENT_LAST_SIGNAL)
@@ -496,28 +499,36 @@ class Phase32PredictorSourceAcquisition:
             candidate_rows_by_accession[accession].append((row, assignment[0], assignment[1]))
 
         source_accessions = sorted(candidate_rows_by_accession)
-        accession_records: list[dict[str, Any]] = []
+        filing_entity_records: list[dict[str, Any]] = []
         exclusion_counts: Counter[str] = Counter()
         source_counts: Counter[str] = Counter()
+        multi_filer_candidate_accessions = 0
 
         for accession in source_accessions:
-            assignments = candidate_rows_by_accession[accession]
-            disclosure_rows = [item[0] for item in assignments]
-            disclosure_ciks = {_normalize_cik(row.get("cik")) for row in disclosure_rows}
-            disclosure_dates = {_parse_date(row.get("filing_date"), field="filing_date") for row in disclosure_rows}
-            if len(disclosure_ciks) != 1 or len(disclosure_dates) != 1:
+            accession_assignments = candidate_rows_by_accession[accession]
+            accession_disclosure_rows = [item[0] for item in accession_assignments]
+            disclosure_dates = {
+                _parse_date(row.get("filing_date"), field="filing_date")
+                for row in accession_disclosure_rows
+            }
+            if len(disclosure_dates) != 1:
                 raise Phase32PredictorAcquisitionError(
-                    f"candidate disclosure accession has inconsistent CIK/date: {accession}"
+                    f"candidate disclosure accession has inconsistent filing dates: {accession}"
                 )
-            issuer_cik = next(iter(disclosure_ciks))
             filing_date = next(iter(disclosure_dates))
+
+            assignments_by_cik: dict[str, list[tuple[dict[str, Any], str, str]]] = defaultdict(list)
+            for assignment in accession_assignments:
+                assignments_by_cik[_normalize_cik(assignment[0].get("cik"))].append(assignment)
+            disclosure_filer_ciks = sorted(assignments_by_cik)
+            if len(disclosure_filer_ciks) > 1:
+                multi_filer_candidate_accessions += 1
 
             index_rows = index_by_accession.get(accession, [])
             if not index_rows:
                 raise Phase32PredictorAcquisitionError(
                     f"candidate disclosure accession is absent from original-8-K index: {accession}"
                 )
-            issuer_index_rows: list[dict[str, Any]] = []
             index_filer_ciks: set[str] = set()
             for row in index_rows:
                 row_cik = _normalize_cik(row.get("cik"))
@@ -530,126 +541,143 @@ class Phase32PredictorSourceAcquisition:
                     raise Phase32PredictorAcquisitionError(
                         f"candidate accession is not original 8-K in index: {accession}"
                     )
-                if row_cik == issuer_cik:
-                    issuer_index_rows.append(row)
-            if not issuer_index_rows:
-                raise Phase32PredictorAcquisitionError(
-                    f"candidate accession has no original-8-K index row for disclosure CIK: {accession}"
-                )
-            co_filer_index_ciks = sorted(index_filer_ciks - {issuer_cik})
 
-            sec = self._cached_sec(cik=issuer_cik, accession=accession, filing_date=filing_date)
-            if _nonblank(sec.get("accession_number"), field="SEC accession_number") != accession:
-                raise Phase32PredictorAcquisitionError(f"SEC accession mismatch: {accession}")
-            if _normalize_cik(sec.get("issuer_cik")) != issuer_cik:
-                raise Phase32PredictorAcquisitionError(f"SEC CIK mismatch: {accession}")
-            if _parse_date(sec.get("filing_date"), field="SEC filing_date") != filing_date:
-                raise Phase32PredictorAcquisitionError(f"SEC filing-date mismatch: {accession}")
-            if sec.get("form") != "8-K":
-                raise Phase32PredictorAcquisitionError(f"SEC original-form mismatch: {accession}")
-            acceptance = _nonblank(sec.get("acceptance_datetime"), field="SEC acceptance_datetime")
-            decision_session, exit_session = _decision_and_exit_sessions(acceptance)
-            stage = _stage_for_decision(decision_session)
-
-            text_rows = self._cached_text(issuer_cik, filing_date)
-            matching_text = [
-                row for row in text_rows if str(row.get("accession_number") or "").strip() == accession
-            ]
-            if len(matching_text) != 1:
-                raise Phase32PredictorAcquisitionError(
-                    f"candidate accession requires exactly one Massive Text row: {accession} count={len(matching_text)}"
-                )
-            text_row = matching_text[0]
-            if _normalize_cik(text_row.get("cik")) != issuer_cik:
-                raise Phase32PredictorAcquisitionError(f"Massive Text CIK mismatch: {accession}")
-
-            tickers: set[str] = set()
-            for row in disclosure_rows:
-                values = row.get("tickers")
-                if isinstance(values, list):
-                    tickers.update(str(value).strip() for value in values if str(value).strip())
-            for row in issuer_index_rows:
-                value = row.get("ticker")
-                if isinstance(value, str) and value.strip():
-                    tickers.add(value.strip())
-            text_ticker = text_row.get("ticker")
-            if isinstance(text_ticker, str) and text_ticker.strip():
-                tickers.add(text_ticker.strip())
-            provider_tickers = tuple(sorted(tickers))
-
-            candidate_ids = sorted({candidate_id for _, candidate_id, _ in assignments})
-            directions = sorted({direction for _, _, direction in assignments})
-            taxonomy_triples = sorted(
-                {
-                    (
-                        str(row.get("primary_category") or ""),
-                        str(row.get("secondary_category") or ""),
-                        str(row.get("tertiary_category") or ""),
+            for issuer_cik in disclosure_filer_ciks:
+                assignments = assignments_by_cik[issuer_cik]
+                disclosure_rows = [item[0] for item in assignments]
+                issuer_index_rows = [
+                    row for row in index_rows if _normalize_cik(row.get("cik")) == issuer_cik
+                ]
+                if not issuer_index_rows:
+                    raise Phase32PredictorAcquisitionError(
+                        f"candidate accession has no original-8-K index row for disclosure CIK: {accession} cik={issuer_cik}"
                     )
-                    for row in disclosure_rows
+                co_filer_index_ciks = sorted(index_filer_ciks - {issuer_cik})
+                co_filer_disclosure_ciks = sorted(set(disclosure_filer_ciks) - {issuer_cik})
+
+                sec = self._cached_sec(cik=issuer_cik, accession=accession, filing_date=filing_date)
+                if _nonblank(sec.get("accession_number"), field="SEC accession_number") != accession:
+                    raise Phase32PredictorAcquisitionError(f"SEC accession mismatch: {accession}")
+                if _normalize_cik(sec.get("issuer_cik")) != issuer_cik:
+                    raise Phase32PredictorAcquisitionError(
+                        f"SEC CIK mismatch: {accession} expected={issuer_cik}"
+                    )
+                if _parse_date(sec.get("filing_date"), field="SEC filing_date") != filing_date:
+                    raise Phase32PredictorAcquisitionError(f"SEC filing-date mismatch: {accession}")
+                if sec.get("form") != "8-K":
+                    raise Phase32PredictorAcquisitionError(f"SEC original-form mismatch: {accession}")
+                acceptance = _nonblank(sec.get("acceptance_datetime"), field="SEC acceptance_datetime")
+                decision_session, exit_session = _decision_and_exit_sessions(acceptance)
+                stage = _stage_for_decision(decision_session)
+
+                text_rows = self._cached_text(issuer_cik, filing_date)
+                matching_text = [
+                    row
+                    for row in text_rows
+                    if str(row.get("accession_number") or "").strip() == accession
+                ]
+                if len(matching_text) != 1:
+                    raise Phase32PredictorAcquisitionError(
+                        f"candidate filing entity requires exactly one Massive Text row: {accession} cik={issuer_cik} count={len(matching_text)}"
+                    )
+                text_row = matching_text[0]
+                if _normalize_cik(text_row.get("cik")) != issuer_cik:
+                    raise Phase32PredictorAcquisitionError(
+                        f"Massive Text CIK mismatch: {accession} expected={issuer_cik}"
+                    )
+
+                tickers: set[str] = set()
+                for row in disclosure_rows:
+                    values = row.get("tickers")
+                    if isinstance(values, list):
+                        tickers.update(str(value).strip() for value in values if str(value).strip())
+                for row in issuer_index_rows:
+                    value = row.get("ticker")
+                    if isinstance(value, str) and value.strip():
+                        tickers.add(value.strip())
+                text_ticker = text_row.get("ticker")
+                if isinstance(text_ticker, str) and text_ticker.strip():
+                    tickers.add(text_ticker.strip())
+                provider_tickers = tuple(sorted(tickers))
+
+                candidate_ids = sorted({candidate_id for _, candidate_id, _ in assignments})
+                directions = sorted({direction for _, _, direction in assignments})
+                taxonomy_triples = sorted(
+                    {
+                        (
+                            str(row.get("primary_category") or ""),
+                            str(row.get("secondary_category") or ""),
+                            str(row.get("tertiary_category") or ""),
+                        )
+                        for row in disclosure_rows
+                    }
+                )
+                support_sha256 = sorted(
+                    {
+                        _sha256_text(str(row.get("supporting_text") or ""))
+                        for row in disclosure_rows
+                    }
+                )
+
+                base = {
+                    "filing_entity_key": f"{accession}|{issuer_cik}",
+                    "filing_entity_key_rule": PHASE32_FILING_ENTITY_KEY_RULE,
+                    "accession_number": accession,
+                    "issuer_cik": issuer_cik,
+                    "filing_date": filing_date.isoformat(),
+                    "acceptance_datetime": acceptance,
+                    "decision_session": decision_session.isoformat(),
+                    "exit_session": exit_session.isoformat(),
+                    "stage": stage,
+                    "candidate_ids": candidate_ids,
+                    "directions": directions,
+                    "taxonomy_triples": [list(value) for value in taxonomy_triples],
+                    "provider_tickers": list(provider_tickers),
+                    "supporting_text_sha256": support_sha256,
+                    "sec_source_record_sha256": sec.get("source_record_sha256"),
+                    "massive_text_sha256": _sha256_text(_canonical_json(text_row)),
+                    "accession_disclosure_row_count": len(accession_disclosure_rows),
+                    "disclosure_row_count": len(disclosure_rows),
+                    "disclosure_filer_ciks": disclosure_filer_ciks,
+                    "co_filer_disclosure_ciks": co_filer_disclosure_ciks,
+                    "index_row_count": len(index_rows),
+                    "issuer_index_row_count": len(issuer_index_rows),
+                    "co_filer_index_row_count": len(index_rows) - len(issuer_index_rows),
+                    "index_filer_ciks": sorted(index_filer_ciks),
+                    "co_filer_index_ciks": co_filer_index_ciks,
                 }
-            )
-            support_sha256 = sorted(
-                {
-                    _sha256_text(str(row.get("supporting_text") or ""))
-                    for row in disclosure_rows
-                }
-            )
+                source_counts[stage] += 1
 
-            base = {
-                "accession_number": accession,
-                "issuer_cik": issuer_cik,
-                "filing_date": filing_date.isoformat(),
-                "acceptance_datetime": acceptance,
-                "decision_session": decision_session.isoformat(),
-                "exit_session": exit_session.isoformat(),
-                "stage": stage,
-                "candidate_ids": candidate_ids,
-                "directions": directions,
-                "taxonomy_triples": [list(value) for value in taxonomy_triples],
-                "provider_tickers": list(provider_tickers),
-                "supporting_text_sha256": support_sha256,
-                "sec_source_record_sha256": sec.get("source_record_sha256"),
-                "massive_text_sha256": _sha256_text(_canonical_json(text_row)),
-                "index_row_count": len(index_rows),
-                "issuer_index_row_count": len(issuer_index_rows),
-                "co_filer_index_row_count": len(index_rows) - len(issuer_index_rows),
-                "index_filer_ciks": sorted(index_filer_ciks),
-                "co_filer_index_ciks": co_filer_index_ciks,
-                "disclosure_row_count": len(disclosure_rows),
-            }
-            source_counts[stage] += 1
+                if stage not in {"development", "protected_predictor_only"}:
+                    base["eligibility"] = "excluded"
+                    base["exclusion_reason"] = stage.upper()
+                    exclusion_counts[stage.upper()] += 1
+                    filing_entity_records.append(base)
+                    continue
+                if not provider_tickers:
+                    base["eligibility"] = "excluded"
+                    base["exclusion_reason"] = "NO_PROVIDER_TICKER_MAPPING"
+                    exclusion_counts["NO_PROVIDER_TICKER_MAPPING"] += 1
+                    filing_entity_records.append(base)
+                    continue
 
-            if stage not in {"development", "protected_predictor_only"}:
-                base["eligibility"] = "excluded"
-                base["exclusion_reason"] = stage.upper()
-                exclusion_counts[stage.upper()] += 1
-                accession_records.append(base)
-                continue
-            if not provider_tickers:
-                base["eligibility"] = "excluded"
-                base["exclusion_reason"] = "NO_PROVIDER_TICKER_MAPPING"
-                exclusion_counts["NO_PROVIDER_TICKER_MAPPING"] += 1
-                accession_records.append(base)
-                continue
-
-            resolved, exclusion = self._resolve_instrument(
-                tickers=provider_tickers,
-                issuer_cik=issuer_cik,
-                decision_session=decision_session,
-                exit_session=exit_session,
-            )
-            if resolved is None:
-                base["eligibility"] = "excluded"
-                base["exclusion_reason"] = exclusion
-                exclusion_counts[str(exclusion)] += 1
-            else:
-                base["eligibility"] = "eligible"
-                base["instrument"] = resolved
-            accession_records.append(base)
+                resolved, exclusion = self._resolve_instrument(
+                    tickers=provider_tickers,
+                    issuer_cik=issuer_cik,
+                    decision_session=decision_session,
+                    exit_session=exit_session,
+                )
+                if resolved is None:
+                    base["eligibility"] = "excluded"
+                    base["exclusion_reason"] = exclusion
+                    exclusion_counts[str(exclusion)] += 1
+                else:
+                    base["eligibility"] = "eligible"
+                    base["instrument"] = resolved
+                filing_entity_records.append(base)
 
         grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
-        for row in accession_records:
+        for row in filing_entity_records:
             if row.get("eligibility") != "eligible":
                 continue
             instrument = row["instrument"]
@@ -729,8 +757,8 @@ class Phase32PredictorSourceAcquisition:
             )
         )
         _write_jsonl(self.predictor_path, predictors)
-        accession_path = self.evidence_root / "candidate_accession_records.jsonl"
-        _write_jsonl(accession_path, accession_records)
+        filing_entity_path = self.evidence_root / "candidate_filing_entity_records.jsonl"
+        _write_jsonl(filing_entity_path, filing_entity_records)
 
         candidate_counts = Counter(str(row["candidate_id"]) for row in predictors)
         stage_counts = Counter(str(row["stage"]) for row in predictors)
@@ -738,6 +766,7 @@ class Phase32PredictorSourceAcquisition:
             "contract_version": PHASE32_PREDICTOR_ACQUISITION_CONTRACT,
             "policy_fingerprint": PHASE32_FROZEN_POLICY_FINGERPRINT,
             "identity_contract_version": PHASE32_INSTRUMENT_IDENTITY_CONTRACT_VERSION,
+            "filing_entity_key_rule": PHASE32_FILING_ENTITY_KEY_RULE,
             "acquisition_start": PHASE32_ACQUISITION_START.isoformat(),
             "acquisition_end": PHASE32_ACQUISITION_END.isoformat(),
             "taxonomy_sha256": PHASE32_ACCEPTED_TAXONOMY_SHA256,
@@ -745,16 +774,17 @@ class Phase32PredictorSourceAcquisition:
             "total_index_rows": len(all_index),
             "total_disclosure_rows": len(all_disclosures),
             "frozen_candidate_source_accessions": len(source_accessions),
-            "candidate_accession_records": len(accession_records),
+            "multi_filer_candidate_accessions": multi_filer_candidate_accessions,
+            "candidate_filing_entity_records": len(filing_entity_records),
             "eligible_predictor_rows": len(predictors),
             "candidate_predictor_counts": dict(sorted(candidate_counts.items())),
             "stage_predictor_counts": dict(sorted(stage_counts.items())),
-            "source_stage_accession_counts": dict(sorted(source_counts.items())),
+            "source_stage_filing_entity_counts": dict(sorted(source_counts.items())),
             "exclusion_counts": dict(sorted(exclusion_counts.items())),
             "contradictory_instrument_sessions": len(contradictory_pairs),
             "cache_hits": dict(sorted(self.cache_hits.items())),
             "network_reads": dict(sorted(self.network_reads.items())),
-            "candidate_accession_evidence_sha256": _sha256_file(accession_path),
+            "candidate_filing_entity_evidence_sha256": _sha256_file(filing_entity_path),
             "predictor_rows_sha256": _sha256_file(self.predictor_path),
             "target_outcome_rows_read": 0,
             "protected_return_rows_read": 0,
