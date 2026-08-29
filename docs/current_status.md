@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-28. Phase31 remains closed `ACCEPTED_NEGATIVE`. Phase32 core V2, semantic V2, and the source/taxonomy census are accepted PASS. The complete Phase32 scientific contract is now frozen before any market-outcome read.**
+**Last synchronized: 2026-08-29. Phase31 remains closed `ACCEPTED_NEGATIVE`. Phase32 core V2, semantic V2, and the source/taxonomy census are accepted PASS. The complete Phase32 scientific contract is frozen before any market-outcome read. Full-history predictor/source acquisition is active and remains outcome-blind.**
 
 Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_scientific_contract.md`, `docs/phase32_semantic_source_qualification.md`, `docs/phase32_sec_edgar_access_incident.md`, and `docs/phase31_closeout.md` before continuing.
 
@@ -41,7 +41,7 @@ The original failed evidence remains preserved; the later repair and final Phase
 
 Master protected outcome window remains `2026-05-12..2026-08-11`.
 
-**Phase32 market outcomes remain unread.** Phases26–31 and all Phase32 source qualification/census/contract-freeze work have read zero protected returns. The holdout remains outcome-unopened.
+**Phase32 market outcomes remain unread.** Phases26–31 and all Phase32 source qualification/census/contract-freeze/acquisition work to date have read zero protected returns. The holdout remains outcome-unopened.
 
 ## Phase32 accepted source gates
 
@@ -64,6 +64,20 @@ Accepted semantic V2 fingerprint:
 Semantic V2 target-machine PASS: taxonomy version 1.0 / 119 rows, 7,468 disclosure rows across all five probe windows, complete original-8-K accession overlap, 30 Massive Text samples, 30 official SEC reconciliations, and zero target/protected outcome reads.
 
 Accepted filing identity is exact accession + zero-padded CIK + filing date + official SEC reconciliation. Ticker fields are mapping metadata only; `items_text` lexical comparison is diagnostic only.
+
+### Joint/multi-filer accession reconciliation — corrected before outcomes
+
+The full-history acquisition target-machine run stopped, before any market-outcome read, at accession `0000034903-25-000028` because the initial acquisition implementation incorrectly required **every** Massive index row sharing an accession to have the disclosure issuer CIK. Official SEC evidence shows this accession is a legitimate joint 8-K filed by Federal Realty Investment Trust (`CIK 0000034903`) and Federal Realty OP LP (`CIK 0001901876`).
+
+The corrected acquisition invariant is:
+
+- all index rows sharing the accession must retain the same filing date and original form `8-K`;
+- at least one index row must match the semantic disclosure issuer CIK exactly;
+- nonmatching CIK rows are preserved as legitimate co-filer provenance, not treated as corrupt rows;
+- only issuer-CIK-matching index rows may contribute index ticker mappings to PIT instrument resolution;
+- if the disclosure issuer CIK is absent from the accession's index rows, acquisition still fails closed.
+
+This correction changes no frozen hypothesis, direction, timing, outcome, cost, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence boundary. Development and protected returns remain unopened.
 
 ## Source/taxonomy census — ACCEPTED PASS
 
@@ -119,6 +133,6 @@ Full details: `docs/phase32_scientific_contract.md` and `packages/backtesting/ph
 
 ## Exact next target
 
-Build and validate **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`.
+Complete and independently accept **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`, including the corrected joint/multi-filer accession reconciliation above.
 
 It must acquire/reconcile original 8-K discovery, semantic disclosure evidence, official SEC acceptance metadata, and point-in-time instrument mapping while reading **zero stock/SPY/options outcomes**. Only after that predictor/source gate passes may development returns be opened under the frozen contract.
