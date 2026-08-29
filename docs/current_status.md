@@ -32,6 +32,8 @@ Fingerprint:
 
 Target-machine PASS retained: 6,048 original-8-K index rows, 5,272 ticker-linked rows, 48 official SEC records, 94 SEC item codes, zero SEC filing-date mismatches, and zero target/protected return reads.
 
+Accepted authoritative SEC metadata source remains `data.sec.gov/submissions`; accepted discovery remains Massive `/stocks/filings/vX/index?form_type=8-K`.
+
 Accepted timing remains `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
 
 ## Semantic V1 — RETAINED NOT ACCEPTED
