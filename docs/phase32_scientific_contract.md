@@ -93,7 +93,7 @@ Frozen public-availability rule:
 
 `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
 
-Official SEC `acceptanceDateTime` is authoritative. A filing can first influence a signal on the first XNYS session whose session date is strictly later than that SEC acceptance timestamp's New York calendar date.
+Official SEC `acceptanceDateTime` is authoritative. Operationally, the decision session is the first XNYS session whose **regular-session open timestamp is strictly after** the SEC acceptance timestamp. A pre-open filing may therefore act at that same calendar day's regular open; a filing accepted at or after that open cannot act until a later session. Equality is not allowed.
 
 Historical entry:
 
@@ -311,7 +311,7 @@ Phase32 does not authorize:
 - current-market-cap or liquidity filters chosen after returns;
 - ticker aliases or current-universe backprojection;
 - fallback ticker+snapshot identity as sufficient alpha authority;
-- same-session acceptance entry;
+- entry at an exchange open timestamp that is not strictly after SEC acceptance;
 - current-session regime state at decision open;
 - protected-return browsing before finalists;
 - broker/account reads or writes;
