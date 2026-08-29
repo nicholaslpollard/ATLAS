@@ -70,8 +70,8 @@ def main() -> int:
     # Core acquisition is intentionally dependency-injected. Validate the source-only
     # acquisition invariants in the core module and validate concrete production
     # provider wiring separately in the runner rather than forcing provider imports
-    # into the reusable acquisition engine. The exact identity-v4 version is checked
-    # above against the live accepted identity module rather than duplicated here.
+    # into the reusable acquisition engine. Exact version/contract values are checked
+    # above against the live imported constants rather than duplicated in consumers.
     for token in (
         "Phase32PredictorSourceAcquisition",
         "InstrumentIdentityResolver",
@@ -132,11 +132,11 @@ def main() -> int:
         "SECEDGARClient",
         "MassiveReferenceProvider",
         "MassiveRESTClient",
+        "PHASE32_PREDICTOR_ACQUISITION_CONTRACT",
         "Phase32PredictorSourceAcquisition(",
     ):
         _require(runner, token, "production source dependency wiring")
 
-    _require(runner, EXPECTED_CONTRACT, "runner acquisition contract import")
     _require(runner, "Stock/SPY/options outcomes: FORBIDDEN / UNREAD", "runner blindness declaration")
     _require(runner, "rerun will reuse completed atomic source caches", "runner resumability declaration")
     _require(tests, "test_source_acquisition_is_resumable_from_atomic_local_evidence", "resumability test")
