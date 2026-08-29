@@ -12,19 +12,20 @@ Every new ATLAS work session should read:
 
 1. `docs/roadmap.md` — normative mission, architecture, acceptance model, and remaining roadmap;
 2. `docs/current_status.md` — exact current handoff;
-3. active phase spec — `docs/phase32_sec_8k_material_event_alpha.md`;
-4. latest accepted closeout — `docs/phase31_closeout.md`;
-5. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-6. accepted code, validators, CI/PR evidence.
+3. `docs/phase32_sec_8k_material_event_alpha.md` — active phase;
+4. `docs/phase32_semantic_source_qualification.md` — exact active internal gate;
+5. `docs/phase31_closeout.md` — latest accepted numbered-phase closeout;
+6. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
+7. accepted code, validators, CI/PR evidence.
 
-Historical Phase31 source records remain under `docs/phase31_form4_feasibility_incident.md`, `docs/phase31_form4_source_quality_repair.md`, `docs/phase31_full_historical_acquisition.md`, `docs/phase31_predictor_evidence.md`, and `docs/phase31_scientific_contract.md`.
+Retained Phase32 source-incident history is in `docs/phase32_sec_edgar_access_incident.md`.
 
 ## Locked architecture
 
 `market/reference/regulatory -> Parquet/DuckDB -> features -> broad discovery -> regimes -> ML probability evidence -> deterministic alpha evaluation -> candidate promotion -> deep research/news -> stock/options selection -> geometry -> portfolio risk/sizing -> deterministic case -> independent AI audit -> alerts -> SHADOW/PAPER/LIVE execution -> learning -> browser control plane -> production operations`
 
 - Massive = primary market/reference/regulatory provider where entitlement and PIT semantics are proven.
-- Current Massive plan = **Stocks Starter**; do not assume unrelated paid datasets/plans.
+- Current Massive plan = **Stocks Starter**; unrelated paid datasets/plans are never assumed.
 - Official SEC EDGAR = read-only authoritative regulatory submission provenance when explicitly phase-gated.
 - Parquet = durable analytical lake; DuckDB = analytical engine; PostgreSQL = later operational state.
 - Webull = primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance.
@@ -32,36 +33,69 @@ Historical Phase31 source records remain under `docs/phase31_form4_feasibility_i
 - ML/AI = evidence/audit layers, never unilateral trading authority.
 - Browser GUI = operator surface, never a second trading engine.
 
-## Phase model
+## Operating rule
 
-One numbered phase is one project acceptance gate:
+One numbered phase is one acceptance gate:
 
 `PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT -> FOCUSED TESTS -> FULL PHASE-END ACCEPTANCE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
 
-Legitimate negative science may close `ACCEPTED_NEGATIVE` and does not create missing downstream authority.
+If an error occurs, ATLAS stops progression, identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. A workaround/different method is considered only after the intended method is shown infeasible. Material decisions and completed gates must be synchronized into the roadmap/status/phase docs/README before the work is considered complete.
 
 ## Current state — 2026-08-28
 
 - Accepted foundation: **through Phase31**.
-- Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE` alpha phases; supported modern alpha remains **0**.
+- Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; supported modern alpha remains **0**.
 - Phase31 PR #35 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
-- Phase31 independent closeout: `PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF`; zero survivors/winners/finalists/support; zero protected reads; holdout unconsumed.
-- Master protected outcome window remains `2026-05-12..2026-08-11` and outcome-unopened for a new frozen finalist-only study.
+- Phase31 independent closeout: `PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF`; zero survivors/winners/finalists/support; zero protected reads.
+- Master protected outcome window remains `2026-05-12..2026-08-11` and remains outcome-unopened.
 - **Active Phase32: SEC 8-K Material Corporate-Event Alpha.**
 - Active branch: `phase-32-sec-8k-material-event-alpha`.
-- Current internal target = source feasibility only using Massive `/stocks/filings/vX/index` for original 8-K discovery plus official SEC EDGAR submission headers for exact acceptance timestamps and item labels.
-- Feasibility hypotheses are **NOT YET FROZEN** and target/protected market outcomes are forbidden.
-- Conservative timing boundary = `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
-- Phase33 signal-to-trade remains blocked until supported alpha exists.
-- LIVE remains disabled. Automatic broker failover remains disabled.
 
-Phase31 provenance remains immutable: the original feasibility failure was a **Massive early-access/beta source-association/data-quality defect**; source-quality fingerprint `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`; full acquisition retained 2,993,648 raw / 2,992,608 authoritative rows. Do not retune Form-4 after results.
+### Phase32 core source feasibility
 
-Historical validator migration note only: the prior roadmap used the exact labels `Active Phase31: SEC Form-4 Insider-Transaction Alpha`, `Phase32 — Signal-to-Trade Construction`, and `Phase38 — Controlled LIVE Activation`. They are preserved as provenance, not current authority.
+Accepted V2 contract:
+
+`phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
+
+Fingerprint:
+
+`978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
+
+Target-machine result: **PASS** with **6,048** Massive original-8-K index rows, **5,272** ticker-linked rows, **48** official SEC records, **94** item codes, **0** SEC filing-date mismatches, and **0** target/protected return reads.
+
+Accepted core source = Massive `/stocks/filings/vX/index?form_type=8-K` plus official SEC `data.sec.gov/submissions` metadata. Conservative timing boundary remains:
+
+`FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
+
+### Exact active target
+
+Before freezing alpha hypotheses, ATLAS is qualifying Massive's semantic 8-K sources:
+
+- `/stocks/filings/8-K/vX/disclosures`
+- `/stocks/filings/8-K/vX/text`
+- `/stocks/taxonomies/vX/disclosures`
+
+Frozen semantic-source contract:
+
+`phase32-semantic-feasibility-v1-massive-8k-disclosures-text-no-market-outcomes`
+
+Fingerprint:
+
+`ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
+
+Conservative semantic history start: `2022-01-03`, subject to the source-only qualification gate. The runner verifies source history, taxonomy membership/versioning, original-8-K overlap, provider-native ticker alignment, supporting-text grounding, exact SEC provenance, immutable evidence, and zero market outcomes.
+
+Runner:
+
+`scripts/run_phase32_semantic_feasibility.py`
+
+If it fails, stop and repair the source/provenance defect. If it passes, the next step is to freeze the complete finite Phase32 scientific hypothesis contract before any development return is read.
+
+Phase33 signal-to-trade remains blocked. LIVE and automatic broker failover remain disabled.
 
 ## Remaining roadmap
 
-- **Phase32:** SEC 8-K Material Corporate-Event Alpha — active feasibility first.
+- **Phase32:** SEC 8-K Material Corporate-Event Alpha — active.
 - **Phase33:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked on supported alpha.
 - **Phase34:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
 - **Phase35:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
