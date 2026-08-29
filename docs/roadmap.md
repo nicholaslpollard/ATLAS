@@ -79,6 +79,8 @@ Modern alpha phases:
 - Phase30 public-news-arrival alpha — `ACCEPTED_NEGATIVE`.
 - Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
 
+Retained historical Phase31 rebaseline marker (preserved for accepted validator/provenance continuity): **Active Phase31 — SEC Form-4 Insider-Transaction Alpha**. This marker records the Phase31 active-state handoff and does not supersede the current Phase32 active state below.
+
 Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. Its four frozen candidates produced zero survivors/winners/finalists/support and zero protected reads. The master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 
 Validated alpha remains the blocker. Signal-to-trade construction is still forbidden.
