@@ -11,6 +11,7 @@ import pytest
 import packages.backtesting.phase32_predictor_acquisition as acquisition
 from packages.backtesting.phase32_policy import PHASE32_CANDIDATES
 from packages.backtesting.phase32_predictor_acquisition import (
+    Phase32PredictorAcquisitionError,
     Phase32PredictorSourceAcquisition,
     _decision_and_exit_sessions,
 )
@@ -265,6 +266,74 @@ def test_source_acquisition_builds_predictor_without_market_outcomes(
     assert predictor["exit_session"] == "2021-08-23"
     assert predictor["identity_quality"] == "strong"
     assert predictor["outcome_rows_read"] == 0
+
+
+def test_joint_filer_index_rows_are_preserved_but_do_not_contaminate_issuer_tickers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_range_and_taxonomy(monkeypatch)
+    co_filer = dict(INDEX)
+    co_filer["cik"] = "0000000002"
+    co_filer["ticker"] = "XYZ"
+
+    class JointFilerIndexClient(FakeIndexClient):
+        def eight_k_window(self, *, start_date: date, end_date: date) -> Result:
+            self.calls += 1
+            if start_date.month == 8 and start_date.year == 2021:
+                return Result([INDEX, co_filer])
+            return Result([])
+
+    reference = FakeReferenceProvider()
+    settings = FakeSettings(tmp_path)
+    report = Phase32PredictorSourceAcquisition(
+        settings,
+        JointFilerIndexClient(),
+        FakeSemanticClient(),
+        FakeSECClient(),
+        reference,
+    ).run()
+
+    assert report["eligible_predictor_rows"] == 1
+    assert reference.calls == 2
+    evidence_path = (
+        tmp_path
+        / "data/provider/phase32_sec_8k_predictor_acquisition/v1/candidate_accession_records.jsonl"
+    )
+    record = json.loads(evidence_path.read_text(encoding="utf-8").strip())
+    assert record["index_row_count"] == 2
+    assert record["issuer_index_row_count"] == 1
+    assert record["co_filer_index_row_count"] == 1
+    assert record["index_filer_ciks"] == ["0000000001", "0000000002"]
+    assert record["co_filer_index_ciks"] == ["0000000002"]
+    assert record["provider_tickers"] == ["ABC"]
+
+
+def test_joint_filer_reconciliation_fails_closed_when_disclosure_cik_is_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_range_and_taxonomy(monkeypatch)
+    co_filer_only = dict(INDEX)
+    co_filer_only["cik"] = "0000000002"
+    co_filer_only["ticker"] = "XYZ"
+
+    class CoFilerOnlyIndexClient(FakeIndexClient):
+        def eight_k_window(self, *, start_date: date, end_date: date) -> Result:
+            self.calls += 1
+            if start_date.month == 8 and start_date.year == 2021:
+                return Result([co_filer_only])
+            return Result([])
+
+    with pytest.raises(
+        Phase32PredictorAcquisitionError,
+        match="no original-8-K index row for disclosure CIK",
+    ):
+        Phase32PredictorSourceAcquisition(
+            FakeSettings(tmp_path),
+            CoFilerOnlyIndexClient(),
+            FakeSemanticClient(),
+            FakeSECClient(),
+            FakeReferenceProvider(),
+        ).run()
 
 
 def test_source_acquisition_is_resumable_from_atomic_local_evidence(
