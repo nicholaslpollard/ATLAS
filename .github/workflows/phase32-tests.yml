@@ -36,5 +36,9 @@ jobs:
           python -m pip install -r requirements.lock
           python -m pip install --no-deps -e .
           python -m pip check
-      - name: Validate Phase 32 SEC 8-K feasibility contracts
+      - name: Validate Phase 32 SEC 8-K core source contracts
         run: python scripts/validate_phase32.py
+      - name: Validate Phase 32 semantic source contracts
+        run: python scripts/validate_phase32_semantic.py
+      - name: Run Phase 32 focused unit tests
+        run: python -m pytest -q tests/unit/test_phase32_feasibility.py tests/unit/test_phase32_semantic_feasibility.py
