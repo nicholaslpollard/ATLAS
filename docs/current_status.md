@@ -20,7 +20,7 @@ Root cause before workaround remains mandatory.
 
 ## Retained Phase31 feasibility handoff provenance — historical only
 
-This block preserves exact accepted-era Phase31 handoff evidence required by the retained Phase31 validator. It does not supersede the active Phase32 state above.
+This block preserves exact accepted-era Phase31 handoff evidence required by the retained Phase31 validators. It does not supersede the active Phase32 state above.
 
 - Declared Massive plan: **Stocks Starter**.
 - Historical active branch: `phase-31-sec-insider-transaction-alpha`.
@@ -31,6 +31,9 @@ This block preserves exact accepted-era Phase31 handoff evidence required by the
 - Source-quality policy: `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`.
 - Root-cause classification: **Massive beta source-association/data-quality defect**.
 - Exact historical next handoff runner: `scripts/run_phase31_form4_source_quality_repair.py`.
+- Frozen Phase31 scientific policy fingerprint: `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
+- Accepted source-quality target retained **45,915** authoritative rows.
+- Historical post-freeze acquisition runner: `scripts/run_phase31_form4_acquisition.py`.
 
 The original failed evidence remains preserved; the later repair and final Phase31 `ACCEPTED_NEGATIVE` closeout do not rewrite that incident.
 
