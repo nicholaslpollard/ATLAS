@@ -1,6 +1,6 @@
 # Phase 32 — Semantic 8-K Source Qualification
 
-**Status:** ACCEPTED PASS. Semantic V1 remains retained `NOT ACCEPTED`; corrected semantic V2 and the source/taxonomy census passed on the target machine. The Phase32 scientific policy is now frozen under fingerprint `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`; market outcomes remain unread.
+**Status:** ACCEPTED PASS. Semantic V1 remains retained `NOT ACCEPTED`; corrected semantic V2 and the source/taxonomy census passed on the target machine. The corrected Phase32 scientific policy is frozen under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`; market outcomes remain unread.
 
 ## Accepted core source foundation
 
@@ -75,17 +75,19 @@ The five frozen families had non-performance probe-census row support of 433 (`e
 
 ## Scientific handoff
 
-Exactly **five hypotheses** are now frozen in `docs/phase32_scientific_contract.md` and `packages/backtesting/phase32_policy.py` under fingerprint:
+Exactly **five hypotheses** are now frozen in `docs/phase32_scientific_contract.md` and `packages/backtesting/phase32_policy.py` under corrected fingerprint:
 
-`0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
-The freeze includes exact taxonomy triples/directions, event aggregation and contradiction rules, SEC acceptance-time decision timing, 5-session horizon, PIT CIK-bound unique instrument resolution, SPY-relative/unhedged outcomes, costs, mandatory sample/concentration gates, 5-session dependence handling, global Holm-5 multiplicity, robustness, chronology/purge, winner/finalist/no-runner-up rules, and protected blindness.
+The earlier proposed `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88` fingerprint was superseded before acceptance and before any outcome read when a pre-performance audit aligned Phase32 with the accepted `instrument-identity-v4-no-issuer-level-medium-collapse` contract. Strong identities use Composite FIGI / Share Class FIGI; medium identity requires CIK + exact provider-native ticker + primary exchange + security type. Fallback ticker+snapshot identity has no Phase32 alpha authority.
+
+The freeze includes exact taxonomy triples/directions, event aggregation and contradiction rules, SEC acceptance-time decision timing, 5-session horizon, PIT identity-v4 unique instrument resolution, SPY-relative/unhedged outcomes, costs, mandatory sample/concentration gates, 5-session dependence handling, global Holm-5 multiplicity, robustness, chronology/purge, winner/finalist/no-runner-up rules, and protected blindness.
 
 No stock/SPY/options return was read in selecting any of those rules.
 
 ## Exact next target — full-history source/predictor acquisition
 
-The next allowed action is **full-history** Phase32 predictor acquisition for `2021-08-16..2026-08-11` under the frozen policy. It must preserve original 8-K discovery, semantic disclosure taxonomy, official SEC acceptance metadata, exact accession/CIK lineage, and point-in-time instrument resolution while reading zero market outcomes.
+The next allowed action is **full-history** Phase32 predictor acquisition for `2021-08-16..2026-08-11` under the corrected frozen policy. It must preserve original 8-K discovery, semantic disclosure taxonomy, official SEC acceptance metadata, exact accession/CIK lineage, and accepted point-in-time instrument identity-v4 resolution while reading zero market outcomes.
 
 Only after that full-history predictor/source gate passes may development returns be opened under the unchanged policy fingerprint.
 
