@@ -1,15 +1,16 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-28 after Phase32 corrected semantic V2 source qualification PASS.**
+**Normative project source of truth. Re-synchronized: 2026-08-28 after Phase32 semantic census PASS and pre-performance scientific-contract freeze.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
 3. the active phase specification;
-4. `docs/phase_flow.md`;
-5. `docs/phase_plain_english_contract.md`;
-6. accepted code, validators, CI/PR evidence, and historical phase records.
+4. `docs/phase32_scientific_contract.md` while Phase32 is active;
+5. `docs/phase_flow.md`;
+6. `docs/phase_plain_english_contract.md`;
+7. accepted code, validators, CI/PR evidence, and historical phase records.
 
 ## 1. Mission
 
@@ -30,7 +31,7 @@ Persistent roles:
 - PostgreSQL = later persistent operational state after promotion.
 - Massive = primary broad-market/reference/regulatory provider where entitlement and PIT semantics are proven.
 - Current Massive subscription = **Stocks Starter**; no other entitlement is assumed.
-- Official SEC EDGAR may be used read-only for authoritative regulatory provenance when phase-gated.
+- Official SEC EDGAR = read-only authoritative regulatory provenance when phase-gated.
 - Webull = primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance.
 - Alpaca = explicit/manual secondary broker; **no automatic broker failover**.
 - ML = predictive evidence, never standalone authority.
@@ -51,25 +52,23 @@ Persistent roles:
 10. Fail closed on ambiguous identity, stale/missing data, uncertain mutation state, invalid geometry, unknown broker/order state, or unreconciled exposure.
 11. PAPER does not imply LIVE.
 12. No automatic cross-broker failover.
-13. **Root cause before workaround:** an error stops progression until the cause is diagnosed and a proper correction is implemented/tested. Validators, thresholds, chronology, identity, multiplicity, protected rules, or authority may not be weakened to manufacture PASS. A different method is considered only after the intended method is shown infeasible.
+13. **Root cause before workaround:** an error stops progression until the cause is diagnosed and a proper correction is implemented/tested. Validators, thresholds, chronology, identity, multiplicity, protected rules, or authority may not be weakened to manufacture PASS.
 14. Preserve provider-native ticker text/case and exact PIT identity; ticker alone never proves continuity.
 15. No fabricated pre-2021 intraday history.
 16. Finalized canonical facts outrank provisional state.
 17. LONG geometry requires `stop < entry < target`; SHORT requires the reverse.
 18. Protected performance is finalist-only. Once a holdout outcome is read, that holdout is consumed for later alpha selection.
 19. A legitimate negative research phase may be accepted but cannot satisfy a downstream positive-entry condition.
-20. When a research family fails, the next research phase must change the economic/information mechanism rather than retune the failed family after results.
+20. When a research family fails, the next phase must change the economic/information mechanism rather than retune the failed family after results.
 21. Provider plan/history/entitlement claims require evidence and, where material, empirical verification.
-22. Regulatory event dates are not automatically decision timestamps; authoritative publication/acceptance time controls where available, otherwise use a conservative later boundary.
-23. Material phase/source/architecture decisions and completed gates must be synchronized into the roadmap, current status, active phase docs, and README as applicable before work is considered complete.
+22. Regulatory event dates are not automatically decision timestamps; authoritative publication/acceptance time controls where available.
+23. Material source/architecture/scientific decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
 
 ## 4. Accepted foundation through Phase31
 
 Phases1–25 accepted the project/config/session foundation, provider ingestion, canonical Parquet/DuckDB data, PIT identity/history, live market state, deterministic features, universe/discovery/regime/ML/strategy routing, promoted-only deep research, news/options/instrument/geometry/portfolio-risk planning, independent AI audit, broker-neutral SHADOW/PAPER execution, Webull-primary/Alpaca-manual-secondary operations, browser/API primitives, restart-safe orchestration, centralized PAPER authority, and exact historical production-path reconstruction.
 
 Accepted daily historical boundary remains Alpaca SIP through `2021-08-13` and Massive from `2021-08-16` onward. No synthetic pre-2021 1h/4h history exists.
-
-Phase11 strategy authority remains SUPPORTED **0**; MIXED `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`; UNSUPPORTED `breakdown_short_v1`, `breakout_long_v1`, `momentum_short_v1`, `pullback_short_v1`, `trend_following_short_v1`.
 
 Modern alpha phases:
 
@@ -80,7 +79,7 @@ Modern alpha phases:
 - Phase30 public-news-arrival alpha — `ACCEPTED_NEGATIVE`.
 - Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
 
-Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. Development predictor/usable rows were **5,400 / 5,371**; all four frozen candidates failed mandatory gates; zero survivors/winners/finalists/support; zero protected reads. The master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
+Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. Its four frozen candidates produced zero survivors/winners/finalists/support and zero protected reads. The master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 
 Validated alpha remains the blocker. Signal-to-trade construction is still forbidden.
 
@@ -94,85 +93,71 @@ Research may close `ACCEPTED_NEGATIVE`, but negative evidence grants no missing 
 
 **Purpose:** test whether structured, timestamped SEC 8-K material corporate-event disclosures contain robust after-cost post-disclosure return information distinct from Phases26–31.
 
-### Core source feasibility — accepted
+### Accepted source foundation
 
-Phase32 first attempted official SEC archive/header presentation paths. Six source attempts failed without reading any market outcomes. Those failures are retained in `docs/phase32_sec_edgar_access_incident.md`; ATLAS diagnosed the source format and formally versioned the replacement rather than weakening validation.
-
-Accepted V2 source contract:
-
-`phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
-
-Fingerprint:
+Core V2 fingerprint:
 
 `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
-Target-machine result: **PASS** with 6,048 Massive original-8-K index rows, 5,272 ticker-linked rows, 48 independently reconciled official SEC records, 94 SEC item codes, zero SEC filing-date mismatches, and zero target/protected return reads.
+Core V2 PASS established Massive original-8-K discovery plus official SEC submissions metadata, exact accession/form/filing-date/acceptance reconciliation, and zero market-outcome reads.
 
-Accepted source architecture:
-
-1. discover original `8-K` filings through Massive `GET /stocks/filings/vX/index`;
-2. obtain authoritative structured metadata from official `data.sec.gov/submissions/CIK##########.json`;
-3. for older filings, follow only SEC-declared date-matching historical submissions shards, maximum two candidates per lookup;
-4. independently reconcile exact accession, original `8-K`, filing date, acceptance timestamp, item codes, and CIK provenance;
-5. preserve immutable sampled source evidence.
-
-Public-availability rule remains:
-
-`FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
-
-### Semantic source qualification — V2 accepted
-
-SEC item codes are legal filing categories and can group economically different events, so Phase32 additionally qualified Massive semantic 8-K disclosures/text/taxonomy.
-
-Semantic V1 fingerprint:
+Rejected semantic V1 fingerprint remains immutable:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-V1 is retained `NOT ACCEPTED`. Root-cause diagnosis showed that exact cross-endpoint ticker equality and exact `supporting_text` substring-in-`items_text` were invalid provider-scope invariants. V1 remains immutable failed source-only evidence.
-
-Corrected semantic V2 contract:
-
-`phase32-semantic-feasibility-v2-source-scope-aware-no-market-outcomes`
-
-Accepted fingerprint:
+Accepted semantic V2 fingerprint:
 
 `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`
 
-Empirical semantic research boundary:
+Semantic V2 PASS established taxonomy version 1.0 / 119 rows, 7,468 disclosure rows across five retained probe windows, complete original-8-K accession overlap, independently reconciled SEC samples, source-scope-aware ticker/text semantics, and zero target/protected outcome reads.
 
-`2021-08-16`
+### Source/taxonomy census — accepted
 
-Target-machine V2 result: **PASS** with taxonomy version 1.0 / 119 rows, 7,468 disclosure rows across five retained probe windows, complete original-8-K accession overlap in every window, 30 sampled Massive Text records, 30 independently reconciled SEC records, and zero target/protected outcome reads. Ticker mapping relations were recorded as 22 direct disclosure/index overlaps, 2 historical-map differences where disclosure/text agreed, and 6 fully unmapped samples.
+The local immutable census passed with 119 taxonomy rows, 112 observed taxonomy rows, 7,468 disclosures, 4,427 unique accessions, 3,097 unique CIKs, 6,231 mapped ticker rows, 1,237 unmapped rows, and zero target/protected outcomes. It was source feasibility only.
 
-Accepted semantic filing identity is exact accession + zero-padded issuer CIK + filing date + official SEC reconciliation. Ticker is mapping metadata only. `supporting_text` must be nonblank and taxonomy-linked; `items_text` lexical comparison is diagnostic only.
+### Scientific contract — frozen before performance
 
-### Active pre-return source/taxonomy census
+Policy fingerprint:
 
-Before hypotheses are frozen, ATLAS runs:
+`0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`
 
-`scripts/run_phase32_semantic_v2_source_census.py`
+Exactly **five hypotheses** are frozen:
 
-This census is local-only. It hash-checks the accepted V2 taxonomy/disclosure artifacts, makes zero network calls, reads zero stock/SPY/options outcomes, and reports source coverage by primary/secondary/tertiary taxonomy category. Its counts are non-performance feasibility evidence only and cannot establish alpha.
+1. `equity_issuance_short`;
+2. `share_repurchase_long`;
+3. `financial_integrity_adverse_short`;
+4. `listing_distress_short`;
+5. `solvency_distress_short`.
 
-### Scientific-contract freeze after census
+The frozen policy fixes exact taxonomy triples and directions; SEC acceptance-time public availability; decision-open entry; five-session exit; PIT CIK-bound unique instrument resolution; SPY-relative and required unhedged outcomes; 0/5/10/25/50-bps cost grid with 10-bps primary and 25-bps stress; 5-session purge/block bootstrap; mandatory sample/concentration gates; global `HOLM_BONFERRONI_GLOBAL_5`; robustness; winner/finalist rules; no runner-up substitution; and finalist-only protected returns.
 
-Only after the census passes may ATLAS freeze the finite event hypothesis family and the complete scientific contract: directions, event aggregation/contradiction/amendment rules, **point-in-time instrument resolution**, decision session, horizons, benchmark, costs, mandatory sample/concentration gates, dependence-aware inference, multiplicity, robustness, development/internal/protected chronology and purge, winner/finalist/no-runner-up rules, and finalist-only protected read.
+The decision session is operationally the first XNYS session whose regular open timestamp is strictly after official SEC `acceptanceDateTime`. Current-universe backprojection, ticker alias backfill, and ticker+snapshot-only alpha identity are forbidden.
 
-No development return may be inspected before that freeze. Semantic ticker metadata is not sufficient by itself for market-outcome linkage; PIT instrument resolution must be separately frozen before any outcome read.
+Development last signal is `2026-05-04`; outer embargo is `2026-05-05..2026-05-11`; protected starts `2026-05-12`; last protected signal with complete five-session outcome is `2026-08-04`; protected outcome end is `2026-08-11`.
+
+No stock/SPY/options return was read to choose this family or methodology.
+
+### Exact active target — full-history predictor/source acquisition
+
+The next permitted Phase32 operation is **full-history** source/predictor acquisition for `2021-08-16..2026-08-11` under the unchanged policy fingerprint.
+
+It must acquire/reconcile original Massive 8-K discovery, accepted semantic disclosure evidence, official SEC acceptance metadata, exact accession/CIK lineage, and point-in-time instrument resolution. It must read **zero market outcomes**.
+
+Only after this full-history predictor/source gate passes may development returns be opened under the exact frozen policy. Protected returns remain finalist-only.
 
 ### Authority boundary
 
-Allowed now: accepted immutable 8-K source evidence, local source/taxonomy census, validators/tests, and scientific-contract construction from source semantics.
+Allowed now: accepted immutable source evidence, frozen policy/validators/tests, full-history source/predictor acquisition, PIT instrument mapping, and documentation.
 
-Forbidden: stock/SPY/options outcomes, protected returns, provider mutations, broker/account reads or writes, orders, PAPER submits, LIVE writes, frontend trading authority, automation writes, and automatic broker failover.
+Forbidden: development market outcomes before the predictor/source gate, protected returns before finalists/blindness audit, provider mutations, broker/account reads or writes, orders, PAPER submissions, LIVE writes, automation writes, frontend trading authority, and automatic broker failover.
 
-A source PASS does not establish alpha or satisfy Phase33.
+A source or policy PASS does not establish alpha or satisfy Phase33.
 
 ## 7. Remaining master roadmap
 
 ### Phase32 — SEC 8-K Material Corporate-Event Alpha
 
-Complete the local source/taxonomy census, freeze the full scientific contract, construct predictor-only event evidence, then evaluate the bounded event family under PIT/after-cost/dependence/multiplicity/robustness/protected-evidence standards.
+Complete full-history predictor/source acquisition, then evaluate the frozen five-hypothesis family under the locked PIT/after-cost/dependence/multiplicity/robustness/protected-evidence standards. Close either `SUPPORTED` if genuine alpha survives all gates or `ACCEPTED_NEGATIVE` if it does not.
 
 ### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
 
