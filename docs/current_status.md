@@ -68,7 +68,9 @@ The census was source-feasibility evidence only and did not rank candidates by p
 
 Policy fingerprint:
 
-`0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
+
+The earlier proposed `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88` fingerprint was superseded before acceptance and before any market-outcome read when a pre-performance audit found that the proposal's medium-identity prose omitted ATLAS's required exact ticker component.
 
 Exactly **five hypotheses** are frozen:
 
@@ -85,7 +87,9 @@ Frozen core methodology:
 - exit: close five XNYS sessions later;
 - primary outcome: 10-bps after-cost SPY-relative directional return, with positive unhedged performance also required;
 - mandatory 25-bps stress mean;
-- exact PIT CIK-bound unique instrument resolution; no ticker+snapshot-only authority, current-universe backprojection, or alias backfill;
+- exact PIT unique instrument resolution bound to `instrument-identity-v4-no-issuer-level-medium-collapse`;
+- accepted identity quality is strong or medium only: strong = Composite FIGI / Share Class FIGI; medium = CIK + exact provider-native ticker + primary exchange + security type;
+- ticker+snapshot fallback identity, current-universe backprojection, and alias backfill are forbidden;
 - 5-session purge and block bootstrap, 2,000 replicates;
 - selection/internal/protected sample gates = 500/150/50 event rows, 200/60/20 sessions, 200/60/20 unique instruments;
 - global `HOLM_BONFERRONI_GLOBAL_5`;
@@ -96,6 +100,6 @@ Full details: `docs/phase32_scientific_contract.md` and `packages/backtesting/ph
 
 ## Exact next target
 
-Build and validate **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`.
+Build and validate **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`.
 
 It must acquire/reconcile original 8-K discovery, semantic disclosure evidence, official SEC acceptance metadata, and point-in-time instrument mapping while reading **zero stock/SPY/options outcomes**. Only after that predictor/source gate passes may development returns be opened under the frozen contract.
