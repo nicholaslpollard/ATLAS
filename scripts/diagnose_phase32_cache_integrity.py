@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -12,6 +13,21 @@ from packages.backtesting.phase32_predictor_acquisition import PHASE32_EVIDENCE_
 from packages.core.settings import load_settings
 
 
+def _forensics(path: Path) -> dict[str, object]:
+    raw = path.read_bytes()
+    prefix = raw[:64]
+    suffix = raw[-64:] if len(raw) > 64 else raw
+    decoded_prefix = raw[:160].decode("utf-8", errors="replace")
+    return {
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "null_bytes": raw.count(b"\x00"),
+        "unique_byte_values": len(set(raw)),
+        "first64_hex": prefix.hex(),
+        "last64_hex": suffix.hex(),
+        "decoded_prefix_repr": repr(decoded_prefix),
+    }
+
+
 def main() -> int:
     settings = load_settings()
     provider_root = settings.resolved_path(settings.data.paths.provider)
@@ -19,7 +35,7 @@ def main() -> int:
 
     print("ATLAS Phase 32 — Read-Only Cache Integrity Diagnostic")
     print(f"Evidence root: {evidence_root}")
-    print("Scope: local cache parse/integrity only; no network, outcomes, broker, or trading access")
+    print("Scope: local cache parse/integrity + crash forensics only; no network, outcomes, broker, or trading access")
     print()
 
     if not evidence_root.is_dir():
@@ -32,7 +48,6 @@ def main() -> int:
     temp_files = sorted(evidence_root.rglob("*.tmp"))
 
     problems: list[tuple[Path, str]] = []
-    empty_json_files: list[Path] = []
     parsed_json = 0
     parsed_jsonl = 0
     jsonl_rows = 0
@@ -41,7 +56,6 @@ def main() -> int:
         try:
             text = path.read_text(encoding="utf-8")
             if not text.strip():
-                empty_json_files.append(path)
                 problems.append((path, "empty JSON file"))
                 continue
             value = json.loads(text)
@@ -85,19 +99,23 @@ def main() -> int:
             print(f"- ... {len(temp_files) - 20} more")
 
     if problems:
-        print("\nMalformed/invalid cache files:")
+        print("\nMalformed/invalid cache files with read-only byte forensics:")
         for path, reason in problems[:50]:
             try:
                 size = path.stat().st_size
-            except OSError:
+                details = _forensics(path)
+            except OSError as exc:
                 size = -1
+                details = {"forensics_error": f"{type(exc).__name__}: {exc}"}
             print(f"- {path} ({size} bytes): {reason}")
+            for key, value in details.items():
+                print(f"    {key}: {value}")
         if len(problems) > 50:
             print(f"- ... {len(problems) - 50} more")
         print("\nResult: CACHE_INTEGRITY_FAIL")
         print(
-            "Do not delete or rewrite anything yet. Return this output so the exact corruption "
-            "can be tied to the crash and repaired without weakening source or scientific rules."
+            "Do not delete or rewrite anything yet. Return this output so the byte pattern can be "
+            "classified before a targeted quarantine/reacquisition repair is authorized."
         )
         return 1
 
