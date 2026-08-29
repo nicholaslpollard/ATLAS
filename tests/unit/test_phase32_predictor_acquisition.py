@@ -14,6 +14,7 @@ from packages.backtesting.phase32_predictor_acquisition import (
     Phase32PredictorSourceAcquisition,
     _decision_and_exit_sessions,
 )
+from scripts.run_phase32_predictor_acquisition import _Phase32SemanticAcquisitionAdapter
 
 
 class FakeSettings:
@@ -134,6 +135,27 @@ class FakeSemanticClient:
         return (TEXT,)
 
 
+class AcceptedSemanticClientStub:
+    def __init__(self) -> None:
+        self.taxonomy_calls = 0
+        self.disclosure_calls = 0
+        self.text_calls = 0
+
+    def taxonomy(self) -> Result:
+        self.taxonomy_calls += 1
+        return Result(list(TAXONOMY_ROWS))
+
+    def disclosures_window(self, *, start_date: date, end_date: date) -> Result:
+        self.disclosure_calls += 1
+        assert start_date == date(2021, 8, 16)
+        assert end_date == date(2021, 8, 31)
+        return Result([DISCLOSURE])
+
+    def eight_k_text(self, *, cik: object, filing_date: date) -> tuple[dict[str, object], ...]:
+        self.text_calls += 1
+        return (TEXT,)
+
+
 class FakeSECClient:
     def __init__(self, *, fail: bool = False) -> None:
         self.calls = 0
@@ -178,6 +200,20 @@ def _patch_range_and_taxonomy(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(acquisition, "PHASE32_ACQUISITION_START", date(2021, 8, 16))
     monkeypatch.setattr(acquisition, "PHASE32_ACQUISITION_END", date(2021, 8, 31))
     monkeypatch.setattr(acquisition, "PHASE32_ACCEPTED_TAXONOMY_SHA256", _taxonomy_sha())
+
+
+def test_production_semantic_adapter_binds_accepted_provider_interface() -> None:
+    accepted = AcceptedSemanticClientStub()
+    adapter = _Phase32SemanticAcquisitionAdapter(accepted)  # type: ignore[arg-type]
+
+    assert adapter.taxonomy().rows == TAXONOMY_ROWS
+    assert adapter.eight_k_disclosures(
+        start_date=date(2021, 8, 16), end_date=date(2021, 8, 31)
+    ).rows == (DISCLOSURE,)
+    assert adapter.eight_k_text(cik="0000000001", filing_date=date(2021, 8, 16)) == (TEXT,)
+    assert accepted.taxonomy_calls == 1
+    assert accepted.disclosure_calls == 1
+    assert accepted.text_calls == 1
 
 
 def test_acceptance_time_uses_first_regular_open_strictly_after_acceptance() -> None:
