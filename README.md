@@ -19,7 +19,7 @@ Every new ATLAS work session should read:
 7. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
 8. accepted code, validators, CI/PR evidence.
 
-Retained Phase32 source-incident history is in `docs/phase32_sec_edgar_access_incident.md`.
+Retained Phase32 source-incident history is in `docs/phase32_sec_edgar_access_incident.md` and `docs/phase32_massive_text_multiplicity_incident.md`.
 
 ## Locked architecture
 
@@ -113,7 +113,9 @@ The first multi-filer target-machine stop was accession `0000034903-25-000028`: 
 
 A later target-machine stop at accession `0001057877-22-000019` exposed the same multiplicity on semantic disclosures. The acquisition had still grouped candidate disclosure rows by accession alone. The corrected filing-entity source key is now `EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE`: disclosure rows are partitioned by issuer CIK, each filing entity is independently reconciled to SEC/Text/index evidence, and only that entity's ticker mappings may feed PIT identity. A conflicting filing date under one accession remains a hard failure. Evidence is written as `candidate_filing_entity_records.jsonl`, and report/runner counts distinguish unique accessions from filing entities.
 
-Both corrections occurred before any development or protected return read. The frozen scientific fingerprint, hypotheses, chronology, costs, sample gates, multiplicity controls, identity-v4 rules, and protected-evidence boundary are unchanged. Existing source caches remain reusable.
+A third source-only stop at accession `0001140361-26-029471` / CIK `0002017526` showed that one filing entity can legitimately have multiple Massive Text rows when a ticker transition is represented. The read-only local diagnostic proved the two rows were identical in every non-ticker field and differed only by ticker (`FRNM` versus `PCSC`). The corrected rule accepts one or more Text rows only when every non-ticker field is identical, preserves all ticker variants for exact PIT identity checks, hashes the complete Text-row set plus the shared non-ticker record, and still fails closed on any non-ticker conflict. See `docs/phase32_massive_text_multiplicity_incident.md`.
+
+All three corrections occurred before any development or protected return read. The frozen scientific fingerprint, hypotheses, chronology, costs, sample gates, multiplicity controls, identity-v4 rules, and protected-evidence boundary are unchanged. Existing source caches remain reusable.
 
 Only after this source/predictor gate passes and an independent local source/lineage validation freezes its evidence hashes may development returns be opened under the unchanged contract.
 
