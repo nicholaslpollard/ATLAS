@@ -58,6 +58,16 @@ Frozen supporting-text rule:
 
 `NONBLANK_SUPPORTING_TEXT_LINKED_TO_EXACT_ACCESSION_CIK_DATE_AND_TAXONOMY;ITEMS_TEXT_SCOPE_CHECK_DIAGNOSTIC_ONLY`
 
+Accepted Semantic V2 validator:
+
+`scripts/validate_phase32_semantic_v2.py`
+
+Accepted Semantic V2 runner:
+
+`scripts/run_phase32_semantic_feasibility_v2.py`
+
+These paths remain retained as accepted-gate provenance even though the active next target has advanced to the source/taxonomy census.
+
 ## Target-machine PASS evidence
 
 Semantic V2 passed with:
