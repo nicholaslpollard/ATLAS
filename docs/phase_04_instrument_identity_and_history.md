@@ -10,11 +10,14 @@ using the strongest provider identifier available in this order:
 
 1. Massive Composite FIGI — strong
 2. Massive Share Class FIGI — strong
-3. CIK + primary exchange + security type — medium
+3. CIK + exact provider-native ticker + primary exchange + security type — medium
 4. ticker + snapshot date — fallback and deliberately *not* merged across dates
 
-This prevents a symbol rename or later ticker reuse from silently joining unrelated
-market histories.
+The accepted implementation contract is:
+
+`instrument-identity-v4-no-issuer-level-medium-collapse`
+
+The exact provider-native ticker is deliberately part of medium identity because CIK is issuer-level rather than security-level. One issuer can have multiple common, preferred, warrant, unit, note, or fund lines on the same venue; omitting the ticker would allow unrelated securities to collapse into one identity. This also prevents a symbol rename or later ticker reuse from silently joining unrelated market histories when strong FIGI evidence is absent.
 
 Reference observations are stored under:
 
