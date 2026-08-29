@@ -10,11 +10,11 @@ The legacy Chart Monitor remains preserved while ATLAS matures through SHADOW/PA
 
 Every new ATLAS work session should read:
 
-1. `docs/roadmap.md` — normative mission, architecture, acceptance model, and remaining roadmap;
-2. `docs/current_status.md` — exact current handoff;
-3. `docs/phase32_sec_8k_material_event_alpha.md` — active phase;
-4. `docs/phase32_semantic_source_qualification.md` — exact active internal gate;
-5. `docs/phase31_closeout.md` — latest accepted numbered-phase closeout;
+1. `docs/roadmap.md`;
+2. `docs/current_status.md`;
+3. `docs/phase32_sec_8k_material_event_alpha.md`;
+4. `docs/phase32_semantic_source_qualification.md`;
+5. `docs/phase31_closeout.md`;
 6. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
 7. accepted code, validators, CI/PR evidence.
 
@@ -46,50 +46,38 @@ If an error occurs, ATLAS stops progression, identifies the root cause, implemen
 - Accepted foundation: **through Phase31**.
 - Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; supported modern alpha remains **0**.
 - Phase31 PR #35 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
-- Phase31 independent closeout: `PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF`; zero survivors/winners/finalists/support; zero protected reads.
 - Master protected outcome window remains `2026-05-12..2026-08-11` and remains outcome-unopened.
 - **Active Phase32: SEC 8-K Material Corporate-Event Alpha.**
 - Active branch: `phase-32-sec-8k-material-event-alpha`.
 
 ### Phase32 core source feasibility
 
-Accepted V2 contract:
-
-`phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
-
-Fingerprint:
+Accepted V2 fingerprint:
 
 `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
-Target-machine result: **PASS** with **6,048** Massive original-8-K index rows, **5,272** ticker-linked rows, **48** official SEC records, **94** item codes, **0** SEC filing-date mismatches, and **0** target/protected return reads.
+Target-machine result: **PASS** with **6,048** Massive original-8-K index rows, **48** reconciled official SEC records, **94** item codes, **0** SEC filing-date mismatches, and **0** target/protected return reads.
 
-Accepted core source = Massive `/stocks/filings/vX/index?form_type=8-K` plus official SEC `data.sec.gov/submissions` metadata. Conservative timing boundary remains:
+Accepted core source = Massive `/stocks/filings/vX/index?form_type=8-K` plus official SEC `data.sec.gov/submissions`. Timing remains `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
 
-`FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
+### Exact active target — semantic V1 diagnosis
 
-### Exact active target
-
-Before freezing alpha hypotheses, ATLAS is qualifying Massive's semantic 8-K sources:
-
-- `/stocks/filings/8-K/vX/disclosures`
-- `/stocks/filings/8-K/vX/text`
-- `/stocks/taxonomies/vX/disclosures`
-
-Frozen semantic-source contract:
-
-`phase32-semantic-feasibility-v1-massive-8k-disclosures-text-no-market-outcomes`
-
-Fingerprint:
+Semantic V1 fingerprint:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-Conservative semantic history start: `2022-01-03`, subject to the source-only qualification gate. The runner verifies source history, taxonomy membership/versioning, original-8-K overlap, provider-native ticker alignment, supporting-text grounding, exact SEC provenance, immutable evidence, and zero market outcomes.
+Target-machine result: **NOT ACCEPTED**. Failed checks:
 
-Runner:
+- `all_sampled_tickers_align`;
+- `all_sampled_supporting_text_is_grounded`.
 
-`scripts/run_phase32_semantic_feasibility.py`
+A contract defect was also found: the V1 January-2022 history assumption was not supported by the supplied Massive endpoint docs and is rejected. V1 is retained as failed source-only evidence; it read zero market outcomes.
 
-If it fails, stop and repair the source/provenance defect. If it passes, the next step is to freeze the complete finite Phase32 scientific hypothesis contract before any development return is read.
+Current diagnostic:
+
+`scripts/diagnose_phase32_semantic_failure.py`
+
+Do not modify grounding/ticker rules, freeze hypotheses, or inspect returns until the diagnostic identifies the actual cause.
 
 Phase33 signal-to-trade remains blocked. LIVE and automatic broker failover remain disabled.
 
