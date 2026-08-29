@@ -67,12 +67,12 @@ def main() -> int:
     if PHASE32_ACQUISITION_END.isoformat() != "2026-08-11":
         raise AssertionError("Phase32 full-history acquisition end drifted")
 
+    # Core acquisition is intentionally dependency-injected. Validate the source-only
+    # acquisition invariants in the core module and validate concrete production
+    # provider wiring separately in the runner rather than forcing provider imports
+    # into the reusable acquisition engine.
     for token in (
         "Phase32PredictorSourceAcquisition",
-        "MassivePhase32SECIndexClient",
-        "MassivePhase32SemanticClient",
-        "SECEDGARClient",
-        "MassiveReferenceProvider",
         "InstrumentIdentityResolver",
         "instrument-identity-v4-no-issuer-level-medium-collapse",
         "massive_index",
@@ -126,6 +126,16 @@ def main() -> int:
     ):
         _forbid(module, forbidden, "market outcome/execution dependency")
 
+    for token in (
+        "MassivePhase32SECIndexClient",
+        "MassivePhase32SemanticClient",
+        "SECEDGARClient",
+        "MassiveReferenceProvider",
+        "MassiveRESTClient",
+        "Phase32PredictorSourceAcquisition(",
+    ):
+        _require(runner, token, "production source dependency wiring")
+
     _require(runner, EXPECTED_CONTRACT, "runner acquisition contract import")
     _require(runner, "Stock/SPY/options outcomes: FORBIDDEN / UNREAD", "runner blindness declaration")
     _require(runner, "rerun will reuse completed atomic source caches", "runner resumability declaration")
@@ -142,6 +152,7 @@ def main() -> int:
     print(f"- acquisition contract pinned: {EXPECTED_CONTRACT}")
     print(f"- accepted identity contract pinned: {EXPECTED_IDENTITY}")
     print("- full source range pinned: 2021-08-16..2026-08-11")
+    print("- dependency-injected acquisition engine and concrete production source wiring are validated separately")
     print("- monthly/index/disclosure plus accession SEC/Text and ticker/date reference caches are resumable")
     print("- stock/SPY/options outcomes and broker/order/PAPER/LIVE authority remain absent")
     return 0
