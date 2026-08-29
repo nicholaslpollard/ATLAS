@@ -60,15 +60,15 @@ Target-machine result: **PASS** with 6,048 Massive original-8-K index rows, 48 r
 
 Accepted core source = Massive `/stocks/filings/vX/index?form_type=8-K` plus official SEC `data.sec.gov/submissions`. Timing remains `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
 
-### Semantic source progression
+### Accepted semantic V2 source
 
 Rejected semantic V1 fingerprint:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-V1 remains `NOT ACCEPTED`. Its diagnostic established that exact cross-endpoint ticker equality and exact `supporting_text` substring-in-`items_text` were invalid source-scope invariants. It also established empirical semantic coverage at the `2021-08-16` Phase32 research boundary. V1 remains preserved; zero outcomes were read.
+V1 remains `NOT ACCEPTED` and immutable. Its diagnosis corrected invalid ticker/text-scope assumptions without reading market outcomes.
 
-Corrected semantic V2 contract:
+Accepted semantic V2 contract:
 
 `phase32-semantic-feasibility-v2-source-scope-aware-no-market-outcomes`
 
@@ -76,18 +76,19 @@ Fingerprint:
 
 `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`
 
-V2 filing identity = exact accession + zero-padded issuer CIK + filing date + official SEC reconciliation. Ticker fields are mapping metadata only; empty or historical mappings are recorded without normalization. `supporting_text` must be nonblank and taxonomy-linked to the exact filing; `items_text` lexical comparison is diagnostic because `items_text` is only the core-Items projection.
+Target-machine semantic V2 result: **PASS** with 119 taxonomy rows (version 1.0), 7,468 disclosure rows across all five retained windows, complete exact original-8-K accession overlap, 30 sampled Massive Text records, 30 independently reconciled SEC records, and zero target/protected outcome reads.
 
-Exact target:
+Accepted filing identity = exact accession + zero-padded issuer CIK + filing date + official SEC reconciliation. Ticker fields are mapping metadata only. `supporting_text` must be nonblank and taxonomy-linked; `items_text` lexical comparison is diagnostic only.
 
-```text
-scripts/validate_phase32.py
-scripts/validate_phase32_semantic.py
-scripts/validate_phase32_semantic_v2.py
-scripts/run_phase32_semantic_feasibility_v2.py
-```
+### Exact active target — pre-return census
 
-If semantic V2 passes, the next action is to freeze the complete finite Phase32 scientific hypothesis contract—including point-in-time instrument resolution—before any development return read.
+Run:
+
+`scripts/run_phase32_semantic_v2_source_census.py`
+
+This census uses only immutable accepted V2 evidence already on disk. It performs zero network calls and zero market-outcome reads, verifies evidence hashes, and reports taxonomy/disclosure/accession/CIK coverage by primary, secondary, and tertiary category.
+
+After the census passes, freeze the complete finite Phase32 scientific hypothesis contract—including point-in-time instrument resolution—before any development return read.
 
 Phase33 remains blocked. LIVE and automatic broker failover remain disabled.
 
