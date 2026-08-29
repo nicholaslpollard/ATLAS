@@ -4,7 +4,9 @@
 
 Policy fingerprint:
 
-`0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
+
+The earlier proposed fingerprint `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88` was superseded **before acceptance and before any market-outcome read** after a pre-performance audit found that its prose omitted the exact ticker component of ATLAS's accepted medium-strength identity key. No hypothesis, return, ranking, or protected outcome was read during that correction.
 
 This contract was frozen only after core SEC provenance V2, semantic-source V2, and the immutable source/taxonomy census passed. No Phase32 future stock return, SPY benchmark return, protected candidate return, or protected outcome was read when choosing these rules.
 
@@ -25,6 +27,10 @@ Retained semantic V1 failure remains immutable under fingerprint:
 The source-only census passed with 119 taxonomy rows, 112 observed taxonomy rows, 7,468 disclosure rows, 4,427 unique accessions, 3,097 unique CIKs, 6,231 ticker-mapped rows, 1,237 unmapped rows, and zero target/protected outcome reads.
 
 Accepted filing identity remains exact accession + zero-padded CIK + filing date + official SEC reconciliation. Massive ticker fields are mapping metadata, not filing identity.
+
+Accepted tradable-instrument identity contract is:
+
+`instrument-identity-v4-no-issuer-level-medium-collapse`
 
 ## 2. Economic mechanism and finite search principle
 
@@ -121,19 +127,22 @@ Primary horizon: **5 XNYS sessions**. This tests tradable short post-event drift
 
 A filing cannot become an alpha event merely because it contains a ticker string.
 
-For each exact accession/CIK, ATLAS forms the union of nonblank provider-native ticker mapping metadata from the accepted disclosure, text, and index sources. It then resolves those exact case-sensitive mappings on the decision session against the accepted point-in-time instrument registry.
+For each exact accession/CIK, ATLAS forms the union of nonblank provider-native ticker mapping metadata from the accepted disclosure, text, and index sources. It then resolves those exact case-sensitive mappings on the decision session against the accepted point-in-time instrument registry under `instrument-identity-v4-no-issuer-level-medium-collapse`.
 
 Alpha authority requires:
 
 1. exactly one unique `instrument_id` after point-in-time resolution;
 2. reference issuer CIK exactly equals the filing CIK;
-3. identity derives from Composite FIGI, Share Class FIGI, or CIK + primary exchange + security type; ticker+snapshot fallback alone is insufficient;
-4. the safe identity interval covers decision-session entry through the five-session exit;
-5. no current-universe backprojection or ticker-alias backfill;
-6. if no instrument resolves, multiple instruments resolve, issuer CIK conflicts, or the safe interval is incomplete, the event is excluded;
-7. split/corporate-action crossings that invalidate an uncompensated open-to-close return are censored fail-closed.
+3. identity quality is only accepted as `strong` or `medium`;
+4. strong identity derives from Massive Composite FIGI or Share Class FIGI;
+5. medium identity is **CIK + exact provider-native ticker + primary exchange + security type**; the exact ticker component is mandatory so multiple securities from one issuer cannot collapse together;
+6. ticker+snapshot fallback identity is insufficient for Phase32 alpha authority;
+7. the safe identity interval covers decision-session entry through the five-session exit;
+8. no current-universe backprojection or ticker-alias backfill;
+9. if no instrument resolves, multiple instruments resolve, issuer CIK conflicts, identity quality is fallback, or the safe interval is incomplete, the event is excluded;
+10. split/corporate-action crossings that invalidate an uncompensated open-to-close return are censored fail-closed.
 
-This rule can resolve historical mapping differences when they converge to one CIK-bound point-in-time instrument, but it never guesses among multiple share classes or unmapped securities.
+This rule can resolve historical mapping differences when they converge to one CIK-bound point-in-time instrument, but it never guesses among multiple share classes, ticker reuses, or unmapped securities.
 
 ## 8. Event aggregation and contradictory evidence
 
@@ -311,6 +320,7 @@ Phase32 does not authorize:
 - current-market-cap or liquidity filters chosen after returns;
 - ticker aliases or current-universe backprojection;
 - fallback ticker+snapshot identity as sufficient alpha authority;
+- issuer-level CIK identity that omits the exact provider-native security ticker when FIGI evidence is absent;
 - entry at an exchange open timestamp that is not strictly after SEC acceptance;
 - current-session regime state at decision open;
 - protected-return browsing before finalists;
