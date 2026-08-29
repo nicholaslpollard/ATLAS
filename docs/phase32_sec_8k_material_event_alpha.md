@@ -16,9 +16,9 @@ Fingerprint:
 
 `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
-Target-machine core V2 result: **PASS** with 6,048 original-8-K index rows, 5,272 ticker-linked rows, 48 official SEC records, 94 SEC item codes, zero SEC filing-date mismatches, and zero target/protected return reads.
+Target-machine core V2 result: **PASS** with 6,048 original-8-K index rows, 5,272 ticker-linked rows, 48 official SEC records, 94 SEC item codes, zero SEC filing-date mismatches, and **zero market outcomes** read.
 
-Accepted source architecture remains Massive original-8-K discovery plus official `data.sec.gov/submissions` metadata. Filing identity is exact accession + CIK + filing date + official SEC reconciliation. Public availability remains `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
+Accepted source architecture remains Massive original-8-K discovery through `/stocks/filings/vX/index` plus official `data.sec.gov/submissions` metadata. Filing identity is exact accession + CIK + filing date + official SEC reconciliation. Public availability remains `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
 
 ## Semantic source progression
 
