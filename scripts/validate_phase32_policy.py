@@ -8,10 +8,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-EXPECTED_POLICY_FINGERPRINT = "0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88"
+EXPECTED_POLICY_FINGERPRINT = "4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7"
 EXPECTED_CORE_SOURCE_FINGERPRINT = "978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4"
 EXPECTED_SEMANTIC_SOURCE_FINGERPRINT = "eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566"
 EXPECTED_CENSUS_CONTRACT = "phase32-semantic-v2-source-census-v1-no-market-outcomes"
+EXPECTED_IDENTITY_CONTRACT = "instrument-identity-v4-no-issuer-level-medium-collapse"
 EXPECTED_CANDIDATES = (
     "equity_issuance_short",
     "share_repurchase_long",
@@ -61,6 +62,9 @@ def main() -> int:
         PHASE32_CENSUS_PROTECTED_RETURN_ROWS_READ,
         PHASE32_CENSUS_TARGET_OUTCOME_ROWS_READ,
         PHASE32_DEVELOPMENT_LAST_SIGNAL,
+        PHASE32_INSTRUMENT_ALLOWED_IDENTITY_QUALITIES,
+        PHASE32_INSTRUMENT_IDENTITY_CONTRACT_VERSION,
+        PHASE32_INSTRUMENT_MEDIUM_IDENTITY_RULE,
         PHASE32_INTERNAL_PURGE_SESSIONS,
         PHASE32_MULTIPLE_TESTING_METHOD,
         PHASE32_OUTCOME_HORIZON_SESSIONS,
@@ -70,9 +74,13 @@ def main() -> int:
         phase32_candidate_ids,
         phase32_policy_fingerprint,
     )
+    from packages.instruments.identity import IDENTITY_CONTRACT_VERSION
 
-    if phase32_policy_fingerprint() != EXPECTED_POLICY_FINGERPRINT:
-        raise AssertionError("Phase32 scientific policy fingerprint drifted")
+    actual_fingerprint = phase32_policy_fingerprint()
+    if actual_fingerprint != EXPECTED_POLICY_FINGERPRINT:
+        raise AssertionError(
+            f"Phase32 scientific policy fingerprint drifted: expected={EXPECTED_POLICY_FINGERPRINT} actual={actual_fingerprint}"
+        )
     if phase32_candidate_ids() != EXPECTED_CANDIDATES:
         raise AssertionError("Phase32 finite candidate family drifted")
     if len(PHASE32_CANDIDATES) != 5:
@@ -81,6 +89,16 @@ def main() -> int:
         raise AssertionError("Phase32 source-census lineage drifted")
     if PHASE32_CENSUS_TARGET_OUTCOME_ROWS_READ != 0 or PHASE32_CENSUS_PROTECTED_RETURN_ROWS_READ != 0:
         raise AssertionError("Phase32 contract was not frozen from zero-outcome source evidence")
+    if PHASE32_INSTRUMENT_IDENTITY_CONTRACT_VERSION != EXPECTED_IDENTITY_CONTRACT:
+        raise AssertionError("Phase32 identity-contract pin drifted")
+    if PHASE32_INSTRUMENT_IDENTITY_CONTRACT_VERSION != IDENTITY_CONTRACT_VERSION:
+        raise AssertionError("Phase32 policy is not bound to the accepted InstrumentIdentityResolver contract")
+    if PHASE32_INSTRUMENT_ALLOWED_IDENTITY_QUALITIES != ("strong", "medium"):
+        raise AssertionError("Phase32 accepted identity-quality set drifted")
+    if PHASE32_INSTRUMENT_MEDIUM_IDENTITY_RULE != (
+        "CIK_PLUS_EXACT_PROVIDER_NATIVE_TICKER_PLUS_PRIMARY_EXCHANGE_PLUS_SECURITY_TYPE"
+    ):
+        raise AssertionError("Phase32 medium-identity rule drifted")
     if PHASE32_OUTCOME_HORIZON_SESSIONS != 5 or PHASE32_INTERNAL_PURGE_SESSIONS != 5:
         raise AssertionError("Phase32 five-session horizon/purge drifted")
     if PHASE32_DEVELOPMENT_LAST_SIGNAL != "2026-05-04":
@@ -97,6 +115,7 @@ def main() -> int:
     _require(policy, EXPECTED_CORE_SOURCE_FINGERPRINT, "accepted core source lineage")
     _require(policy, EXPECTED_SEMANTIC_SOURCE_FINGERPRINT, "accepted semantic source lineage")
     _require(policy, EXPECTED_CENSUS_CONTRACT, "accepted source-census lineage")
+    _require(policy, EXPECTED_IDENTITY_CONTRACT, "accepted identity-contract lineage")
     for candidate in EXPECTED_CANDIDATES:
         _require(policy, candidate, "frozen candidate")
     for token in (
@@ -105,6 +124,8 @@ def main() -> int:
         'PHASE32_ENTRY_RULE = "DECISION_SESSION_OPEN"',
         'PHASE32_EXIT_RULE = "CLOSE_5_XNYS_SESSIONS_AFTER_DECISION"',
         'PHASE32_BENCHMARK_TICKER = "SPY"',
+        'PHASE32_INSTRUMENT_ALLOWED_IDENTITY_QUALITIES = ("strong", "medium")',
+        '"CIK_PLUS_EXACT_PROVIDER_NATIVE_TICKER_PLUS_PRIMARY_EXCHANGE_PLUS_SECURITY_TYPE"',
         'PHASE32_INSTRUMENT_FALLBACK_TICKER_SNAPSHOT_ALLOWED = False',
         'PHASE32_CURRENT_UNIVERSE_BACKPROJECTION_ALLOWED = False',
         'PHASE32_TICKER_ALIAS_BACKFILL_ALLOWED = False',
@@ -130,10 +151,12 @@ def main() -> int:
         _forbid(policy, forbidden, "market-outcome/trading dependency in policy freeze")
 
     _require(scientific, EXPECTED_POLICY_FINGERPRINT, "scientific fingerprint")
+    _require(scientific, EXPECTED_IDENTITY_CONTRACT, "scientific identity contract")
     _require(scientific, "Exactly five hypotheses", "finite family heading")
     for candidate in EXPECTED_CANDIDATES:
         _require(scientific, candidate, "scientific candidate")
     _require(scientific, "regular-session open timestamp", "acceptance-time operational meaning")
+    _require(scientific, "CIK + exact provider-native ticker + primary exchange + security type", "scientific medium identity")
     _require(scientific, "CLOSE_5_XNYS_SESSIONS_AFTER_DECISION", "scientific horizon")
     _require(scientific, "HOLM_BONFERRONI_GLOBAL_5", "scientific global Holm")
     _require(scientific, "no runner-up substitution", "scientific winner freeze")
@@ -164,6 +187,7 @@ def main() -> int:
 
     print("ATLAS Phase 32 frozen scientific policy contracts: PASS")
     print(f"- frozen policy fingerprint: {EXPECTED_POLICY_FINGERPRINT}")
+    print(f"- accepted identity contract: {EXPECTED_IDENTITY_CONTRACT}")
     print("- exactly five source-semantic hypotheses are frozen before performance")
     print("- SEC acceptance-time decision session, 5-session horizon, PIT CIK-bound identity, SPY-relative outcome and costs are frozen")
     print("- sample/concentration gates, 5-session block inference, global Holm-5 and no-runner-up selection are frozen")
