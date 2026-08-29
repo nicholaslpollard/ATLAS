@@ -1,6 +1,6 @@
 # Phase 32 — SEC 8-K Material Corporate-Event Alpha
 
-**Status:** ACTIVE — core source V2, semantic source V2, and source/taxonomy census are accepted PASS. The corrected complete scientific policy is frozen under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`. Phase32 market outcomes remain unread and Phase33 remains blocked.
+**Status:** ACTIVE — core source V2, semantic source V2, and source/taxonomy census are accepted PASS. The corrected complete scientific policy is frozen under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`. Full-history predictor/source acquisition is active; Phase32 market outcomes remain unread and Phase33 remains blocked.
 
 **Source foundation:** Phase31 PR #35 merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
@@ -106,6 +106,22 @@ It must acquire and reconcile:
 4. exact accession/CIK provenance;
 5. point-in-time instrument mapping under the accepted identity-v4 strong/medium uniqueness rule;
 6. immutable lineage and source hashes.
+
+### Joint/multi-filer accession correction before outcomes
+
+The target-machine acquisition stopped at accession `0000034903-25-000028` before any market-outcome read. The initial implementation required every Massive index row under one accession to have the semantic disclosure CIK. Official SEC evidence shows that accession is a valid joint 8-K containing Federal Realty Investment Trust (`CIK 0000034903`) and Federal Realty OP LP (`CIK 0001901876`), so accession multiplicity by filing entity is legitimate source provenance rather than corruption.
+
+The corrected source-reconciliation rule is now frozen for this acquisition implementation:
+
+- exact accession remains the filing-level join key;
+- the semantic disclosure CIK remains the issuer identity being evaluated;
+- every index row for that accession must retain the same filing date and original `8-K` form;
+- at least one index row must match the disclosure issuer CIK;
+- other CIKs are retained explicitly as co-filer provenance;
+- only index rows whose CIK equals the disclosure issuer CIK may contribute index ticker mappings to PIT instrument resolution;
+- a missing issuer-CIK match remains a hard fail-closed source defect.
+
+Regression coverage verifies both the valid joint-filer case and the missing-issuer failure case. This correction changes no frozen policy fingerprint, hypotheses, directions, chronology, costs, outcomes, thresholds, multiplicity controls, identity-v4 rules, or protected-evidence rules.
 
 This acquisition must read **zero stock/SPY/options outcomes**. No development return may be opened until the full-history predictor/source gate passes without changing the frozen policy.
 
