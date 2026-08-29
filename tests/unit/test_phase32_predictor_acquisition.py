@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 import packages.backtesting.phase32_predictor_acquisition as acquisition
+from packages.backtesting.phase32_policy import PHASE32_CANDIDATES
 from packages.backtesting.phase32_predictor_acquisition import (
     Phase32PredictorSourceAcquisition,
     _decision_and_exit_sessions,
@@ -59,13 +60,17 @@ TEXT = {
     "items_text": "Item 8.01. Issuer authorized a share repurchase program.",
     "ticker": "ABC",
 }
-TAXONOMY = {
-    "taxonomy": "1.0",
-    "primary_category": "capital_and_financing",
-    "secondary_category": "shareholder_returns",
-    "tertiary_category": "share_repurchase_program",
-    "description": "Share buyback program authorization.",
-}
+TAXONOMY_ROWS = tuple(
+    {
+        "taxonomy": "1.0",
+        "primary_category": primary,
+        "secondary_category": secondary,
+        "tertiary_category": tertiary,
+        "description": f"Frozen Phase32 fixture taxonomy row for {tertiary}.",
+    }
+    for candidate in PHASE32_CANDIDATES
+    for primary, secondary, tertiary in candidate.taxonomy_triples
+)
 REFERENCE = {
     "ticker": "ABC",
     "name": "ABC Corp",
@@ -82,7 +87,10 @@ REFERENCE = {
 
 
 def _taxonomy_sha() -> str:
-    raw = json.dumps(TAXONOMY, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
+    raw = "".join(
+        json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n"
+        for row in TAXONOMY_ROWS
+    )
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -109,7 +117,7 @@ class FakeSemanticClient:
         self.taxonomy_calls += 1
         if self.fail:
             raise AssertionError("network taxonomy call should have been satisfied from cache")
-        return Result([TAXONOMY])
+        return Result(list(TAXONOMY_ROWS))
 
     def eight_k_disclosures(self, *, start_date: date, end_date: date) -> Result:
         self.disclosure_calls += 1
