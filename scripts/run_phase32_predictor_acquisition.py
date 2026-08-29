@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from packages.backtesting.phase32_predictor_acquisition import (
     PHASE32_ACQUISITION_END,
     PHASE32_ACQUISITION_START,
+    PHASE32_FILING_ENTITY_KEY_RULE,
     PHASE32_FROZEN_POLICY_FINGERPRINT,
     PHASE32_PREDICTOR_ACQUISITION_CONTRACT,
     Phase32PredictorAcquisitionError,
@@ -46,6 +47,7 @@ def main() -> int:
     print("ATLAS Phase 32 — Full-History 8-K Predictor/Source Acquisition")
     print(f"Contract: {PHASE32_PREDICTOR_ACQUISITION_CONTRACT}")
     print(f"Frozen policy fingerprint: {PHASE32_FROZEN_POLICY_FINGERPRINT}")
+    print(f"Filing-entity source key: {PHASE32_FILING_ENTITY_KEY_RULE}")
     print(f"Source range: {PHASE32_ACQUISITION_START}..{PHASE32_ACQUISITION_END}")
     print("Scope: source metadata + semantic predictors + PIT identity only")
     print("Stock/SPY/options outcomes: FORBIDDEN / UNREAD")
@@ -78,12 +80,14 @@ def main() -> int:
     print(
         f"Source rows: index={report['total_index_rows']} "
         f"disclosures={report['total_disclosure_rows']} "
-        f"candidate_accessions={report['frozen_candidate_source_accessions']}"
+        f"candidate_accessions={report['frozen_candidate_source_accessions']} "
+        f"filing_entities={report['candidate_filing_entity_records']} "
+        f"multi_filer_accessions={report['multi_filer_candidate_accessions']}"
     )
     print(f"Eligible predictor rows: {report['eligible_predictor_rows']}")
     print(f"Candidate predictor counts: {report['candidate_predictor_counts']}")
     print(f"Stage predictor counts: {report['stage_predictor_counts']}")
-    print(f"Source-stage accession counts: {report['source_stage_accession_counts']}")
+    print(f"Source-stage filing-entity counts: {report['source_stage_filing_entity_counts']}")
     print(f"Identity/source exclusions: {report['exclusion_counts']}")
     print(f"Contradictory instrument sessions: {report['contradictory_instrument_sessions']}")
     print(f"Network reads this run: {report['network_reads']}")
@@ -94,6 +98,7 @@ def main() -> int:
         f"{report['options_rows_read']} / {report['protected_return_rows_read']}"
     )
     print("Provider writes / broker reads / broker writes / orders / PAPER / LIVE: 0 / 0 / 0 / 0 / 0 / 0")
+    print(f"Filing-entity evidence SHA-256: {report['candidate_filing_entity_evidence_sha256']}")
     print(f"Predictor SHA-256: {report['predictor_rows_sha256']}")
     print(f"Report: {report['report_path']}")
     print(f"Predictors: {report['predictor_path']}")
