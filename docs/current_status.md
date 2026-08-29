@@ -2,7 +2,7 @@
 
 **Last synchronized: 2026-08-29. Phase31 remains closed `ACCEPTED_NEGATIVE`. Phase32 core V2, semantic V2, and the source/taxonomy census are accepted PASS. The complete Phase32 scientific contract is frozen before any market-outcome read. Full-history predictor/source acquisition is active and remains outcome-blind.**
 
-Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_scientific_contract.md`, `docs/phase32_semantic_source_qualification.md`, `docs/phase32_sec_edgar_access_incident.md`, `docs/phase32_massive_text_multiplicity_incident.md`, and `docs/phase31_closeout.md` before continuing.
+Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_scientific_contract.md`, `docs/phase32_semantic_source_qualification.md`, `docs/phase32_sec_edgar_access_incident.md`, `docs/phase32_massive_text_multiplicity_incident.md`, `docs/phase32_crash_cache_corruption_incident.md`, `docs/phase32_sec_submissions_shard_boundary_incident.md`, and `docs/phase31_closeout.md` before continuing.
 
 ## Authority state
 
@@ -118,9 +118,43 @@ The corrected Text invariant is:
 
 Behavioral validation and unit tests cover both the valid ticker-only multiplicity case and a negative conflicting-text case. Full incident provenance is retained in `docs/phase32_massive_text_multiplicity_incident.md`.
 
+### Crash-cache corruption — repaired before outcomes
+
+An abrupt Windows system crash while unrelated software was being installed later left exactly two reconstructible Phase32 JSON cache files with their original nonzero lengths but all bytes equal to zero. A read-only full cache scan found those two files among 73,292 JSON files and 20,278 JSONL files; every JSONL row parsed and no stale sibling temp file remained.
+
+The exact corrupt bytes were hash-pinned and moved to a dedicated quarantine under contract `phase32-crash-corrupted-cache-targeted-quarantine-v1`; only the two original cache paths were removed. The repair unit regression passed `2 / 2`, the target-machine repair succeeded, and the subsequent complete cache parse reported **0 integrity problems**. Acquisition then resumed from the retained caches. See `docs/phase32_crash_cache_corruption_incident.md`.
+
+### SEC submissions historical-shard rollover boundary — corrected before outcomes
+
+The repaired acquisition progressed to `27,225 / 36,309` filing entities and then stopped on News Corp accession `0001564708-23-000471`, filing date `2023-10-05`.
+
+Official SEC root metadata for CIK `0001564708` reported `filings.recent` beginning `2023-10-06` and declared `CIK0001564708-submissions-001.json` only through `2023-10-04`. A bounded read-only diagnostic inspected that SEC-declared shard and proved its **actual** row span extends through `2023-10-05`; it contains the exact target accession/date with `acceptanceDateTime=2023-10-04T22:16:27.000Z`, original form `8-K`, items `8.01,9.01`, and primary document `nws-20231004.htm`.
+
+Diagnostic disposition:
+
+`EXACT_ACCESSION_PRESENT_IN_NEAREST_SEC_DECLARED_SHARD_DESPITE_RANGE_GAP`
+
+Root cause: SEC root `filingFrom` / `filingTo` summary metadata can understate actual SEC-declared shard content by one calendar day at a rollover boundary, while ATLAS incorrectly treated those summary dates as an absolute precondition to inspect the shard.
+
+Corrected contract:
+
+`phase32-sec-submissions-declared-shard-rollover-boundary-v1`
+
+The correction is deliberately bounded:
+
+- exact date-covering SEC-declared shards remain primary;
+- only when no covering shard exists may an SEC-declared shard exactly **one calendar day** away be inspected;
+- no shard URL may be guessed or synthesized beyond an official `filings.files` name;
+- the existing maximum of two shard reads remains unchanged;
+- a gap greater than one day remains ineligible;
+- if a covering shard exists, adjacent fallback is suppressed;
+- any returned row must still match exact accession, exact requested filing date, and original form `8-K`.
+
+Focused regression and validator files are `tests/unit/test_phase32_sec_shard_boundary.py` and `scripts/validate_phase32_sec_shard_boundary.py`. Full root-cause evidence is retained in `docs/phase32_sec_submissions_shard_boundary_incident.md`.
+
 All source corrections above change no frozen hypothesis, direction, timing, outcome, cost, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence boundary. **Development and protected returns remain unopened.**
 
-The production acquisition runner now emits lightweight periodic `Phase32 progress: x / total filing entities completed` messages. This is operator observability only and cannot affect source/scientific logic.
+The production acquisition runner emits lightweight periodic `Phase32 progress: x / total filing entities completed` messages. This is operator observability only and cannot affect source/scientific logic.
 
 ## Source/taxonomy census — ACCEPTED PASS
 
@@ -176,6 +210,6 @@ Full details: `docs/phase32_scientific_contract.md` and `packages/backtesting/ph
 
 ## Exact next target
 
-Complete and independently accept **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`, using the corrected filing-entity source key, joint/multi-filer reconciliation rules, and strict ticker-only Massive Text multiplicity rule above.
+Complete and independently accept **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`, using the corrected filing-entity source key, joint/multi-filer reconciliation rules, strict ticker-only Massive Text multiplicity rule, and bounded SEC-declared shard rollover rule above.
 
 It must acquire/reconcile original 8-K discovery, semantic disclosure evidence, official SEC acceptance metadata, and point-in-time instrument mapping while reading **zero stock/SPY/options outcomes**. Only after that predictor/source gate passes, is independently revalidated from local immutable artifacts, and its evidence hashes are frozen may development returns be opened under the unchanged scientific contract.
