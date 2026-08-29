@@ -23,7 +23,7 @@ Target-machine V1 returned `NOT ACCEPTED` on exact ticker equality and exact nor
 - disclosure `supporting_text` is tied to the filing, while 8-K `items_text` is the narrower core-Items projection;
 - retained August 2021 evidence contained 1,475 disclosure rows with 1,475 exact original-8-K accession overlaps, so V1's January-2022 cutoff was rejected for this study.
 
-The Massive endpoint documentation supplied during V1 states **Plan History is not applicable** to the endpoint. That statement is retained as source provenance and is not converted into a fabricated historical cutoff; V2 relies on empirical coverage beginning at the existing Phase32 research boundary.
+The Massive endpoint documentation supplied during V1 states: Plan History is **not applicable** to the endpoint. That statement is retained as source provenance and is not converted into a fabricated historical cutoff; V2 relies on empirical coverage beginning at the existing Phase32 research boundary.
 
 V1 remains immutable failed evidence and is not rewritten by V2.
 
