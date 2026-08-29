@@ -517,11 +517,11 @@ class Phase32PredictorSourceAcquisition:
                 raise Phase32PredictorAcquisitionError(
                     f"candidate disclosure accession is absent from original-8-K index: {accession}"
                 )
+            issuer_index_rows: list[dict[str, Any]] = []
+            index_filer_ciks: set[str] = set()
             for row in index_rows:
-                if _normalize_cik(row.get("cik")) != issuer_cik:
-                    raise Phase32PredictorAcquisitionError(
-                        f"candidate accession CIK differs between disclosure and index: {accession}"
-                    )
+                row_cik = _normalize_cik(row.get("cik"))
+                index_filer_ciks.add(row_cik)
                 if _parse_date(row.get("filing_date"), field="filing_date") != filing_date:
                     raise Phase32PredictorAcquisitionError(
                         f"candidate accession filing date differs between disclosure and index: {accession}"
@@ -530,6 +530,13 @@ class Phase32PredictorSourceAcquisition:
                     raise Phase32PredictorAcquisitionError(
                         f"candidate accession is not original 8-K in index: {accession}"
                     )
+                if row_cik == issuer_cik:
+                    issuer_index_rows.append(row)
+            if not issuer_index_rows:
+                raise Phase32PredictorAcquisitionError(
+                    f"candidate accession has no original-8-K index row for disclosure CIK: {accession}"
+                )
+            co_filer_index_ciks = sorted(index_filer_ciks - {issuer_cik})
 
             sec = self._cached_sec(cik=issuer_cik, accession=accession, filing_date=filing_date)
             if _nonblank(sec.get("accession_number"), field="SEC accession_number") != accession:
@@ -561,7 +568,7 @@ class Phase32PredictorSourceAcquisition:
                 values = row.get("tickers")
                 if isinstance(values, list):
                     tickers.update(str(value).strip() for value in values if str(value).strip())
-            for row in index_rows:
+            for row in issuer_index_rows:
                 value = row.get("ticker")
                 if isinstance(value, str) and value.strip():
                     tickers.add(value.strip())
@@ -605,6 +612,10 @@ class Phase32PredictorSourceAcquisition:
                 "sec_source_record_sha256": sec.get("source_record_sha256"),
                 "massive_text_sha256": _sha256_text(_canonical_json(text_row)),
                 "index_row_count": len(index_rows),
+                "issuer_index_row_count": len(issuer_index_rows),
+                "co_filer_index_row_count": len(index_rows) - len(issuer_index_rows),
+                "index_filer_ciks": sorted(index_filer_ciks),
+                "co_filer_index_ciks": co_filer_index_ciks,
                 "disclosure_row_count": len(disclosure_rows),
             }
             source_counts[stage] += 1
