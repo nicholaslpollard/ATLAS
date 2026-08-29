@@ -59,16 +59,28 @@ Target-machine execution failed these checks:
 
 No scientific/trading authority was granted.
 
+The first local diagnostic established two important source-contract facts without reading market outcomes:
+
+- sampled nonexact `supporting_text` rows had complete unique-token coverage inside Massive `items_text`, indicating a source-scope/representation issue rather than unsupported disclosure text;
+- ticker failures include both documented empty mappings and a historical-symbol case (`SLGG` on the 2022 semantic/text records versus later `SLE` on the index record), so exact ticker equality cannot be assumed to prove issuer identity.
+
+Massive's supplied documentation is explicit that disclosure `supporting_text` is an excerpt from the filing, while 8-K Text `items_text` is parsed content from the core Item sections. Disclosure ticker arrays may also be empty when no ticker is mapped. These distinctions must be respected by any corrected contract.
+
 A separate contract defect was also identified: V1 encoded a January-2022 provider-history expectation and `2022-01-03` safe start that were not established by the supplied Massive endpoint documentation. The supplied docs state Plan History is **not applicable**. That history assumption is therefore rejected and must not propagate into a corrected contract.
 
 V1 is preserved as failed source-only evidence rather than deleted or rewritten.
 
 ## Exact next target
 
-Run the local-evidence diagnostic:
+Run the enhanced local-evidence diagnostic:
 
 `scripts/diagnose_phase32_semantic_failure.py`
 
-It performs no provider calls and reads no market outcomes. It reports the exact sampled ticker mismatches and supporting-text/items-text grounding failures so the root cause can be identified before any correction is designed.
+It performs no provider calls and reads no market outcomes. It now reports:
 
-Do not freeze hypotheses, inspect returns, or substitute another semantic method until this failure is diagnosed.
+- every retained probe-window's index/disclosure/overlap counts, including the previously observation-only 2021 window;
+- exact CIK identity across disclosure/index/text evidence for failing samples;
+- ticker mismatch class rather than treating every empty/current/historical mapping as the same failure;
+- ordered-token grounding coverage in addition to the rejected exact-substring test.
+
+This evidence determines the corrected semantic V2 contract. Do not freeze hypotheses, inspect returns, or substitute another semantic method before that diagnosis is complete.
