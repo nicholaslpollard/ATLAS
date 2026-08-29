@@ -1,12 +1,12 @@
 # Phase 32 — SEC 8-K Material Corporate-Event Alpha
 
-**Status:** ACTIVE — core source feasibility V2 is accepted; semantic V1 is retained `NOT ACCEPTED`; corrected semantic V2 is frozen and awaiting target-machine execution. Alpha hypotheses remain unfrozen, zero market outcomes are authorized, and Phase33 remains blocked.
+**Status:** ACTIVE — core source V2 and corrected semantic source V2 are accepted PASS. Semantic V1 remains retained `NOT ACCEPTED`. Alpha hypotheses remain unfrozen, zero market outcomes are authorized, and Phase33 remains blocked.
 
 **Source foundation:** Phase31 PR #35 merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
 ## Accepted core source progression
 
-V1 archive/header acquisition remains retained as failed source-history evidence. Six attempts failed without market-outcome reads. ATLAS diagnosed that path and formally versioned the source contract before moving to official structured SEC submissions metadata.
+V1 archive/header acquisition remains retained as failed source-history evidence. Six attempts failed without market-outcome reads. ATLAS diagnosed that path and formally versioned the replacement rather than weakening validation.
 
 Core V2 contract:
 
@@ -22,24 +22,15 @@ Accepted discovery remains Massive `/stocks/filings/vX/index?form_type=8-K`. Aut
 
 `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
 
-## Semantic V1 — retained NOT ACCEPTED
+## Semantic source progression
 
-V1 fingerprint:
+Semantic V1 fingerprint:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-V1 failed exact ticker equality and exact normalized `supporting_text` substring-in-`items_text` checks. The target-machine diagnostics established the root cause without any return read:
+V1 remains `NOT ACCEPTED`. It failed exact ticker equality and exact normalized `supporting_text` substring-in-`items_text` checks. Diagnosis showed these were invalid source-scope invariants, not reasons to weaken provenance. Filing identity is accession+CIK+SEC reconciliation; ticker is mapping metadata; `items_text` is a narrower core-Items projection. V1 remains immutable evidence.
 
-- accession+CIK+official SEC metadata reconcile even when ticker mappings are empty or historically different;
-- provider ticker fields are mapping metadata, not stable filing identity;
-- disclosure `supporting_text` refers to the filing, while Massive 8-K `items_text` is the narrower core-Items projection;
-- the August 2021 research-boundary probe already contains 1,475 semantic disclosure rows with 1,475 exact original-8-K accession overlaps, invalidating V1's inherited January-2022 cutoff for this study.
-
-V1 remains preserved and is not weakened or rewritten.
-
-## Corrected semantic V2 — frozen
-
-Contract:
+Corrected semantic V2 contract:
 
 `phase32-semantic-feasibility-v2-source-scope-aware-no-market-outcomes`
 
@@ -51,37 +42,59 @@ Semantic research boundary:
 
 `2021-08-16`
 
-Sources:
+Target-machine semantic V2 result: **PASS**.
 
-- `/stocks/filings/8-K/vX/disclosures`
-- `/stocks/filings/8-K/vX/text`
-- `/stocks/taxonomies/vX/disclosures`
-- `/stocks/filings/vX/index?form_type=8-K`
-- official `data.sec.gov/submissions`
+Accepted evidence:
 
-V2 validates source/provenance only. Filing identity is exact accession + zero-padded issuer CIK + filing date + independent SEC reconciliation. Ticker mappings are preserved verbatim and classified but have no filing-identity authority. `supporting_text` must be nonblank and taxonomy-linked to the exact filing; `items_text` remains required but lexical comparison is diagnostic because it represents a narrower source scope.
+- taxonomy: 119 rows, version 1.0;
+- all five retained windows contain semantic disclosure rows with complete exact original-8-K accession overlap;
+- 7,468 disclosure rows total;
+- 30 sampled accessions, 30 Massive Text records, and 30 official SEC records;
+- ticker relations: 22 direct disclosure/index overlaps, 2 disclosure/text historical-map agreements with differing index ticker, and 6 fully unmapped;
+- zero target outcomes, zero protected candidates, zero protected returns, and zero provider/broker/order/PAPER/LIVE authority.
 
-V2 requires empirical coverage at all five retained windows beginning `2021-08-16`, samples at most six exact original-8-K accessions per window, writes new immutable `/v2` evidence, and reads zero market outcomes.
+Full source contract and retained V1 diagnosis are in `docs/phase32_semantic_source_qualification.md`.
 
-Full source contract: `docs/phase32_semantic_source_qualification.md`.
+## Exact current action — source/taxonomy census
 
-Exact target:
+Before freezing hypotheses, run:
 
-`scripts/validate_phase32_semantic_v2.py`
+`scripts/run_phase32_semantic_v2_source_census.py`
 
-`scripts/run_phase32_semantic_feasibility_v2.py`
+This is a deterministic local-only census over the immutable accepted V2 evidence. It:
 
-## What remains unfrozen
+- makes zero network calls;
+- verifies accepted V2 report/fingerprint and zero-outcome state;
+- hash-checks the retained taxonomy and disclosure files;
+- aggregates disclosure rows, unique accessions, unique CIKs, windows present, and mapped/unmapped ticker rows by primary, secondary, and tertiary taxonomy category;
+- outputs the full 119-row taxonomy with non-performance probe-window counts;
+- reads no stock/SPY/options outcomes.
 
-No Phase32 alpha candidate exists. No event direction, horizon, threshold, ranking, or return-based selection is authorized.
+The census is source feasibility evidence only. Category counts cannot establish alpha and cannot be used as performance evidence.
 
-Only after semantic V2 passes may ATLAS use source/taxonomy evidence to freeze the finite hypothesis family, event aggregation/contradiction/amendment rules, point-in-time instrument identity, decision session, horizons, benchmark, costs, sample/concentration gates, dependence-aware inference, multiplicity, robustness, development/internal/protected chronology and purge, winner/finalist rules, and finalist-only protected read.
+## What must be frozen before any return read
 
-Ticker-to-market-data resolution is explicitly **not** solved by the semantic source gate; it must be frozen as a point-in-time identity rule before outcomes are linked.
+After the census passes, ATLAS must freeze one complete scientific contract containing:
+
+1. a finite economically motivated event hypothesis family and predeclared LONG/SHORT direction for each candidate;
+2. event aggregation, duplicate, contradiction, multi-disclosure, and amendment treatment;
+3. exact point-in-time issuer/instrument resolution from filing CIK/accession to the tradable security valid at the decision time;
+4. decision session using the accepted SEC acceptance-time rule;
+5. fixed outcome horizon(s) and exit convention;
+6. benchmark/hedging convention and requirement for economically positive unhedged performance where applicable;
+7. realistic transaction/slippage costs;
+8. mandatory minimum rows, sessions, unique issuers/tickers, and concentration limits;
+9. dependence-aware inference for clustered/overlapping outcomes;
+10. multiplicity/selection-bias correction across the entire frozen family;
+11. robustness requirements;
+12. development/internal/protected chronology and purge rules;
+13. winner, finalist, no-runner-up, and finalist-only protected-read rules.
+
+No development return may be inspected before this contract is fingerprinted and frozen.
 
 ## Authority boundary
 
-Allowed now: bounded read-only semantic V2 source calls, official SEC submissions reads, immutable local source/report writes, validators, and tests.
+Allowed now: immutable semantic V2 evidence, local source/taxonomy census, validators/tests, scientific-contract construction from source semantics, and documentation.
 
 Forbidden: stock/SPY/options outcomes, protected candidate/return reads, provider mutations, broker/account reads or writes, orders, PAPER submits, LIVE writes, frontend trading authority, automation writes, and automatic broker failover.
 
