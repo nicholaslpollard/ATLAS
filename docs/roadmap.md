@@ -83,6 +83,8 @@ Retained historical Phase31 rebaseline marker (preserved for accepted validator/
 
 Retained Phase31-era downstream marker: **Phase32 — Signal-to-Trade Construction**. This preserves the accepted Phase31 handoff record only; the current roadmap subsequently rebaselined SEC 8-K research as Phase32 and Signal-to-Trade as Phase33.
 
+Retained Phase31-era LIVE marker: **Phase38 — Controlled LIVE Activation**. This preserves the accepted Phase31 roadmap state only; the current roadmap subsequently inserted Phase38 LIVE readiness/hardening and moved controlled LIVE activation to Phase39.
+
 Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. Its four frozen candidates produced zero survivors/winners/finalists/support and zero protected reads. The master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 
 Validated alpha remains the blocker. Signal-to-trade construction is still forbidden.
