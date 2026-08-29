@@ -14,7 +14,7 @@ Accepted core V2 contract:
 
 Fingerprint:
 
-`978353878cfa10c98450a6e0abab2a6d2ff00e039f7d7f28a025112d3ed80`
+`978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
 Target-machine core V2 result: **PASS** with 6,048 original-8-K index rows, 5,272 ticker-linked rows, 48 official SEC records, 94 SEC item codes, zero SEC filing-date mismatches, and **zero market outcomes** read.
 
