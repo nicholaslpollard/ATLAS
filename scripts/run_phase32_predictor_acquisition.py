@@ -43,6 +43,14 @@ class _Phase32SemanticAcquisitionAdapter:
         return self.client.eight_k_text(cik=cik, filing_date=filing_date)
 
 
+def _print_progress(completed: int, total: int) -> None:
+    if total <= 0:
+        return
+    interval = max(1, total // 20)
+    if completed == 1 or completed == total or completed % interval == 0:
+        print(f"Phase32 progress: {completed} / {total} filing entities completed")
+
+
 def main() -> int:
     print("ATLAS Phase 32 — Full-History 8-K Predictor/Source Acquisition")
     print(f"Contract: {PHASE32_PREDICTOR_ACQUISITION_CONTRACT}")
@@ -66,6 +74,7 @@ def main() -> int:
             _Phase32SemanticAcquisitionAdapter(semantic_client),
             SECEDGARClient(),
             MassiveReferenceProvider(settings, client=rest),
+            progress_callback=_print_progress,
         ).run()
     except (Phase32PredictorAcquisitionError, ProviderError, OSError, ValueError) as exc:
         print("Phase 32 full-history predictor/source acquisition: NOT ACCEPTED")
