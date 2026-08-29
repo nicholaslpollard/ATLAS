@@ -42,6 +42,8 @@ One numbered phase is one acceptance gate:
 
 If an error occurs, ATLAS stops progression, identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. Material decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
 
+Long-running target-machine runners must provide lightweight terminal progress instead of appearing idle. Prefer a simple `x / total completed` indicator, optionally with percent complete; when a meaningful total is unavailable, report the current date/window/batch plus a completed count. Update at useful intervals without noisy per-record logging. Progress reporting is operational observability only and must never alter scientific logic, source evidence, chronology, acceptance criteria, or authority boundaries.
+
 ## Current state — 2026-08-29
 
 - Accepted foundation: **through Phase31**.
