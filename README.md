@@ -51,6 +51,16 @@ If an error occurs, ATLAS stops progression, identifies the root cause, implemen
 - **Active Phase32: SEC 8-K Material Corporate-Event Alpha.**
 - Active branch: `phase-32-sec-8k-material-event-alpha`.
 
+### Retained Phase31 feasibility provenance — historical only
+
+This block preserves the accepted Phase31-era handoff required by retained validators; it does not change the current active Phase32 state.
+
+- **Active Phase31: SEC Form-4 Insider-Transaction Alpha** was the historical active gate.
+- The source-quality repair handoff is retained in `docs/phase31_form4_source_quality_repair.md`.
+- Repair fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`.
+- Historical root cause: **Massive early-access/beta source-association/data-quality defect**.
+- The Phase31-era downstream roadmap extended through **Phase38**; later rebaselining moved controlled LIVE activation to current Phase39.
+
 ### Accepted Phase32 source stack
 
 Core V2 fingerprint:
