@@ -8,7 +8,7 @@ import re
 import time
 import zlib
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -28,6 +28,7 @@ SEC_EDGAR_REQUEST_TIMEOUT_SECONDS = 30.0
 SEC_EDGAR_MAX_ATTEMPTS = 4
 SEC_EDGAR_MAX_RESPONSE_BYTES = 8_000_000
 SEC_EDGAR_MAX_ARCHIVE_SHARDS_PER_LOOKUP = 2
+SEC_EDGAR_DECLARED_SHARD_BOUNDARY_TOLERANCE_DAYS = 1
 
 _ACCESSION_FORMAT_RE = re.compile(r"^\d{10}-\d{2}-\d{6}$")
 _CONTACT_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -58,6 +59,19 @@ def _validate_accession(accession_number: str) -> str:
     text = accession_number.strip()
     if not _ACCESSION_FORMAT_RE.fullmatch(text):
         raise ProviderError(f"SEC accession_number has unexpected format: {accession_number!r}")
+    return text
+
+
+def _validate_filing_date(value: object, *, field: str = "filingDate") -> str:
+    text = str(value or "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        raise ProviderError(f"SEC submissions {field} is invalid: {text!r}")
+    try:
+        parsed = date.fromisoformat(text)
+    except ValueError as exc:
+        raise ProviderError(f"SEC submissions {field} is invalid: {text!r}") from exc
+    if parsed.isoformat() != text:
+        raise ProviderError(f"SEC submissions {field} is invalid: {text!r}")
     return text
 
 
@@ -162,6 +176,7 @@ def _record_from_row(
     row: dict[str, object],
     issuer_cik: str,
     expected_accession: str,
+    expected_filing_date: str,
     source_url: str,
 ) -> SECSubmissionRecord:
     accession = _validate_accession(str(row.get("accessionNumber") or ""))
@@ -172,9 +187,12 @@ def _record_from_row(
         raise ProviderError(
             f"SEC submissions accession {accession} is not original 8-K metadata: form={form!r}"
         )
-    filing_date = str(row.get("filingDate") or "").strip()
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", filing_date):
-        raise ProviderError(f"SEC submissions filingDate is invalid: {filing_date!r}")
+    filing_date = _validate_filing_date(row.get("filingDate"))
+    if filing_date != expected_filing_date:
+        raise ProviderError(
+            f"SEC submissions accession {accession} filingDate does not match requested date: "
+            f"{filing_date} != {expected_filing_date}"
+        )
     acceptance_datetime = _parse_acceptance(row.get("acceptanceDateTime"))
     item_codes = _split_items(row.get("items"))
     primary_document = str(row.get("primaryDocument") or "").strip() or None
@@ -201,6 +219,66 @@ def _record_from_row(
         source_record_json=source_record_json,
         source_record_sha256=hashlib.sha256(source_record_json.encode("utf-8")).hexdigest(),
     )
+
+
+def _declared_shard_distance_days(item: dict[str, object], requested: date) -> int | None:
+    start_text = str(item.get("filingFrom") or "").strip()
+    end_text = str(item.get("filingTo") or "").strip()
+    if not start_text or not end_text:
+        return None
+    try:
+        start = date.fromisoformat(start_text)
+        end = date.fromisoformat(end_text)
+    except ValueError:
+        return None
+    if start > end:
+        return None
+    if start <= requested <= end:
+        return 0
+    if requested < start:
+        return (start - requested).days
+    return (requested - end).days
+
+
+def _select_declared_shard_candidates(
+    files: object, *, filing_date: str
+) -> tuple[dict[str, object], ...]:
+    """Select only SEC-declared shards under the bounded rollover rule.
+
+    Exact date coverage remains authoritative. A one-calendar-day adjacent shard is
+    eligible only when no declared shard covers the requested date. This narrow
+    exception is evidence-backed by an observed SEC root/shard rollover mismatch;
+    it never guesses a shard URL and exact accession/date/form validation still
+    occurs after the shard is read.
+    """
+
+    expected_date = _validate_filing_date(filing_date, field="requested filing date")
+    requested = date.fromisoformat(expected_date)
+    declared = [dict(item) for item in files if isinstance(item, dict)] if isinstance(files, list) else []
+
+    with_distance: list[tuple[int, str, dict[str, object]]] = []
+    for item in declared:
+        distance = _declared_shard_distance_days(item, requested)
+        if distance is None:
+            continue
+        name = _validate_shard_name(item.get("name"))
+        with_distance.append((distance, name, item))
+
+    covering = [entry for entry in with_distance if entry[0] == 0]
+    if covering:
+        selected = covering
+    else:
+        selected = [
+            entry
+            for entry in with_distance
+            if entry[0] == SEC_EDGAR_DECLARED_SHARD_BOUNDARY_TOLERANCE_DAYS
+        ]
+
+    if len(selected) > SEC_EDGAR_MAX_ARCHIVE_SHARDS_PER_LOOKUP:
+        raise ProviderError("SEC submissions archive lookup exceeded bounded shard count")
+
+    selected.sort(key=lambda entry: (entry[0], entry[1]))
+    return tuple(entry[2] for entry in selected)
 
 
 def _decode_content(raw: bytes, content_encoding: str | None) -> bytes:
@@ -327,6 +405,7 @@ class SECEDGARClient:
     ) -> SECSubmissionRecord:
         issuer_cik = _normalize_cik(cik)
         expected_accession = _validate_accession(accession_number)
+        expected_filing_date = _validate_filing_date(filing_date, field="requested filing date")
         root_url = sec_company_submissions_url(cik=issuer_cik)
         root, _ = self.get_json(root_url)
         filings = root.get("filings")
@@ -339,27 +418,18 @@ class SECEDGARClient:
                 row=row,
                 issuer_cik=issuer_cik,
                 expected_accession=expected_accession,
+                expected_filing_date=expected_filing_date,
                 source_url=root_url,
             )
 
-        files = filings.get("files")
-        if not isinstance(files, list):
-            files = []
-        candidates: list[dict[str, object]] = []
-        for item in files:
-            if not isinstance(item, dict):
-                continue
-            start = str(item.get("filingFrom") or "")
-            end = str(item.get("filingTo") or "")
-            if start and end and start <= filing_date <= end:
-                candidates.append(item)
+        candidates = _select_declared_shard_candidates(
+            filings.get("files"), filing_date=expected_filing_date
+        )
         if not candidates:
             raise ProviderError(
-                f"SEC submissions metadata does not cover requested accession/date: "
-                f"{expected_accession} / {filing_date}"
+                f"SEC submissions metadata does not cover requested accession/date within the "
+                f"bounded declared-shard rollover rule: {expected_accession} / {expected_filing_date}"
             )
-        if len(candidates) > SEC_EDGAR_MAX_ARCHIVE_SHARDS_PER_LOOKUP:
-            raise ProviderError("SEC submissions archive lookup exceeded bounded shard count")
         for item in candidates:
             shard_url = sec_submission_shard_url(item.get("name"))
             shard, _ = self.get_json(shard_url)
@@ -371,6 +441,7 @@ class SECEDGARClient:
                     row=row,
                     issuer_cik=issuer_cik,
                     expected_accession=expected_accession,
+                    expected_filing_date=expected_filing_date,
                     source_url=shard_url,
                 )
         raise ProviderError(
