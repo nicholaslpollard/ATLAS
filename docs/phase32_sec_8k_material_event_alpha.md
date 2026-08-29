@@ -1,18 +1,18 @@
 # Phase 32 — SEC 8-K Material Corporate-Event Alpha
 
-**Status:** ACTIVE — V2 core source feasibility accepted; semantic 8-K source qualification is now active. Alpha hypotheses remain unfrozen, zero market outcomes are authorized, and Phase33 signal-to-trade remains blocked.
+**Status:** ACTIVE — V2 core source feasibility accepted; semantic V1 is NOT ACCEPTED and Phase32 is stopped for root-cause diagnosis. Alpha hypotheses remain unfrozen, zero market outcomes are authorized, and Phase33 remains blocked.
 
 **Source foundation:** Phase31 PR #35 merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
-## Phase32 source progression
+## Accepted core source progression
 
-V1 archive/header acquisition remains retained as failed source-history evidence. Six attempts failed without reading market outcomes. Those failures were not bypassed silently: ATLAS diagnosed the presentation/archive path and then formally versioned the source contract before changing to official structured SEC submissions metadata.
+V1 archive/header acquisition remains retained as failed source-history evidence. Six attempts failed without market-outcome reads. ATLAS diagnosed that path and formally versioned the source contract before moving to official structured SEC submissions metadata.
 
 V2 contract:
 
 `phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
 
-Frozen V2 fingerprint:
+Fingerprint:
 
 `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
 
@@ -24,73 +24,60 @@ Retained V2 totals:
 - ticker-linked rows: **5,272**
 - sampled SEC records: **48**
 - sampled SEC item codes: **94**
-- successful Massive pages: **4**
 - SEC filing-date mismatches versus Massive: **0**
 - target/protected outcome reads: **0 / 0**
-- provider/broker/order/PAPER/LIVE writes: **0**
 
-The two acceptance-local-date versus filing-date differences are informational only. Exact SEC filing dates reconciled in all 48 samples; exact SEC acceptance timestamps remain the authoritative timing input.
-
-## Accepted core source boundary
-
-Massive discovery:
-
-`MassiveRESTClient -> GET /stocks/filings/vX/index`
-
-with original `8-K`, filing-date windows, `filing_date.asc`, limit 10000, and deterministic pagination.
-
-Authoritative SEC metadata:
-
-`https://data.sec.gov/submissions/CIK##########.json`
-
-For older filings absent from `filings.recent`, ATLAS may follow only SEC-declared `filings.files` historical JSON shards whose `filingFrom..filingTo` range contains the requested Massive filing date, bounded to at most two candidate shards per lookup.
-
-Every sampled filing must reconcile exact accession, exact original `8-K` form, SEC filing date equal to Massive filing date, nonempty `acceptanceDateTime`, structured SEC item codes, issuer CIK provenance, and primary-document metadata when supplied.
-
-Conservative public-availability rule remains:
+Accepted discovery remains Massive `/stocks/filings/vX/index?form_type=8-K`. Authoritative metadata remains official `data.sec.gov/submissions`, with the conservative timing rule:
 
 `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`
 
-Same-session entry remains forbidden even for intraday acceptance.
+## Semantic source V1 — NOT ACCEPTED
 
-## Active semantic source qualification
-
-SEC item codes are legal filing categories and may combine economically different events. Before freezing Phase32 hypotheses, ATLAS is now qualifying Massive's semantic sources:
+Semantic sources under evaluation:
 
 - `/stocks/filings/8-K/vX/disclosures`
 - `/stocks/filings/8-K/vX/text`
 - `/stocks/taxonomies/vX/disclosures`
 
-Massive's formal endpoint documentation says Plan History is not applicable, while its July 22, 2026 provider article states disclosure coverage begins in January 2022. ATLAS therefore verifies history empirically and freezes a conservative semantic-study start of `2022-01-03`; it does not infer older authority from provider marketing or later backfills.
-
-Semantic contract:
+V1 contract:
 
 `phase32-semantic-feasibility-v1-massive-8k-disclosures-text-no-market-outcomes`
 
-Frozen semantic fingerprint:
+Fingerprint:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-The five source-only probe windows are 2021 research boundary, January 2022 published-history boundary, 2023 mid-history, 2026 development boundary, and 2026 protected boundary. Covered windows sample at most six exact original-8-K accessions.
+Target-machine V1 returned **NOT ACCEPTED** because:
 
-The gate requires taxonomy membership, provider-native ticker alignment, exact original-8-K overlap, supporting-text grounding in parsed 8-K Item text, exact SEC accession/form/filing-date/acceptance reconciliation, immutable evidence, and zero target/protected outcome reads.
+- `all_sampled_tickers_align` failed;
+- `all_sampled_supporting_text_is_grounded` failed.
 
-Full contract: `docs/phase32_semantic_source_qualification.md`.
+V1 read zero target/protected market outcomes and grants no authority.
 
-Runner: `scripts/run_phase32_semantic_feasibility.py`.
+A second source-contract defect was identified after the run: V1 encoded a January-2022 provider-history expectation and `2022-01-03` safe-history start that were not established by the Massive endpoint documentation supplied during Phase32. The supplied docs state Plan History is **not applicable**. That boundary is rejected and may not be propagated into a corrected contract without empirical source evidence.
+
+The failed V1 remains preserved as source-only evidence; it is not deleted or rewritten.
+
+## Exact current action
+
+Run:
+
+`scripts/diagnose_phase32_semantic_failure.py`
+
+This diagnostic uses only the immutable local V1 source artifacts. It performs no provider calls and no market-outcome reads. It exposes the exact sampled ticker discrepancies and supporting-text/items-text mismatches so ATLAS can determine whether the failure is an implementation error, documented field-semantic difference, provider inconsistency, or genuine source infeasibility.
+
+No ticker/grounding rule may be weakened before that cause is established.
 
 ## What remains unfrozen
 
-No Phase32 alpha candidate exists yet. No event direction, horizon, threshold, ranking, or return-based selection is authorized.
+No Phase32 alpha candidate exists. No event direction, horizon, threshold, ranking, or return-based selection is authorized.
 
-If semantic source qualification passes, ATLAS will use only the accepted source/taxonomy evidence to freeze a finite economically coherent hypothesis family plus event aggregation/contradiction/amendment rules, exact PIT identity, decision session, horizons, benchmark, costs, sample/concentration gates, dependence-aware inference, multiplicity, robustness, development/internal/protected chronology and purge, winner/finalist rules, and finalist-only protected reads before any governed performance read.
-
-If the semantic gate fails, Phase32 stops. Diagnose and repair the actual source/provenance cause first; do not weaken validation or substitute a workaround. A different source method is considered only after the intended method is shown infeasible.
+Only after semantic-source provenance is correctly resolved may ATLAS freeze a finite hypothesis family, aggregation/contradiction/amendment rules, exact PIT identity, decision session, horizons, benchmark, costs, sample/concentration gates, dependence-aware inference, multiplicity, robustness, development/internal/protected chronology and purge, winner/finalist rules, and finalist-only protected reads.
 
 ## Authority boundary
 
-Allowed now: bounded read-only Massive index/disclosure/text/taxonomy calls, bounded official SEC submissions reads, and immutable local source/report writes.
+Allowed now: local source-evidence diagnosis and, after root cause is known, the minimum source-only correction needed to retest provenance.
 
 Forbidden: stock/SPY/options outcomes, protected candidate/return reads, provider mutations, broker/account reads or writes, orders, PAPER submits, LIVE writes, frontend trading authority, automation writes, and automatic broker failover.
 
-A source PASS establishes only scientific-source suitability. It does not establish alpha, satisfy Phase33 entry, or grant trading authority.
+Phase33 signal-to-trade remains blocked.
