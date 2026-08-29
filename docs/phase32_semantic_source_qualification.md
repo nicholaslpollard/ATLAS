@@ -16,6 +16,11 @@ V1 fingerprint:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
+Retained failed checks:
+
+- `all_sampled_tickers_align`;
+- `all_sampled_supporting_text_is_grounded`.
+
 Target-machine V1 returned `NOT ACCEPTED` on exact ticker equality and exact normalized `supporting_text` substring-in-`items_text` checks. Root-cause diagnosis established that those were invalid source-scope invariants:
 
 - filing identity is exact accession + zero-padded issuer CIK + filing date + official SEC reconciliation;
