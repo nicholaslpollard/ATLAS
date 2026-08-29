@@ -50,7 +50,7 @@ class FakeIndexClient:
                     "filing_url": "https://www.sec.gov/Archives/edgar/data/1/example.txt",
                     "form_type": "8-K",
                     "issuer_name": "Example Corp",
-                    "ticker": "NEW",
+                    "ticker": None if start_date.year == 2023 else "NEW",
                 },
             ),
             page_count=1,
