@@ -1,6 +1,6 @@
 # Phase 32 — Semantic 8-K Source Qualification
 
-**Status:** ACTIVE — semantic V1 is retained `NOT ACCEPTED`; corrected semantic V2 is frozen and awaits target-machine execution. No alpha hypothesis is frozen and no market outcome is authorized.
+**Status:** ACCEPTED PASS. Semantic V1 remains retained `NOT ACCEPTED`; corrected semantic V2 passed on the target machine. No alpha hypothesis is frozen and no market outcome has been read.
 
 ## Accepted core source foundation
 
@@ -16,106 +16,89 @@ V1 fingerprint:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-Target-machine V1 returned `NOT ACCEPTED` on:
+Target-machine V1 returned `NOT ACCEPTED` on exact ticker equality and exact normalized `supporting_text` substring-in-`items_text` checks. Root-cause diagnosis established that those were invalid source-scope invariants:
 
-- `all_sampled_tickers_align`;
-- `all_sampled_supporting_text_is_grounded`.
+- filing identity is exact accession + zero-padded issuer CIK + filing date + official SEC reconciliation;
+- ticker fields are mapping metadata and may be empty or historically different;
+- disclosure `supporting_text` is tied to the filing, while 8-K `items_text` is the narrower core-Items projection;
+- retained August 2021 evidence contained 1,475 disclosure rows with 1,475 exact original-8-K accession overlaps, so V1's January-2022 cutoff was rejected for this study.
 
-The failure was diagnosed before any workaround or return read.
+V1 remains immutable failed evidence and is not rewritten by V2.
 
-### Root cause 1 — wrong ticker invariant
-
-V1 treated exact cross-endpoint ticker equality as filing identity. That is not a valid invariant:
-
-- disclosure ticker arrays may be empty when the provider has no mapped ticker;
-- EDGAR index/text/disclosure ticker metadata can reflect different mapping states;
-- historical symbol changes can make two correct records for the same accession+CIK carry different symbols.
-
-The retained diagnostic showed four fully unmapped samples and one historical mapping difference where disclosure/text agreed on `SLGG` while the index carried `SLE`, yet exact CIK and SEC filing identity reconciled.
-
-Corrected rule: **filing identity is exact accession + zero-padded issuer CIK + filing date + official SEC reconciliation. Ticker fields are mapping metadata only.** Empty or historically different ticker mappings are recorded, never silently normalized, and cannot by themselves establish or break filing identity. Any later market-outcome linkage must use a separately frozen point-in-time instrument-resolution rule.
-
-### Root cause 2 — wrong text-scope invariant
-
-V1 required every normalized `supporting_text` value to be an exact substring of Massive `items_text`.
-
-That compared different source scopes. Massive describes:
-
-- `supporting_text` as the filing excerpt used for the semantic classification;
-- 8-K `items_text` as parsed text from the core Items sections.
-
-The retained diagnostic confirmed the mismatch was usually source-scope/formatting rather than unrelated text: ten of eleven nonexact supporting rows preserved every normalized token in filing order within `items_text`; one row had 0.228 ordered coverage, consistent with the fact that the full filing can contain material outside the core Items projection. Exact substring equality against `items_text` is therefore not a valid full-filing grounding test.
-
-Corrected rule: **supporting text must be nonblank and attached to the exact accession/CIK/date whose categories exist in the versioned taxonomy.** `items_text` remains mandatory for the sampled filing, but lexical comparison is retained as a diagnostic only and grants no pass/fail authority.
-
-### Root cause 3 — unsupported history cutoff
-
-V1 encoded a January-2022 semantic start. The retained source evidence itself contradicts using that as the Phase32 research boundary: the `2021-08-16..2021-08-20` probe contained **1,475** disclosure rows, all **1,475** overlapping exact original-8-K accessions.
-
-V2 therefore does not inherit a marketing-date cutoff. It requires empirical semantic coverage beginning at the existing Phase32 research boundary:
-
-`2021-08-16`
-
-This authorizes no claim about coverage before that date.
-
-## Frozen semantic V2 contract
+## Accepted semantic V2 contract
 
 Contract version:
 
 `phase32-semantic-feasibility-v2-source-scope-aware-no-market-outcomes`
 
-Frozen fingerprint:
+Accepted fingerprint:
 
 `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`
 
-Frozen probe windows:
+Semantic research boundary:
 
-1. research boundary: `2021-08-16..2021-08-20`;
-2. early history: `2022-01-03..2022-01-07`;
-3. mid history: `2023-08-14..2023-08-18`;
-4. development boundary: `2026-05-04..2026-05-08`;
-5. protected boundary: `2026-08-07..2026-08-11`.
+`2021-08-16`
 
-Every window is covered. Each deterministically samples at most six unique disclosure-bearing original-8-K accessions.
+Frozen identity rule:
 
-## V2 acceptance checks
+`EXACT_ACCESSION_PLUS_ZERO_PADDED_CIK_PLUS_SEC_RECONCILIATION`
 
-Without reading stock/SPY/options outcomes, V2 must prove:
+Frozen ticker rule:
 
-- taxonomy is nonempty and versioned;
-- every probe window contains semantic disclosure rows;
-- every disclosure row in each probe window overlaps an exact original-8-K accession from the Massive EDGAR index;
-- every probe window produces deterministic samples;
-- sampled disclosure/index/text records reconcile exact accession, zero-padded issuer CIK, and filing date;
-- every sampled accession has exactly one matching original-8-K Massive Text record for the queried CIK/date;
-- every sampled semantic category exists in the fetched taxonomy;
-- every sampled `supporting_text` is nonblank;
-- official SEC submissions metadata independently reconciles accession, original `8-K`, filing date, issuer CIK, and nonempty acceptance timestamp;
-- ticker relations are recorded but ticker is never used as filing identity;
-- `items_text` lexical diagnostics are preserved but explicitly have no acceptance authority;
-- V2 evidence is written to a new immutable `v2` evidence namespace; V1 is not rewritten;
-- target outcomes, protected candidates, protected returns, provider writes, broker reads/writes, orders, PAPER, LIVE, automation writes, and automatic broker failover remain zero/disabled.
+`MAPPING_METADATA_ONLY_NOT_IDENTITY_EMPTY_OR_HISTORICAL_DIFFERENCE_ALLOWED_AND_RECORDED`
+
+Frozen supporting-text rule:
+
+`NONBLANK_SUPPORTING_TEXT_LINKED_TO_EXACT_ACCESSION_CIK_DATE_AND_TAXONOMY;ITEMS_TEXT_SCOPE_CHECK_DIAGNOSTIC_ONLY`
+
+## Target-machine PASS evidence
+
+Semantic V2 passed with:
+
+- taxonomy rows: **119**;
+- taxonomy versions: **1.0** only;
+- taxonomy SHA-256: `b1bcb0037d2d17a36f1b72b8e260b32a611a81b36b831af5c5a6423e660d28a6`;
+- research boundary `2021-08-16..2021-08-20`: **1,218** index rows, **1,475** disclosures, **1,475** exact overlaps, 6 samples;
+- early history `2022-01-03..2022-01-07`: **1,177 / 1,571 / 1,571**, 6 samples;
+- mid history `2023-08-14..2023-08-18`: **1,305 / 1,351 / 1,351**, 6 samples;
+- development boundary `2026-05-04..2026-05-08`: **2,579 / 2,122 / 2,122**, 6 samples;
+- protected boundary `2026-08-07..2026-08-11`: **946 / 949 / 949**, 6 samples;
+- total disclosure rows: **7,468**;
+- sampled accessions: **30**;
+- Massive Text records fetched: **30**;
+- official SEC records fetched/reconciled: **30**;
+- ticker relations: **22** `DISCLOSURE_INDEX_OVERLAP`, **2** `DISCLOSURE_TEXT_AGREE_INDEX_DIFFERS`, **6** `ALL_UNMAPPED`;
+- `items_text` diagnostics: **48** disclosure rows checked, **36** exact normalized substrings, minimum ordered-token coverage **0.22784810126582278**, mean **0.9839135021097046`; this remains diagnostic only;
+- target outcome rows read: **0**;
+- protected candidate rows read: **0**;
+- protected return rows read: **0**;
+- provider writes / broker reads / broker writes / orders / PAPER / LIVE: **0 / 0 / 0 / 0 / 0 / 0**.
+
+This PASS establishes that the semantic source is suitable for defining a finite Phase32 predictor family. It does **not** establish alpha, consume the holdout, satisfy Phase33, or authorize trading.
+
+## Exact next target — source/taxonomy census
+
+Before any hypothesis is frozen, ATLAS performs one deterministic census over the immutable accepted V2 evidence:
+
+`scripts/run_phase32_semantic_v2_source_census.py`
+
+The census:
+
+- performs **zero network calls**;
+- hash-checks the accepted V2 taxonomy/disclosure artifacts against the accepted report;
+- reads **zero stock/SPY/options outcomes**;
+- reports taxonomy structure plus disclosure/accession/CIK coverage by primary, secondary, and tertiary category;
+- records mapped versus unmapped ticker rows without treating ticker as issuer identity;
+- exists only to support a finite, economically coherent hypothesis freeze and mandatory feasibility/sample rules.
+
+After the census passes, ATLAS must freeze the complete scientific contract before any development return read: finite hypotheses and directions, event aggregation/contradiction/amendment rules, point-in-time instrument resolution, decision session, horizons, benchmark, costs, sample/concentration gates, dependence-aware inference, multiplicity, robustness, chronology/purge, winner/finalist/no-runner-up rules, and finalist-only protected evidence.
 
 ## Authority boundary
 
-A V2 PASS would establish only that the semantic source is suitable for defining the finite Phase32 predictor family. It would **not** establish alpha, open the holdout, satisfy Phase33, or authorize trading.
+Allowed now: immutable local semantic V2 source evidence, source/taxonomy census, validators, tests, and documentation.
 
-After a V2 PASS, ATLAS may use source/taxonomy evidence only to freeze the complete Phase32 scientific contract before any development return read. Point-in-time instrument/ticker resolution must be explicitly frozen in that contract because ticker metadata is not filing identity.
+Forbidden: stock/SPY/options outcomes, protected candidate/return reads, provider mutations, broker/account reads or writes, orders, PAPER submits, LIVE writes, frontend trading authority, automation writes, and automatic broker failover.
 
 ## Failure rule
 
-Any V2 failure stops progression. Diagnose and repair the actual source/provenance defect first. Do not weaken accession, CIK, SEC, chronology, taxonomy, immutability, or authority checks to force PASS.
-
-## Exact target
-
-Validator:
-
-`scripts/validate_phase32_semantic_v2.py`
-
-Runner:
-
-`scripts/run_phase32_semantic_feasibility_v2.py`
-
-Expected fingerprint:
-
-`eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`
+Any census or subsequent contract-freeze defect stops progression. Diagnose and repair the actual cause first. Do not weaken source identity, chronology, taxonomy, immutability, sample rules, multiplicity, protected evidence, or authority to obtain PASS.
