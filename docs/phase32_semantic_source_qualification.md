@@ -25,7 +25,7 @@ Root-cause diagnosis established that exact cross-endpoint ticker equality and e
 
 The supplied Massive endpoint documentation states: Plan History is **not applicable** to the endpoint. V1's January-2022 cutoff was rejected after retained August-2021 semantic evidence showed 1,475 exact original-8-K disclosure overlaps. V1 remains immutable failed evidence and is not rewritten by V2.
 
-## Accepted semantic V2
+## Semantic V2 — ACCEPTED PASS
 
 Contract:
 
@@ -54,6 +54,10 @@ Contract:
 
 `phase32-semantic-v2-source-census-v1-no-market-outcomes`
 
+Accepted local runner:
+
+`scripts/run_phase32_semantic_v2_source_census.py`
+
 Target-machine census PASS:
 
 - taxonomy rows: **119**;
@@ -65,7 +69,7 @@ Target-machine census PASS:
 - unmapped ticker rows: **1,237**;
 - target/protected outcome rows read: **0 / 0**.
 
-The census was local-only, hash-checked accepted V2 evidence, made zero network/provider calls, and contained no performance measure. It was used only to establish source-semantic feasibility for a finite hypothesis family.
+The census was local-only, hash-checked accepted V2 evidence, made **zero network calls**, and contained no performance measure. It was used only to establish source-semantic feasibility for a finite hypothesis family. **No development return** was read before, during, or because of the census.
 
 The five frozen families had non-performance probe-census row support of 433 (`equity_issuance_short`), 106 (`share_repurchase_long`), 53 (`financial_integrity_adverse_short`), 126 (`listing_distress_short`), and 64 (`solvency_distress_short`). These counts are not alpha rankings.
 
