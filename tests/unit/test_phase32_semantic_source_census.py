@@ -25,8 +25,8 @@ class FakeSettings:
         return self.root / value
 
 
-def _sha(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+def _sha_path(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _write_fixture(root: Path) -> FakeSettings:
@@ -56,7 +56,8 @@ def _write_fixture(root: Path) -> FakeSettings:
         json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
         for row in taxonomy_rows
     )
-    (provider / "taxonomy.jsonl").write_text(taxonomy_text, encoding="utf-8")
+    taxonomy_path = provider / "taxonomy.jsonl"
+    taxonomy_path.write_text(taxonomy_text, encoding="utf-8")
 
     disclosure_rows = [
         {
@@ -86,7 +87,7 @@ def _write_fixture(root: Path) -> FakeSettings:
     source_report = {
         "phase32_semantic_v2_fingerprint": PHASE32_SEMANTIC_V2_ACCEPTED_FINGERPRINT,
         "pass": True,
-        "taxonomy_sha256": _sha(taxonomy_text),
+        "taxonomy_sha256": _sha_path(taxonomy_path),
         "taxonomy_versions": ["1.0"],
         "total_disclosure_rows": 2,
         "target_outcome_rows_read": 0,
@@ -103,7 +104,7 @@ def _write_fixture(root: Path) -> FakeSettings:
             {
                 "label": "research_boundary",
                 "disclosure_rows": 2,
-                "disclosure_sha256": _sha(disclosure_text),
+                "disclosure_sha256": _sha_path(disclosure_path),
             }
         ],
     }
