@@ -158,12 +158,22 @@ def main() -> int:
         "MassiveReferenceProvider",
         "MassiveRESTClient",
         "PHASE32_PREDICTOR_ACQUISITION_CONTRACT",
+        "PHASE32_FILING_ENTITY_KEY_RULE",
         "Phase32PredictorSourceAcquisition(",
         "_Phase32SemanticAcquisitionAdapter",
         "self.client.disclosures_window(start_date=start_date, end_date=end_date)",
         "_Phase32SemanticAcquisitionAdapter(semantic_client)",
+        "candidate_filing_entity_records",
+        "multi_filer_candidate_accessions",
+        "source_stage_filing_entity_counts",
+        "candidate_filing_entity_evidence_sha256",
     ):
-        _require(runner, token, "production source dependency wiring")
+        _require(runner, token, "production source dependency/report wiring")
+    _forbid(
+        runner,
+        "source_stage_accession_counts",
+        "stale accession-only report field",
+    )
 
     _require(runner, "Stock/SPY/options outcomes: FORBIDDEN / UNREAD", "runner blindness declaration")
     _require(runner, "rerun will reuse completed atomic source caches", "runner resumability declaration")
@@ -211,6 +221,7 @@ def main() -> int:
     print("- production semantic adapter explicitly binds disclosures_window to the acquisition disclosure port")
     print("- joint/multi-filer disclosure rows are partitioned by exact issuer CIK while filing date remains accession-wide")
     print("- co-filer disclosure/index provenance is preserved but cannot contaminate issuer ticker mapping")
+    print("- production runner consumes filing-entity report fields and rejects the stale accession-only summary key")
     print("- monthly/index/disclosure plus filing-entity SEC/Text and ticker/date reference caches are resumable")
     print("- stock/SPY/options outcomes and broker/order/PAPER/LIVE authority remain absent")
     return 0
