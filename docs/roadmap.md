@@ -1,6 +1,6 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-28 after Phase32 semantic census PASS and pre-performance scientific-contract freeze.**
+**Normative project source of truth. Re-synchronized: 2026-08-28 after Phase32 semantic census PASS and corrected pre-performance scientific-contract freeze.**
 
 Continuation precedence:
 
@@ -117,9 +117,11 @@ The local immutable census passed with 119 taxonomy rows, 112 observed taxonomy 
 
 ### Scientific contract — frozen before performance
 
-Policy fingerprint:
+Corrected policy fingerprint:
 
-`0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
+
+The earlier proposed `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88` fingerprint was superseded before acceptance and before any market-outcome read after a pre-performance identity audit aligned the contract with `instrument-identity-v4-no-issuer-level-medium-collapse`.
 
 Exactly **five hypotheses** are frozen:
 
@@ -129,9 +131,11 @@ Exactly **five hypotheses** are frozen:
 4. `listing_distress_short`;
 5. `solvency_distress_short`.
 
-The frozen policy fixes exact taxonomy triples and directions; SEC acceptance-time public availability; decision-open entry; five-session exit; PIT CIK-bound unique instrument resolution; SPY-relative and required unhedged outcomes; 0/5/10/25/50-bps cost grid with 10-bps primary and 25-bps stress; 5-session purge/block bootstrap; mandatory sample/concentration gates; global `HOLM_BONFERRONI_GLOBAL_5`; robustness; winner/finalist rules; no runner-up substitution; and finalist-only protected returns.
+The frozen policy fixes exact taxonomy triples and directions; SEC acceptance-time public availability; decision-open entry; five-session exit; SPY-relative and required unhedged outcomes; 0/5/10/25/50-bps cost grid with 10-bps primary and 25-bps stress; 5-session purge/block bootstrap; mandatory sample/concentration gates; global `HOLM_BONFERRONI_GLOBAL_5`; robustness; winner/finalist rules; no runner-up substitution; and finalist-only protected returns.
 
-The decision session is operationally the first XNYS session whose regular open timestamp is strictly after official SEC `acceptanceDateTime`. Current-universe backprojection, ticker alias backfill, and ticker+snapshot-only alpha identity are forbidden.
+PIT instrument resolution is bound to the accepted identity-v4 implementation: strong identity = Composite FIGI / Share Class FIGI; medium identity = **CIK + exact provider-native ticker + primary exchange + security type**. Only strong/medium identity is eligible, exactly one CIK-matching instrument must resolve, and ticker+snapshot fallback, current-universe backprojection, and ticker alias backfill are forbidden.
+
+The decision session is operationally the first XNYS session whose regular open timestamp is strictly after official SEC `acceptanceDateTime`.
 
 Development last signal is `2026-05-04`; outer embargo is `2026-05-05..2026-05-11`; protected starts `2026-05-12`; last protected signal with complete five-session outcome is `2026-08-04`; protected outcome end is `2026-08-11`.
 
@@ -139,9 +143,9 @@ No stock/SPY/options return was read to choose this family or methodology.
 
 ### Exact active target — full-history predictor/source acquisition
 
-The next permitted Phase32 operation is **full-history** source/predictor acquisition for `2021-08-16..2026-08-11` under the unchanged policy fingerprint.
+The next permitted Phase32 operation is **full-history** source/predictor acquisition for `2021-08-16..2026-08-11` under the unchanged corrected policy fingerprint.
 
-It must acquire/reconcile original Massive 8-K discovery, accepted semantic disclosure evidence, official SEC acceptance metadata, exact accession/CIK lineage, and point-in-time instrument resolution. It must read **zero market outcomes**.
+It must acquire/reconcile original Massive 8-K discovery, accepted semantic disclosure evidence, official SEC acceptance metadata, exact accession/CIK lineage, and point-in-time instrument resolution under identity-v4. It must read **zero market outcomes**.
 
 Only after this full-history predictor/source gate passes may development returns be opened under the exact frozen policy. Protected returns remain finalist-only.
 
