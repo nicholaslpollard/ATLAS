@@ -68,7 +68,7 @@ Semantic V2 passed with:
 - Massive Text records fetched: **30**;
 - official SEC records fetched/reconciled: **30**;
 - ticker relations: **22** `DISCLOSURE_INDEX_OVERLAP`, **2** `DISCLOSURE_TEXT_AGREE_INDEX_DIFFERS`, **6** `ALL_UNMAPPED`;
-- `items_text` diagnostics: **48** disclosure rows checked, **36** exact normalized substrings, minimum ordered-token coverage **0.22784810126582278**, mean **0.9839135021097046`; this remains diagnostic only;
+- `items_text` diagnostics: **48** disclosure rows checked, **36** exact normalized substrings, minimum ordered-token coverage **0.22784810126582278**, mean **0.9839135021097046**; this remains diagnostic only;
 - target outcome rows read: **0**;
 - protected candidate rows read: **0**;
 - protected return rows read: **0**;
