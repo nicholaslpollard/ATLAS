@@ -5,6 +5,9 @@ import exchange_calendars as xcals
 from packages.backtesting.phase32_policy import (
     PHASE32_CANDIDATES,
     PHASE32_DEVELOPMENT_LAST_SIGNAL,
+    PHASE32_INSTRUMENT_ALLOWED_IDENTITY_QUALITIES,
+    PHASE32_INSTRUMENT_IDENTITY_CONTRACT_VERSION,
+    PHASE32_INSTRUMENT_MEDIUM_IDENTITY_RULE,
     PHASE32_INTERNAL_PURGE_SESSIONS,
     PHASE32_MULTIPLE_TESTING_METHOD,
     PHASE32_OUTCOME_HORIZON_SESSIONS,
@@ -14,9 +17,10 @@ from packages.backtesting.phase32_policy import (
     phase32_candidate_ids,
     phase32_policy_fingerprint,
 )
+from packages.instruments.identity import IDENTITY_CONTRACT_VERSION
 
 
-EXPECTED_FINGERPRINT = "0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88"
+EXPECTED_FINGERPRINT = "4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7"
 EXPECTED_CANDIDATES = (
     "equity_issuance_short",
     "share_repurchase_long",
@@ -34,6 +38,17 @@ def test_phase32_policy_fingerprint_and_family_are_frozen() -> None:
     assert PHASE32_INTERNAL_PURGE_SESSIONS == 5
     assert PHASE32_MULTIPLE_TESTING_METHOD == "HOLM_BONFERRONI_GLOBAL_5"
     assert PHASE32_RUNNER_UP_SUBSTITUTION_ALLOWED is False
+
+
+def test_phase32_policy_is_bound_to_accepted_identity_v4() -> None:
+    assert PHASE32_INSTRUMENT_IDENTITY_CONTRACT_VERSION == IDENTITY_CONTRACT_VERSION
+    assert PHASE32_INSTRUMENT_IDENTITY_CONTRACT_VERSION == (
+        "instrument-identity-v4-no-issuer-level-medium-collapse"
+    )
+    assert PHASE32_INSTRUMENT_ALLOWED_IDENTITY_QUALITIES == ("strong", "medium")
+    assert PHASE32_INSTRUMENT_MEDIUM_IDENTITY_RULE == (
+        "CIK_PLUS_EXACT_PROVIDER_NATIVE_TICKER_PLUS_PRIMARY_EXCHANGE_PLUS_SECURITY_TYPE"
+    )
 
 
 def test_phase32_candidate_taxonomy_is_exact_and_directional() -> None:
