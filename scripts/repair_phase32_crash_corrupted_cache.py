@@ -22,11 +22,13 @@ INCIDENT_ID = "phase32-cache-crash-20260829"
 EXPECTED_CORRUPT = (
     {
         "relative_path": "massive_reference/2026-06-23/34243222535982df996fa4a7.json",
+        "quarantine_name": "01-massive-reference.corrupt.bin",
         "size": 601,
         "sha256": "1b94bb6a330c915941eaa7d5b7a1d84a7d7832e3a0e3f20a03cc23925242aa2b",
     },
     {
         "relative_path": "sec_submissions/0002131853/0001213900-26-068397.json",
+        "quarantine_name": "02-sec-submissions.corrupt.bin",
         "size": 743,
         "sha256": "8d61db14747e1bfe393ddf9f98e7120b001e2dbc28b5d25b7db6a0603d22f176",
     },
@@ -85,7 +87,7 @@ def main() -> int:
         for spec in EXPECTED_CORRUPT:
             relative = Path(str(spec["relative_path"]))
             source = evidence_root / relative
-            quarantined = quarantine_root / (relative.as_posix().replace("/", "__") + ".corrupt.bin")
+            quarantined = quarantine_root / str(spec["quarantine_name"])
 
             if source.exists():
                 raw = _validate_corrupt_payload(source, spec)
