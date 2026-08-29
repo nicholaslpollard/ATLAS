@@ -1,6 +1,6 @@
 # Phase 32 — SEC 8-K Material Corporate-Event Alpha
 
-**Status:** ACTIVE — core source V2, semantic source V2, and source/taxonomy census are accepted PASS. The complete scientific policy is frozen under fingerprint `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`. Phase32 market outcomes remain unread and Phase33 remains blocked.
+**Status:** ACTIVE — core source V2, semantic source V2, and source/taxonomy census are accepted PASS. The corrected complete scientific policy is frozen under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`. Phase32 market outcomes remain unread and Phase33 remains blocked.
 
 **Source foundation:** Phase31 PR #35 merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4` (`ACCEPTED_NEGATIVE`) with zero protected-return reads.
 
@@ -58,7 +58,9 @@ The census was source feasibility only. It did not inspect returns or establish 
 
 Policy fingerprint:
 
-`0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88`
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
+
+The earlier proposed `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88` fingerprint was superseded before acceptance and before any market-outcome read because its medium-identity prose omitted the accepted exact ticker component. The correction changed no hypothesis, outcome, cost, threshold, chronology, multiplicity rule, or protected evidence.
 
 Exactly **five hypotheses** are frozen before performance:
 
@@ -77,7 +79,9 @@ Frozen execution/statistical contract:
 - exit = close 5 XNYS sessions later;
 - SPY-relative directional return is primary; economically positive unhedged return is also mandatory;
 - cost grid 0/5/10/25/50 bps, primary 10 bps, mandatory stress 25 bps;
-- exact PIT CIK-bound unique `instrument_id` required; ticker+snapshot-only fallback, alias backfill, and current-universe backprojection are forbidden;
+- PIT identity is bound to `instrument-identity-v4-no-issuer-level-medium-collapse`;
+- accepted identity quality is strong or medium only: strong = Composite FIGI / Share Class FIGI; medium = CIK + exact provider-native ticker + primary exchange + security type;
+- exactly one CIK-matching `instrument_id` is required; ticker+snapshot fallback, alias backfill, and current-universe backprojection are forbidden;
 - same candidate/instrument/session events aggregate with full accession/category lineage;
 - same-direction cross-candidate overlap is retained; any LONG/SHORT contradiction on the same instrument/session excludes that instrument/session from all candidates;
 - development last signal `2026-05-04`; 5-session outer embargo `2026-05-05..2026-05-11`; protected starts `2026-05-12`; last eligible protected signal `2026-08-04`; protected outcome end `2026-08-11`;
@@ -100,7 +104,7 @@ It must acquire and reconcile:
 2. accepted semantic disclosure/taxonomy evidence;
 3. official SEC `acceptanceDateTime` metadata;
 4. exact accession/CIK provenance;
-5. point-in-time instrument mapping under the frozen CIK-bound uniqueness rule;
+5. point-in-time instrument mapping under the accepted identity-v4 strong/medium uniqueness rule;
 6. immutable lineage and source hashes.
 
 This acquisition must read **zero stock/SPY/options outcomes**. No development return may be opened until the full-history predictor/source gate passes without changing the frozen policy.
