@@ -1,6 +1,6 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-29 during Phase32 full-history predictor/source acquisition after a joint/multi-filer source-reconciliation correction; Phase32 market outcomes remain unread.**
+**Normative project source of truth. Re-synchronized: 2026-08-29 during Phase32 full-history predictor/source acquisition after joint/multi-filer index and semantic-disclosure filing-entity corrections; Phase32 market outcomes remain unread.**
 
 Continuation precedence:
 
@@ -153,9 +153,17 @@ The next permitted Phase32 operation is **full-history** source/predictor acquis
 
 It must acquire/reconcile original Massive 8-K discovery, accepted semantic disclosure evidence, official SEC acceptance metadata, exact accession/CIK lineage, and point-in-time instrument resolution under identity-v4. It must read **zero market outcomes**.
 
-A target-machine run exposed a legitimate joint/multi-filer accession shape at `0000034903-25-000028` before any return read. Phase32 now explicitly treats accession as the filing-level join while requiring the semantic disclosure issuer CIK to be represented by at least one original-8-K index row. Other CIK rows under the same accession are retained as co-filer provenance and cannot supply ticker mappings for the disclosure issuer. Absence of an issuer-CIK-matching index row remains fail-closed. This is a source-reconciliation correction only; the scientific fingerprint and all performance/protected rules remain unchanged.
+The first target-machine multi-filer stop at accession `0000034903-25-000028` showed that multiple original-8-K index rows with different filer CIKs can legitimately share one accession. Phase32 now requires the evaluated issuer CIK to have an exact original-8-K index row, preserves other index CIKs as co-filer provenance, and prevents their ticker mappings from contaminating the issuer PIT path.
 
-Only after this full-history predictor/source gate passes may development returns be opened under the exact frozen policy. Protected returns remain finalist-only.
+The second target-machine stop at accession `0001057877-22-000019` showed that semantic disclosure rows can likewise contain multiple issuer CIKs under one accession. The acquisition had still treated accession alone as the disclosure record unit, contrary to the accepted semantic identity rule. The corrected full-history source key is now:
+
+`EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE`
+
+For each source accession, Phase32 now requires one accession-wide filing date, partitions frozen-candidate disclosure rows by issuer CIK, and independently reconciles each `(accession, issuer CIK)` filing entity to issuer-matching index, SEC, Massive Text, and PIT mapping evidence. Co-filer disclosure/index CIKs are retained as provenance but cannot contribute issuer ticker mappings. A same-accession date conflict or missing issuer-specific source evidence remains fail-closed. The source artifact is `candidate_filing_entity_records.jsonl`, and report/runner counts now distinguish unique accessions from filing entities.
+
+These are source-reconciliation corrections only. They change no scientific fingerprint, hypothesis, direction, chronology, cost, outcome, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence rule. No development or protected market outcome has been read, and successful monthly source caches remain reusable.
+
+Only after this full-history predictor/source gate passes and an independent local source/lineage validation freezes its evidence hashes may development returns be opened under the exact frozen policy. Protected returns remain finalist-only.
 
 ### Authority boundary
 
