@@ -52,10 +52,22 @@ The repair is deliberately narrow:
 - exact byte length, SHA-256, and all-null payload are required before mutation;
 - any mismatch fails closed;
 - exact corrupt bytes are preserved under `quarantine/phase32-cache-crash-20260829/` as `.corrupt.bin` evidence;
+- compact quarantine filenames are used because the original path-encoded names exceeded the legacy Windows path-length boundary inside pytest temporary directories; the manifest preserves the exact original cache path and SHA-256, so provenance is unchanged;
 - the original two cache paths are removed only after the diagnosed payload is matched/preserved;
 - a durable JSON manifest records the repair;
 - the normal Phase32 acquisition path must then reacquire only those missing authoritative source records;
 - all other existing caches remain untouched and reusable.
+
+### Windows repair-test stop
+
+The first focused repair test stopped before mutating the production evidence because the test's long temporary directory plus a path-encoded quarantine filename exceeded the Windows legacy path-length boundary. The failing operation was the atomic move from the seeded corrupt fixture into quarantine and returned `WinError 3`.
+
+This was an implementation/path-construction defect in the repair utility, not a source or scientific defect. The correction keeps the same quarantine directory and exact provenance manifest but uses short deterministic quarantine filenames:
+
+- `01-massive-reference.corrupt.bin`
+- `02-sec-submissions.corrupt.bin`
+
+The source files, expected lengths, expected SHA-256 values, all-null verification, fail-closed behavior, and scientific boundaries are unchanged.
 
 ## Scientific boundary
 
