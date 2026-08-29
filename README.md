@@ -42,7 +42,7 @@ One numbered phase is one acceptance gate:
 
 If an error occurs, ATLAS stops progression, identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. Material decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
 
-## Current state — 2026-08-28
+## Current state — 2026-08-29
 
 - Accepted foundation: **through Phase31**.
 - Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; supported modern alpha remains **0**.
@@ -106,6 +106,8 @@ Phase32 market outcomes remain unread.
 ### Exact active target — full-history source/predictor acquisition
 
 Build and validate **full-history** Phase32 predictor/source evidence for `2021-08-16..2026-08-11` under the corrected frozen fingerprint. This must reconcile original 8-K discovery, semantic disclosure taxonomy, official SEC acceptance metadata, accession/CIK provenance, and point-in-time identity-v4 instrument mapping while reading zero stock/SPY/options outcomes.
+
+A target-machine acquisition run stopped at joint-filer accession `0000034903-25-000028` before any return read. Official SEC evidence confirms multiple filing entities legitimately share that accession. The corrected acquisition now requires at least one original-8-K index row matching the semantic disclosure issuer CIK, preserves other index CIKs as co-filer provenance, and permits only issuer-CIK-matching index rows to contribute ticker mappings. A genuinely absent issuer-CIK match still fails closed. The frozen scientific fingerprint and all outcome/protected rules are unchanged.
 
 Only after that source/predictor gate passes may development returns be opened under the unchanged contract.
 
