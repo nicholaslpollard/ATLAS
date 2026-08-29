@@ -136,14 +136,31 @@ The production acquisition now:
 - requires exactly one filing date across all frozen-candidate disclosure rows sharing an accession; a date conflict remains a hard failure;
 - partitions those disclosure rows by zero-padded issuer CIK and processes each `(accession, issuer CIK)` filing entity independently;
 - reconciles SEC metadata, Massive Text evidence, and original-8-K index membership independently for each filing entity;
-- requires an issuer-CIK-matching index row and exact issuer-CIK Massive Text row for each filing entity;
-- allows only that filing entity's disclosure rows, issuer-matching index rows, and issuer-matching Text row to contribute ticker mappings;
+- requires an issuer-CIK-matching index row and exact issuer-CIK Massive Text evidence for each filing entity;
+- allows only that filing entity's disclosure rows, issuer-matching index rows, and issuer-matching Text rows to contribute ticker mappings;
 - preserves other disclosure/index CIKs as co-filer provenance instead of allowing them to contaminate issuer identity;
 - writes source evidence as `candidate_filing_entity_records.jsonl`, distinguishing unique source accessions from filing-entity records and reporting source-stage counts at the filing-entity level.
 
-Regression coverage now includes both a valid accession containing multiple disclosure CIKs and a negative same-accession conflicting-date case. The production runner is also pinned to the new filing-entity report schema so a successful acquisition cannot fail while rendering stale accession-only summary fields.
+Regression coverage includes both a valid accession containing multiple disclosure CIKs and a negative same-accession conflicting-date case. The production runner is also pinned to the filing-entity report schema so a successful acquisition cannot fail while rendering stale accession-only summary fields.
 
-Neither multi-filer correction changes the frozen policy fingerprint, hypotheses, directions, chronology, costs, outcomes, thresholds, multiplicity controls, identity-v4 rules, or protected-evidence rules. **No development or protected market outcome has been read.** Existing monthly source caches remain reusable.
+### Massive Text ticker-multiplicity correction before outcomes
+
+The next target-machine rerun stopped at accession `0001140361-26-029471` / CIK `0002017526` because the acquisition still required exactly one Massive Text row per filing entity. A local-cache-only diagnostic proved the two matching rows were identical in every non-ticker field: same accession, CIK, filing date, original form, filing URL, 56,341-character `items_text`, and `items_text` SHA-256 `6f33e73eeec651cb23c59b6434d3862257c7274b6a2038b800017b73702b1dc8`. The only difference was ticker: `FRNM` versus `PCSC`.
+
+The corrected Text invariant is:
+
+- one or more Text rows may represent one filing entity;
+- every non-ticker field must be identical across all matching rows;
+- all ticker variants are retained as source provenance and may enter the existing exact PIT identity checks;
+- an aggregate SHA-256 covers the complete ordered Text-row set and a separate SHA-256 covers the shared non-ticker record;
+- raw Text row count and ticker variants are written into filing-entity evidence;
+- any non-ticker conflict remains a hard fail-closed source defect; ATLAS never selects the first row or silently discards conflicting Text evidence.
+
+Behavioral validator and unit regressions cover both the accepted ticker-only multiplicity case and a negative conflicting-text case. Full incident evidence is retained in `docs/phase32_massive_text_multiplicity_incident.md`.
+
+All source corrections above change no frozen policy fingerprint, hypotheses, directions, chronology, costs, outcomes, thresholds, multiplicity controls, identity-v4 rules, or protected-evidence rules. **No development or protected market outcome has been read.** Existing source caches remain reusable.
+
+The production runner now also emits lightweight periodic `x / total filing entities completed` progress. This is operator observability only and cannot alter source/scientific logic.
 
 This acquisition must read **zero stock/SPY/options outcomes**. No development return may be opened until the full-history predictor/source gate passes without changing the frozen policy.
 
