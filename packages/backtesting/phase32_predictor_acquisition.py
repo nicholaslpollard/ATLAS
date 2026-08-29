@@ -485,6 +485,11 @@ class Phase32PredictorSourceAcquisition:
         for row in all_index:
             index_by_accession[_nonblank(row.get("accession_number"), field="accession_number")].append(row)
 
+        disclosures_by_accession: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in all_disclosures:
+            accession = _nonblank(row.get("accession_number"), field="accession_number")
+            disclosures_by_accession[accession].append(row)
+
         candidate_rows_by_accession: dict[str, list[tuple[dict[str, Any], str, str]]] = defaultdict(list)
         for row in all_disclosures:
             triple = (
@@ -506,7 +511,7 @@ class Phase32PredictorSourceAcquisition:
 
         for accession in source_accessions:
             accession_assignments = candidate_rows_by_accession[accession]
-            accession_disclosure_rows = [item[0] for item in accession_assignments]
+            accession_disclosure_rows = disclosures_by_accession[accession]
             disclosure_dates = {
                 _parse_date(row.get("filing_date"), field="filing_date")
                 for row in accession_disclosure_rows
@@ -520,7 +525,10 @@ class Phase32PredictorSourceAcquisition:
             assignments_by_cik: dict[str, list[tuple[dict[str, Any], str, str]]] = defaultdict(list)
             for assignment in accession_assignments:
                 assignments_by_cik[_normalize_cik(assignment[0].get("cik"))].append(assignment)
-            disclosure_filer_ciks = sorted(assignments_by_cik)
+            candidate_disclosure_filer_ciks = sorted(assignments_by_cik)
+            disclosure_filer_ciks = sorted(
+                {_normalize_cik(row.get("cik")) for row in accession_disclosure_rows}
+            )
             if len(disclosure_filer_ciks) > 1:
                 multi_filer_candidate_accessions += 1
 
@@ -542,7 +550,7 @@ class Phase32PredictorSourceAcquisition:
                         f"candidate accession is not original 8-K in index: {accession}"
                     )
 
-            for issuer_cik in disclosure_filer_ciks:
+            for issuer_cik in candidate_disclosure_filer_ciks:
                 assignments = assignments_by_cik[issuer_cik]
                 disclosure_rows = [item[0] for item in assignments]
                 issuer_index_rows = [
@@ -620,7 +628,7 @@ class Phase32PredictorSourceAcquisition:
                 )
 
                 base = {
-                    "filing_entity_key": f"{accession}|{issuer_cik}",
+                    "filing_entity_key": f"{accession}|{issuer_cik}|{filing_date.isoformat()}",
                     "filing_entity_key_rule": PHASE32_FILING_ENTITY_KEY_RULE,
                     "accession_number": accession,
                     "issuer_cik": issuer_cik,
@@ -638,6 +646,7 @@ class Phase32PredictorSourceAcquisition:
                     "massive_text_sha256": _sha256_text(_canonical_json(text_row)),
                     "accession_disclosure_row_count": len(accession_disclosure_rows),
                     "disclosure_row_count": len(disclosure_rows),
+                    "candidate_disclosure_filer_ciks": candidate_disclosure_filer_ciks,
                     "disclosure_filer_ciks": disclosure_filer_ciks,
                     "co_filer_disclosure_ciks": co_filer_disclosure_ciks,
                     "index_row_count": len(index_rows),
