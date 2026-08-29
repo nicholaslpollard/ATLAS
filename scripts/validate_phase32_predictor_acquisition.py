@@ -35,15 +35,18 @@ def main() -> int:
     module_path = "packages/backtesting/phase32_predictor_acquisition.py"
     runner_path = "scripts/run_phase32_predictor_acquisition.py"
     test_path = "tests/unit/test_phase32_predictor_acquisition.py"
+    text_test_path = "tests/unit/test_phase32_text_multiplicity.py"
     workflow_path = ".github/workflows/phase32-tests.yml"
 
     module = _read(module_path)
     runner = _read(runner_path)
     tests = _read(test_path)
+    text_tests = _read(text_test_path)
     workflow = _read(workflow_path)
     ast.parse(module, filename=module_path)
     ast.parse(runner, filename=runner_path)
     ast.parse(tests, filename=test_path)
+    ast.parse(text_tests, filename=text_test_path)
 
     from packages.backtesting.phase32_policy import phase32_policy_fingerprint
     from packages.backtesting.phase32_predictor_acquisition import (
@@ -76,11 +79,6 @@ def main() -> int:
     if not hasattr(MassivePhase32SemanticClient, "disclosures_window"):
         raise AssertionError("accepted Massive Phase32 semantic disclosure-window interface drifted")
 
-    # Core acquisition is intentionally dependency-injected. Validate the source-only
-    # acquisition invariants in the core module and validate concrete production
-    # provider wiring separately in the runner rather than forcing provider imports
-    # into the reusable acquisition engine. Exact version/contract values are checked
-    # above against the live imported constants rather than duplicated in consumers.
     for token in (
         "Phase32PredictorSourceAcquisition",
         "InstrumentIdentityResolver",
@@ -108,6 +106,12 @@ def main() -> int:
         "multi_filer_candidate_accessions",
         "candidate_filing_entity_records",
         "source_stage_filing_entity_counts",
+        "_reconcile_massive_text_filing_entity_rows",
+        "massive_text_row_count",
+        "massive_text_tickers",
+        "massive_text_non_ticker_sha256",
+        "aggregate_sha256",
+        "progress_callback",
         "target_outcome_rows_read\": 0",
         "protected_return_rows_read\": 0",
         "stock_price_rows_read\": 0",
@@ -123,7 +127,8 @@ def main() -> int:
 
     for token in (
         "candidate disclosure accession has inconsistent filing dates",
-        "candidate filing entity requires exactly one Massive Text row",
+        "candidate filing entity requires at least one Massive Text row",
+        "Massive Text rows conflict beyond ticker",
         "candidate disclosure accession is absent from original-8-K index",
         "candidate accession has no original-8-K index row for disclosure CIK",
         "SEC CIK mismatch",
@@ -138,6 +143,12 @@ def main() -> int:
         "identity_interval_changed",
     ):
         _require(module, token, "fail-closed source/identity rule")
+
+    _forbid(
+        module,
+        "candidate filing entity requires exactly one Massive Text row",
+        "stale single-Text-row invariant",
+    )
 
     for forbidden in (
         "packages.data.market",
@@ -170,13 +181,12 @@ def main() -> int:
         "multi_filer_candidate_accessions",
         "source_stage_filing_entity_counts",
         "candidate_filing_entity_evidence_sha256",
+        "_print_progress",
+        "progress_callback=_print_progress",
+        "filing entities completed",
     ):
-        _require(runner, token, "production source dependency/report wiring")
-    _forbid(
-        runner,
-        "source_stage_accession_counts",
-        "stale accession-only report field",
-    )
+        _require(runner, token, "production source dependency/report/progress wiring")
+    _forbid(runner, "source_stage_accession_counts", "stale accession-only report field")
 
     _require(runner, "Stock/SPY/options outcomes: FORBIDDEN / UNREAD", "runner blindness declaration")
     _require(runner, "rerun will reuse completed atomic source caches", "runner resumability declaration")
@@ -215,9 +225,28 @@ def main() -> int:
     )
     _require(tests, "def disclosures_window", "accepted semantic provider-interface fixture")
 
+    _require(
+        text_tests,
+        "test_ticker_only_massive_text_multiplicity_is_preserved",
+        "ticker-only Text multiplicity regression",
+    )
+    _require(
+        text_tests,
+        "test_massive_text_multiplicity_fails_closed_on_non_ticker_conflict",
+        "non-ticker Text conflict regression",
+    )
+    _require(
+        text_tests,
+        "test_progress_output_is_lightweight_and_periodic",
+        "terminal progress regression",
+    )
+
     _require(workflow, "Validate Phase 32 full-history predictor acquisition contracts", "CI acquisition validator step")
     _require(workflow, "python scripts/validate_phase32_predictor_acquisition.py", "CI acquisition validator command")
+    _require(workflow, "Validate Phase 32 Massive Text multiplicity contract", "CI Text multiplicity validator step")
+    _require(workflow, "python scripts/validate_phase32_text_multiplicity.py", "CI Text multiplicity validator command")
     _require(workflow, "tests/unit/test_phase32_predictor_acquisition.py", "CI acquisition unit test")
+    _require(workflow, "tests/unit/test_phase32_text_multiplicity.py", "CI Text multiplicity unit test")
 
     print("ATLAS Phase 32 full-history predictor/source acquisition contracts: PASS")
     print(f"- frozen policy fingerprint pinned: {EXPECTED_POLICY_FINGERPRINT}")
@@ -231,7 +260,9 @@ def main() -> int:
     print("- accession-wide semantic disclosure provenance includes non-candidate co-filers while candidate assignment remains frozen-taxonomy-only")
     print("- joint/multi-filer disclosure rows are partitioned by exact issuer CIK while filing date remains accession-wide")
     print("- co-filer disclosure/index provenance is preserved but cannot contaminate issuer ticker mapping")
-    print("- production runner consumes filing-entity report fields and rejects the stale accession-only summary key")
+    print("- Massive Text multiplicity is allowed only for identical non-ticker filing records; all ticker variants are preserved")
+    print("- any non-ticker Massive Text conflict remains fail-closed")
+    print("- production runner consumes filing-entity report fields and emits lightweight x/total progress")
     print("- monthly/index/disclosure plus filing-entity SEC/Text and ticker/date reference caches are resumable")
     print("- stock/SPY/options outcomes and broker/order/PAPER/LIVE authority remain absent")
     return 0
