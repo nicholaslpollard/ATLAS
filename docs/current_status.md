@@ -2,7 +2,7 @@
 
 **Last synchronized: 2026-08-29. Phase31 remains closed `ACCEPTED_NEGATIVE`. Phase32 core V2, semantic V2, and the source/taxonomy census are accepted PASS. The complete Phase32 scientific contract is frozen before any market-outcome read. Full-history predictor/source acquisition is active and remains outcome-blind.**
 
-Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_scientific_contract.md`, `docs/phase32_semantic_source_qualification.md`, `docs/phase32_sec_edgar_access_incident.md`, and `docs/phase31_closeout.md` before continuing.
+Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_scientific_contract.md`, `docs/phase32_semantic_source_qualification.md`, `docs/phase32_sec_edgar_access_incident.md`, `docs/phase32_massive_text_multiplicity_incident.md`, and `docs/phase31_closeout.md` before continuing.
 
 ## Authority state
 
@@ -96,9 +96,31 @@ The full-history acquisition now:
 - writes `candidate_filing_entity_records.jsonl` and distinguishes unique accession counts from filing-entity counts in the report;
 - pins the production runner to the filing-entity report fields so stale accession-only output keys cannot survive validation.
 
-Positive multi-CIK and negative conflicting-date regressions are now mandatory. Existing source caches remain reusable.
+Positive multi-CIK and negative conflicting-date regressions are mandatory. Existing source caches remain reusable.
 
-Both multi-filer corrections change no frozen hypothesis, direction, timing, outcome, cost, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence boundary. **Development and protected returns remain unopened.**
+### Massive Text ticker multiplicity — corrected before outcomes
+
+The next target-machine rerun stopped at accession `0001140361-26-029471` / CIK `0002017526` because the acquisition still required exactly one Massive Text row per filing entity. A read-only, local-cache-only diagnostic found two rows: ticker `FRNM` and ticker `PCSC`.
+
+The rows had the same accession, CIK, filing date, form, filing URL, 56,341-character `items_text`, and identical `items_text` SHA-256:
+
+`6f33e73eeec651cb23c59b6434d3862257c7274b6a2038b800017b73702b1dc8`
+
+The diagnostic reported `differing_fields=['ticker']`, `non_ticker_differing_fields=[]`, `identical_items_text=True`, `identical_filing_url=True`, and `identical_non_ticker_record=True`.
+
+The corrected Text invariant is:
+
+- one or more Massive Text rows may represent one filing entity;
+- all non-ticker fields must be identical across every matching row;
+- every ticker variant is retained as source provenance and may enter the already-frozen exact PIT identity checks;
+- filing-entity evidence stores raw Text row count, Text ticker set, an aggregate SHA-256 over the complete ordered Text-row set, and a separate SHA-256 over the shared non-ticker record;
+- any non-ticker conflict remains a hard failure; ATLAS does not choose the first row or discard conflicting evidence.
+
+Behavioral validation and unit tests cover both the valid ticker-only multiplicity case and a negative conflicting-text case. Full incident provenance is retained in `docs/phase32_massive_text_multiplicity_incident.md`.
+
+All source corrections above change no frozen hypothesis, direction, timing, outcome, cost, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence boundary. **Development and protected returns remain unopened.**
+
+The production acquisition runner now emits lightweight periodic `Phase32 progress: x / total filing entities completed` messages. This is operator observability only and cannot affect source/scientific logic.
 
 ## Source/taxonomy census — ACCEPTED PASS
 
@@ -154,6 +176,6 @@ Full details: `docs/phase32_scientific_contract.md` and `packages/backtesting/ph
 
 ## Exact next target
 
-Complete and independently accept **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`, using the corrected filing-entity source key and both multi-filer reconciliation rules above.
+Complete and independently accept **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`, using the corrected filing-entity source key, joint/multi-filer reconciliation rules, and strict ticker-only Massive Text multiplicity rule above.
 
 It must acquire/reconcile original 8-K discovery, semantic disclosure evidence, official SEC acceptance metadata, and point-in-time instrument mapping while reading **zero stock/SPY/options outcomes**. Only after that predictor/source gate passes, is independently revalidated from local immutable artifacts, and its evidence hashes are frozen may development returns be opened under the unchanged scientific contract.
