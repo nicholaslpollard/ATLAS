@@ -303,13 +303,73 @@ def test_joint_filer_index_rows_are_preserved_but_do_not_contaminate_issuer_tick
         / "data/provider/phase32_sec_8k_predictor_acquisition/v1/candidate_filing_entity_records.jsonl"
     )
     record = json.loads(evidence_path.read_text(encoding="utf-8").strip())
+    assert record["filing_entity_key"] == f"{ACCESSION}|0000000001|2021-08-16"
     assert record["index_row_count"] == 2
     assert record["issuer_index_row_count"] == 1
     assert record["co_filer_index_row_count"] == 1
     assert record["index_filer_ciks"] == ["0000000001", "0000000002"]
     assert record["co_filer_index_ciks"] == ["0000000002"]
+    assert record["candidate_disclosure_filer_ciks"] == ["0000000001"]
     assert record["disclosure_filer_ciks"] == ["0000000001"]
     assert record["co_filer_disclosure_ciks"] == []
+    assert record["provider_tickers"] == ["ABC"]
+
+
+def test_accession_wide_disclosure_provenance_keeps_non_candidate_co_filer_out_of_mapping(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_range_and_taxonomy(monkeypatch)
+    co_disclosure = dict(DISCLOSURE)
+    co_disclosure["cik"] = "0000000002"
+    co_disclosure["primary_category"] = "non_frozen"
+    co_disclosure["secondary_category"] = "co_filer"
+    co_disclosure["tertiary_category"] = "provenance_only"
+    co_disclosure["tickers"] = ["XYZ"]
+
+    co_index = dict(INDEX)
+    co_index["cik"] = "0000000002"
+    co_index["ticker"] = "XYZ"
+
+    class ProvenanceIndexClient(FakeIndexClient):
+        def eight_k_window(self, *, start_date: date, end_date: date) -> Result:
+            self.calls += 1
+            if start_date.month == 8 and start_date.year == 2021:
+                return Result([INDEX, co_index])
+            return Result([])
+
+    class ProvenanceSemanticClient(FakeSemanticClient):
+        def eight_k_disclosures(self, *, start_date: date, end_date: date) -> Result:
+            self.disclosure_calls += 1
+            if start_date.month == 8 and start_date.year == 2021:
+                return Result([DISCLOSURE, co_disclosure])
+            return Result([])
+
+    reference = FakeReferenceProvider()
+    report = Phase32PredictorSourceAcquisition(
+        FakeSettings(tmp_path),
+        ProvenanceIndexClient(),
+        ProvenanceSemanticClient(),
+        FakeSECClient(),
+        reference,
+    ).run()
+
+    assert report["frozen_candidate_source_accessions"] == 1
+    assert report["multi_filer_candidate_accessions"] == 1
+    assert report["candidate_filing_entity_records"] == 1
+    assert report["eligible_predictor_rows"] == 1
+    assert reference.calls == 2
+
+    evidence_path = (
+        tmp_path
+        / "data/provider/phase32_sec_8k_predictor_acquisition/v1/candidate_filing_entity_records.jsonl"
+    )
+    record = json.loads(evidence_path.read_text(encoding="utf-8").strip())
+    assert record["filing_entity_key"] == f"{ACCESSION}|0000000001|2021-08-16"
+    assert record["accession_disclosure_row_count"] == 2
+    assert record["disclosure_row_count"] == 1
+    assert record["candidate_disclosure_filer_ciks"] == ["0000000001"]
+    assert record["disclosure_filer_ciks"] == ["0000000001", "0000000002"]
+    assert record["co_filer_disclosure_ciks"] == ["0000000002"]
     assert record["provider_tickers"] == ["ABC"]
 
 
@@ -413,7 +473,15 @@ def test_multi_filer_disclosure_rows_partition_by_exact_issuer_cik(
     records = [json.loads(line) for line in evidence_path.read_text(encoding="utf-8").splitlines()]
     records.sort(key=lambda row: row["issuer_cik"])
     assert [row["issuer_cik"] for row in records] == ["0000000001", "0000000002"]
+    assert [row["filing_entity_key"] for row in records] == [
+        f"{ACCESSION}|0000000001|2021-08-16",
+        f"{ACCESSION}|0000000002|2021-08-16",
+    ]
     assert all(row["accession_number"] == ACCESSION for row in records)
+    assert all(
+        row["candidate_disclosure_filer_ciks"] == ["0000000001", "0000000002"]
+        for row in records
+    )
     assert all(
         row["disclosure_filer_ciks"] == ["0000000001", "0000000002"] for row in records
     )
