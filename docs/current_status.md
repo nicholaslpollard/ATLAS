@@ -65,11 +65,11 @@ Semantic V2 target-machine PASS: taxonomy version 1.0 / 119 rows, 7,468 disclosu
 
 Accepted filing identity is exact accession + zero-padded CIK + filing date + official SEC reconciliation. Ticker fields are mapping metadata only; `items_text` lexical comparison is diagnostic only.
 
-### Joint/multi-filer accession reconciliation — corrected before outcomes
+### Joint/multi-filer index reconciliation — corrected before outcomes
 
 The full-history acquisition target-machine run stopped, before any market-outcome read, at accession `0000034903-25-000028` because the initial acquisition implementation incorrectly required **every** Massive index row sharing an accession to have the disclosure issuer CIK. Official SEC evidence shows this accession is a legitimate joint 8-K filed by Federal Realty Investment Trust (`CIK 0000034903`) and Federal Realty OP LP (`CIK 0001901876`).
 
-The corrected acquisition invariant is:
+The corrected index-side acquisition invariant is:
 
 - all index rows sharing the accession must retain the same filing date and original form `8-K`;
 - at least one index row must match the semantic disclosure issuer CIK exactly;
@@ -77,7 +77,28 @@ The corrected acquisition invariant is:
 - only issuer-CIK-matching index rows may contribute index ticker mappings to PIT instrument resolution;
 - if the disclosure issuer CIK is absent from the accession's index rows, acquisition still fails closed.
 
-This correction changes no frozen hypothesis, direction, timing, outcome, cost, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence boundary. Development and protected returns remain unopened.
+### Multi-filer semantic-disclosure partition — corrected before outcomes
+
+A subsequent target-machine rerun at `96bacd387bca81cad0cdb014db759a5be67fb9c5` stopped at accession `0001057877-22-000019` because the acquisition still grouped frozen-candidate semantic disclosure rows by accession alone and required one CIK. This was inconsistent with the already-accepted semantic filing identity of accession + issuer CIK + filing date + official SEC reconciliation.
+
+The corrected filing-entity source key is:
+
+`EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE`
+
+The full-history acquisition now:
+
+- requires one filing date across all frozen-candidate disclosure rows sharing an accession; conflicting dates remain a hard failure;
+- partitions disclosure rows by normalized issuer CIK and processes each `(accession, issuer CIK)` filing entity independently;
+- reconciles SEC metadata, Massive Text evidence, and original-8-K index membership independently for each filing entity;
+- requires issuer-CIK-matching index and Massive Text evidence;
+- allows only the issuer filing entity's disclosure/index/Text ticker mappings to feed PIT instrument resolution;
+- retains other disclosure/index CIKs as co-filer provenance;
+- writes `candidate_filing_entity_records.jsonl` and distinguishes unique accession counts from filing-entity counts in the report;
+- pins the production runner to the filing-entity report fields so stale accession-only output keys cannot survive validation.
+
+Positive multi-CIK and negative conflicting-date regressions are now mandatory. Existing source caches remain reusable.
+
+Both multi-filer corrections change no frozen hypothesis, direction, timing, outcome, cost, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence boundary. **Development and protected returns remain unopened.**
 
 ## Source/taxonomy census — ACCEPTED PASS
 
@@ -133,6 +154,6 @@ Full details: `docs/phase32_scientific_contract.md` and `packages/backtesting/ph
 
 ## Exact next target
 
-Complete and independently accept **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`, including the corrected joint/multi-filer accession reconciliation above.
+Complete and independently accept **full-history Phase32 source/predictor acquisition** for `2021-08-16..2026-08-11` under fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`, using the corrected filing-entity source key and both multi-filer reconciliation rules above.
 
-It must acquire/reconcile original 8-K discovery, semantic disclosure evidence, official SEC acceptance metadata, and point-in-time instrument mapping while reading **zero stock/SPY/options outcomes**. Only after that predictor/source gate passes may development returns be opened under the frozen contract.
+It must acquire/reconcile original 8-K discovery, semantic disclosure evidence, official SEC acceptance metadata, and point-in-time instrument mapping while reading **zero stock/SPY/options outcomes**. Only after that predictor/source gate passes, is independently revalidated from local immutable artifacts, and its evidence hashes are frozen may development returns be opened under the unchanged scientific contract.
