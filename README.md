@@ -107,9 +107,13 @@ Phase32 market outcomes remain unread.
 
 Build and validate **full-history** Phase32 predictor/source evidence for `2021-08-16..2026-08-11` under the corrected frozen fingerprint. This must reconcile original 8-K discovery, semantic disclosure taxonomy, official SEC acceptance metadata, accession/CIK provenance, and point-in-time identity-v4 instrument mapping while reading zero stock/SPY/options outcomes.
 
-A target-machine acquisition run stopped at joint-filer accession `0000034903-25-000028` before any return read. Official SEC evidence confirms multiple filing entities legitimately share that accession. The corrected acquisition now requires at least one original-8-K index row matching the semantic disclosure issuer CIK, preserves other index CIKs as co-filer provenance, and permits only issuer-CIK-matching index rows to contribute ticker mappings. A genuinely absent issuer-CIK match still fails closed. The frozen scientific fingerprint and all outcome/protected rules are unchanged.
+The first multi-filer target-machine stop was accession `0000034903-25-000028`: multiple original-8-K index rows legitimately shared one accession. The corrected acquisition requires an issuer-CIK-matching index row, retains other index CIKs as co-filer provenance, and prevents co-filer tickers from entering issuer PIT mapping.
 
-Only after that source/predictor gate passes may development returns be opened under the unchanged contract.
+A later target-machine stop at accession `0001057877-22-000019` exposed the same multiplicity on semantic disclosures. The acquisition had still grouped candidate disclosure rows by accession alone. The corrected filing-entity source key is now `EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE`: disclosure rows are partitioned by issuer CIK, each filing entity is independently reconciled to SEC/Text/index evidence, and only that entity's ticker mappings may feed PIT identity. A conflicting filing date under one accession remains a hard failure. Evidence is written as `candidate_filing_entity_records.jsonl`, and report/runner counts distinguish unique accessions from filing entities.
+
+Both corrections occurred before any development or protected return read. The frozen scientific fingerprint, hypotheses, chronology, costs, sample gates, multiplicity controls, identity-v4 rules, and protected-evidence boundary are unchanged. Existing source caches remain reusable.
+
+Only after this source/predictor gate passes and an independent local source/lineage validation freezes its evidence hashes may development returns be opened under the unchanged contract.
 
 Phase33 remains blocked. LIVE and automatic broker failover remain disabled.
 
