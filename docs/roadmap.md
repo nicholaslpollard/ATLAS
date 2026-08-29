@@ -1,6 +1,6 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-29 during Phase32 full-history predictor/source acquisition after joint/multi-filer index and semantic-disclosure filing-entity corrections; Phase32 market outcomes remain unread.**
+**Normative project source of truth. Re-synchronized: 2026-08-29 during Phase32 full-history predictor/source acquisition after joint/multi-filer and Massive Text ticker-multiplicity source corrections; Phase32 market outcomes remain unread.**
 
 Continuation precedence:
 
@@ -63,6 +63,7 @@ Persistent roles:
 21. Provider plan/history/entitlement claims require evidence and, where material, empirical verification.
 22. Regulatory event dates are not automatically decision timestamps; authoritative publication/acceptance time controls where available.
 23. Material source/architecture/scientific decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
+24. Long-running target-machine runners should emit lightweight progress such as `x / total completed`; progress reporting is observability only and may not alter scientific or authority logic.
 
 ## 4. Accepted foundation through Phase31
 
@@ -161,7 +162,9 @@ The second target-machine stop at accession `0001057877-22-000019` showed that s
 
 For each source accession, Phase32 now requires one accession-wide filing date, partitions frozen-candidate disclosure rows by issuer CIK, and independently reconciles each `(accession, issuer CIK)` filing entity to issuer-matching index, SEC, Massive Text, and PIT mapping evidence. Co-filer disclosure/index CIKs are retained as provenance but cannot contribute issuer ticker mappings. A same-accession date conflict or missing issuer-specific source evidence remains fail-closed. The source artifact is `candidate_filing_entity_records.jsonl`, and report/runner counts now distinguish unique accessions from filing entities.
 
-These are source-reconciliation corrections only. They change no scientific fingerprint, hypothesis, direction, chronology, cost, outcome, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence rule. No development or protected market outcome has been read, and successful monthly source caches remain reusable.
+The third target-machine stop at accession `0001140361-26-029471` / CIK `0002017526` showed that one filing entity can legitimately have multiple Massive Text rows during a ticker transition. The read-only local diagnostic proved the two rows had identical accession, CIK, filing date, form, filing URL, and 56,341-character filing text, with identical `items_text` SHA-256 `6f33e73eeec651cb23c59b6434d3862257c7274b6a2038b800017b73702b1dc8`; only ticker differed (`FRNM` vs `PCSC`). Phase32 therefore accepts one or more matching Text rows only when **every non-ticker field is identical**. All ticker variants are retained for the existing exact PIT identity checks, while any non-ticker difference remains a hard fail-closed source defect. Complete Text-row-set and shared non-ticker hashes are preserved in filing-entity evidence. See `docs/phase32_massive_text_multiplicity_incident.md`.
+
+These are source-reconciliation corrections only. They change no scientific fingerprint, hypothesis, direction, chronology, cost, outcome, sample gate, multiplicity rule, identity-v4 rule, or protected-evidence rule. No development or protected market outcome has been read, and successful source caches remain reusable.
 
 Only after this full-history predictor/source gate passes and an independent local source/lineage validation freezes its evidence hashes may development returns be opened under the exact frozen policy. Protected returns remain finalist-only.
 
