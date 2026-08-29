@@ -70,11 +70,11 @@ def main() -> int:
     # Core acquisition is intentionally dependency-injected. Validate the source-only
     # acquisition invariants in the core module and validate concrete production
     # provider wiring separately in the runner rather than forcing provider imports
-    # into the reusable acquisition engine.
+    # into the reusable acquisition engine. The exact identity-v4 version is checked
+    # above against the live accepted identity module rather than duplicated here.
     for token in (
         "Phase32PredictorSourceAcquisition",
         "InstrumentIdentityResolver",
-        "instrument-identity-v4-no-issuer-level-medium-collapse",
         "massive_index",
         "massive_disclosures",
         "massive_text",
