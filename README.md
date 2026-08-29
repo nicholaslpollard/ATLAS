@@ -19,7 +19,7 @@ Every new ATLAS work session should read:
 7. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
 8. accepted code, validators, CI/PR evidence.
 
-Retained Phase32 source-incident history is in `docs/phase32_sec_edgar_access_incident.md` and `docs/phase32_massive_text_multiplicity_incident.md`.
+Retained Phase32 source-incident history is in `docs/phase32_sec_edgar_access_incident.md`, `docs/phase32_massive_text_multiplicity_incident.md`, `docs/phase32_crash_cache_corruption_incident.md`, and `docs/phase32_sec_submissions_shard_boundary_incident.md`.
 
 ## Locked architecture
 
@@ -55,7 +55,7 @@ Long-running target-machine runners must provide lightweight terminal progress i
 
 ### Retained Phase31 feasibility provenance — historical only
 
-This block preserves the accepted Phase31-era handoff required by retained validators; it does not change the current active Phase32 state.
+This block preserves the accepted Phase31-era handoff required by the retained validators; it does not change the current active Phase32 state.
 
 - **Active Phase31: SEC Form-4 Insider-Transaction Alpha** was the historical active gate.
 - The source-quality repair handoff is retained in `docs/phase31_form4_source_quality_repair.md`.
@@ -115,7 +115,11 @@ A later target-machine stop at accession `0001057877-22-000019` exposed the same
 
 A third source-only stop at accession `0001140361-26-029471` / CIK `0002017526` showed that one filing entity can legitimately have multiple Massive Text rows when a ticker transition is represented. The read-only local diagnostic proved the two rows were identical in every non-ticker field and differed only by ticker (`FRNM` versus `PCSC`). The corrected rule accepts one or more Text rows only when every non-ticker field is identical, preserves all ticker variants for exact PIT identity checks, hashes the complete Text-row set plus the shared non-ticker record, and still fails closed on any non-ticker conflict. See `docs/phase32_massive_text_multiplicity_incident.md`.
 
-All three corrections occurred before any development or protected return read. The frozen scientific fingerprint, hypotheses, chronology, costs, sample gates, multiplicity controls, identity-v4 rules, and protected-evidence boundary are unchanged. Existing source caches remain reusable.
+The target machine later suffered an abrupt operating-system crash while unrelated software was being installed. A complete local cache parse identified exactly two all-null reconstructible JSON caches among more than 93,000 JSON/JSONL cache files. Exact byte hashes were preserved, both files were quarantined under a fail-closed repair contract, the full cache parse then passed, and acquisition resumed without changing any scientific or source rule. See `docs/phase32_crash_cache_corruption_incident.md`.
+
+The resumed acquisition then stopped at `27,225 / 36,309` on News Corp accession `0001564708-23-000471` / filing date `2023-10-05`. Read-only official SEC diagnostics proved the root `filings.files` metadata declared its historical shard only through `2023-10-04`, while that exact SEC-declared shard actually contains the target `2023-10-05` original 8-K and its acceptance timestamp. The corrected SEC lookup therefore preserves exact date-covering shards as primary and permits a **one-calendar-day adjacent SEC-declared shard only when no date-covering shard exists**. URLs are never guessed, the two-shard hard bound remains, and exact accession + exact requested filing date + original `8-K` remain mandatory. See `docs/phase32_sec_submissions_shard_boundary_incident.md`.
+
+All source corrections occurred before any development or protected return read. The frozen scientific fingerprint, hypotheses, chronology, costs, sample gates, multiplicity controls, identity-v4 rules, and protected-evidence boundary are unchanged. Existing source caches remain reusable.
 
 Only after this source/predictor gate passes and an independent local source/lineage validation freezes its evidence hashes may development returns be opened under the unchanged contract.
 
