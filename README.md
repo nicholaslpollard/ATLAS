@@ -56,6 +56,7 @@ Material decisions and completed gates must be synchronized into roadmap/status/
 - Historical supported modern alpha remains **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
+- Phase32 is `ACCEPTED_NEGATIVE`; protected return rows read = 0 and the holdout remains unconsumed.
 - Master protected outcome window `2026-05-12..2026-08-11` remains **protected-return unopened**.
 - Phase32 development finalist `solvency_distress_short` did not earn `SUPPORTED` authority.
 - Phase33 signal-to-trade remains blocked.
