@@ -8,6 +8,10 @@ ATLAS entered this gate with zero historically `SUPPORTED` modern alpha after va
 
 The economic family was fundamental profitability, cash-vs-accrual quality, and year-over-year fundamental change. It did not reuse Phase32 candidate labels, directions, 8-K event taxonomy, development performance, finalist choice, or protected result.
 
+Source Phase32 merge lineage:
+
+`69f8aa81289934b71f2652482c747391917c15a3`
+
 ## Authoritative source
 
 Official SEC `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` was the standardized-fact source through the accepted SEC EDGAR HTTP/fair-access seam. Official SEC submissions metadata supplied exact original filing/accession/date/acceptance chronology. Massive reference supplied PIT issuer-to-security identity after source-only entitlement/semantics validation.
