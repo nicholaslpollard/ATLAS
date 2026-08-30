@@ -57,7 +57,9 @@ def main() -> int:
     ):
         ast.parse(text, filename=path)
 
-    for text, label in ((audit, "audit module"), (runner, "audit runner"), (doc, "audit doc")):
+    # Exact hashes live in the frozen audit implementation and normative audit doc.
+    # The runner imports those constants so there is one code authority for them.
+    for text, label in ((audit, "audit module"), (doc, "audit doc")):
         _require(text, XBRL_PIT_AUDIT_CONTRACT, f"{label} contract")
         _require(text, XBRL_PIT_AUDIT_FINGERPRINT, f"{label} fingerprint")
         _require(
@@ -65,6 +67,9 @@ def main() -> int:
             XBRL_PIT_ACCEPTED_FEASIBILITY_EVIDENCE_FINGERPRINT,
             f"{label} accepted feasibility evidence fingerprint",
         )
+    _require(runner, "XBRL_PIT_AUDIT_CONTRACT", "audit runner contract constant wiring")
+    _require(runner, "XBRL_PIT_AUDIT_FINGERPRINT", "audit runner fingerprint constant wiring")
+    _require(runner, "Entry feasibility evidence fingerprint", "audit runner accepted evidence output")
 
     for token in (
         "XBRL_PIT_AUDIT_ISSUER_SAMPLE_SIZE = 40",
@@ -170,6 +175,7 @@ def main() -> int:
     _require(focused_workflow, "Validate XBRL PIT source/chronology/identity contracts", "focused audit validation")
     _require(focused_workflow, "python scripts/validate_alpha_gate_xbrl_pit_audit.py", "focused audit validator command")
     _require(focused_workflow, "tests/unit/test_alpha_gate_xbrl_pit_audit.py", "focused audit unit tests")
+    _require(focused_workflow, "tests/unit/test_alpha_gate_xbrl_pit_boundaries.py", "focused boundary unit tests")
     _require(focused_workflow, "windows-latest", "focused Windows parity")
     _require(focused_workflow, "ubuntu-latest", "focused Ubuntu parity")
     _require(full_workflow, "Validate pre-Phase33 SEC XBRL source-only feasibility contracts", "full retained feasibility")
@@ -179,6 +185,7 @@ def main() -> int:
     print("ATLAS pre-Phase33 SEC XBRL PIT source/chronology/identity contracts: PASS")
     print(f"- accepted feasibility evidence fingerprint: {XBRL_PIT_ACCEPTED_FEASIBILITY_EVIDENCE_FINGERPRINT}")
     print(f"- frozen PIT audit fingerprint: {XBRL_PIT_AUDIT_FINGERPRINT}")
+    print("- runner imports frozen constants rather than duplicating hash literals")
     print("- original 10-Q/10-K accession versions remain isolated and amendments are excluded")
     print("- exact SEC acceptance time controls the first eligible XNYS decision session")
     print("- Massive identity uses exact CIK + point-in-time date and fails closed on multiple instruments")
