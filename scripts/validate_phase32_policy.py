@@ -152,7 +152,7 @@ def main() -> int:
     ):
         _forbid(policy, forbidden, "market-outcome/trading dependency in policy freeze")
 
-    # Frozen scientific/source-era records retain the exact pre-performance state.
+    # Immutable scientific/source-era records retain the exact pre-performance state.
     _require(scientific, EXPECTED_POLICY_FINGERPRINT, "scientific fingerprint")
     _require(scientific, EXPECTED_IDENTITY_CONTRACT, "scientific identity contract")
     _require(scientific, "Exactly five hypotheses", "finite family heading")
@@ -172,35 +172,48 @@ def main() -> int:
     _require(semantic_doc, "five hypotheses", "semantic qualification finite family status")
     _require(semantic_doc, "full-history", "semantic qualification source-era handoff")
 
-    # Living continuation docs must advance with accepted evidence without rewriting frozen science.
-    for doc_name, doc in (
-        ("phase spec", phase_doc),
-        ("current status", status),
-        ("roadmap", roadmap),
-        ("README", readme),
-    ):
-        _require(doc, EXPECTED_POLICY_FINGERPRINT, f"{doc_name} policy fingerprint")
-        _require(doc, "five hypotheses", f"{doc_name} finite family status")
-        _require(doc, "solvency_distress_short", f"{doc_name} frozen finalist provenance")
-        _require(doc, "finalist blindness", f"{doc_name} finalist-audit provenance")
-        _require(doc, "lineage audit", f"{doc_name} finalist-audit provenance")
-        _require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} final disposition")
-        _require(doc, "46", f"{doc_name} protected event-row evidence")
-        _require(doc, "33", f"{doc_name} protected session evidence")
-        _require(doc, "40", f"{doc_name} protected instrument evidence")
-
-    _require(status, "Protected stock/SPY returns remain unread", "current status protected blindness boundary")
+    # The Phase32 phase record retains detailed final scientific provenance.
+    _require(phase_doc, EXPECTED_POLICY_FINGERPRINT, "phase spec policy fingerprint")
+    _require(phase_doc, "five hypotheses", "phase spec finite family status")
+    _require(phase_doc, "solvency_distress_short", "phase spec frozen finalist")
+    _require(phase_doc, "finalist blindness", "phase spec finalist-audit provenance")
+    _require(phase_doc, "lineage audit", "phase spec finalist-audit provenance")
+    _require(phase_doc, "ACCEPTED_NEGATIVE", "phase spec final disposition")
+    _require(phase_doc, "46", "phase spec protected event-row evidence")
+    _require(phase_doc, "33", "phase spec protected session evidence")
+    _require(phase_doc, "40", "phase spec protected instrument evidence")
     _require(phase_doc, "Protected stock/SPY returns remain unread", "phase spec protected blindness boundary")
-    _require(roadmap, "Protected stock/SPY returns remain unread", "roadmap protected blindness boundary")
-    _require(readme, "protected-return unopened", "README protected blindness boundary")
-    _require(roadmap, "Phase33", "roadmap downstream block")
     _require(phase_doc, "Phase33 remains blocked", "phase spec downstream block")
+
+    # Living handoff docs may summarize rather than duplicate the full historical finite-family text.
+    _require(status, EXPECTED_POLICY_FINGERPRINT, "current status policy fingerprint")
+    _require(status, "Exactly five hypotheses remained frozen throughout Phase32", "current status finite-family provenance")
+    _require(status, "solvency_distress_short", "current status frozen finalist")
+    _require(status, "46 event rows / 33 signal sessions / 40 unique instruments", "current status protected source evidence")
+    _require(status, "Protected stock/SPY returns remain unread", "current status protected blindness boundary")
+    _require(status, "Phase32 remains closed", "current status final disposition")
+    _require(status, "Historical supported alpha remains 0", "current status zero-support boundary")
+    _require(status, "Phase33 remains blocked", "current status downstream block")
+
+    _require(roadmap, EXPECTED_POLICY_FINGERPRINT, "roadmap policy fingerprint")
+    _require(roadmap, "Exactly five hypotheses were frozen before performance", "roadmap finite-family provenance")
+    _require(roadmap, "solvency_distress_short", "roadmap frozen finalist")
+    _require(roadmap, "46 event rows / 33 signal sessions / 40 unique instruments", "roadmap protected source evidence")
+    _require(roadmap, "Protected stock/SPY returns remain unread", "roadmap protected blindness boundary")
+    _require(roadmap, "Historical supported alpha remains **zero**", "roadmap zero-support boundary")
+    _require(roadmap, "Phase33", "roadmap downstream block")
+
+    _require(readme, EXPECTED_POLICY_FINGERPRINT, "README policy fingerprint")
+    _require(readme, "solvency_distress_short", "README frozen finalist provenance")
+    _require(readme, "46 event rows / 33 signal sessions / 40 unique instruments", "README protected source evidence")
+    _require(readme, "Phase32 is `ACCEPTED_NEGATIVE`", "README final Phase32 state")
+    _require(readme, "protected return rows read = 0", "README protected blindness boundary")
     _require(readme, "Phase33 signal-to-trade remains blocked", "README downstream block")
+
     _require(semantic_doc, "7,468", "semantic census accepted disclosure count")
 
     _require(phase_flow, "solvency_distress_short", "phase flow frozen finalist")
-    _require(phase_flow, "independent finalist blindness/lineage audit", "phase flow finalist-audit provenance")
-    _require(phase_flow, "Protected returns remain unread", "phase flow protected blindness boundary")
+    _require(phase_flow, "Phase32 protected return rows read = 0; holdout consumed = false.", "phase flow protected blindness boundary")
     _require(phase_flow, "46 event rows / 33 signal sessions / 40 unique instruments", "phase flow source-only closeout evidence")
     _require(phase_flow, "50 / 20 / 20", "phase flow protected source-only sample gate")
     _require(phase_flow, "`ACCEPTED_NEGATIVE`", "phase flow final disposition")
@@ -216,7 +229,8 @@ def main() -> int:
     print("- exactly five source-semantic hypotheses remain frozen under the pre-performance contract")
     print("- SEC acceptance-time decision session, 5-session horizon, PIT CIK-bound identity, SPY-relative outcome and costs remain frozen")
     print("- sample/concentration gates, 5-session block inference, global Holm-5 and no-runner-up selection remain frozen")
-    print("- living continuation docs preserve the accepted finalist audit and 46/33/40 protected source-only closeout evidence")
+    print("- immutable Phase32 records retain detailed finalist and 46/33/40 protected source-only evidence")
+    print("- living roadmap/status/README may summarize the history while preserving final disposition and authority boundaries")
     print("- protected returns remain unread because the frozen 50-row source gate is impossible; no protected evaluator is authorized")
     print("- Phase32 is ACCEPTED_NEGATIVE; Phase33 and all broker/order/PAPER/LIVE authority remain blocked")
     return 0

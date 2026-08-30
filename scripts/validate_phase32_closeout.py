@@ -145,8 +145,21 @@ def main() -> int:
     _require(closeout_doc, "Protected return rows read: **0**", "closeout protected return proof")
     _require(closeout_doc, "Protected holdout consumed: **false**", "closeout holdout proof")
     _require(closeout_doc, "Historical supported alpha remains **0**", "closeout authority result")
-    _require(roadmap, "materially different alpha mechanism", "roadmap anti-retuning continuation")
-    _require(status, "Phase32 is closed", "status closed state")
+
+    # Living roadmap language may advance to a named later mechanism, but it must
+    # continue proving the Phase32 anti-retuning boundary rather than merely saying
+    # that "something different" follows.
+    _require(
+        roadmap,
+        "materially different point-in-time fundamental-information mechanism",
+        "roadmap materially different mechanism continuation",
+    )
+    _require(
+        roadmap,
+        "may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result",
+        "roadmap Phase32 anti-retuning continuation",
+    )
+    _require(status, "Phase32 remains closed", "status closed state")
     _require(readme, "Phase32 is `ACCEPTED_NEGATIVE`", "README closed state")
     _require(flow, "Accepted project foundation: **through Phase32**", "flow accepted boundary")
 
@@ -164,6 +177,7 @@ def main() -> int:
     print("- protected source-only population is frozen at 46 rows / 33 sessions / 40 instruments")
     print("- the preregistered 50-row minimum fails before protected returns are opened")
     print("- protected return reads remain zero and the holdout remains unconsumed")
+    print("- current roadmap still proves a materially different mechanism and forbids Phase32 scientific reuse")
     print("- Phase32 closes ACCEPTED_NEGATIVE; supported alpha remains zero; Phase33 remains blocked")
     return 0
 

@@ -18,6 +18,7 @@ EXPECTED_DIAGNOSTIC_HEAD = "80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7"
 EXPECTED_VIOLATION_SHA = "3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044"
 EXPECTED_SOURCE_QUALITY_FINGERPRINT = "2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83"
 EXPECTED_SOURCE_QUALITY_POLICY = "RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE"
+EXPECTED_XBRL_CLOSEOUT_FINGERPRINT = "291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91"
 EXPECTED_WINDOWS = (
     ("research_boundary", "2021-08-16", "2021-08-20"),
     ("mid_history", "2023-08-14", "2023-08-18"),
@@ -193,28 +194,33 @@ def main() -> int:
     _require(repair_doc, "zero provider calls", "repair doc provider-free target")
     _require(repair_doc, "does **not** erase or reinterpret the original failed feasibility run", "repair doc provenance")
 
-    # Living continuation docs may advance beyond Phase31 and Phase32. They must preserve
-    # the accepted Phase31 result while accurately naming the current authority boundary.
+    # Living continuation docs may advance beyond Phase31/Phase32. They must retain
+    # immutable Phase31 evidence while tracking the current blocked authority state,
+    # not a historical branch name or a formerly-current research gate.
     for doc_name, doc in (("roadmap", roadmap), ("current status", status), ("README", readme)):
         _require(doc, "Phase31", f"{doc_name} Phase31 provenance")
         _require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} accepted-negative history")
         _require(doc, "Phase32", f"{doc_name} Phase32 continuation provenance")
+        _require(doc, EXPECTED_XBRL_CLOSEOUT_FINGERPRINT, f"{doc_name} completed XBRL closeout lineage")
         _require(doc, "Phase33", f"{doc_name} downstream authority boundary")
 
     _require(roadmap, "Accepted foundation through Phase32", "roadmap current accepted foundation")
     _require(roadmap, "Historical supported alpha remains **zero**", "roadmap authority continuity")
+    _require(roadmap, "Completed Pre-Phase33 SEC XBRL", "roadmap completed XBRL handoff")
     _require(roadmap, "Phase33 — Signal-to-Trade Construction", "roadmap current downstream gate")
 
     _require(status, "Stocks Starter", "subscription status")
-    _require(status, "phase-32-sec-8k-material-event-alpha", "current closeout branch status")
     _require(status, "FEASIBILITY_FAIL", "retained original feasibility status")
     _require(status, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "retained Phase31 source repair fingerprint")
     _require(status, EXPECTED_SOURCE_QUALITY_POLICY, "retained Phase31 source repair policy")
     _require(status, "Massive beta source-association/data-quality defect", "retained Phase31 root cause")
     _require(status, "Phase31 produced zero survivors/winners/finalists/support and zero protected reads", "Phase31 final evidence")
-    _require(status, "Phase32 is closed", "current Phase32 closeout state")
+    _require(status, "Phase32 remains closed", "current Phase32 closeout state")
+    _require(status, "XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`", "current XBRL closeout state")
+    _require(status, "Phase33 remains blocked", "current downstream authority block")
 
     _require(readme, "Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well", "README retained modern alpha dispositions")
+    _require(readme, "XBRL protected return rows read = **0**", "README protected-return boundary")
     _require(readme, "Phase33 signal-to-trade remains blocked", "README downstream authority block")
     _require(readme, "LIVE and automatic broker failover remain disabled", "README live authority block")
 
@@ -227,9 +233,9 @@ def main() -> int:
     print("- root cause is classified before repair; no performance evidence was consulted")
     print("- source-quality repair preserves raw rows and quarantines contaminated accessions fail-closed")
     print("- repair classifier has no ticker/accession-specific exception and no numeric bad-row tolerance")
-    print("- Phase31 evidence stays immutable while living continuation docs accurately advance through Phase32 closeout")
+    print("- Phase31 evidence stays immutable while living docs advance through Phase32 and the completed XBRL closeout")
     print("- Phase31 final ACCEPTED_NEGATIVE disposition and zero protected reads remain preserved")
-    print("- Phase33/trading/LIVE authority remain blocked by the current continuation docs")
+    print("- historical supported alpha remains zero; Phase33/trading/LIVE authority remain blocked")
     return 0
 
 

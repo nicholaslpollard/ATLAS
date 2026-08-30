@@ -118,19 +118,22 @@ def main() -> int:
     require(acquisition_doc, "1,040", "accepted quarantine rows")
     require(scientific, "split/corporate-action crossings", "remaining path-admissibility requirement")
 
-    # phase_flow.md is a living continuation document. Phase31 predictor invariants remain
-    # frozen above; the living handoff should accurately reflect the latest accepted boundary.
-    require(flow, "Accepted project foundation: **through Phase32**", "current accepted foundation boundary")
+    # phase_flow.md is a living continuation document. Phase31 predictor invariants are
+    # frozen above; the living handoff may advance beyond Phase32 as long as it preserves
+    # the historical disposition and the current no-support/no-protected-read authority.
+    require(flow, "Accepted project foundation: **through Phase32**", "accepted foundation boundary")
     require(flow, "Phases26–32 are `ACCEPTED_NEGATIVE`", "retained modern alpha dispositions")
-    require(flow, "Protected returns remain unread", "current protected blindness boundary")
-    require(flow, "46 event rows / 33 signal sessions / 40 unique instruments", "current protected source-only evidence")
-    require(flow, "Phase33", "current downstream authority boundary")
+    require(flow, "SEC XBRL fundamental-quality/accrual research program has now also closed **`ACCEPTED_NEGATIVE`**", "current XBRL disposition")
+    require(flow, "XBRL protected return rows read = **0**; protected holdout consumed = **false**", "current protected blindness boundary")
+    require(flow, "Master protected window `2026-05-12..2026-08-11` remains unconsumed", "master holdout continuity")
+    require(flow, "Phase33 Signal-to-Trade Construction remains blocked", "current downstream authority boundary")
 
     print("ATLAS Phase 31 predictor-only Form-4 contracts: PASS")
     print("- accepted 62-shard acquisition evidence is frozen before performance")
     print("- exact P/S eligibility, contradiction, cluster and Composite-FIGI PIT identity rules are bound")
     print("- predictor construction has no market-price/return or trading authority")
-    print("- historical Phase31 predictor invariants remain frozen while living phase_flow accurately advances through Phase32 closeout")
+    print("- historical Phase31 predictor invariants remain frozen while living phase_flow advances through the completed XBRL closeout")
+    print("- master protected evidence remains unread/unconsumed and Phase33 remains blocked")
     return 0
 
 

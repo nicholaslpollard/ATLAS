@@ -221,9 +221,9 @@ def main() -> int:
     require(roadmap, "Accepted foundation through Phase32", "roadmap accepted foundation")
     require(roadmap, "Phase33 — Signal-to-Trade Construction", "shifted signal-to-trade")
     require(roadmap, "Phase39 — Controlled LIVE Activation", "shifted LIVE phase")
-    require(status, "phase-32-sec-8k-material-event-alpha", "closeout branch status")
-    require(status, "data.sec.gov/submissions", "current official SEC source")
-    require(status, EXPECTED_CONTRACT_VERSION, "retained feasibility contract")
+    require(status, "Phase32 remains closed", "current Phase32 closeout state")
+    require(status, "Historical supported alpha remains 0", "current zero-support boundary")
+    require(status, "Phase33 remains blocked", "current downstream authority boundary")
     require(phase_doc, EXPECTED_MASSIVE_ENDPOINT, "Phase32 source endpoint")
     require(phase_doc, "data.sec.gov/submissions", "official SEC submissions source")
     require(phase_doc, EXPECTED_PUBLIC_RULE, "Phase32 timing rule")
@@ -248,7 +248,7 @@ def main() -> int:
     print("- exact accession, original 8-K form, filing date, acceptance time, and item codes remain pinned")
     print("- archived submissions lookup remains filing-date bounded and capped at two shards")
     print("- SEC requests retain declared identity, gzip/deflate, JSON, and one request/second")
-    print("- feasibility-era unfrozen-hypothesis/zero-outcome state remains immutable while living docs advance through closeout")
+    print("- frozen Phase32 source/feasibility artifacts retain exact official SEC source semantics while living status advances")
     print("- Phase33 signal-to-trade and all broker/order/PAPER/LIVE authority remain blocked")
     return 0
 

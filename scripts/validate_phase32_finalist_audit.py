@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 EXPECTED_POLICY = "4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7"
 EXPECTED_ACCEPTANCE = "531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde"
 EXPECTED_FINALIST = "solvency_distress_short"
+EXPECTED_FINALIST_AUDIT = "c047dd1800877ed1d268b2d8e4c4fc1bfe158fcf715caedc275405f1bf01853e"
 
 
 def read(path: str) -> str:
@@ -146,7 +147,14 @@ def main() -> int:
         "scientific_contract_requires_separate_audit": "blindness/lineage audit" in scientific,
         "phase_doc_records_development_finalist": EXPECTED_FINALIST in phase_doc,
         "development_doc_records_pass": "DEVELOPMENT PASS" in development_doc,
-        "status_points_to_finalist_audit": "run_phase32_finalist_audit.py" in status,
+        "status_retains_accepted_finalist_audit_evidence": (
+            EXPECTED_FINALIST_AUDIT in status
+            and EXPECTED_FINALIST in status
+            and "Protected stock/SPY returns remain unread" in status
+            and "46" in status
+            and "33" in status
+            and "40" in status
+        ),
     }
     failed = sorted(name for name, passed in checks.items() if not passed)
     print("ATLAS Phase 32 finalist blindness / lineage audit contracts")
@@ -158,6 +166,7 @@ def main() -> int:
     print("- accepted development result is pinned before protected planning")
     print("- finalist identity is independently recomputed without importing the development implementation")
     print("- protected plan is finalist-only, source-only, and three-fold frozen")
+    print("- living status is bound to immutable accepted audit fingerprint/evidence rather than a runner filename")
     print("- source-only protected sample gates can block a needless holdout read")
     print("- protected stock/SPY returns remain unread")
     return 0
