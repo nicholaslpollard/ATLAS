@@ -12,14 +12,14 @@ Every new ATLAS work session should read:
 
 1. `docs/roadmap.md`;
 2. `docs/current_status.md`;
-3. `docs/alpha_gate_sec_xbrl_closeout.md`;
-4. `docs/alpha_gate_sec_xbrl_fundamental_quality.md`;
-5. `docs/alpha_gate_sec_xbrl_scientific_contract.md`;
-6. `docs/alpha_gate_sec_xbrl_development.md`;
-7. `docs/alpha_gate_sec_xbrl_pit_audit.md` and `docs/alpha_gate_sec_xbrl_pit_identity_repair.md`;
-8. `docs/phase32_closeout.md` and retained Phase32 scientific/source records;
-9. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-10. accepted code, validators, CI/PR evidence.
+3. `docs/alpha_gate_sec_beneficial_ownership_feasibility.md`;
+4. `docs/alpha_gate_sec_xbrl_closeout.md`;
+5. `docs/alpha_gate_sec_xbrl_fundamental_quality.md`;
+6. `docs/alpha_gate_sec_xbrl_scientific_contract.md`;
+7. `docs/alpha_gate_sec_xbrl_development.md`;
+8. `docs/alpha_gate_sec_xbrl_pit_audit.md` and `docs/alpha_gate_sec_xbrl_pit_identity_repair.md`;
+9. `docs/phase32_closeout.md` and retained Phase32 scientific/source records;
+10. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, and accepted code/CI evidence.
 
 Retained Phase32 source-incident history remains in `docs/phase32_sec_edgar_access_incident.md`, `docs/phase32_massive_text_multiplicity_incident.md`, `docs/phase32_crash_cache_corruption_incident.md`, and `docs/phase32_sec_submissions_shard_boundary_incident.md`.
 
@@ -55,7 +55,7 @@ Material decisions and completed gates must be synchronized into roadmap/status/
 - Phase32 is `ACCEPTED_NEGATIVE`; protected return rows read = 0 and the holdout remains unconsumed.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
-- The materially different pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism has completed and is also **`ACCEPTED_NEGATIVE`**.
+- The materially different pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism completed **`ACCEPTED_NEGATIVE`** and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; post-merge full ATLAS regression passed on Ubuntu and Windows.
 - XBRL source feasibility: `FEASIBILITY_PASS` with 200 successful Company Facts documents, 170 accrual-history-ready issuers, and 92 profitability-history-ready issuers.
 - XBRL PIT audit v1 is preserved `AUDIT_FAIL`; targeted common-stock active-only identity repair v2 passed with 171 unambiguous mappings and 38 issuers with >=3 mappings.
 - Frozen XBRL scientific fingerprint: `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`.
@@ -63,6 +63,8 @@ Material decisions and completed gates must be synchronized into roadmap/status/
 - XBRL development result: `ACCEPTED_NEGATIVE_DEVELOPMENT` with 5,536 predictors, 3,963 usable development outcomes, **0 selection passers, 0 winners, and 0 internal finalists**.
 - XBRL protected return rows read = **0**; protected holdout consumed = **false**.
 - Accepted XBRL closeout evidence fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- Current pre-Phase33 research gate is the source-only SEC Schedule 13D/13G beneficial-ownership mechanism `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE` under frozen feasibility fingerprint `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+- The 13D/13G gate has **no frozen alpha hypotheses yet** and reads zero target/protected market outcomes; it tests official SEC chronology/source coverage plus PIT common-stock identity only.
 - Historical supported modern alpha remains **0**.
 - Phase33 signal-to-trade remains blocked.
 - Master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
@@ -138,9 +140,21 @@ Artifact SHA-256 evidence:
 
 No XBRL candidate survived the frozen selection gates plus global Holm correction. This family is closed. It may not be retuned or rescued with the protected holdout.
 
+### Current SEC Schedule 13D/13G source-only gate
+
+Mechanism:
+
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
+
+Frozen feasibility fingerprint:
+
+`f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`
+
+This gate uses official SEC quarterly master indexes and complete submissions across `2016-01-01..2026-08-11`, reconstructs exact acceptance-time decision sessions, and audits exact subject-CIK/date active common-stock identity through the accepted Massive reference seam. The sample and source thresholds are frozen before target execution. Alpha hypotheses remain unfrozen, market outcomes remain unread, and a feasibility PASS can authorize only the next scientific freeze—not Phase33.
+
 ## Remaining roadmap
 
-- **Next pre-Phase33 alpha research:** must use a materially different economic/information mechanism from the closed XBRL family; exact mechanism not yet accepted/frozen.
+- **Current pre-Phase33 alpha research:** execute and independently accept or fail-close the frozen SEC Schedule 13D/13G beneficial-ownership source feasibility gate; do not inspect target/protected performance.
 - **Phase33:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked on supported alpha.
 - **Phase34:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
 - **Phase35:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
