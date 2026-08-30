@@ -78,6 +78,8 @@ def main() -> int:
     )
     from packages.providers.sec_edgar_archive import (
         SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES,
+        SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND,
+        SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS,
         SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES,
     )
 
@@ -100,6 +102,10 @@ def main() -> int:
         raise AssertionError("quarterly-index response bound drifted")
     if SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES != 20_000_000:
         raise AssertionError("complete-submission response bound drifted")
+    if SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND != 5:
+        raise AssertionError("SEC archive fair-access cadence drifted")
+    if SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS != 0.2:
+        raise AssertionError("SEC archive minimum call interval drifted")
     if BENEFICIAL_OWNERSHIP_MIN_SUBJECT_CIK_EXTRACTED != 185:
         raise AssertionError("repaired subject CIK extraction threshold drifted")
     if BENEFICIAL_OWNERSHIP_MIN_SUBJECT_CIK_EXTRACTED != BENEFICIAL_OWNERSHIP_MIN_SUBJECT_CIK_RECONCILED:
@@ -115,7 +121,8 @@ def main() -> int:
         'SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES = 64_000_000',
         'SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES = 20_000_000',
         "response_limit = self._response_limit(url)",
-        "SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS",
+        "SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND = 5",
+        "SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS",
         "SEC_EDGAR_MAX_ATTEMPTS",
         "sec_declared_user_agent",
     ):
@@ -181,6 +188,7 @@ def main() -> int:
     print(f"- parent v1 failure retained at head {EXPECTED_V1_HEAD}")
     print(f"- frozen repair fingerprint: {EXPECTED_REPAIR_FINGERPRINT}")
     print("- SEC quarterly-index transport is bounded at 64 MB while submission transport remains bounded at 20 MB")
+    print("- SEC archive pacing is capped at 5 calls/second (0.2-second minimum interval)")
     print("- master-index CIK is provenance only; official SEC-header SUBJECT COMPANY CIK is the security identity authority")
     print("- duplicate accession associations are collapsed only when filing-level semantics agree exactly")
     print("- all numeric source gates are retained; alpha hypotheses and target/protected outcomes remain unopened")
