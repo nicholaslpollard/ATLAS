@@ -278,5 +278,8 @@ jobs:
       - name: Validate pre-Phase33 SEC XBRL independent negative closeout
         run: python scripts/validate_alpha_gate_xbrl_closeout.py
 
+      - name: Validate pre-Phase33 SEC beneficial-ownership source feasibility
+        run: python scripts/validate_alpha_gate_beneficial_ownership_feasibility.py
+
       - name: Run tests
         run: python -m pytest -q
