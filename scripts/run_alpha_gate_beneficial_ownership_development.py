@@ -24,10 +24,18 @@ from packages.backtesting.alpha_gate_beneficial_ownership_scientific_policy impo
     BENEFICIAL_OWNERSHIP_SCIENTIFIC_FINGERPRINT,
     beneficial_ownership_scientific_fingerprint,
 )
+from packages.backtesting.alpha_gate_beneficial_ownership_transport_repair import (
+    BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_CONTRACT,
+    BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_FINGERPRINT,
+    beneficial_ownership_development_transport_repair_fingerprint,
+)
 from packages.core.exceptions import ProviderError
 from packages.core.settings import load_settings
 from packages.providers.massive.xbrl_pit import MassiveCIKPITReferenceProvider
-from packages.providers.sec_edgar_archive import SECEDGARArchiveClient
+from packages.providers.sec_edgar_archive import (
+    SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES,
+    SECEDGARArchiveClient,
+)
 
 
 def _progress(message: str) -> None:
@@ -38,6 +46,10 @@ def main() -> int:
     print("ATLAS Pre-Phase33 SEC Schedule 13D/13G Beneficial Ownership — Development Evaluation")
     print(f"Predictor contract: {BENEFICIAL_OWNERSHIP_PREDICTOR_CONTRACT}")
     print(f"Development contract: {BENEFICIAL_OWNERSHIP_DEVELOPMENT_CONTRACT}")
+    print(
+        "Development transport repair contract: "
+        f"{BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_CONTRACT}"
+    )
     print(f"Scientific fingerprint: {beneficial_ownership_scientific_fingerprint()}")
     print(
         "Frozen scientific fingerprint expected: "
@@ -50,6 +62,18 @@ def main() -> int:
     print(
         "Frozen development implementation fingerprint expected: "
         f"{BENEFICIAL_OWNERSHIP_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT}"
+    )
+    print(
+        "Development transport repair fingerprint: "
+        f"{beneficial_ownership_development_transport_repair_fingerprint()}"
+    )
+    print(
+        "Frozen development transport repair fingerprint expected: "
+        f"{BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_FINGERPRINT}"
+    )
+    print(
+        "Scientific SEC submission ceiling: "
+        f"{SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES} bytes"
     )
     print(f"Finite hypotheses: {len(BENEFICIAL_OWNERSHIP_HYPOTHESES)}")
     print("Protected returns: SEALED / UNREAD")
@@ -65,12 +89,22 @@ def main() -> int:
     ):
         print("Beneficial-ownership development: NOT ACCEPTED — implementation fingerprint drifted")
         return 2
+    if (
+        beneficial_ownership_development_transport_repair_fingerprint()
+        != BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_FINGERPRINT
+    ):
+        print("Beneficial-ownership development: NOT ACCEPTED — transport repair fingerprint drifted")
+        return 2
 
     try:
         settings = load_settings()
         predictor = BeneficialOwnershipPredictorBuilder(
             settings,
-            SECEDGARArchiveClient(),
+            SECEDGARArchiveClient(
+                submission_max_response_bytes=(
+                    SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES
+                )
+            ),
             MassiveCIKPITReferenceProvider(settings),
             progress_callback=_progress,
         ).build()
