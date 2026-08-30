@@ -19,6 +19,8 @@ from packages.backtesting.alpha_gate_beneficial_ownership_source_repair import (
 )
 from packages.providers.sec_edgar_archive import (
     SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES,
+    SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND,
+    SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS,
     SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES,
     SECEDGARArchiveClient,
     sec_archive_submission_url,
@@ -71,6 +73,12 @@ def test_transport_repair_is_bounded_and_distinguishes_index_from_submission() -
     assert SECEDGARArchiveClient._response_limit(index_url) == 64_000_000
     assert SECEDGARArchiveClient._response_limit(submission_url) == 20_000_000
     assert SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES > 32_282 * 1024
+
+
+def test_archive_transport_uses_conservative_five_request_per_second_cadence() -> None:
+    assert SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND == 5
+    assert SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS == pytest.approx(0.2)
+    assert SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND < 10
 
 
 def test_duplicate_accession_entity_associations_collapse_when_filing_semantics_match() -> None:
