@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-30. Phase32 is closed `ACCEPTED_NEGATIVE` on target-machine source-only evidence. The independent finalist blindness/lineage audit reproduced the development finalist `solvency_distress_short`, but its frozen protected population contained only 46 event rows versus the preregistered minimum of 50. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked.**
+**Last synchronized: 2026-08-29 (America/New_York). Phase32 is closed `ACCEPTED_NEGATIVE` on target-machine source-only evidence. The independent finalist blindness/lineage audit reproduced the development finalist `solvency_distress_short`, but its frozen protected population contained only 46 event rows versus the preregistered minimum of 50. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
 Read `docs/roadmap.md`, this file, `docs/phase32_sec_8k_material_event_alpha.md`, `docs/phase32_scientific_contract.md`, `docs/phase32_predictor_independent_acceptance.md`, `docs/phase32_development_evaluation.md`, `docs/phase32_finalist_blindness_audit.md`, `docs/phase32_closeout.md`, retained Phase32 incident docs, and `docs/phase31_closeout.md` before continuing.
 
@@ -24,6 +24,11 @@ Frozen scientific policy fingerprint:
 `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
 Exactly five hypotheses remained frozen throughout Phase32: `equity_issuance_short`, `share_repurchase_long`, `financial_integrity_adverse_short`, `listing_distress_short`, and `solvency_distress_short`.
+
+Authoritative source roles remained:
+
+- Massive `/stocks/filings/vX/index` for historical original-8-K discovery/ticker metadata;
+- official SEC `data.sec.gov/submissions` for authoritative SEC submissions metadata, acceptance time, accession/CIK/form/date/item reconciliation.
 
 Accepted source/predictor fingerprints:
 
