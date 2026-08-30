@@ -1,6 +1,10 @@
 # Phase32 Independent Predictor/Source Acceptance
 
-**Status:** ACTIVE — full-history source/predictor acquisition passed on the target machine; this independent local-only acceptance gate must pass before any development return may be opened.
+**Status:** ACCEPTED PASS on the target machine before any Phase32 market-outcome read.
+
+Independent acceptance fingerprint:
+
+`531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde`
 
 ## Accepted input under audit
 
@@ -41,7 +45,7 @@ Candidate predictor counts:
 - `share_repurchase_long`: 3,410;
 - `solvency_distress_short`: 1,262.
 
-The acquisition also retained 37 contradictory LONG/SHORT instrument sessions and excluded those groups under the frozen `EXCLUDE_ALL` rule.
+The acquisition retained 37 contradictory LONG/SHORT instrument sessions and excluded those groups under the frozen `EXCLUDE_ALL` rule.
 
 ## Independent acceptance contract
 
@@ -54,60 +58,52 @@ Implementation:
 - `scripts/validate_phase32_predictor_independent_acceptance.py`;
 - `tests/unit/test_phase32_predictor_independent_acceptance.py`.
 
-This gate has **no provider or network client dependency**. It reads the completed local source caches and immutable source/predictor artifacts only.
+The gate has no provider/network client dependency. It reads completed local source caches and immutable source/predictor artifacts only.
 
 ## First target-machine audit stop — validator exact-byte defect
 
-The first target-machine independent audit stopped on filing entity:
+The first independent audit stopped on filing entity `0000003545-23-000037|0000003545|2023-12-14` with `SEC source-record hash mismatch`, before any market outcome was opened.
 
-`0000003545-23-000037|0000003545|2023-12-14`
-
-with `SEC source-record hash mismatch` before any market outcome was opened. A read-only diagnostic then proved the cached SEC record and filing-entity evidence were internally consistent:
+A read-only diagnostic proved the cached SEC record and filing-entity evidence were internally consistent:
 
 - stored SEC source-record SHA-256: `27dff5440916338d8f7f18d9ddfd12f543c76b340d8122cc7c19e77a1b5a932e`;
 - filing-entity SEC SHA-256: the same value;
 - SHA-256 of the exact cached `source_record_json` string: the same value;
 - the canonical SEC source record intentionally ends with exactly one LF (`\n`);
-- hashing the same canonical JSON after stripping that LF instead produces `d8583708836dcd467867857342cb58f35c789464392fccde0369327a7aeb5ccb`.
+- stripping that LF produces a different SHA-256: `d8583708836dcd467867857342cb58f35c789464392fccde0369327a7aeb5ccb`.
 
-Root cause: the independent audit incorrectly passed `source_record_json` through its generic `_nonblank()` helper. That helper strips surrounding whitespace, so it removed the canonical trailing LF before hashing and created a false lineage mismatch. The source cache, filing-entity evidence, acquisition hashes, scientific policy, and protected boundary were not defective.
+Root cause: the independent audit passed `source_record_json` through generic `_nonblank()`, which strips surrounding whitespace and therefore removed the canonical trailing LF before hashing. The source cache, filing-entity evidence, acquisition hashes, scientific policy, and protected boundary were correct.
 
-Correction: exact byte-level lineage values now use `_exact_nonblank_text()`, which verifies nonblank content without altering whitespace before SHA-256 recomputation. Generic normalized identifiers continue using `_nonblank()`. A regression test pins preservation of the canonical trailing LF. No source artifact was rewritten and no frozen scientific rule changed.
+Correction: exact byte-level lineage now uses `_exact_nonblank_text()`, which verifies nonblank content without altering whitespace. A regression pins preservation of the canonical trailing LF. No source artifact was rewritten and no scientific rule changed.
 
-## Mandatory independent checks
+## Accepted target-machine result
 
-The gate independently revalidates:
+The corrected independent audit reprocessed all **36,309** filing entities and passed with:
 
-1. the frozen Phase32 policy fingerprint, acquisition contract, identity-v4 contract, filing-entity key rule, source range, and accepted taxonomy hash;
-2. the target-machine filing-entity and predictor SHA-256 values above;
-3. zero market-outcome, protected-return, provider-write, broker, order, PAPER, LIVE, and automation counters;
-4. every monthly original-8-K index and semantic disclosure cache against the reported source windows and row counts;
-5. exact frozen taxonomy assignment without introducing new semantic categories or changing candidate direction;
-6. accession-wide filing-date consistency and the date-bearing `accession|issuer CIK|filing date` filing-entity key;
-7. accession-wide disclosure co-filer provenance while keeping candidate assignment issuer-specific;
-8. original-8-K index issuer membership, filing date, form, issuer/co-filer row counts, and ticker-source isolation;
-9. cached official SEC accession + issuer CIK + filing date + original `8-K` + acceptance-time lineage, including exact-byte recomputation of the SEC source-record hash;
-10. Massive Text multiplicity from the local raw cache: one or more rows are allowed only when all non-ticker fields are identical, every ticker variant is retained, and both aggregate-row-set and shared-non-ticker hashes match;
-11. the provider-native ticker union from issuer disclosure, issuer index, and Massive Text evidence;
-12. point-in-time identity-v4 resolution independently from the cached historical reference wrappers at both decision and exit sessions, including exact filing-CIK equality, strong/medium-only identity, interval continuity, uniqueness, and fail-closed ambiguity;
-13. first XNYS regular-session open strictly after SEC acceptance time and the five-session exit chronology;
-14. development / outer-embargo / protected-predictor-only / outside-window source stages;
-15. every source/identity exclusion reason;
-16. deterministic candidate/instrument/session aggregation;
-17. contradictory LONG/SHORT instrument-session exclusion;
-18. byte-for-byte regeneration of the complete predictor JSONL from independently verified filing-entity evidence;
-19. all reported predictor/source counts and hashes.
+- source rows: index **345,800**, disclosures **387,770**;
+- candidate accessions **36,277**;
+- filing entities **36,309**;
+- multi-filer accessions **32**;
+- eligible predictors **19,792**;
+- development predictors **18,819**;
+- protected-predictor-only rows **973**;
+- independent network reads **0**;
+- stock / SPY / options / protected return rows **0 / 0 / 0 / 0**;
+- provider writes / broker reads / broker writes / orders / PAPER / LIVE **0 / 0 / 0 / 0 / 0 / 0**;
+- filing-entity SHA-256 exactly `18fd036f8718bba9920395627f0e233cd9cead41d03decb31f29d5bdf0a3ff31`;
+- predictor SHA-256 exactly `c5b171557d173bdf0095aecfaf660b8660f2480d233fa9c5a55f138b86c1f3f9`;
+- independent acceptance fingerprint exactly `531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde`.
 
-The gate writes only one derived acceptance artifact:
+The accepted artifact is:
 
 `data/derived/strategy_evaluation/phase32/predictor_v1/phase32_predictor_independent_acceptance.json`
 
-Its fingerprint is not known in advance. It is computed only after the target machine independently reproduces and accepts the completed source/predictor evidence.
+## Mandatory independent checks
 
-## Authority boundary
+The accepted gate independently revalidated the frozen policy/acquisition/identity contracts, exact source hashes, zero outcome/remote-activity counters, monthly source caches, taxonomy assignment, filing-entity and co-filer provenance, official SEC lineage, Massive Text multiplicity, provider ticker unions, identity-v4 resolution, acceptance-time chronology, source stages, exclusion reasons, deterministic event aggregation, contradictory LONG/SHORT exclusion, byte-for-byte predictor regeneration, and all reported counts/hashes.
 
-A PASS here permits **development-return evaluation only** under the already-frozen Phase32 scientific policy.
+## Authority boundary after PASS
 
-It does **not** establish alpha, does not open protected returns, does not grant Phase33 signal-to-trade authority, and does not permit provider mutation, broker/account reads, orders, PAPER, LIVE, automation writes, or automatic broker failover.
+This PASS permits **development-return evaluation only** under the already-frozen Phase32 scientific policy.
 
-If this gate fails for any reason, Phase32 progression stops and the source/lineage/identity defect must be diagnosed and corrected before development returns are opened.
+It does **not** establish alpha. Protected stock/SPY returns remain forbidden until development selection/internal validation freezes finalists and a separate blindness/lineage audit passes. Phase33 signal-to-trade authority remains false. Provider mutation, broker/account reads, orders, PAPER, LIVE, automation writes, and automatic broker failover remain forbidden.
