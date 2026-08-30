@@ -55,6 +55,26 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 - Master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 - LIVE and automatic broker failover remain disabled.
 
+## Retained pre-Phase33 SEC XBRL lineage
+
+The XBRL family entered from accepted Phase32 merge `69f8aa81289934b71f2652482c747391917c15a3` and used the materially different mechanism `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
+
+Source-only feasibility contract:
+
+`alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`
+
+Frozen feasibility fingerprint:
+
+`6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`
+
+The source gate was `FEASIBILITY_PASS`: **200** successful Company Facts documents, **170** accrual-history-ready issuers, and **92** profitability-history-ready issuers. Accepted feasibility-evidence fingerprint:
+
+`33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`
+
+The first frozen PIT source/identity audit remains preserved as `AUDIT_FAIL` under fingerprint `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`. The targeted active-common-stock identity repair retained the same source population and numeric gates and passed under contract `alpha-gate-xbrl-pit-audit-v2-targeted-common-stock-active-only-identity-repair-no-market-outcomes` and fingerprint `e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f`.
+
+Six finite XBRL hypotheses were frozen before outcomes under scientific fingerprint `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`. Development produced zero selection passers, zero winners, and zero internal finalists. XBRL protected return rows read = **0** and the holdout remained unconsumed. The final `ACCEPTED_NEGATIVE` closeout evidence fingerprint is `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`. Phase33 remained blocked.
+
 ### Current pre-Phase33 research mechanism
 
 Retained original source-feasibility mechanism identifier:
