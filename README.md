@@ -14,8 +14,8 @@ Every new ATLAS work session should read:
 2. `docs/current_status.md`;
 3. `docs/phase32_sec_8k_material_event_alpha.md`;
 4. `docs/phase32_scientific_contract.md`;
-5. `docs/phase32_semantic_source_qualification.md`;
-6. `docs/phase31_closeout.md`;
+5. `docs/phase32_predictor_independent_acceptance.md`;
+6. `docs/phase32_development_evaluation.md`;
 7. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
 8. accepted code, validators, CI/PR evidence.
 
@@ -40,7 +40,9 @@ One numbered phase is one acceptance gate:
 
 `PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT -> FOCUSED TESTS -> FULL PHASE-END ACCEPTANCE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
 
-If an error occurs, ATLAS stops progression, identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. Material decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
+If an error occurs, ATLAS stops progression, identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. Failed approaches remain evidence. Zero candidates/trades is legitimate.
+
+Material decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
 
 Long-running target-machine runners must provide lightweight terminal progress instead of appearing idle. Prefer a simple `x / total completed` indicator, optionally with percent complete; when a meaningful total is unavailable, report the current date/window/batch plus a completed count. Update at useful intervals without noisy per-record logging. Progress reporting is operational observability only and must never alter scientific logic, source evidence, chronology, acceptance criteria, or authority boundaries.
 
@@ -48,50 +50,20 @@ Long-running target-machine runners must provide lightweight terminal progress i
 
 - Accepted foundation: **through Phase31**.
 - Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; supported modern alpha remains **0**.
-- Phase31 PR #35 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+- Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Master protected outcome window remains `2026-05-12..2026-08-11` and remains outcome-unopened.
 - **Active Phase32: SEC 8-K Material Corporate-Event Alpha.**
 - Active branch: `phase-32-sec-8k-material-event-alpha`.
+- Phase33 signal-to-trade remains blocked.
+- LIVE and automatic broker failover remain disabled.
 
-### Retained Phase31 feasibility provenance — historical only
+### Phase32 frozen science
 
-This block preserves the accepted Phase31-era handoff required by the retained validators; it does not change the current active Phase32 state.
-
-- **Active Phase31: SEC Form-4 Insider-Transaction Alpha** was the historical active gate.
-- The source-quality repair handoff is retained in `docs/phase31_form4_source_quality_repair.md`.
-- Repair fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`.
-- Historical root cause: **Massive early-access/beta source-association/data-quality defect**.
-- The Phase31-era downstream roadmap extended through **Phase38**; later rebaselining moved controlled LIVE activation to current Phase39.
-
-### Accepted Phase32 source stack
-
-Core V2 fingerprint:
-
-`978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
-
-Accepted core source = Massive original-8-K discovery plus official SEC `data.sec.gov/submissions`, with exact accession/CIK/form/date/acceptance reconciliation and zero target/protected return reads.
-
-Rejected semantic V1 fingerprint remains immutable:
-
-`ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
-
-Accepted semantic V2 fingerprint:
-
-`eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`
-
-Semantic V2 passed with taxonomy version 1.0 / 119 rows, 7,468 disclosure rows across five retained probe windows, exact original-8-K accession overlap, 30 Massive Text samples, 30 official SEC reconciliations, and zero target/protected outcome reads.
-
-The source/taxonomy census then passed with 119 taxonomy rows, 112 observed taxonomy rows, 7,468 disclosures, 4,427 unique accessions, 3,097 unique CIKs, 6,231 mapped ticker rows, 1,237 unmapped rows, and zero target/protected outcomes.
-
-### Frozen Phase32 scientific policy
-
-Corrected policy fingerprint:
+Policy fingerprint:
 
 `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
-The earlier proposed `0cac8c9cc05afd031c10d29ef83d3f49eb5de8bad864f18027d2a8a9585a2b88` fingerprint was superseded before acceptance and before any market-outcome read after a pre-performance audit corrected its medium-identity semantics.
-
-Exactly **five hypotheses** are frozen before performance:
+Exactly five frozen hypotheses:
 
 - `equity_issuance_short`;
 - `share_repurchase_long`;
@@ -99,35 +71,44 @@ Exactly **five hypotheses** are frozen before performance:
 - `listing_distress_short`;
 - `solvency_distress_short`.
 
-Frozen methodology includes first XNYS regular open strictly after official SEC `acceptanceDateTime`, decision-open entry, five-session close exit, SPY-relative primary plus required unhedged profitability, 10-bps primary / 25-bps stress costs, five-session purge/block bootstrap, mandatory sample/concentration gates, global `HOLM_BONFERRONI_GLOBAL_5`, no runner-up substitution, and finalist-only protected returns.
+The frozen methodology uses SEC acceptance-time public availability, decision-open entry, five-session close exit, SPY-relative primary plus required unhedged profitability, 10-bps primary / 25-bps stress costs, five-session purge/block bootstrap, mandatory sample/concentration/robustness gates, global `HOLM_BONFERRONI_GLOBAL_5`, one winner/finalist per direction, no runner-up substitution, and finalist-only protected returns.
 
-PIT instrument identity is bound to `instrument-identity-v4-no-issuer-level-medium-collapse`: strong = Composite FIGI / Share Class FIGI; medium = CIK + exact provider-native ticker + primary exchange + security type. Only strong/medium identity is eligible; exactly one filing-CIK-matching instrument must resolve. Ticker+snapshot fallback, current-universe backprojection, and ticker alias backfill are forbidden.
+PIT identity is bound to `instrument-identity-v4-no-issuer-level-medium-collapse`: strong = Composite FIGI / Share Class FIGI; medium = CIK + exact provider-native ticker + primary exchange + security type. Only strong/medium is eligible; no fallback ticker+snapshot, current-universe backprojection, or ticker alias backfill.
 
-Phase32 market outcomes remain unread.
+### Phase32 source/predictor gates — ACCEPTED PASS
 
-### Exact active target — full-history source/predictor acquisition
+Accepted source fingerprints:
 
-Build and validate **full-history** Phase32 predictor/source evidence for `2021-08-16..2026-08-11` under the corrected frozen fingerprint. This must reconcile original 8-K discovery, semantic disclosure taxonomy, official SEC acceptance metadata, accession/CIK provenance, and point-in-time identity-v4 instrument mapping while reading zero stock/SPY/options outcomes.
+- core V2: `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`;
+- semantic V2: `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`.
 
-The first multi-filer target-machine stop was accession `0000034903-25-000028`: multiple original-8-K index rows legitimately shared one accession. The corrected acquisition requires an issuer-CIK-matching index row, retains other index CIKs as co-filer provenance, and prevents co-filer tickers from entering issuer PIT mapping.
+Full-history source/predictor acquisition completed **36,309** filing entities with **19,792** eligible predictors: **18,819 development** and **973 protected-predictor-only**. It read zero stock/SPY/options/protected returns.
 
-A later target-machine stop at accession `0001057877-22-000019` exposed the same multiplicity on semantic disclosures. The acquisition had still grouped candidate disclosure rows by accession alone. The corrected filing-entity source key is now `EXACT_ACCESSION_PLUS_ZERO_PADDED_ISSUER_CIK_PLUS_ACCESSION_WIDE_FILING_DATE`: disclosure rows are partitioned by issuer CIK, each filing entity is independently reconciled to SEC/Text/index evidence, and only that entity's ticker mappings may feed PIT identity. A conflicting filing date under one accession remains a hard failure. Evidence is written as `candidate_filing_entity_records.jsonl`, and report/runner counts distinguish unique accessions from filing entities.
+Filing-entity evidence SHA-256:
 
-A third source-only stop at accession `0001140361-26-029471` / CIK `0002017526` showed that one filing entity can legitimately have multiple Massive Text rows when a ticker transition is represented. The read-only local diagnostic proved the two rows were identical in every non-ticker field and differed only by ticker (`FRNM` versus `PCSC`). The corrected rule accepts one or more Text rows only when every non-ticker field is identical, preserves all ticker variants for exact PIT identity checks, hashes the complete Text-row set plus the shared non-ticker record, and still fails closed on any non-ticker conflict. See `docs/phase32_massive_text_multiplicity_incident.md`.
+`18fd036f8718bba9920395627f0e233cd9cead41d03decb31f29d5bdf0a3ff31`
 
-The target machine later suffered an abrupt operating-system crash while unrelated software was being installed. A complete local cache parse identified exactly two all-null reconstructible JSON caches among more than 93,000 JSON/JSONL cache files. Exact byte hashes were preserved, both files were quarantined under a fail-closed repair contract, the full cache parse then passed, and acquisition resumed without changing any scientific or source rule. See `docs/phase32_crash_cache_corruption_incident.md`.
+Predictor SHA-256:
 
-The resumed acquisition then stopped at `27,225 / 36,309` on News Corp accession `0001564708-23-000471` / filing date `2023-10-05`. Read-only official SEC diagnostics proved the root `filings.files` metadata declared its historical shard only through `2023-10-04`, while that exact SEC-declared shard actually contains the target `2023-10-05` original 8-K and its acceptance timestamp. The corrected SEC lookup therefore preserves exact date-covering shards as primary and permits a **one-calendar-day adjacent SEC-declared shard only when no date-covering shard exists**. URLs are never guessed, the two-shard hard bound remains, and exact accession + exact requested filing date + original `8-K` remain mandatory. See `docs/phase32_sec_submissions_shard_boundary_incident.md`.
+`c5b171557d173bdf0095aecfaf660b8660f2480d233fa9c5a55f138b86c1f3f9`
 
-All source corrections occurred before any development or protected return read. The frozen scientific fingerprint, hypotheses, chronology, costs, sample gates, multiplicity controls, identity-v4 rules, and protected-evidence boundary are unchanged. Existing source caches remain reusable.
+The independent local source/predictor audit reprocessed all 36,309 filing entities, reproduced those hashes with zero network/market-outcome reads, and froze acceptance fingerprint:
 
-Only after this source/predictor gate passes and an independent local source/lineage validation freezes its evidence hashes may development returns be opened under the unchanged contract.
+`531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde`
 
-Phase33 remains blocked. LIVE and automatic broker failover remain disabled.
+### Exact active target — development-only performance evaluation
+
+The next authorized gate is `scripts/run_phase32_development.py` after its focused unit tests and `scripts/validate_phase32_development.py` pass.
+
+This is the **first Phase32 step authorized to read development stock/SPY outcomes**. Before doing so it revalidates the accepted source/predictor fingerprint and hashes, exact stage partition, source-derived execution ticker for every development predictor, and accepted split/corporate-action evidence. Any missing or ambiguous execution-ticker lineage fails before outcomes; ATLAS never chooses a ticker because market data happens to exist.
+
+The development study uses exact decision-open / t+5-close stock and SPY bars, previous-session accepted regimes, the frozen 75% selection + five-session purge + internal chronology, all fixed folds/sample/robustness/concentration gates, Holm-5, and no runner-up substitution.
+
+Protected stock/SPY returns remain forbidden. If development produces zero finalists, Phase32 goes to independent negative closeout with the holdout unread. If finalists exist, a separate blindness/lineage audit and immutable finalist-only protected plan must pass before protected returns may be opened.
 
 ## Remaining roadmap
 
-- **Phase32:** SEC 8-K Material Corporate-Event Alpha — active; frozen policy, full-history predictor acquisition next.
+- **Phase32:** SEC 8-K Material Corporate-Event Alpha — active; development-only performance gate next.
 - **Phase33:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked on supported alpha.
 - **Phase34:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
 - **Phase35:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
