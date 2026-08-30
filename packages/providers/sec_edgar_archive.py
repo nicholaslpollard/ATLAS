@@ -161,7 +161,11 @@ class SECEDGARArchiveClient:
         if cached is not None:
             return cached
 
-        response_limit = self._configured_response_limit(url)
+        # Preserve the accepted historical/default URL-classification seam first.
+        # Only an explicit non-default client submission bound may replace it.
+        response_limit = self._response_limit(url)
+        if self._submission_max_response_bytes != SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES:
+            response_limit = self._configured_response_limit(url)
         delay = SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS
         last_error: Exception | None = None
         for attempt in range(1, SEC_EDGAR_MAX_ATTEMPTS + 1):
