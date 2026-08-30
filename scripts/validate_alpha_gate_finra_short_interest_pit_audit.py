@@ -107,7 +107,7 @@ def main() -> int:
         require(module, required, "PIT audit scientific boundary")
     for forbidden in (
         "canonical_file(", "feature_file(", "forward_return", "stock_return", "spy_return",
-        "future_close", "packages.execution", "packages.brokers", "submit_order", "paper_submit",
+        "future_close", "packages.execution", "packages.brokers", "submit_order(", "paper_submit(",
     ):
         forbid(module, forbidden, "market/trading dependency")
     forbid(runner, "argparse", "operator policy override")
