@@ -174,8 +174,10 @@ def main() -> int:
         '"paper_submits_performed": 0',
         '"live_writes_performed": 0',
         '"automation_writes_performed": 0',
-        "publication-time chronology",
-        "point-in-time active-common-stock identity",
+        "audit FINRA publication-time ",
+        "chronology, revision handling, split handling",
+        "point-in-time active-common-stock ",
+        "identity before defining any finite performance hypotheses",
     ):
         require(feasibility, required, "source-only feasibility boundary")
     for forbidden in (
@@ -211,6 +213,9 @@ def main() -> int:
     require(spec, EXPECTED_MECHANISM, "spec mechanism")
     require(spec, "Phase33", "spec downstream boundary")
     require(spec, "protected", "spec protected boundary")
+    require(spec, "exact FINRA publication availability", "spec publication chronology boundary")
+    require(spec, "revision semantics", "spec revision boundary")
+    require(spec, "point-in-time symbol and active common-stock identity", "spec PIT identity boundary")
 
     require(
         focused_workflow,
