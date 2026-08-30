@@ -14,6 +14,7 @@ from packages.backtesting.alpha_gate_xbrl_scientific_policy import (
     XBRL_PROTECTED_START,
     XBRL_RUNNER_UP_SUBSTITUTION_ALLOWED,
     XBRL_SCIENTIFIC_FINGERPRINT,
+    XBRL_SELECTION_WINNER_RULE,
     XBRL_STRESS_COST_BPS,
     xbrl_scientific_fingerprint,
 )
@@ -22,7 +23,7 @@ from packages.backtesting.alpha_gate_xbrl_scientific_policy import (
 def test_scientific_fingerprint_is_exact() -> None:
     assert xbrl_scientific_fingerprint() == XBRL_SCIENTIFIC_FINGERPRINT
     assert XBRL_SCIENTIFIC_FINGERPRINT == (
-        "239215aad3c151200c77d214d5723e446877fcb014fb2280b9cd909b3ea379ef"
+        "2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490"
     )
 
 
@@ -59,5 +60,6 @@ def test_short_costs_include_more_friction_than_longs() -> None:
 
 def test_selection_is_global_and_protected_cannot_be_shopped() -> None:
     assert XBRL_MULTIPLE_TESTING_METHOD == "HOLM_BONFERRONI_GLOBAL_6"
+    assert XBRL_SELECTION_WINNER_RULE == "highest_primary_selection_LCB_then_candidate_id"
     assert XBRL_RUNNER_UP_SUBSTITUTION_ALLOWED is False
     assert XBRL_PROTECTED_RETURNS_BEFORE_FINALISTS_ALLOWED is False
