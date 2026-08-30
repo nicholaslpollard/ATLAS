@@ -18,7 +18,11 @@ Retained core feasibility v2 contract:
 
 Retained Massive original-8-K discovery endpoint: `/stocks/filings/vX/index`.
 
+Retained official SEC submissions source: `data.sec.gov/submissions`.
+
 Retained public-availability rule: `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
+
+The retained feasibility gate read zero market outcomes.
 
 Core V2 fingerprint:
 
