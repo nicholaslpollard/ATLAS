@@ -128,6 +128,8 @@ The current XBRL feasibility gate reads **zero** market outcomes and therefore d
 
 Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` under scientific fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
 
+Historical Phase31 full-acquisition runner retained for provenance: `scripts/run_phase31_form4_acquisition.py`.
+
 The original Phase31 target result remains `FEASIBILITY_FAIL`; it is preserved rather than rewritten. The diagnosed root cause was a **Massive beta source-association/data-quality defect**, not a chronology-rule defect and not a performance result.
 
 The accepted source-quality repair retained 45,915 authoritative rows under repair fingerprint:
