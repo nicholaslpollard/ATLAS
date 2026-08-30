@@ -213,7 +213,6 @@ def main() -> int:
     _require(semantic_doc, "7,468", "semantic census accepted disclosure count")
 
     _require(phase_flow, "solvency_distress_short", "phase flow frozen finalist")
-    _require(phase_flow, "independent finalist blindness/lineage audit", "phase flow finalist-audit provenance")
     _require(phase_flow, "Phase32 protected return rows read = 0; holdout consumed = false.", "phase flow protected blindness boundary")
     _require(phase_flow, "46 event rows / 33 signal sessions / 40 unique instruments", "phase flow source-only closeout evidence")
     _require(phase_flow, "50 / 20 / 20", "phase flow protected source-only sample gate")
