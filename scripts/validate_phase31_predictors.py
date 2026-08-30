@@ -118,17 +118,18 @@ def main() -> int:
     require(acquisition_doc, "1,040", "accepted quarantine rows")
     require(scientific, "split/corporate-action crossings", "remaining path-admissibility requirement")
 
-    # phase_flow.md is a living continuation document. Preserve Phase31 acceptance
-    # provenance there, but do not require an obsolete Phase31 internal step to stay active.
-    require(flow, "Accepted project foundation: **through Phase31**", "retained Phase31 acceptance boundary")
-    require(flow, "Active project gate: Phase32", "current Phase32 continuation")
+    # phase_flow.md is a living continuation document. It must retain Phase31 provenance
+    # while accurately advancing beyond later accepted phases.
+    require(flow, "Accepted project foundation: **through Phase32**", "current accepted foundation boundary")
+    require(flow, "Phases26–32 are `ACCEPTED_NEGATIVE`", "retained modern alpha dispositions")
     require(flow, "protected returns remain unread", "current protected blindness boundary")
+    require(flow, "Phase33", "current downstream authority boundary")
 
     print("ATLAS Phase 31 predictor-only Form-4 contracts: PASS")
     print("- accepted 62-shard acquisition evidence is frozen before performance")
     print("- exact P/S eligibility, contradiction, cluster and Composite-FIGI PIT identity rules are bound")
     print("- predictor construction has no market-price/return or trading authority")
-    print("- historical predictor-stage invariants remain frozen while phase_flow advances to Phase32")
+    print("- historical predictor-stage invariants remain frozen while living phase_flow advances through Phase32")
     return 0
 
 

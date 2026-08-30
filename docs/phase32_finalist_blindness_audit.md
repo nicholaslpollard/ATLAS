@@ -1,6 +1,6 @@
 # Phase32 Finalist Blindness / Lineage Audit and Protected Plan
 
-**Status:** READY FOR TARGET-MACHINE SOURCE-ONLY AUDIT. Protected stock/SPY returns remain unread.
+**Status:** ACCEPTED PASS — source-only protected sample gate impossible; protected returns remain unread; proceed to negative closeout.
 
 Frozen scientific policy fingerprint:
 
@@ -14,8 +14,6 @@ Independent predictor/source acceptance fingerprint:
 
 The target-machine Phase32 development study passed under the unchanged frozen five-hypothesis contract.
 
-Development evidence:
-
 - development predictors read: **18,819**;
 - usable development outcome rows: **18,448**;
 - missing exact stock paths censored: **294**;
@@ -23,88 +21,81 @@ Development evidence:
 - protected return rows read: **0**;
 - protected holdout consumed: **false**.
 
-All five frozen candidates passed the selection gates and global Holm-5 correction. The frozen one-per-direction winner rule selected:
-
-- LONG: `share_repurchase_long`;
-- SHORT: `solvency_distress_short`.
-
-Internal validation then produced:
-
-- `share_repurchase_long`: FAIL because the 90% primary LCB was negative (`-0.00078597`); no runner-up substitution is allowed;
-- `solvency_distress_short`: PASS with 303 rows, 186 signal sessions, 219 instruments, 10-bps SPY-relative mean `0.03760873`, 10-bps unhedged mean `0.03134181`, and 90% LCB `0.01713014`.
-
-The only frozen finalist is therefore:
-
-`solvency_distress_short`
-
-This is not yet historical alpha support. It is a development finalist that must survive the frozen protected gate.
+All five frozen candidates passed selection plus global Holm-5. The frozen one-per-direction winners were `share_repurchase_long` and `solvency_distress_short`. Internal validation rejected `share_repurchase_long` on its required primary LCB and accepted only `solvency_distress_short`; no runner-up substitution was allowed.
 
 ## Audit contract
 
 `phase32-finalist-blindness-lineage-audit-v1-independent-development-recompute-protected-unread`
 
-The audit implementation is intentionally independent of `packages/backtesting/phase32_development.py`. It reads the already-opened development artifacts and independently reproduces:
+The audit implementation is independent of `packages/backtesting/phase32_development.py`. It independently reproduces exact return geometry, frozen chronology/folds, five-session block bootstrap, all sample/economic/robustness/concentration gates, global `HOLM_BONFERRONI_GLOBAL_5`, the one-winner-per-direction rule, no runner-up substitution, and the exact finalist set.
 
-1. exact open-to-T+5-close stock/SPY return geometry;
-2. the frozen 75% selection / five-session purge / internal chronology;
-3. six selection folds and three internal folds;
-4. five-session block bootstrap with 2,000 replicates and seed 320832;
-5. every frozen selection/internal economic, robustness, sample, and concentration gate;
-6. global `HOLM_BONFERRONI_GLOBAL_5`;
-7. the one-winner-per-direction rule;
-8. no runner-up substitution;
-9. the exact finalist set.
+The accepted target-machine run reproduced:
 
-The audit must independently reproduce exactly one finalist, `solvency_distress_short`, or stop.
+- selection survivors: `equity_issuance_short`, `financial_integrity_adverse_short`, `listing_distress_short`, `share_repurchase_long`, `solvency_distress_short`;
+- selection winners: `share_repurchase_long`, `solvency_distress_short`;
+- finalist: `solvency_distress_short`.
+
+Finalist audit fingerprint:
+
+`c047dd1800877ed1d268b2d8e4c4fc1bfe158fcf715caedc275405f1bf01853e`
 
 ## Protected plan contract
 
 `phase32-protected-plan-v1-finalist-only-source-predictor-three-fold-no-returns`
 
-After reproducing the finalist, the audit may read only the already-frozen protected predictor metadata and filing-entity identity lineage. It must not read any protected stock/SPY return.
+The audit read only frozen protected predictor metadata and filing-entity identity lineage. It did not read protected stock/SPY returns. The protected plan freezes exact finalist identity, source-derived execution ticker, decision/exit sessions, three protected folds, per-row source hashes, and deterministic plan hashes.
 
-The protected plan freezes, before returns:
+Protected plan fingerprint:
 
-- only `solvency_distress_short` protected predictor rows;
-- exact instrument identity and source-derived execution ticker;
-- decision session and T+5 exit session;
-- the complete three-fold protected calendar assignment;
-- a SHA-256 for every source predictor row;
-- the deterministic protected-plan-row SHA-256;
-- a protected-plan fingerprint;
-- the audit fingerprint.
+`2f44f2d87578a0b0a0cee6a6f5c855340056222ce52d68835b931ce5f114a344`
 
-Market-data availability may not choose or repair execution identity.
+Protected plan rows SHA-256:
 
-## Source-only protected sample precheck
+`b9591ac49dab3f6f7ff01ab4331ef114c68a436e8475456e099058bce847f703`
 
-Before spending the holdout, the audit counts the finalist's frozen protected predictor population. The protected contract requires at least:
+## Accepted source-only protected sample precheck
+
+Frozen finalist protected population:
+
+- **46 event rows**;
+- **33 signal sessions**;
+- **40 unique instruments**.
+
+Frozen minimums:
 
 - **50 event rows**;
 - **20 signal sessions**;
 - **20 unique instruments**.
 
-These three requirements are source-only and can be decided without protected returns. If any is impossible from the frozen protected predictor population, protected returns remain unread and Phase32 proceeds to negative closeout.
+Result:
 
-If all three are possible, that still does **not** open the holdout. The exact audit fingerprint and protected-plan hashes must first be frozen into a separate finalist-only protected evaluator. Only that later evaluator may perform the one-way protected return read.
+- event rows: **FAIL** (`46 < 50`);
+- signal sessions: **PASS**;
+- unique instruments: **PASS**.
 
-The return-dependent protected requirements remain unchanged: >=2/3 positive folds, positive 10-bps SPY-relative mean, positive 80% LCB, positive 25-bps stress mean, positive 10-bps unhedged mean, required year/prior-state robustness where eligible, and frozen concentration limits.
+Audit status:
 
-## Implementation
+`AUDIT_PASS_PROTECTED_SAMPLE_GATE_IMPOSSIBLE`
+
+Because the source-only population cannot satisfy the preregistered event-row minimum, there is no admissible reason to open protected returns. The holdout remains pristine and Phase32 must close `ACCEPTED_NEGATIVE`.
+
+## Protected boundary
+
+- protected return rows read: **0**;
+- protected holdout consumed: **false**;
+- provider network/broker/order/PAPER/LIVE/automation activity: **0**;
+- protected-return authorization after audit: **false**.
+
+No separate protected evaluator is authorized for Phase32 because the mandatory source-only sample gate already fails.
+
+## Implementation / derived evidence
 
 - `packages/backtesting/phase32_finalist_audit.py`
 - `scripts/run_phase32_finalist_audit.py`
 - `scripts/validate_phase32_finalist_audit.py`
 - `tests/unit/test_phase32_finalist_audit.py`
-
-Derived source-only outputs:
-
 - `data/derived/strategy_evaluation/phase32/v1/finalist_audit/finalist_blindness_audit.json`
 - `data/derived/strategy_evaluation/phase32/v1/finalist_audit/protected_plan.json`
 - `data/derived/strategy_evaluation/phase32/v1/finalist_audit/protected_plan_rows.jsonl`
 
-## Authority boundary
-
-Allowed in this gate: already-opened development artifacts, frozen predictor/source metadata, exact identity lineage, XNYS calendar structure, deterministic statistical recomputation, source-only protected sample counts, local audit/plan artifacts, tests, validators, and documentation.
-
-Forbidden: protected stock/SPY returns, protected market-outcome ranking, alternate finalists, runner-up substitution, hypothesis/taxonomy/horizon/entry retuning, provider network calls or writes, broker/account reads or writes, orders, PAPER, LIVE, automation writes, automatic broker failover, and Phase33 authority.
+The immutable negative closeout and authority consequence are recorded in `docs/phase32_closeout.md`.

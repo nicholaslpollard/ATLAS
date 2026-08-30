@@ -58,5 +58,7 @@ jobs:
         run: python scripts/validate_phase32_development.py
       - name: Validate Phase 32 finalist blindness / lineage audit contracts
         run: python scripts/validate_phase32_finalist_audit.py
+      - name: Validate Phase 32 negative closeout contracts
+        run: python scripts/validate_phase32_closeout.py
       - name: Run Phase 32 focused unit tests
-        run: python -m pytest -q tests/unit/test_phase32_feasibility.py tests/unit/test_phase32_semantic_feasibility.py tests/unit/test_phase32_semantic_feasibility_v2.py tests/unit/test_phase32_semantic_source_census.py tests/unit/test_phase32_policy.py tests/unit/test_phase32_predictor_acquisition.py tests/unit/test_phase32_text_multiplicity.py tests/unit/test_phase32_sec_shard_boundary.py tests/unit/test_phase32_predictor_independent_acceptance.py tests/unit/test_phase32_development.py tests/unit/test_phase32_finalist_audit.py
+        run: python -m pytest -q tests/unit/test_phase32_feasibility.py tests/unit/test_phase32_semantic_feasibility.py tests/unit/test_phase32_semantic_feasibility_v2.py tests/unit/test_phase32_semantic_source_census.py tests/unit/test_phase32_policy.py tests/unit/test_phase32_predictor_acquisition.py tests/unit/test_phase32_text_multiplicity.py tests/unit/test_phase32_sec_shard_boundary.py tests/unit/test_phase32_predictor_independent_acceptance.py tests/unit/test_phase32_development.py tests/unit/test_phase32_finalist_audit.py tests/unit/test_phase32_closeout.py
