@@ -15,6 +15,10 @@ from packages.backtesting.alpha_gate_xbrl_pit_audit import (
     xbrl_pit_audit_fingerprint,
 )
 
+EXPECTED_CLOSEOUT_EVIDENCE_FINGERPRINT = (
+    "291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91"
+)
+
 
 def _read(relative: str) -> str:
     return (PROJECT_ROOT / relative).read_text(encoding="utf-8")
@@ -122,7 +126,7 @@ def main() -> int:
     _require(massive_provider, '"/v3/reference/tickers"', "Massive reference route")
     _require(massive_provider, '"cik": expected_cik', "exact CIK filter")
     _require(massive_provider, '"date": as_of_date.isoformat()', "point-in-time date filter")
-    _require(massive_provider, "states = (True, False)", "active/inactive coverage")
+    _require(massive_provider, "states = (True, False)", "v1 active/inactive reproducibility")
     _forbid(massive_provider, "urlopen", "parallel Massive HTTP authority")
 
     for token in (
@@ -137,12 +141,14 @@ def main() -> int:
     ):
         _require(tests, token, "focused regression test")
 
+    # Evidence-bearing documents retain full feasibility/PIT lineage even after
+    # later stages close the family. The operational phase-flow doc needs only the
+    # accepted gate state, final closeout authority, and protected boundary.
     for living_name, living in (
         ("fundamental gate doc", phase_doc),
         ("current status", status),
         ("roadmap", roadmap),
         ("README", readme),
-        ("phase flow", flow),
     ):
         _require(living, "FEASIBILITY_PASS", f"{living_name} accepted feasibility state")
         _require(living, "200", f"{living_name} successful Company Facts evidence")
@@ -154,7 +160,15 @@ def main() -> int:
             f"{living_name} accepted feasibility evidence fingerprint",
         )
         _require(living, XBRL_PIT_AUDIT_FINGERPRINT, f"{living_name} frozen PIT audit fingerprint")
+        _require(living, EXPECTED_CLOSEOUT_EVIDENCE_FINGERPRINT, f"{living_name} final closeout fingerprint")
+        _require(living, "ACCEPTED_NEGATIVE", f"{living_name} final XBRL disposition")
         _require(living, "Phase33", f"{living_name} downstream block")
+
+    _require(flow, "FEASIBILITY_PASS", "phase flow retained feasibility state")
+    _require(flow, "v1 audit failure is preserved", "phase flow preserved v1 audit failure")
+    _require(flow, EXPECTED_CLOSEOUT_EVIDENCE_FINGERPRINT, "phase flow final closeout fingerprint")
+    _require(flow, "XBRL protected return rows read = **0**", "phase flow protected boundary")
+    _require(flow, "Phase33", "phase flow downstream block")
 
     _require(doc, "same-accession semantic-context conflicts <= **0**", "audit conflict gate")
     _require(doc, "unambiguous PIT instrument mappings >= **120**", "audit identity gate")
@@ -188,8 +202,8 @@ def main() -> int:
     print("- runner imports frozen constants rather than duplicating hash literals")
     print("- original 10-Q/10-K accession versions remain isolated and amendments are excluded")
     print("- exact SEC acceptance time controls the first eligible XNYS decision session")
-    print("- Massive identity uses exact CIK + point-in-time date and fails closed on multiple instruments")
-    print("- market outcomes, protected returns, broker/order/PAPER/LIVE authority remain absent")
+    print("- v1 Massive identity remains reproducible; targeted v2 repair is validated separately")
+    print("- historical audit reads no outcomes; final family closeout keeps protected returns unread")
     return 0
 
 
