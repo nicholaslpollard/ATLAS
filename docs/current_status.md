@@ -1,14 +1,19 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-30 (America/New_York). Phase32 remains closed and merged `ACCEPTED_NEGATIVE`. The materially different SEC XBRL fundamental-quality/accrual research program has also completed and closed `ACCEPTED_NEGATIVE` after a valid development-negative result. Protected stock/SPY returns remain unread and the master holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked.**
+**Last synchronized: 2026-08-30 (America/New_York). Phase32 remains closed and merged `ACCEPTED_NEGATIVE`. The SEC XBRL fundamental-quality/accrual research program has completed, merged, and closed `ACCEPTED_NEGATIVE`; its post-merge full regression is green on Ubuntu and Windows. The current pre-Phase33 gate is a frozen source-only SEC Schedule 13D/13G beneficial-ownership feasibility audit. Protected stock/SPY returns remain unread and the master holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
-Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_xbrl_closeout.md`, `docs/alpha_gate_sec_xbrl_fundamental_quality.md`, `docs/alpha_gate_sec_xbrl_scientific_contract.md`, `docs/alpha_gate_sec_xbrl_development.md`, retained Phase32 records, `docs/phase_flow.md`, and accepted code/CI evidence before continuing.
+Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_feasibility.md`, `docs/alpha_gate_sec_xbrl_closeout.md`, retained XBRL scientific/source records, retained Phase32 records, `docs/phase_flow.md`, and accepted code/CI evidence before continuing.
 
 ## Authority state
 
 - Accepted numbered foundation: through **Phase32**, merged into `main`.
 - Phase26–32: all scientifically valid `ACCEPTED_NEGATIVE`.
 - Completed pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism: **`ACCEPTED_NEGATIVE`**.
+- XBRL PR #38 / merge: `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; post-merge full ATLAS Ubuntu/Windows regression passed.
+- Current pre-Phase33 research branch: `alpha-gate-sec-beneficial-ownership-feasibility`.
+- Current mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
+- Frozen beneficial-ownership feasibility fingerprint: `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+- Beneficial-ownership alpha hypotheses: **not frozen**; target/protected market outcomes remain forbidden/unread.
 - Accepted historical modern alpha support: **0**.
 - Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
 - Master protected outcome window `2026-05-12..2026-08-11`: **unconsumed**.
@@ -16,9 +21,30 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_xbrl_closeout.md`, `docs
 - Current Massive subscription: **Stocks Starter**; no broader entitlement is assumed.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
-- Current XBRL closure branch: `alpha-gate-sec-xbrl-fundamental-quality-scientific-contract`.
 
 Root cause before workaround remains mandatory. Failed research evidence must be preserved. No failed family may be rescued by changing thresholds, horizon, costs, feature definitions, direction, multiplicity, winner rules, or protected policy after results.
+
+## Current SEC Schedule 13D/13G beneficial-ownership source gate
+
+Mechanism:
+
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
+
+Feasibility contract:
+
+`alpha-gate-sec-beneficial-ownership-feasibility-v1-schedule13d13g-source-only-no-market-outcomes`
+
+Frozen feasibility fingerprint:
+
+`f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`
+
+Source lineage begins after accepted XBRL merge `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`.
+
+The frozen source window is `2016-01-01..2026-08-11`. ATLAS reads official SEC quarterly master indexes, then exact complete-submission `.txt` archives for a deterministic 200-filing sample stratified across legacy/structured × initial/amended 13D/13G forms. The SEC structured compliance boundary is `2024-12-18`.
+
+The gate reconciles exact accession, form, filing date, `SUBJECT COMPANY` CIK, SEC acceptance time, the first XNYS session open strictly after acceptance, and exact PIT active common-stock identity through the accepted Massive CIK/date reference seam. Multiple eligible share classes fail closed; no arbitrary ticker/share-class selection is permitted.
+
+Alpha hypotheses remain **not frozen**. The source gate reads zero market outcomes, zero protected returns, and grants zero broker/order/PAPER/LIVE authority. `FEASIBILITY_PASS` may authorize only a later complete scientific freeze; it does not unblock Phase33.
 
 ## Phase32 final evidence
 
@@ -150,7 +176,7 @@ The closeout reads only persisted artifacts and performs zero provider calls, ze
 
 Master protected outcome window remains `2026-05-12..2026-08-11`.
 
-Neither Phase32 nor the XBRL mechanism opened protected stock/SPY returns. The holdout remains unconsumed. It is not available for post-hoc rescue of either failed family and may be used only under a later materially different preregistered mechanism that independently satisfies its frozen source/scientific entry conditions.
+Neither Phase32 nor the XBRL mechanism opened protected stock/SPY returns. The current beneficial-ownership feasibility gate also forbids all target/protected market outcomes. The holdout remains unconsumed. It is not available for post-hoc rescue of failed families and may be used only under a later materially different preregistered mechanism that independently satisfies its frozen source/scientific entry conditions.
 
 ## Retained Phase31 provenance
 
@@ -170,6 +196,6 @@ Phase31 produced zero survivors/winners/finalists/support and zero protected rea
 
 ## Immediate repository action
 
-Freeze the accepted XBRL closeout hashes/fingerprint in code and documentation, run exact-head focused XBRL plus full ATLAS Ubuntu/Windows CI, merge the closure PR, and run post-merge regression. After merge, the next alpha research effort must select a materially different economic/information mechanism rather than retune the closed XBRL family.
+Complete exact-head focused beneficial-ownership plus full ATLAS Ubuntu/Windows CI for the frozen source gate. Once repository certification is green, run the source-only feasibility runner on the target machine to establish real SEC/Massive coverage and PIT identity evidence. Do not enter market-outcome science before that source result is accepted and a complete scientific contract is frozen.
 
 Do not enter Phase33 unless a later mechanism earns accepted historical `SUPPORTED` authority.
