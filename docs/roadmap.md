@@ -1,19 +1,20 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-30 after Phase32 independent finalist blindness/lineage audit proved the frozen protected `solvency_distress_short` population cannot satisfy the preregistered 50-row minimum. Phase32 closes `ACCEPTED_NEGATIVE` with protected stock/SPY returns unread and the holdout unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked.**
+**Normative project source of truth. Re-synchronized: 2026-08-29 (America/New_York) after Phase32 merged `ACCEPTED_NEGATIVE` at `69f8aa81289934b71f2652482c747391917c15a3`. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked. A materially different pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism is now open for source-only feasibility with zero market outcomes.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
-3. `docs/phase32_closeout.md`;
-4. `docs/phase32_sec_8k_material_event_alpha.md`;
-5. `docs/phase32_scientific_contract.md`;
-6. `docs/phase32_predictor_independent_acceptance.md`;
-7. `docs/phase32_development_evaluation.md`;
-8. `docs/phase32_finalist_blindness_audit.md`;
-9. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-10. accepted code, validators, CI/PR evidence, and historical phase records.
+3. `docs/alpha_gate_sec_xbrl_fundamental_quality.md`;
+4. `docs/phase32_closeout.md`;
+5. `docs/phase32_sec_8k_material_event_alpha.md`;
+6. `docs/phase32_scientific_contract.md`;
+7. `docs/phase32_predictor_independent_acceptance.md`;
+8. `docs/phase32_development_evaluation.md`;
+9. `docs/phase32_finalist_blindness_audit.md`;
+10. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
+11. accepted code, validators, CI/PR evidence, and historical phase records.
 
 ## 1. Mission
 
@@ -34,7 +35,7 @@ Persistent roles:
 - PostgreSQL = later persistent operational state after promotion.
 - Massive = primary broad-market/reference/regulatory provider where entitlement and PIT semantics are proven.
 - Current Massive subscription = **Stocks Starter**; no other entitlement is assumed.
-- Official SEC EDGAR = read-only authoritative regulatory provenance when phase-gated.
+- Official SEC EDGAR/XBRL = read-only authoritative regulatory provenance when phase-gated.
 - Webull = primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance.
 - Alpaca = explicit/manual secondary broker; **no automatic broker failover**.
 - ML = predictive evidence, never standalone authority.
@@ -84,7 +85,9 @@ Modern alpha phases:
 - Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
 - Phase32 SEC 8-K material corporate-event alpha — `ACCEPTED_NEGATIVE`.
 
-Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. Retained Phase31 feasibility fingerprint `505716315cff51656083265644075856794ffc49f5b1f36652578ac5622f005d` and original `FEASIBILITY_FAIL` remain historical evidence only.
+Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+
+Phase32 PR #37 merged at `69f8aa81289934b71f2652482c747391917c15a3`. The merge was accepted only after the target-machine closeout PASS and exact-head Ubuntu/Windows dedicated Phase32 plus full ATLAS regressions passed.
 
 Historical supported alpha remains **zero**.
 
@@ -160,13 +163,33 @@ Phase32 is `ACCEPTED_NEGATIVE`. The finalist did not earn `SUPPORTED` authority 
 
 Historical supported alpha remains **0**. Phase33 remains blocked.
 
-Any next alpha research gate must test a **materially different alpha mechanism**. The unconsumed protected window may not be used to optimize or rescue the failed Phase32 family.
+## 7. Pre-Phase33 Alpha Gate — SEC XBRL Fundamental Quality / Accrual Mechanism — `OPEN: SOURCE-ONLY FEASIBILITY`
 
-## 7. Remaining master roadmap
+**Purpose:** determine whether official standardized SEC XBRL quarterly fundamentals provide sufficient historical source coverage for a materially different fundamental-information alpha mechanism before any market outcome is opened.
 
-### Next alpha research gate — required before Phase33
+This mechanism targets point-in-time profitability, cash-vs-accrual quality, and fundamental change from original 10-Q/10-K facts. It is materially different from Phases26–32 and may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
 
-The roadmap must add/freeze a materially different economic or information mechanism if alpha research continues. It must not be a Phase32 8-K retune, threshold relaxation, runner-up substitution, or alternate read of the same protected family. Its own hypotheses, source/PIT contract, chronology, outcome, costs, multiplicity, sample gates, dependence treatment, and protected-evidence rules must be frozen before governed performance.
+Current feasibility contract:
+
+`alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`
+
+Current feasibility fingerprint:
+
+`6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`
+
+Authoritative route: official SEC `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` through a restricted client that reuses the accepted SEC EDGAR HTTP/fair-access seam.
+
+The deterministic source-only census uses exactly 200 unique issuer CIKs selected by SHA-256 ordering from the accepted Phase32 source inventory. This is only a reproducible issuer inventory seed; no Phase32 scientific/performance evidence enters the new mechanism.
+
+Frozen feasibility gates require at least 160 successful Company Facts documents, at least 100 issuers with >=8-period assets/net-income/operating-cash-flow history, and at least 80 issuers with >=8-period assets/revenue plus gross-profit-or-cost history.
+
+**No alpha hypothesis is frozen. No market price/return, target outcome, or protected return is authorized.** Provider writes, broker/order/PAPER/LIVE/automation authority remain zero. A feasibility PASS only authorizes a later independent PIT filing/accession/acceptance-time and restatement/identity audit. It does not authorize performance testing or satisfy Phase33.
+
+If the source gate passes, PIT chronology and fact reconstruction must be independently accepted before a finite hypothesis family and complete statistical/protected policy can be frozen. If it fails, diagnose the source limitation; do not weaken the coverage gates or silently switch datasets.
+
+See `docs/alpha_gate_sec_xbrl_fundamental_quality.md`.
+
+## 8. Remaining master roadmap
 
 ### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
 
@@ -200,6 +223,6 @@ Consolidate the production web application and accepted Python engine; promote P
 
 Enable LIVE only through explicit authorization with deliberately small initial exposure, hard risk/loss limits, reconciliation/health, kill capability, manual fallback, and no automatic broker failover. Scale only from evidence.
 
-## 8. Progression rule
+## 9. Progression rule
 
 The roadmap is **conditional, not schedule-driven**. Phase numbers do not guarantee advancement. Positive downstream authority requires the exact frozen entry condition; accepted negative science cannot substitute for it.
