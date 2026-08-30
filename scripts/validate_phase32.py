@@ -223,11 +223,16 @@ def main() -> int:
     require(roadmap, "Phase39 — Controlled LIVE Activation", "shifted LIVE phase")
     require(status, "phase-32-sec-8k-material-event-alpha", "closeout branch status")
     require(status, "data.sec.gov/submissions", "current official SEC source")
-    require(status, "v2", "retained feasibility contract")
+    require(status, EXPECTED_CONTRACT_VERSION, "retained feasibility contract")
     require(phase_doc, EXPECTED_MASSIVE_ENDPOINT, "Phase32 source endpoint")
     require(phase_doc, "data.sec.gov/submissions", "official SEC submissions source")
     require(phase_doc, EXPECTED_PUBLIC_RULE, "Phase32 timing rule")
-    require(phase_doc, "zero market outcomes", "Phase32 feasibility blindness")
+    require(phase_doc, EXPECTED_CONTRACT_VERSION, "Phase32 no-market-outcome feasibility contract")
+    require(
+        phase_doc,
+        "zero target/protected outcomes during source qualification",
+        "Phase32 source-qualification outcome blindness",
+    )
     require(flow, "Accepted project foundation: **through Phase32**", "current flow foundation")
     require(flow, "Phase33", "current flow downstream boundary")
     require(readme, "Phase32 is `ACCEPTED_NEGATIVE`", "README final Phase32 state")
