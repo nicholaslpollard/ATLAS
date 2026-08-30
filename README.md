@@ -57,6 +57,8 @@ Long-running target-machine runners must provide lightweight terminal progress i
 - Phase33 signal-to-trade remains blocked.
 - LIVE and automatic broker failover remain disabled.
 
+Retained historical Phase31 validator/provenance markers below are **not current authority**: `Active Phase31: SEC Form-4 Insider-Transaction Alpha`; handoff record `docs/phase31_form4_source_quality_repair.md`; accepted source-quality repair fingerprint `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`; diagnosed `Massive early-access/beta source-association/data-quality defect`. Current rebaselining supersedes that active-phase wording while preserving the accepted history.
+
 ### Phase32 frozen science
 
 Policy fingerprint:
