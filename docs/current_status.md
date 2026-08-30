@@ -30,6 +30,8 @@ Protected predictor metadata is source-only and was allowed by the frozen contra
 
 Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` under scientific fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`. Its accepted source-quality repair retained 45,915 authoritative rows under repair fingerprint `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`. The original `FEASIBILITY_FAIL` remains preserved. Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
 
+Retained historical Phase31 source-quality handoff markers below are provenance only and are **not** the current authority state: Massive plan `Stocks Starter`; historical branch `phase-31-sec-insider-transaction-alpha`; original result `FEASIBILITY_FAIL`; diagnostic head `80b9dc6d3541f850e3d004b1e880ae1c2d8aa7b7`; chronology-violation artifact `3fac83bf60206e4056d6d9b1fd285b79f7a6b366b7fb154aefd4daaea4abc044`; repair fingerprint `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`; repair policy `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`; diagnosed root cause `Massive beta source-association/data-quality defect`; historical repair runner `scripts/run_phase31_form4_source_quality_repair.py`.
+
 ## Phase32 accepted source gates
 
 Retained feasibility v2 contract:
