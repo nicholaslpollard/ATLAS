@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32 merge and completion of the SEC XBRL fundamental-quality/accrual research program as `ACCEPTED_NEGATIVE`.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32 merge, accepted-negative SEC XBRL closeout/merge, and accepted-negative SEC Schedule 13D/13G beneficial-ownership development/closeout.**
 
 Read `docs/roadmap.md` first. One numbered phase is one acceptance gate; pre-phase alpha research gates must obey the same scientific/authority discipline.
 
@@ -68,7 +68,7 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 - Phases26–32 are `ACCEPTED_NEGATIVE`; accepted historical modern alpha remains **0**.
 - Phase32 development produced one frozen finalist, `solvency_distress_short`; its source-only protected population was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum.
 - Phase32 protected return rows read = 0; holdout consumed = false.
-- The materially different SEC XBRL fundamental-quality/accrual research program has now also closed **`ACCEPTED_NEGATIVE`**.
+- The materially different SEC XBRL fundamental-quality/accrual research program closed **`ACCEPTED_NEGATIVE`** and merged via PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; post-merge full regression passed on Ubuntu and Windows.
 - XBRL feasibility contract `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes` returned `FEASIBILITY_PASS` with 200 successful Company Facts documents, 170 accrual-history-ready issuers, and 92 profitability-history-ready issuers.
 - XBRL PIT v1 audit failure is preserved: 139 unambiguous mappings / 28 issuers with >=3 mappings.
 - Targeted common-stock active-only identity repair fingerprint `e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f` passed with 171 mappings / 38 issuers and no threshold changes.
@@ -77,7 +77,19 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 - Accepted XBRL development result: `ACCEPTED_NEGATIVE_DEVELOPMENT` with **5,536** predictors, **3,963** usable development outcomes, **0 selection passers**, **0 winners**, and **0 internal finalists**.
 - Accepted XBRL closeout evidence fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 - XBRL protected return rows read = **0**; protected holdout consumed = **false**.
+- Retained beneficial-ownership source-feasibility mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
+- Retained beneficial-ownership source-only feasibility fingerprint: `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+- Beneficial-ownership targeted source repair passed before outcomes with 43/43 SEC quarterly indexes, 200/200 complete submissions, 195 unique authoritative subject CIKs, 200/200 decision sessions, and 142 unambiguous PIT active common-stock mappings.
+- Beneficial-ownership frozen scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
+- Beneficial-ownership scientific fingerprint: `4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`.
+- The earlier 3500/5200 predictor transport failure remains preserved as pre-outcome evidence; the valid source cache was retained and the narrow 256 MB scientific submission ceiling repair changed no science.
+- Accepted beneficial-ownership development head: `067dc13429c22dc4e789959f56644423f0947946`.
+- Repaired beneficial-ownership source-only reconstruction passed with **3,652 predictors**: **2,763 development** and **889 protected-source-only** rows, with zero market-outcome rows read before development opened.
+- Accepted beneficial-ownership development result: `ACCEPTED_NEGATIVE_DEVELOPMENT` with **2,412** usable development outcomes, **0 selection passers**, **0 winners**, **0 internal finalists**, and **0 protected-return eligible finalists**.
+- Accepted beneficial-ownership closeout evidence fingerprint: `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
+- Beneficial-ownership protected return rows read = **0**; protected holdout consumed = **false**.
+- The beneficial-ownership family is closed `ACCEPTED_NEGATIVE`; post-result ownership-threshold, form/amendment, direction, taxonomy/filter, horizon, cost, sample, multiplicity, winner/finalist, or protected-policy retuning is forbidden.
 - Master protected window `2026-05-12..2026-08-11` remains unconsumed.
 - Phase33 Signal-to-Trade Construction remains blocked because accepted historical `SUPPORTED` alpha remains zero.
-- The next pre-Phase33 alpha research program must use a materially different economic/information mechanism; the closed XBRL family may not be retuned after results.
+- The next alpha family must use a materially different economic/information mechanism; accepted-negative beneficial-ownership performance cannot be repackaged as support.
 - LIVE remains disabled and automatic broker failover remains disabled.

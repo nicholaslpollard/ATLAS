@@ -19,6 +19,10 @@ EXPECTED_CANDIDATES = (
     "open_market_sale_short",
     "clustered_open_market_sale_short",
 )
+EXPECTED_XBRL_MERGE = "083c0a5742b161cf4b7c04d5bf0246f3057f6c19"
+EXPECTED_XBRL_CLOSEOUT_EVIDENCE = (
+    "291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91"
+)
 
 
 def read(path: str) -> str:
@@ -119,11 +123,12 @@ def main() -> int:
     require(scientific, "split/corporate-action crossings", "remaining path-admissibility requirement")
 
     # phase_flow.md is a living continuation document. Phase31 predictor invariants are
-    # frozen above; the living handoff may advance beyond Phase32 as long as it preserves
-    # the historical disposition and the current no-support/no-protected-read authority.
+    # frozen above; bind current continuity to immutable later-phase closure evidence and
+    # authority boundaries instead of sentence-level wording in the living handoff.
     require(flow, "Accepted project foundation: **through Phase32**", "accepted foundation boundary")
     require(flow, "Phases26–32 are `ACCEPTED_NEGATIVE`", "retained modern alpha dispositions")
-    require(flow, "SEC XBRL fundamental-quality/accrual research program has now also closed **`ACCEPTED_NEGATIVE`**", "current XBRL disposition")
+    require(flow, EXPECTED_XBRL_MERGE, "accepted XBRL merge continuity")
+    require(flow, EXPECTED_XBRL_CLOSEOUT_EVIDENCE, "accepted XBRL closeout evidence continuity")
     require(flow, "XBRL protected return rows read = **0**; protected holdout consumed = **false**", "current protected blindness boundary")
     require(flow, "Master protected window `2026-05-12..2026-08-11` remains unconsumed", "master holdout continuity")
     require(flow, "Phase33 Signal-to-Trade Construction remains blocked", "current downstream authority boundary")
