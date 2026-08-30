@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 EXPECTED_SCIENTIFIC = "0b32d59677e86544777807525cd4aba13dd36fd0fcfd7744458556205561d13f"
 EXPECTED_IMPLEMENTATION = "f5b99a52bf0e9d101b53493e0012a7a60d24b301f904d4b9958dc03638432a5f"
+EXPECTED_REPAIR = "12491a2008d6d629e55d395ad3228ea069e538254a64b03d9046e9cc5ebe169a"
 EXPECTED_PREDICTOR = "alpha-gate-finra-short-interest-predictor-v1-source-only-change-crowding-ranked"
 EXPECTED_DEVELOPMENT = "alpha-gate-finra-short-interest-development-v1-63-session-spy-relative-protected-blind"
 
@@ -30,14 +31,17 @@ def forbid(text: str, needle: str, label: str) -> None:
 
 def main() -> int:
     predictor_path = "packages/backtesting/alpha_gate_finra_short_interest_predictor.py"
+    repair_path = "packages/backtesting/alpha_gate_finra_short_interest_pit_evidence_binding_repair.py"
     development_path = "packages/backtesting/alpha_gate_finra_short_interest_development.py"
     runner_path = "scripts/run_alpha_gate_finra_short_interest_development.py"
     predictor = read(predictor_path)
+    repair = read(repair_path)
     development = read(development_path)
     runner = read(runner_path)
     workflow = read(".github/workflows/finra-short-interest-alpha-gate-tests.yml")
     for path, text in (
         (predictor_path, predictor),
+        (repair_path, repair),
         (development_path, development),
         (runner_path, runner),
     ):
@@ -49,6 +53,11 @@ def main() -> int:
         FINRA_SHORT_INTEREST_FINALIST_CONTRACT,
         FINRA_SHORT_INTEREST_OUTCOME_CONTRACT,
         development_implementation_fingerprint,
+    )
+    from packages.backtesting.alpha_gate_finra_short_interest_pit_evidence_binding_repair import (
+        FINRA_SHORT_INTEREST_ACCEPTED_FEASIBILITY_REPORT_SHA256,
+        FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_CONTRACT,
+        FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_FINGERPRINT,
     )
     from packages.backtesting.alpha_gate_finra_short_interest_predictor import (
         FINRA_SHORT_INTEREST_PREDICTOR_CONTRACT,
@@ -65,6 +74,17 @@ def main() -> int:
         raise AssertionError("development implementation fingerprint drifted")
     if development_implementation_fingerprint() != EXPECTED_IMPLEMENTATION:
         raise AssertionError("computed development implementation fingerprint drifted")
+    if FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_FINGERPRINT != EXPECTED_REPAIR:
+        raise AssertionError("PIT evidence-binding repair fingerprint drifted")
+    if FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_CONTRACT != (
+        "alpha-gate-finra-short-interest-pit-evidence-binding-repair-v1-"
+        "semantic-pass-evidence-no-market-outcomes"
+    ):
+        raise AssertionError("PIT evidence-binding repair contract drifted")
+    if FINRA_SHORT_INTEREST_ACCEPTED_FEASIBILITY_REPORT_SHA256 != (
+        "4fb3abc3e561fd4187efbf60967127230f14d37204d21b5ccb910c40a4469845"
+    ):
+        raise AssertionError("accepted feasibility report SHA drifted")
     if FINRA_SHORT_INTEREST_PREDICTOR_CONTRACT != EXPECTED_PREDICTOR:
         raise AssertionError("predictor contract drifted")
     if FINRA_SHORT_INTEREST_DEVELOPMENT_CONTRACT != EXPECTED_DEVELOPMENT:
@@ -112,6 +132,21 @@ def main() -> int:
         forbid(predictor, forbidden, "outcome/trading dependency in predictor")
 
     for required in (
+        "accepted_feasibility_report",
+        "pit_evidence_binding_fingerprint",
+        "FINRA_SHORT_INTEREST_FROZEN_SETTLEMENT_DATES",
+        "FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_FINGERPRINT",
+        "FINRAShortInterestPredictorEvidenceBindingRepair",
+        'report.get("failures") != []',
+    ):
+        require(repair, required, "PIT evidence-binding repair")
+    forbid(
+        repair,
+        "sha256_file(path) != FINRA_SHORT_INTEREST_ACCEPTED_FEASIBILITY_REPORT_SHA256",
+        "feasibility hash mislabeled as PIT report hash",
+    )
+
+    for required in (
         'report.get("status") != "SOURCE_ONLY_PREDICTOR_PASS"',
         "read_parquet(",
         "HOLM_BONFERRONI_GLOBAL_4",
@@ -135,7 +170,10 @@ def main() -> int:
     require(runner, "Stage 1: reconstruct complete source-only predictor population", "two-stage runner")
     require(runner, "if predictor.get(\"pass\") is not True", "source gate before outcomes")
     require(runner, "Protected returns: SEALED / UNREAD", "protected blindness")
+    require(runner, "FINRAShortInterestPredictorEvidenceBindingRepair", "repaired predictor binding")
+    require(runner, "PIT evidence-binding repair fingerprint", "repair provenance output")
     forbid(runner, "argparse", "operator policy override")
+    require(workflow, "alpha_gate_finra_short_interest_pit_evidence_binding_repair.py", "repair compile coverage")
     require(workflow, "validate_alpha_gate_finra_short_interest_development.py", "focused implementation validator")
     require(workflow, "test_alpha_gate_finra_short_interest_predictor.py", "predictor tests")
     require(workflow, "test_alpha_gate_finra_short_interest_development.py", "development tests")
@@ -143,7 +181,9 @@ def main() -> int:
     print("ATLAS FINRA short-interest predictor/development implementation: PASS")
     print(f"- scientific fingerprint: {EXPECTED_SCIENTIFIC}")
     print(f"- development implementation fingerprint: {EXPECTED_IMPLEMENTATION}")
+    print(f"- PIT evidence-binding repair fingerprint: {EXPECTED_REPAIR}")
     print("- 116 frozen twice-monthly settlement dates are reconstructed source-only")
+    print("- accepted PIT evidence is semantically bound; the feasibility SHA is no longer mislabeled as the PIT report SHA")
     print("- development outcomes cannot open unless complete source-only predictor gate passes")
     print("- protected returns and trading/Phase33 authority remain sealed")
     return 0
