@@ -9,7 +9,9 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_xbrl_fundamental_quality
 - Accepted foundation: through **Phase32**, merged into `main`.
 - Phase26–32: all scientifically valid `ACCEPTED_NEGATIVE`.
 - Accepted historical modern alpha support: **0**.
+- Current Massive subscription: **Stocks Starter**; no broader entitlement is assumed.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+- Retained Phase32 research/closeout branch: `phase-32-sec-8k-material-event-alpha`.
 - Phase32 PR: **#37**.
 - Phase32 merge: `69f8aa81289934b71f2652482c747391917c15a3`.
 - Phase32 final disposition: **`ACCEPTED_NEGATIVE`**.
@@ -124,7 +126,19 @@ The current XBRL feasibility gate reads **zero** market outcomes and therefore d
 
 ## Retained Phase31 provenance
 
-Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` under scientific fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`. Its accepted source-quality repair retained 45,915 authoritative rows under repair fingerprint `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`. The original `FEASIBILITY_FAIL` remains preserved. Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
+Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` under scientific fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
+
+The original Phase31 target result remains `FEASIBILITY_FAIL`; it is preserved rather than rewritten. The diagnosed root cause was a **Massive beta source-association/data-quality defect**, not a chronology-rule defect and not a performance result.
+
+The accepted source-quality repair retained 45,915 authoritative rows under repair fingerprint:
+
+`2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`
+
+Retained source-quality policy:
+
+`RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
+
+Phase31 produced zero survivors/winners/finalists/support and zero protected reads. Its original failed feasibility evidence, repair lineage, no-threshold-weakening rule, and final `ACCEPTED_NEGATIVE` disposition remain historical evidence while the project advances.
 
 ## Immediate repository action
 
