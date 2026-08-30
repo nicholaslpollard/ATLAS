@@ -108,7 +108,16 @@ def main() -> int:
         _forbid(policy, forbidden, "market outcome/trading dependency")
         _forbid(runner, forbidden, "preflight market outcome/trading dependency")
 
-    _require(repair, "MASSIVE_EXACT_CIK_DATE_ACTIVE_TRUE_TYPE_CS", "accepted repaired common-stock semantics")
+    _require(
+        repair,
+        '"identity_source": "Massive:/v3/reference/tickers?cik=...&date=...&active=true&type=CS"',
+        "accepted repaired common-stock source semantics",
+    )
+    _require(
+        repair,
+        "EXACT_CIK_DATE_ACTIVE_COMMON_STOCK_ONLY_STRONG_OR_MEDIUM_EXACTLY_ONE_UNIQUE_INSTRUMENT",
+        "accepted repaired common-stock identity rule",
+    )
     _require(runner, "Market prices/returns and protected returns read by this preflight: 0", "preflight blindness")
     _require(runner, "Phase33 authority: False", "preflight downstream block")
     _require(tests, "test_primary_horizon_and_outer_embargo_do_not_overlap", "chronology regression")
@@ -118,6 +127,7 @@ def main() -> int:
     print(f"- contract: {XBRL_SCIENTIFIC_CONTRACT}")
     print(f"- fingerprint: {XBRL_SCIENTIFIC_FINGERPRINT}")
     print("- six hypotheses, PIT quarter semantics, 63-session outcome, costs, multiplicity and protected rules frozen")
+    print("- accepted v2 identity repair is bound to active=true + type=CS on exact historical CIK/date")
     print("- this validation reads zero market outcomes and grants zero Phase33/trading authority")
     return 0
 
