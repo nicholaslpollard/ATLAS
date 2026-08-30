@@ -42,6 +42,10 @@ The upcoming development gate may open **development** stock/SPY outcomes only. 
 
 ## Phase32 accepted source gates
 
+Retained feasibility v2 contract:
+
+`phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
+
 Core V2 fingerprint:
 
 `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`
