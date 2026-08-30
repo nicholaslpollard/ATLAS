@@ -19,6 +19,9 @@ EXPECTED_ACCEPTED_EVIDENCE_FINGERPRINT = (
 EXPECTED_PIT_AUDIT_FINGERPRINT = (
     "50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c"
 )
+EXPECTED_CLOSEOUT_EVIDENCE_FINGERPRINT = (
+    "291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91"
+)
 EXPECTED_MECHANISM = "PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY"
 EXPECTED_SAMPLE_SIZE = 200
 EXPECTED_GATES = (160, 100, 80, 8)
@@ -115,6 +118,9 @@ def main() -> int:
     if actual_groups != EXPECTED_GROUPS:
         raise AssertionError(f"XBRL concept groups drifted: {actual_groups}")
 
+    # These assertions bind the historical feasibility stage itself. Later stages
+    # may freeze hypotheses and read development outcomes, but cannot rewrite what
+    # the feasibility stage was authorized to do.
     if XBRL_ALPHA_HYPOTHESES_FROZEN is not False:
         raise AssertionError("XBRL alpha hypotheses must remain unfrozen during feasibility")
     if XBRL_TARGET_OUTCOME_READS_ALLOWED or XBRL_PROTECTED_OUTCOME_READS_ALLOWED:
@@ -196,11 +202,16 @@ def main() -> int:
         "Market prices/returns/target outcomes/protected returns: FORBIDDEN / UNREAD",
         "runner outcome boundary",
     )
-    require(runner, "Provider writes / broker / order / PAPER / LIVE / automation: DISABLED", "runner authority boundary")
+    require(
+        runner,
+        "Provider writes / broker / order / PAPER / LIVE / automation: DISABLED",
+        "runner authority boundary",
+    )
     forbid(runner, "argparse", "operator scope override")
 
-    # Frozen feasibility code remains unchanged while living continuation docs advance
-    # to the independently frozen PIT source audit using the accepted target result.
+    # Living documents are allowed to advance beyond feasibility. They must retain
+    # immutable feasibility lineage/evidence while proving that the completed XBRL
+    # family closed without protected-return or Phase33 authority.
     for text, label in (
         (spec, "XBRL mechanism spec"),
         (roadmap, "roadmap"),
@@ -223,19 +234,23 @@ def main() -> int:
         require(
             text,
             EXPECTED_PIT_AUDIT_FINGERPRINT,
-            f"{label} current frozen PIT audit fingerprint",
+            f"{label} retained frozen PIT audit fingerprint",
         )
+        require(
+            text,
+            EXPECTED_CLOSEOUT_EVIDENCE_FINGERPRINT,
+            f"{label} final XBRL closeout evidence fingerprint",
+        )
+        require(text, "ACCEPTED_NEGATIVE", f"{label} final XBRL disposition")
         require(text, "Phase33", f"{label} downstream boundary")
 
-    require(spec, "No alpha hypothesis is frozen", "mechanism spec pre-performance boundary")
-    require(spec, "Only unique zero-padded `issuer_cik` values are extracted", "CIK-only Phase32 reuse")
-    require(spec, "200", "accepted feasibility sample evidence")
-    require(spec, "170", "accepted accrual readiness evidence")
-    require(spec, "92", "accepted profitability readiness evidence")
-    require(roadmap, "PIT AUDIT OPEN", "roadmap current gate state")
-    require(status, "no alpha hypotheses frozen and no market outcomes authorized", "status current authority")
-    require(flow, "Market prices/returns, target outcomes, and protected returns are **forbidden / unread**", "flow outcome boundary")
-    require(readme, "source-only PIT", "README current XBRL authority")
+    require(spec, "Only issuer CIK discovery was reused", "CIK-only Phase32 reuse")
+    require(spec, "target outcome rows read: **0**", "historical feasibility outcome blindness")
+    require(spec, "protected return rows read: **0**", "protected-return boundary")
+    require(roadmap, "Completed Pre-Phase33 SEC XBRL", "roadmap completed XBRL state")
+    require(status, "XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`", "status completed XBRL state")
+    require(flow, "XBRL protected return rows read = **0**", "flow protected-return boundary")
+    require(readme, "XBRL protected return rows read = **0**", "README protected-return boundary")
 
     require(workflow, "validate_alpha_gate_xbrl_feasibility.py", "dedicated feasibility validator CI")
     require(workflow, "test_alpha_gate_xbrl_feasibility.py", "focused feasibility tests CI")
@@ -249,10 +264,10 @@ def main() -> int:
     print(f"- deterministic issuer sample: {EXPECTED_SAMPLE_SIZE}")
     print(f"- accepted target feasibility evidence fingerprint: {EXPECTED_ACCEPTED_EVIDENCE_FINGERPRINT}")
     print("- accepted target source evidence: 200 successful documents / 170 accrual-ready / 92 profitability-ready")
-    print("- frozen feasibility implementation remains zero-outcome and is retained after handoff")
-    print("- current living docs advance only to the independently frozen PIT source audit")
+    print("- frozen feasibility implementation remains zero-outcome and unchanged after later XBRL stages")
+    print("- living docs now retain feasibility lineage while recording final XBRL ACCEPTED_NEGATIVE closeout")
+    print("- protected returns remain unread; Phase33 remains blocked")
     print("- provider writes, broker/order/PAPER/LIVE authority and automatic failover remain disabled")
-    print("- Phase33 remains blocked pending accepted historical SUPPORTED alpha")
     return 0
 
 
