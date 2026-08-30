@@ -177,6 +177,7 @@ def main() -> int:
     _require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "original runner outcome boundary")
     _require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "original runner trading boundary")
 
+    # Frozen Phase31 phase/incident/repair records retain exact feasibility-era evidence.
     _require(phase_doc, "first XNYS session", "conservative next-session explanation")
     _require(phase_doc, "strictly later", "strict later-session timing")
     _require(phase_doc, "transaction_date", "transaction-date warning")
@@ -207,25 +208,29 @@ def main() -> int:
     _require(repair_doc, "zero provider calls", "repair doc provider-free target")
     _require(repair_doc, "does **not** erase or reinterpret the original failed feasibility run", "repair doc provenance")
 
-    _require(roadmap, "Active Phase31 — SEC Form-4 Insider-Transaction Alpha", "roadmap Phase31 rebaseline")
-    _require(roadmap, "Phase32 — Signal-to-Trade Construction", "shifted signal-to-trade phase")
-    _require(roadmap, "Phase38 — Controlled LIVE Activation", "shifted LIVE phase")
+    # Living continuation docs may advance. They must preserve the accepted Phase31
+    # historical result while accurately naming the current gate and authority boundary.
+    for doc_name, doc in (("roadmap", roadmap), ("current status", status), ("README", readme)):
+        _require(doc, "Phase31", f"{doc_name} Phase31 provenance")
+        _require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} Phase31 final disposition")
+        _require(doc, "Phase32", f"{doc_name} current Phase32 continuation")
+
+    _require(roadmap, "Active Phase32 — SEC 8-K Material Corporate-Event Alpha", "roadmap current active phase")
+    _require(roadmap, "Phase33 — Signal-to-Trade Construction", "roadmap current downstream gate")
+    _require(roadmap, "Historical supported alpha remains **zero**", "roadmap Phase31/32 authority continuity")
 
     _require(status, "Stocks Starter", "subscription status")
-    _require(status, "phase-31-sec-insider-transaction-alpha", "active branch status")
-    _require(status, "FEASIBILITY_FAIL", "original failed feasibility status")
-    _require(status, EXPECTED_DIAGNOSTIC_HEAD, "status diagnostic head")
-    _require(status, EXPECTED_VIOLATION_SHA, "status violation artifact")
-    _require(status, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "status repair fingerprint")
-    _require(status, EXPECTED_SOURCE_QUALITY_POLICY, "status repair policy")
-    _require(status, "Massive beta source-association/data-quality defect", "status root cause")
-    _require(status, "scripts/run_phase31_form4_source_quality_repair.py", "status exact next handoff")
+    _require(status, "phase-32-sec-8k-material-event-alpha", "current active branch status")
+    _require(status, "FEASIBILITY_FAIL", "retained original feasibility status")
+    _require(status, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "retained Phase31 source repair fingerprint")
+    _require(status, EXPECTED_SOURCE_QUALITY_POLICY, "retained Phase31 source repair policy")
+    _require(status, "Massive beta source-association/data-quality defect", "retained Phase31 root cause")
+    _require(status, "Phase31 produced zero survivors/winners/finalists/support and zero protected reads", "Phase31 final evidence")
 
-    _require(readme, "Active Phase31: SEC Form-4 Insider-Transaction Alpha", "README active phase")
-    _require(readme, "phase31_form4_source_quality_repair.md", "README repair handoff")
-    _require(readme, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "README repair fingerprint")
-    _require(readme, "Massive early-access/beta source-association/data-quality defect", "README root cause")
-    _require(readme, "Phase38", "README current downstream numbering")
+    _require(readme, "Active Phase32: SEC 8-K Material Corporate-Event Alpha", "README current active phase")
+    _require(readme, "Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`", "README retained Phase31 disposition")
+    _require(readme, "Phase33 signal-to-trade remains blocked", "README downstream authority block")
+    _require(readme, "LIVE and automatic broker failover remain disabled", "README live authority block")
 
     _require(workflow, "Validate Phase 31 Form-4 feasibility contracts", "CI Phase31 validator step")
     _require(workflow, "python scripts/validate_phase31.py", "CI Phase31 validator command")
@@ -236,9 +241,9 @@ def main() -> int:
     print("- root cause is classified before repair; no performance evidence was consulted")
     print("- source-quality repair preserves raw rows and quarantines contaminated accessions fail-closed")
     print("- repair classifier has no ticker/accession-specific exception and no numeric bad-row tolerance")
-    print("- repair replay is provider-free and target/protected outcomes remain unread")
-    print("- source-quality PASS can authorize only scientific-policy freeze; Phase31/Phase32/trading authority remain locked")
-    print("- README/status/phase/incident/repair handoff documents are synchronized")
+    print("- feasibility/source-quality records stay immutable while living docs correctly advance to Phase32")
+    print("- Phase31 final ACCEPTED_NEGATIVE disposition and zero protected reads remain preserved")
+    print("- Phase33/trading/LIVE authority remain blocked by the current continuation docs")
     return 0
 
 
