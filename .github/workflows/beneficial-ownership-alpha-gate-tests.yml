@@ -37,10 +37,12 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
       - name: Compile beneficial-ownership source gate
-        run: python -m compileall -q packages/providers/sec_edgar_archive.py packages/backtesting/alpha_gate_beneficial_ownership_feasibility.py scripts/run_alpha_gate_beneficial_ownership_feasibility.py scripts/validate_alpha_gate_beneficial_ownership_feasibility.py tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py
+        run: python -m compileall -q packages/providers/sec_edgar_archive.py packages/backtesting/alpha_gate_beneficial_ownership_feasibility.py packages/backtesting/alpha_gate_beneficial_ownership_source_repair.py scripts/run_alpha_gate_beneficial_ownership_feasibility.py scripts/run_alpha_gate_beneficial_ownership_source_repair.py scripts/validate_alpha_gate_beneficial_ownership_feasibility.py scripts/validate_alpha_gate_beneficial_ownership_source_repair.py tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py
       - name: Retain accepted XBRL negative closeout
         run: python scripts/validate_alpha_gate_xbrl_closeout.py
       - name: Validate SEC beneficial-ownership source feasibility contracts
         run: python scripts/validate_alpha_gate_beneficial_ownership_feasibility.py
+      - name: Validate SEC beneficial-ownership targeted source repair
+        run: python scripts/validate_alpha_gate_beneficial_ownership_source_repair.py
       - name: Run beneficial-ownership focused unit tests
-        run: python -m pytest -q tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py
+        run: python -m pytest -q tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py
