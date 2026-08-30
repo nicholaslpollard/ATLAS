@@ -33,6 +33,18 @@ Frozen Phase32 scientific policy fingerprint:
 
 `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
+Accepted Phase32 finalist-audit fingerprint:
+
+`c047dd1800877ed1d268b2d8e4c4fc1bfe158fcf715caedc275405f1bf01853e`
+
+Accepted Phase32 protected-plan fingerprint:
+
+`2f44f2d87578a0b0a0cee6a6f5c855340056222ce52d68835b931ce5f114a344`
+
+Accepted Phase32 protected-plan rows SHA-256:
+
+`b9591ac49dab3f6f7ff01ab4331ef114c68a436e8475456e099058bce847f703`
+
 Exactly five hypotheses remained frozen throughout Phase32. The frozen development finalist was `solvency_distress_short`.
 
 The frozen protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** against preregistered minimums of 50 / 20 / 20. Protected stock/SPY returns remain unread; protected return rows read = 0 and the holdout remains unconsumed. Phase32 remains closed `ACCEPTED_NEGATIVE`, Historical supported alpha remains 0, and Phase33 remains blocked.
