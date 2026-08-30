@@ -199,10 +199,17 @@ def main() -> int:
 
     _require(phase_doc, EXPECTED_POLICY_FINGERPRINT, "phase spec policy fingerprint")
     _require(phase_doc, "SOURCE_QUALITY_REPAIR_PASS", "phase spec repair pass")
-    _require(phase_doc, "full historical Form-4 acquisition", "phase spec next acquisition")
+    _require(phase_doc, "full historical Form-4 acquisition", "phase spec historical acquisition handoff")
+
+    # current_status.md is a living handoff document. It may advance beyond the
+    # Phase31 acquisition step, but it must retain Phase31's immutable scientific
+    # lineage and final authority boundary.
     _require(status, EXPECTED_POLICY_FINGERPRINT, "status policy fingerprint")
-    _require(status, "45,915", "status authoritative target count")
-    _require(status, "scripts/run_phase31_form4_acquisition.py", "status exact next target")
+    _require(status, "FEASIBILITY_FAIL", "status retained original feasibility failure")
+    _require(status, "Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE`", "status Phase31 final disposition")
+    _require(status, "Phase31 produced zero survivors/winners/finalists/support and zero protected reads", "status Phase31 final evidence")
+    _require(status, "Historical supported alpha remains 0", "status zero supported alpha")
+    _require(status, "Phase33 remains blocked", "status downstream authority block")
 
     _require(workflow, "Validate Phase 31 frozen scientific policy and acquisition contracts", "CI policy step")
     _require(workflow, "python scripts/validate_phase31_policy.py", "CI policy validator command")
@@ -215,6 +222,7 @@ def main() -> int:
     print("- v3 historical admission globally quarantines chronology defects and missing transaction classification")
     print("- accepted probe windows must still reconcile exactly")
     print("- acquisition has no market-outcome or broker/order/PAPER/LIVE authority")
+    print("- living status may advance while retaining Phase31 ACCEPTED_NEGATIVE and the Phase33 block")
     return 0
 
 
