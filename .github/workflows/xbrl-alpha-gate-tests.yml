@@ -37,7 +37,7 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
       - name: Compile XBRL alpha-gate package
-        run: python -m compileall -q packages/providers/sec_xbrl.py packages/providers/sec_xbrl_pit.py packages/providers/massive/xbrl_pit.py packages/backtesting/alpha_gate_xbrl_feasibility.py packages/backtesting/alpha_gate_xbrl_pit_audit.py scripts/run_alpha_gate_xbrl_feasibility.py scripts/run_alpha_gate_xbrl_pit_audit.py scripts/validate_alpha_gate_xbrl_feasibility.py scripts/validate_alpha_gate_xbrl_pit_audit.py tests/unit/test_alpha_gate_xbrl_feasibility.py tests/unit/test_alpha_gate_xbrl_pit_audit.py
+        run: python -m compileall -q packages/providers/sec_xbrl.py packages/providers/sec_xbrl_pit.py packages/providers/massive/xbrl_pit.py packages/backtesting/alpha_gate_xbrl_feasibility.py packages/backtesting/alpha_gate_xbrl_pit_audit.py scripts/run_alpha_gate_xbrl_feasibility.py scripts/run_alpha_gate_xbrl_pit_audit.py scripts/validate_alpha_gate_xbrl_feasibility.py scripts/validate_alpha_gate_xbrl_pit_audit.py tests/unit/test_alpha_gate_xbrl_feasibility.py tests/unit/test_alpha_gate_xbrl_pit_audit.py tests/unit/test_alpha_gate_xbrl_pit_boundaries.py
       - name: Retain Phase 32 negative closeout boundary
         run: python scripts/validate_phase32_closeout.py
       - name: Validate XBRL source-only feasibility contracts
@@ -45,4 +45,4 @@ jobs:
       - name: Validate XBRL PIT source/chronology/identity contracts
         run: python scripts/validate_alpha_gate_xbrl_pit_audit.py
       - name: Run XBRL source-only focused unit tests
-        run: python -m pytest -q tests/unit/test_alpha_gate_xbrl_feasibility.py tests/unit/test_alpha_gate_xbrl_pit_audit.py
+        run: python -m pytest -q tests/unit/test_alpha_gate_xbrl_feasibility.py tests/unit/test_alpha_gate_xbrl_pit_audit.py tests/unit/test_alpha_gate_xbrl_pit_boundaries.py
