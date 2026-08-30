@@ -32,8 +32,12 @@ def _forbid(text: str, token: str, label: str) -> None:
 
 
 def main() -> int:
-    if xbrl_scientific_fingerprint() != XBRL_SCIENTIFIC_FINGERPRINT:
-        raise SystemExit("XBRL scientific contract validation failed: frozen fingerprint drifted")
+    actual_fingerprint = xbrl_scientific_fingerprint()
+    if actual_fingerprint != XBRL_SCIENTIFIC_FINGERPRINT:
+        raise SystemExit(
+            "XBRL scientific contract validation failed: frozen fingerprint drifted: "
+            f"actual={actual_fingerprint} expected={XBRL_SCIENTIFIC_FINGERPRINT}"
+        )
     if len(XBRL_HYPOTHESES) != 6:
         raise SystemExit("XBRL scientific contract validation failed: hypothesis family is not exactly six")
 
@@ -63,6 +67,7 @@ def main() -> int:
         'XBRL_DURATION_FACT_RULE = "USD_ONLY_ORIGINAL_10Q_10K_ACCESSION_VERSIONED"',
         'XBRL_PRIMARY_HORIZON_SESSIONS = 63',
         'XBRL_MULTIPLE_TESTING_METHOD = "HOLM_BONFERRONI_GLOBAL_6"',
+        'XBRL_SELECTION_WINNER_RULE = "highest_primary_selection_LCB_then_candidate_id"',
         'XBRL_MAX_SELECTION_WINNERS_PER_DIRECTION = 1',
         'XBRL_MAX_FINALISTS_PER_DIRECTION = 1',
         'XBRL_RUNNER_UP_SUBSTITUTION_ALLOWED = False',
@@ -127,6 +132,7 @@ def main() -> int:
     print(f"- contract: {XBRL_SCIENTIFIC_CONTRACT}")
     print(f"- fingerprint: {XBRL_SCIENTIFIC_FINGERPRINT}")
     print("- six hypotheses, PIT quarter semantics, 63-session outcome, costs, multiplicity and protected rules frozen")
+    print("- winner selection uses only selection-tranche evidence; internal validation cannot choose the winner")
     print("- accepted v2 identity repair is bound to active=true + type=CS on exact historical CIK/date")
     print("- this validation reads zero market outcomes and grants zero Phase33/trading authority")
     return 0
