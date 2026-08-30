@@ -13,6 +13,12 @@ EXPECTED_CONTRACT = (
     "alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes"
 )
 EXPECTED_FINGERPRINT = "6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152"
+EXPECTED_ACCEPTED_EVIDENCE_FINGERPRINT = (
+    "33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9"
+)
+EXPECTED_PIT_AUDIT_FINGERPRINT = (
+    "50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c"
+)
 EXPECTED_MECHANISM = "PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY"
 EXPECTED_SAMPLE_SIZE = 200
 EXPECTED_GATES = (160, 100, 80, 8)
@@ -193,28 +199,46 @@ def main() -> int:
     require(runner, "Provider writes / broker / order / PAPER / LIVE / automation: DISABLED", "runner authority boundary")
     forbid(runner, "argparse", "operator scope override")
 
+    # Frozen feasibility code remains unchanged while living continuation docs advance
+    # to the independently frozen PIT source audit using the accepted target result.
     for text, label in (
-        (spec, "XBRL feasibility spec"),
+        (spec, "XBRL mechanism spec"),
         (roadmap, "roadmap"),
         (status, "current status"),
         (flow, "phase flow"),
         (readme, "README"),
     ):
         require(text, EXPECTED_PHASE32_MERGE, f"{label} Phase32 merged lineage")
-        require(text, EXPECTED_CONTRACT, f"{label} current XBRL contract")
-        require(text, EXPECTED_FINGERPRINT, f"{label} current XBRL fingerprint")
+        require(text, EXPECTED_CONTRACT, f"{label} retained XBRL feasibility contract")
+        require(text, EXPECTED_FINGERPRINT, f"{label} retained XBRL feasibility fingerprint")
+        require(text, "FEASIBILITY_PASS", f"{label} accepted feasibility state")
+        require(text, "200", f"{label} accepted successful-document evidence")
+        require(text, "170", f"{label} accepted accrual-readiness evidence")
+        require(text, "92", f"{label} accepted profitability-readiness evidence")
+        require(
+            text,
+            EXPECTED_ACCEPTED_EVIDENCE_FINGERPRINT,
+            f"{label} accepted target feasibility evidence fingerprint",
+        )
+        require(
+            text,
+            EXPECTED_PIT_AUDIT_FINGERPRINT,
+            f"{label} current frozen PIT audit fingerprint",
+        )
         require(text, "Phase33", f"{label} downstream boundary")
 
-    require(spec, "No alpha hypothesis is frozen", "spec pre-performance boundary")
+    require(spec, "No alpha hypothesis is frozen", "mechanism spec pre-performance boundary")
     require(spec, "Only unique zero-padded `issuer_cik` values are extracted", "CIK-only Phase32 reuse")
-    require(spec, "FEASIBILITY_PASS", "feasibility acceptance semantics")
-    require(roadmap, "OPEN: SOURCE-ONLY FEASIBILITY", "roadmap current gate state")
+    require(spec, "200", "accepted feasibility sample evidence")
+    require(spec, "170", "accepted accrual readiness evidence")
+    require(spec, "92", "accepted profitability readiness evidence")
+    require(roadmap, "PIT AUDIT OPEN", "roadmap current gate state")
     require(status, "no alpha hypotheses frozen and no market outcomes authorized", "status current authority")
     require(flow, "Market prices/returns, target outcomes, and protected returns are **forbidden / unread**", "flow outcome boundary")
-    require(readme, "source-only SEC XBRL feasibility", "README current gate")
+    require(readme, "source-only PIT", "README current XBRL authority")
 
-    require(workflow, "validate_alpha_gate_xbrl_feasibility.py", "dedicated validator CI")
-    require(workflow, "test_alpha_gate_xbrl_feasibility.py", "focused XBRL tests CI")
+    require(workflow, "validate_alpha_gate_xbrl_feasibility.py", "dedicated feasibility validator CI")
+    require(workflow, "test_alpha_gate_xbrl_feasibility.py", "focused feasibility tests CI")
     require(workflow, "validate_phase32_closeout.py", "retained Phase32 closeout boundary CI")
     require(workflow, "windows-latest", "Windows parity")
     require(workflow, "ubuntu-latest", "Ubuntu parity")
@@ -223,9 +247,10 @@ def main() -> int:
     print(f"- Phase32 accepted merge lineage: {EXPECTED_PHASE32_MERGE}")
     print(f"- feasibility fingerprint: {EXPECTED_FINGERPRINT}")
     print(f"- deterministic issuer sample: {EXPECTED_SAMPLE_SIZE}")
-    print("- alpha hypotheses remain unfrozen; target/protected market outcomes remain forbidden")
-    print("- SEC companyfacts reuses the accepted EDGAR network/fair-access seam")
-    print("- Phase32 candidate/performance/finalist evidence is excluded from the new mechanism")
+    print(f"- accepted target feasibility evidence fingerprint: {EXPECTED_ACCEPTED_EVIDENCE_FINGERPRINT}")
+    print("- accepted target source evidence: 200 successful documents / 170 accrual-ready / 92 profitability-ready")
+    print("- frozen feasibility implementation remains zero-outcome and is retained after handoff")
+    print("- current living docs advance only to the independently frozen PIT source audit")
     print("- provider writes, broker/order/PAPER/LIVE authority and automatic failover remain disabled")
     print("- Phase33 remains blocked pending accepted historical SUPPORTED alpha")
     return 0
