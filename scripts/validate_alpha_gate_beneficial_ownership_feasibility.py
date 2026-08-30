@@ -30,6 +30,16 @@ def _forbid(text: str, needle: str, label: str) -> None:
         raise AssertionError(f"forbidden {label}: {needle}")
 
 
+def _import_roots(tree: ast.AST) -> set[str]:
+    roots: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            roots.update(alias.name.split(".", 1)[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            roots.add(node.module.split(".", 1)[0])
+    return roots
+
+
 def main() -> int:
     provider_path = "packages/providers/sec_edgar_archive.py"
     feasibility_path = "packages/backtesting/alpha_gate_beneficial_ownership_feasibility.py"
@@ -55,13 +65,14 @@ def main() -> int:
     full = _read(full_workflow_path)
     tests = _read(test_path)
 
+    parsed: dict[str, ast.AST] = {}
     for path, text in (
         (provider_path, provider),
         (feasibility_path, feasibility),
         (runner_path, runner),
         (test_path, tests),
     ):
-        ast.parse(text, filename=path)
+        parsed[path] = ast.parse(text, filename=path)
 
     from packages.backtesting.alpha_gate_beneficial_ownership_feasibility import (
         BENEFICIAL_OWNERSHIP_ALLOWED_FORMS,
@@ -188,8 +199,15 @@ def main() -> int:
         target = provider if token != "persist-credentials: false" else focused
         _require(target, token, "bounded SEC Archive provider/CI invariant")
 
-    for forbidden in ("requests", "httpx", "aiohttp"):
-        _forbid(provider, forbidden, "parallel HTTP authority in SEC Archive provider")
+    provider_import_roots = _import_roots(parsed[provider_path])
+    forbidden_http_or_parallel_imports = {"requests", "httpx", "aiohttp", "asyncio", "concurrent", "threading"}
+    imported_forbidden = sorted(provider_import_roots & forbidden_http_or_parallel_imports)
+    if imported_forbidden:
+        raise AssertionError(
+            "parallel/alternate HTTP authority added to SEC Archive provider: "
+            + ", ".join(imported_forbidden)
+        )
+
     for forbidden in (
         "read_parquet",
         "forward_return",
