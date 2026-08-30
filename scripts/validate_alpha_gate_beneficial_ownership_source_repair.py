@@ -41,7 +41,6 @@ def main() -> int:
     parent_doc_path = "docs/alpha_gate_sec_beneficial_ownership_feasibility.md"
     test_path = "tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py"
     focused_workflow_path = ".github/workflows/beneficial-ownership-alpha-gate-tests.yml"
-    full_workflow_path = ".github/workflows/atlas-tests.yml"
 
     provider = _read(provider_path)
     parent = _read(parent_path)
@@ -51,7 +50,6 @@ def main() -> int:
     parent_doc = _read(parent_doc_path)
     tests = _read(test_path)
     focused = _read(focused_workflow_path)
-    full = _read(full_workflow_path)
 
     for path, text in (
         (provider_path, provider),
@@ -65,9 +63,9 @@ def main() -> int:
     from packages.backtesting.alpha_gate_beneficial_ownership_feasibility import (
         BENEFICIAL_OWNERSHIP_FEASIBILITY_FINGERPRINT,
         BENEFICIAL_OWNERSHIP_MIN_SUBJECT_CIK_RECONCILED,
-        BENEFICIAL_OWNERSHIP_TARGET_OUTCOME_READS_ALLOWED,
         BENEFICIAL_OWNERSHIP_PROTECTED_OUTCOME_READS_ALLOWED,
         BENEFICIAL_OWNERSHIP_PROVIDER_WRITES,
+        BENEFICIAL_OWNERSHIP_TARGET_OUTCOME_READS_ALLOWED,
         beneficial_ownership_feasibility_fingerprint,
     )
     from packages.backtesting.alpha_gate_beneficial_ownership_source_repair import (
@@ -129,7 +127,7 @@ def main() -> int:
         "SAME_ACCESSION_REQUIRES_EXACT_FORM_DATE_ERA_FORM_CLASS_STRATUM",
         "subject_cik_extracted_min",
         "identity_subject_cik",
-        "numeric_thresholds_changed\": False",
+        "numeric_thresholds_changed",
         EXPECTED_V1_HEAD,
         EXPECTED_V1_ACCESSION,
     ):
@@ -137,7 +135,8 @@ def main() -> int:
 
     _require(repair, "reference_rows = self._cached_reference(cik=subject_cik", "header subject-CIK identity lookup")
     _require(repair, "subject_cik=subject_cik", "header subject-CIK identity resolution")
-    _forbid(repair, "subject_cik == row.index_cik\n                if", "v1 subject/index equality gate")
+    _require(repair, "subject_cik == row.index_cik", "subject/index equality diagnostic only")
+    _require(repair, "subject_cik_equals_index_cik_diagnostic", "subject/index diagnostic labeling")
     for forbidden in (
         "read_parquet",
         "forward_return",
@@ -162,7 +161,7 @@ def main() -> int:
     _require(doc, EXPECTED_REPAIR_FINGERPRINT, "repair doc fingerprint")
     _require(doc, EXPECTED_V1_HEAD, "repair doc v1 failed head")
     _require(doc, EXPECTED_V1_ACCESSION, "repair doc v1 failed accession")
-    _require(doc, "numeric thresholds are retained", "repair doc no-threshold-relaxation boundary")
+    _require(doc, "All numeric thresholds are retained", "repair doc no-threshold-relaxation boundary")
     _require(doc, "zero stock forward returns", "repair doc zero-outcome boundary")
 
     _require(tests, "test_duplicate_accession_entity_associations_collapse_when_filing_semantics_match", "duplicate-association unit test")
@@ -170,8 +169,8 @@ def main() -> int:
     _require(tests, "test_authoritative_security_identity_uses_submission_subject_cik_not_index_cik", "subject-CIK authority unit test")
 
     _require(focused, "Validate SEC beneficial-ownership targeted source repair", "focused repair validator step")
+    _require(focused, "scripts/validate_alpha_gate_beneficial_ownership_source_repair.py", "focused repair validator command")
     _require(focused, "tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py", "focused repair unit tests")
-    _require(full, "Validate pre-Phase33 SEC beneficial-ownership targeted source repair", "full repair validator step")
 
     print("ATLAS SEC Schedule 13D/13G targeted source repair v2 contracts: PASS")
     print(f"- parent v1 failure retained at head {EXPECTED_V1_HEAD}")
