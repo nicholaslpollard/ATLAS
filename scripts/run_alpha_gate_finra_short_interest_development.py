@@ -13,9 +13,13 @@ from packages.backtesting.alpha_gate_finra_short_interest_development import (
     FINRAShortInterestDevelopmentError,
     FINRAShortInterestDevelopmentStudy,
 )
+from packages.backtesting.alpha_gate_finra_short_interest_pit_evidence_binding_repair import (
+    FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_CONTRACT,
+    FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_FINGERPRINT,
+    FINRAShortInterestPredictorEvidenceBindingRepair,
+)
 from packages.backtesting.alpha_gate_finra_short_interest_predictor import (
     FINRA_SHORT_INTEREST_PREDICTOR_CONTRACT,
-    FINRAShortInterestPredictorBuilder,
     FINRAShortInterestPredictorError,
 )
 from packages.backtesting.alpha_gate_finra_short_interest_scientific_policy import (
@@ -44,6 +48,14 @@ def main() -> int:
         f"{FINRA_SHORT_INTEREST_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT}"
     )
     print(
+        "PIT evidence-binding repair contract: "
+        f"{FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_CONTRACT}"
+    )
+    print(
+        "PIT evidence-binding repair fingerprint: "
+        f"{FINRA_SHORT_INTEREST_PIT_EVIDENCE_BINDING_REPAIR_FINGERPRINT}"
+    )
+    print(
         "Frozen hypotheses: "
         + ", ".join(
             f"{spec.candidate_id}:{spec.direction}"
@@ -58,7 +70,7 @@ def main() -> int:
 
     try:
         settings = load_settings()
-        predictor = FINRAShortInterestPredictorBuilder(
+        predictor = FINRAShortInterestPredictorEvidenceBindingRepair(
             settings,
             FINRAShortInterestClient(),
             MassiveReferenceProvider(settings),
@@ -82,6 +94,14 @@ def main() -> int:
         "FINRA source files / Massive PIT snapshots: "
         f"{predictor['finra_source_files_read']} / "
         f"{predictor['massive_reference_snapshots_read']}"
+    )
+    print(
+        "Accepted PIT report SHA-256: "
+        f"{predictor['accepted_pit_audit_report_sha256']}"
+    )
+    print(
+        "Accepted PIT semantic binding fingerprint: "
+        f"{predictor['pit_evidence_binding_repair_fingerprint']}"
     )
     print(f"Target outcome rows before development: {predictor['target_outcome_rows_read']}")
     print(f"Protected return rows: {predictor['protected_return_rows_read']}")
