@@ -118,7 +118,7 @@ def main() -> int:
     _require(diagnostic, '"protected_return_rows_read": 0', "diagnostic zero protected returns")
     _require(diagnostic, '"chronology_violation_population_reproduced": len(violations) > 0', "violation reproduction")
     _require(diagnostic, "violation_transaction_code_counts", "transaction-code diagnostics")
-    _require(diagnostic, "violation_security_type_counts", "security-type diagnostics")
+    _require(diagnostic, "violation_security_type_counts", "transaction-code diagnostics")
     _require(diagnostic, "violation_10b5_1_counts", "10b5-1 diagnostics")
     _require(diagnostic, "violation_transaction_after_filing_gap_days", "gap diagnostics")
 
@@ -212,7 +212,7 @@ def main() -> int:
     _require(status, EXPECTED_SOURCE_QUALITY_POLICY, "retained Phase31 source repair policy")
     _require(status, "Massive beta source-association/data-quality defect", "retained Phase31 root cause")
     _require(status, "Phase31 produced zero survivors/winners/finalists/support and zero protected reads", "Phase31 final evidence")
-    _require(status, "Phase32 is closed", "current Phase32 closeout state")
+    _require(status, "Phase32 remains closed", "current Phase32 closeout state")
 
     _require(readme, "Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well", "README retained modern alpha dispositions")
     _require(readme, "Phase33 signal-to-trade remains blocked", "README downstream authority block")
