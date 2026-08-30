@@ -13,7 +13,6 @@ from urllib.request import Request, urlopen
 from packages.core.exceptions import ProviderError
 from packages.providers.sec_edgar import (
     SEC_EDGAR_MAX_ATTEMPTS,
-    SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS,
     SEC_EDGAR_REQUEST_TIMEOUT_SECONDS,
     sec_declared_user_agent,
 )
@@ -24,6 +23,13 @@ SEC_ARCHIVE_PREFIX = "/Archives/edgar/"
 SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES = 64_000_000
 SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES = 20_000_000
 SEC_ARCHIVE_RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
+# SEC's published fair-access ceiling is 10 requests/second.  ATLAS deliberately
+# uses half that rate on the archive path to retain headroom while avoiding the
+# prior 1 request/second artificial bottleneck.  This changes transport cadence
+# only; source selection, content, chronology, identity, and scientific policy
+# are unchanged.
+SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND = 5
+SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS = 1.0 / SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,10 +137,10 @@ class SECEDGARArchiveClient:
             return cached
 
         response_limit = self._response_limit(url)
-        delay = SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS
+        delay = SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS
         last_error: Exception | None = None
         for attempt in range(1, SEC_EDGAR_MAX_ATTEMPTS + 1):
-            self._sleep(SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS)
+            self._sleep(SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS)
             request = Request(
                 url,
                 method="GET",
