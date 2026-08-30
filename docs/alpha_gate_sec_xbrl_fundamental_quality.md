@@ -1,6 +1,6 @@
 # Pre-Phase33 Alpha Gate — SEC XBRL Fundamental Quality / Accrual Mechanism
 
-**Status: `ACCEPTED_NEGATIVE`. The source-only feasibility PASS, preserved PIT audit v1 FAIL, targeted v2 identity-repair PASS, frozen scientific contract, and development-negative closeout are complete. Protected returns remain unread and Phase33 remains blocked.**
+**Status: `ACCEPTED_NEGATIVE`. The source-only `FEASIBILITY_PASS`, preserved PIT audit v1 FAIL, targeted v2 identity-repair PASS, frozen scientific contract, and development-negative closeout are complete. Protected returns remain unread and Phase33 remains blocked.**
 
 ## Purpose
 
@@ -16,7 +16,7 @@ Source Phase32 merge lineage:
 
 Official SEC `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` was the standardized-fact source through the accepted SEC EDGAR HTTP/fair-access seam. Official SEC submissions metadata supplied exact original filing/accession/date/acceptance chronology. Massive reference supplied PIT issuer-to-security identity after source-only entitlement/semantics validation.
 
-## Source-only feasibility — accepted PASS
+## Source-only feasibility — accepted `FEASIBILITY_PASS`
 
 Contract:
 
@@ -36,7 +36,7 @@ Accepted evidence fingerprint:
 
 The deterministic source-only census used exactly 200 CIKs selected by SHA-256 ordering from the accepted Phase32 issuer inventory. Only issuer CIK discovery was reused; no Phase32 scientific/performance lineage was imported.
 
-Accepted result:
+Accepted result: **`FEASIBILITY_PASS`**.
 
 - source inventory unique CIKs: **4,400**;
 - sample: **200**;
@@ -51,7 +51,7 @@ Accepted result:
 - provider reads/writes: **200 / 0**;
 - broker/order/PAPER/LIVE/automation: **0**.
 
-The feasibility PASS established source coverage only; it never established alpha.
+The `FEASIBILITY_PASS` established source coverage only; it never established alpha.
 
 ## PIT source / chronology / identity audit — v1 preserved FAIL
 
