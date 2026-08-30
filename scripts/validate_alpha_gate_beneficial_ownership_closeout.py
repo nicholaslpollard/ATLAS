@@ -40,6 +40,10 @@ def main() -> int:
     runner_path = "scripts/run_alpha_gate_beneficial_ownership_closeout.py"
     development_doc_path = "docs/alpha_gate_sec_beneficial_ownership_development.md"
     closeout_doc_path = "docs/alpha_gate_sec_beneficial_ownership_closeout.md"
+    status_path = "docs/current_status.md"
+    roadmap_path = "docs/roadmap.md"
+    flow_path = "docs/phase_flow.md"
+    readme_path = "README.md"
     focused_workflow_path = ".github/workflows/beneficial-ownership-alpha-gate-tests.yml"
     full_workflow_path = ".github/workflows/atlas-tests.yml"
 
@@ -47,6 +51,10 @@ def main() -> int:
     runner = _read(runner_path)
     development_doc = _read(development_doc_path)
     closeout_doc = _read(closeout_doc_path)
+    status = _read(status_path)
+    roadmap = _read(roadmap_path)
+    flow = _read(flow_path)
+    readme = _read(readme_path)
     focused_workflow = _read(focused_workflow_path)
     full_workflow = _read(full_workflow_path)
     ast.parse(closeout, filename=closeout_path)
@@ -169,7 +177,14 @@ def main() -> int:
     _require(runner, "Phase33 authority", "runner downstream authority")
     _require(runner, "materially different alpha mechanism", "runner anti-retuning next action")
 
-    for doc_name, doc in (("development doc", development_doc), ("closeout doc", closeout_doc)):
+    for doc_name, doc in (
+        ("development doc", development_doc),
+        ("closeout doc", closeout_doc),
+        ("status", status),
+        ("roadmap", roadmap),
+        ("flow", flow),
+        ("README", readme),
+    ):
         _require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} final disposition")
         _require(doc, EXPECTED_EVIDENCE, f"{doc_name} accepted evidence fingerprint")
         _require(doc, "protected", f"{doc_name} protected boundary")
@@ -194,6 +209,16 @@ def main() -> int:
     _require(closeout_doc, "Phase33 Signal-to-Trade Construction remains blocked", "closeout Phase33 state")
     _require(closeout_doc, "The family is closed", "closeout anti-retuning state")
 
+    _require(status, "Historical supported alpha remains 0", "status support state")
+    _require(status, "Phase33 remains blocked", "status Phase33 state")
+    _require(status, "Beneficial-ownership final scientific disposition: `ACCEPTED_NEGATIVE`", "status beneficial closeout state")
+    _require(roadmap, "## 7. Completed Pre-Phase33 SEC Schedule 13D/13G beneficial ownership — `ACCEPTED_NEGATIVE`", "roadmap beneficial closeout heading")
+    _require(roadmap, "Historical supported alpha remains **zero**", "roadmap retained support state")
+    _require(flow, "Accepted project foundation: **through Phase32**", "flow accepted numbered boundary")
+    _require(flow, "The beneficial-ownership family is closed `ACCEPTED_NEGATIVE`", "flow beneficial closeout state")
+    _require(readme, "Phase32 is `ACCEPTED_NEGATIVE`", "README retained Phase32 state")
+    _require(readme, "Historical supported modern alpha remains **0**", "README support state")
+
     _require(focused_workflow, "Validate beneficial-ownership independent negative closeout", "focused closeout validator step")
     _require(focused_workflow, "python scripts/validate_alpha_gate_beneficial_ownership_closeout.py", "focused closeout validator command")
     _require(focused_workflow, "tests/unit/test_alpha_gate_beneficial_ownership_closeout.py", "focused closeout unit test")
@@ -208,6 +233,7 @@ def main() -> int:
     print("- target result has zero selection passers, zero winners, and zero internal finalists")
     print("- protected returns remain unread and the holdout remains unconsumed")
     print("- closeout uses persisted evidence only; provider/trading authority is absent")
+    print("- living docs are synchronized to the accepted-negative disposition")
     print("- negative evidence cannot be converted into Phase33 authority or retuned support")
     return 0
 
