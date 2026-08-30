@@ -6,6 +6,7 @@ on:
       - main
       - 'phase-*'
       - 'cumulative-*'
+      - 'alpha-gate-*'
   pull_request:
     branches:
       - main
@@ -258,6 +259,9 @@ jobs:
 
       - name: Validate Phase 32 independent negative closeout contracts
         run: python scripts/validate_phase32_closeout.py
+
+      - name: Validate pre-Phase33 SEC XBRL source-only feasibility contracts
+        run: python scripts/validate_alpha_gate_xbrl_feasibility.py
 
       - name: Run tests
         run: python -m pytest -q
