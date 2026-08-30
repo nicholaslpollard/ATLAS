@@ -1,44 +1,32 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-29 (America/New_York). Phase32 remains closed and merged `ACCEPTED_NEGATIVE`; protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked. The materially different SEC XBRL fundamental-quality/accrual mechanism has now passed its source-only feasibility gate on target-machine evidence and has advanced to a frozen source-only PIT filing/acceptance-time/restatement/identity audit.**
+**Last synchronized: 2026-08-30 (America/New_York). Phase32 remains closed and merged `ACCEPTED_NEGATIVE`. The materially different SEC XBRL fundamental-quality/accrual research program has also completed and closed `ACCEPTED_NEGATIVE` after a valid development-negative result. Protected stock/SPY returns remain unread and the master holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
-Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_xbrl_fundamental_quality.md`, `docs/alpha_gate_sec_xbrl_pit_audit.md`, `docs/phase32_closeout.md`, retained Phase32 source/scientific records, `docs/phase_flow.md`, and accepted code/CI evidence before continuing.
+Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_xbrl_closeout.md`, `docs/alpha_gate_sec_xbrl_fundamental_quality.md`, `docs/alpha_gate_sec_xbrl_scientific_contract.md`, `docs/alpha_gate_sec_xbrl_development.md`, retained Phase32 records, `docs/phase_flow.md`, and accepted code/CI evidence before continuing.
 
 ## Authority state
 
-- Accepted foundation: through **Phase32**, merged into `main`.
+- Accepted numbered foundation: through **Phase32**, merged into `main`.
 - Phase26–32: all scientifically valid `ACCEPTED_NEGATIVE`.
+- Completed pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism: **`ACCEPTED_NEGATIVE`**.
 - Accepted historical modern alpha support: **0**.
+- Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
+- Master protected outcome window `2026-05-12..2026-08-11`: **unconsumed**.
+- LIVE and automatic broker failover remain disabled.
 - Current Massive subscription: **Stocks Starter**; no broader entitlement is assumed.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
-- Retained Phase32 research/closeout branch: `phase-32-sec-8k-material-event-alpha`.
-- Phase32 PR: **#37**.
-- Phase32 merge: `69f8aa81289934b71f2652482c747391917c15a3`.
-- Phase32 final disposition: **`ACCEPTED_NEGATIVE`**.
-- Accepted XBRL feasibility branch/head: `alpha-gate-sec-xbrl-fundamental-quality-feasibility` at `5a8c15f95417390d0d64ff240977adfb38a20c45`.
-- Current research branch: `alpha-gate-sec-xbrl-fundamental-quality-pit-audit`.
-- Current research authority: **source-only SEC XBRL PIT chronology/restatement/identity audit; no alpha hypotheses frozen and no market outcomes authorized**.
-- Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
-- LIVE and automatic broker failover remain disabled.
+- Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
+- Current XBRL closure branch: `alpha-gate-sec-xbrl-fundamental-quality-scientific-contract`.
 
-Root cause before workaround remains mandatory. The failed Phase32 50-row protected source gate may not be weakened, and the Phase32 family may not be retuned after results.
+Root cause before workaround remains mandatory. Failed research evidence must be preserved. No failed family may be rescued by changing thresholds, horizon, costs, feature definitions, direction, multiplicity, winner rules, or protected policy after results.
 
 ## Phase32 final evidence
 
-Frozen scientific policy fingerprint:
+Phase32 scientific policy fingerprint:
 
 `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
 Exactly five hypotheses remained frozen throughout Phase32: `equity_issuance_short`, `share_repurchase_long`, `financial_integrity_adverse_short`, `listing_distress_short`, and `solvency_distress_short`.
-
-Retained core feasibility contract:
-
-`phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
-
-Authoritative source roles remained:
-
-- Massive `/stocks/filings/vX/index` for historical original-8-K discovery/ticker metadata;
-- official SEC `data.sec.gov/submissions` for authoritative SEC submissions metadata, acceptance time, accession/CIK/form/date/item reconciliation.
 
 Accepted source/predictor fingerprints:
 
@@ -46,11 +34,7 @@ Accepted source/predictor fingerprints:
 - semantic V2: `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`;
 - independent source/predictor acceptance: `531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde`.
 
-Accepted full-history acquisition retained 36,309 filing entities, 19,792 eligible predictors, 18,819 development predictors, 973 protected-predictor-only rows, and zero market outcomes during acquisition.
-
-Development-only performance evaluation was ACCEPTED PASS. All five frozen candidates survived selection plus Holm-5. The one-per-direction winners were `share_repurchase_long` and `solvency_distress_short`; internal validation rejected the LONG winner and left exactly one development finalist, `solvency_distress_short`.
-
-The independent finalist blindness / lineage audit independently reproduced the accepted development path and exact finalist before using source-only protected predictor metadata.
+Phase32 development produced one frozen finalist, `solvency_distress_short`. The independent finalist blindness/lineage audit froze a protected source-only population of **46 event rows / 33 signal sessions / 40 unique instruments** against frozen minimums **50 / 20 / 20**.
 
 Accepted finalist-audit fingerprint:
 
@@ -64,27 +48,13 @@ Accepted protected-plan rows SHA-256:
 
 `b9591ac49dab3f6f7ff01ab4331ef114c68a436e8475456e099058bce847f703`
 
-Frozen protected finalist population:
+The 46-row population failed the frozen 50-row event minimum before protected performance. Protected return rows read = **0**; protected holdout consumed = **false**. Phase32 closed `ACCEPTED_NEGATIVE`, historical supported alpha remained 0, and Phase33 remained blocked.
 
-- event rows: **46**;
-- signal sessions: **33**;
-- unique instruments: **40**.
+## SEC XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`
 
-Frozen source-only minimums were **50 / 20 / 20**. Only the event-row gate failed (`46 < 50`). Audit status was `AUDIT_PASS_PROTECTED_SAMPLE_GATE_IMPOSSIBLE`.
+This research program materially changed the information mechanism from Phase32 by using PIT standardized quarterly fundamentals from original SEC 10-Q/10-K filings.
 
-**Protected stock/SPY returns remain unread.** Protected return rows read = **0**. Protected holdout consumed = **false**. No protected-performance evaluator is authorized for the Phase32 family.
-
-The target-machine negative-closeout runner passed on exact head `6fbf9726088629b574480ce10dc49c60a36c153b`. Dedicated Phase32 and full ATLAS regressions then passed on Ubuntu and Windows, after which PR #37 merged at `69f8aa81289934b71f2652482c747391917c15a3`.
-
-## Scientific interpretation of Phase32
-
-Phase32 produced genuine development evidence, but not admissible historical support. A candidate that cannot satisfy the preregistered protected sample-size gate cannot become `SUPPORTED` by looking at protected returns. The correct result is therefore `ACCEPTED_NEGATIVE`, not a threshold change or runner-up substitution.
-
-Historical supported alpha remains **0**. Phase33 Signal-to-Trade Construction cannot start because its positive entry condition is not met.
-
-## SEC XBRL mechanism — accepted feasibility
-
-The new mechanism changes the economic/information source rather than retuning Phase32. It examines standardized point-in-time quarterly fundamentals from SEC 10-Q/10-K XBRL facts, with the intended mechanism family of profitability, cash-vs-accrual quality, and fundamental change.
+### Accepted source feasibility
 
 Feasibility contract:
 
@@ -94,88 +64,101 @@ Feasibility fingerprint:
 
 `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`
 
-Authoritative Company Facts route:
-
-`data.sec.gov/api/xbrl/companyfacts/CIK##########.json`
-
-The deterministic source-only census used 200 SHA-256-ranked unique issuer CIKs from the accepted Phase32 predictor source inventory. Only the issuer CIK inventory was reused; Phase32 labels, directions, taxonomy, performance, finalist, and protected evidence were not used.
-
-The target-machine run on exact head `5a8c15f95417390d0d64ff240977adfb38a20c45` returned **`FEASIBILITY_PASS`**:
-
-- source inventory unique CIKs: **4,400**;
-- sample size: **200**;
-- successful Company Facts documents: **200**;
-- failed documents: **0**;
-- accrual-history-ready issuers: **170** versus frozen minimum 100;
-- profitability-history-ready issuers: **92** versus frozen minimum 80;
-- group readiness counts: assets 174, cost of revenue 97, gross profit 78, net income 180, operating cash flow 180, revenue 136;
-- target outcome rows read: **0**;
-- protected return rows read: **0**;
-- protected holdout consumed: **false**;
-- provider reads/writes = **200 / 0**;
-- broker/order/PAPER/LIVE/automation activity = **0**.
-
 Accepted feasibility evidence fingerprint:
 
 `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`
 
-This result establishes source coverage only. It does not establish alpha.
+Target result on head `5a8c15f95417390d0d64ff240977adfb38a20c45`: **`FEASIBILITY_PASS`** with 200 successful Company Facts documents, 170 accrual-history-ready issuers, 92 profitability-history-ready issuers, zero target outcomes, zero protected returns, and zero trading/mutation authority.
 
-## Current pre-Phase33 gate — XBRL PIT source / chronology / identity audit
+### PIT audit and targeted repair
 
-Current audit contract:
-
-`alpha-gate-xbrl-pit-audit-v1-source-only-accession-versioned-no-market-outcomes`
-
-Frozen audit fingerprint:
+Frozen v1 audit fingerprint:
 
 `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`
 
-The audit independently reconstructs exact original `10-Q`/`10-K` accession identity, official SEC acceptance time, first XNYS session strictly after acceptance, accession-versioned fact/restatement history, and issuer-to-instrument identity through Massive `/v3/reference/tickers` filtered by exact CIK + point-in-time date.
+The first v1 target audit is permanently preserved as **`AUDIT_FAIL`**: 139 unambiguous PIT mappings and 28 issuers with >=3 mappings versus frozen minimum 30.
 
-Frozen sample and gates:
+Root-cause diagnosis identified incorrect identity-universe semantics in the Massive historical query: `active=false` plus non-common-stock types expanded the candidate set with preferreds, warrants, units, rights, and legacy securities.
 
-- exactly **40** deterministic feasibility-ready issuers;
-- up to **5** evenly spaced original accessions per issuer;
-- Company Facts success >= **36**;
-- selected original filings >= **180**;
-- SEC metadata reconciled >= **170**;
-- acceptance-time decision sessions >= **170**;
-- unambiguous PIT instrument mappings >= **120**;
-- issuers with >=3 unambiguous mappings >= **30**;
-- same-accession semantic-context conflicts <= **0**.
+Targeted repair fingerprint:
 
-Fact version rule:
+`e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f`
 
-`EXACT_ACCESSION_VERSIONED_NEVER_OVERWRITE_ACROSS_ACCESSIONS`
+The proper owning-layer correction used exact historical CIK/date with `active=true` and `type=CS`, retained the same 40 issuers/accessions/SEC chronology/numeric gates, and replayed existing source-only caches with zero provider calls. Corrected v2 result: **`AUDIT_PASS`**, 171 unambiguous common-stock mappings and 38 issuers with >=3 mappings. The v1 failure remains preserved.
 
-Identity remains governed by:
+### Frozen science
 
-`instrument-identity-v4-no-issuer-level-medium-collapse`
+Scientific contract:
 
-**Alpha hypotheses are not frozen. Market prices/returns, target outcomes, and protected returns are forbidden.** Provider writes, broker/order/PAPER/LIVE/automation authority remain zero.
+`alpha-gate-xbrl-scientific-v1-six-yoy-quality-change-hypotheses`
 
-An `AUDIT_PASS` can authorize only the next scientific freeze package. It cannot itself authorize a performance study or satisfy Phase33.
+Scientific fingerprint:
 
-See `docs/alpha_gate_sec_xbrl_pit_audit.md`.
+`2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`
+
+The six frozen hypotheses covered year-over-year improvement/deterioration in gross profitability, cash profitability, and accrual quality. The contract froze PIT quarter semantics, exact chronology, 63-session primary horizon, SPY-relative plus unhedged outcomes, direction-specific costs, 70/30 chronological development partition, 63-session purge, dependence-aware bootstrap, global `HOLM_BONFERRONI_GLOBAL_6`, robustness/concentration gates, selection-only winner choice, no runner-up substitution, and finalist-only protected returns.
+
+Development implementation fingerprint:
+
+`3b5a02113ceab0065ea9a03020cc5266222e67ba39abe36311a6959e7e2d488f`
+
+### Accepted development-negative evidence
+
+Accepted target development head:
+
+`58e7c9b60ba59d250a7c91e282daefa4aef3c2b9`
+
+Result: **`ACCEPTED_NEGATIVE_DEVELOPMENT`**.
+
+- predictor rows: **5,536**;
+- development predictor rows: **4,157**;
+- protected predictor rows: **1,379**;
+- usable development outcomes: **3,963**;
+- selection passers after all hard gates + Holm: **0**;
+- selection winners: **0**;
+- internal finalists: **0**;
+- protected-return eligible finalists: **0**;
+- protected return rows read: **0**;
+- protected holdout consumed: **false**;
+- Phase33 authority: **false**.
+
+No candidate survived selection, so protected performance was never authorized.
+
+### Accepted negative closeout
+
+Closeout contract:
+
+`alpha-gate-xbrl-closeout-v1-development-negative-protected-unread`
+
+Target-machine closeout: **PASS / `ACCEPTED_NEGATIVE`**.
+
+Accepted closeout evidence fingerprint:
+
+`291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`
+
+Accepted artifact SHA-256 values:
+
+- development report: `50bf99956ca95d725764b16bc5ae622b5ffe9dbfbadb4e63afa591a4aef998c6`;
+- predictor report: `246bc1df65ce923b83167ea65f7e25b266657dec30fdcfd841e4bae260fbdb16`;
+- predictor rows: `9b3526527d2d45433f5970d768155c9763c16bc8d0772fdc526659ec1aabd14a`;
+- development outcomes: `17be9dd103902ea0e9f39c172b7dfb0cf3d552b6f743bd8101c7f836b8500b55`;
+- finalists: `c5cfddbe30b597d115560a9611e8bf3bef5bcb76f7c59f5d5f5a071db458945f`.
+
+The closeout reads only persisted artifacts and performs zero provider calls, zero new market reads, and zero provider/broker/order/PAPER/LIVE/automation mutations.
 
 ## Protected boundary
 
 Master protected outcome window remains `2026-05-12..2026-08-11`.
 
-Phase32 development outcomes were legitimately opened under its frozen contract. Phase32 protected returns were never opened. The unconsumed holdout may be used only under a later scientifically valid, materially different preregistered mechanism after that mechanism's source, chronology, hypothesis, and protected-evidence contracts are frozen. It is not available for post-hoc Phase32 optimization.
-
-The current XBRL source-only PIT audit reads **zero** market outcomes and therefore does not consume the holdout.
+Neither Phase32 nor the XBRL mechanism opened protected stock/SPY returns. The holdout remains unconsumed. It is not available for post-hoc rescue of either failed family and may be used only under a later materially different preregistered mechanism that independently satisfies its frozen source/scientific entry conditions.
 
 ## Retained Phase31 provenance
 
 Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` under scientific fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
 
-Historical Phase31 full-acquisition runner retained for provenance: `scripts/run_phase31_form4_acquisition.py`.
+The original Phase31 target result remains `FEASIBILITY_FAIL`; it is preserved rather than rewritten. The diagnosed root cause was a Massive beta source-association/data-quality defect, not a chronology-rule defect and not a performance result.
 
-The original Phase31 target result remains `FEASIBILITY_FAIL`; it is preserved rather than rewritten. The diagnosed root cause was a **Massive beta source-association/data-quality defect**, not a chronology-rule defect and not a performance result.
-
-The accepted source-quality repair retained 45,915 authoritative rows under repair fingerprint:
+Accepted source-quality repair fingerprint:
 
 `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`
 
@@ -183,10 +166,10 @@ Retained source-quality policy:
 
 `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
 
-Phase31 produced zero survivors/winners/finalists/support and zero protected reads. Its original failed feasibility evidence, repair lineage, no-threshold-weakening rule, and final `ACCEPTED_NEGATIVE` disposition remain historical evidence while the project advances.
+Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
 
 ## Immediate repository action
 
-Complete and validate the frozen XBRL PIT source/chronology/identity audit package on `alpha-gate-sec-xbrl-fundamental-quality-pit-audit`, including focused tests, static contract validation, synchronized docs, and Ubuntu/Windows CI. Only then run `scripts/run_alpha_gate_xbrl_pit_audit.py` on the target machine because repository CI cannot establish live SEC/Massive historical source coverage against the local accepted feasibility report and caches.
+Freeze the accepted XBRL closeout hashes/fingerprint in code and documentation, run exact-head focused XBRL plus full ATLAS Ubuntu/Windows CI, merge the closure PR, and run post-merge regression. After merge, the next alpha research effort must select a materially different economic/information mechanism rather than retune the closed XBRL family.
 
-Do not read market outcomes or freeze an alpha hypothesis during this audit. Do not enter Phase33 unless a later XBRL scientific/performance gate earns accepted historical `SUPPORTED` authority.
+Do not enter Phase33 unless a later mechanism earns accepted historical `SUPPORTED` authority.
