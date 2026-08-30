@@ -105,9 +105,9 @@ Phase32 merged through PR #37 at `69f8aa81289934b71f2652482c747391917c15a3`. Its
 
 The Phase32 closure requires the next research family to use a **materially different point-in-time fundamental-information mechanism**. Later research may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result. That anti-retuning boundary remains permanent even as the living roadmap advances to later named mechanisms.
 
-Historical supported modern alpha remains **0**.
+Historical supported alpha remains **zero**. Historical supported modern alpha remains **0**.
 
-## 6. Completed pre-Phase33 SEC XBRL mechanism — `ACCEPTED_NEGATIVE`
+## 6. Completed Pre-Phase33 SEC XBRL mechanism — `ACCEPTED_NEGATIVE`
 
 The SEC XBRL fundamental-quality/accrual program materially changed the information mechanism from Phase32 and used PIT standardized quarterly fundamentals from original SEC 10-Q/10-K filings.
 
@@ -267,7 +267,7 @@ Operate on genuinely new unseen sessions with SHADOW and Webull-primary PAPER. L
 
 ### Phase36 — Outcomes, Learning, Drift Monitoring & Governance + Performance UI
 
-Trace decisions/trades/outcomes to exact data/model/strategy/risk versions and monitor calibration, economics, slippage, drift, and degradation. Learning never silently self-authorizes changes.
+Trace decisions/trades/outcomes to exact data/model/strategy/risk versions and monitor calibration, economics, slippage, and degradation. Learning never silently self-authorizes changes.
 
 ### Phase37 — Production Web Application, Operations & Deployment
 
