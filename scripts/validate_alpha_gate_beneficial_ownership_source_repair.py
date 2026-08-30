@@ -149,7 +149,12 @@ def main() -> int:
         _forbid(repair, forbidden, "market-outcome/trading dependency in source repair")
         _forbid(runner, forbidden, "market-outcome/trading dependency in source-repair runner")
 
-    _require(runner, EXPECTED_REPAIR_FINGERPRINT, "runner frozen repair fingerprint")
+    _require(
+        runner,
+        "BENEFICIAL_OWNERSHIP_SOURCE_REPAIR_FINGERPRINT",
+        "runner imported frozen repair fingerprint constant",
+    )
+    _require(runner, "Expected repair fingerprint:", "runner fingerprint reporting")
     _require(runner, "Alpha hypotheses: NOT YET FROZEN", "runner source-only boundary")
     _require(runner, "FORBIDDEN / UNREAD", "runner outcome boundary")
     _require(runner, "Provider writes / broker / order / PAPER / LIVE / automation: DISABLED", "runner authority boundary")
