@@ -25,6 +25,12 @@ from packages.features.partition_store import sha256_file
 XBRL_CLOSEOUT_CONTRACT = "alpha-gate-xbrl-closeout-v1-development-negative-protected-unread"
 XBRL_ACCEPTED_DEVELOPMENT_TARGET_HEAD = "58e7c9b60ba59d250a7c91e282daefa4aef3c2b9"
 XBRL_ACCEPTED_DEVELOPMENT_STATUS = "ACCEPTED_NEGATIVE_DEVELOPMENT"
+XBRL_ACCEPTED_EVIDENCE_FINGERPRINT = "291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91"
+XBRL_ACCEPTED_DEVELOPMENT_REPORT_SHA256 = "50bf99956ca95d725764b16bc5ae622b5ffe9dbfbadb4e63afa591a4aef998c6"
+XBRL_ACCEPTED_PREDICTOR_REPORT_SHA256 = "246bc1df65ce923b83167ea65f7e25b266657dec30fdcfd841e4bae260fbdb16"
+XBRL_ACCEPTED_PREDICTOR_ROWS_SHA256 = "9b3526527d2d45433f5970d768155c9763c16bc8d0772fdc526659ec1aabd14a"
+XBRL_ACCEPTED_DEVELOPMENT_OUTCOMES_SHA256 = "17be9dd103902ea0e9f39c172b7dfb0cf3d552b6f743bd8101c7f836b8500b55"
+XBRL_ACCEPTED_FINALISTS_SHA256 = "c5cfddbe30b597d115560a9611e8bf3bef5bcb76f7c59f5d5f5a071db458945f"
 XBRL_ACCEPTED_PREDICTOR_ROWS = 5536
 XBRL_ACCEPTED_DEVELOPMENT_PREDICTOR_ROWS = 4157
 XBRL_ACCEPTED_PROTECTED_PREDICTOR_ROWS = 1379
@@ -132,11 +138,7 @@ def validate_xbrl_negative_closeout(settings: AtlasSettings) -> dict[str, Any]:
 
     boundaries = report.get("boundaries") if isinstance(report.get("boundaries"), dict) else {}
     purge = boundaries.get("purge_sessions") if isinstance(boundaries.get("purge_sessions"), list) else []
-    diagnostics = (
-        report.get("outcome_diagnostics")
-        if isinstance(report.get("outcome_diagnostics"), dict)
-        else {}
-    )
+    diagnostics = report.get("outcome_diagnostics") if isinstance(report.get("outcome_diagnostics"), dict) else {}
     eligible = report.get("protected_return_eligible_finalists")
     eligible_list = [str(value) for value in eligible] if isinstance(eligible, list) else []
     disposition, accepted = xbrl_closeout_disposition(
@@ -154,6 +156,11 @@ def validate_xbrl_negative_closeout(settings: AtlasSettings) -> dict[str, Any]:
         "development_implementation_fingerprint_exact": report.get("development_implementation_fingerprint") == XBRL_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT,
         "development_status_exact": report.get("status") == XBRL_ACCEPTED_DEVELOPMENT_STATUS,
         "development_report_pass": report.get("pass") is True,
+        "development_report_sha_exact": report_sha == XBRL_ACCEPTED_DEVELOPMENT_REPORT_SHA256,
+        "predictor_report_sha_exact": predictor_report_sha == XBRL_ACCEPTED_PREDICTOR_REPORT_SHA256,
+        "predictor_rows_sha_exact": predictor_rows_sha == XBRL_ACCEPTED_PREDICTOR_ROWS_SHA256,
+        "development_outcomes_sha_exact": outcome_sha == XBRL_ACCEPTED_DEVELOPMENT_OUTCOMES_SHA256,
+        "finalists_sha_exact": finalist_sha == XBRL_ACCEPTED_FINALISTS_SHA256,
         "predictor_rows_exact": int(predictor.get("predictor_rows", -1)) == XBRL_ACCEPTED_PREDICTOR_ROWS,
         "stage_counts_exact": predictor.get("stage_counts") == XBRL_ACCEPTED_STAGE_COUNTS,
         "candidate_counts_exact": predictor.get("candidate_counts") == XBRL_ACCEPTED_CANDIDATE_COUNTS,
@@ -225,12 +232,15 @@ def validate_xbrl_negative_closeout(settings: AtlasSettings) -> dict[str, Any]:
         "disposition": disposition,
         "phase33_signal_to_trade_authority": False,
     }
+    evidence_fingerprint = _fingerprint(evidence)
+    if evidence_fingerprint != XBRL_ACCEPTED_EVIDENCE_FINGERPRINT:
+        raise XBRLCloseoutError("XBRL closeout evidence fingerprint differs from accepted target evidence")
     return {
         "contract_version": XBRL_CLOSEOUT_CONTRACT,
         "pass": True,
         "disposition": disposition,
         "accepted_development_target_head": XBRL_ACCEPTED_DEVELOPMENT_TARGET_HEAD,
-        "evidence_fingerprint": _fingerprint(evidence),
+        "evidence_fingerprint": evidence_fingerprint,
         "evidence": evidence,
         "checks": checks,
         "historical_supported_alpha": 0,
