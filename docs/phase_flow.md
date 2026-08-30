@@ -56,7 +56,7 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 
 - Accepted project foundation: **through Phase32**, merged into `main` at `69f8aa81289934b71f2652482c747391917c15a3` via PR #37.
 - Phases26–32 are `ACCEPTED_NEGATIVE`; accepted historical modern alpha remains **0**.
-- Phase32 development produced one frozen finalist, `solvency_distress_short`; the independent finalist audit proved its protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum.
+- Phase32 development produced one frozen finalist, `solvency_distress_short`; the independent finalist blindness/lineage audit proved its protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum.
 - Protected returns remain unread. Phase32 protected return rows read = 0; holdout consumed = false.
 - Phase33 Signal-to-Trade Construction remains blocked because accepted historical `SUPPORTED` alpha remains zero.
 - The current pre-Phase33 gate is **SEC XBRL fundamental quality / accrual source-only feasibility** on branch `alpha-gate-sec-xbrl-fundamental-quality-feasibility`.
