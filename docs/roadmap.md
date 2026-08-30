@@ -81,7 +81,7 @@ Modern alpha phases:
 - Phase30 public-news-arrival alpha — `ACCEPTED_NEGATIVE`.
 - Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
 
-Retained Phase31 provenance markers remain: historical active Phase31 = SEC Form-4 Insider-Transaction Alpha; historical Phase31-era downstream Phase32 = Signal-to-Trade Construction; historical Phase31-era Phase38 = Controlled LIVE Activation. Current rebaselining supersedes those numbers without rewriting accepted history.
+Retained historical Phase31-era validator/provenance markers, **not current numbering or authority**: `Active Phase31 — SEC Form-4 Insider-Transaction Alpha`; `Phase32 — Signal-to-Trade Construction`; `Phase38 — Controlled LIVE Activation`. Current rebaselining supersedes those phase numbers without rewriting accepted history.
 
 Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. It produced zero survivors/winners/finalists/support and zero protected reads. The master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 
