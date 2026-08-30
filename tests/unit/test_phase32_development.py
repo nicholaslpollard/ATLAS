@@ -120,4 +120,6 @@ def test_empty_frozen_fold_is_not_silently_dropped() -> None:
         fold_count=3,
         primary_cost=0.001,
     )
-    assert values == pytest.approx((0.009, None, 0.019))
+    assert values[0] == pytest.approx(0.009)
+    assert values[1] is None
+    assert values[2] == pytest.approx(0.019)
