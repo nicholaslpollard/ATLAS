@@ -84,13 +84,7 @@ def _record_from_row(
 
 
 class SECXBRLPITMetadataClient(SECEDGARClient):
-    """Read-only original 10-Q/10-K metadata lookup for XBRL PIT reconstruction.
-
-    This class deliberately inherits the accepted SEC EDGAR HTTP/fair-access seam.
-    It broadens only the form validator from Phase32's exact 8-K helper to the
-    explicitly allowed original 10-Q/10-K forms needed by the XBRL source audit.
-    Amendment forms remain excluded.
-    """
+    """Read-only original 10-Q/10-K metadata lookup for XBRL PIT reconstruction."""
 
     @staticmethod
     def _validated_forms(allowed_forms: tuple[str, ...]) -> tuple[str, ...]:
@@ -107,14 +101,7 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
         requests: Iterable[Mapping[str, object]],
         allowed_forms: tuple[str, ...] = XBRL_PIT_ALLOWED_FORMS,
     ) -> tuple[SECOriginalFilingMetadata, ...]:
-        """Resolve many exact accessions with one root submissions read per issuer.
-
-        Historical archive shards are fetched only when at least one requested
-        accession/date requires that SEC-declared shard. This preserves the exact
-        accession/date/form authority while avoiding one root HTTP request per fact
-        accession during the full 200-issuer development reconstruction.
-        """
-
+        """Resolve many exact accessions with one root submissions read per issuer."""
         allowed = self._validated_forms(allowed_forms)
         issuer_cik = _normalize_cik(cik)
         normalized: list[tuple[str, str, str]] = []
@@ -212,7 +199,6 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
                     f"SEC submissions metadata did not contain requested XBRL accession {accession}"
                 )
             resolved[accession] = record
-
         return tuple(resolved[accession] for accession, _, _ in normalized)
 
     def filing_metadata(
@@ -223,23 +209,20 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
         filing_date: str,
         allowed_forms: tuple[str, ...] = XBRL_PIT_ALLOWED_FORMS,
     ) -> SECOriginalFilingMetadata:
-        records = self.filing_metadata_many(
-            cik=cik,
-            requests=(
-                {
-                    "accession_number": accession_number,
-                    "filing_date": filing_date,
-                    "form": allowed_forms[0] if len(allowed_forms) == 1 else "",
-                },
-            ),
-            allowed_forms=allowed_forms,
-        )
-        if len(allowed_forms) == 1:
-            return records[0]
+        allowed = self._validated_forms(allowed_forms)
+        if len(allowed) == 1:
+            return self.filing_metadata_many(
+                cik=cik,
+                requests=(
+                    {
+                        "accession_number": accession_number,
+                        "filing_date": filing_date,
+                        "form": allowed[0],
+                    },
+                ),
+                allowed_forms=allowed,
+            )[0]
 
-        # Preserve the original single-accession API for callers that allow both
-        # forms without declaring which one is expected. Batch callers always pass
-        # the exact expected form and are the preferred development path.
         issuer_cik = _normalize_cik(cik)
         expected_accession = _validate_accession(accession_number)
         expected_filing_date = _validate_filing_date(
@@ -257,7 +240,7 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
                 issuer_cik=issuer_cik,
                 expected_accession=expected_accession,
                 expected_filing_date=expected_filing_date,
-                allowed_forms=self._validated_forms(allowed_forms),
+                allowed_forms=allowed,
                 source_url=root_url,
             )
         candidates = _select_declared_shard_candidates(
@@ -280,7 +263,7 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
                     issuer_cik=issuer_cik,
                     expected_accession=expected_accession,
                     expected_filing_date=expected_filing_date,
-                    allowed_forms=self._validated_forms(allowed_forms),
+                    allowed_forms=allowed,
                     source_url=shard_url,
                 )
         raise ProviderError(
