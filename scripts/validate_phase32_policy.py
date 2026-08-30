@@ -181,9 +181,13 @@ def main() -> int:
     ):
         _require(doc, EXPECTED_POLICY_FINGERPRINT, f"{doc_name} policy fingerprint")
         _require(doc, "five hypotheses", f"{doc_name} finite family status")
-        _require(doc, "solvency_distress_short", f"{doc_name} frozen finalist")
-        _require(doc, "finalist blindness", f"{doc_name} current finalist-audit target")
-        _require(doc, "lineage audit", f"{doc_name} current finalist-audit target")
+        _require(doc, "solvency_distress_short", f"{doc_name} frozen finalist provenance")
+        _require(doc, "finalist blindness", f"{doc_name} finalist-audit provenance")
+        _require(doc, "lineage audit", f"{doc_name} finalist-audit provenance")
+        _require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} final disposition")
+        _require(doc, "46", f"{doc_name} protected event-row evidence")
+        _require(doc, "33", f"{doc_name} protected session evidence")
+        _require(doc, "40", f"{doc_name} protected instrument evidence")
 
     _require(status, "Protected stock/SPY returns remain unread", "current status protected blindness boundary")
     _require(phase_doc, "Protected stock/SPY returns remain unread", "phase spec protected blindness boundary")
@@ -195,9 +199,11 @@ def main() -> int:
     _require(semantic_doc, "7,468", "semantic census accepted disclosure count")
 
     _require(phase_flow, "solvency_distress_short", "phase flow frozen finalist")
-    _require(phase_flow, "independent finalist blindness/lineage audit", "phase flow current internal step")
-    _require(phase_flow, "protected returns remain unread", "phase flow protected blindness boundary")
+    _require(phase_flow, "independent finalist blindness/lineage audit", "phase flow finalist-audit provenance")
+    _require(phase_flow, "Protected returns remain unread", "phase flow protected blindness boundary")
+    _require(phase_flow, "46 event rows / 33 signal sessions / 40 unique instruments", "phase flow source-only closeout evidence")
     _require(phase_flow, "50 / 20 / 20", "phase flow protected source-only sample gate")
+    _require(phase_flow, "`ACCEPTED_NEGATIVE`", "phase flow final disposition")
     _require(phase_flow, "Phase33", "phase flow downstream block")
 
     _require(workflow, "Validate Phase 32 frozen scientific policy", "CI policy step")
@@ -210,9 +216,9 @@ def main() -> int:
     print("- exactly five source-semantic hypotheses remain frozen under the pre-performance contract")
     print("- SEC acceptance-time decision session, 5-session horizon, PIT CIK-bound identity, SPY-relative outcome and costs remain frozen")
     print("- sample/concentration gates, 5-session block inference, global Holm-5 and no-runner-up selection remain frozen")
-    print("- living continuation docs are synchronized to the independent finalist blindness/lineage audit")
-    print("- protected returns remain forbidden until the source-only plan is fingerprint-frozen into a separate finalist-only evaluator")
-    print("- Phase33 and all broker/order/PAPER/LIVE authority remain blocked")
+    print("- living continuation docs preserve the accepted finalist audit and 46/33/40 protected source-only closeout evidence")
+    print("- protected returns remain unread because the frozen 50-row source gate is impossible; no protected evaluator is authorized")
+    print("- Phase32 is ACCEPTED_NEGATIVE; Phase33 and all broker/order/PAPER/LIVE authority remain blocked")
     return 0
 
 
