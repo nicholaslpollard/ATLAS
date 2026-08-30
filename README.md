@@ -82,7 +82,7 @@ Accepted source fingerprints:
 - core V2: `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`;
 - semantic V2: `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`.
 
-Full-history source/predictor acquisition completed **36,309** filing entities with **19,792** eligible predictors: **18,819 development** and **973 protected-predictor-only**. It read zero stock/SPY/options/protected returns.
+The accepted full-history source/predictor acquisition completed **36,309** filing entities with **19,792** eligible predictors: **18,819 development** and **973 protected-predictor-only**. It read zero stock/SPY/options/protected returns.
 
 Filing-entity evidence SHA-256:
 
