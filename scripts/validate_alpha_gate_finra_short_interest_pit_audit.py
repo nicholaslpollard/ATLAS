@@ -32,7 +32,7 @@ def main() -> int:
     module = read("packages/backtesting/alpha_gate_finra_short_interest_pit_audit.py")
     runner = read("scripts/run_alpha_gate_finra_short_interest_pit_audit.py")
     spec = read("docs/alpha_gate_finra_short_interest_pit_audit.md")
-    workflow = read(".github/workflows/finra-short-interest-pit-audit-tests.yml")
+    workflow = read(".github/workflows/finra-short-interest-alpha-gate-tests.yml")
     for path, text in (
         ("packages/backtesting/alpha_gate_finra_short_interest_pit_audit.py", module),
         ("scripts/run_alpha_gate_finra_short_interest_pit_audit.py", runner),
