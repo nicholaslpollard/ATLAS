@@ -21,7 +21,8 @@ from packages.providers.sec_edgar import (
 
 SEC_ARCHIVE_ALLOWED_HOST = "www.sec.gov"
 SEC_ARCHIVE_PREFIX = "/Archives/edgar/"
-SEC_ARCHIVE_MAX_RESPONSE_BYTES = 20_000_000
+SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES = 64_000_000
+SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES = 20_000_000
 SEC_ARCHIVE_RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
 
 
@@ -112,6 +113,13 @@ class SECEDGARArchiveClient:
         if not (index_ok or submission_ok):
             raise ProviderError("SEC EDGAR archive request is outside approved index/submission paths")
 
+    @staticmethod
+    def _response_limit(url: str) -> int:
+        path = urlsplit(url).path
+        if path.endswith("/master.idx") and "/full-index/" in path:
+            return SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES
+        return SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES
+
     @property
     def declared_user_agent(self) -> str:
         return self._user_agent
@@ -122,6 +130,7 @@ class SECEDGARArchiveClient:
         if cached is not None:
             return cached
 
+        response_limit = self._response_limit(url)
         delay = SEC_EDGAR_MIN_REQUEST_INTERVAL_SECONDS
         last_error: Exception | None = None
         for attempt in range(1, SEC_EDGAR_MAX_ATTEMPTS + 1):
@@ -138,12 +147,12 @@ class SECEDGARArchiveClient:
             )
             try:
                 with self._opener(request, timeout=SEC_EDGAR_REQUEST_TIMEOUT_SECONDS) as response:
-                    raw = response.read(SEC_ARCHIVE_MAX_RESPONSE_BYTES + 1)
+                    raw = response.read(response_limit + 1)
                     content_encoding = response.headers.get("Content-Encoding")
-                if len(raw) > SEC_ARCHIVE_MAX_RESPONSE_BYTES:
+                if len(raw) > response_limit:
                     raise ProviderError("SEC EDGAR archive response exceeded bounded size")
                 decoded = _decode_archive_content(raw, content_encoding)
-                if len(decoded) > SEC_ARCHIVE_MAX_RESPONSE_BYTES:
+                if len(decoded) > response_limit:
                     raise ProviderError("SEC EDGAR decoded archive response exceeded bounded size")
                 text = decoded.decode("utf-8", errors="replace")
                 document = SECArchiveTextDocument(
