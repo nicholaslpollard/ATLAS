@@ -281,5 +281,20 @@ jobs:
       - name: Validate pre-Phase33 SEC beneficial-ownership source feasibility
         run: python scripts/validate_alpha_gate_beneficial_ownership_feasibility.py
 
+      - name: Validate pre-Phase33 SEC beneficial-ownership targeted source repair
+        run: python scripts/validate_alpha_gate_beneficial_ownership_source_repair.py
+
+      - name: Validate pre-Phase33 SEC beneficial-ownership frozen scientific contract
+        run: python scripts/validate_alpha_gate_beneficial_ownership_scientific_contract.py
+
+      - name: Validate pre-Phase33 SEC beneficial-ownership development implementation
+        run: python scripts/validate_alpha_gate_beneficial_ownership_development.py
+
+      - name: Validate pre-Phase33 SEC beneficial-ownership closeout evidence probe
+        run: python scripts/validate_alpha_gate_beneficial_ownership_closeout_probe.py
+
+      - name: Validate pre-Phase33 SEC beneficial-ownership independent negative closeout
+        run: python scripts/validate_alpha_gate_beneficial_ownership_closeout.py
+
       - name: Run tests
         run: python -m pytest -q
