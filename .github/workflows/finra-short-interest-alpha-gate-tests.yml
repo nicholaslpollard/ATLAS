@@ -37,12 +37,14 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
       - name: Compile FINRA short-interest research package
-        run: python -m compileall -q packages/providers/finra_short_interest.py packages/backtesting/alpha_gate_finra_short_interest_feasibility.py packages/backtesting/alpha_gate_finra_short_interest_pit_audit.py scripts/run_alpha_gate_finra_short_interest_feasibility.py scripts/run_alpha_gate_finra_short_interest_pit_audit.py scripts/validate_alpha_gate_finra_short_interest_feasibility.py scripts/validate_alpha_gate_finra_short_interest_pit_audit.py tests/unit/test_finra_short_interest_provider.py tests/unit/test_alpha_gate_finra_short_interest_feasibility.py tests/unit/test_alpha_gate_finra_short_interest_pit_audit.py
+        run: python -m compileall -q packages/providers/finra_short_interest.py packages/backtesting/alpha_gate_finra_short_interest_feasibility.py packages/backtesting/alpha_gate_finra_short_interest_pit_audit.py packages/backtesting/alpha_gate_finra_short_interest_scientific_policy.py scripts/run_alpha_gate_finra_short_interest_feasibility.py scripts/run_alpha_gate_finra_short_interest_pit_audit.py scripts/validate_alpha_gate_finra_short_interest_feasibility.py scripts/validate_alpha_gate_finra_short_interest_pit_audit.py scripts/validate_alpha_gate_finra_short_interest_scientific_policy.py tests/unit/test_finra_short_interest_provider.py tests/unit/test_alpha_gate_finra_short_interest_feasibility.py tests/unit/test_alpha_gate_finra_short_interest_pit_audit.py tests/unit/test_alpha_gate_finra_short_interest_scientific_policy.py
       - name: Retain accepted beneficial-ownership negative closeout
         run: python scripts/validate_alpha_gate_beneficial_ownership_closeout.py
       - name: Validate FINRA consolidated short-interest source feasibility contract
         run: python scripts/validate_alpha_gate_finra_short_interest_feasibility.py
       - name: Validate FINRA consolidated short-interest PIT audit contract
         run: python scripts/validate_alpha_gate_finra_short_interest_pit_audit.py
+      - name: Validate FINRA consolidated short-interest frozen scientific policy
+        run: python scripts/validate_alpha_gate_finra_short_interest_scientific_policy.py
       - name: Run FINRA short-interest focused unit tests
-        run: python -m pytest -q tests/unit/test_finra_short_interest_provider.py tests/unit/test_alpha_gate_finra_short_interest_feasibility.py tests/unit/test_alpha_gate_finra_short_interest_pit_audit.py
+        run: python -m pytest -q tests/unit/test_finra_short_interest_provider.py tests/unit/test_alpha_gate_finra_short_interest_feasibility.py tests/unit/test_alpha_gate_finra_short_interest_pit_audit.py tests/unit/test_alpha_gate_finra_short_interest_scientific_policy.py
