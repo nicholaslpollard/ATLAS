@@ -125,7 +125,11 @@ The family merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, 
 
 ## 7. Current pre-Phase33 mechanism — SEC Schedule 13D/13G beneficial ownership
 
-The current mechanism changes the information source from issuer accounting quality to external beneficial-ownership/control disclosures:
+The retained source-feasibility family identifier is:
+
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
+
+The current frozen scientific mechanism, narrowed before outcome access, is:
 
 `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`
 

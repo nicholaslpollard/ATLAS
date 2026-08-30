@@ -57,7 +57,15 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 
 ### Current pre-Phase33 research mechanism
 
-Mechanism:
+Retained original source-feasibility mechanism identifier:
+
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
+
+Retained frozen source-feasibility fingerprint:
+
+`f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`
+
+Current frozen scientific mechanism:
 
 `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`
 

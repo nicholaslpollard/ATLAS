@@ -11,7 +11,8 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_sci
 - Phase26–32: scientifically valid `ACCEPTED_NEGATIVE`.
 - Completed pre-Phase33 SEC XBRL mechanism: `ACCEPTED_NEGATIVE`, merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`, with post-merge Ubuntu/Windows regression green.
 - Current pre-Phase33 branch: `alpha-gate-sec-beneficial-ownership-scientific-contract`.
-- Current mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
+- Retained original source-feasibility mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
+- Current frozen scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
 - Accepted historical modern alpha support: **0**.
 - Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
 - Master protected outcome window `2026-05-12..2026-08-11`: **unconsumed**.
@@ -28,6 +29,10 @@ Root cause before workaround remains mandatory. Failed research evidence must be
 Parent source-only feasibility contract:
 
 `alpha-gate-sec-beneficial-ownership-feasibility-v1-schedule13d13g-source-only-no-market-outcomes`
+
+Retained original source-feasibility mechanism identifier:
+
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
 
 Frozen parent feasibility fingerprint:
 
@@ -54,6 +59,10 @@ Accepted v2 source result:
 This source result authorized only the later scientific freeze; it did not create alpha support or Phase33 authority.
 
 ## Frozen beneficial-ownership science
+
+Current frozen scientific mechanism:
+
+`PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`
 
 Scientific contract:
 
