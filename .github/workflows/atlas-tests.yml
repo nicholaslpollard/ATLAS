@@ -266,5 +266,17 @@ jobs:
       - name: Validate pre-Phase33 SEC XBRL PIT source audit contracts
         run: python scripts/validate_alpha_gate_xbrl_pit_audit.py
 
+      - name: Validate pre-Phase33 SEC XBRL targeted identity repair
+        run: python scripts/validate_alpha_gate_xbrl_pit_identity_repair.py
+
+      - name: Validate pre-Phase33 SEC XBRL scientific contract
+        run: python scripts/validate_alpha_gate_xbrl_scientific_contract.py
+
+      - name: Validate pre-Phase33 SEC XBRL development implementation
+        run: python scripts/validate_alpha_gate_xbrl_development.py
+
+      - name: Validate pre-Phase33 SEC XBRL independent negative closeout
+        run: python scripts/validate_alpha_gate_xbrl_closeout.py
+
       - name: Run tests
         run: python -m pytest -q
