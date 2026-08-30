@@ -1,6 +1,6 @@
-# Pre-Phase33 Alpha Gate — SEC XBRL Fundamental Quality / Accrual Feasibility
+# Pre-Phase33 Alpha Gate — SEC XBRL Fundamental Quality / Accrual Mechanism
 
-**Status: OPEN — source-only feasibility. No alpha hypothesis is frozen, no market outcome has been read, and no trading authority is granted.**
+**Status: FEASIBILITY_PASS accepted; source-only PIT chronology/identity audit is now OPEN. No alpha hypothesis is frozen, no market outcome has been read, and no trading authority is granted.**
 
 ## Purpose
 
@@ -12,11 +12,11 @@ External academic findings on gross profitability and accrual/cash-flow persiste
 
 ## Authoritative source
 
-Official SEC `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` is the only provider route authorized in this feasibility gate.
+Official SEC `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` is the authoritative standardized-fact route.
 
-The implementation extends the already accepted `SECEDGARClient` network seam rather than adding a second SEC HTTP authority. Therefore the accepted HTTPS-only `data.sec.gov` host restriction, fair-access identity, request pacing, retry handling, compressed-response decoding, bounded response size, and in-process caching remain in force. The XBRL client additionally restricts requests to one exact Company Facts CIK JSON path.
+The implementation extends the already accepted `SECEDGARClient` network seam rather than adding a second SEC HTTP authority. Therefore the accepted HTTPS-only `data.sec.gov` host restriction, fair-access identity, request pacing, retry handling, compressed-response decoding, bounded response size, and caching remain in force.
 
-No Massive, broker, order, AI, PAPER, LIVE, or automation authority is used by this feasibility census.
+The accepted source census used no Massive, broker, order, AI, PAPER, LIVE, or automation authority. The next source-only PIT audit additionally authorizes Massive reference **reads only** for exact CIK/date security identity; it still authorizes zero market outcomes and zero mutations.
 
 ## Source-only issuer inventory
 
@@ -29,7 +29,7 @@ This reuse grants **no Phase32 scientific lineage** to the new mechanism:
 - The source file hash is recorded.
 - Exactly 200 CIKs are chosen by ascending `SHA256(zero_padded_cik)` so the sample is deterministic and outcome-free.
 
-## Frozen feasibility contract
+## Frozen feasibility contract — ACCEPTED PASS
 
 Contract:
 
@@ -66,16 +66,56 @@ An issuer is **accrual-history-ready** when assets, net income, and operating ca
 
 An issuer is **profitability-history-ready** when assets and revenue are history-ready and either gross profit or cost of revenue is history-ready.
 
-The frozen source-only feasibility gates are:
+The frozen source-only feasibility gates were:
 
 - deterministic sample = exactly 200 issuers;
 - successful Company Facts documents >= 160;
 - accrual-history-ready issuers >= 100;
 - profitability-history-ready issuers >= 80.
 
-These are source-coverage gates only. They do not measure returns or claim predictive value.
+### Accepted target-machine result
 
-## Explicitly forbidden in this gate
+The target-machine runner passed on exact head:
+
+`5a8c15f95417390d0d64ff240977adfb38a20c45`
+
+Result: **`FEASIBILITY_PASS`**.
+
+Accepted evidence:
+
+- source inventory unique CIKs: **4,400**;
+- sample size: **200**;
+- successful Company Facts documents: **200**;
+- failed Company Facts documents: **0**;
+- accrual-history-ready issuers: **170**;
+- profitability-history-ready issuers: **92**;
+- group history-ready counts: assets **174**, cost of revenue **97**, gross profit **78**, net income **180**, operating cash flow **180**, revenue **136**;
+- all four frozen feasibility gates: **PASS**;
+- target outcome rows read: **0**;
+- protected return rows read: **0**;
+- protected holdout consumed: **false**;
+- provider reads/writes: **200 / 0**;
+- broker reads/writes, orders, PAPER, LIVE, automation: **0**.
+
+Accepted feasibility evidence fingerprint:
+
+`33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`
+
+The source census is therefore accepted as sufficient to justify the next source/chronology gate. It does **not** establish predictive value.
+
+## Current gate — PIT source / chronology / identity audit
+
+The next audit is frozen before any additional live source results under fingerprint:
+
+`50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`
+
+It independently audits exact original 10-Q/10-K accession identity, official SEC `acceptanceDateTime`, first-XNYS-open chronology, accession-versioned fact/restatement handling, same-accession contradiction fail-closed behavior, and exact CIK/date Massive issuer-to-instrument mapping.
+
+The audit uses exactly 40 deterministic feasibility-ready issuers and up to 5 evenly spaced original accessions per issuer. Frozen minimums are 36 successful Company Facts documents, 180 selected original filings, 170 SEC metadata reconciliations, 170 reconstructed acceptance-time decision sessions, 120 unambiguous PIT instrument mappings, 30 issuers with at least 3 unambiguous mappings, and zero same-accession semantic-context conflicts.
+
+See `docs/alpha_gate_sec_xbrl_pit_audit.md`.
+
+## Explicitly forbidden before scientific freeze
 
 - stock, SPY, option, or other market returns;
 - target outcomes or protected returns;
@@ -87,18 +127,22 @@ These are source-coverage gates only. They do not measure returns or claim predi
 - orders, PAPER, LIVE, browser execution, scheduler execution, or automatic broker failover;
 - use of Phase32 event labels/performance as predictors or selection evidence.
 
-The master protected outcome window `2026-05-12..2026-08-11` therefore remains unconsumed during this feasibility step.
+The master protected outcome window `2026-05-12..2026-08-11` therefore remains unconsumed throughout the source-only feasibility and PIT-audit work.
 
 ## Acceptance semantics
 
-`FEASIBILITY_PASS` means only that the official standardized source appears sufficiently populated to justify the **next source/chronology gate**. It does not freeze a strategy, read outcomes, satisfy Phase33, or grant `SUPPORTED` authority.
+The accepted `FEASIBILITY_PASS` authorized only the current independent PIT source/chronology/identity audit.
 
-`FEASIBILITY_FAIL` is also a legitimate scientific result. ATLAS must diagnose the source limitation rather than loosen the frozen coverage thresholds or silently substitute a different dataset.
+An `AUDIT_PASS` at the next gate will authorize only the scientific freeze work package: a finite hypothesis family, outcome definitions, costs, chronology, dependence, multiplicity, robustness, sample/concentration gates, winner/finalist rules, and protected-evidence policy must all be frozen **before** any governed market outcome is opened.
 
-If feasibility passes, the next work package must independently prove point-in-time filing/accession/acceptance chronology and deterministic original-filing fact reconstruction, including duplicate/restatement/amendment handling and issuer-to-instrument identity. Only after that source contract is accepted may ATLAS freeze a finite hypothesis family, outcomes, costs, multiplicity, dependence, robustness, sample gates, winner/finalist rules, and protected-evidence policy before governed performance is opened.
+An `AUDIT_FAIL` is also legitimate evidence. ATLAS must diagnose the source/chronology/identity limitation rather than loosen frozen thresholds, guess through ambiguous securities, or silently substitute a different dataset.
 
-## Target-machine runner
+## Target-machine runners
+
+Accepted feasibility runner:
 
 `scripts/run_alpha_gate_xbrl_feasibility.py`
 
-The runner is intentionally bounded to the frozen 200-issuer deterministic sample and emits progress while preserving zero-outcome authority.
+Current PIT audit runner:
+
+`scripts/run_alpha_gate_xbrl_pit_audit.py`
