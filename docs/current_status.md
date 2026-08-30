@@ -26,6 +26,8 @@ Development stock/SPY outcomes have now been opened under the frozen Phase32 con
 
 Protected predictor metadata is source-only and was allowed by the frozen contract. The exact next gate may use it only to independently freeze finalist identity, exact execution-ticker lineage, protected rows, three-fold assignments, and source-only sample counts. No protected return may be read until that audit passes and its exact fingerprint/plan hashes are frozen into a separate protected evaluator.
 
+Retained pre-performance freeze marker: before the authorized development gate, **Phase32 market outcomes remain unread** was the governing state after the accepted full-history source/predictor acquisition and independent source audit. That historical marker is preserved for contract continuity; it does not override the current statement above that development outcomes are now opened while protected returns remain unread.
+
 ## Retained Phase31 provenance
 
 Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` under scientific fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`. Its accepted source-quality repair retained 45,915 authoritative rows under repair fingerprint `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`. The original `FEASIBILITY_FAIL` remains preserved. Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
