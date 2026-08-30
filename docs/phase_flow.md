@@ -65,6 +65,7 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 - Phase33 Signal-to-Trade Construction remains blocked because accepted historical `SUPPORTED` alpha remains zero.
 - The materially different SEC XBRL fundamental-quality/accrual mechanism remains pre-Phase33 research and grants no downstream authority.
 - Its source-only feasibility contract `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes` returned **`FEASIBILITY_PASS`** on target-machine head `5a8c15f95417390d0d64ff240977adfb38a20c45`.
+- Retained feasibility fingerprint: `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`.
 - Accepted feasibility evidence: **200** successful Company Facts documents, **170** accrual-history-ready issuers, **92** profitability-history-ready issuers, zero target outcomes, zero protected returns, and an unconsumed holdout.
 - Accepted feasibility evidence fingerprint: `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`.
 - The current pre-Phase33 gate is the frozen **SEC XBRL PIT source/chronology/restatement/identity audit** on branch `alpha-gate-sec-xbrl-fundamental-quality-pit-audit`.
