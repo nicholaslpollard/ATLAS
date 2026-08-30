@@ -49,6 +49,46 @@ Exactly five hypotheses remained frozen throughout Phase32. The frozen developme
 
 The frozen protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** against preregistered minimums of 50 / 20 / 20. Protected stock/SPY returns remain unread; protected return rows read = 0 and the holdout remains unconsumed. Phase32 remains closed `ACCEPTED_NEGATIVE`, Historical supported alpha remains 0, and Phase33 remains blocked.
 
+## Retained pre-Phase33 SEC XBRL provenance
+
+Phase32 merge lineage entering the XBRL family:
+
+`69f8aa81289934b71f2652482c747391917c15a3`
+
+XBRL source-only feasibility contract:
+
+`alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`
+
+Frozen feasibility fingerprint:
+
+`6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`
+
+The original XBRL source-only feasibility gate was `FEASIBILITY_PASS`: **200** successful Company Facts documents, **170** accrual-history-ready issuers, and **92** profitability-history-ready issuers. No target or protected market outcomes were opened during feasibility.
+
+Accepted target feasibility evidence fingerprint:
+
+`33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`
+
+The first frozen PIT source/chronology/identity audit failed and remains preserved as `AUDIT_FAIL` rather than being rewritten. Its frozen PIT-audit fingerprint is:
+
+`50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`
+
+That v1 audit preserved 139 unambiguous identity mappings and 28 issuers with at least three mappings. Root cause was historical Massive identity semantics admitting inactive/non-common instruments. The targeted common-stock active-only repair kept the same 40 issuers, accessions, SEC chronology, and numeric gates; its contract and fingerprint are:
+
+`alpha-gate-xbrl-pit-audit-v2-targeted-common-stock-active-only-identity-repair-no-market-outcomes`
+
+`e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f`
+
+The repaired source gate passed before performance. Six finite XBRL hypotheses were then frozen under scientific fingerprint:
+
+`2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`
+
+Development later produced zero selection passers, zero winners, and zero internal finalists. XBRL protected return rows read = **0**; the protected holdout remained unconsumed. The family closed `ACCEPTED_NEGATIVE` with accepted closeout evidence fingerprint:
+
+`291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`
+
+Phase33 remained blocked; none of the feasibility, repair, scientific, or closeout history grants trading authority.
+
 ## Retained Phase31 Form-4 provenance
 
 The original Phase31 feasibility result remains `FEASIBILITY_FAIL`; it is not rewritten by the later accepted source repair. The owning-layer root cause was a **Massive beta source-association/data-quality defect**, not a relaxation of the chronology invariant.
