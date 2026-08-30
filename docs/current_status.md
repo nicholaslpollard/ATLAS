@@ -51,6 +51,8 @@ Development-only performance evaluation was ACCEPTED PASS. All five frozen candi
 
 The independent finalist blindness / lineage audit independently reproduced the accepted development path and exact finalist before using source-only protected predictor metadata.
 
+Historical Phase32 finalist-audit runner retained for provenance: `scripts/run_phase32_finalist_audit.py`.
+
 Accepted finalist-audit fingerprint:
 
 `c047dd1800877ed1d268b2d8e4c4fc1bfe158fcf715caedc275405f1bf01853e`
