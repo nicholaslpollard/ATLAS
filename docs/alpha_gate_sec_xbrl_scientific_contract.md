@@ -6,7 +6,7 @@
 
 Contract: `alpha-gate-xbrl-scientific-v1-six-yoy-quality-change-hypotheses`
 
-Fingerprint: `239215aad3c151200c77d214d5723e446877fcb014fb2280b9cd909b3ea379ef`
+Fingerprint: `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`
 
 Entry source-repair fingerprint: `e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f`
 
@@ -79,7 +79,7 @@ Protected minimums: 75 event rows, 30 signal sessions, 25 unique instruments, an
 
 At each applicable stage the primary after-cost mean and its required bootstrap lower confidence bound must be positive, stress-cost mean must be positive, and unhedged after-cost mean must be positive. At least 60% of years having at least 15 signal sessions must have positive primary mean. A single decision session may contribute no more than 10% of rows and a single instrument no more than 5%.
 
-Selection multiplicity is global Holm–Bonferroni across all six hypotheses at alpha 0.05. At most one winner per direction proceeds, ranked by highest internal primary lower confidence bound and then candidate ID. At most one finalist per direction may reach protected returns. Runner-up substitution is forbidden.
+Selection multiplicity is global Holm–Bonferroni across all six hypotheses at alpha 0.05. At most one winner per direction proceeds, ranked by highest **selection-tranche** primary lower confidence bound and then candidate ID. Internal validation only confirms or rejects that already selected winner; it does not choose among candidates. At most one finalist per direction may reach protected returns. Runner-up substitution is forbidden.
 
 A deflated-performance diagnostic is required but cannot rescue a failed hard gate.
 
