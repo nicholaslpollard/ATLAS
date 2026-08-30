@@ -62,13 +62,27 @@ def main() -> int:
     ):
         ast.parse(text, filename=path)
 
-    for text, label in ((development, "implementation"), (doc, "normative doc")):
-        _require(text, XBRL_SCIENTIFIC_FINGERPRINT, f"{label} scientific fingerprint")
-        _require(text, XBRL_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT, f"{label} implementation fingerprint")
-        _require(text, XBRL_PREDICTOR_CONTRACT, f"{label} predictor contract")
-        _require(text, XBRL_DEVELOPMENT_CONTRACT, f"{label} development contract")
-        _require(text, XBRL_OUTCOME_CONTRACT, f"{label} outcome contract")
-        _require(text, XBRL_FINALIST_CONTRACT, f"{label} finalist contract")
+    # Imported lineage constants should be bound by symbol in implementation code;
+    # only the normative document duplicates immutable literal fingerprints/contracts.
+    for token in (
+        "XBRL_SCIENTIFIC_FINGERPRINT",
+        "XBRL_PREDICTOR_CONTRACT",
+        "XBRL_DEVELOPMENT_CONTRACT",
+        "XBRL_OUTCOME_CONTRACT",
+        "XBRL_FINALIST_CONTRACT",
+        "XBRL_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT",
+    ):
+        _require(development, token, "implementation lineage binding")
+
+    for token, label in (
+        (XBRL_SCIENTIFIC_FINGERPRINT, "normative scientific fingerprint"),
+        (XBRL_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT, "normative implementation fingerprint"),
+        (XBRL_PREDICTOR_CONTRACT, "normative predictor contract"),
+        (XBRL_DEVELOPMENT_CONTRACT, "normative development contract"),
+        (XBRL_OUTCOME_CONTRACT, "normative outcome contract"),
+        (XBRL_FINALIST_CONTRACT, "normative finalist contract"),
+    ):
+        _require(doc, token, label)
 
     for token in (
         "filing_metadata_many",
