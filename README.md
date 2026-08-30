@@ -70,6 +70,8 @@ Phase32 policy fingerprint:
 
 `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
+Phase32's frozen scientific family remained exactly five hypotheses throughout development, finalist selection, and closeout.
+
 The independent finalist blindness / lineage audit reproduced `solvency_distress_short` and froze a protected source-only population of **46 event rows / 33 signal sessions / 40 unique instruments** against frozen minimums of **50 / 20 / 20**.
 
 Finalist audit fingerprint:
