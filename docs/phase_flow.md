@@ -1,18 +1,22 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-29 after Phase32 merge, accepted XBRL source feasibility, and opening the frozen XBRL source-only PIT chronology/restatement/identity audit.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32 merge, accepted XBRL source feasibility, and opening the frozen XBRL source-only PIT chronology/restatement/identity audit.**
 
 Read `docs/roadmap.md` first. One numbered phase is one acceptance gate; pre-phase alpha research gates must obey the same scientific/authority discipline.
 
 ## Core lifecycle
 
-`PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT COHERENT WORK -> FOCUSED DEVELOPMENT TESTS -> COMPLETE FULL PHASE-END ACCEPTANCE GATE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
+`PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT THE COHERENT PHASE PACKAGE -> FOCUSED PHASE TEST -> ROOT-CAUSE TARGETED FIXES IF NEEDED -> RERUN PHASE TEST -> PHASE-END ACCEPTANCE/REGRESSION -> DOCUMENT -> MERGE -> NEXT PHASE`
 
-A failed check is evidence, not an obstacle to route around. Root cause must be corrected at the owning layer. Do not weaken validators, thresholds, chronology, identity, multiplicity, protected-evidence rules, or authority boundaries to convert a failure into PASS.
+A failed check is evidence, not an obstacle to route around. Root cause must be corrected at the owning layer. Do not weaken validators, thresholds, chronology, identity, multiplicity, protected-evidence rules, or authority boundaries to convert a failure into PASS. Workarounds that bypass a failed requirement are forbidden.
 
 ## Cadence
 
-Use the **largest safe coherent work package**. Combine implementation, focused tests, contract validation, documentation, and repository CI where doing so does not cross a scientific or authority boundary. Avoid conversational micro-gates that only restate already-authorized work.
+ATLAS uses a **single coherent acceptance cycle per phase**, not a chain of conversational micro-gates. Implement the largest safe phase package, run the phase-focused test suite, repair only demonstrated root causes, rerun the focused suite, and then perform the consolidated phase-end regression/documentation/CI check before merge and progression.
+
+Intermediate scientific or authority boundaries are permitted only when they are genuinely irreversible or necessary to prevent contamination—for example, freezing a research policy before opening market outcomes, protected evidence access, broker mutation, destructive migration, PAPER authority, or LIVE authority. They are not separate implementation phases and should not create repeated operator checkpoints.
+
+Historical validators, cross-platform parity, living-document synchronization, and full retained regression should normally be consolidated at phase end. If an older retained validator fails only because living-document navigation or wording advanced, record it for the phase-end targeted-fix batch unless it indicates actual scientific, lineage, provider, broker, data-integrity, or authority drift.
 
 Operator interaction is reserved for target-machine/provider/broker/deployment facts repository CI cannot establish, destructive or authority-changing actions, or genuinely ambiguous requirements. A target-machine checkpoint should produce enough evidence to complete the largest possible next repository unit.
 
@@ -26,11 +30,11 @@ A non-performance data feasibility/provenance step may precede hypothesis freeze
 
 ## Development is not acceptance
 
-A script running, provider responding, backtest profiting, paper order submitting, GUI rendering, or focused test passing is not phase acceptance. Only the full phase-end gate can accept a phase.
+A script running, provider responding, backtest profiting, paper order submitting, GUI rendering, or focused test passing is not phase acceptance. The focused phase test authorizes continuation within the already-defined phase scope; only the consolidated phase-end acceptance can close and merge the phase.
 
 ## Full phase-end gate
 
-As applicable, require syntax/compile, focused unit/contract/integration tests, independent verification, retained historical validators, full regression, Ubuntu + Windows CI on the exact head, adversarial/error-path checks, reproducibility/lineage, restart/reconciliation for stateful work, target-machine evidence where mocks cannot establish facts, zero forbidden authority, documented root-cause closure, and synchronized living docs.
+As applicable, require syntax/compile, phase-focused unit/contract/integration tests, independent verification, retained historical validators, full regression, Ubuntu + Windows CI on the exact head, adversarial/error-path checks, reproducibility/lineage, restart/reconciliation for stateful work, target-machine evidence where mocks cannot establish facts, zero forbidden authority, documented root-cause closure, and synchronized living docs. These should be executed as one consolidated closeout package rather than many sequential mini-gates.
 
 ## Outcomes
 
@@ -38,7 +42,7 @@ As applicable, require syntax/compile, focused unit/contract/integration tests, 
 - `ACCEPTED_NEGATIVE`: the research executed validly but found no acceptable edge/replacement; no missing downstream authority is granted.
 - `NOT ACCEPTED`: a mandatory implementation/evidence/validation criterion failed; repair in the same phase, not through a weaker alternate path.
 
-A pre-performance feasibility gate may separately report `FEASIBILITY_PASS` or `FEASIBILITY_FAIL`; either result grants **no alpha support**. A feasibility PASS authorizes only the next explicitly defined source/scientific gate.
+A pre-performance feasibility gate may separately report `FEASIBILITY_PASS` or `FEASIBILITY_FAIL`; either result grants **no alpha support**. A feasibility PASS authorizes only the next explicitly defined source/scientific work inside the research program.
 
 A source/chronology audit may separately report `AUDIT_PASS` or `AUDIT_FAIL`; either result still grants **no alpha support**. An AUDIT_PASS may authorize only the next explicitly frozen scientific contract before outcomes.
 
