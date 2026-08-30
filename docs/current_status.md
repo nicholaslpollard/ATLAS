@@ -32,6 +32,8 @@ Retained pre-performance freeze marker: before the authorized development gate, 
 
 Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` under scientific fingerprint `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`. Its accepted source-quality repair retained 45,915 authoritative rows under repair fingerprint `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`. The original `FEASIBILITY_FAIL` remains preserved. Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
 
+Retained historical Phase31 feasibility provenance is evidence only: feasibility fingerprint `505716315cff51656083265644075856794ffc49f5b1f36652578ac5622f005d`; original result `FEASIBILITY_FAIL`; Massive `form4_transactions` source route; source-quality repair runner `scripts/run_phase31_form4_source_quality_repair.py`. These markers describe the pre-repair Phase31 gate and do not override the accepted final `ACCEPTED_NEGATIVE` closeout.
+
 Retained historical Phase31 markers are provenance only: Massive plan `Stocks Starter`; original result `FEASIBILITY_FAIL`; repair policy `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`; diagnosed root cause `Massive beta source-association/data-quality defect`; historical acquisition runner `scripts/run_phase31_form4_acquisition.py`.
 
 ## Phase32 accepted source gates
