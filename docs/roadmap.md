@@ -109,19 +109,41 @@ Historical supported alpha remains **zero**. Historical supported modern alpha r
 
 ## 6. Completed Pre-Phase33 SEC XBRL mechanism — `ACCEPTED_NEGATIVE`
 
-The SEC XBRL fundamental-quality/accrual program materially changed the information mechanism from Phase32 and used PIT standardized quarterly fundamentals from original SEC 10-Q/10-K filings.
+The SEC XBRL fundamental-quality/accrual program materially changed the information mechanism from Phase32 and used PIT standardized quarterly fundamentals from original SEC 10-Q/10-K filings. It entered from Phase32 merge `69f8aa81289934b71f2652482c747391917c15a3`.
 
-Its source feasibility passed; its first PIT identity audit failure was preserved; a targeted active-common-stock identity repair passed; six finite year-over-year quality-change hypotheses were frozen before outcomes; development then produced **0 selection passers, 0 winners, and 0 internal finalists**. Protected returns were never opened.
+Retained source-only feasibility contract:
 
-Accepted scientific fingerprint:
+`alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`
+
+Frozen feasibility fingerprint:
+
+`6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`
+
+The source gate was `FEASIBILITY_PASS`: **200** successful Company Facts documents, **170** accrual-history-ready issuers, and **92** profitability-history-ready issuers. Accepted target feasibility evidence fingerprint:
+
+`33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`
+
+The first frozen PIT source/chronology/identity audit failure is preserved as `AUDIT_FAIL` rather than rewritten. Frozen PIT audit fingerprint:
+
+`50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`
+
+That v1 audit retained 139 unambiguous identity mappings and 28 issuers with at least three mappings. Root cause was historical Massive identity semantics admitting inactive and non-common instruments. The targeted active-common-stock repair retained the same 40 issuers, source accessions, SEC chronology, and numeric gates. Its contract and fingerprint are:
+
+`alpha-gate-xbrl-pit-audit-v2-targeted-common-stock-active-only-identity-repair-no-market-outcomes`
+
+`e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f`
+
+The repaired source gate passed before market performance. Six finite year-over-year quality-change hypotheses were then frozen under accepted scientific fingerprint:
 
 `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`
+
+Development produced **0 selection passers, 0 winners, and 0 internal finalists**. XBRL protected return rows read = **0** and the protected holdout remained unconsumed.
 
 Accepted closeout evidence fingerprint:
 
 `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`
 
-The family merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, followed by green Ubuntu/Windows regression. It is closed to post-result retuning or protected rescue.
+The family merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, followed by green Ubuntu/Windows regression. It is closed to post-result retuning or protected rescue, and Phase33 remains blocked.
 
 ## 7. Current pre-Phase33 mechanism — SEC Schedule 13D/13G beneficial ownership
 
