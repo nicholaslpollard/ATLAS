@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-28 for Phase32.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 for the active Phase32 finalist-audit gate.**
 
 Read `docs/roadmap.md` first. One numbered phase is one acceptance gate.
 
@@ -51,12 +51,14 @@ Report goal, what was built, full-gate result, scientific/operational meaning, a
 ## Current application
 
 - Accepted project foundation: **through Phase31**.
-- Phases26–31 are `ACCEPTED_NEGATIVE`; supported modern alpha remains **0**.
-- Phase31 Form-4 source quality/acquisition and **predictor-only Form-4 event construction** passed before development; development then produced zero survivors/winners/finalists and independent closeout `PASS_NEGATIVE_MANDATORY_SAMPLE_GATE_PROOF` with zero protected reads.
-- Phase31 PR #35 merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4` is the source boundary for the next gate.
+- Phases26–31 are `ACCEPTED_NEGATIVE`; accepted historical modern alpha remains **0**.
 - **Active project gate: Phase32 — SEC 8-K Material Corporate-Event Alpha.**
-- Active internal step: non-performance source feasibility using Massive original-8-K index discovery plus official SEC EDGAR submission headers.
-- Phase32 alpha hypotheses are not yet frozen; stock/SPY target outcomes and protected returns are forbidden.
-- Feasibility timing boundary is `FIRST_XNYS_SESSION_STRICTLY_AFTER_SEC_ACCEPTANCE_DATETIME`.
+- Phase32 core/semantic source qualification, full-history predictor/source acquisition, and independent source/predictor acceptance are accepted PASS under the frozen five-hypothesis policy.
+- Development-only outcomes were then opened under that unchanged contract; protected returns remain unread and the master holdout remains unconsumed.
+- Development produced exactly one frozen finalist, `solvency_distress_short`; this is **not** yet historical `SUPPORTED` alpha.
+- Active internal step: **independent finalist blindness/lineage audit + immutable source-only protected plan**.
+- The audit independently reproduces the accepted development geometry, chronology, folds, block bootstrap, Holm-5 family, winners, no-runner-up rule, and exact finalist before touching protected returns.
+- The source-only protected population must satisfy **50 / 20 / 20** minimum event rows / signal sessions / unique instruments before a protected return read can even become eligible.
+- If that source-only gate fails, Phase32 closes negative with protected returns still unread. If it passes, the exact audit fingerprint and protected-plan hashes must be frozen into a separate finalist-only protected evaluator before any protected stock/SPY return is opened.
 - Phase33 Signal-to-Trade Construction remains blocked until at least one strategy/alpha candidate earns accepted historical analytical `SUPPORTED` authority.
 - LIVE remains disabled and automatic broker failover remains disabled.

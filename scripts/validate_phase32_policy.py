@@ -43,6 +43,7 @@ def main() -> int:
     semantic_path = "docs/phase32_semantic_source_qualification.md"
     status_path = "docs/current_status.md"
     roadmap_path = "docs/roadmap.md"
+    phase_flow_path = "docs/phase_flow.md"
     readme_path = "README.md"
     workflow_path = ".github/workflows/phase32-tests.yml"
 
@@ -53,6 +54,7 @@ def main() -> int:
     semantic_doc = _read(semantic_path)
     status = _read(status_path)
     roadmap = _read(roadmap_path)
+    phase_flow = _read(phase_flow_path)
     readme = _read(readme_path)
     workflow = _read(workflow_path)
 
@@ -150,6 +152,7 @@ def main() -> int:
     ):
         _forbid(policy, forbidden, "market-outcome/trading dependency in policy freeze")
 
+    # Frozen scientific/source-era records retain the exact pre-performance state.
     _require(scientific, EXPECTED_POLICY_FINGERPRINT, "scientific fingerprint")
     _require(scientific, EXPECTED_IDENTITY_CONTRACT, "scientific identity contract")
     _require(scientific, "Exactly five hypotheses", "finite family heading")
@@ -163,23 +166,36 @@ def main() -> int:
     _require(scientific, "2026-05-04", "development label boundary")
     _require(scientific, "2026-08-04", "protected signal boundary")
     _require(scientific, "zero target/protected outcome reads", "pre-performance source freeze")
-    _require(scientific, "full-history Phase32 source/predictor acquisition", "next scientific target")
+    _require(scientific, "full-history Phase32 source/predictor acquisition", "freeze-time next scientific target")
 
+    _require(semantic_doc, EXPECTED_POLICY_FINGERPRINT, "semantic qualification policy fingerprint")
+    _require(semantic_doc, "five hypotheses", "semantic qualification finite family status")
+    _require(semantic_doc, "full-history", "semantic qualification source-era handoff")
+
+    # Living continuation docs must advance with accepted evidence without rewriting frozen science.
     for doc_name, doc in (
         ("phase spec", phase_doc),
-        ("semantic qualification", semantic_doc),
         ("current status", status),
         ("roadmap", roadmap),
         ("README", readme),
     ):
         _require(doc, EXPECTED_POLICY_FINGERPRINT, f"{doc_name} policy fingerprint")
         _require(doc, "five hypotheses", f"{doc_name} finite family status")
-        _require(doc, "full-history", f"{doc_name} next source/predictor target")
+        _require(doc, "solvency_distress_short", f"{doc_name} frozen finalist")
+        _require(doc, "independent finalist blindness / lineage audit", f"{doc_name} current finalist-audit target")
+        _require(doc, "Protected", f"{doc_name} protected-boundary status")
 
-    _require(status, "Phase32 market outcomes remain unread", "status blindness boundary")
+    _require(status, "Protected stock/SPY returns remain unread", "current status protected blindness boundary")
     _require(roadmap, "Phase33", "roadmap downstream block")
     _require(phase_doc, "Phase33 remains blocked", "phase spec downstream block")
+    _require(readme, "Phase33 signal-to-trade remains blocked", "README downstream block")
     _require(semantic_doc, "7,468", "semantic census accepted disclosure count")
+
+    _require(phase_flow, "solvency_distress_short", "phase flow frozen finalist")
+    _require(phase_flow, "independent finalist blindness/lineage audit", "phase flow current internal step")
+    _require(phase_flow, "protected returns remain unread", "phase flow protected blindness boundary")
+    _require(phase_flow, "50 / 20 / 20", "phase flow protected source-only sample gate")
+    _require(phase_flow, "Phase33", "phase flow downstream block")
 
     _require(workflow, "Validate Phase 32 frozen scientific policy", "CI policy step")
     _require(workflow, "python scripts/validate_phase32_policy.py", "CI policy validator command")
@@ -188,10 +204,11 @@ def main() -> int:
     print("ATLAS Phase 32 frozen scientific policy contracts: PASS")
     print(f"- frozen policy fingerprint: {EXPECTED_POLICY_FINGERPRINT}")
     print(f"- accepted identity contract: {EXPECTED_IDENTITY_CONTRACT}")
-    print("- exactly five source-semantic hypotheses are frozen before performance")
-    print("- SEC acceptance-time decision session, 5-session horizon, PIT CIK-bound identity, SPY-relative outcome and costs are frozen")
-    print("- sample/concentration gates, 5-session block inference, global Holm-5 and no-runner-up selection are frozen")
-    print("- protected returns remain forbidden until finalists and blindness audit")
+    print("- exactly five source-semantic hypotheses remain frozen under the pre-performance contract")
+    print("- SEC acceptance-time decision session, 5-session horizon, PIT CIK-bound identity, SPY-relative outcome and costs remain frozen")
+    print("- sample/concentration gates, 5-session block inference, global Holm-5 and no-runner-up selection remain frozen")
+    print("- living continuation docs are synchronized to the independent finalist blindness/lineage audit")
+    print("- protected returns remain forbidden until the source-only plan is fingerprint-frozen into a separate finalist-only evaluator")
     print("- Phase33 and all broker/order/PAPER/LIVE authority remain blocked")
     return 0
 
