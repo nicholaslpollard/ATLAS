@@ -10,72 +10,130 @@ The legacy Chart Monitor remains preserved while ATLAS matures through SHADOW/PA
 
 Every new ATLAS work session should read:
 
-1. `docs/roadmap.md` — normative mission, architecture, acceptance model, and remaining roadmap;
-2. `docs/current_status.md` — exact current handoff;
-3. active phase spec — `docs/phase31_sec_insider_transaction_alpha.md`;
-4. Phase31 source/provenance records — `docs/phase31_form4_feasibility_incident.md`, `docs/phase31_form4_source_quality_repair.md`, `docs/phase31_full_historical_acquisition.md`;
-5. frozen predictor evidence — `docs/phase31_predictor_evidence.md`;
-6. frozen scientific contract — `docs/phase31_scientific_contract.md`;
-7. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-8. accepted code, validators, CI/PR evidence.
+1. `docs/roadmap.md`;
+2. `docs/current_status.md`;
+3. `docs/phase32_closeout.md`;
+4. `docs/phase32_sec_8k_material_event_alpha.md`;
+5. `docs/phase32_scientific_contract.md`;
+6. `docs/phase32_predictor_independent_acceptance.md`;
+7. `docs/phase32_development_evaluation.md`;
+8. `docs/phase32_finalist_blindness_audit.md`;
+9. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
+10. accepted code, validators, CI/PR evidence.
+
+Retained Phase32 source-incident history remains in `docs/phase32_sec_edgar_access_incident.md`, `docs/phase32_massive_text_multiplicity_incident.md`, `docs/phase32_crash_cache_corruption_incident.md`, and `docs/phase32_sec_submissions_shard_boundary_incident.md`.
 
 ## Locked architecture
 
 `market/reference/regulatory -> Parquet/DuckDB -> features -> broad discovery -> regimes -> ML probability evidence -> deterministic alpha evaluation -> candidate promotion -> deep research/news -> stock/options selection -> geometry -> portfolio risk/sizing -> deterministic case -> independent AI audit -> alerts -> SHADOW/PAPER/LIVE execution -> learning -> browser control plane -> production operations`
 
 - Massive = primary market/reference/regulatory provider where entitlement and PIT semantics are proven.
-- Current Massive plan = **Stocks Starter**; do not assume unrelated paid datasets/plans.
+- Current Massive plan = **Stocks Starter**; unrelated paid datasets/plans are never assumed.
+- Official SEC EDGAR = read-only authoritative regulatory submission provenance when explicitly phase-gated.
 - Parquet = durable analytical lake; DuckDB = analytical engine; PostgreSQL = later operational state.
 - Webull = primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance.
 - Alpaca = manual secondary broker; **no automatic broker failover**.
 - ML/AI = evidence/audit layers, never unilateral trading authority.
 - Browser GUI = operator surface, never a second trading engine.
 
-## Phase model
+## Operating rule
 
-One numbered phase is one project acceptance gate:
+One numbered phase is one acceptance gate:
 
 `PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT -> FOCUSED TESTS -> FULL PHASE-END ACCEPTANCE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
 
-Internal feasibility, acquisition, predictor, development, blindness, and protected-confirmation work are not separate numbered gates. Legitimate negative science may close `ACCEPTED_NEGATIVE` and does not create missing downstream authority.
+Use the largest safe coherent work package. Do not create conversational micro-gates for implementation steps that do not change scientific/provider/broker/destructive/LIVE authority. Target-machine checks remain mandatory when repository CI cannot prove local data/provider/artifact facts.
 
-## Current state — 2026-08-28
+If an error occurs, ATLAS identifies the root cause, implements and tests the proper correction, and only then continues. Validators or scientific rules are never weakened to obtain PASS. Failed approaches remain evidence. Zero candidates/trades is legitimate.
 
-- Accepted foundation: **through Phase30**.
-- Phases26–30 are scientifically valid `ACCEPTED_NEGATIVE` alpha phases.
-- Phase30 PR #34 merge `bf673ad82886e7172db0d54a33dd9612fa9ea29e`; post-merge workflow `33141442154` passed Ubuntu/Windows.
-- Phase11 strategy authority remains SUPPORTED 0 / MIXED 3 / UNSUPPORTED 5.
-- Master protected outcome window remains `2026-05-12..2026-08-11`; Phase31 protected returns remain unopened.
-- **Active Phase31: SEC Form-4 Insider-Transaction Alpha.**
-- Active branch: `phase-31-sec-insider-transaction-alpha`.
-- Original feasibility `FEASIBILITY_FAIL` is permanently preserved. Root cause is preserved as a **Massive early-access/beta source-association/data-quality defect**; it was repaired only through generic fail-closed source-quality quarantine, never by weakening chronology.
-- Frozen source-quality fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`.
-- Frozen scientific policy fingerprint: `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`.
-- Exactly four Phase31 hypotheses remain frozen: broad/clustered purchase LONG and broad/clustered sale SHORT.
-- Historical entry = first post-filing XNYS session open; primary exit = t+20 XNYS close; primary performance = SPY-relative after-cost return with positive unhedged mean also required.
-- **Full historical Form-4 acquisition PASSED** on the target machine: 62 monthly shards, 2,993,648 raw rows, 2,992,608 authoritative rows, 1,040 quarantined rows, 187 contaminated accessions, 233 chronology seed rows, 15 missing-`transaction_code` seed rows.
-- Acquisition read 0 target outcomes, 0 protected candidate rows, and 0 protected returns; all four frozen probe windows reconciled exactly.
-- **Predictor-only Form-4 event construction PASSED** on target head `dbde716b79ae882bcfec412e1a13e1bb3c274f6a`: 2,992,608 authoritative rows scanned, 103,773 qualified accessions, 5,870 resolved noncontradictory events, 5,400 development predictor rows, and 343 protected predictor rows.
-- Frozen development predictor SHA: `a82ff3114febc0c6f7c13d5f045549b714edbf0fd66157ef93853be9ae90c49f`.
-- Frozen protected predictor SHA: `d3bcd2696463ec1e384919007a36570475f8cb0bf1e393f109f0accd24224e27`.
-- Predictor construction read **0 target outcomes and 0 protected returns** and performed zero provider/broker/order/PAPER/LIVE/automation writes.
-- Current internal target = **development-only Phase31 performance evaluation** under the frozen four-hypothesis contract. Development stock/SPY outcomes may now be read only through the dedicated exact-session, split-censored, previous-session-regime path; protected predictor rows/returns remain unread.
-- Development selection remains chronological first 75%, then 20-session purge, then internal validation; global Holm is across all four hypotheses; no runner-up substitution is allowed.
-- Phase32 remains blocked until supported alpha exists.
-- LIVE remains disabled. Automatic broker failover remains disabled.
+Material decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
 
-See `docs/current_status.md` for exact hashes, thresholds, and handoff instructions.
+## Current state — 2026-08-30
+
+- Accepted foundation: **through Phase32**, pending Phase32 branch merge into `main`.
+- Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well.
+- Historical supported modern alpha remains **0**.
+- Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+- Current closeout branch: `phase-32-sec-8k-material-event-alpha`.
+- Master protected outcome window `2026-05-12..2026-08-11` remains **protected-return unopened**.
+- Phase32 development finalist `solvency_distress_short` did not earn `SUPPORTED` authority.
+- Phase33 signal-to-trade remains blocked.
+- LIVE and automatic broker failover remain disabled.
+
+### Phase32 frozen science
+
+Policy fingerprint:
+
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
+
+Exactly five hypotheses were frozen before performance:
+
+- `equity_issuance_short`;
+- `share_repurchase_long`;
+- `financial_integrity_adverse_short`;
+- `listing_distress_short`;
+- `solvency_distress_short`.
+
+The frozen methodology used SEC acceptance-time public availability, decision-open entry, five-session close exit, SPY-relative primary plus required unhedged profitability, 10-bps primary / 25-bps stress costs, five-session purge/block bootstrap, mandatory sample/concentration/robustness gates, global `HOLM_BONFERRONI_GLOBAL_5`, one winner/finalist per direction, no runner-up substitution, and finalist-only protected returns.
+
+PIT identity remained bound to `instrument-identity-v4-no-issuer-level-medium-collapse`.
+
+### Phase32 source/predictor gates — ACCEPTED PASS
+
+Accepted source fingerprints:
+
+- core V2: `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`;
+- semantic V2: `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`;
+- independent source/predictor acceptance: `531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde`.
+
+Full-history acquisition completed 36,309 filing entities with 19,792 eligible predictors: 18,819 development and 973 protected-predictor-only. Acquisition read zero stock/SPY/options/protected outcomes.
+
+### Phase32 development + finalist audit
+
+The development study produced one frozen finalist, `solvency_distress_short`, after `share_repurchase_long` failed internal validation on its required LCB.
+
+The independent finalist blindness / lineage audit then reproduced the accepted development result without importing the development implementation and built a source-only protected plan.
+
+Finalist audit fingerprint:
+
+`c047dd1800877ed1d268b2d8e4c4fc1bfe158fcf715caedc275405f1bf01853e`
+
+Protected plan fingerprint:
+
+`2f44f2d87578a0b0a0cee6a6f5c855340056222ce52d68835b931ce5f114a344`
+
+Protected plan rows SHA-256:
+
+`b9591ac49dab3f6f7ff01ab4331ef114c68a436e8475456e099058bce847f703`
+
+Frozen protected source-only population:
+
+- **46 event rows**;
+- **33 signal sessions**;
+- **40 unique instruments**.
+
+Frozen minimums were **50 / 20 / 20**. The 46-row population fails the mandatory 50-row gate before protected performance is opened. Audit status: `AUDIT_PASS_PROTECTED_SAMPLE_GATE_IMPOSSIBLE`.
+
+**Protected stock/SPY returns remain unread.** Protected return rows read = 0 and protected holdout consumed = false.
+
+### Phase32 closeout
+
+Phase32 is `ACCEPTED_NEGATIVE`. The result is scientifically valid: the development finalist cannot satisfy a preregistered protected source-only sample requirement, so looking at protected returns would be both unnecessary and inadmissible.
+
+No threshold may be relaxed, no runner-up may replace the finalist, and the same 8-K family may not be retuned after results. Historical supported alpha remains **0**.
+
+The next alpha research mechanism, if pursued, must be materially different. Phase33 Signal-to-Trade Construction remains blocked until at least one later alpha gate earns accepted historical `SUPPORTED` authority.
 
 ## Remaining roadmap
 
-- **Phase31:** SEC Form-4 Insider-Transaction Alpha — active.
-- **Phase32:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked on supported alpha.
-- **Phase33:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
-- **Phase34:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
-- **Phase35:** Outcomes/Learning/Drift/Governance + Performance UI.
-- **Phase36:** Production Web Application, Operations & Deployment.
-- **Phase37:** LIVE Readiness/Deployment Hardening/Reconciliation/Failure Certification — LIVE still disabled.
-- **Phase38:** Controlled LIVE Activation & Evidence-Based Scaling.
+- **Next alpha research gate:** must be a materially different mechanism; not yet frozen/opened.
+- **Phase33:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked on supported alpha.
+- **Phase34:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
+- **Phase35:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
+- **Phase36:** Outcomes/Learning/Drift/Governance + Performance UI.
+- **Phase37:** Production Web Application, Operations & Deployment.
+- **Phase38:** LIVE Readiness/Deployment Hardening/Reconciliation/Failure Certification — LIVE still disabled.
+- **Phase39:** Controlled LIVE Activation & Evidence-Based Scaling.
 
 ## Persistent boundaries
 

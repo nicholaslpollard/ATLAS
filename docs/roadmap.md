@@ -1,52 +1,53 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-baselined: 2026-08-28 after Phase30 `ACCEPTED_NEGATIVE`.**
-
-This document controls the ATLAS mission, anti-drift rules, remaining phase sequence, GUI/web/deployment path, and phase acceptance model. Accepted code/evidence on `main` controls historical fact; this roadmap controls future direction.
+**Normative project source of truth. Re-synchronized: 2026-08-30 after Phase32 independent finalist blindness/lineage audit proved the frozen protected `solvency_distress_short` population cannot satisfy the preregistered 50-row minimum. Phase32 closes `ACCEPTED_NEGATIVE` with protected stock/SPY returns unread and the holdout unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
-3. the active phase specification;
-4. `docs/phase_flow.md`;
-5. `docs/phase_plain_english_contract.md`;
-6. accepted code, validators, CI/PR evidence, and older phase documents as provenance.
+3. `docs/phase32_closeout.md`;
+4. `docs/phase32_sec_8k_material_event_alpha.md`;
+5. `docs/phase32_scientific_contract.md`;
+6. `docs/phase32_predictor_independent_acceptance.md`;
+7. `docs/phase32_development_evaluation.md`;
+8. `docs/phase32_finalist_blindness_audit.md`;
+9. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
+10. accepted code, validators, CI/PR evidence, and historical phase records.
 
-## 1. Mission and end goal
+## 1. Mission
 
 ATLAS is the **Autonomous Trading, Learning, and Analysis System** and the greenfield successor to Chart Monitor.
 
-> **Use trustworthy market evidence, validated quantitative edge, disciplined risk management, appropriate stock/options trade construction, reliable execution, and outcome learning to make educated trades with the objective of growing account equity and producing profit over time after realistic costs.**
+> Use trustworthy market evidence, validated quantitative edge, disciplined risk management, appropriate stock/options trade construction, reliable execution, and outcome learning to make educated trades with the objective of growing account equity and producing profit over time after realistic costs.
 
 Profit is never guaranteed. ATLAS is judged by defensible positive expected value after realistic costs while controlling drawdown, tail risk, concentration, execution risk, and risk of ruin—not by trade count, alert count, or attractive backtests.
 
 ## 2. Locked architecture
 
-`market/reference/regulatory data -> Parquet lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> candidate promotion -> analogue/scenario/news research -> stock/options instrument selection -> entry/exit/geometry -> portfolio risk/sizing -> consolidated deterministic case -> independent AI audit -> alerts -> shadow/paper/live execution -> outcome/performance learning -> browser/web control plane -> production deployment/operations`
+`market/reference/regulatory data -> Parquet lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> candidate promotion -> analogue/scenario/news research -> stock/options instrument selection -> entry/exit/geometry -> portfolio risk/sizing -> consolidated deterministic case -> independent AI audit -> alerts -> SHADOW/PAPER/LIVE execution -> outcome/performance learning -> browser/web control plane -> production deployment/operations`
 
 Persistent roles:
 
 - Parquet = durable analytical/history lake.
 - DuckDB = analytical/query engine.
-- PostgreSQL = future persistent operational state after later promotion.
-- Massive = primary broad-market/reference/regulatory-data provider where entitled and validated.
-- Current Massive subscription constraint = **Stocks Starter**; do not assume Financials & Ratios Expansion, Options Starter, or paid partner datasets are entitled unless separately proven.
+- PostgreSQL = later persistent operational state after promotion.
+- Massive = primary broad-market/reference/regulatory provider where entitlement and PIT semantics are proven.
+- Current Massive subscription = **Stocks Starter**; no other entitlement is assumed.
+- Official SEC EDGAR = read-only authoritative regulatory provenance when phase-gated.
 - Webull = primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance.
-- Alpaca = explicit/manual secondary broker and proven historical Benzinga-news source; **no automatic broker failover**.
-- ML = probability/predictive evidence, never standalone trade authority.
-- alpha/strategy evidence must earn historical analytical support through frozen gates.
+- Alpaca = explicit/manual secondary broker; **no automatic broker failover**.
+- ML = predictive evidence, never standalone authority.
 - AI = independent audit/challenge layer, not unilateral authority.
-- browser/web GUI = operator surface, never a second trading engine.
-- deployment packages accepted Python authority rather than reimplementing it.
+- Browser GUI = operator surface, never a second trading engine.
 
 ## 3. Persistent non-negotiables
 
 1. Alpha remains the critical path while accepted execution/safety foundations already exist.
 2. Zero candidates/trades is legitimate; thresholds are never weakened to force activity.
-3. PIT data, chronology, realistic costs, leakage controls, dependence-aware statistics, multiplicity controls, protected evidence, and reproducibility are mandatory for alpha claims.
+3. PIT data, chronology, realistic costs, leakage controls, dependence-aware statistics, multiplicity controls, protected evidence, and reproducibility are mandatory.
 4. No silent self-modification of strategy/model/support/risk authority.
-5. Research/community ideas are hypotheses, not evidence.
+5. Research/community/provider ideas are hypotheses or source claims, not performance evidence.
 6. Reuse accepted components rather than creating parallel authority without measured cause.
 7. Every numbered phase starts and ends with a plain-English operator explanation.
 8. GUI is a product surface, not business-logic authority.
@@ -54,190 +55,151 @@ Persistent roles:
 10. Fail closed on ambiguous identity, stale/missing data, uncertain mutation state, invalid geometry, unknown broker/order state, or unreconciled exposure.
 11. PAPER does not imply LIVE.
 12. No automatic cross-broker failover.
-13. Root cause before workaround: no weakened validators, ignored discrepancies, repair-wrapper stacks, post-result threshold changes, or special authority paths to manufacture PASS.
+13. **Root cause before workaround:** an error stops progression until the cause is diagnosed and a proper correction is implemented/tested. Validators, thresholds, chronology, identity, multiplicity, protected rules, or authority may not be weakened to manufacture PASS.
 14. Preserve provider-native ticker text/case and exact PIT identity; ticker alone never proves continuity.
 15. No fabricated pre-2021 intraday history.
 16. Finalized canonical facts outrank provisional state.
 17. LONG geometry requires `stop < entry < target`; SHORT requires the reverse.
 18. Protected performance is finalist-only. Once a holdout outcome is read, that holdout is consumed for later alpha selection.
 19. A legitimate negative research phase may be accepted but cannot satisfy a downstream positive-entry condition.
-20. When a research family fails, the next research phase must change the economic/information mechanism rather than retune the failed family after observing results.
-21. Provider plan/entitlement claims are evidence, not assumptions. A documented endpoint can be used only after the actual ATLAS credential path is proven where entitlement uncertainty exists.
-22. Regulatory event dates are not automatically decision timestamps. If exact publication/acceptance time is unavailable, use a conservative later decision boundary rather than infer same-session knowledge.
+20. When a research family fails, the next phase must change the economic/information mechanism rather than retune the failed family after results.
+21. Provider plan/history/entitlement claims require evidence and, where material, empirical verification.
+22. Regulatory event dates are not automatically decision timestamps; authoritative publication/acceptance time controls where available.
+23. Material source/architecture/scientific decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
+24. Long-running target-machine runners should emit lightweight terminal progress; observability may never alter scientific logic.
 
-## 4. Accepted foundation through Phase30
+## 4. Accepted foundation through Phase32
 
-### Phases 1–25
-
-Accepted project/config/session foundations, restartable provider ingestion, canonical Parquet/DuckDB data, PIT instrument identity/history, live market state, deterministic features, PIT universe eligibility, broad discovery/hysteresis, market/sector/ticker regimes, conventional ML probability/evaluation, strategy/routing, promoted-only deep research, news/options/instrument/geometry/portfolio-risk planning, independent AI audit, broker-neutral SHADOW/PAPER execution, Webull-primary/Alpaca-manual-secondary operations, browser/API primitives, restart-safe orchestration, centralized PAPER authority, and exact historical production-path reconstruction.
+Phases1–25 accepted the project/config/session foundation, provider ingestion, canonical Parquet/DuckDB data, PIT identity/history, live market state, deterministic features, universe/discovery/regime/ML/strategy routing, promoted-only deep research, news/options/instrument/geometry/portfolio-risk planning, independent AI audit, broker-neutral SHADOW/PAPER execution, Webull-primary/Alpaca-manual-secondary operations, browser/API primitives, restart-safe orchestration, centralized PAPER authority, and exact historical production-path reconstruction.
 
 Accepted daily historical boundary remains Alpaca SIP through `2021-08-13` and Massive from `2021-08-16` onward. No synthetic pre-2021 1h/4h history exists.
 
-Phase11 strategy authority remains:
+Modern alpha phases:
 
-- SUPPORTED: **0**;
-- MIXED: `momentum_long_v1`, `pullback_long_v1`, `trend_following_long_v1`;
-- UNSUPPORTED: `breakdown_short_v1`, `breakout_long_v1`, `momentum_short_v1`, `pullback_short_v1`, `trend_following_short_v1`.
+- Phase26 deterministic/composite self-feature alpha — `ACCEPTED_NEGATIVE`.
+- Phase27 cross-sectional expected-return learning/ranking — `ACCEPTED_NEGATIVE`.
+- Phase28 cross-stock lead-lag/residual network alpha — `ACCEPTED_NEGATIVE`.
+- Phase29 relative-value statistical-arbitrage alpha — `ACCEPTED_NEGATIVE`.
+- Phase30 public-news-arrival alpha — `ACCEPTED_NEGATIVE`.
+- Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
+- Phase32 SEC 8-K material corporate-event alpha — `ACCEPTED_NEGATIVE`.
 
-### Phase26 — deterministic/composite self-feature alpha
+Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. Retained Phase31 feasibility fingerprint `505716315cff51656083265644075856794ffc49f5b1f36652578ac5622f005d` and original `FEASIBILITY_FAIL` remain historical evidence only.
 
-21,483 development observations; zero survivors/finalists/support; zero protected returns; independent and anti-workaround PASS. PR #30 merged as `ACCEPTED_NEGATIVE`.
+Historical supported alpha remains **zero**.
 
-### Phase27 — cross-sectional expected-return learning/ranking
+## 5. Phase/gate model
 
-18,111 development rows; zero survivors/winners/finalists/support; zero protected reads; independent and anti-workaround PASS. PR #31 merged as `ACCEPTED_NEGATIVE`.
+`PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT -> FOCUSED TESTS -> COMPLETE FULL PHASE-END ACCEPTANCE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
 
-### Phase28 — cross-stock lead-lag & residual network alpha
+Research may close `ACCEPTED_NEGATIVE`, but negative evidence grants no missing downstream authority. Non-performance feasibility may precede hypothesis freeze only when it reads no target outcomes and creates no alpha authority.
 
-14,466 development rows; 741 protected predictors; zero survivors/winners/finalists/support; zero protected candidate/return reads; independent PASS. PR #32 merged as `ACCEPTED_NEGATIVE`.
+Use the **largest safe coherent work package**. Do not turn internal implementation steps into conversational approval gates when they do not change scientific, provider, broker, destructive, or LIVE authority. Target-machine checkpoints remain mandatory where repository CI cannot establish local provider/data/artifact facts.
 
-### Phase29 — relative-value statistical-arbitrage confirmation alpha
+## 6. Phase32 — SEC 8-K Material Corporate-Event Alpha — `ACCEPTED_NEGATIVE`
 
-14,523 development rows; 745 protected predictors; zero survivors/winners/finalists/support; zero protected candidate/return reads; independent/anti-workaround PASS. PR #33 merge `87c9450e1b21606b83489f16ff326235ae92eb2b`; `ACCEPTED_NEGATIVE`.
+**Purpose:** test whether structured, timestamped SEC 8-K material corporate-event disclosures contain robust after-cost post-disclosure return information distinct from Phases26–31.
 
-### Phase30 — event-driven public-information/news-arrival alpha
+### Frozen science
 
-Phase30 changed the information source to timestamped public news. It acquired 775,164 Massive articles and generated 1,012,022 development metadata news-shock predictor rows. The exact development join contained 3,057 rows / 1,736 tickers / 953 sessions. All four frozen hypotheses failed selection; there were zero survivors, winners, finalists, or supported candidates. Independent reconstruction returned `PASS_NEGATIVE_SAMPLE_GATE_PROOF`.
+Scientific policy fingerprint:
 
-Phase30 target closeout read zero protected candidate rows and zero protected returns; the inherited protected holdout remains unconsumed. PR #34 merged at `bf673ad82886e7172db0d54a33dd9612fa9ea29e` as `ACCEPTED_NEGATIVE`; post-merge workflow `33141442154` passed Ubuntu and Windows.
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
-### Research conclusion after Phase30
+Exactly five hypotheses were frozen before performance: `equity_issuance_short`, `share_repurchase_long`, `financial_integrity_adverse_short`, `listing_distress_short`, and `solvency_distress_short`.
 
-ATLAS has now rejected five materially distinct modern alpha classes under frozen standards:
+The policy fixed SEC acceptance-time public availability, decision-open entry, five-session close exit, SPY-relative primary plus required unhedged outcomes, 10-bps primary / 25-bps stress costs, 75% chronological selection, five-session purge, 6/3/3 folds, five-session block bootstrap, mandatory sample/robustness/concentration gates, global `HOLM_BONFERRONI_GLOBAL_5`, one winner/finalist per direction, no runner-up substitution, and finalist-only protected returns.
 
-1. deterministic/composite focal self-feature rules;
-2. same-stock cross-sectional learned rankings;
-3. cross-stock residual/lead-lag predictive relationships;
-4. trailing relative-value mean-reversion via PCA residuals / nearest historical pairs;
-5. metadata-only public-news arrival shock combined with same-session reaction.
+PIT identity remained bound to `instrument-identity-v4-no-issuer-level-medium-collapse`.
 
-Validated alpha remains the blocker. The master protected outcome window `2026-05-12` through `2026-08-11` is still genuinely outcome-unopened after Phases26–30.
+### Accepted source/predictor foundation
 
-The next phase therefore changes information mechanism again: SEC-reported insider ownership transactions rather than another price/news transform.
+Core V2 fingerprint: `978353878cfa10c98450a6e0abab2a6d2ff00e039f7c6b87616014bd5690a9f4`.
 
-## 5. Research and execution standards
+Semantic V2 fingerprint: `eb30f5094bfbe0bd360231a6d220b3ae19e23d28fc0db9f70074dddfcdcf8566`.
 
-### Data integrity
+Independent source/predictor acceptance fingerprint: `531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde`.
 
-- exact PIT identities/safe intervals;
-- no current-survivor projection backward;
-- ambiguity quarantined rather than guessed;
-- deterministic lineage and idempotent/resumable evidence generation;
-- split/corporate-action handling;
-- provider-native ticker preservation;
-- source accession/filing identifiers retained for regulatory evidence;
-- amendments/duplicate records never silently collapsed into original authority.
+The accepted full-history acquisition completed 36,309 filing entities and 19,792 eligible predictors: 18,819 development and 973 protected-predictor-only. Acquisition read zero stock/SPY/options/protected outcomes.
 
-### Alpha research
+### Development evidence
 
-As applicable: chronological development/internal/protected separation, purge/embargo, session/cross-sectional dependence handling, realistic costs, sample/concentration controls, year/regime/liquidity robustness, multiplicity/selection-bias control, simple baselines, and frozen definitions before protected evidence.
+All five candidates passed selection plus global Holm-5. The frozen one-per-direction winners were `share_repurchase_long` and `solvency_distress_short`.
 
-Prediction accuracy, IC, win rate, or a positive raw mean is insufficient. `SUPPORTED` requires robust positive after-cost economic evidence under the frozen phase standard.
+Internal validation rejected `share_repurchase_long` on its required 90% primary LCB and accepted `solvency_distress_short` with 303 rows, 186 sessions, 219 instruments, 10-bps SPY-relative mean `0.03760873`, unhedged mean `0.03134181`, and 90% LCB `0.01713014`.
 
-### Risk/execution
+Exactly one development finalist was frozen: `solvency_distress_short`.
 
-Later trade construction must optimize after-cost risk-adjusted account growth, permit PASS/no-trade, model liquidity/capacity and options-specific risk, enforce deterministic IDs/pre-trade limits, reconcile broker state, prevent duplicate submission, and fail closed on uncertain writes.
+### Independent finalist blindness / lineage audit — ACCEPTED PASS
 
-## 6. Phase = gate model
+The independent finalist blindness/lineage audit reproduced the complete accepted development path without importing the development implementation and then froze a source-only protected plan.
 
-`PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT -> FOCUSED DEVELOPMENT TESTS -> COMPLETE FULL PHASE-END ACCEPTANCE GATE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> NEXT PHASE`
+Audit fingerprint:
 
-Research may close `ACCEPTED_NEGATIVE`, but negative evidence grants no missing downstream authority.
+`c047dd1800877ed1d268b2d8e4c4fc1bfe158fcf715caedc275405f1bf01853e`
 
-## 7. Active Phase31 — SEC Form-4 Insider-Transaction Alpha
+Protected plan fingerprint:
 
-**Purpose:** test whether publicly reported corporate-insider ownership changes contain robust after-cost future-return information distinct from the price/relational/news mechanisms rejected in Phases26–30.
+`2f44f2d87578a0b0a0cee6a6f5c855340056222ce52d68835b931ce5f114a344`
 
-**Entry condition:** Phase30 accepted negative with zero protected return reads and the master holdout unconsumed. **Satisfied.**
+Protected plan rows SHA-256:
 
-### Why this mechanism is next
+`b9591ac49dab3f6f7ff01ab4331ef114c68a436e8475456e099058bce847f703`
 
-Massive's Form 4 endpoint exposes SEC accession number, issuer/owner CIK, filing date, transaction date/code, acquired/disposed flag, transaction shares/price/value, post-transaction ownership, direct/indirect ownership, officer/director/10% owner roles, Rule 10b5-1 flag, timeliness, security type, and provider-native ticker associations. Current Massive documentation lists the endpoint as included in all Stocks plans and updated daily during early-access beta, so it is compatible with the existing Stocks Starter subscription without assuming the Financials & Ratios Expansion.
+Frozen source-only protected population = **46 event rows / 33 signal sessions / 40 unique instruments**.
 
-Research literature has repeatedly found that insider purchases are generally more informative than sales and can contain information beyond simple contrarian behavior. Those findings motivate a finite Phase31 hypothesis library only; they grant no ATLAS authority.
+Frozen minimum = **50 / 20 / 20**.
 
-### Phase31 internal sequence
+The event-row gate therefore fails before protected performance is opened. Audit status: `AUDIT_PASS_PROTECTED_SAMPLE_GATE_IMPOSSIBLE`.
 
-Phase31 remains one numbered gate:
+**Protected stock/SPY returns remain unread.** Protected return rows read = 0. Protected holdout consumed = false.
 
-1. **feasibility/provenance only:** prove actual Starter credential access, historical coverage at ATLAS boundaries, pagination, field completeness, transaction-code population, ticker/CIK identity, deterministic replay, and immutable raw evidence. Read zero market outcomes;
-2. decide whether exact SEC acceptance timestamps can be proven from authoritative source metadata before performance. Until then, the conservative PIT rule is that a Form 4 filing can first affect a signal on the **next XNYS session strictly after its `filing_date`**;
-3. only after feasibility passes, freeze the finite hypothesis library, event aggregation rules, eligibility, chronology, outcome horizon(s), costs, multiplicity/dependence treatment, robustness gates, winner/finalist rules, and protected-read plan;
-4. build predictor-only Form-4 event frames before outcomes;
-5. execute development selection and internal validation;
-6. perform independent blindness audit;
-7. read protected returns only for frozen finalists, if any;
-8. independently reconstruct and close the phase.
+### Final disposition
 
-No Phase31 target-performance inspection is permitted before the scientific contract is frozen.
+Phase32 is `ACCEPTED_NEGATIVE`. The finalist did not earn `SUPPORTED` authority because the frozen protected sample cannot meet a mandatory preregistered source-only requirement. Threshold relaxation, alternate finalist substitution, and post-result horizon/taxonomy retuning are forbidden.
 
-### Initial source boundary
+Historical supported alpha remains **0**. Phase33 remains blocked.
 
-The lead source is `GET /stocks/filings/vX/form-4` through the accepted read-only `MassiveRESTClient`. Phase31 does **not** assume access to paid fundamentals/ratios, paid Benzinga partner data, an Options subscription, trade/quote endpoints unavailable on Stocks Starter, or any broker account data.
+Any next alpha research gate must test a **materially different alpha mechanism**. The unconsumed protected window may not be used to optimize or rescue the failed Phase32 family.
 
-Form 4 is currently an early-access/beta endpoint. Endpoint/schema/plan changes are therefore explicit feasibility failures or revalidation triggers, never silent substitutions.
+## 7. Remaining master roadmap
 
-### Authority boundary
+### Next alpha research gate — required before Phase33
 
-Phase31 is historical research only. Bounded provider reads for feasibility/acquisition are allowed. Provider writes, broker reads/writes, order writes, PAPER submits, LIVE writes, frontend trading authority, automation writes, and automatic broker failover remain zero/disabled.
+The roadmap must add/freeze a materially different economic or information mechanism if alpha research continues. It must not be a Phase32 8-K retune, threshold relaxation, runner-up substitution, or alternate read of the same protected family. Its own hypotheses, source/PIT contract, chronology, outcome, costs, multiplicity, sample gates, dependence treatment, and protected-evidence rules must be frozen before governed performance.
 
-### Positive outcome
-
-At least one fully confirmed Phase31 candidate may receive historical analytical `SUPPORTED` authority and satisfy the entry condition for **Phase32** signal-to-trade construction. It creates no PAPER/LIVE authority.
-
-### Negative outcome
-
-Accept it. Do not reinterpret or retune Phases26–31 after results. A further materially distinct alpha source requires another roadmap rebaseline; signal-to-trade remains blocked.
-
-## 8. Progressive GUI/web/deployment track
-
-The additional insider-transaction alpha gate shifts downstream product work one phase later:
-
-- **Phase31:** SEC Form-4 insider-transaction alpha; no major frontend build.
-- **Phase32:** signal-to-trade/risk contracts + read-only complete-case web prototype.
-- **Phase33:** historical replay/stress dashboard.
-- **Phase34:** prospective SHADOW/PAPER operator web beta.
-- **Phase35:** outcome/performance/learning/drift dashboards and governance.
-- **Phase36:** complete production web application + PostgreSQL operational state + scheduler + deployment engineering.
-- **Phase37:** failure/security/reconciliation/deployment hardening; LIVE still disabled.
-- **Phase38:** controlled LIVE activation/disable and evidence-based scaling.
-
-## 9. Remaining master roadmap
-
-### Phase31 — SEC Form-4 Insider-Transaction Alpha
-
-Execute read-only Form-4 feasibility/provenance first, then freeze and evaluate a bounded insider-transaction hypothesis family under the same PIT/after-cost/robustness/protected-evidence standards used for modern alpha research.
-
-### Phase32 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
+### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
 
 **Entry condition:** >=1 strategy/alpha model has accepted historical analytical `SUPPORTED` authority.
 
-Convert supported evidence into PASS versus trade, stock versus option/defined-risk structure, entry, invalidation/stop, target/exit, horizon/DTE, quantity, and portfolio admission using accepted Phase12/13/14 capabilities. Include the explicit Option Fair-Value Engine and deterministic news-evidence/re-evaluation layer described in `docs/future_news_sentiment_and_option_fair_value.md`. No LIVE.
+**Current state:** BLOCKED because accepted historical supported alpha = 0.
 
-### Phase33 — End-to-End Historical Replay & Stress Certification + Replay Dashboard
+When eventually eligible, convert supported evidence into PASS versus trade, stock versus option/defined-risk structure, entry, invalidation/stop, target/exit, horizon/DTE, quantity, and portfolio admission using accepted capabilities. No LIVE.
 
-Replay the frozen supported system as one account-level process. Measure net expectancy, drawdown/tail loss, risk-adjusted return, cost drag, concentration, regime/year behavior, capacity/liquidity, rejected trades, and stress outcomes. Build replay/stress views backed by exact accepted evidence.
+### Phase34 — End-to-End Historical Replay & Stress Certification + Replay Dashboard
 
-### Phase34 — Prospective SHADOW/PAPER Certification + Operator Web Beta
+Replay the frozen supported system as one account-level process and certify net expectancy, drawdown/tail loss, costs, concentration, capacity, regime/year behavior, and stress outcomes.
 
-Operate on genuinely new unseen sessions with SHADOW and Webull-primary PAPER. Freeze prospective evidence requirements first. Validate freshness/timing, signals, provider selection, news capture, instrument selection, risk sizing, orders/fills/reconciliation, idempotency, latency, costs, failures/restarts, and prospective economics. LIVE remains unavailable.
+### Phase35 — Prospective SHADOW/PAPER Certification + Operator Web Beta
 
-### Phase35 — Outcomes, Learning, Drift Monitoring & Governance + Performance/Learning UI
+Operate on genuinely new unseen sessions with SHADOW and Webull-primary PAPER. LIVE remains unavailable.
 
-Trace each decision/rejection/trade/order/fill/position/exit/outcome to exact data/model/strategy/risk versions. Measure MAE/MFE, slippage, P&L, calibration, strategy/regime results, instrument-selection quality, news/option-selection quality, drift, and degradation. Learning never silently self-authorizes changes.
+### Phase36 — Outcomes, Learning, Drift Monitoring & Governance + Performance UI
 
-### Phase36 — Production Web Application, Operations & Deployment
+Trace decisions/trades/outcomes to exact data/model/strategy/risk versions and monitor calibration, economics, slippage, drift, and degradation. Learning never silently self-authorizes changes.
 
-Consolidate the production web application and accepted Python engine. Promote PostgreSQL operational state/autonomous scheduling only with proven parity, recovery safety, idempotency, and auditability. Engineer services, secure config, migrations, health/logging/metrics, backups, startup/restart, update/rollback, and operator documentation.
+### Phase37 — Production Web Application, Operations & Deployment
 
-### Phase37 — LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification
+Consolidate the production web application and accepted Python engine; promote PostgreSQL operational state/autonomous scheduling only with proven parity, recovery safety, idempotency, and auditability.
 
-**No LIVE authority yet.** Harden stale-data, provider/broker outage, partial-fill, cancel/replace, API/UI/network/database/restart, duplicate-prevention, buying-power drift, reconciliation, emergency-disable/flatten, and manual-broker-fallback behavior. Freeze the initial LIVE capital/risk envelope.
+### Phase38 — LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification
 
-### Phase38 — Controlled LIVE Activation & Evidence-Based Scaling
+**No LIVE authority yet.** Harden stale-data, provider/broker outage, partial-fill, cancel/replace, API/UI/network/database/restart, duplicate-prevention, buying-power drift, reconciliation, emergency-disable/flatten, and manual-broker-fallback behavior.
 
-Enable LIVE only through explicit authorization with deliberately small initial exposure, hard risk/loss limits, reconciliation/health, kill capability, manual fallback, and no automatic broker failover. Scale only from evidence; later strategy/model/risk changes require new accepted gates.
+### Phase39 — Controlled LIVE Activation & Evidence-Based Scaling
 
-## 10. Progression rule
+Enable LIVE only through explicit authorization with deliberately small initial exposure, hard risk/loss limits, reconciliation/health, kill capability, manual fallback, and no automatic broker failover. Scale only from evidence.
+
+## 8. Progression rule
 
 The roadmap is **conditional, not schedule-driven**. Phase numbers do not guarantee advancement. Positive downstream authority requires the exact frozen entry condition; accepted negative science cannot substitute for it.

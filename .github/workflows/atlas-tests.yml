@@ -223,5 +223,41 @@ jobs:
       - name: Validate Phase 31 independent negative closeout contracts
         run: python scripts/validate_phase31_closeout.py
 
+      - name: Validate Phase 32 SEC 8-K feasibility contracts
+        run: python scripts/validate_phase32.py
+
+      - name: Validate Phase 32 semantic source contracts
+        run: python scripts/validate_phase32_semantic.py
+
+      - name: Validate Phase 32 corrected semantic V2 contracts
+        run: python scripts/validate_phase32_semantic_v2.py
+
+      - name: Validate Phase 32 semantic V2 source census contracts
+        run: python scripts/validate_phase32_semantic_source_census.py
+
+      - name: Validate Phase 32 frozen scientific policy
+        run: python scripts/validate_phase32_policy.py
+
+      - name: Validate Phase 32 full-history predictor acquisition contracts
+        run: python scripts/validate_phase32_predictor_acquisition.py
+
+      - name: Validate Phase 32 Massive Text multiplicity contract
+        run: python scripts/validate_phase32_text_multiplicity.py
+
+      - name: Validate Phase 32 SEC submissions shard-boundary contract
+        run: python scripts/validate_phase32_sec_shard_boundary.py
+
+      - name: Validate Phase 32 independent predictor/source acceptance contract
+        run: python scripts/validate_phase32_predictor_independent_acceptance.py
+
+      - name: Validate Phase 32 development-only contracts
+        run: python scripts/validate_phase32_development.py
+
+      - name: Validate Phase 32 finalist blindness / lineage audit contracts
+        run: python scripts/validate_phase32_finalist_audit.py
+
+      - name: Validate Phase 32 independent negative closeout contracts
+        run: python scripts/validate_phase32_closeout.py
+
       - name: Run tests
         run: python -m pytest -q
