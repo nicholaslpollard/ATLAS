@@ -46,7 +46,7 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 ## Current state — 2026-08-30 (America/New_York)
 
 - Accepted numbered foundation: **through Phase32**, merged into `main`.
-- **Phase32 is `ACCEPTED_NEGATIVE`.** Its frozen development finalist was `solvency_distress_short`. Its frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 instruments**; the preregistered 50-row minimum failed before protected returns were opened. Protected return rows read remained 0 and the holdout remained unconsumed.
+- **Phase32 is `ACCEPTED_NEGATIVE`.** Frozen scientific policy fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`; frozen development finalist `solvency_distress_short`; frozen protected source-only evidence **46 event rows / 33 signal sessions / 40 unique instruments**. The preregistered 50-row minimum failed before protected performance access. Protected stock/SPY returns remain unread; protected return rows read = 0 and the holdout remains unconsumed.
 - Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
