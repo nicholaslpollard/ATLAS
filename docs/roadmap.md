@@ -65,7 +65,7 @@ Persistent roles:
 21. Provider plan/history/entitlement claims require evidence and, where material, empirical verification.
 22. Regulatory event dates are not automatically decision timestamps; authoritative publication/acceptance time controls where available.
 23. Material source/architecture/scientific decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
-24. Long-running target-machine runners should emit lightweight progress such as `x / total completed`; progress reporting is observability only and may not alter scientific or authority logic.
+24. Long-running target-machine runners should emit lightweight terminal progress such as `x / total completed`; progress reporting is observability only and may not alter scientific or authority logic.
 
 ## 4. Accepted foundation through Phase31
 
@@ -126,7 +126,7 @@ The frozen policy fixes SEC acceptance-time public availability, decision-open e
 
 PIT identity is bound to `instrument-identity-v4-no-issuer-level-medium-collapse`: strong identity = Composite FIGI / Share Class FIGI; medium = CIK + exact provider-native ticker + primary exchange + security type. Only strong/medium is eligible, exactly one CIK-matching instrument must resolve, and fallback ticker+snapshot, current-universe backprojection, and ticker alias backfill are forbidden.
 
-### Full-history source/predictor acquisition — ACCEPTED PASS
+### Retained pre-performance full-history source/predictor acquisition — ACCEPTED PASS
 
 The target machine completed **36,309** filing entities and produced **19,792** eligible predictors: **18,819 development** and **973 protected-predictor-only**.
 
