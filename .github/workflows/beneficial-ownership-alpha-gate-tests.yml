@@ -36,13 +36,17 @@ jobs:
           python -m pip install -r requirements.lock
           python -m pip install --no-deps -e .
           python -m pip check
-      - name: Compile beneficial-ownership source gate
-        run: python -m compileall -q packages/providers/sec_edgar_archive.py packages/backtesting/alpha_gate_beneficial_ownership_feasibility.py packages/backtesting/alpha_gate_beneficial_ownership_source_repair.py scripts/run_alpha_gate_beneficial_ownership_feasibility.py scripts/run_alpha_gate_beneficial_ownership_source_repair.py scripts/validate_alpha_gate_beneficial_ownership_feasibility.py scripts/validate_alpha_gate_beneficial_ownership_source_repair.py tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py
+      - name: Compile beneficial-ownership research package
+        run: python -m compileall -q packages/providers/sec_edgar_archive.py packages/backtesting/alpha_gate_beneficial_ownership_feasibility.py packages/backtesting/alpha_gate_beneficial_ownership_source_repair.py packages/backtesting/alpha_gate_beneficial_ownership_scientific_policy.py packages/backtesting/alpha_gate_beneficial_ownership_predictor.py packages/backtesting/alpha_gate_beneficial_ownership_development.py scripts/run_alpha_gate_beneficial_ownership_feasibility.py scripts/run_alpha_gate_beneficial_ownership_source_repair.py scripts/run_alpha_gate_beneficial_ownership_development.py scripts/validate_alpha_gate_beneficial_ownership_feasibility.py scripts/validate_alpha_gate_beneficial_ownership_source_repair.py scripts/validate_alpha_gate_beneficial_ownership_scientific_contract.py scripts/validate_alpha_gate_beneficial_ownership_development.py tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py tests/unit/test_alpha_gate_beneficial_ownership_scientific_policy.py tests/unit/test_alpha_gate_beneficial_ownership_development.py
       - name: Retain accepted XBRL negative closeout
         run: python scripts/validate_alpha_gate_xbrl_closeout.py
       - name: Validate SEC beneficial-ownership source feasibility contracts
         run: python scripts/validate_alpha_gate_beneficial_ownership_feasibility.py
       - name: Validate SEC beneficial-ownership targeted source repair
         run: python scripts/validate_alpha_gate_beneficial_ownership_source_repair.py
+      - name: Validate SEC beneficial-ownership frozen scientific contract
+        run: python scripts/validate_alpha_gate_beneficial_ownership_scientific_contract.py
+      - name: Validate SEC beneficial-ownership development implementation
+        run: python scripts/validate_alpha_gate_beneficial_ownership_development.py
       - name: Run beneficial-ownership focused unit tests
-        run: python -m pytest -q tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py
+        run: python -m pytest -q tests/unit/test_alpha_gate_beneficial_ownership_feasibility.py tests/unit/test_alpha_gate_beneficial_ownership_source_repair.py tests/unit/test_alpha_gate_beneficial_ownership_scientific_policy.py tests/unit/test_alpha_gate_beneficial_ownership_development.py
