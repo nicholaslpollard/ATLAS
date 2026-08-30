@@ -1,6 +1,6 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-29 (America/New_York) after Phase32 merged `ACCEPTED_NEGATIVE` at `69f8aa81289934b71f2652482c747391917c15a3`. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked. A materially different pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism is now open for source-only feasibility with zero market outcomes.**
+**Normative project source of truth. Re-synchronized: 2026-08-29 (America/New_York) after Phase32 merged `ACCEPTED_NEGATIVE` at `69f8aa81289934b71f2652482c747391917c15a3`. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked. The required next step is a materially different alpha mechanism; the pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism is now open for source-only feasibility with zero market outcomes.**
 
 Continuation precedence:
 
@@ -167,7 +167,7 @@ Historical supported alpha remains **0**. Phase33 remains blocked.
 
 **Purpose:** determine whether official standardized SEC XBRL quarterly fundamentals provide sufficient historical source coverage for a materially different fundamental-information alpha mechanism before any market outcome is opened.
 
-This mechanism targets point-in-time profitability, cash-vs-accrual quality, and fundamental change from original 10-Q/10-K facts. It is materially different from Phases26–32 and may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
+This mechanism targets point-in-time profitability, cash-vs-accrual quality, and fundamental change from original 10-Q/10-K facts. It is a **materially different alpha mechanism** from Phases26–32 and may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
 
 Current feasibility contract:
 
