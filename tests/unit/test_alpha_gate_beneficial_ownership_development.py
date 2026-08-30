@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 import pandas as pd
+import pytest
 
 from packages.backtesting.alpha_gate_beneficial_ownership_development import (
     BENEFICIAL_OWNERSHIP_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT,
@@ -17,6 +18,16 @@ from packages.backtesting.alpha_gate_beneficial_ownership_scientific_policy impo
     BENEFICIAL_OWNERSHIP_PROTECTED_MIN_SIGNAL_SESSIONS,
     BENEFICIAL_OWNERSHIP_PROTECTED_MIN_UNIQUE_INSTRUMENTS,
 )
+from packages.backtesting.alpha_gate_beneficial_ownership_transport_repair import (
+    BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_FINGERPRINT,
+    beneficial_ownership_development_transport_repair_fingerprint,
+)
+from packages.core.exceptions import ProviderError
+from packages.providers.sec_edgar_archive import (
+    SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES,
+    SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES,
+    SECEDGARArchiveClient,
+)
 
 
 def test_development_implementation_fingerprint_is_exact() -> None:
@@ -26,6 +37,43 @@ def test_development_implementation_fingerprint_is_exact() -> None:
     assert BENEFICIAL_OWNERSHIP_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT == (
         "0e90a65e6e2f6a7d7206296901054de3a2c97aaa204c80927a963c298c81060d"
     )
+
+
+def test_development_transport_repair_fingerprint_is_exact() -> None:
+    assert beneficial_ownership_development_transport_repair_fingerprint() == (
+        BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_FINGERPRINT
+    )
+    assert BENEFICIAL_OWNERSHIP_DEVELOPMENT_TRANSPORT_REPAIR_FINGERPRINT == (
+        "a4db8419364895c6861c4becbe3abf9b32ec044ceb4aff5cf14a7c9244368bdb"
+    )
+
+
+def test_sec_archive_default_submission_bound_is_preserved() -> None:
+    client = SECEDGARArchiveClient(contact_email="atlas@example.com", sleeper=lambda _: None)
+    assert SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES == 20_000_000
+    assert client.submission_max_response_bytes == 20_000_000
+
+
+def test_scientific_submission_bound_is_bounded_and_explicit() -> None:
+    assert SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES == 256_000_000
+    client = SECEDGARArchiveClient(
+        contact_email="atlas@example.com",
+        submission_max_response_bytes=SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES,
+        sleeper=lambda _: None,
+    )
+    assert client.submission_max_response_bytes == 256_000_000
+    with pytest.raises(ProviderError):
+        SECEDGARArchiveClient(
+            contact_email="atlas@example.com",
+            submission_max_response_bytes=0,
+            sleeper=lambda _: None,
+        )
+    with pytest.raises(ProviderError):
+        SECEDGARArchiveClient(
+            contact_email="atlas@example.com",
+            submission_max_response_bytes=256_000_001,
+            sleeper=lambda _: None,
+        )
 
 
 def test_chronological_partition_has_frozen_purge() -> None:
