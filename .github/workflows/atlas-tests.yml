@@ -263,5 +263,8 @@ jobs:
       - name: Validate pre-Phase33 SEC XBRL source-only feasibility contracts
         run: python scripts/validate_alpha_gate_xbrl_feasibility.py
 
+      - name: Validate pre-Phase33 SEC XBRL PIT source audit contracts
+        run: python scripts/validate_alpha_gate_xbrl_pit_audit.py
+
       - name: Run tests
         run: python -m pytest -q
