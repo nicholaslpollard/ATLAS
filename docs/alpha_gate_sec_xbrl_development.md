@@ -1,6 +1,6 @@
 # Pre-Phase33 SEC XBRL Fundamental Alpha — Development Evaluation
 
-**Status: IMPLEMENTED / MARKET OUTCOMES NOT YET RUN ON TARGET MACHINE.**
+**Status: TARGET DEVELOPMENT COMPLETE — `ACCEPTED_NEGATIVE_DEVELOPMENT`; negative closeout verification is next. Protected returns remain sealed/unread.**
 
 This package is the first stage of the SEC XBRL fundamental-quality mechanism permitted to read market outcomes. It remains development-only. Protected returns remain sealed.
 
@@ -62,3 +62,48 @@ A finalist failing these source-only floors closes without spending the holdout.
 - provider writes, broker reads/writes, order writes, PAPER, LIVE, and automation writes = 0.
 
 A development result may therefore be `ACCEPTED_NEGATIVE_DEVELOPMENT`, `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`, or `DEVELOPMENT_PASS_FINALISTS_READY_PROTECTED`. None of these statuses by itself constitutes accepted `SUPPORTED` alpha.
+
+## Accepted target-machine development result
+
+The target-machine run was executed on exact certified head:
+
+`58e7c9b60ba59d250a7c91e282daefa4aef3c2b9`
+
+The runner reproduced the frozen fingerprints exactly and returned **`ACCEPTED_NEGATIVE_DEVELOPMENT`** with `Pass: True`.
+
+Accepted target evidence from that run:
+
+- predictor rows: **5,536**;
+- development predictor rows: **4,157**;
+- protected predictor rows: **1,379**;
+- development outcome rows read: **3,963**;
+- exact stock path missing rows: **123**;
+- split-crossing censored rows: **71**;
+- provider source reads: **3,415**;
+- Selection passers: **0**;
+- selection winners: **0**;
+- Internal finalists: **0**;
+- protected source-only prechecks: **0** because no internal finalist existed;
+- protected-return eligible finalists: **0**;
+- Protected return rows read: **0**;
+- Protected holdout consumed: **false**;
+- provider writes, broker reads/writes, order writes, PAPER, LIVE, and automation writes: **0**;
+- Phase33 authority: **false**.
+
+The selection window was `2021-08-16..2023-12-26`, followed by the frozen 63-session purge `2023-12-27..2024-03-27`, then internal validation `2024-03-28..2024-12-31`.
+
+Because no hypothesis survived the preregistered selection gates plus global Holm correction, there is no development winner to test internally and no finalist eligible for a protected source precheck or protected performance read. The correct scientific path is therefore negative closeout, not threshold relaxation, alternate hypothesis promotion, horizon changes, or post-result retuning.
+
+## Negative closeout boundary
+
+The closeout package is deliberately provider-free and performance-read-free. It validates the persisted development report, predictor report/rows, development outcomes, and finalist artifact by SHA-256 and exact accepted counts. It must prove the empty passer/winner/finalist sets and zero protected-return/trading authority before the mechanism can be recorded `ACCEPTED_NEGATIVE`.
+
+Closeout contract:
+
+`alpha-gate-xbrl-closeout-v1-development-negative-protected-unread`
+
+Target closeout runner:
+
+`scripts/run_alpha_gate_xbrl_closeout.py`
+
+The closeout runner may not open any new market outcome, provider, broker, order, PAPER, LIVE, or automation authority. Its only legitimate positive result is confirmation that this mechanism closes without support while historical supported alpha remains zero and Phase33 remains blocked.
