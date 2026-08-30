@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 
 
 XBRL_SCIENTIFIC_CONTRACT = "alpha-gate-xbrl-scientific-v1-six-yoy-quality-change-hypotheses"
-XBRL_SCIENTIFIC_FINGERPRINT = "239215aad3c151200c77d214d5723e446877fcb014fb2280b9cd909b3ea379ef"
+XBRL_SCIENTIFIC_FINGERPRINT = "2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490"
 XBRL_ENTRY_SOURCE_REPAIR_CONTRACT = (
     "alpha-gate-xbrl-pit-audit-v2-targeted-common-stock-active-only-identity-repair-no-market-outcomes"
 )
