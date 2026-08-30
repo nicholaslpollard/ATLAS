@@ -75,7 +75,8 @@ def main() -> int:
         raise AssertionError("runner-up substitution was enabled")
 
     for token in (
-        EXPECTED_SCIENTIFIC_FINGERPRINT,
+        "BENEFICIAL_OWNERSHIP_SCIENTIFIC_FINGERPRINT",
+        "beneficial_ownership_scientific_fingerprint()",
         "accepted_phase26_split_evidence_censor_decision_open_to_t63_close",
         "selection_only_global_holm_then_single_long_winner_internal_confirm",
         "source_only_counts_no_return_read",
