@@ -9,6 +9,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.backtesting.alpha_gate_xbrl_closeout import (
     XBRL_ACCEPTED_DEVELOPMENT_TARGET_HEAD,
+    XBRL_ACCEPTED_EVIDENCE_FINGERPRINT,
     XBRL_CLOSEOUT_CONTRACT,
     XBRLCloseoutError,
     validate_xbrl_negative_closeout,
@@ -26,6 +27,7 @@ def main() -> int:
     print(f"Accepted development target head: {XBRL_ACCEPTED_DEVELOPMENT_TARGET_HEAD}")
     print(f"Scientific fingerprint: {XBRL_SCIENTIFIC_FINGERPRINT}")
     print(f"Development implementation fingerprint: {XBRL_DEVELOPMENT_IMPLEMENTATION_FINGERPRINT}")
+    print(f"Accepted closeout evidence fingerprint: {XBRL_ACCEPTED_EVIDENCE_FINGERPRINT}")
     print("Protected returns: FORBIDDEN / UNREAD")
     print("Provider calls: DISABLED / ZERO")
     print("Provider writes / broker / orders / PAPER / LIVE / automation: DISABLED")
