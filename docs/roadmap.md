@@ -1,19 +1,19 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-30 (America/New_York) after completion of the materially different pre-Phase33 SEC XBRL fundamental-quality/accrual research program as `ACCEPTED_NEGATIVE`. Phase32 remains closed and merged. Protected stock/SPY returns remain unread and the master holdout remains unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked.**
+**Normative project source of truth. Re-synchronized: 2026-08-30 (America/New_York) after accepted-negative SEC XBRL closure/merge and freeze of the next pre-Phase33 source-only SEC Schedule 13D/13G beneficial-ownership feasibility gate. Phase32 remains closed and merged. Protected stock/SPY returns remain unread and the master holdout remains unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
-3. `docs/alpha_gate_sec_xbrl_closeout.md`;
-4. `docs/alpha_gate_sec_xbrl_fundamental_quality.md`;
-5. `docs/alpha_gate_sec_xbrl_scientific_contract.md`;
-6. `docs/alpha_gate_sec_xbrl_development.md`;
-7. `docs/alpha_gate_sec_xbrl_pit_audit.md` and `docs/alpha_gate_sec_xbrl_pit_identity_repair.md`;
-8. `docs/phase32_closeout.md` and retained Phase32 source/scientific records;
-9. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-10. accepted code, validators, CI/PR evidence, and historical phase records.
+3. `docs/alpha_gate_sec_beneficial_ownership_feasibility.md`;
+4. `docs/alpha_gate_sec_xbrl_closeout.md`;
+5. `docs/alpha_gate_sec_xbrl_fundamental_quality.md`;
+6. `docs/alpha_gate_sec_xbrl_scientific_contract.md`;
+7. `docs/alpha_gate_sec_xbrl_development.md`;
+8. `docs/alpha_gate_sec_xbrl_pit_audit.md` and `docs/alpha_gate_sec_xbrl_pit_identity_repair.md`;
+9. `docs/phase32_closeout.md` and retained Phase32 source/scientific records;
+10. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, accepted code, validators, CI/PR evidence, and historical phase records.
 
 ## 1. Mission
 
@@ -236,15 +236,39 @@ Accepted artifact SHA-256 values:
 
 Final disposition: **`ACCEPTED_NEGATIVE`**. The family may not be rescued after results by altering feature definitions, directions, costs, horizon, thresholds, multiplicity, winner rules, issuer population, or protected policy.
 
+XBRL PR #38 merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; the post-merge full ATLAS regression passed on Ubuntu and Windows.
+
 Historical supported alpha remains **0**. Phase33 remains blocked. The master protected window `2026-05-12..2026-08-11` remains unconsumed.
 
-## 8. Remaining master roadmap
+## 8. Current Pre-Phase33 SEC Schedule 13D/13G Beneficial-Ownership Source Feasibility
 
-### Next pre-Phase33 alpha research
+The next mechanism changes the information source from quarterly issuer accounting quality to external beneficial-ownership disclosures and control/ownership activity:
 
-**Entry condition:** the closed XBRL mechanism is fully merged and post-merge regression is green.
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
 
-**Mechanism rule:** choose a materially different economic/information mechanism from the closed XBRL year-over-year fundamental-quality/accrual family. Do not retune the closed family under a new label. Source feasibility, scientific policy, and protected boundaries must again be frozen before governed performance as applicable.
+Frozen source-only feasibility contract:
+
+`alpha-gate-sec-beneficial-ownership-feasibility-v1-schedule13d13g-source-only-no-market-outcomes`
+
+Frozen feasibility fingerprint:
+
+`f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`
+
+The gate is frozen before target-source execution. It reads official SEC quarterly master indexes and exact complete submissions across `2016-01-01..2026-08-11`, stratifies a deterministic 200-filing source sample across legacy/structured × initial/amended 13D/13G forms, reconciles exact accession/form/date/`SUBJECT COMPANY` CIK/acceptance time, and maps the first XNYS decision session strictly after acceptance to exact PIT active common stock through the accepted Massive CIK/date reference seam.
+
+The SEC structured-data compliance boundary is frozen at `2024-12-18`. Exactly 25 filings are selected in each of eight strata. Multiple common-stock instruments for one subject CIK/date remain ambiguous and fail closed; ticker-only or arbitrary share-class substitution is forbidden.
+
+Alpha hypotheses are **not frozen**. This source gate reads zero market outcomes and zero protected returns. Provider mutations, broker/order/PAPER/LIVE/automation authority remain zero. A `FEASIBILITY_PASS` can authorize only a later complete scientific freeze before any market outcomes. A `FEASIBILITY_FAIL` must be preserved and root-caused without lowering the frozen source gates.
+
+Historical supported alpha remains **0**. Phase33 remains blocked.
+
+## 9. Remaining master roadmap
+
+### Current pre-Phase33 alpha research
+
+**Current action:** execute and independently accept or fail-close the frozen SEC Schedule 13D/13G beneficial-ownership source feasibility gate under fingerprint `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+
+**Scientific boundary:** no market outcomes may be opened until source feasibility is accepted and a complete finite scientific contract is frozen. The closed XBRL family may not be retuned or reused as performance evidence.
 
 ### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
 
@@ -278,6 +302,6 @@ Consolidate the production web application and accepted Python engine; promote P
 
 Enable LIVE only through explicit authorization with deliberately small initial exposure, hard risk/loss limits, reconciliation/health, kill capability, manual fallback, and no automatic broker failover. Scale only from evidence.
 
-## 9. Progression rule
+## 10. Progression rule
 
 The roadmap is **conditional, not schedule-driven**. Phase numbers do not guarantee advancement. Positive downstream authority requires the exact frozen entry condition; accepted negative science cannot substitute for it.
