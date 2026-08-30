@@ -159,7 +159,7 @@ def main() -> int:
         "may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result",
         "roadmap Phase32 anti-retuning continuation",
     )
-    _require(status, "Phase32 is closed", "status closed state")
+    _require(status, "Phase32 remains closed", "status closed state")
     _require(readme, "Phase32 is `ACCEPTED_NEGATIVE`", "README closed state")
     _require(flow, "Accepted project foundation: **through Phase32**", "flow accepted boundary")
 
