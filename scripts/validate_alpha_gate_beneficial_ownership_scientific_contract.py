@@ -81,6 +81,23 @@ def main() -> int:
         "highest_primary_selection_LCB_then_candidate_id",
     ):
         _require(policy, token, "scientific-policy invariant")
+
+    for token in (
+        EXPECTED_FINGERPRINT,
+        EXPECTED_SOURCE_REPAIR,
+        "initial_13d_5_to_10_long",
+        "initial_13d_10_plus_long",
+        "initial_13g_5_to_10_long",
+        "initial_13g_10_plus_long",
+        "maximum finite cover-page percent-of-class value",
+        "never summed",
+        "first XNYS regular-session open strictly after SEC acceptance",
+        "close 63 XNYS sessions after the decision",
+        "global `HOLM_BONFERRONI_GLOBAL_4`",
+        "selection-tranche primary lower confidence bound",
+        "Runner-up substitution is forbidden",
+        "Protected returns remain forbidden until one fixed finalist",
+    ):
         _require(doc, token, "documented scientific invariant")
 
     _require(predictor, "percentOfClass|classPercent", "structured percent parser")
