@@ -296,5 +296,17 @@ jobs:
       - name: Validate pre-Phase33 SEC beneficial-ownership independent negative closeout
         run: python scripts/validate_alpha_gate_beneficial_ownership_closeout.py
 
+      - name: Validate pre-Phase33 FINRA short-interest source feasibility
+        run: python scripts/validate_alpha_gate_finra_short_interest_feasibility.py
+
+      - name: Validate pre-Phase33 FINRA short-interest PIT source audit
+        run: python scripts/validate_alpha_gate_finra_short_interest_pit_audit.py
+
+      - name: Validate pre-Phase33 FINRA short-interest frozen scientific policy
+        run: python scripts/validate_alpha_gate_finra_short_interest_scientific_policy.py
+
+      - name: Validate pre-Phase33 FINRA short-interest predictor/development implementation
+        run: python scripts/validate_alpha_gate_finra_short_interest_development.py
+
       - name: Run tests
         run: python -m pytest -q
