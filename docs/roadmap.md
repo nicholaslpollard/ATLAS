@@ -1,20 +1,21 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-29 (America/New_York) after Phase32 merged `ACCEPTED_NEGATIVE` at `69f8aa81289934b71f2652482c747391917c15a3`. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked. The required next step is a materially different alpha mechanism; the pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism is now open for source-only feasibility with zero market outcomes.**
+**Normative project source of truth. Re-synchronized: 2026-08-29 (America/New_York) after Phase32 merged `ACCEPTED_NEGATIVE` at `69f8aa81289934b71f2652482c747391917c15a3`. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0; Phase33 signal-to-trade remains blocked. The materially different pre-Phase33 SEC XBRL fundamental-quality/accrual mechanism has passed source-only feasibility and is now in a frozen source-only PIT chronology/restatement/identity audit with zero market outcomes.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
 3. `docs/alpha_gate_sec_xbrl_fundamental_quality.md`;
-4. `docs/phase32_closeout.md`;
-5. `docs/phase32_sec_8k_material_event_alpha.md`;
-6. `docs/phase32_scientific_contract.md`;
-7. `docs/phase32_predictor_independent_acceptance.md`;
-8. `docs/phase32_development_evaluation.md`;
-9. `docs/phase32_finalist_blindness_audit.md`;
-10. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-11. accepted code, validators, CI/PR evidence, and historical phase records.
+4. `docs/alpha_gate_sec_xbrl_pit_audit.md`;
+5. `docs/phase32_closeout.md`;
+6. `docs/phase32_sec_8k_material_event_alpha.md`;
+7. `docs/phase32_scientific_contract.md`;
+8. `docs/phase32_predictor_independent_acceptance.md`;
+9. `docs/phase32_development_evaluation.md`;
+10. `docs/phase32_finalist_blindness_audit.md`;
+11. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
+12. accepted code, validators, CI/PR evidence, and historical phase records.
 
 ## 1. Mission
 
@@ -163,31 +164,77 @@ Phase32 is `ACCEPTED_NEGATIVE`. The finalist did not earn `SUPPORTED` authority 
 
 Historical supported alpha remains **0**. Phase33 remains blocked.
 
-## 7. Pre-Phase33 Alpha Gate — SEC XBRL Fundamental Quality / Accrual Mechanism — `OPEN: SOURCE-ONLY FEASIBILITY`
+## 7. Pre-Phase33 Alpha Gate — SEC XBRL Fundamental Quality / Accrual Mechanism — `FEASIBILITY_PASS; PIT AUDIT OPEN`
 
-**Purpose:** determine whether official standardized SEC XBRL quarterly fundamentals provide sufficient historical source coverage for a materially different fundamental-information alpha mechanism before any market outcome is opened.
+**Purpose:** establish a materially different point-in-time fundamental-information mechanism before any market outcome is opened.
 
-This mechanism targets point-in-time profitability, cash-vs-accrual quality, and fundamental change from original 10-Q/10-K facts. It is a **materially different alpha mechanism** from Phases26–32 and may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
+This mechanism targets profitability, cash-vs-accrual quality, and fundamental change from standardized original 10-Q/10-K facts. It may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
 
-Current feasibility contract:
+### Source feasibility — accepted
+
+Feasibility contract:
 
 `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`
 
-Current feasibility fingerprint:
+Feasibility fingerprint:
 
 `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`
 
-Authoritative route: official SEC `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` through a restricted client that reuses the accepted SEC EDGAR HTTP/fair-access seam.
+Authoritative route: official SEC `data.sec.gov/api/xbrl/companyfacts/CIK##########.json` through the accepted SEC EDGAR HTTP/fair-access seam.
 
-The deterministic source-only census uses exactly 200 unique issuer CIKs selected by SHA-256 ordering from the accepted Phase32 source inventory. This is only a reproducible issuer inventory seed; no Phase32 scientific/performance evidence enters the new mechanism.
+The deterministic census used exactly 200 unique issuer CIKs selected by SHA-256 ordering from the accepted Phase32 source inventory. This reuse was limited to CIK discovery and granted no Phase32 scientific/performance authority.
 
-Frozen feasibility gates require at least 160 successful Company Facts documents, at least 100 issuers with >=8-period assets/net-income/operating-cash-flow history, and at least 80 issuers with >=8-period assets/revenue plus gross-profit-or-cost history.
+The target-machine census on exact head `5a8c15f95417390d0d64ff240977adfb38a20c45` returned **`FEASIBILITY_PASS`**:
 
-**No alpha hypothesis is frozen. No market price/return, target outcome, or protected return is authorized.** Provider writes, broker/order/PAPER/LIVE/automation authority remain zero. A feasibility PASS only authorizes a later independent PIT filing/accession/acceptance-time and restatement/identity audit. It does not authorize performance testing or satisfy Phase33.
+- source inventory unique CIKs = **4,400**;
+- sample = **200**;
+- successful Company Facts documents = **200**;
+- failures = **0**;
+- accrual-history-ready issuers = **170**;
+- profitability-history-ready issuers = **92**;
+- group history-ready counts = assets 174, cost of revenue 97, gross profit 78, net income 180, operating cash flow 180, revenue 136;
+- target outcome rows read = **0**;
+- protected return rows read = **0**;
+- protected holdout consumed = **false**;
+- provider reads/writes = **200 / 0**;
+- broker/order/PAPER/LIVE/automation activity = **0**.
 
-If the source gate passes, PIT chronology and fact reconstruction must be independently accepted before a finite hypothesis family and complete statistical/protected policy can be frozen. If it fails, diagnose the source limitation; do not weaken the coverage gates or silently switch datasets.
+Accepted feasibility evidence fingerprint:
 
-See `docs/alpha_gate_sec_xbrl_fundamental_quality.md`.
+`33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`
+
+### Current source/chronology gate — PIT audit
+
+Frozen audit contract:
+
+`alpha-gate-xbrl-pit-audit-v1-source-only-accession-versioned-no-market-outcomes`
+
+Frozen audit fingerprint:
+
+`50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`
+
+Exactly 40 deterministic feasibility-ready issuers are audited. Up to 5 clean original `10-Q`/`10-K` accessions per issuer are selected at evenly spaced positions across the historical filing span.
+
+Company Facts supplies exact fact/accession associations. Official SEC submissions metadata supplies exact filing form/date and `acceptanceDateTime`. Later comparative or revised facts remain separate accession versions and can never overwrite an earlier accession's historical state. Contradictory values for the same semantic context inside one accession fail closed.
+
+PIT security identity uses Massive `/v3/reference/tickers` with exact CIK and date at the first XNYS session open strictly after SEC acceptance. The accepted `instrument-identity-v4-no-issuer-level-medium-collapse` contract remains in force; zero or multiple eligible unique instruments fail closed rather than being guessed.
+
+Frozen source-only audit gates require:
+
+- exactly 40 audit issuers;
+- >=36 successful Company Facts documents;
+- >=180 selected original filings;
+- >=170 exact SEC metadata reconciliations;
+- >=170 reconstructed acceptance-time decision sessions;
+- >=120 unambiguous PIT instrument mappings;
+- >=30 issuers with at least 3 unambiguous mappings;
+- zero same-accession semantic-context conflicts.
+
+**No alpha hypothesis is frozen. No market price/return, target outcome, or protected return is authorized.** Provider writes, broker/order/PAPER/LIVE/automation authority remain zero.
+
+An `AUDIT_PASS` can authorize only the next scientific freeze work package. Before any governed performance read, ATLAS must freeze a finite hypothesis family, outcomes, costs, chronology, dependence, multiplicity, robustness, sample/concentration gates, winner/finalist rules, and protected-evidence policy. An `AUDIT_FAIL` must be diagnosed without weakening the frozen source or ambiguity rules.
+
+See `docs/alpha_gate_sec_xbrl_fundamental_quality.md` and `docs/alpha_gate_sec_xbrl_pit_audit.md`.
 
 ## 8. Remaining master roadmap
 
