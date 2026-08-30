@@ -10,7 +10,7 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_sci
 - Current Massive subscription: **Stocks Starter**.
 - Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` after the preserved original `FEASIBILITY_FAIL`, its source-quality repair, frozen science, and development/closeout gates.
 - Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
-- Phase32 remains closed `ACCEPTED_NEGATIVE`: frozen development finalist `solvency_distress_short`; frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 instruments**; the preregistered 50-row minimum failed before protected returns were opened, protected return rows read remained 0, and the holdout remained unconsumed.
+- Phase32 remains closed `ACCEPTED_NEGATIVE`: frozen development finalist `solvency_distress_short`; frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments**; the preregistered 50-row minimum failed before protected returns were opened, protected return rows read remained 0, and the holdout remained unconsumed.
 - Phase26–32: scientifically valid `ACCEPTED_NEGATIVE`.
 - XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`, merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`, with post-merge Ubuntu/Windows regression green.
 - Current pre-Phase33 branch: `alpha-gate-sec-beneficial-ownership-scientific-contract`.
@@ -26,6 +26,16 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_sci
 - Automatic broker failover: **disabled**.
 
 Root cause before workaround remains mandatory. Failed research evidence must be preserved. No failed family may be rescued by changing thresholds, horizon, costs, features, direction, multiplicity, winner rules, or protected policy after results.
+
+## Retained Phase32 8-K provenance
+
+Frozen Phase32 scientific policy fingerprint:
+
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
+
+Exactly five hypotheses remained frozen throughout Phase32. The frozen development finalist was `solvency_distress_short`.
+
+The frozen protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** against preregistered minimums of 50 / 20 / 20. Protected stock/SPY returns remain unread; protected return rows read = 0 and the holdout remains unconsumed. Phase32 remains closed `ACCEPTED_NEGATIVE`, Historical supported alpha remains 0, and Phase33 remains blocked.
 
 ## Retained Phase31 Form-4 provenance
 
