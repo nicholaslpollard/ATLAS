@@ -120,18 +120,18 @@ def _rows_for_tag(
 
 
 def _instant_value(rows: Iterable[dict[str, Any]], *, tag: str, end: date) -> float | None:
-    selected = [row for row in _rows_for_tag(rows, tag=tag, end=end) if row.get("start") in (None, "")]
-    return _unique_value(selected)
+    return _unique_value(
+        row for row in _rows_for_tag(rows, tag=tag, end=end) if row.get("start") in (None, "")
+    )
 
 
 def _direct_quarter_value(rows: Iterable[dict[str, Any]], *, tag: str, end: date) -> float | None:
     lower, upper = XBRL_QUARTER_DIRECT_DURATION_DAYS
-    selected = [
+    return _unique_value(
         row
         for row in _rows_for_tag(rows, tag=tag, end=end)
         if (days := _duration_days(row)) is not None and lower <= days <= upper
-    ]
-    return _unique_value(selected)
+    )
 
 
 def _longest_duration_value(
@@ -148,14 +148,17 @@ def _longest_duration_value(
     return _unique_value(row for days, row in candidates if days == maximum)
 
 
-def _current_period(rows: tuple[dict[str, Any], ...], *, filing_date: date, form: str) -> tuple[date, int, int] | None:
+def _current_period(
+    rows: tuple[dict[str, Any], ...], *, filing_date: date, form: str
+) -> tuple[date, int, int] | None:
+    maximum_age = 180 if form == "10-Q" else 400
     valid_ends = sorted(
         {
             parsed
             for row in rows
             if (parsed := _as_date(row.get("end"))) is not None
             and parsed <= filing_date
-            and 0 <= (filing_date - parsed).days <= (180 if form == "10-Q" else 400)
+            and 0 <= (filing_date - parsed).days <= maximum_age
         }
     )
     if not valid_ends:
@@ -180,8 +183,7 @@ def _current_period(rows: tuple[dict[str, Any], ...], *, filing_date: date, form
     if len(winners) != 1:
         return None
     fy, fp = winners[0]
-    quarter = _FP_TO_QUARTER[fp]
-    return target_end, fy, quarter
+    return target_end, fy, _FP_TO_QUARTER[fp]
 
 
 def _flow_quarter_value(
@@ -196,13 +198,13 @@ def _flow_quarter_value(
 ) -> tuple[float | None, float | None, str | None]:
     direct = _direct_quarter_value(rows, tag=tag, end=end)
     if direct is not None:
-        current_ytd = None
+        current_ytd: float | None = None
         if quarter == 1:
             current_ytd = direct
-        elif quarter in (2, 3):
-            lower = 120 if quarter == 2 else 200
-            upper = 230 if quarter == 2 else 320
-            current_ytd = _longest_duration_value(rows, tag=tag, end=end, lower=lower, upper=upper)
+        elif quarter == 2:
+            current_ytd = _longest_duration_value(rows, tag=tag, end=end, lower=120, upper=230)
+        elif quarter == 3:
+            current_ytd = _longest_duration_value(rows, tag=tag, end=end, lower=200, upper=320)
         elif quarter == 4:
             current_ytd = _longest_duration_value(rows, tag=tag, end=end, lower=300, upper=380)
         return direct, current_ytd, "DIRECT_QUARTER"
@@ -212,8 +214,7 @@ def _flow_quarter_value(
         return current_ytd, current_ytd, "Q1_YTD" if current_ytd is not None else None
 
     if quarter in (2, 3):
-        lower = 120 if quarter == 2 else 200
-        upper = 230 if quarter == 2 else 320
+        lower, upper = ((120, 230) if quarter == 2 else (200, 320))
         current_ytd = _longest_duration_value(rows, tag=tag, end=end, lower=lower, upper=upper)
         previous_ytd = ytd_history.get((fy, quarter - 1, tag))
         if current_ytd is None or previous_ytd is None:
@@ -227,7 +228,9 @@ def _flow_quarter_value(
     return annual - sum(float(value) for value in previous if value is not None), annual, "FY_MINUS_Q1_Q2_Q3"
 
 
-def _first_available(values: Mapping[str, float | None], precedence: Iterable[str]) -> tuple[str | None, float | None]:
+def _first_available(
+    values: Mapping[str, float | None], precedence: Iterable[str]
+) -> tuple[str | None, float | None]:
     for tag in precedence:
         value = values.get(tag)
         if value is not None:
@@ -235,7 +238,9 @@ def _first_available(values: Mapping[str, float | None], precedence: Iterable[st
     return None, None
 
 
-def _feature_signals(feature_row: dict[str, Any], prior_features: Mapping[tuple[int, int, str], float]) -> list[dict[str, Any]]:
+def _feature_signals(
+    feature_row: Mapping[str, Any], prior_features: Mapping[tuple[int, int, str], float]
+) -> list[dict[str, Any]]:
     fy = int(feature_row["fiscal_year"])
     quarter = int(feature_row["fiscal_quarter"])
     signals: list[dict[str, Any]] = []
@@ -248,18 +253,17 @@ def _feature_signals(feature_row: dict[str, Any], prior_features: Mapping[tuple[
         if delta == 0:
             continue
         matches = delta > 0 if spec.delta_rule.endswith(">0") else delta < 0
-        if not matches:
-            continue
-        signals.append(
-            {
-                "candidate_id": spec.candidate_id,
-                "direction": spec.direction,
-                "feature": spec.feature,
-                "current_feature": float(current),
-                "prior_year_feature": float(prior),
-                "yoy_delta": delta,
-            }
-        )
+        if matches:
+            signals.append(
+                {
+                    "candidate_id": spec.candidate_id,
+                    "direction": spec.direction,
+                    "feature": spec.feature,
+                    "current_feature": float(current),
+                    "prior_year_feature": float(prior),
+                    "yoy_delta": delta,
+                }
+            )
     return signals
 
 
@@ -269,10 +273,12 @@ def reconstruct_issuer_quarters(
     entity_name: str,
     accession_rows: Iterable[tuple[dict[str, Any], tuple[dict[str, Any], ...]]],
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Reconstruct first-public PIT quarterly features from exact original accessions."""
     ytd_history: dict[tuple[int, int, str], float] = {}
     quarter_history: dict[tuple[int, int, str], float] = {}
     feature_history: dict[tuple[int, int, str], float] = {}
     asset_history: list[tuple[date, float, str]] = []
+    seen_fiscal_periods: set[tuple[int, int]] = set()
     output: list[dict[str, Any]] = []
     diagnostics: Counter[str] = Counter()
 
@@ -294,6 +300,10 @@ def reconstruct_issuer_quarters(
             diagnostics["period_identity_missing"] += 1
             continue
         period_end, fy, quarter = period
+        fiscal_key = (fy, quarter)
+        if fiscal_key in seen_fiscal_periods:
+            diagnostics["later_same_fiscal_period_accessions_excluded"] += 1
+            continue
         decision = _decision_session(str(metadata.get("acceptance_datetime") or ""))
 
         lagged_assets: float | None = None
@@ -351,7 +361,9 @@ def reconstruct_issuer_quarters(
             if cash_flow is not None:
                 features["cash_profitability"] = float(cash_flow) / lagged_assets
             if net_income is not None and cash_flow is not None:
-                features["accrual_intensity"] = (float(net_income) - float(cash_flow)) / lagged_assets
+                features["accrual_intensity"] = (
+                    float(net_income) - float(cash_flow)
+                ) / lagged_assets
 
         feature_row: dict[str, Any] = {
             "contract_version": XBRL_PREDICTOR_CONTRACT,
@@ -381,17 +393,20 @@ def reconstruct_issuer_quarters(
         feature_row["signals"] = _feature_signals(feature_row, feature_history)
         output.append(feature_row)
 
+        seen_fiscal_periods.add(fiscal_key)
         for key, value in pending_ytd.items():
-            ytd_history[key] = value
+            ytd_history.setdefault(key, value)
         for key, value in pending_quarters.items():
-            quarter_history[key] = value
+            quarter_history.setdefault(key, value)
         for feature_name, value in features.items():
             if value is not None:
-                feature_history[(fy, quarter, feature_name)] = float(value)
+                feature_history.setdefault((fy, quarter, feature_name), float(value))
 
         current_assets = _instant_value(rows, tag="Assets", end=period_end)
         if current_assets is not None and current_assets > 0:
-            asset_history.append((period_end, float(current_assets), str(metadata.get("accession_number") or "")))
+            asset_history.append(
+                (period_end, float(current_assets), str(metadata.get("accession_number") or ""))
+            )
             asset_history.sort(key=lambda item: (item[0], item[2]))
 
     diagnostics["quarter_rows"] = len(output)
@@ -444,38 +459,102 @@ class XBRLPredictorBuilder:
             return value
         self.source_reads["companyfacts"] += 1
         document = self.companyfacts_client.company_facts(cik=cik)
-        entries = [row for row in _extract_relevant_entries(document) if str(row.get("unit") or "") == "USD"]
+        entries = [
+            row
+            for row in _extract_relevant_entries(document)
+            if str(row.get("unit") or "") == "USD"
+        ]
         value = {
             "issuer_cik": document.issuer_cik,
             "entity_name": document.entity_name,
             "source_url": document.source_url,
             "source_sha256": document.source_sha256,
-            "entries_sha256": _sha256_text("".join(_canonical_json(row) + "\n" for row in entries)),
+            "entries_sha256": _sha256_text(
+                "".join(_canonical_json(row) + "\n" for row in entries)
+            ),
             "entries": entries,
         }
         atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
         return value
 
-    def _cached_metadata(self, *, cik: str, accession: str, filing_date: str, form: str) -> dict[str, Any]:
-        path = self.cache_root / "submissions" / cik / f"{accession}.json"
+    @staticmethod
+    def _accession_groups(
+        entries: Iterable[dict[str, Any]],
+    ) -> list[tuple[str, str, str, tuple[dict[str, Any], ...]]]:
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in entries:
+            accession = str(row.get("accn") or "").strip()
+            if accession:
+                grouped[accession].append(dict(row))
+        result: list[tuple[str, str, str, tuple[dict[str, Any], ...]]] = []
+        for accession, rows in grouped.items():
+            filing_dates = {str(row.get("filed") or "") for row in rows}
+            forms = {str(row.get("form") or "") for row in rows}
+            if len(filing_dates) != 1 or len(forms) != 1:
+                continue
+            filing_date = next(iter(filing_dates))
+            form = next(iter(forms))
+            if form in _ALLOWED_FORMS:
+                result.append((accession, filing_date, form, tuple(rows)))
+        result.sort(key=lambda item: (item[1], item[0]))
+        return result
+
+    def _cached_metadata_batch(
+        self,
+        *,
+        cik: str,
+        groups: list[tuple[str, str, str, tuple[dict[str, Any], ...]]],
+    ) -> tuple[dict[str, dict[str, Any]], int]:
+        requests = [
+            {"accession_number": accession, "filing_date": filing_date, "form": form}
+            for accession, filing_date, form, _ in groups
+        ]
+        request_hash = _sha256_text(_canonical_json(requests))
+        path = self.cache_root / "submissions" / f"{cik}.json"
         if path.is_file():
-            self.cache_hits["submissions"] += 1
-            value = json.loads(path.read_text(encoding="utf-8"))
-        else:
-            self.source_reads["submissions"] += 1
-            metadata = self.submissions_client.filing_metadata(
-                cik=cik,
-                accession_number=accession,
-                filing_date=filing_date,
-                allowed_forms=(form,),
-            )
-            value = asdict(metadata)
-            atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
-        if _normalize_cik(value.get("issuer_cik")) != cik:
-            raise XBRLPredictorError(f"cached SEC metadata CIK mismatch: {path}")
-        if value.get("accession_number") != accession or value.get("filing_date") != filing_date or value.get("form") != form:
-            raise XBRLPredictorError(f"cached SEC metadata identity mismatch: {path}")
-        return value
+            cached = json.loads(path.read_text(encoding="utf-8"))
+            if cached.get("issuer_cik") == cik and cached.get("request_sha256") == request_hash:
+                records = cached.get("records")
+                if isinstance(records, list):
+                    self.cache_hits["submissions_batch"] += 1
+                    return {
+                        str(row["accession_number"]): dict(row)
+                        for row in records
+                        if isinstance(row, dict) and row.get("accession_number")
+                    }, int(cached.get("metadata_failures", 0))
+
+        resolved: dict[str, dict[str, Any]] = {}
+        failures = 0
+        try:
+            self.source_reads["submissions_batch"] += 1
+            records = self.submissions_client.filing_metadata_many(cik=cik, requests=requests)
+            resolved = {record.accession_number: asdict(record) for record in records}
+        except Exception:
+            # A bounded fallback preserves accession-level fail-closed behavior for
+            # the occasional problematic historical record without returning to a
+            # root submissions request for every accession on the normal path.
+            for accession, filing_date, form, _ in groups:
+                try:
+                    self.source_reads["submissions_fallback"] += 1
+                    record = self.submissions_client.filing_metadata(
+                        cik=cik,
+                        accession_number=accession,
+                        filing_date=filing_date,
+                        allowed_forms=(form,),
+                    )
+                    resolved[accession] = asdict(record)
+                except Exception:
+                    failures += 1
+        value = {
+            "issuer_cik": cik,
+            "request_sha256": request_hash,
+            "requested_accessions": len(requests),
+            "resolved_accessions": len(resolved),
+            "metadata_failures": failures,
+            "records": [resolved[key] for key in sorted(resolved)],
+        }
+        atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
+        return resolved, failures
 
     def _cached_reference(self, *, cik: str, decision: date) -> list[dict[str, Any]]:
         path = self.cache_root / "massive_reference" / decision.isoformat() / f"{cik}.json"
@@ -495,29 +574,12 @@ class XBRLPredictorBuilder:
             "as_of_date": decision.isoformat(),
             "identity_rule": "EXACT_CIK_DATE_ACTIVE_TRUE_TYPE_CS",
             "rows": rows,
-            "rows_sha256": _sha256_text("".join(_canonical_json(row) + "\n" for row in rows)),
+            "rows_sha256": _sha256_text(
+                "".join(_canonical_json(row) + "\n" for row in rows)
+            ),
         }
         atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
         return rows
-
-    @staticmethod
-    def _accession_groups(entries: Iterable[dict[str, Any]]) -> list[tuple[str, str, str, tuple[dict[str, Any], ...]]]:
-        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for row in entries:
-            grouped[str(row.get("accn") or "")].append(dict(row))
-        result: list[tuple[str, str, str, tuple[dict[str, Any], ...]]] = []
-        for accession, rows in grouped.items():
-            filing_dates = {str(row.get("filed") or "") for row in rows}
-            forms = {str(row.get("form") or "") for row in rows}
-            if len(filing_dates) != 1 or len(forms) != 1:
-                continue
-            filing_date = next(iter(filing_dates))
-            form = next(iter(forms))
-            if form not in _ALLOWED_FORMS:
-                continue
-            result.append((accession, filing_date, form, tuple(rows)))
-        result.sort(key=lambda item: (item[1], item[0]))
-        return result
 
     def run(self, *, progress_callback: Any | None = None) -> dict[str, Any]:
         if xbrl_scientific_fingerprint() != XBRL_SCIENTIFIC_FINGERPRINT:
@@ -544,20 +606,15 @@ class XBRLPredictorBuilder:
                     and (filed := _as_date(row.get("filed"))) is not None
                     and source_start <= filed <= source_cutoff
                 ]
-                accession_rows: list[tuple[dict[str, Any], tuple[dict[str, Any], ...]]] = []
-                metadata_failures = 0
-                for accession, filing_date, form, rows in self._accession_groups(entries):
-                    try:
-                        metadata = self._cached_metadata(
-                            cik=cik,
-                            accession=accession,
-                            filing_date=filing_date,
-                            form=form,
-                        )
-                    except Exception:
-                        metadata_failures += 1
-                        continue
-                    accession_rows.append((metadata, rows))
+                groups = self._accession_groups(entries)
+                metadata_by_accession, metadata_failures = self._cached_metadata_batch(
+                    cik=cik, groups=groups
+                )
+                accession_rows = [
+                    (metadata_by_accession[accession], rows)
+                    for accession, _, _, rows in groups
+                    if accession in metadata_by_accession
+                ]
                 quarters, diagnostics = reconstruct_issuer_quarters(
                     issuer_cik=cik,
                     entity_name=str(source.get("entity_name") or ""),
@@ -566,36 +623,48 @@ class XBRLPredictorBuilder:
                 emitted = 0
                 for quarter_row in quarters:
                     decision = _as_date(quarter_row.get("decision_session"))
-                    if decision is None or decision < governed_start or decision > protected_last:
+                    signals = list(quarter_row.get("signals") or [])
+                    if (
+                        decision is None
+                        or not signals
+                        or decision < governed_start
+                        or decision > protected_last
+                    ):
                         continue
-                    for signal in quarter_row.get("signals") or []:
-                        reference_rows = self._cached_reference(cik=cik, decision=decision)
-                        identity = _resolve_identity(reference_rows, issuer_cik=cik, as_of_date=decision)
-                        identity_statuses[str(identity["status"])] += 1
-                        if identity["status"] != "UNAMBIGUOUS_PIT_INSTRUMENT":
-                            continue
-                        instrument = identity["instruments"][0]
-                        stage = "DEVELOPMENT" if decision <= development_last else (
-                            "PROTECTED" if protected_start <= decision <= protected_last else "EMBARGO"
+                    stage = (
+                        "DEVELOPMENT"
+                        if decision <= development_last
+                        else "PROTECTED"
+                        if protected_start <= decision <= protected_last
+                        else "EMBARGO"
+                    )
+                    if stage == "EMBARGO":
+                        continue
+                    reference_rows = self._cached_reference(cik=cik, decision=decision)
+                    identity = _resolve_identity(reference_rows, issuer_cik=cik, as_of_date=decision)
+                    identity_statuses[str(identity["status"])] += 1
+                    if identity["status"] != "UNAMBIGUOUS_PIT_INSTRUMENT":
+                        continue
+                    instrument = identity["instruments"][0]
+                    for signal in signals:
+                        predictor_rows.append(
+                            {
+                                **{key: value for key, value in quarter_row.items() if key != "signals"},
+                                **signal,
+                                "stage": stage,
+                                "instrument_id": instrument["instrument_id"],
+                                "ticker": instrument.get("ticker"),
+                                "identity_quality": instrument.get("identity_quality"),
+                                "primary_exchange": instrument.get("primary_exchange"),
+                                "security_type": instrument.get("security_type"),
+                            }
                         )
-                        if stage == "EMBARGO":
-                            continue
-                        row = {
-                            **{key: value for key, value in quarter_row.items() if key != "signals"},
-                            **signal,
-                            "stage": stage,
-                            "instrument_id": instrument["instrument_id"],
-                            "ticker": instrument.get("ticker"),
-                            "identity_quality": instrument.get("identity_quality"),
-                            "primary_exchange": instrument.get("primary_exchange"),
-                            "security_type": instrument.get("security_type"),
-                        }
-                        predictor_rows.append(row)
                         emitted += 1
                 issuer_diagnostics.append(
                     {
                         "issuer_cik": cik,
                         "entity_name": source.get("entity_name"),
+                        "accessions_requested": len(groups),
                         "accessions_reconciled": len(accession_rows),
                         "metadata_failures": metadata_failures,
                         "signals_emitted": emitted,
@@ -611,7 +680,9 @@ class XBRLPredictorBuilder:
                         "error": str(exc),
                     }
                 )
-            if progress_callback is not None and (index == 1 or index % 10 == 0 or index == len(sample_ciks)):
+            if progress_callback is not None and (
+                index == 1 or index % 10 == 0 or index == len(sample_ciks)
+            ):
                 progress_callback(
                     f"XBRL predictor progress: {index}/{len(sample_ciks)} "
                     f"signals={len(predictor_rows)} source_reads={sum(self.source_reads.values())}"
@@ -636,7 +707,9 @@ class XBRLPredictorBuilder:
             for row in predictor_rows
         )
         if any(count > 1 for count in duplicate_keys.values()):
-            raise XBRLPredictorError("XBRL predictor contains duplicate candidate/instrument/session/accession keys")
+            raise XBRLPredictorError(
+                "XBRL predictor contains duplicate candidate/instrument/session/accession keys"
+            )
 
         rows_text = "".join(_canonical_json(row) + "\n" for row in predictor_rows)
         rows_path = self.derived_root / XBRL_PREDICTOR_ROWS_RELATIVE
