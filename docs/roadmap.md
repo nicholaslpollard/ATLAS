@@ -1,13 +1,13 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-30 (America/New_York). Phase32 and the later SEC XBRL research family are closed `ACCEPTED_NEGATIVE`. The current pre-Phase33 SEC Schedule 13D/13G beneficial-ownership mechanism has passed repaired source feasibility, frozen its finite scientific contract, and is paused at a preserved pre-outcome development acquisition transport failure after 3500/5200 source-only predictor items. Development stock/SPY returns remain unread, protected returns remain unread, the master holdout remains unconsumed, historical supported alpha remains 0, and Phase33 remains blocked.**
+**Normative project source of truth. Re-synchronized: 2026-08-30 (America/New_York). Phase32 and the later SEC XBRL research family are closed `ACCEPTED_NEGATIVE`. The SEC Schedule 13D/13G beneficial-ownership research family has now also completed its repaired source reconstruction and frozen development evaluation and is scientifically closed `ACCEPTED_NEGATIVE`: zero selection passers, zero winners, zero internal finalists, zero protected-return reads, and an unconsumed holdout. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
-3. `docs/alpha_gate_sec_beneficial_ownership_scientific_contract.md`;
-4. retained beneficial-ownership source-repair and feasibility records;
+3. `docs/alpha_gate_sec_beneficial_ownership_closeout.md` and `docs/alpha_gate_sec_beneficial_ownership_development.md`;
+4. retained beneficial-ownership scientific, source-repair, feasibility, and transport-failure records;
 5. accepted XBRL closeout/scientific/source records;
 6. accepted Phase32 closeout/scientific/source records;
 7. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, accepted code, validators, exact-head CI/PR evidence, and historical phase records.
@@ -145,13 +145,13 @@ Accepted closeout evidence fingerprint:
 
 The family merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, followed by green Ubuntu/Windows regression. It is closed to post-result retuning or protected rescue, and Phase33 remains blocked.
 
-## 7. Current pre-Phase33 mechanism — SEC Schedule 13D/13G beneficial ownership
+## 7. Completed Pre-Phase33 SEC Schedule 13D/13G beneficial ownership — `ACCEPTED_NEGATIVE`
 
 The retained source-feasibility family identifier is:
 
 `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
 
-The current frozen scientific mechanism, narrowed before outcome access, is:
+The frozen scientific mechanism, narrowed before outcome access, is:
 
 `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`
 
@@ -194,7 +194,7 @@ Development implementation fingerprint:
 
 `0e90a65e6e2f6a7d7206296901054de3a2c97aaa204c80927a963c298c81060d`
 
-Exactly four non-overlapping LONG hypotheses are frozen before outcomes:
+Exactly four non-overlapping LONG hypotheses were frozen before outcomes:
 
 1. `initial_13d_5_to_10_long` — initial Schedule 13D, `5 <= percent < 10`;
 2. `initial_13d_10_plus_long` — initial Schedule 13D, `percent >= 10`;
@@ -203,7 +203,7 @@ Exactly four non-overlapping LONG hypotheses are frozen before outcomes:
 
 No amendment hypothesis, short hypothesis, alternate ownership threshold, purpose-text taxonomy, reporting-person type filter, or filer-class filter may be added after outcomes.
 
-The filing-level predictor is the maximum valid cover-page percent-of-class across reporting persons, never the sum. Only initial 13D/13G filings are performance eligible.
+The filing-level predictor was the maximum valid cover-page percent-of-class across reporting persons, never the sum. Only initial 13D/13G filings were performance eligible.
 
 Frozen primary chronology/performance:
 
@@ -220,11 +220,11 @@ Frozen primary chronology/performance:
 - stress cost: 25 bps;
 - 21/126-session paths: diagnostic only.
 
-Frozen statistical governance includes chronological 70/30 development with a 63-session purge, dependence-aware 63-session block bootstrap, global `HOLM_BONFERRONI_GLOBAL_4`, frozen minimum event/session/instrument counts, fold consistency, year/regime/concentration diagnostics, at most one selection winner, internal confirmation only, no runner-up substitution, and finalist-only protected returns. The detailed normative numeric rules remain in `docs/alpha_gate_sec_beneficial_ownership_scientific_contract.md`.
+Frozen statistical governance included chronological 70/30 development with a 63-session purge, dependence-aware 63-session block bootstrap, global `HOLM_BONFERRONI_GLOBAL_4`, frozen minimum event/session/instrument counts, fold consistency, year/regime/concentration diagnostics, at most one selection winner, internal confirmation only, no runner-up substitution, and finalist-only protected returns.
 
 ### 7.3 Preserved pre-outcome acquisition failure and repair
 
-The target scientific runner reached **3500/5200** in the source-only predictor walk and stopped before `Source-only predictor reconstruction: PASS` because one legitimate official SEC complete submission exceeded the historical/default 20 MB response ceiling.
+The earlier target scientific runner reached **3500/5200** in the source-only predictor walk and stopped before `Source-only predictor reconstruction: PASS` because one legitimate official SEC complete submission exceeded the historical/default 20 MB response ceiling.
 
 At that stop:
 
@@ -234,40 +234,59 @@ At that stop:
 - protected holdout consumed = false;
 - no candidate performance had been opened.
 
-The existing source cache through approximately 3500 items is valid and must not be deleted.
+The existing source cache was valid and was not deleted.
 
 Frozen development transport-repair fingerprint:
 
 `a4db8419364895c6861c4becbe3abf9b32ec044ceb4aff5cf14a7c9244368bdb`
 
-Transport contract:
+Transport contract remained:
 
-- quarterly indexes remain bounded at 64 MB;
-- historical/default complete submissions remain bounded at 20 MB;
-- scientific acquisition explicitly opts into a bounded 256 MB complete-submission ceiling;
-- SEC archive pacing remains 5 calls/second / 0.2-second minimum interval;
-- scientific/sample/statistical/protected policy is unchanged.
+- quarterly indexes bounded at 64 MB;
+- historical/default complete submissions bounded at 20 MB;
+- scientific acquisition explicitly opted into a bounded 256 MB complete-submission ceiling;
+- SEC archive pacing remained 5 calls/second / 0.2-second minimum interval;
+- scientific/sample/statistical/protected policy was unchanged.
 
 Compatibility repair code commit:
 
 `8b4a5dc8dc8931062cd34ec30b71b38f82a53a9d`
 
-The provider retains the historical static `_response_limit(url)` seam and isolates the explicit scientific per-client submission override behind `_configured_response_limit(url)`. Focused beneficial-ownership validators and tests pass on Ubuntu and Windows at that code commit. Exact-head full regression after documentation synchronization is required before target execution.
+### 7.4 Accepted development result and closeout
 
-### 7.4 Current progression rule
+Accepted development target head:
 
-The next authorized sequence is exact and narrow:
+`067dc13429c22dc4e789959f56644423f0947946`
 
-1. exact-head focused beneficial-ownership CI green on Ubuntu and Windows;
-2. exact-head full ATLAS regression green on Ubuntu and Windows;
-3. target machine updates to that exact branch head while retaining the existing beneficial-ownership source cache;
-4. resume `scripts/run_alpha_gate_beneficial_ownership_development.py`;
-5. source-only predictor reconstruction must PASS before any development stock/SPY outcomes open;
-6. evaluate the four already-frozen hypotheses under the frozen development contract;
-7. protected returns remain sealed unless one fixed finalist independently earns access under the frozen source-only protected precheck;
-8. close the family scientifically as supported or accepted-negative, document, certify, merge, and only then choose the downstream step.
+The repaired target runner completed `Source-only predictor reconstruction: PASS` with **3,652** predictors: **2,763 development** and **889 protected-source-only** rows. Target outcome rows read before the development stage opened remained **0**.
 
-No new alpha family, threshold change, cache deletion, runner-up substitution, or manual bypass is authorized during this sequence.
+Only after that source-only PASS did the frozen development stage open exact stock/SPY paths. It produced **2,412** usable development outcomes after **306** exact stock-path missing rows and **46** split-crossing censored rows.
+
+Final development disposition:
+
+`ACCEPTED_NEGATIVE_DEVELOPMENT`
+
+- selection passers after all hard gates plus Holm: **0**;
+- selection winners: **0**;
+- internal finalists: **0**;
+- protected-return eligible finalists: **0**;
+- protected return rows read: **0**;
+- protected holdout consumed: **false**;
+- Phase33 authority: **false**.
+
+Accepted closeout evidence fingerprint:
+
+`c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`
+
+The exact five persisted artifacts are hash-pinned in the closeout contract. No provider/network calls, new market-outcome reads, broker reads/writes, orders, PAPER/LIVE submissions, or automation writes are permitted in closeout.
+
+The family is closed. It may not be rescued by changing ownership thresholds, form/amendment eligibility, direction, purpose-text taxonomy, reporting-person/filer filters, horizon, costs, sample, chronology, dependence treatment, multiplicity, winner/finalist rules, or protected policy after observing the result.
+
+### 7.5 Progression rule after closeout
+
+The next authorized research family must use a materially different economic/information mechanism. Accepted source infrastructure may be reused only as non-performance infrastructure where scientifically appropriate; the beneficial-ownership candidate definitions or observed performance may not be retuned into a successor family.
+
+The protected holdout remains available because beneficial-ownership protected return rows read = 0 and the holdout remains unconsumed.
 
 ## 8. Remaining master roadmap
 
