@@ -1,6 +1,6 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-29 after Phase32 full-history predictor/source acquisition and independent local source/predictor acceptance both passed with zero Phase32 market-outcome reads. The next gate is development-only performance evaluation; protected returns remain unread.**
+**Normative project source of truth. Re-synchronized: 2026-08-30 after Phase32 development-only performance evaluation passed with one frozen finalist, `solvency_distress_short`. The exact next gate is the independent finalist blindness/lineage audit and source-only protected-plan freeze. Protected stock/SPY returns remain unread.**
 
 Continuation precedence:
 
@@ -10,8 +10,9 @@ Continuation precedence:
 4. `docs/phase32_scientific_contract.md`;
 5. `docs/phase32_predictor_independent_acceptance.md`;
 6. `docs/phase32_development_evaluation.md`;
-7. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
-8. accepted code, validators, CI/PR evidence, and historical phase records.
+7. `docs/phase32_finalist_blindness_audit.md`;
+8. `docs/phase_flow.md` and `docs/phase_plain_english_contract.md`;
+9. accepted code, validators, CI/PR evidence, and historical phase records.
 
 ## 1. Mission
 
@@ -81,11 +82,9 @@ Modern alpha phases:
 - Phase30 public-news-arrival alpha — `ACCEPTED_NEGATIVE`.
 - Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
 
-Retained historical Phase31-era validator/provenance markers, **not current numbering or authority**: `Active Phase31 — SEC Form-4 Insider-Transaction Alpha`; `Phase32 — Signal-to-Trade Construction`; `Phase38 — Controlled LIVE Activation`. Current rebaselining supersedes those phase numbers without rewriting accepted history.
+Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. It produced zero survivors/winners/finalists/support and zero protected reads.
 
-Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. It produced zero survivors/winners/finalists/support and zero protected reads. The master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
-
-Validated alpha remains the blocker. Signal-to-trade construction is still forbidden.
+Historical supported alpha remains **zero**. A Phase32 development finalist is not enough to unblock signal-to-trade construction.
 
 ## 5. Phase/gate model
 
@@ -111,8 +110,6 @@ Rejected semantic V1 fingerprint remains immutable:
 
 `ddab8e28f0e400033f2fd968c90e20f7e1619c0a10a29ebd7616050e1b502e82`
 
-The source/taxonomy census passed with 119 taxonomy rows, 112 observed taxonomy rows, 7,468 disclosures, 4,427 unique accessions, 3,097 unique CIKs, 6,231 mapped ticker rows, 1,237 unmapped rows, and zero target/protected outcomes.
-
 Frozen scientific policy fingerprint:
 
 `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
@@ -131,7 +128,7 @@ PIT identity is bound to `instrument-identity-v4-no-issuer-level-medium-collapse
 
 ### Full-history source/predictor acquisition — ACCEPTED PASS
 
-The target machine completed **36,309** filing entities and produced **19,792** eligible predictors: **18,819 development** and **973 protected-predictor-only**. It read zero stock/SPY/options/protected returns.
+The target machine completed **36,309** filing entities and produced **19,792** eligible predictors: **18,819 development** and **973 protected-predictor-only**.
 
 Accepted filing-entity evidence SHA-256:
 
@@ -141,13 +138,11 @@ Accepted predictor SHA-256:
 
 `c5b171557d173bdf0095aecfaf660b8660f2480d233fa9c5a55f138b86c1f3f9`
 
-Retained source corrections before outcomes include joint/multi-filer filing-entity handling, strict ticker-only Massive Text multiplicity, targeted crash-cache quarantine/reacquisition, and bounded one-day SEC-declared shard rollover handling. These corrections changed no scientific rule. Detailed evidence remains in the Phase32 incident docs.
+Retained source corrections before outcomes include joint/multi-filer filing-entity handling, strict ticker-only Massive Text multiplicity, targeted crash-cache quarantine/reacquisition, and bounded one-day SEC-declared shard rollover handling. These corrections changed no scientific rule.
 
 ### Independent local source/predictor acceptance — ACCEPTED PASS
 
-Contract:
-
-`phase32-predictor-independent-acceptance-v1-local-immutable-source-only`
+Contract: `phase32-predictor-independent-acceptance-v1-local-immutable-source-only`.
 
 The corrected independent audit reprocessed all 36,309 filing entities, reproduced both accepted hashes, rebuilt predictor output byte-for-byte, used zero network reads, and read zero stock/SPY/options/protected returns.
 
@@ -155,31 +150,46 @@ Independent acceptance fingerprint:
 
 `531d91c04a0698fb005c9a0813040a82ab0a6ce29164b3dc8ddb67f4943bebde`
 
-The first audit stop was a validator-only exact-byte bug: generic whitespace normalization stripped a canonical SEC source-record trailing LF before hashing. Read-only diagnosis proved the source evidence was correct; exact-byte hashing was fixed without rewriting source data or changing science.
+### Development-only performance evaluation — ACCEPTED PASS
 
-### Exact active target — development-only performance evaluation
+The target-machine development study at head `777015507c6f01c2b175ac3103b62cee557bb603` completed under the unchanged frozen contract.
 
-The next permitted Phase32 operation is the development-only performance gate documented in `docs/phase32_development_evaluation.md` and implemented by `scripts/run_phase32_development.py`.
+It read **18,819** development predictors and produced **18,448** usable outcome rows after censoring **294** missing exact stock paths and **79** split crossings. Protected return rows remained **0** and the holdout remained unconsumed.
 
-This is the first Phase32 operation authorized to read **development** stock/SPY outcomes. Before that one-way boundary it must pin the independent acceptance fingerprint, source report, predictor/evidence hashes, exact stage partition, exact source-derived execution ticker for every development predictor, and accepted split/corporate-action evidence. Missing or ambiguous execution-ticker lineage must fail before outcomes; market-data availability may never resolve identity ambiguity.
+All five candidates passed selection plus global Holm-5. Frozen one-per-direction winners were `share_repurchase_long` and `solvency_distress_short`.
 
-The development study then uses exact decision-session open and t+5 close stock/SPY bars, accepted split-crossing censoring, previous-session accepted market/ticker regimes, the frozen selection/internal gates, fixed folds, Holm-5, one winner per direction, no runner-up substitution, and at most one finalist per direction.
+Internal validation then produced:
 
-Protected stock/SPY returns remain unread. If there are zero finalists, next is independent negative closeout with the holdout unconsumed. If finalists exist, next is a separate independent blindness/lineage audit and immutable finalist-only protected plan; protected returns are still not opened by development evaluation.
+- `share_repurchase_long`: FAIL on the required 90% LCB (`-0.00078597`); no runner-up substitution.
+- `solvency_distress_short`: PASS with 303 rows, 186 sessions, 219 instruments, 10-bps SPY-relative mean `0.03760873`, unhedged mean `0.03134181`, and 90% LCB `0.01713014`.
+
+Frozen finalist:
+
+`solvency_distress_short`
+
+This is not yet historical `SUPPORTED` alpha.
+
+### Exact active target — independent finalist blindness / lineage audit
+
+The next permitted Phase32 operation is documented in `docs/phase32_finalist_blindness_audit.md` and implemented by `scripts/run_phase32_finalist_audit.py`.
+
+The gate must independently reproduce the accepted development result without importing the development implementation. It rechecks exact return geometry, chronology, folds, block bootstrap, frozen gates, Holm-5, winner selection, no runner-up substitution, and the exact finalist set.
+
+Then it may use only frozen protected predictor/source metadata to build an immutable `solvency_distress_short` protected plan. Before returns it freezes exact execution identity, source predictor hashes, all protected decision/exit sessions, and the complete three-fold assignment.
+
+A source-only precheck applies the protected minimum **50 rows / 20 signal sessions / 20 unique instruments**. If the frozen finalist cannot satisfy those counts, protected returns must remain unread and Phase32 closes negative. If the counts are possible, the audit still does not open returns; its exact fingerprint and plan hashes must first be pinned into a separate finalist-only protected evaluator.
 
 ### Authority boundary
 
-Allowed now: accepted source/predictor artifacts, frozen policy, local development market-outcome evaluation, local derived development artifacts, validators/tests, and documentation.
+Allowed now: accepted source/predictor artifacts, frozen policy, already-opened development artifacts, independent development recomputation, source-only protected predictor metadata, exact protected identity/plan freeze, local validators/tests, and documentation.
 
-Forbidden: protected returns before finalists and a separate blindness/lineage audit; provider mutations; broker/account reads/writes; orders; PAPER; LIVE; automation writes; frontend trading authority; automatic broker failover; and Phase33 signal-to-trade authority.
-
-A development-study PASS means only that the governed test executed correctly. It does not itself establish alpha.
+Forbidden: protected stock/SPY returns before the separate fingerprint-bound protected evaluator; alternate finalists; runner-up substitution; provider mutations; broker/account reads/writes; orders; PAPER; LIVE; automation writes; frontend trading authority; automatic broker failover; and Phase33 signal-to-trade authority.
 
 ## 7. Remaining master roadmap
 
 ### Phase32 — SEC 8-K Material Corporate-Event Alpha
 
-Run the development-only selection/internal gate under the frozen contract. If no finalists survive, close independently `ACCEPTED_NEGATIVE` without protected reads. If finalists survive, perform the independent blindness/lineage audit and finalist-only protected confirmation. Close `SUPPORTED` only if genuine alpha survives every frozen gate.
+Run the independent finalist audit/source-only protected-plan gate. If the protected source population cannot meet 50/20/20, close independently `ACCEPTED_NEGATIVE` without protected reads. If it can, freeze the exact audit/plan fingerprints and perform one finalist-only protected confirmation under the unchanged contract. Close `SUPPORTED` only if `solvency_distress_short` survives every protected gate.
 
 ### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
 
