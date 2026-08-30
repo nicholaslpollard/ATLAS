@@ -1,8 +1,8 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-30 (America/New_York). Phase32 remains closed and merged `ACCEPTED_NEGATIVE`. The SEC XBRL fundamental-quality/accrual research program is also closed and merged `ACCEPTED_NEGATIVE`. The current pre-Phase33 mechanism is no longer at initial feasibility: beneficial-ownership source repair v2 passed, the finite Schedule 13D/13G scientific contract is frozen, and development acquisition is paused at a preserved pre-outcome transport failure after 3500/5200 source-only predictor items. Development stock/SPY returns remain unread, protected returns remain unread, the master holdout remains unconsumed, historical supported alpha remains 0, and Phase33 remains blocked.**
+**Last synchronized: 2026-08-30 (America/New_York). Phase32 remains closed and merged `ACCEPTED_NEGATIVE`. The SEC XBRL fundamental-quality/accrual research program is also closed and merged `ACCEPTED_NEGATIVE`. The SEC Schedule 13D/13G beneficial-ownership research family has now completed its repaired source reconstruction and frozen development study and is scientifically closed `ACCEPTED_NEGATIVE`: 3,652 predictor rows, 2,412 usable development outcomes, zero selection passers, zero winners, zero internal finalists, zero protected-return reads, and an unconsumed protected holdout. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
-Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_scientific_contract.md`, the retained beneficial-ownership source-repair/feasibility records, the accepted XBRL closeout records, `docs/phase32_closeout.md`, `docs/phase_flow.md`, and exact-head CI evidence before continuing.
+Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_closeout.md`, `docs/alpha_gate_sec_beneficial_ownership_development.md`, the retained beneficial-ownership scientific/source/transport records, the accepted XBRL closeout records, `docs/phase32_closeout.md`, `docs/phase_flow.md`, and exact-head CI evidence before continuing.
 
 ## Authority state
 
@@ -15,13 +15,14 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_sci
 - XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`, merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`, with post-merge Ubuntu/Windows regression green.
 - Current pre-Phase33 branch: `alpha-gate-sec-beneficial-ownership-scientific-contract`.
 - Retained original source-feasibility mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
-- Current frozen scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
+- Closed beneficial-ownership scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
+- Beneficial-ownership final scientific disposition: `ACCEPTED_NEGATIVE`.
+- Beneficial-ownership accepted closeout evidence fingerprint: `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
 - Historical supported alpha remains 0.
 - Phase33 signal-to-trade entry condition: **not satisfied / blocked**; Phase33 remains blocked.
 - Master protected outcome window `2026-05-12..2026-08-11`: **unconsumed**.
-- Development stock return rows read in current mechanism: **0**.
-- Development SPY return rows read in current mechanism: **0**.
-- Protected return rows read in current mechanism: **0**.
+- Beneficial-ownership development outcome rows read: **2,412**, only after source-only predictor reconstruction PASS.
+- Protected return rows read in beneficial ownership: **0**.
 - Provider/broker/order/PAPER/LIVE/automation authority: **disabled**.
 - Automatic broker failover: **disabled**.
 
@@ -49,6 +50,8 @@ Exactly five hypotheses remained frozen throughout Phase32. The frozen developme
 
 The frozen protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** against preregistered minimums of 50 / 20 / 20. Protected stock/SPY returns remain unread; protected return rows read = 0 and the holdout remains unconsumed. Phase32 remains closed `ACCEPTED_NEGATIVE`, Historical supported alpha remains 0, and Phase33 remains blocked.
 
+The Phase32 closure permanently requires the next family to use a **materially different point-in-time fundamental-information mechanism**. Later research **may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result**.
+
 ## Retained pre-Phase33 SEC XBRL provenance
 
 Phase32 merge lineage entering the XBRL family:
@@ -73,17 +76,17 @@ The first frozen PIT source/chronology/identity audit failed and remains preserv
 
 `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`
 
-That v1 audit preserved 139 unambiguous identity mappings and 28 issuers with at least three mappings. Root cause was historical Massive identity semantics admitting inactive/non-common instruments. The targeted common-stock active-only repair kept the same 40 issuers, accessions, SEC chronology, and numeric gates; its contract and fingerprint are:
+The targeted common-stock active-only repair retained the source population and numeric gates. Its contract and fingerprint are:
 
 `alpha-gate-xbrl-pit-audit-v2-targeted-common-stock-active-only-identity-repair-no-market-outcomes`
 
 `e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f`
 
-The repaired source gate passed before performance. Six finite XBRL hypotheses were then frozen under scientific fingerprint:
+Six finite XBRL hypotheses were frozen under scientific fingerprint:
 
 `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`
 
-Development later produced zero selection passers, zero winners, and zero internal finalists. XBRL protected return rows read = **0**; the protected holdout remained unconsumed. The family closed `ACCEPTED_NEGATIVE` with accepted closeout evidence fingerprint:
+Development produced zero selection passers, zero winners, and zero internal finalists. XBRL protected return rows read = **0**; the protected holdout remained unconsumed. The family closed `ACCEPTED_NEGATIVE` with accepted closeout evidence fingerprint:
 
 `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`
 
@@ -107,7 +110,7 @@ Frozen Phase31 scientific policy fingerprint:
 
 The source repair preserved raw evidence and quarantined contaminated accessions fail-closed. Phase31 produced zero survivors/winners/finalists/support and zero protected reads, then closed `ACCEPTED_NEGATIVE`; no post-result rescue is authorized.
 
-## Beneficial-ownership source lineage
+## Beneficial-ownership retained source lineage
 
 Parent source-only feasibility contract:
 
@@ -141,9 +144,9 @@ Accepted v2 source result:
 
 This source result authorized only the later scientific freeze; it did not create alpha support or Phase33 authority.
 
-## Frozen beneficial-ownership science
+## Beneficial-ownership frozen science and preserved transport failure
 
-Current frozen scientific mechanism:
+Scientific mechanism:
 
 `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`
 
@@ -166,77 +169,79 @@ Exactly four non-overlapping LONG hypotheses were frozen before any market outco
 3. `initial_13g_5_to_10_long`;
 4. `initial_13g_10_plus_long`.
 
-Only initial Schedule 13D/13G filings are performance eligible. Filing-level ownership percentage is the maximum valid cover-page percent-of-class across reporting persons, never a sum. Entry is the first XNYS open strictly after SEC acceptance; primary exit is 63 XNYS sessions later. Primary performance is stock open-to-63-close minus same-window SPY minus 10 bps LONG cost, with positive after-cost unhedged return independently required. Stress cost is 25 bps. Development is chronological 70/30 with a 63-session purge; dependence-aware block bootstrap and global `HOLM_BONFERRONI_GLOBAL_4` are frozen. At most one selection winner may proceed to internal confirmation; runner-up substitution is forbidden. Protected returns are finalist-only.
+Only initial Schedule 13D/13G filings were performance eligible. Filing-level ownership percentage was the maximum valid cover-page percent-of-class across reporting persons, never a sum. Entry was the first XNYS open strictly after SEC acceptance; primary exit was 63 XNYS sessions later. Primary performance was stock open-to-63-close minus same-window SPY minus 10 bps LONG cost, with positive after-cost unhedged return independently required. Stress cost was 25 bps. Development was chronological 70/30 with a 63-session purge; dependence-aware block bootstrap and global `HOLM_BONFERRONI_GLOBAL_4` were frozen. At most one selection winner could proceed to internal confirmation; runner-up substitution was forbidden. Protected returns were finalist-only.
 
-The detailed sample sizes, chronology, minimum counts, fold rules, concentration controls, confidence thresholds, diagnostics, and protected boundary are normative in `docs/alpha_gate_sec_beneficial_ownership_scientific_contract.md` and must not be changed after outcome access.
-
-## Preserved pre-outcome development transport failure
-
-The target development runner reached:
-
-`3500/5200` source-only predictor items
-
-and stopped because one legitimate official SEC complete-submission archive exceeded the historical/default **20,000,000-byte** submission ceiling. The failure occurred before the runner emitted:
-
-`Source-only predictor reconstruction: PASS`
-
-Therefore:
-
-- development stock return rows read = **0**;
-- development SPY return rows read = **0**;
-- protected return rows read = **0**;
-- protected holdout consumed = **false**;
-- scientific selection evidence read = **none**.
-
-The existing source cache through approximately 3500 items is valid acquisition evidence and **must be retained**.
+The earlier target development runner reached `3500/5200` source-only predictor items and stopped before `Source-only predictor reconstruction: PASS` because one legitimate official SEC complete-submission archive exceeded the historical/default 20,000,000-byte submission ceiling. At that failure, development stock return rows read = **0**, development SPY return rows read = **0**, protected return rows read = **0**, protected holdout consumed = **false**, and scientific selection evidence read = none. The cache remained valid and was retained.
 
 Frozen development transport-repair fingerprint:
 
 `a4db8419364895c6861c4becbe3abf9b32ec044ceb4aff5cf14a7c9244368bdb`
 
-Transport policy remains:
-
-- quarterly master indexes: **64,000,000 bytes**;
-- historical/default complete submissions: **20,000,000 bytes**;
-- scientific complete-submission ceiling: explicit opt-in, bounded at **256,000,000 bytes**;
-- SEC archive pacing: **5 calls/second**, **0.2-second minimum interval**.
-
-The scientific runner explicitly opts into the 256 MB ceiling; unrelated/default consumers remain at 20 MB. No scientific fingerprint, sample, hypothesis, threshold, cost, horizon, split, bootstrap, multiplicity, robustness, winner/finalist, or protected rule changed.
-
-## Repository repair and certification state
-
-The backward-compatibility defect discovered by CI was that `_response_limit(url)` had become instance-only. Historical source-repair tests and the accepted source transport contract require the static seam.
+Transport policy remained 64,000,000 bytes for quarterly indexes, 20,000,000 bytes for historical/default complete submissions, an explicit bounded 256,000,000-byte scientific submission ceiling, and SEC archive pacing of 5 calls/second / 0.2-second minimum interval. No scientific or protected rule changed.
 
 Compatibility repair code commit:
 
 `8b4a5dc8dc8931062cd34ec30b71b38f82a53a9d`
 
-The repaired provider now:
+## Beneficial-ownership accepted development and closeout evidence
 
-1. retains static historical `_response_limit(url)` = 64 MB index / 20 MB submission;
-2. retains `_configured_response_limit(url)` for the explicit per-client scientific submission override;
-3. begins request sizing through the accepted historical response-limit seam;
-4. applies a configured override only when the client was explicitly constructed with a non-default submission ceiling;
-5. leaves index sizing at 64 MB even for the scientific client.
+Accepted development target head:
 
-Focused beneficial-ownership validators and unit tests pass on **Ubuntu and Windows** at that code commit. The documentation synchronization commit must also receive exact-head focused and full Ubuntu/Windows certification before target execution.
+`067dc13429c22dc4e789959f56644423f0947946`
+
+The repaired target run completed `Source-only predictor reconstruction: PASS` before opening development outcomes.
+
+Source-only result:
+
+- predictor rows: **3,652**;
+- development predictor rows: **2,763**;
+- protected predictor rows: **889**;
+- provider source reads: **3,133**;
+- target outcome rows read before development opened: **0**;
+- protected return rows read: **0**.
+
+Development then opened only the 2,763 governed development predictor rows and produced:
+
+- usable development outcomes: **2,412**;
+- exact stock paths missing: **306**;
+- split-crossing paths censored: **46**;
+- development status: `ACCEPTED_NEGATIVE_DEVELOPMENT`;
+- selection passers: **0**;
+- selection winners: **0**;
+- internal finalists: **0**;
+- protected-return eligible finalists: **0**;
+- protected source-only prechecks: none because no internal finalist existed;
+- protected return rows read: **0**;
+- protected holdout consumed: **false**;
+- Phase33 authority: **false**.
+
+Accepted closeout evidence fingerprint:
+
+`c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`
+
+Accepted artifact hashes:
+
+- development report: `3cfecc2841e71172d2f4575ec6e0ef4dfe3d08d36fd3a95c6237bffb33601e30`;
+- predictor report: `28997b63b978d4ce44f9719b909075b6be38d50109633547db96881f84b2850b`;
+- predictor rows: `310c7b8edfd5324e57b888734febe9407decc4fb1f042c67a6de07d3a468a466`;
+- development outcomes: `4c038c5f6578dc9ef946a3485b1584514dbc893b9da976522ed0373c0715b679`;
+- finalists artifact: `d0cca3cbe1be332d010b7689b735244d40e760fa2f067e8c9fe1c47ce7b4fbca`.
+
+The family is closed `ACCEPTED_NEGATIVE`. It may not be rescued by changing ownership thresholds, form/amendment eligibility, direction, purpose-text taxonomy, reporting-person/filer filters, horizon, costs, sample, chronology, dependence handling, multiplicity, winner/finalist rules, or protected policy after observing the result.
 
 ## Immediate next action
 
-1. Finish exact-head repository certification after this status/roadmap/README synchronization.
-2. If exact-head focused and full ATLAS CI are green on Ubuntu and Windows, update the target machine to that exact branch head without deleting any beneficial-ownership cache.
-3. Resume `scripts/run_alpha_gate_beneficial_ownership_development.py`.
-4. The runner must first complete source-only predictor reconstruction and emit `Source-only predictor reconstruction: PASS`.
-5. Only after that PASS may the already-frozen development study open development stock/SPY outcomes.
-6. Protected returns remain sealed unless one fixed finalist later satisfies all frozen development and protected source-only precheck requirements.
-
-Do **not** start another alpha mechanism, alter science, delete cache, or manually bypass the source-only reconstruction boundary.
+1. Complete exact-head focused and full Ubuntu/Windows certification of the beneficial-ownership closeout package and synchronized living documents.
+2. Run the persisted-artifact closeout verifier on the target machine only if needed to certify the pinned final closeout code against the already-accepted local artifacts; do not rerun the 5,200-filing acquisition or reopen outcomes.
+3. Merge the accepted-negative beneficial-ownership branch and verify post-merge regression.
+4. Only after merge, define and freeze a **materially different** information/economic alpha mechanism. Do not retune this beneficial-ownership family from its observed development result.
 
 ## Retained accepted-negative provenance
 
 - Phase31 SEC Form-4 insider-transaction alpha: `ACCEPTED_NEGATIVE`, merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 SEC 8-K material-event alpha: `ACCEPTED_NEGATIVE`, frozen development finalist `solvency_distress_short`, merge `69f8aa81289934b71f2652482c747391917c15a3`; protected source-only evidence **46 rows / 33 sessions / 40 instruments**, protected return rows 0, holdout unconsumed.
 - Pre-Phase33 SEC XBRL fundamental-quality/accrual alpha: `ACCEPTED_NEGATIVE`, merge `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- Pre-Phase33 SEC Schedule 13D/13G beneficial-ownership alpha: `ACCEPTED_NEGATIVE`, accepted closeout evidence fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`, protected return rows 0, holdout unconsumed.
 
 All retained negative families remain closed to post-result rescue. Their protected outcome reads remained zero under their accepted closeouts.
 
