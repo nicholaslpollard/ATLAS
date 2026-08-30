@@ -22,10 +22,11 @@ SEC_ARCHIVE_ALLOWED_HOST = "www.sec.gov"
 SEC_ARCHIVE_PREFIX = "/Archives/edgar/"
 SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES = 64_000_000
 SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES = 20_000_000
+SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES = 256_000_000
 SEC_ARCHIVE_RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
-# SEC's published fair-access ceiling is 10 requests/second.  ATLAS deliberately
+# SEC's published fair-access ceiling is 10 calls/second. ATLAS deliberately
 # uses half that rate on the archive path to retain headroom while avoiding the
-# prior 1 request/second artificial bottleneck.  This changes transport cadence
+# prior 1 call/second artificial bottleneck. This changes transport cadence
 # only; source selection, content, chronology, identity, and scientific policy
 # are unchanged.
 SEC_ARCHIVE_MAX_REQUESTS_PER_SECOND = 5
@@ -94,10 +95,22 @@ class SECEDGARArchiveClient:
         self,
         *,
         contact_email: str | None = None,
+        submission_max_response_bytes: int = SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES,
         opener: Callable[..., Any] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
+        bounded_submission_limit = int(submission_max_response_bytes)
+        if (
+            bounded_submission_limit <= 0
+            or bounded_submission_limit > SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES
+        ):
+            raise ProviderError(
+                "SEC EDGAR archive submission response bound is outside allowed range "
+                f"(1..{SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES}): "
+                f"{submission_max_response_bytes!r}"
+            )
         self._user_agent = sec_declared_user_agent(contact_email)
+        self._submission_max_response_bytes = bounded_submission_limit
         self._opener = opener or urlopen
         self._sleep = sleeper
         self._cache: dict[str, SECArchiveTextDocument] = {}
@@ -119,16 +132,19 @@ class SECEDGARArchiveClient:
         if not (index_ok or submission_ok):
             raise ProviderError("SEC EDGAR archive request is outside approved index/submission paths")
 
-    @staticmethod
-    def _response_limit(url: str) -> int:
+    def _response_limit(self, url: str) -> int:
         path = urlsplit(url).path
         if path.endswith("/master.idx") and "/full-index/" in path:
             return SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES
-        return SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES
+        return self._submission_max_response_bytes
 
     @property
     def declared_user_agent(self) -> str:
         return self._user_agent
+
+    @property
+    def submission_max_response_bytes(self) -> int:
+        return self._submission_max_response_bytes
 
     def get_text(self, url: str) -> SECArchiveTextDocument:
         self._validate_url(url)
@@ -156,10 +172,16 @@ class SECEDGARArchiveClient:
                     raw = response.read(response_limit + 1)
                     content_encoding = response.headers.get("Content-Encoding")
                 if len(raw) > response_limit:
-                    raise ProviderError("SEC EDGAR archive response exceeded bounded size")
+                    raise ProviderError(
+                        "SEC EDGAR archive response exceeded bounded size: "
+                        f"url={url} limit_bytes={response_limit}"
+                    )
                 decoded = _decode_archive_content(raw, content_encoding)
                 if len(decoded) > response_limit:
-                    raise ProviderError("SEC EDGAR decoded archive response exceeded bounded size")
+                    raise ProviderError(
+                        "SEC EDGAR decoded archive response exceeded bounded size: "
+                        f"url={url} limit_bytes={response_limit}"
+                    )
                 text = decoded.decode("utf-8", errors="replace")
                 document = SECArchiveTextDocument(
                     source_url=url,
