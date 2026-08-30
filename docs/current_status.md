@@ -7,14 +7,17 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_sci
 ## Authority state
 
 - Accepted numbered foundation: through **Phase32**, merged into `main`.
+- Current Massive subscription: **Stocks Starter**.
+- Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE` after the preserved original `FEASIBILITY_FAIL`, its source-quality repair, frozen science, and development/closeout gates.
+- Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
 - Phase32 remains closed `ACCEPTED_NEGATIVE`: frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 instruments**; the preregistered 50-row minimum failed before protected returns were opened, protected return rows read remained 0, and the holdout remained unconsumed.
 - Phase26–32: scientifically valid `ACCEPTED_NEGATIVE`.
-- Completed pre-Phase33 SEC XBRL mechanism: `ACCEPTED_NEGATIVE`, merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`, with post-merge Ubuntu/Windows regression green.
+- XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`, merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`, with post-merge Ubuntu/Windows regression green.
 - Current pre-Phase33 branch: `alpha-gate-sec-beneficial-ownership-scientific-contract`.
 - Retained original source-feasibility mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
 - Current frozen scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
-- Accepted historical modern alpha support: **0**.
-- Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
+- Historical supported alpha remains 0.
+- Phase33 signal-to-trade entry condition: **not satisfied / blocked**; Phase33 remains blocked.
 - Master protected outcome window `2026-05-12..2026-08-11`: **unconsumed**.
 - Development stock return rows read in current mechanism: **0**.
 - Development SPY return rows read in current mechanism: **0**.
@@ -23,6 +26,24 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_sci
 - Automatic broker failover: **disabled**.
 
 Root cause before workaround remains mandatory. Failed research evidence must be preserved. No failed family may be rescued by changing thresholds, horizon, costs, features, direction, multiplicity, winner rules, or protected policy after results.
+
+## Retained Phase31 Form-4 provenance
+
+The original Phase31 feasibility result remains `FEASIBILITY_FAIL`; it is not rewritten by the later accepted source repair. The owning-layer root cause was a **Massive beta source-association/data-quality defect**, not a relaxation of the chronology invariant.
+
+Accepted Phase31 source-quality fingerprint:
+
+`2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`
+
+Accepted Phase31 source-quality policy:
+
+`RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`
+
+Frozen Phase31 scientific policy fingerprint:
+
+`e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`
+
+The source repair preserved raw evidence and quarantined contaminated accessions fail-closed. Phase31 produced zero survivors/winners/finalists/support and zero protected reads, then closed `ACCEPTED_NEGATIVE`; no post-result rescue is authorized.
 
 ## Beneficial-ownership source lineage
 
