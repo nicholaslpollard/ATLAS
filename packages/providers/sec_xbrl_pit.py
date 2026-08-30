@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Iterable, Mapping
 
 from packages.core.exceptions import ProviderError
 from packages.providers.sec_edgar import (
@@ -92,6 +92,129 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
     Amendment forms remain excluded.
     """
 
+    @staticmethod
+    def _validated_forms(allowed_forms: tuple[str, ...]) -> tuple[str, ...]:
+        if not allowed_forms or any(form not in XBRL_PIT_ALLOWED_FORMS for form in allowed_forms):
+            raise ProviderError(
+                "SEC XBRL PIT metadata allowed original forms exceeded exact 10-Q/10-K scope"
+            )
+        return allowed_forms
+
+    def filing_metadata_many(
+        self,
+        *,
+        cik: object,
+        requests: Iterable[Mapping[str, object]],
+        allowed_forms: tuple[str, ...] = XBRL_PIT_ALLOWED_FORMS,
+    ) -> tuple[SECOriginalFilingMetadata, ...]:
+        """Resolve many exact accessions with one root submissions read per issuer.
+
+        Historical archive shards are fetched only when at least one requested
+        accession/date requires that SEC-declared shard. This preserves the exact
+        accession/date/form authority while avoiding one root HTTP request per fact
+        accession during the full 200-issuer development reconstruction.
+        """
+
+        allowed = self._validated_forms(allowed_forms)
+        issuer_cik = _normalize_cik(cik)
+        normalized: list[tuple[str, str, str]] = []
+        seen: set[str] = set()
+        for request in requests:
+            accession = _validate_accession(str(request.get("accession_number") or ""))
+            filing_date = _validate_filing_date(
+                request.get("filing_date"), field="requested filing date"
+            )
+            expected_form = str(request.get("form") or "").strip()
+            if expected_form not in allowed:
+                raise ProviderError(
+                    f"SEC XBRL PIT requested accession {accession} has disallowed form {expected_form!r}"
+                )
+            if accession in seen:
+                raise ProviderError(f"SEC XBRL PIT batch contains duplicate accession {accession}")
+            seen.add(accession)
+            normalized.append((accession, filing_date, expected_form))
+        if not normalized:
+            return ()
+
+        root_url = sec_company_submissions_url(cik=issuer_cik)
+        root, _ = self.get_json(root_url)
+        filings = root.get("filings")
+        if not isinstance(filings, dict):
+            raise ProviderError("SEC company submissions response is missing filings object")
+
+        resolved: dict[str, SECOriginalFilingMetadata] = {}
+        unresolved: list[tuple[str, str, str, tuple[str, ...]]] = []
+        for accession, filing_date, expected_form in normalized:
+            row = _find_accession(filings.get("recent"), accession)
+            if row is not None:
+                record = _record_from_row(
+                    row=row,
+                    issuer_cik=issuer_cik,
+                    expected_accession=accession,
+                    expected_filing_date=filing_date,
+                    allowed_forms=allowed,
+                    source_url=root_url,
+                )
+                if record.form != expected_form:
+                    raise ProviderError(
+                        f"SEC submissions accession {accession} form mismatch: {record.form!r} != {expected_form!r}"
+                    )
+                resolved[accession] = record
+                continue
+            candidates = _select_declared_shard_candidates(
+                filings.get("files"), filing_date=filing_date
+            )
+            if not candidates:
+                raise ProviderError(
+                    "SEC submissions metadata does not cover requested XBRL accession/date within "
+                    f"the bounded declared-shard rollover rule: {accession} / {filing_date}"
+                )
+            unresolved.append(
+                (
+                    accession,
+                    filing_date,
+                    expected_form,
+                    tuple(sec_submission_shard_url(item.get("name")) for item in candidates),
+                )
+            )
+
+        shard_documents: dict[str, dict[str, Any]] = {}
+        for _, _, _, shard_urls in unresolved:
+            for shard_url in shard_urls:
+                if shard_url not in shard_documents:
+                    shard, _ = self.get_json(shard_url)
+                    shard_documents[shard_url] = shard
+
+        for accession, filing_date, expected_form, shard_urls in unresolved:
+            record: SECOriginalFilingMetadata | None = None
+            for shard_url in shard_urls:
+                shard = shard_documents[shard_url]
+                row = _find_accession(shard, accession)
+                if row is None and isinstance(shard.get("filings"), dict):
+                    row = _find_accession(shard["filings"].get("recent"), accession)
+                if row is None:
+                    continue
+                record = _record_from_row(
+                    row=row,
+                    issuer_cik=issuer_cik,
+                    expected_accession=accession,
+                    expected_filing_date=filing_date,
+                    allowed_forms=allowed,
+                    source_url=shard_url,
+                )
+                if record.form != expected_form:
+                    raise ProviderError(
+                        f"SEC submissions accession {accession} form mismatch: {record.form!r} != {expected_form!r}"
+                    )
+                break
+            if record is None:
+                raise ProviderError(
+                    f"SEC submissions metadata did not contain requested XBRL accession {accession}"
+                )
+            resolved[accession] = record
+
+        return tuple(resolved[accession] for accession, _, _ in normalized)
+
     def filing_metadata(
         self,
         *,
@@ -100,19 +223,33 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
         filing_date: str,
         allowed_forms: tuple[str, ...] = XBRL_PIT_ALLOWED_FORMS,
     ) -> SECOriginalFilingMetadata:
-        if not allowed_forms or any(form not in XBRL_PIT_ALLOWED_FORMS for form in allowed_forms):
-            raise ProviderError(
-                "SEC XBRL PIT metadata allowed original forms exceeded exact 10-Q/10-K scope"
-            )
+        records = self.filing_metadata_many(
+            cik=cik,
+            requests=(
+                {
+                    "accession_number": accession_number,
+                    "filing_date": filing_date,
+                    "form": allowed_forms[0] if len(allowed_forms) == 1 else "",
+                },
+            ),
+            allowed_forms=allowed_forms,
+        )
+        if len(allowed_forms) == 1:
+            return records[0]
+
+        # Preserve the original single-accession API for callers that allow both
+        # forms without declaring which one is expected. Batch callers always pass
+        # the exact expected form and are the preferred development path.
         issuer_cik = _normalize_cik(cik)
         expected_accession = _validate_accession(accession_number)
-        expected_filing_date = _validate_filing_date(filing_date, field="requested filing date")
+        expected_filing_date = _validate_filing_date(
+            filing_date, field="requested filing date"
+        )
         root_url = sec_company_submissions_url(cik=issuer_cik)
         root, _ = self.get_json(root_url)
         filings = root.get("filings")
         if not isinstance(filings, dict):
             raise ProviderError("SEC company submissions response is missing filings object")
-
         row = _find_accession(filings.get("recent"), expected_accession)
         if row is not None:
             return _record_from_row(
@@ -120,10 +257,9 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
                 issuer_cik=issuer_cik,
                 expected_accession=expected_accession,
                 expected_filing_date=expected_filing_date,
-                allowed_forms=allowed_forms,
+                allowed_forms=self._validated_forms(allowed_forms),
                 source_url=root_url,
             )
-
         candidates = _select_declared_shard_candidates(
             filings.get("files"), filing_date=expected_filing_date
         )
@@ -144,7 +280,7 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
                     issuer_cik=issuer_cik,
                     expected_accession=expected_accession,
                     expected_filing_date=expected_filing_date,
-                    allowed_forms=allowed_forms,
+                    allowed_forms=self._validated_forms(allowed_forms),
                     source_url=shard_url,
                 )
         raise ProviderError(
