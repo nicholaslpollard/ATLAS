@@ -121,6 +121,15 @@ def _nonblank(value: object, *, field: str) -> str:
     return text
 
 
+def _exact_nonblank_text(value: object, *, field: str) -> str:
+    """Require content while preserving exact whitespace for byte-level lineage hashes."""
+
+    text = str(value or "")
+    if not text.strip():
+        raise Phase32PredictorIndependentAcceptanceError(f"missing required {field}")
+    return text
+
+
 def _parse_date(value: object, *, field: str) -> date:
     text = _nonblank(value, field=field)
     try:
@@ -700,7 +709,9 @@ class Phase32PredictorIndependentAcceptance:
                 raise Phase32PredictorIndependentAcceptanceError(f"SEC filing-date mismatch: {key}")
             if sec.get("form") != "8-K":
                 raise Phase32PredictorIndependentAcceptanceError(f"SEC form mismatch: {key}")
-            source_record_json = _nonblank(sec.get("source_record_json"), field="SEC source_record_json")
+            source_record_json = _exact_nonblank_text(
+                sec.get("source_record_json"), field="SEC source_record_json"
+            )
             source_record_sha = _sha256_text(source_record_json)
             if sec.get("source_record_sha256") != source_record_sha or row.get("sec_source_record_sha256") != source_record_sha:
                 raise Phase32PredictorIndependentAcceptanceError(f"SEC source-record hash mismatch: {key}")
