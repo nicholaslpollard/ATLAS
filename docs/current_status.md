@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-29 (America/New_York). Phase32 is merged and closed `ACCEPTED_NEGATIVE` on target-machine source-only evidence. The independent finalist blindness/lineage audit reproduced `solvency_distress_short`, but its frozen protected population contained only 46 event rows versus the preregistered minimum of 50. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked. A materially different SEC XBRL fundamental-quality/accrual alpha gate is now open for source-only feasibility only.**
+**Last synchronized: 2026-08-29 (America/New_York). Phase32 is closed and merged `ACCEPTED_NEGATIVE` on target-machine source-only evidence. The independent finalist blindness/lineage audit reproduced `solvency_distress_short`, but its frozen protected population contained only 46 event rows versus the preregistered minimum of 50. Protected stock/SPY returns remain unread and the holdout remains unconsumed. Historical supported alpha remains 0 and Phase33 remains blocked. A materially different SEC XBRL fundamental-quality/accrual alpha gate is now open for source-only feasibility only.**
 
 Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_xbrl_fundamental_quality.md`, `docs/phase32_closeout.md`, retained Phase32 source/scientific records, `docs/phase_flow.md`, and accepted code/CI evidence before continuing.
 
