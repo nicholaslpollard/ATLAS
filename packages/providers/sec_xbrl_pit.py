@@ -101,7 +101,9 @@ class SECXBRLPITMetadataClient(SECEDGARClient):
         allowed_forms: tuple[str, ...] = XBRL_PIT_ALLOWED_FORMS,
     ) -> SECOriginalFilingMetadata:
         if not allowed_forms or any(form not in XBRL_PIT_ALLOWED_FORMS for form in allowed_forms):
-            raise ProviderError("SEC XBRL PIT metadata allowed_forms exceeded original 10-Q/10-K scope")
+            raise ProviderError(
+                "SEC XBRL PIT metadata allowed original forms exceeded exact 10-Q/10-K scope"
+            )
         issuer_cik = _normalize_cik(cik)
         expected_accession = _validate_accession(accession_number)
         expected_filing_date = _validate_filing_date(filing_date, field="requested filing date")
