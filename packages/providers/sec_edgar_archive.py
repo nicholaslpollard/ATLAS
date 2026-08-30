@@ -132,10 +132,19 @@ class SECEDGARArchiveClient:
         if not (index_ok or submission_ok):
             raise ProviderError("SEC EDGAR archive request is outside approved index/submission paths")
 
-    def _response_limit(self, url: str) -> int:
+    @staticmethod
+    def _response_limit(url: str) -> int:
+        """Return the historical/default archive response limit for a URL."""
         path = urlsplit(url).path
         if path.endswith("/master.idx") and "/full-index/" in path:
             return SEC_ARCHIVE_INDEX_MAX_RESPONSE_BYTES
+        return SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES
+
+    def _configured_response_limit(self, url: str) -> int:
+        """Apply an explicit per-client submission override without changing index policy."""
+        path = urlsplit(url).path
+        if path.endswith("/master.idx") and "/full-index/" in path:
+            return self._response_limit(url)
         return self._submission_max_response_bytes
 
     @property
@@ -152,7 +161,7 @@ class SECEDGARArchiveClient:
         if cached is not None:
             return cached
 
-        response_limit = self._response_limit(url)
+        response_limit = self._configured_response_limit(url)
         delay = SEC_ARCHIVE_MIN_REQUEST_INTERVAL_SECONDS
         last_error: Exception | None = None
         for attempt in range(1, SEC_EDGAR_MAX_ATTEMPTS + 1):

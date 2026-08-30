@@ -27,6 +27,8 @@ from packages.providers.sec_edgar_archive import (
     SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES,
     SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES,
     SECEDGARArchiveClient,
+    sec_archive_submission_url,
+    sec_quarter_master_index_url,
 )
 
 
@@ -50,8 +52,13 @@ def test_development_transport_repair_fingerprint_is_exact() -> None:
 
 def test_sec_archive_default_submission_bound_is_preserved() -> None:
     client = SECEDGARArchiveClient(contact_email="atlas@example.com", sleeper=lambda _: None)
+    submission_url = sec_archive_submission_url(
+        "edgar/data/1859310/0001193125-16-687002.txt"
+    )
     assert SEC_ARCHIVE_SUBMISSION_MAX_RESPONSE_BYTES == 20_000_000
     assert client.submission_max_response_bytes == 20_000_000
+    assert client._response_limit(submission_url) == 20_000_000
+    assert client._configured_response_limit(submission_url) == 20_000_000
 
 
 def test_scientific_submission_bound_is_bounded_and_explicit() -> None:
@@ -61,7 +68,15 @@ def test_scientific_submission_bound_is_bounded_and_explicit() -> None:
         submission_max_response_bytes=SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES,
         sleeper=lambda _: None,
     )
+    index_url = sec_quarter_master_index_url(year=2026, quarter=1)
+    submission_url = sec_archive_submission_url(
+        "edgar/data/1859310/0001193125-16-687002.txt"
+    )
     assert client.submission_max_response_bytes == 256_000_000
+    assert client._response_limit(index_url) == 64_000_000
+    assert client._response_limit(submission_url) == 20_000_000
+    assert client._configured_response_limit(index_url) == 64_000_000
+    assert client._configured_response_limit(submission_url) == 256_000_000
     with pytest.raises(ProviderError):
         SECEDGARArchiveClient(
             contact_email="atlas@example.com",
