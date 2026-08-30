@@ -117,7 +117,7 @@ Frozen scientific policy fingerprint:
 
 `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`
 
-Exactly five frozen hypotheses:
+Exactly five hypotheses are frozen:
 
 1. `equity_issuance_short`;
 2. `share_repurchase_long`;
