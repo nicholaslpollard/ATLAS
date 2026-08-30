@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-29 after Phase32 merge and opening the next materially different source-only alpha feasibility gate.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-29 after Phase32 merge, accepted XBRL source feasibility, and opening the frozen XBRL source-only PIT chronology/restatement/identity audit.**
 
 Read `docs/roadmap.md` first. One numbered phase is one acceptance gate; pre-phase alpha research gates must obey the same scientific/authority discipline.
 
@@ -40,6 +40,8 @@ As applicable, require syntax/compile, focused unit/contract/integration tests, 
 
 A pre-performance feasibility gate may separately report `FEASIBILITY_PASS` or `FEASIBILITY_FAIL`; either result grants **no alpha support**. A feasibility PASS authorizes only the next explicitly defined source/scientific gate.
 
+A source/chronology audit may separately report `AUDIT_PASS` or `AUDIT_FAIL`; either result still grants **no alpha support**. An AUDIT_PASS may authorize only the next explicitly frozen scientific contract before outcomes.
+
 ## Research rules
 
 Feasibility is not confirmation. Protected evidence remains untouched until candidate definitions and acceptance methodology are frozen. Repeated optimization and data snooping are first-class risks. PIT populations/identity and chronology are mandatory. Costs/frictions cannot be selected to make a result pass. Dependence among overlapping outcomes must be treated explicitly. Zero finalists is valid. A failed research family may not be retuned under a new phase label; the next phase must materially change the mechanism.
@@ -47,6 +49,8 @@ Feasibility is not confirmation. Protected evidence remains untouched until cand
 A protected source-only impossibility proof is a valid negative closeout path. When a frozen finalist cannot satisfy a preregistered sample gate from source-only counts, do not spend the holdout merely to observe returns that cannot produce an admissible PASS.
 
 A later mechanism may reuse accepted source infrastructure or a source-only issuer inventory without inheriting prior candidate/performance authority. Reused lineage must be explicit and limited to the exact non-performance facts required.
+
+A current aggregate regulatory API is not automatically a historical point-in-time dataset. When exact accession and authoritative publication/acceptance metadata exist, ATLAS must version facts by accession and reconstruct availability from that chronology rather than allow later restatements or comparative values to overwrite earlier state.
 
 ## Provider/broker/mutation authority
 
@@ -59,11 +63,15 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 - Phase32 development produced one frozen finalist, `solvency_distress_short`; the independent finalist blindness/lineage audit proved its protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum.
 - Protected returns remain unread. Phase32 protected return rows read = 0; holdout consumed = false.
 - Phase33 Signal-to-Trade Construction remains blocked because accepted historical `SUPPORTED` alpha remains zero.
-- The current pre-Phase33 gate is **SEC XBRL fundamental quality / accrual source-only feasibility** on branch `alpha-gate-sec-xbrl-fundamental-quality-feasibility`.
-- Current feasibility contract: `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`.
-- Current feasibility fingerprint: `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`.
-- The XBRL gate is materially different at the information/economic-mechanism level: standardized original 10-Q/10-K fundamentals rather than Phase32 8-K events.
-- Exactly 200 issuer CIKs are deterministically sampled from the accepted Phase32 source inventory using SHA-256 ordering; Phase32 labels, directions, taxonomy, performance, finalist, and protected evidence are forbidden inputs.
+- The materially different SEC XBRL fundamental-quality/accrual mechanism remains pre-Phase33 research and grants no downstream authority.
+- Its source-only feasibility contract `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes` returned **`FEASIBILITY_PASS`** on target-machine head `5a8c15f95417390d0d64ff240977adfb38a20c45`.
+- Accepted feasibility evidence: **200** successful Company Facts documents, **170** accrual-history-ready issuers, **92** profitability-history-ready issuers, zero target outcomes, zero protected returns, and an unconsumed holdout.
+- Accepted feasibility evidence fingerprint: `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`.
+- The current pre-Phase33 gate is the frozen **SEC XBRL PIT source/chronology/restatement/identity audit** on branch `alpha-gate-sec-xbrl-fundamental-quality-pit-audit`.
+- Current PIT audit fingerprint: `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`.
+- Exactly 40 feasibility-ready issuer CIKs are deterministically sampled; up to 5 evenly spaced original 10-Q/10-K accessions per issuer are audited.
+- Exact SEC accession/form/date/acceptance time controls chronology; later accession versions never overwrite earlier facts.
+- Massive issuer-to-instrument mapping uses exact CIK + point-in-time date and the accepted `instrument-identity-v4-no-issuer-level-medium-collapse` contract; zero or multiple eligible instruments fail closed.
 - Alpha hypotheses are **not yet frozen**. Market prices/returns, target outcomes, and protected returns are **forbidden / unread**.
-- A source feasibility PASS can authorize only an independent PIT filing/accession/acceptance-time, restatement, and identity audit before any finite hypothesis family is frozen.
+- An `AUDIT_PASS` can authorize only the next finite hypothesis/outcome/cost/statistical/protected-policy freeze before any market outcome is opened.
 - LIVE remains disabled and automatic broker failover remains disabled.
