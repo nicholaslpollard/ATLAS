@@ -8,7 +8,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-
 EXPECTED_SOURCE_MERGE = "bf673ad82886e7172db0d54a33dd9612fa9ea29e"
 EXPECTED_ENDPOINT = "/stocks/filings/vX/form-4"
 EXPECTED_PLAN = "Stocks Starter"
@@ -87,11 +86,7 @@ def main() -> int:
 
     _require(feasibility, EXPECTED_SOURCE_MERGE, "Phase30 source merge")
     _require(feasibility, f'PHASE31_DECLARED_MASSIVE_PLAN = "{EXPECTED_PLAN}"', "declared Massive plan")
-    _require(
-        feasibility,
-        'PHASE31_PUBLIC_AVAILABILITY_RULE = "NEXT_XNYS_SESSION_STRICTLY_AFTER_FILING_DATE"',
-        "conservative PIT rule",
-    )
+    _require(feasibility, 'PHASE31_PUBLIC_AVAILABILITY_RULE = "NEXT_XNYS_SESSION_STRICTLY_AFTER_FILING_DATE"', "conservative PIT rule")
     _require(feasibility, "PHASE31_ALPHA_HYPOTHESES_FROZEN = False", "hypotheses not frozen")
     _require(feasibility, "PHASE31_TARGET_OUTCOME_READS_ALLOWED = False", "target outcomes forbidden")
     _require(feasibility, "PHASE31_PROTECTED_OUTCOME_READS_ALLOWED = False", "protected outcomes forbidden")
@@ -104,18 +99,9 @@ def main() -> int:
         _require(feasibility, f'Phase31ProbeWindow("{label}", "{start}", "{end}")', f"probe {label}")
 
     forbidden_research_authority = (
-        "phase26_development",
-        "phase27",
-        "phase28",
-        "phase29",
-        "phase30_development",
-        "forward_return",
-        "directional_return",
-        "future_close",
-        "packages.execution",
-        "packages.brokers",
-        "Webull",
-        "AlpacaTrading",
+        "phase26_development", "phase27", "phase28", "phase29", "phase30_development",
+        "forward_return", "directional_return", "future_close", "packages.execution",
+        "packages.brokers", "Webull", "AlpacaTrading",
     )
     for forbidden in forbidden_research_authority:
         _forbid(feasibility, forbidden, "outcome/trading authority in feasibility")
@@ -173,7 +159,6 @@ def main() -> int:
     _require(repair_runner, "entire accession", "repair runner accession quarantine")
     _require(repair_runner, "Scientific-policy freeze authorized", "repair runner next authority")
     _require(repair_runner, "Phase32 entry satisfied", "repair runner downstream lock")
-
     _require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "original runner outcome boundary")
     _require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "original runner trading boundary")
 
@@ -208,27 +193,28 @@ def main() -> int:
     _require(repair_doc, "zero provider calls", "repair doc provider-free target")
     _require(repair_doc, "does **not** erase or reinterpret the original failed feasibility run", "repair doc provenance")
 
-    # Living continuation docs may advance. They must preserve the accepted Phase31
-    # historical result while accurately naming the current gate and authority boundary.
+    # Living continuation docs may advance beyond Phase31 and Phase32. They must preserve
+    # the accepted Phase31 result while accurately naming the current authority boundary.
     for doc_name, doc in (("roadmap", roadmap), ("current status", status), ("README", readme)):
         _require(doc, "Phase31", f"{doc_name} Phase31 provenance")
-        _require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} Phase31 final disposition")
-        _require(doc, "Phase32", f"{doc_name} current Phase32 continuation")
+        _require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} accepted-negative history")
+        _require(doc, "Phase32", f"{doc_name} Phase32 continuation provenance")
+        _require(doc, "Phase33", f"{doc_name} downstream authority boundary")
 
-    _require(roadmap, "Active Phase32 — SEC 8-K Material Corporate-Event Alpha", "roadmap current active phase")
+    _require(roadmap, "Accepted foundation through Phase32", "roadmap current accepted foundation")
+    _require(roadmap, "Historical supported alpha remains **zero**", "roadmap authority continuity")
     _require(roadmap, "Phase33 — Signal-to-Trade Construction", "roadmap current downstream gate")
-    _require(roadmap, "Historical supported alpha remains **zero**", "roadmap Phase31/32 authority continuity")
 
     _require(status, "Stocks Starter", "subscription status")
-    _require(status, "phase-32-sec-8k-material-event-alpha", "current active branch status")
+    _require(status, "phase-32-sec-8k-material-event-alpha", "current closeout branch status")
     _require(status, "FEASIBILITY_FAIL", "retained original feasibility status")
     _require(status, EXPECTED_SOURCE_QUALITY_FINGERPRINT, "retained Phase31 source repair fingerprint")
     _require(status, EXPECTED_SOURCE_QUALITY_POLICY, "retained Phase31 source repair policy")
     _require(status, "Massive beta source-association/data-quality defect", "retained Phase31 root cause")
     _require(status, "Phase31 produced zero survivors/winners/finalists/support and zero protected reads", "Phase31 final evidence")
+    _require(status, "Phase32 is closed", "current Phase32 closeout state")
 
-    _require(readme, "Active Phase32: SEC 8-K Material Corporate-Event Alpha", "README current active phase")
-    _require(readme, "Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`", "README retained Phase31 disposition")
+    _require(readme, "Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well", "README retained modern alpha dispositions")
     _require(readme, "Phase33 signal-to-trade remains blocked", "README downstream authority block")
     _require(readme, "LIVE and automatic broker failover remain disabled", "README live authority block")
 
@@ -241,7 +227,7 @@ def main() -> int:
     print("- root cause is classified before repair; no performance evidence was consulted")
     print("- source-quality repair preserves raw rows and quarantines contaminated accessions fail-closed")
     print("- repair classifier has no ticker/accession-specific exception and no numeric bad-row tolerance")
-    print("- feasibility/source-quality records stay immutable while living docs correctly advance to Phase32")
+    print("- Phase31 evidence stays immutable while living continuation docs accurately advance through Phase32 closeout")
     print("- Phase31 final ACCEPTED_NEGATIVE disposition and zero protected reads remain preserved")
     print("- Phase33/trading/LIVE authority remain blocked by the current continuation docs")
     return 0

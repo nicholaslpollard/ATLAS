@@ -195,29 +195,42 @@ def main() -> int:
         ):
             forbid(source, forbidden, f"outcome/trading authority in {source_name}")
 
+    # Frozen feasibility-era records retain the exact pre-freeze state.
     require(runner, "Alpha hypotheses: NOT YET FROZEN", "runner hypothesis boundary")
     require(runner, "Target/protected market outcomes: FORBIDDEN / UNREAD", "runner outcome boundary")
     require(runner, "Broker/order/PAPER/LIVE activity: DISABLED", "runner trading boundary")
     require(runner, "SEC fair-access identity: ATLAS + local", "runner fair-access declaration")
     require(runner, "data.sec.gov company submissions metadata", "runner SEC source")
     require(runner, "item-code provenance only", "runner item-code boundary")
+    require(incident, "SIXTH SOURCE-FORMAT FAILURE", "sixth source-format incident provenance")
+    require(incident, "524", "target response diagnostic provenance")
+    require(incident, "Submissions API", "official SEC source migration")
 
-    require(roadmap, "Accepted foundation through Phase31", "roadmap accepted foundation")
-    require(roadmap, "Active Phase32 — SEC 8-K Material Corporate-Event Alpha", "roadmap active phase")
+    # Living docs may advance beyond feasibility; require preserved Phase32 provenance and current authority.
+    for doc_name, doc in (
+        ("roadmap", roadmap),
+        ("status", status),
+        ("phase doc", phase_doc),
+        ("README", readme),
+    ):
+        require(doc, "Phase32", f"{doc_name} Phase32 provenance")
+        require(doc, "ACCEPTED_NEGATIVE", f"{doc_name} final Phase32 disposition")
+        require(doc, "solvency_distress_short", f"{doc_name} finalist provenance")
+        require(doc, "Phase33", f"{doc_name} downstream authority boundary")
+
+    require(roadmap, "Accepted foundation through Phase32", "roadmap accepted foundation")
     require(roadmap, "Phase33 — Signal-to-Trade Construction", "shifted signal-to-trade")
     require(roadmap, "Phase39 — Controlled LIVE Activation", "shifted LIVE phase")
-    require(status, "phase-32-sec-8k-material-event-alpha", "active branch status")
+    require(status, "phase-32-sec-8k-material-event-alpha", "closeout branch status")
     require(status, "data.sec.gov/submissions", "current official SEC source")
-    require(status, "v2", "current feasibility contract")
+    require(status, "v2", "retained feasibility contract")
     require(phase_doc, EXPECTED_MASSIVE_ENDPOINT, "Phase32 source endpoint")
     require(phase_doc, "data.sec.gov/submissions", "official SEC submissions source")
     require(phase_doc, EXPECTED_PUBLIC_RULE, "Phase32 timing rule")
     require(phase_doc, "zero market outcomes", "Phase32 feasibility blindness")
-    require(incident, "SIXTH SOURCE-FORMAT FAILURE", "sixth source-format incident provenance")
-    require(incident, "524", "target response diagnostic provenance")
-    require(incident, "Submissions API", "official SEC source migration")
-    require(flow, "Phase32 — SEC 8-K Material Corporate-Event Alpha", "active flow")
-    require(readme, "Active Phase32: SEC 8-K Material Corporate-Event Alpha", "README active phase")
+    require(flow, "Accepted project foundation: **through Phase32**", "current flow foundation")
+    require(flow, "Phase33", "current flow downstream boundary")
+    require(readme, "Phase32 is `ACCEPTED_NEGATIVE`", "README final Phase32 state")
     require(readme, "Phase39", "README downstream numbering")
     require(workflow, "Validate Phase 32 SEC 8-K feasibility contracts", "CI Phase32 step")
     require(workflow, "python scripts/validate_phase32.py", "CI Phase32 validator command")
@@ -226,11 +239,11 @@ def main() -> int:
 
     print("ATLAS Phase 32 SEC 8-K feasibility contracts: PASS")
     print(f"- source Phase31 merge is pinned: {EXPECTED_SOURCE_MERGE}")
-    print("- feasibility v2 uses official data.sec.gov company submissions metadata")
-    print("- exact accession, original 8-K form, filing date, acceptance time, and item codes reconcile")
-    print("- archived submissions lookup is filing-date bounded and capped at two shards")
-    print("- SEC requests use declared identity, gzip/deflate, JSON, and one request/second")
-    print("- hypotheses remain unfrozen and all target/protected market outcomes remain unread")
+    print("- feasibility v2 retains official data.sec.gov company submissions metadata")
+    print("- exact accession, original 8-K form, filing date, acceptance time, and item codes remain pinned")
+    print("- archived submissions lookup remains filing-date bounded and capped at two shards")
+    print("- SEC requests retain declared identity, gzip/deflate, JSON, and one request/second")
+    print("- feasibility-era unfrozen-hypothesis/zero-outcome state remains immutable while living docs advance through closeout")
     print("- Phase33 signal-to-trade and all broker/order/PAPER/LIVE authority remain blocked")
     return 0
 
