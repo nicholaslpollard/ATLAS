@@ -25,6 +25,10 @@ Frozen scientific policy fingerprint:
 
 Exactly five hypotheses remained frozen throughout Phase32: `equity_issuance_short`, `share_repurchase_long`, `financial_integrity_adverse_short`, `listing_distress_short`, and `solvency_distress_short`.
 
+Retained core feasibility contract:
+
+`phase32-feasibility-v2-sec-submissions-8k-metadata-no-market-outcomes`
+
 Authoritative source roles remained:
 
 - Massive `/stocks/filings/vX/index` for historical original-8-K discovery/ticker metadata;
