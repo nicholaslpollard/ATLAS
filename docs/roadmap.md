@@ -82,6 +82,8 @@ Modern alpha phases:
 - Phase30 public-news-arrival alpha — `ACCEPTED_NEGATIVE`.
 - Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
 
+Retained **Phase 31** feasibility provenance remains part of the audit trail: feasibility fingerprint `505716315cff51656083265644075856794ffc49f5b1f36652578ac5622f005d`; original disposition `FEASIBILITY_FAIL`; Massive `form4_transactions` source route; corrective source-quality runner `scripts/run_phase31_form4_source_quality_repair.py`. These are historical pre-repair markers and do not alter the final Phase31 `ACCEPTED_NEGATIVE` disposition.
+
 Phase31 PR #35 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`. It produced zero survivors/winners/finalists/support and zero protected reads.
 
 Historical supported alpha remains **zero**. A Phase32 development finalist is not enough to unblock signal-to-trade construction.
