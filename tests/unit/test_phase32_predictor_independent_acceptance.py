@@ -10,7 +10,9 @@ from packages.backtesting.phase32_predictor_acceptance import (
     PHASE32_TARGET_ACQUISITION_PREDICTOR_SHA256,
     Phase32PredictorIndependentAcceptanceError,
     _decision_and_exit_sessions,
+    _exact_nonblank_text,
     _rebuild_predictors,
+    _sha256_text,
     _stage_for_decision,
     reconcile_massive_text_rows,
 )
@@ -60,6 +62,13 @@ def test_independent_contract_pins_target_machine_artifacts() -> None:
     assert PHASE32_TARGET_ACQUISITION_PREDICTOR_SHA256 == (
         "c5b171557d173bdf0095aecfaf660b8660f2480d233fa9c5a55f138b86c1f3f9"
     )
+
+
+def test_exact_sec_source_record_hash_preserves_canonical_trailing_lf() -> None:
+    source_record_json = '{"accessionNumber":"0000000001-23-000001"}\n'
+    exact = _exact_nonblank_text(source_record_json, field="SEC source_record_json")
+    assert exact == source_record_json
+    assert _sha256_text(exact) != _sha256_text(exact.strip())
 
 
 def test_independent_text_reconciliation_accepts_ticker_only_multiplicity() -> None:
