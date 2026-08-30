@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32 merge, accepted XBRL source feasibility, and opening the frozen XBRL source-only PIT chronology/restatement/identity audit.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32 merge and completion of the SEC XBRL fundamental-quality/accrual research program as `ACCEPTED_NEGATIVE`.**
 
 Read `docs/roadmap.md` first. One numbered phase is one acceptance gate; pre-phase alpha research gates must obey the same scientific/authority discipline.
 
@@ -52,6 +52,8 @@ Feasibility is not confirmation. Protected evidence remains untouched until cand
 
 A protected source-only impossibility proof is a valid negative closeout path. When a frozen finalist cannot satisfy a preregistered sample gate from source-only counts, do not spend the holdout merely to observe returns that cannot produce an admissible PASS.
 
+A development-negative result is also a valid closeout path. When zero candidates survive the frozen development hard gates plus multiplicity correction, do not compute internal validation for non-winners, substitute runners-up, alter the hypothesis family, or open protected performance.
+
 A later mechanism may reuse accepted source infrastructure or a source-only issuer inventory without inheriting prior candidate/performance authority. Reused lineage must be explicit and limited to the exact non-performance facts required.
 
 A current aggregate regulatory API is not automatically a historical point-in-time dataset. When exact accession and authoritative publication/acceptance metadata exist, ATLAS must version facts by accession and reconstruct availability from that chronology rather than allow later restatements or comparative values to overwrite earlier state.
@@ -64,19 +66,18 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 
 - Accepted project foundation: **through Phase32**, merged into `main` at `69f8aa81289934b71f2652482c747391917c15a3` via PR #37.
 - Phases26–32 are `ACCEPTED_NEGATIVE`; accepted historical modern alpha remains **0**.
-- Phase32 development produced one frozen finalist, `solvency_distress_short`; the independent finalist blindness/lineage audit proved its protected source-only population was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum.
-- Protected returns remain unread. Phase32 protected return rows read = 0; holdout consumed = false.
+- Phase32 development produced one frozen finalist, `solvency_distress_short`; its source-only protected population was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum.
+- Phase32 protected return rows read = 0; holdout consumed = false.
+- The materially different SEC XBRL fundamental-quality/accrual research program has now also closed **`ACCEPTED_NEGATIVE`**.
+- XBRL feasibility contract `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes` returned `FEASIBILITY_PASS` with 200 successful Company Facts documents, 170 accrual-history-ready issuers, and 92 profitability-history-ready issuers.
+- XBRL PIT v1 audit failure is preserved: 139 unambiguous mappings / 28 issuers with >=3 mappings.
+- Targeted common-stock active-only identity repair fingerprint `e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f` passed with 171 mappings / 38 issuers and no threshold changes.
+- Frozen XBRL scientific fingerprint: `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`.
+- Accepted development head: `58e7c9b60ba59d250a7c91e282daefa4aef3c2b9`.
+- Accepted XBRL development result: `ACCEPTED_NEGATIVE_DEVELOPMENT` with **5,536** predictors, **3,963** usable development outcomes, **0 selection passers**, **0 winners**, and **0 internal finalists**.
+- Accepted XBRL closeout evidence fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- XBRL protected return rows read = **0**; protected holdout consumed = **false**.
+- Master protected window `2026-05-12..2026-08-11` remains unconsumed.
 - Phase33 Signal-to-Trade Construction remains blocked because accepted historical `SUPPORTED` alpha remains zero.
-- The materially different SEC XBRL fundamental-quality/accrual mechanism remains pre-Phase33 research and grants no downstream authority.
-- Its source-only feasibility contract `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes` returned **`FEASIBILITY_PASS`** on target-machine head `5a8c15f95417390d0d64ff240977adfb38a20c45`.
-- Retained feasibility fingerprint: `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`.
-- Accepted feasibility evidence: **200** successful Company Facts documents, **170** accrual-history-ready issuers, **92** profitability-history-ready issuers, zero target outcomes, zero protected returns, and an unconsumed holdout.
-- Accepted feasibility evidence fingerprint: `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`.
-- The current pre-Phase33 gate is the frozen **SEC XBRL PIT source/chronology/restatement/identity audit** on branch `alpha-gate-sec-xbrl-fundamental-quality-pit-audit`.
-- Current PIT audit fingerprint: `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`.
-- Exactly 40 feasibility-ready issuer CIKs are deterministically sampled; up to 5 evenly spaced original 10-Q/10-K accessions per issuer are audited.
-- Exact SEC accession/form/date/acceptance time controls chronology; later accession versions never overwrite earlier facts.
-- Massive issuer-to-instrument mapping uses exact CIK + point-in-time date and the accepted `instrument-identity-v4-no-issuer-level-medium-collapse` contract; zero or multiple eligible instruments fail closed.
-- Alpha hypotheses are **not yet frozen**. Market prices/returns, target outcomes, and protected returns are **forbidden / unread**.
-- An `AUDIT_PASS` can authorize only the next finite hypothesis/outcome/cost/statistical/protected-policy freeze before any market outcome is opened.
+- The next pre-Phase33 alpha research program must use a materially different economic/information mechanism; the closed XBRL family may not be retuned after results.
 - LIVE remains disabled and automatic broker failover remains disabled.
