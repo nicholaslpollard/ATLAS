@@ -99,6 +99,18 @@ Protected predictors may be reconstructed before a finalist exists solely for so
 
 Any non-empty protected return read consumes this mechanism's protected holdout. A failed finalist cannot be replaced by another candidate after that read.
 
+## Pre-outcome development transport repair
+
+The optimized target run reached `3500/5200` in the source-only predictor walk and then stopped because one official SEC complete-submission archive exceeded ATLAS's historical 20 MB submission-response cap. The failure occurred **before** `Source-only predictor reconstruction: PASS`, so development stock/SPY outcomes and protected returns remained unread.
+
+The accepted source-feasibility replay retains its historical/default **20 MB** complete-submission cap. The scientific acquisition runner now explicitly opts into a separate bounded **256 MB** complete-submission ceiling for legitimate large SEC archive submissions while keeping the existing 64 MB quarterly-index cap and 5 calls/second fair-access pacing.
+
+This repair changes no source sample, filing parser, `SUBJECT COMPANY` identity rule, decision-session chronology, ownership threshold, hypothesis, horizon, cost, split policy, bootstrap, multiplicity rule, robustness gate, finalist rule, or protected-return boundary. The scientific fingerprint remains `4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`, and the statistical development implementation fingerprint remains `0e90a65e6e2f6a7d7206296901054de3a2c97aaa204c80927a963c298c81060d`.
+
+The bounded acquisition repair is independently frozen as:
+
+`a4db8419364895c6861c4becbe3abf9b32ec044ceb4aff5cf14a7c9244368bdb`
+
 ## Authority boundary
 
 The scientific-policy and predictor stages read zero stock returns, zero SPY returns, and zero protected returns. Provider writes, broker reads/writes, orders, PAPER submission, LIVE writes, automation writes, and automatic broker failover remain disabled. Phase33 remains blocked until a strategy independently earns accepted historical `SUPPORTED` authority.
