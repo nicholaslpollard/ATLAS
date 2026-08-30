@@ -17,7 +17,7 @@ def _normalize_cik(value: object) -> str:
 
 
 class MassiveCIKPITReferenceProvider:
-    """Read-only CIK/date-filtered Massive stock reference lookup for XBRL PIT audit."""
+    """Read-only CIK/date-filtered Massive stock reference lookup for XBRL PIT work."""
 
     def __init__(
         self,
@@ -34,13 +34,22 @@ class MassiveCIKPITReferenceProvider:
         cik: object,
         as_of_date: date,
         include_inactive: bool = True,
+        security_type: str | None = None,
     ) -> list[dict[str, Any]]:
+        """Return a PIT CIK snapshot.
+
+        ``include_inactive=True`` is retained for exact reproducibility of the
+        original v1 source audit.  New tradable-common-equity work must use
+        :meth:`tradable_common_stock_snapshot`, because Massive evaluates
+        ``active`` on the queried historical date and ``market=stocks`` also
+        contains preferreds, warrants, rights, units, ETFs, and other instruments.
+        """
         expected_cik = _normalize_cik(cik)
         states = (True, False) if include_inactive else (True,)
         rows: list[dict[str, Any]] = []
         seen: set[tuple[Any, ...]] = set()
         for active in states:
-            params = {
+            params: dict[str, Any] = {
                 "market": "stocks",
                 "date": as_of_date.isoformat(),
                 "active": active,
@@ -49,6 +58,8 @@ class MassiveCIKPITReferenceProvider:
                 "limit": self.settings.massive.reference.page_limit,
                 "sort": "ticker",
             }
+            if security_type is not None:
+                params["type"] = security_type
             for page in self.client.iter_pages("/v3/reference/tickers", params):
                 results = page.get("results") or []
                 if not isinstance(results, list):
@@ -89,3 +100,17 @@ class MassiveCIKPITReferenceProvider:
             )
         )
         return rows
+
+    def tradable_common_stock_snapshot(
+        self,
+        *,
+        cik: object,
+        as_of_date: date,
+    ) -> list[dict[str, Any]]:
+        """Return only common stock actively traded on the queried PIT date."""
+        return self.cik_snapshot(
+            cik=cik,
+            as_of_date=as_of_date,
+            include_inactive=False,
+            security_type="CS",
+        )
