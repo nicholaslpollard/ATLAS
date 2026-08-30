@@ -56,6 +56,24 @@ Implementation:
 
 This gate has **no provider or network client dependency**. It reads the completed local source caches and immutable source/predictor artifacts only.
 
+## First target-machine audit stop — validator exact-byte defect
+
+The first target-machine independent audit stopped on filing entity:
+
+`0000003545-23-000037|0000003545|2023-12-14`
+
+with `SEC source-record hash mismatch` before any market outcome was opened. A read-only diagnostic then proved the cached SEC record and filing-entity evidence were internally consistent:
+
+- stored SEC source-record SHA-256: `27dff5440916338d8f7f18d9ddfd12f543c76b340d8122cc7c19e77a1b5a932e`;
+- filing-entity SEC SHA-256: the same value;
+- SHA-256 of the exact cached `source_record_json` string: the same value;
+- the canonical SEC source record intentionally ends with exactly one LF (`\n`);
+- hashing the same canonical JSON after stripping that LF instead produces `d8583708836dcd467867857342cb58f35c789464392fccde0369327a7aeb5ccb`.
+
+Root cause: the independent audit incorrectly passed `source_record_json` through its generic `_nonblank()` helper. That helper strips surrounding whitespace, so it removed the canonical trailing LF before hashing and created a false lineage mismatch. The source cache, filing-entity evidence, acquisition hashes, scientific policy, and protected boundary were not defective.
+
+Correction: exact byte-level lineage values now use `_exact_nonblank_text()`, which verifies nonblank content without altering whitespace before SHA-256 recomputation. Generic normalized identifiers continue using `_nonblank()`. A regression test pins preservation of the canonical trailing LF. No source artifact was rewritten and no frozen scientific rule changed.
+
 ## Mandatory independent checks
 
 The gate independently revalidates:
@@ -68,7 +86,7 @@ The gate independently revalidates:
 6. accession-wide filing-date consistency and the date-bearing `accession|issuer CIK|filing date` filing-entity key;
 7. accession-wide disclosure co-filer provenance while keeping candidate assignment issuer-specific;
 8. original-8-K index issuer membership, filing date, form, issuer/co-filer row counts, and ticker-source isolation;
-9. cached official SEC accession + issuer CIK + filing date + original `8-K` + acceptance-time lineage, including recomputation of the SEC source-record hash;
+9. cached official SEC accession + issuer CIK + filing date + original `8-K` + acceptance-time lineage, including exact-byte recomputation of the SEC source-record hash;
 10. Massive Text multiplicity from the local raw cache: one or more rows are allowed only when all non-ticker fields are identical, every ticker variant is retained, and both aggregate-row-set and shared-non-ticker hashes match;
 11. the provider-native ticker union from issuer disclosure, issuer index, and Massive Text evidence;
 12. point-in-time identity-v4 resolution independently from the cached historical reference wrappers at both decision and exit sessions, including exact filing-CIK equality, strong/medium-only identity, interval continuity, uniqueness, and fail-closed ambiguity;
