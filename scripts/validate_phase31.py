@@ -118,7 +118,7 @@ def main() -> int:
     _require(diagnostic, '"protected_return_rows_read": 0', "diagnostic zero protected returns")
     _require(diagnostic, '"chronology_violation_population_reproduced": len(violations) > 0', "violation reproduction")
     _require(diagnostic, "violation_transaction_code_counts", "transaction-code diagnostics")
-    _require(diagnostic, "violation_security_type_counts", "transaction-code diagnostics")
+    _require(diagnostic, "violation_security_type_counts", "security-type diagnostics")
     _require(diagnostic, "violation_10b5_1_counts", "10b5-1 diagnostics")
     _require(diagnostic, "violation_transaction_after_filing_gap_days", "gap diagnostics")
 
