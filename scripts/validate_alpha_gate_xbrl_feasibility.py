@@ -209,14 +209,13 @@ def main() -> int:
     )
     forbid(runner, "argparse", "operator scope override")
 
-    # Living documents are allowed to advance beyond feasibility. They must retain
-    # immutable feasibility lineage/evidence while proving that the completed XBRL
-    # family closed without protected-return or Phase33 authority.
+    # Evidence-bearing living docs retain the complete historical feasibility
+    # lineage. The operational phase-flow doc records final authority/cadence state
+    # without being forced to duplicate every archival fingerprint.
     for text, label in (
         (spec, "XBRL mechanism spec"),
         (roadmap, "roadmap"),
         (status, "current status"),
-        (flow, "phase flow"),
         (readme, "README"),
     ):
         require(text, EXPECTED_PHASE32_MERGE, f"{label} Phase32 merged lineage")
@@ -244,12 +243,17 @@ def main() -> int:
         require(text, "ACCEPTED_NEGATIVE", f"{label} final XBRL disposition")
         require(text, "Phase33", f"{label} downstream boundary")
 
+    require(flow, "Accepted project foundation: **through Phase32**", "phase flow numbered boundary")
+    require(flow, "FEASIBILITY_PASS", "phase flow retained feasibility state")
+    require(flow, EXPECTED_CLOSEOUT_EVIDENCE_FINGERPRINT, "phase flow final XBRL closeout fingerprint")
+    require(flow, "XBRL protected return rows read = **0**", "phase flow protected-return boundary")
+    require(flow, "Phase33", "phase flow downstream boundary")
+
     require(spec, "Only issuer CIK discovery was reused", "CIK-only Phase32 reuse")
     require(spec, "target outcome rows read: **0**", "historical feasibility outcome blindness")
     require(spec, "protected return rows read: **0**", "protected-return boundary")
     require(roadmap, "Completed Pre-Phase33 SEC XBRL", "roadmap completed XBRL state")
     require(status, "XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`", "status completed XBRL state")
-    require(flow, "XBRL protected return rows read = **0**", "flow protected-return boundary")
     require(readme, "XBRL protected return rows read = **0**", "README protected-return boundary")
 
     require(workflow, "validate_alpha_gate_xbrl_feasibility.py", "dedicated feasibility validator CI")
@@ -265,7 +269,7 @@ def main() -> int:
     print(f"- accepted target feasibility evidence fingerprint: {EXPECTED_ACCEPTED_EVIDENCE_FINGERPRINT}")
     print("- accepted target source evidence: 200 successful documents / 170 accrual-ready / 92 profitability-ready")
     print("- frozen feasibility implementation remains zero-outcome and unchanged after later XBRL stages")
-    print("- living docs now retain feasibility lineage while recording final XBRL ACCEPTED_NEGATIVE closeout")
+    print("- evidence-bearing docs retain historical lineage; operational phase flow retains final authority state")
     print("- protected returns remain unread; Phase33 remains blocked")
     print("- provider writes, broker/order/PAPER/LIVE authority and automatic failover remain disabled")
     return 0
