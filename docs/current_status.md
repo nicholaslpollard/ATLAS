@@ -7,8 +7,9 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_beneficial_ownership_sci
 ## Authority state
 
 - Accepted numbered foundation: through **Phase32**, merged into `main`.
+- Phase32 remains closed `ACCEPTED_NEGATIVE`: frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 instruments**; the preregistered 50-row minimum failed before protected returns were opened, protected return rows read remained 0, and the holdout remained unconsumed.
 - Phase26–32: scientifically valid `ACCEPTED_NEGATIVE`.
-- Completed pre-Phase33 SEC XBRL mechanism: `ACCEPTED_NEGATIVE`, merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, with post-merge Ubuntu/Windows regression green.
+- Completed pre-Phase33 SEC XBRL mechanism: `ACCEPTED_NEGATIVE`, merged at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`, with post-merge Ubuntu/Windows regression green.
 - Current pre-Phase33 branch: `alpha-gate-sec-beneficial-ownership-scientific-contract`.
 - Current mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
 - Accepted historical modern alpha support: **0**.
@@ -142,8 +143,8 @@ Do **not** start another alpha mechanism, alter science, delete cache, or manual
 ## Retained accepted-negative provenance
 
 - Phase31 SEC Form-4 insider-transaction alpha: `ACCEPTED_NEGATIVE`, merge `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
-- Phase32 SEC 8-K material-event alpha: `ACCEPTED_NEGATIVE`, merge `69f8aa81289934b71f2652482c747391917c15a3`.
-- Pre-Phase33 SEC XBRL fundamental-quality/accrual alpha: `ACCEPTED_NEGATIVE`, merge `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`.
+- Phase32 SEC 8-K material-event alpha: `ACCEPTED_NEGATIVE`, merge `69f8aa81289934b71f2652482c747391917c15a3`; protected source-only evidence **46 rows / 33 sessions / 40 instruments**, protected return rows 0, holdout unconsumed.
+- Pre-Phase33 SEC XBRL fundamental-quality/accrual alpha: `ACCEPTED_NEGATIVE`, merge `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, accepted closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 
 All retained negative families remain closed to post-result rescue. Their protected outcome reads remained zero under their accepted closeouts.
 

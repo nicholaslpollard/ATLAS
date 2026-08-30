@@ -46,10 +46,11 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 ## Current state — 2026-08-30 (America/New_York)
 
 - Accepted numbered foundation: **through Phase32**, merged into `main`.
+- **Phase32 is `ACCEPTED_NEGATIVE`.** Its frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 instruments**; the preregistered 50-row minimum failed before protected returns were opened. Protected return rows read remained 0 and the holdout remained unconsumed.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE` research results.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
-- The pre-Phase33 SEC XBRL fundamental-quality/accrual family also closed `ACCEPTED_NEGATIVE` and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; post-merge Ubuntu/Windows regression passed.
+- The pre-Phase33 SEC XBRL fundamental-quality/accrual family also closed `ACCEPTED_NEGATIVE` and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; accepted XBRL closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`; post-merge Ubuntu/Windows regression passed.
 - Historical supported modern alpha remains **0**; Phase33 Signal-to-Trade remains blocked.
 - Master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 - LIVE and automatic broker failover remain disabled.
