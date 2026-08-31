@@ -37,6 +37,14 @@ The audit nevertheless failed exactly two frozen zero-tolerance source-integrity
 
 All other frozen source gates passed. Target market outcomes read = **0**. Protected return rows read = **0**. Protected holdout consumed = **false**.
 
+## Data-quality and refetch boundary
+
+This result is a **source-quality limitation**, but it is not evidence of corrupted ATLAS bytes, a stale local database, or a damaged cache. The V2 diagnostic re-fetched all 300 official SEC Company Facts documents and reproduced **300/300 exact Gate0 source hashes**. It also re-read official SEC submissions metadata for all 300 issuers and reproduced the same six contradictions with zero missing accession metadata.
+
+Therefore purging the Parquet/data lake, deleting SEC caches, or blindly refetching the same endpoints is neither required nor scientifically justified. A fresh official-source replay already reproduced the evidence. The owning issue is semantic/provenance inconsistency or ambiguity **between and within official SEC representations**: multiple qualifying contexts may exist for one accession/period, Company Facts `filed` may differ from Submissions `filingDate`, and Company Facts may label a fact `10-Q` when the exact accession is officially `10-Q/A` in Submissions.
+
+ATLAS should preserve the raw official values and provenance rather than overwrite one representation with another. Any future canonicalization rule must be defined prospectively under a new contract before governed outcomes are read.
+
 ## Why this cannot be repaired under v1
 
 The frozen original-accession rule requires the earliest retained non-amendment `10-Q` or `10-K` accession to have an **unambiguous direct-quarter context and value**. The V2 diagnostic proved three cases where the same earliest accession contained multiple qualifying direct-quarter contexts. Two also had different diluted-EPS values. Choosing one after observing the failure would add a new source-selection rule that was not preregistered.
