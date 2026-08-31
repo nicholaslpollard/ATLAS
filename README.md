@@ -52,12 +52,14 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
 - Pre-Phase33 SEC XBRL fundamental-quality/accrual closed `ACCEPTED_NEGATIVE` and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- XBRL protected return rows read = **0**.
 - SEC Schedule 13D/13G beneficial ownership closed `ACCEPTED_NEGATIVE` and merged through PR #39 at `208529c5562920cc0b2bcf2bae546e2b9af0a25b`; closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
 - FINRA consolidated short-interest v1 closed `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT` before any market outcome read. It reconstructed **19,343** predictor rows; the sole frozen failure was `rapid_short_cover_crowded_long -> protected_min_rows`, with **257** protected rows versus minimum **300** while sessions/instruments passed. Closeout fingerprint `bdd494a01ed23d891c460e353831cba6f9cf010c5bf38cf1c9c527b4abe8b565`.
 - SEC diluted-EPS earnings-innovation v1 closed `ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE` before any market outcome read. Feasibility passed, but the frozen PIT audit found **3 ambiguous earliest period contexts** and **6 accession/form/filing-date contradictions**. Closeout fingerprint `29e72b427aa63c6ae2e0c25917fad0c9c948f2a2cd97c0d51f390ecd343baacc`.
 - Earnings-innovation V2 diagnostic re-fetched all **300/300** Company Facts documents with exact Gate0 hashes and reproduced the same SEC Submissions contradictions. This is an upstream source-semantics/provenance limitation, **not local ATLAS cache/database corruption**; blind lake/cache deletion or refetch is not a repair.
 - SEC earnings-innovation target/development outcome rows read = **0**; protected return rows read = **0**; protected holdout consumed = **false**.
 - Historical supported modern alpha remains **0**; Phase33 Signal-to-Trade remains blocked.
+- Phase33 signal-to-trade remains blocked.
 - Master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 - LIVE and automatic broker failover remain disabled.
 
