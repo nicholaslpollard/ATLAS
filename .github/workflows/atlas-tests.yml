@@ -314,5 +314,8 @@ jobs:
       - name: Validate pre-Phase33 FINRA short-interest accepted-negative closeout
         run: python scripts/validate_alpha_gate_finra_short_interest_closeout.py
 
+      - name: Validate pre-Phase33 SEC earnings-innovation source feasibility
+        run: python scripts/validate_alpha_gate_sec_earnings_innovation_feasibility.py
+
       - name: Run tests
         run: python -m pytest -q
