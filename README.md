@@ -47,6 +47,7 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 
 - Accepted numbered foundation: **through Phase32**, merged into `main`.
 - Phase32 is `ACCEPTED_NEGATIVE`; frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments**, protected returns remained unread, and the holdout remained unconsumed.
+- Phase32 protected return rows read = 0; protected holdout consumed = false.
 - Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE`; historical supported modern alpha remains **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
