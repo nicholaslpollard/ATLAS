@@ -41,8 +41,11 @@ Root cause before workaround remains mandatory. Failed/negative research evidenc
 - final disposition: `ACCEPTED_NEGATIVE`;
 - PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`;
 - scientific fingerprint: `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`;
+- Exactly five hypotheses remained frozen throughout Phase32.
 - frozen finalist: `solvency_distress_short`;
+- finalist blindness / lineage audit fingerprint: `c047dd1800877ed1d268b2d8e4c4fc1bfe158fcf715caedc275405f1bf01853e`;
 - protected source-only population: **46 event rows / 33 signal sessions / 40 unique instruments** versus minimum **50 / 20 / 20**;
+- Protected stock/SPY returns remain unread.
 - protected return rows read: **0**; holdout consumed: **false**.
 
 ### Pre-Phase33 — SEC XBRL fundamental quality/accruals
