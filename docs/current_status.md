@@ -25,13 +25,16 @@ Root cause before workaround remains mandatory. Failed/negative research evidenc
 
 ### Phase31 — SEC Form 4 insider transactions
 
+- Phase31 Form-4 alpha closed `ACCEPTED_NEGATIVE`;
 - final disposition: `ACCEPTED_NEGATIVE`;
 - merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`;
+- original feasibility status: `FEASIBILITY_FAIL`;
 - original feasibility failure remains preserved;
 - owning-layer root cause: Massive beta source-association/data-quality defect;
 - source-quality fingerprint: `2358fbd00b85795d49faab27602e99418314e41bd4ff0558fab18282b7bcaf83`;
+- source-quality policy: `RAW_PRESERVED_FAIL_CLOSED_ACCESSION_CHRONOLOGY_QUARANTINE`;
 - scientific fingerprint: `e6364e797efe58ffb10fb6950eaf0f38d1553d7f0014dd0fde0413e0b95c5c67`;
-- zero survivors/winners/finalists/support; zero protected reads.
+- Phase31 produced zero survivors/winners/finalists/support and zero protected reads.
 
 ### Phase32 — SEC 8-K material corporate events
 
@@ -43,6 +46,8 @@ Root cause before workaround remains mandatory. Failed/negative research evidenc
 - protected return rows read: **0**; holdout consumed: **false**.
 
 ### Pre-Phase33 — SEC XBRL fundamental quality/accruals
+
+XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`.
 
 Mechanism: `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
 
