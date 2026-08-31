@@ -51,6 +51,7 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE`; historical supported modern alpha remains **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
+- Phase32 protected return rows read = 0; holdout consumed = false.
 - Pre-Phase33 SEC XBRL fundamental-quality/accrual closed `ACCEPTED_NEGATIVE` and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 - XBRL protected return rows read = **0**.
 - SEC Schedule 13D/13G beneficial ownership closed `ACCEPTED_NEGATIVE` and merged through PR #39 at `208529c5562920cc0b2bcf2bae546e2b9af0a25b`; closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
