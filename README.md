@@ -47,10 +47,12 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 
 - Accepted numbered foundation: **through Phase32**, merged into `main`.
 - Phase32 is `ACCEPTED_NEGATIVE`; frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments**, protected returns remained unread, and the holdout remained unconsumed.
+- Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE`; historical supported modern alpha remains **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
 - Pre-Phase33 SEC XBRL fundamental-quality/accrual closed `ACCEPTED_NEGATIVE` and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; accepted closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- XBRL protected return rows read = **0**; protected holdout consumed = **false**.
 - SEC Schedule 13D/13G beneficial ownership closed `ACCEPTED_NEGATIVE` and merged through PR #39 at `208529c5562920cc0b2bcf2bae546e2b9af0a25b`; accepted closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
 - FINRA consolidated short-interest v1 is now closed `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT` before any market outcome read. It reconstructed **19,343** predictor rows across **116 FINRA files** and **232 Massive PIT snapshots**. The sole frozen failure was `rapid_short_cover_crowded_long -> protected_min_rows`: **257** protected rows versus minimum **300**, while **26/16** signal sessions and **211/200** unique instruments passed.
 - FINRA predictor report SHA-256: `56479707945a59752aeb2056f3cfbcfd2df1e4a87ada31c9e8e6d3ed93f314cd`.
@@ -59,6 +61,7 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 - FINRA accepted closeout evidence fingerprint: `bdd494a01ed23d891c460e353831cba6f9cf010c5bf38cf1c9c527b4abe8b565`.
 - FINRA target/development outcome rows read = **0**; protected return rows read = **0**; protected holdout consumed = **false**.
 - Historical supported modern alpha remains **0**; Phase33 Signal-to-Trade remains blocked.
+- Phase33 signal-to-trade remains blocked because accepted historical `SUPPORTED` alpha remains zero.
 - Master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 - LIVE and automatic broker failover remain disabled.
 
