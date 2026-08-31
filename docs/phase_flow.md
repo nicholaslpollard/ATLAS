@@ -1,6 +1,6 @@
 # ATLAS Phase Execution Flow
 
-**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32 merge, accepted-negative SEC XBRL closeout/merge, and accepted-negative SEC Schedule 13D/13G beneficial-ownership development/closeout.**
+**Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32, SEC XBRL, SEC Schedule 13D/13G beneficial ownership, and FINRA consolidated short-interest v1 accepted-negative closeouts.**
 
 Read `docs/roadmap.md` first. One numbered phase is one acceptance gate; pre-phase alpha research gates must obey the same scientific/authority discipline.
 
@@ -46,15 +46,19 @@ A pre-performance feasibility gate may separately report `FEASIBILITY_PASS` or `
 
 A source/chronology audit may separately report `AUDIT_PASS` or `AUDIT_FAIL`; either result still grants **no alpha support**. An AUDIT_PASS may authorize only the next explicitly frozen scientific contract before outcomes.
 
+A frozen source-only scientific gate may close `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT` when its preregistered protected sample requirements cannot be met and market outcomes remain unread. This is an accepted negative source-capacity result, not a performance result.
+
 ## Research rules
 
 Feasibility is not confirmation. Protected evidence remains untouched until candidate definitions and acceptance methodology are frozen. Repeated optimization and data snooping are first-class risks. PIT populations/identity and chronology are mandatory. Costs/frictions cannot be selected to make a result pass. Dependence among overlapping outcomes must be treated explicitly. Zero finalists is valid. A failed research family may not be retuned under a new phase label; the next phase must materially change the mechanism.
 
-A protected source-only impossibility proof is a valid negative closeout path. When a frozen finalist cannot satisfy a preregistered sample gate from source-only counts, do not spend the holdout merely to observe returns that cannot produce an admissible PASS.
+A protected source-only impossibility proof is a valid negative closeout path. When a frozen candidate/finalist cannot satisfy a preregistered sample gate from source-only counts, do not spend development or protected market outcomes merely to observe returns that cannot produce an admissible PASS.
+
+If multiplicity was frozen across a finite hypothesis family, a source-only failure in one member cannot be repaired after observation by silently dropping that member and relabeling the experiment. A smaller or otherwise changed family is a new scientific version and must be preregistered before outcomes.
 
 A development-negative result is also a valid closeout path. When zero candidates survive the frozen development hard gates plus multiplicity correction, do not compute internal validation for non-winners, substitute runners-up, alter the hypothesis family, or open protected performance.
 
-A later mechanism may reuse accepted source infrastructure or a source-only issuer inventory without inheriting prior candidate/performance authority. Reused lineage must be explicit and limited to the exact non-performance facts required.
+A later mechanism may reuse accepted source infrastructure or a source-only issuer/instrument inventory without inheriting prior candidate/performance authority. Reused lineage must be explicit and limited to the exact non-performance facts required.
 
 A current aggregate regulatory API is not automatically a historical point-in-time dataset. When exact accession and authoritative publication/acceptance metadata exist, ATLAS must version facts by accession and reconstruct availability from that chronology rather than allow later restatements or comparative values to overwrite earlier state.
 
@@ -66,30 +70,27 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 
 - Accepted project foundation: **through Phase32**, merged into `main` at `69f8aa81289934b71f2652482c747391917c15a3` via PR #37.
 - Phases26–32 are `ACCEPTED_NEGATIVE`; accepted historical modern alpha remains **0**.
-- Phase32 development produced one frozen finalist, `solvency_distress_short`; its source-only protected population was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum.
+- Phase32 frozen finalist: `solvency_distress_short`.
+- Phase32 protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments** against **50 / 20 / 20**.
 - Phase32 protected return rows read = 0; holdout consumed = false.
-- The materially different SEC XBRL fundamental-quality/accrual research program closed **`ACCEPTED_NEGATIVE`** and merged via PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; post-merge full regression passed on Ubuntu and Windows.
-- XBRL feasibility contract `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes` returned `FEASIBILITY_PASS` with 200 successful Company Facts documents, 170 accrual-history-ready issuers, and 92 profitability-history-ready issuers.
-- XBRL PIT v1 audit failure is preserved: 139 unambiguous mappings / 28 issuers with >=3 mappings.
-- Targeted common-stock active-only identity repair fingerprint `e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f` passed with 171 mappings / 38 issuers and no threshold changes.
-- Frozen XBRL scientific fingerprint: `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`.
-- Accepted development head: `58e7c9b60ba59d250a7c91e282daefa4aef3c2b9`.
-- Accepted XBRL development result: `ACCEPTED_NEGATIVE_DEVELOPMENT` with **5,536** predictors, **3,963** usable development outcomes, **0 selection passers**, **0 winners**, and **0 internal finalists**.
-- Accepted XBRL closeout evidence fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- Protected stock/SPY returns remain unread for Phase32; Phase33 remains blocked.
+- SEC XBRL source feasibility state: `FEASIBILITY_PASS`.
+- XBRL v1 audit failure is preserved.
+- SEC XBRL fundamental-quality/accrual closed `ACCEPTED_NEGATIVE`, merge `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 - XBRL protected return rows read = **0**; protected holdout consumed = **false**.
-- Retained beneficial-ownership source-feasibility mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
-- Retained beneficial-ownership source-only feasibility fingerprint: `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
-- Beneficial-ownership targeted source repair passed before outcomes with 43/43 SEC quarterly indexes, 200/200 complete submissions, 195 unique authoritative subject CIKs, 200/200 decision sessions, and 142 unambiguous PIT active common-stock mappings.
-- Beneficial-ownership frozen scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
-- Beneficial-ownership scientific fingerprint: `4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`.
-- The earlier 3500/5200 predictor transport failure remains preserved as pre-outcome evidence; the valid source cache was retained and the narrow 256 MB scientific submission ceiling repair changed no science.
-- Accepted beneficial-ownership development head: `067dc13429c22dc4e789959f56644423f0947946`.
-- Repaired beneficial-ownership source-only reconstruction passed with **3,652 predictors**: **2,763 development** and **889 protected-source-only** rows, with zero market-outcome rows read before development opened.
-- Accepted beneficial-ownership development result: `ACCEPTED_NEGATIVE_DEVELOPMENT` with **2,412** usable development outcomes, **0 selection passers**, **0 winners**, **0 internal finalists**, and **0 protected-return eligible finalists**.
-- Accepted beneficial-ownership closeout evidence fingerprint: `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
-- Beneficial-ownership protected return rows read = **0**; protected holdout consumed = **false**.
-- The beneficial-ownership family is closed `ACCEPTED_NEGATIVE`; post-result ownership-threshold, form/amendment, direction, taxonomy/filter, horizon, cost, sample, multiplicity, winner/finalist, or protected-policy retuning is forbidden.
+- Beneficial-ownership source-only mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
+- Beneficial-ownership frozen feasibility fingerprint: `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+- The beneficial-ownership family is closed `ACCEPTED_NEGATIVE`; merge `208529c5562920cc0b2bcf2bae546e2b9af0a25b`, closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
+- FINRA short-interest source feasibility passed on 12 frozen anchors; PIT audit passed with **136,731 immutable exchange-listed rows**, **63,761 PIT-eligible rows**, and **8,054 unique PIT instruments**.
+- FINRA scientific fingerprint: `0b32d59677e86544777807525cd4aba13dd36fd0fcfd7744458556205561d13f`.
+- The full FINRA predictor reconstruction processed **116 source files / 232 Massive PIT snapshots** and produced **19,343** rows: **14,841 DEVELOPMENT / 4,502 PROTECTED**.
+- Three frozen FINRA hypotheses passed every source-count gate. `rapid_short_cover_crowded_long` had **257 protected rows versus 300 required**, while **26 versus 16 sessions** and **211 versus 200 instruments** passed.
+- FINRA source disposition: `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`.
+- FINRA accepted probe evidence fingerprint: `c624da82b45fb8d530c2400262598f266ec6309e614a0dcd135b38d9ba5518ce`.
+- FINRA accepted closeout evidence fingerprint: `bdd494a01ed23d891c460e353831cba6f9cf010c5bf38cf1c9c527b4abe8b565`.
+- FINRA development/target outcome rows read = **0**; protected return rows read = **0**; holdout consumed = **false**.
+- The exact FINRA four-hypothesis v1 family is permanently closed to post-result pruning or threshold/multiplicity retuning.
 - Master protected window `2026-05-12..2026-08-11` remains unconsumed.
 - Phase33 Signal-to-Trade Construction remains blocked because accepted historical `SUPPORTED` alpha remains zero.
-- The next alpha family must use a materially different economic/information mechanism; accepted-negative beneficial-ownership performance cannot be repackaged as support.
+- The next alpha family must use a materially different economic/information mechanism.
 - LIVE remains disabled and automatic broker failover remains disabled.
