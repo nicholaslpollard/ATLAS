@@ -105,7 +105,9 @@ Phase31 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 
 Phase32 merged through PR #37 at `69f8aa81289934b71f2652482c747391917c15a3`. Its frozen finalist `solvency_distress_short` had protected source-only evidence **46 rows / 33 sessions / 40 instruments** versus the frozen **50 / 20 / 20** minimum. Protected stock/SPY returns remained unread; holdout unconsumed.
 
-Historical supported alpha remains **0**.
+The Phase32 closure requires a materially different point-in-time fundamental-information mechanism for its immediate successor family. Later research may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
+
+Historical supported alpha remains **zero**. Historical supported modern alpha remains **0**.
 
 ## 6. Completed pre-Phase33 SEC XBRL mechanism — `ACCEPTED_NEGATIVE`
 
@@ -119,7 +121,7 @@ Mechanism: `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY
 - closeout evidence fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`;
 - merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`.
 
-## 7. Completed pre-Phase33 SEC Schedule 13D/13G beneficial ownership — `ACCEPTED_NEGATIVE`
+## 7. Completed Pre-Phase33 SEC Schedule 13D/13G beneficial ownership — `ACCEPTED_NEGATIVE`
 
 Scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
 
