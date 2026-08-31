@@ -72,6 +72,7 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 - Phases26–32 are `ACCEPTED_NEGATIVE`; accepted historical modern alpha remains **0**.
 - Phase32 protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments** against **50 / 20 / 20**; protected returns remained unread.
 - SEC XBRL fundamental-quality/accrual closed `ACCEPTED_NEGATIVE`, merge `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- XBRL protected return rows read = **0**; protected holdout consumed = **false**.
 - The beneficial-ownership family is closed `ACCEPTED_NEGATIVE`; merge `208529c5562920cc0b2bcf2bae546e2b9af0a25b`, closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
 - FINRA short-interest source feasibility passed on 12 frozen anchors; PIT audit passed with **136,731 immutable exchange-listed rows**, **63,761 PIT-eligible rows**, and **8,054 unique PIT instruments**.
 - FINRA scientific fingerprint: `0b32d59677e86544777807525cd4aba13dd36fd0fcfd7744458556205561d13f`.
