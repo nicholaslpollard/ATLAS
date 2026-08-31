@@ -36,11 +36,13 @@ jobs:
           python -m pip install -r requirements.lock
           python -m pip install --no-deps -e .
           python -m pip check
-      - name: Compile SEC earnings-innovation feasibility package
-        run: python -m compileall -q packages/providers/sec_xbrl.py packages/backtesting/alpha_gate_sec_earnings_innovation_feasibility.py scripts/run_alpha_gate_sec_earnings_innovation_feasibility.py scripts/validate_alpha_gate_sec_earnings_innovation_feasibility.py tests/unit/test_alpha_gate_sec_earnings_innovation_feasibility.py
+      - name: Compile SEC earnings-innovation gate packages
+        run: python -m compileall -q packages/providers/sec_xbrl.py packages/providers/sec_edgar.py packages/backtesting/alpha_gate_sec_earnings_innovation_feasibility.py packages/backtesting/alpha_gate_sec_earnings_innovation_pit_audit.py scripts/run_alpha_gate_sec_earnings_innovation_feasibility.py scripts/run_alpha_gate_sec_earnings_innovation_pit_audit.py scripts/validate_alpha_gate_sec_earnings_innovation_feasibility.py scripts/validate_alpha_gate_sec_earnings_innovation_pit_audit.py tests/unit/test_alpha_gate_sec_earnings_innovation_feasibility.py tests/unit/test_alpha_gate_sec_earnings_innovation_pit_audit.py
       - name: Retain FINRA accepted-negative closeout boundary
         run: python scripts/validate_alpha_gate_finra_short_interest_closeout.py
       - name: Validate SEC earnings-innovation source feasibility contracts
         run: python scripts/validate_alpha_gate_sec_earnings_innovation_feasibility.py
+      - name: Validate SEC earnings-innovation PIT source-audit contracts
+        run: python scripts/validate_alpha_gate_sec_earnings_innovation_pit_audit.py
       - name: Run SEC earnings-innovation focused unit tests
-        run: python -m pytest -q tests/unit/test_alpha_gate_sec_earnings_innovation_feasibility.py
+        run: python -m pytest -q tests/unit/test_alpha_gate_sec_earnings_innovation_feasibility.py tests/unit/test_alpha_gate_sec_earnings_innovation_pit_audit.py
