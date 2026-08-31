@@ -46,6 +46,7 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 ## Current state — 2026-08-30 (America/New_York)
 
 - Accepted numbered foundation: **through Phase32**, merged into `main`.
+- Phase32 is `ACCEPTED_NEGATIVE`; frozen protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments**, protected returns remained unread, and the holdout remained unconsumed.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE`; historical supported modern alpha remains **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
