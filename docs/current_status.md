@@ -1,6 +1,6 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-30 (America/New_York). Accepted numbered foundation remains through Phase32. SEC XBRL, SEC Schedule 13D/13G beneficial ownership, and FINRA consolidated short-interest v1 are all scientifically closed accepted-negative research programs. Historical supported alpha remains 0, so Phase33 Signal-to-Trade remains blocked.**
+**Last synchronized: 2026-08-30 (America/New_York). Accepted numbered foundation remains through Phase32. SEC XBRL, SEC Schedule 13D/13G beneficial ownership, and FINRA consolidated short-interest v1 are all scientifically closed accepted-negative research programs. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
 Read `docs/roadmap.md`, this file, `docs/alpha_gate_finra_short_interest_source_only_closeout.md`, retained FINRA scientific/PIT/source records, accepted beneficial-ownership and XBRL closeouts, `docs/phase32_closeout.md`, `docs/phase_flow.md`, and exact-head CI evidence before continuing.
 
@@ -9,6 +9,10 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_finra_short_interest_source_
 - Accepted numbered foundation: through **Phase32**, merged into `main`.
 - Current Massive subscription: **Stocks Starter**.
 - Phases26–32: scientifically valid `ACCEPTED_NEGATIVE`.
+- Phase32 remains closed `ACCEPTED_NEGATIVE`; its protected-return evidence was never opened.
+- Beneficial-ownership final scientific disposition: `ACCEPTED_NEGATIVE`.
+- Historical supported alpha remains 0.
+- Phase33 remains blocked because accepted historical `SUPPORTED` alpha remains zero.
 - Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
 - Historical supported alpha: **0**.
 - Master protected outcome window `2026-05-12..2026-08-11`: **unconsumed**.
