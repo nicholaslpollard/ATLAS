@@ -103,7 +103,9 @@ Modern alpha phases:
 
 Phase31 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 
-Phase32 merged through PR #37 at `69f8aa81289934b71f2652482c747391917c15a3`. Its frozen finalist `solvency_distress_short` had protected source-only evidence **46 rows / 33 sessions / 40 instruments** versus the frozen **50 / 20 / 20** minimum. Protected stock/SPY returns remained unread; holdout unconsumed.
+Phase32 merged through PR #37 at `69f8aa81289934b71f2652482c747391917c15a3` under frozen policy fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`.
+
+Exactly five hypotheses were frozen before performance. The frozen finalist was `solvency_distress_short`. Its protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum. Protected stock/SPY returns remain unread; holdout unconsumed.
 
 The Phase32 closure requires a materially different point-in-time fundamental-information mechanism for its immediate successor family. Later research may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
 
