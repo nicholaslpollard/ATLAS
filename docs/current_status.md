@@ -54,6 +54,12 @@ XBRL fundamental-quality/accrual mechanism — final `ACCEPTED_NEGATIVE`.
 
 Mechanism: `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
 
+- Phase32 source merge lineage: `69f8aa81289934b71f2652482c747391917c15a3`;
+- source feasibility state: `FEASIBILITY_PASS`;
+- feasibility contract: `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`;
+- feasibility fingerprint: `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`;
+- accepted feasibility evidence fingerprint: `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`;
+- retained PIT audit fingerprint: `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`;
 - merge: `083c0a5742b161cf4b7c04d5bf0246f3057f6c19` via PR #38;
 - source feasibility: **200** Company Facts docs, **170** accrual-ready issuers, **92** profitability-ready issuers;
 - original PIT audit failure preserved; targeted common-stock identity repair passed;
