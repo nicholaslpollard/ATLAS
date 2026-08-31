@@ -22,6 +22,10 @@ def main() -> int:
     print("Provider calls: DISABLED / ZERO")
     print("Development market outcomes: FORBIDDEN / UNREAD")
     print("Protected returns: FORBIDDEN / UNREAD")
+    print(
+        "Next-family boundary: materially different economic/information alpha mechanism; "
+        "FINRA v1 may not be pruned or retuned."
+    )
     print()
     try:
         report = validate_finra_source_only_negative_closeout(load_settings())
