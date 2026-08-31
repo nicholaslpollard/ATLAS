@@ -75,6 +75,7 @@ Credentials, endpoints, local artifacts, passing tests, rendered controls, or pr
 - Phase32 protected return rows read = 0; holdout consumed = false.
 - Protected stock/SPY returns remain unread for Phase32; Phase33 remains blocked.
 - SEC XBRL source feasibility state: `FEASIBILITY_PASS`.
+- XBRL v1 audit failure is preserved.
 - SEC XBRL fundamental-quality/accrual closed `ACCEPTED_NEGATIVE`, merge `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`, closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 - XBRL protected return rows read = **0**; protected holdout consumed = **false**.
 - The beneficial-ownership family is closed `ACCEPTED_NEGATIVE`; merge `208529c5562920cc0b2bcf2bae546e2b9af0a25b`, closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
