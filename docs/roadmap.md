@@ -109,7 +109,7 @@ The Phase32 closure requires a materially different point-in-time fundamental-in
 
 Historical supported alpha remains **zero**. Historical supported modern alpha remains **0**.
 
-## 6. Completed pre-Phase33 SEC XBRL mechanism — `ACCEPTED_NEGATIVE`
+## 6. Completed Pre-Phase33 SEC XBRL mechanism — `ACCEPTED_NEGATIVE`
 
 Mechanism: `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
 
