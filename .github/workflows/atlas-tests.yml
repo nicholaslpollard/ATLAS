@@ -308,5 +308,11 @@ jobs:
       - name: Validate pre-Phase33 FINRA short-interest predictor/development implementation
         run: python scripts/validate_alpha_gate_finra_short_interest_development.py
 
+      - name: Validate pre-Phase33 FINRA short-interest source-only closeout probe
+        run: python scripts/validate_alpha_gate_finra_short_interest_source_closeout_probe.py
+
+      - name: Validate pre-Phase33 FINRA short-interest accepted-negative closeout
+        run: python scripts/validate_alpha_gate_finra_short_interest_closeout.py
+
       - name: Run tests
         run: python -m pytest -q
