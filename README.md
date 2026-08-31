@@ -56,6 +56,7 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 - XBRL source feasibility state = `FEASIBILITY_PASS`.
 - XBRL protected return rows read = **0**; protected holdout consumed = **false**.
 - SEC Schedule 13D/13G beneficial ownership closed `ACCEPTED_NEGATIVE` and merged through PR #39 at `208529c5562920cc0b2bcf2bae546e2b9af0a25b`; accepted closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
+- Beneficial-ownership source-only mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`; frozen feasibility fingerprint: `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
 - FINRA consolidated short-interest v1 is now closed `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT` before any market outcome read. It reconstructed **19,343** predictor rows across **116 FINRA files** and **232 Massive PIT snapshots**. The sole frozen failure was `rapid_short_cover_crowded_long -> protected_min_rows`: **257** protected rows versus minimum **300**, while **26/16** signal sessions and **211/200** unique instruments passed.
 - FINRA predictor report SHA-256: `56479707945a59752aeb2056f3cfbcfd2df1e4a87ada31c9e8e6d3ed93f314cd`.
 - FINRA predictor rows SHA-256: `21c7dd2e44013ba0f1d290019db70f7b0f23b0603c5e965cbd8b441128190e48`.
@@ -89,6 +90,10 @@ Retained source-only feasibility lineage:
 Source feasibility passed with **200** successful Company Facts documents, **170** accrual-history-ready issuers, and **92** profitability-history-ready issuers. The original PIT audit failure remains preserved; the targeted common-stock active-only identity repair passed without changing source population or numeric gates. Six finite hypotheses were frozen under scientific fingerprint `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`. Development produced zero selection passers, winners, or internal finalists. Protected returns remained unread. Final closeout fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 
 ### Pre-Phase33 SEC Schedule 13D/13G beneficial ownership
+
+Source-only feasibility mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
+
+Frozen feasibility fingerprint: `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
 
 Scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
 
