@@ -30,7 +30,7 @@ def test_period_signature_preserves_ambiguous_semantics() -> None:
     )
 
 
-def test_metadata_signature_preserves_form_and_date_contradiction() -> None:
+def test_metadata_signature_preserves_exact_fact_form_and_date_contradiction() -> None:
     row = {
         "issuer_cik": "0001173313",
         "accession_number": "0001213900-17-005701",
@@ -38,10 +38,18 @@ def test_metadata_signature_preserves_form_and_date_contradiction() -> None:
         "companyfacts_filed": "2017-05-22",
         "submissions_form": "10-Q/A",
         "submissions_filing_date": "2017-05-22",
+        "companyfacts_row": {
+            "start": "2015-10-01",
+            "end": "2015-12-31",
+            "val": -0.02,
+        },
     }
     assert _metadata_signature(row) == (
         "0001173313",
         "0001213900-17-005701",
+        "2015-12-31",
+        "2015-10-01",
+        -0.02,
         "10-Q",
         "2017-05-22",
         "10-Q/A",
