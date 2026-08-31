@@ -12,8 +12,8 @@ Every new ATLAS work session should read, in order:
 
 1. `docs/roadmap.md`;
 2. `docs/current_status.md`;
-3. `docs/alpha_gate_sec_beneficial_ownership_closeout.md` and `docs/alpha_gate_sec_beneficial_ownership_development.md`;
-4. `docs/alpha_gate_sec_beneficial_ownership_scientific_contract.md`, source-repair, feasibility, and preserved transport-failure records;
+3. `docs/alpha_gate_finra_short_interest_source_only_closeout.md`, plus the FINRA scientific/PIT/source lineage;
+4. `docs/alpha_gate_sec_beneficial_ownership_closeout.md` and retained beneficial-ownership scientific/source records;
 5. `docs/alpha_gate_sec_xbrl_closeout.md` and retained XBRL scientific/source records;
 6. `docs/phase32_closeout.md` and retained Phase32 scientific/source records;
 7. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, and accepted code/CI evidence.
@@ -46,95 +46,52 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 ## Current state — 2026-08-30 (America/New_York)
 
 - Accepted numbered foundation: **through Phase32**, merged into `main`.
-- **Phase32 is `ACCEPTED_NEGATIVE`.** Frozen scientific policy fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`; frozen development finalist `solvency_distress_short`; frozen protected source-only evidence **46 event rows / 33 signal sessions / 40 unique instruments**. The preregistered 50-row minimum failed before protected performance access. Protected stock/SPY returns remain unread; protected return rows read = 0 and the holdout remains unconsumed.
-- Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well.
+- Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE`; historical supported modern alpha remains **0**.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
-- The pre-Phase33 SEC XBRL fundamental-quality/accrual family also closed `ACCEPTED_NEGATIVE` and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; accepted XBRL closeout evidence fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`; XBRL protected return rows read = **0**; post-merge Ubuntu/Windows regression passed.
-- The SEC Schedule 13D/13G beneficial-ownership family is now scientifically closed `ACCEPTED_NEGATIVE` on the active branch: source-only reconstruction passed with **3,652 predictors**, development used **2,412** usable outcomes, and the frozen four-hypothesis screen produced **0 selection passers / 0 winners / 0 internal finalists**. Accepted target evidence fingerprint: `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`. Beneficial-ownership protected return rows read = **0**; holdout consumed = **false**.
-- Historical supported modern alpha remains **0**; Phase33 signal-to-trade remains blocked.
+- Pre-Phase33 SEC XBRL fundamental-quality/accrual closed `ACCEPTED_NEGATIVE` and merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`; accepted closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
+- SEC Schedule 13D/13G beneficial ownership closed `ACCEPTED_NEGATIVE` and merged through PR #39 at `208529c5562920cc0b2bcf2bae546e2b9af0a25b`; accepted closeout fingerprint `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
+- FINRA consolidated short-interest v1 is now closed `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT` before any market outcome read. It reconstructed **19,343** predictor rows across **116 FINRA files** and **232 Massive PIT snapshots**. The sole frozen failure was `rapid_short_cover_crowded_long -> protected_min_rows`: **257** protected rows versus minimum **300**, while **26/16** signal sessions and **211/200** unique instruments passed.
+- FINRA predictor report SHA-256: `56479707945a59752aeb2056f3cfbcfd2df1e4a87ada31c9e8e6d3ed93f314cd`.
+- FINRA predictor rows SHA-256: `21c7dd2e44013ba0f1d290019db70f7b0f23b0603c5e965cbd8b441128190e48`.
+- FINRA accepted probe evidence fingerprint: `c624da82b45fb8d530c2400262598f266ec6309e614a0dcd135b38d9ba5518ce`.
+- FINRA accepted closeout evidence fingerprint: `bdd494a01ed23d891c460e353831cba6f9cf010c5bf38cf1c9c527b4abe8b565`.
+- FINRA target/development outcome rows read = **0**; protected return rows read = **0**; protected holdout consumed = **false**.
+- Historical supported modern alpha remains **0**; Phase33 Signal-to-Trade remains blocked.
 - Master protected outcome window `2026-05-12..2026-08-11` remains unconsumed.
 - LIVE and automatic broker failover remain disabled.
 
-## Retained pre-Phase33 SEC XBRL lineage
+## Retained modern alpha lineage
 
-The XBRL family entered from accepted Phase32 merge `69f8aa81289934b71f2652482c747391917c15a3` and used the materially different mechanism `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
+### Phase32 — SEC 8-K material corporate events
 
-Source-only feasibility contract:
+Phase32 closed `ACCEPTED_NEGATIVE` under scientific fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`. Its frozen development finalist `solvency_distress_short` had protected source-only evidence **46 event rows / 33 signal sessions / 40 unique instruments** versus frozen minimum **50 / 20 / 20**. Protected stock/SPY returns remained unread; holdout unconsumed.
 
-`alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`
+### Pre-Phase33 SEC XBRL fundamental-quality/accrual
 
-Frozen feasibility fingerprint:
+Mechanism: `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
 
-`6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`
+Source feasibility passed with **200** successful Company Facts documents, **170** accrual-history-ready issuers, and **92** profitability-history-ready issuers. The original PIT audit failure remains preserved; the targeted common-stock active-only identity repair passed without changing source population or numeric gates. Six finite hypotheses were frozen under scientific fingerprint `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`. Development produced zero selection passers, winners, or internal finalists. Protected returns remained unread. Final closeout fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 
-The source gate was `FEASIBILITY_PASS`: **200** successful Company Facts documents, **170** accrual-history-ready issuers, and **92** profitability-history-ready issuers. Accepted feasibility-evidence fingerprint:
+### Pre-Phase33 SEC Schedule 13D/13G beneficial ownership
 
-`33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`
+Scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
 
-The first frozen PIT source/identity audit remains preserved as `AUDIT_FAIL` under fingerprint `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`. The targeted active-common-stock identity repair retained the same source population and numeric gates and passed under contract `alpha-gate-xbrl-pit-audit-v2-targeted-common-stock-active-only-identity-repair-no-market-outcomes` and fingerprint `e17cf5539fbd5d3d0c31514d5fbed97332f046eb98af05dfaa0039a8c127304f`.
+Targeted source repair passed with **43/43 quarterly indexes**, **200/200 complete submissions**, **195 unique authoritative subject CIKs**, **200 decision sessions**, and **142 unambiguous PIT active common-stock mappings**. Exactly four LONG hypotheses were frozen under scientific fingerprint `4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`. The repaired source-only run produced **3,652 predictors**, and development produced **2,412 usable outcomes**, **0 selection passers**, **0 winners**, and **0 internal finalists**. Protected returns remained unread. Final closeout fingerprint: `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
 
-Six finite XBRL hypotheses were frozen before outcomes under scientific fingerprint `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`. Development produced zero selection passers, zero winners, and zero internal finalists. XBRL protected return rows read = **0** and the holdout remained unconsumed. The final `ACCEPTED_NEGATIVE` closeout evidence fingerprint is `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`. Phase33 remained blocked.
+### Pre-Phase33 FINRA consolidated short interest
 
-## Completed pre-Phase33 SEC Schedule 13D/13G beneficial-ownership lineage
+Scientific mechanism: `PIT_FINRA_CONSOLIDATED_SHORT_INTEREST_POSITIONING_AND_CROWDING`.
 
-Retained original source-feasibility mechanism identifier:
+Feasibility passed on 12 frozen source anchors; PIT audit passed with **136,731 immutable exchange-listed rows**, **63,761 PIT-eligible rows**, **8,054 unique PIT instruments**, and all **12/12** files above the frozen per-file minimum. Scientific fingerprint: `0b32d59677e86544777807525cd4aba13dd36fd0fcfd7744458556205561d13f`.
 
-`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`
+The full 116-settlement predictor reconstruction produced **19,343** source-only rows: **14,841 DEVELOPMENT** and **4,502 PROTECTED**. Three frozen hypotheses passed every source-count gate. `rapid_short_cover_crowded_long` passed all development gates and protected sessions/instruments, but had only **257** protected event rows versus the frozen **300** minimum. Because the family and `HOLM_BONFERRONI_GLOBAL_4` multiplicity were frozen across exactly four hypotheses, the fourth bucket cannot be dropped after observing this result.
 
-Retained frozen source-feasibility fingerprint:
-
-`f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`
-
-Frozen scientific mechanism:
-
-`PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`
-
-The original beneficial-ownership source-only v1 target failure is preserved. Targeted source repair v2 subsequently passed without opening market outcomes: **43/43 quarterly indexes**, **200/200 complete submissions parsed**, **195 unique authoritative SEC-header `SUBJECT COMPANY` CIKs**, **200 acceptance/decision sessions**, and **142 unambiguous PIT active common-stock mappings**.
-
-Source-repair fingerprint:
-
-`78bf3f18368114a5a6073e8a4d66a0c13ee29a5da78b8adeb1d71b1f10c6f78c`
-
-Exactly four non-overlapping LONG hypotheses were frozen before outcomes: initial 13D 5–10%, initial 13D 10%+, initial 13G 5–10%, and initial 13G 10%+.
-
-Scientific fingerprint:
-
-`4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`
-
-Development implementation fingerprint:
-
-`0e90a65e6e2f6a7d7206296901054de3a2c97aaa204c80927a963c298c81060d`
-
-The earlier target-machine source-only predictor reconstruction stopped at roughly **3500/5200** before predictor reconstruction PASS because one legitimate official SEC complete submission exceeded the historical/default 20 MB archive ceiling. That failed run remains preserved as **pre-outcome**: development stock/SPY return rows read = **0**, protected return rows read = **0**, protected holdout consumed = **false**.
-
-Development transport-repair fingerprint:
-
-`a4db8419364895c6861c4becbe3abf9b32ec044ceb4aff5cf14a7c9244368bdb`
-
-The narrow repair retained the historical/default 20 MB submission ceiling and 64 MB quarterly-index ceiling, retained SEC pacing at 5 calls/second, and allowed only the scientific runner to opt into a bounded 256 MB complete-submission ceiling. It did not change the frozen science.
-
-The repaired target run then completed `Source-only predictor reconstruction: PASS` with **3,652** predictors: **2,763 development** and **889 protected-source-only** rows. Only after that PASS did development outcomes open. The development study obtained **2,412** usable outcome rows after **306** exact-path-missing rows and **46** split-crossing censored rows.
-
-Final development status: `ACCEPTED_NEGATIVE_DEVELOPMENT`.
-
-- selection passers: **0**;
-- selection winners: **0**;
-- internal finalists: **0**;
-- protected-return eligible finalists: **0**;
-- protected return rows read: **0**;
-- protected holdout consumed: **false**;
-- Phase33 authority: **false**.
-
-Accepted evidence fingerprint:
-
-`c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`
-
-The family is closed to post-result rescue. Its ownership thresholds, form/amendment eligibility, direction, purpose-text/reporting-person/filer filters, horizon, costs, sample, chronology, multiplicity, winner/finalist rules, and protected policy may not be retuned from the observed negative result.
+Disposition: `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`. Market outcomes were never opened. This result makes no performance claim. The exact v1 thresholds, buckets, sampling, chronology, multiplicity, and protected rules are closed to post-result retuning.
 
 ## Remaining roadmap
 
-- **Current pre-Phase33 alpha research:** the beneficial-ownership family is closed `ACCEPTED_NEGATIVE`; after its exact-head closeout certification/merge, define and preregister a materially different information/economic mechanism without reusing its observed performance to retune it.
+- **Current pre-Phase33 alpha research:** FINRA short-interest v1 is closed `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`; the next family must use a materially different economic/information mechanism rather than retuning FINRA.
 - **Phase33:** Signal-to-Trade Construction & Portfolio Optimization + Web Contracts/Prototype — blocked on accepted historical `SUPPORTED` alpha.
 - **Phase34:** End-to-End Historical Replay & Stress Certification + Replay Dashboard.
 - **Phase35:** Prospective SHADOW/PAPER Certification + Operator Web Beta.
