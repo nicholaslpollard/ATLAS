@@ -1,16 +1,17 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-30 (America/New_York). Accepted numbered foundation remains through Phase32. The later SEC XBRL, SEC Schedule 13D/13G beneficial-ownership, and FINRA consolidated short-interest v1 research families are all scientifically closed accepted-negative. Historical supported alpha remains 0 and Phase33 remains blocked.**
+**Normative project source of truth. Re-synchronized: 2026-08-31 (America/New_York). Accepted numbered foundation remains through Phase32. The later SEC XBRL, SEC Schedule 13D/13G beneficial-ownership, FINRA consolidated short-interest v1, and SEC diluted-EPS earnings-innovation v1 research families are all scientifically closed accepted-negative. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
-3. `docs/alpha_gate_finra_short_interest_source_only_closeout.md` and retained FINRA scientific/PIT/source records;
-4. accepted beneficial-ownership closeout/scientific/source records;
-5. accepted XBRL closeout/scientific/source records;
-6. accepted Phase32 closeout/scientific/source records;
-7. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, accepted code, validators, exact-head CI/PR evidence, and historical phase records.
+3. `docs/alpha_gate_sec_earnings_innovation_source_only_closeout.md` and retained earnings-innovation feasibility/PIT/diagnostic records;
+4. `docs/alpha_gate_finra_short_interest_source_only_closeout.md` and retained FINRA scientific/PIT/source records;
+5. accepted beneficial-ownership closeout/scientific/source records;
+6. accepted XBRL closeout/scientific/source records;
+7. accepted Phase32 closeout/scientific/source records;
+8. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, accepted code, validators, exact-head CI/PR evidence, and historical phase records.
 
 ## 1. Mission
 
@@ -67,6 +68,7 @@ Persistent roles:
 25. Existing valid source caches are evidence and must not be deleted merely to simplify a repaired rerun.
 26. If multiplicity is frozen across a finite hypothesis family, a source-only failure in one member cannot be repaired after observation by silently dropping that member. A changed family is a new preregistered experiment.
 27. A source-only sample insufficiency may close an experiment without opening market outcomes when the frozen acceptance contract cannot be satisfied from the available source population.
+28. When an authoritative-source replay reproduces the original source hashes and the same cross-source contradiction/ambiguity, treat it as a source-semantics/provenance limitation rather than local-cache corruption. Preserve raw representations; do not purge/refetch the lake merely to try to make the inconsistency disappear.
 
 ## 4. Required phase/gate cadence
 
@@ -249,7 +251,50 @@ The exact FINRA v1 experiment cannot be rescued by dropping `rapid_short_cover_c
 
 A future short-interest experiment, if any, must be a newly preregistered scientific version before outcomes.
 
-## 9. Remaining master roadmap
+## 9. Completed pre-Phase33 SEC diluted-EPS earnings innovation v1 — `ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`
+
+Mechanism: `PIT_SEC_XBRL_DILUTED_EPS_SEASONAL_EARNINGS_INNOVATION_POST_PERIODIC_FILING_DRIFT`.
+
+Feasibility passed source-only on a deterministic 300-CIK sample with 300/300 Company Facts successes, **5,905** direct-quarter observations, **204** issuers with at least 12 direct quarters, **170** with at least 16, years **2013–2026**, and no market outcomes.
+
+Frozen feasibility fingerprint:
+
+`c32e4aa83b25cdc23476098ffc30bd48908123d047d75f18f0d45b2acaffcd0d`
+
+Frozen PIT audit fingerprint:
+
+`423528f7518273f91432ee0cfaf0f43fec8cf33fa11a59f40af5523b4f9d6baa`
+
+The PIT audit required the earliest retained non-amendment periodic-filing accession to have an unambiguous direct-quarter context/value and required accession/form/filing date to reconcile exactly against official SEC Submissions metadata.
+
+The first PIT audit preserved **5,902** original-accession candidates and **5,896** audited observations, but failed exactly two zero-tolerance gates:
+
+- **3 ambiguous earliest period contexts**;
+- **6 accession/form/filing-date contradictions**.
+
+All other frozen PIT source gates passed. Target outcome rows read = **0**. Protected return rows read = **0**. Holdout consumed = **false**.
+
+The V2 source-only diagnostic re-fetched all 300 Company Facts documents and reproduced **300/300 exact Gate0 hashes**. It re-read official SEC Submissions metadata for all 300 issuers and reproduced the same six contradictions with zero missing accession metadata. Diagnostic fingerprint:
+
+`399e7d0bece8088e63c4835566d276b51375a5031d81f4db4781675351a87961`
+
+This establishes a source-semantics/provenance limitation, not local ATLAS data corruption. Blind cache/lake deletion or refetch is not an authorized repair: a clean official-source replay already reproduced the evidence. Raw official representations remain preserved.
+
+Three contradictions were filing-date mismatches despite matching accession/form; three represented facts as `10-Q` in Company Facts while official Submissions identified the accession as `10-Q/A`. The ambiguous period cases contained multiple qualifying contexts in the same earliest accession; two also carried different diluted-EPS values.
+
+Because the frozen v1 contract explicitly requires unambiguous context/value and exact metadata reconciliation, selecting a preferred context, tolerating date drift, reclassifying amendments, dropping offending rows, or relaxing zero-tolerance gates after seeing these records would be post-result retuning.
+
+Closeout fingerprint:
+
+`29e72b427aa63c6ae2e0c25917fad0c9c948f2a2cd97c0d51f390ecd343baacc`
+
+Final disposition:
+
+`ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`
+
+No performance claim is authorized because market outcomes were never opened. Any future SEC XBRL mechanism may define different reconciliation/canonicalization semantics only prospectively under a new preregistration.
+
+## 10. Remaining master roadmap
 
 ### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
 
@@ -283,8 +328,8 @@ Consolidate the production web application and accepted Python engine; promote P
 
 Enable LIVE only through explicit authorization with deliberately small initial exposure, hard risk/loss limits, reconciliation/health, kill capability, manual fallback, and no automatic broker failover. Scale only from evidence.
 
-## 10. Progression rule
+## 11. Progression rule
 
 The roadmap is **conditional, not schedule-driven**. Phase numbers do not guarantee advancement. Positive downstream authority requires the exact frozen entry condition; accepted-negative science cannot substitute for it.
 
-The current critical path remains historical alpha validation. The next research family must use a **materially different economic/information mechanism** from FINRA short-interest v1; its observed sparse bucket cannot be pruned or retuned into a successor experiment.
+The current critical path remains historical alpha validation. The next research family must use a **materially different economic/information mechanism** from the now-closed SEC diluted-EPS earnings-innovation v1 and prior accepted-negative families; none may be rescued by post-result source-rule, threshold, feature, direction, sample, multiplicity, or protected-policy changes.

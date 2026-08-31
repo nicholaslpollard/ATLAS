@@ -1,8 +1,8 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-30 (America/New_York). Accepted numbered foundation remains through Phase32. SEC XBRL, SEC Schedule 13D/13G beneficial ownership, and FINRA consolidated short-interest v1 are all scientifically closed accepted-negative research programs. Historical supported alpha remains 0 and Phase33 remains blocked.**
+**Last synchronized: 2026-08-31 (America/New_York). Accepted numbered foundation remains through Phase32. SEC XBRL, SEC Schedule 13D/13G beneficial ownership, FINRA consolidated short-interest v1, and SEC diluted-EPS earnings-innovation v1 are all scientifically closed accepted-negative research programs. Historical supported alpha remains 0 and Phase33 remains blocked.**
 
-Read `docs/roadmap.md`, this file, `docs/alpha_gate_finra_short_interest_source_only_closeout.md`, retained FINRA scientific/PIT/source records, accepted beneficial-ownership and XBRL closeouts, `docs/phase32_closeout.md`, `docs/phase_flow.md`, and exact-head CI evidence before continuing.
+Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_earnings_innovation_source_only_closeout.md`, the retained SEC earnings-innovation feasibility/PIT/diagnostic records, `docs/alpha_gate_finra_short_interest_source_only_closeout.md`, retained FINRA scientific/PIT/source records, accepted beneficial-ownership and XBRL closeouts, `docs/phase32_closeout.md`, `docs/phase_flow.md`, and exact-head CI evidence before continuing.
 
 ## Authority state
 
@@ -11,6 +11,8 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_finra_short_interest_source_
 - Phases26–32: scientifically valid `ACCEPTED_NEGATIVE`.
 - Phase32 remains closed `ACCEPTED_NEGATIVE`; its protected-return evidence was never opened.
 - Beneficial-ownership final scientific disposition: `ACCEPTED_NEGATIVE`.
+- FINRA short-interest v1 final source disposition: `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`.
+- SEC diluted-EPS earnings-innovation v1 final source disposition: `ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`.
 - Historical supported alpha remains 0.
 - Phase33 remains blocked because accepted historical `SUPPORTED` alpha remains zero.
 - Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
@@ -19,7 +21,7 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_finra_short_interest_source_
 - Provider writes, broker reads/writes, orders, PAPER, LIVE, automation, and automatic broker failover: **disabled** for current alpha research.
 - No accepted-negative family grants trading authority.
 
-Root cause before workaround remains mandatory. Failed/negative research evidence must be preserved. No family may be rescued after observation by changing thresholds, horizon, costs, features, direction, sample, multiplicity, winner/finalist rules, or protected policy and calling it the same experiment.
+Root cause before workaround remains mandatory. Failed/negative research evidence must be preserved. No family may be rescued after observation by changing thresholds, horizon, costs, features, direction, sample, multiplicity, winner/finalist rules, source-selection/reconciliation rules, or protected policy and calling it the same experiment.
 
 ## Accepted modern-alpha lineage
 
@@ -206,11 +208,33 @@ FINRA v1 may not be rescued by dropping the sparse fourth hypothesis, reducing t
 
 Any future short-interest experiment must be a newly preregistered scientific version before outcome access.
 
+## SEC diluted-EPS earnings-innovation v1 — accepted-negative source closeout
+
+Mechanism: `PIT_SEC_XBRL_DILUTED_EPS_SEASONAL_EARNINGS_INNOVATION_POST_PERIODIC_FILING_DRIFT`.
+
+- feasibility fingerprint: `c32e4aa83b25cdc23476098ffc30bd48908123d047d75f18f0d45b2acaffcd0d`;
+- PIT audit fingerprint: `423528f7518273f91432ee0cfaf0f43fec8cf33fa11a59f40af5523b4f9d6baa`;
+- V2 diagnostic fingerprint: `399e7d0bece8088e63c4835566d276b51375a5031d81f4db4781675351a87961`;
+- closeout fingerprint: `29e72b427aa63c6ae2e0c25917fad0c9c948f2a2cd97c0d51f390ecd343baacc`;
+- accepted failed PIT report SHA-256: `ca5d5494b9c4be0158bd5d89c2f5b70aae0ba3a717a4af60f437bf4eaad37cea`;
+- feasibility parent SHA-256: `3c299447e0ed8fd48d10c8cc792cf57396d87378cb21575e219b624c6a50566a`;
+- 300/300 Company Facts hashes matched on the source-only diagnostic replay;
+- 300/300 SEC submissions roots succeeded;
+- 5,896 audited observations survived from 5,902 original-accession candidates;
+- exactly **3 ambiguous earliest period contexts** and **6 accession/form/filing-date contradictions** violated frozen zero-tolerance source-integrity gates;
+- target/development market outcomes read: **0**;
+- protected return rows read: **0**; protected holdout consumed: **false**;
+- final source disposition: `ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`.
+
+This is a source-quality limitation but **not evidence of corrupted local ATLAS data**. The diagnostic re-fetched the official Company Facts documents and reproduced all 300 Gate0 hashes, then re-read SEC submissions metadata and reproduced the same contradictions. Purging/refetching the ATLAS lake or cache is not a repair. The problem is ambiguity/inconsistency in official SEC representations and the frozen v1 contract correctly failed closed rather than inventing a canonical interpretation.
+
+The v1 family may not be rescued after observation by selecting a preferred start date/context, tolerating Company Facts versus Submissions filing-date drift, treating `10-Q/A` as `10-Q`, dropping offending rows, or relaxing the frozen zero-tolerance reconciliation rules.
+
 ## Immediate next action
 
-1. Complete exact-head focused and full Ubuntu/Windows certification of the FINRA accepted-negative closeout package and synchronized living documents.
-2. Merge the FINRA closeout branch and verify post-merge full regression.
-3. Define and freeze a **materially different economic/information alpha mechanism**. Do not retune FINRA v1.
+1. Merge the accepted-negative SEC earnings-innovation source-only closeout after synchronized living-document exact-head CI passes.
+2. Verify the post-merge retained regression on `main`.
+3. Define and freeze a **materially different economic/information alpha mechanism**. Do not retune the earnings-innovation v1 or prior accepted-negative families.
 4. Phase33 remains blocked until at least one historical alpha earns accepted `SUPPORTED` authority.
 
 ## Downstream boundary
