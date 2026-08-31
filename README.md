@@ -76,11 +76,15 @@ Mechanism: `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY
 
 Source feasibility passed with **200** successful Company Facts documents, **170** accrual-history-ready issuers, and **92** profitability-history-ready issuers. The original PIT audit failure remains preserved; the targeted common-stock active-only identity repair passed without changing source population or numeric gates. Six finite hypotheses were frozen under scientific fingerprint `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`. Development produced zero selection passers, winners, or internal finalists. Protected returns remained unread. Final closeout fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 
+Retained XBRL source-gate lineage: `FEASIBILITY_PASS`; feasibility contract `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`; feasibility fingerprint `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`; accepted feasibility evidence fingerprint `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`; frozen PIT audit fingerprint `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`. These retained literals describe historical accepted evidence and do not reopen the closed family.
+
 ### Pre-Phase33 SEC Schedule 13D/13G beneficial ownership
 
 Scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
 
 Targeted source repair passed with **43/43 quarterly indexes**, **200/200 complete submissions**, **195 unique authoritative subject CIKs**, **200 decision sessions**, and **142 unambiguous PIT active common-stock mappings**. Exactly four LONG hypotheses were frozen under scientific fingerprint `4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`. The repaired source-only run produced **3,652 predictors**, and development produced **2,412 usable outcomes**, **0 selection passers**, **0 winners**, and **0 internal finalists**. Protected returns remained unread. Final closeout fingerprint: `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`.
+
+Retained beneficial-ownership source-gate lineage: feasibility mechanism `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`; feasibility fingerprint `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`. These are historical source-feasibility identifiers and remain distinct from the later frozen scientific mechanism above.
 
 ### Pre-Phase33 FINRA consolidated short interest
 
