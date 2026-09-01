@@ -46,7 +46,13 @@ jobs:
           packages/backtesting/literature_momseason_policy.py
           packages/backtesting/literature_momseason_source.py
           packages/backtesting/literature_momseason_feasibility.py
+          packages/backtesting/literature_momseason_total_return_source.py
           scripts/run_literature_momseason_source_feasibility.py
+          scripts/run_literature_momseason_total_return_source_audit.py
 
       - name: Run focused exploratory tests
-        run: python -m pytest tests/unit/test_literature_momseason.py -q
+        run: >-
+          python -m pytest
+          tests/unit/test_literature_momseason.py
+          tests/unit/test_literature_momseason_total_return_source.py
+          -q
