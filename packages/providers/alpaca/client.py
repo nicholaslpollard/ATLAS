@@ -12,6 +12,11 @@ from urllib.request import Request, urlopen
 from packages.core.settings import AtlasSettings
 
 
+ALPACA_HISTORICAL_BAR_ADJUSTMENTS = frozenset(
+    {"raw", "split", "dividend", "spin-off", "all"}
+)
+
+
 @dataclass(frozen=True, slots=True)
 class AlpacaCredentialProfile:
     name: str
@@ -53,6 +58,13 @@ def _invalid_symbol_from_message(message: object) -> str | None:
     if not symbol or "," in symbol or any(ch.isspace() for ch in symbol):
         return None
     return symbol
+
+
+def _nonempty_override(value: str | None, default: str, *, name: str) -> str:
+    resolved = default if value is None else str(value).strip()
+    if not resolved:
+        raise ValueError(f"Alpaca historical-bar {name} must be non-empty")
+    return resolved
 
 
 class AlpacaMarketDataClient:
@@ -276,7 +288,19 @@ class AlpacaMarketDataClient:
         symbols: list[str] | tuple[str, ...],
         start: str,
         end: str,
+        adjustment: str | None = None,
+        asof: str | None = None,
+        feed: str | None = None,
+        timeframe: str | None = None,
     ) -> Iterator[AlpacaApiPage]:
+        """Yield historical bar pages with explicit research-safe query overrides.
+
+        Omitting every override preserves the accepted historical-backfill behavior
+        exactly: configured raw adjustment, feed, as-of mapping, and timeframe are used.
+        Research callers may request an alternate adjustment without mutating global
+        provider configuration or changing existing canonical data semantics.
+        """
+
         clean = tuple(dict.fromkeys(str(symbol).strip() for symbol in symbols if str(symbol).strip()))
         if not clean:
             raise ValueError("historical bars require at least one symbol")
@@ -284,6 +308,21 @@ class AlpacaMarketDataClient:
             raise ValueError(
                 f"historical bar batch exceeds configured symbol_batch_size={self.cfg.symbol_batch_size}"
             )
+
+        resolved_adjustment = _nonempty_override(
+            adjustment, self.cfg.adjustment, name="adjustment"
+        )
+        if resolved_adjustment not in ALPACA_HISTORICAL_BAR_ADJUSTMENTS:
+            allowed = ", ".join(sorted(ALPACA_HISTORICAL_BAR_ADJUSTMENTS))
+            raise ValueError(
+                f"unsupported Alpaca historical-bar adjustment {resolved_adjustment!r}; "
+                f"expected one of: {allowed}"
+            )
+        resolved_asof = _nonempty_override(asof, self.cfg.asof, name="asof")
+        resolved_feed = _nonempty_override(feed, self.cfg.feed, name="feed")
+        resolved_timeframe = _nonempty_override(
+            timeframe, self.cfg.timeframe, name="timeframe"
+        )
 
         token: str | None = None
         seen_tokens: set[str] = set()
@@ -294,13 +333,13 @@ class AlpacaMarketDataClient:
                 path="v2/stocks/bars",
                 params={
                     "symbols": ",".join(clean),
-                    "timeframe": self.cfg.timeframe,
+                    "timeframe": resolved_timeframe,
                     "start": start,
                     "end": end,
                     "limit": self.cfg.page_limit,
-                    "adjustment": self.cfg.adjustment,
-                    "feed": self.cfg.feed,
-                    "asof": self.cfg.asof,
+                    "adjustment": resolved_adjustment,
+                    "feed": resolved_feed,
+                    "asof": resolved_asof,
                     "sort": "asc",
                     "page_token": token,
                 },
