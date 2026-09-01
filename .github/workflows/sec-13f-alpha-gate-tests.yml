@@ -37,7 +37,7 @@ jobs:
           python -m pip install --no-deps -e .
           python -m pip check
       - name: Compile SEC Form 13F feasibility packages
-        run: python -m compileall -q packages/providers/sec_13f_datasets.py packages/backtesting/alpha_gate_sec_13f_feasibility.py packages/backtesting/alpha_gate_sec_13f_feasibility_v2.py packages/backtesting/alpha_gate_sec_13f_cusip_diagnostic.py scripts/run_alpha_gate_sec_13f_feasibility.py scripts/run_alpha_gate_sec_13f_feasibility_v2.py scripts/run_alpha_gate_sec_13f_cusip_diagnostic.py scripts/validate_alpha_gate_sec_13f_feasibility.py scripts/validate_alpha_gate_sec_13f_feasibility_v2.py tests/unit/test_sec_13f_datasets.py tests/unit/test_alpha_gate_sec_13f_feasibility.py tests/unit/test_alpha_gate_sec_13f_feasibility_v2.py tests/unit/test_alpha_gate_sec_13f_cusip_diagnostic.py
+        run: python -m compileall -q packages/providers/sec_13f_datasets.py packages/providers/sec_edgar_archive.py packages/backtesting/alpha_gate_sec_13f_feasibility.py packages/backtesting/alpha_gate_sec_13f_feasibility_v2.py packages/backtesting/alpha_gate_sec_13f_cusip_diagnostic.py packages/backtesting/alpha_gate_sec_13f_original_edgar_reconciliation.py scripts/run_alpha_gate_sec_13f_feasibility.py scripts/run_alpha_gate_sec_13f_feasibility_v2.py scripts/run_alpha_gate_sec_13f_cusip_diagnostic.py scripts/run_alpha_gate_sec_13f_original_edgar_reconciliation.py scripts/validate_alpha_gate_sec_13f_feasibility.py scripts/validate_alpha_gate_sec_13f_feasibility_v2.py scripts/validate_alpha_gate_sec_13f_original_edgar_reconciliation.py tests/unit/test_sec_13f_datasets.py tests/unit/test_alpha_gate_sec_13f_feasibility.py tests/unit/test_alpha_gate_sec_13f_feasibility_v2.py tests/unit/test_alpha_gate_sec_13f_cusip_diagnostic.py tests/unit/test_alpha_gate_sec_13f_original_edgar_reconciliation.py
       - name: Retain earnings-innovation accepted-negative closeout boundary
         run: python scripts/validate_alpha_gate_sec_earnings_innovation_source_only_closeout.py
       - name: Retain research-gate calibration safeguards
@@ -46,5 +46,7 @@ jobs:
         run: python scripts/validate_alpha_gate_sec_13f_feasibility.py
       - name: Validate SEC Form 13F v2 audit-aligned bounded-probe contract
         run: python scripts/validate_alpha_gate_sec_13f_feasibility_v2.py
+      - name: Validate SEC Form 13F original-EDGAR reconciliation contract
+        run: python scripts/validate_alpha_gate_sec_13f_original_edgar_reconciliation.py
       - name: Run SEC Form 13F focused unit tests
-        run: python -m pytest -q tests/unit/test_sec_13f_datasets.py tests/unit/test_alpha_gate_sec_13f_feasibility.py tests/unit/test_alpha_gate_sec_13f_feasibility_v2.py tests/unit/test_alpha_gate_sec_13f_cusip_diagnostic.py tests/unit/test_research_population_coverage.py tests/unit/test_research_gate_freeze.py
+        run: python -m pytest -q tests/unit/test_sec_13f_datasets.py tests/unit/test_alpha_gate_sec_13f_feasibility.py tests/unit/test_alpha_gate_sec_13f_feasibility_v2.py tests/unit/test_alpha_gate_sec_13f_cusip_diagnostic.py tests/unit/test_alpha_gate_sec_13f_original_edgar_reconciliation.py tests/unit/test_research_population_coverage.py tests/unit/test_research_gate_freeze.py
