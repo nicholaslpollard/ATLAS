@@ -27,7 +27,7 @@ Until a later explicit operator decision, this branch may not:
 - merge experimental behavior into `main` automatically;
 - reinterpret a literature replication as validation of an existing ATLAS strategy merely because the economic labels are similar.
 
-Research code should be additive and preferably live under backtesting/research namespaces, scripts, tests, and branch-specific documentation.
+Research code is additive and lives in branch-specific backtesting modules, scripts, tests, documentation, and derived research caches.
 
 ## Scientific sequence
 
@@ -47,7 +47,7 @@ Each mechanism follows this order:
 
 Literature-backed characteristics are not initially forced through the Phase25 WARM/HOT production funnel.
 
-The first scientific question is whether the documented characteristic contains return-predictive information in the broad ATLAS point-in-time eligible universe. Continuous characteristics should normally expose the full cross-sectional relationship (for example, quantiles and monotonicity), not only a hand-picked trigger threshold.
+The first scientific question is whether the documented characteristic contains return-predictive information in the broad ATLAS point-in-time eligible universe. Continuous characteristics should normally expose the full cross-sectional relationship, including quantiles and monotonicity, rather than only a hand-picked trigger threshold.
 
 If a native signal works, ATLAS filters may then be tested as an **attribution experiment**. This separates:
 
@@ -55,41 +55,85 @@ If a native signal works, ATLAS filters may then be tested as an **attribution e
 - `UPSTREAM_FILTER_DESTROYED_SIGNAL`, from
 - `ATLAS_CONTEXT_IMPROVED_SIGNAL`.
 
-## Initial candidate registry
+## Candidate LIT-01 — Heston-Sadka calendar-month return seasonality
 
-### Candidate LIT-01 — Heston-Sadka return seasonality, years 2–5
-
-**Priority:** first feasibility target.  
-**Data class:** price-only.  
+**Priority:** active first feasibility target.  
+**Data class:** historical stock returns + stable PIT identity + corporate actions.  
 **Mechanism density:** cross-sectional monthly.  
-**External specification:** average return in the same calendar month over the preceding 2–5 years; higher signal predicts higher next same-calendar-month relative return.  
-**External replication anchor:** OpenSourceAP `MomSeason`, classified `1_clear` original predictability / `1_good` replication quality, Heston and Sadka (2008). OpenSourceAP documents an equal-weighted decile long-short implementation and a one-month portfolio period.  
-**Why first:** it is materially different from ordinary momentum and ATLAS trigger-based pullback/reversal logic, needs no new fundamental/event source, and can be reconstructed from chronology-safe historical price data already central to ATLAS.
+**Target outcomes:** CLOSED.
+
+The source-only family contains exactly two externally specified hypotheses, both documented before ATLAS target-return access:
+
+1. `momseason_short_year1` / OpenSourceAP `MomSeasonShort` — the stock's return in the same calendar month one year earlier;
+2. `momseason_years2_5` / OpenSourceAP `MomSeason` — the average stock return in the same calendar month two through five years earlier.
+
+Both have positive direction, a one-month portfolio period, and OpenSourceAP classifications `1_clear` original predictability / `1_good` replication quality. They form one two-hypothesis family; later performance multiplicity must account for both. ATLAS may not inspect returns and then silently choose whichever variant looks better.
 
 Reference anchors:
 
 - Heston, Steven L. and Ronnie Sadka, “Seasonality in the Cross-Section of Stock Returns,” *Journal of Financial Economics* 87(2), 2008, DOI `10.1016/j.jfineco.2007.02.003`.
-- OpenSourceAP/CrossSection `SignalDoc.csv`, `MomSeason`: “Average return in the same month over the preceding 2-5 years.”
+- OpenSourceAP/CrossSection `SignalDoc.csv`: `MomSeasonShort` and `MomSeason`.
 
-**Current status:** source-feasibility design permitted; target outcomes remain closed.
+### LIT-01 source fidelity
 
-### Candidate LIT-02 — industry-adjusted short-term reversal
+ATLAS canonical stock flat-file prices are not sufficient by themselves for a literature-faithful monthly return:
+
+- the retained Massive flat-file source is unadjusted for splits and dividends;
+- the literature characteristic is a return characteristic, so corporate actions cannot be ignored;
+- historical ticker text cannot be assumed to represent the same security across years.
+
+The branch therefore uses a **research-only source cache**:
+
+- point-in-time historical Massive stock reference snapshots at the required month-end dates;
+- ATLAS `InstrumentIdentityResolver` to bind historical ticker rows to the same stable security identity used at formation;
+- Massive split and dividend sources for later total-return adjustment audit;
+- canonical daily month-end prices only for lagged predictor months.
+
+No target-month price endpoint is permitted during source feasibility.
+
+### LIT-01 temporal capacity finding
+
+The existing master protected window is `2026-05-12..2026-08-11`. A one-calendar-month mechanism has only:
+
+- June 2026 — complete protected target month;
+- July 2026 — complete protected target month;
+- August 2026 — predictor can form, but the target month is incomplete at the protected-window end.
+
+May 2026 crosses the protected-start boundary and is treated as purge/boundary evidence, not as a protected month.
+
+The LIT-01 source policy freezes **12 independent complete protected calendar months** as the minimum protected temporal capacity, one full calendar cycle, before any target return is opened. Therefore the existing master holdout has **2 / 12** complete independent months and cannot by itself grant LIT-01 final `SUPPORTED` authority.
+
+This does **not** prevent development or internal out-of-sample research. If LIT-01 becomes a legitimate internal finalist, a sufficiently long new protected window must be reserved prospectively rather than weakening the monthly independence requirement.
+
+### LIT-01 implementation
+
+Branch-only files:
+
+- `packages/backtesting/literature_momseason_policy.py`
+- `packages/backtesting/literature_momseason_source.py`
+- `packages/backtesting/literature_momseason_feasibility.py`
+- `scripts/run_literature_momseason_source_feasibility.py`
+- `tests/unit/test_literature_momseason.py`
+- `.github/workflows/literature-alpha-exploration-tests.yml`
+
+The source runner may acquire research-only historical reference/corporate-action evidence, but it records zero target outcome reads, zero protected return reads, zero broker/order/PAPER/LIVE writes, and does not alter production state.
+
+## Candidate LIT-02 — industry-adjusted short-term reversal
 
 **Priority:** high, pending PIT industry-source proof.  
 **Data class:** price + industry classification.  
 **External specification:** recent stock return minus recent mean return of its industry; buy the strongest relative underperformers and sell the strongest relative outperformers.  
-**Recent evidence:** Stosik and Zaremba (2026), *Economics Letters* 267, 113113, DOI `10.1016/j.econlet.2026.113113`, reports that industry adjustment revives short-term reversal across 64 markets and improves net results relative to conventional reversal.
+**Recent evidence:** Stosik and Zaremba (2026), *Economics Letters* 267, 113113, DOI `10.1016/j.econlet.2026.113113`.
 
-**PIT warning:** ATLAS’s retained bulk Massive reference snapshots do not contain SIC/industry fields. Massive’s Ticker Overview endpoint exposes `sic_code`, but its documentation states that the historical `date` view can use SEC information according to the filing period-of-report rather than filing availability. That creates a potential decision-time leakage problem and must be resolved before this mechanism can freeze.
+**PIT warning:** ATLAS's retained bulk Massive reference snapshots do not contain SIC/industry fields. Massive Ticker Overview exposes `sic_code`, but historical SEC-derived fields may be associated with filing period-of-report rather than actual filing availability. That is not automatically decision-time PIT safe.
 
 **Current status:** parked at source-feasibility boundary; no outcome access.
 
-### Candidate LIT-03 — literature-characteristic composite
+## Candidate LIT-03 — literature-characteristic composite
 
-**Priority:** later, only after individual characteristics are reconstructed cleanly.  
-**Purpose:** test a small preregistered ensemble of externally specified characteristics instead of assuming every weak effect must earn standalone authority.
+**Priority:** later, only after individual characteristics are reconstructed cleanly.
 
-This candidate may not be formed adaptively from whichever LIT-01/LIT-02 variants happen to look best. Inputs, transforms, model class, training policy, multiplicity treatment, and evaluation must be frozen prospectively as a new experiment.
+The purpose is to test a small preregistered ensemble of externally specified characteristics instead of assuming every weak effect must earn standalone authority. It may not be formed adaptively from whichever LIT-01/LIT-02 variants happen to look best. Inputs, transforms, model class, training policy, multiplicity treatment, and evaluation must be frozen prospectively as a new experiment.
 
 ## Candidate queue retained for later feasibility
 
@@ -100,14 +144,15 @@ This candidate may not be formed adaptively from whichever LIT-01/LIT-02 variant
 
 Form 4, Schedule 13D/13G, SEC XBRL quality/accruals, FINRA short interest, 8-K event families, SEC earnings innovation, and the closed Form 13F v1 lineage remain historical ATLAS evidence and are not silently repackaged here.
 
-## First branch action
+## Immediate branch action
 
-Proceed with **LIT-01 source-only feasibility** before any target-return read. The source stage should answer only:
+Run **LIT-01 source-only feasibility**. The stage answers only:
 
-- Do canonical daily price histories span enough years to form the 2–5-year same-calendar-month predictor?
-- How many eligible instrument-month predictor rows can be reconstructed in DEVELOPMENT and in the protected period without opening protected target outcomes?
-- How complete is the point-in-time identity/universe mapping?
-- What are the natural cross-sectional counts per formation month?
-- What sample/effective-sample floors are defensible before freezing science?
+- whether canonical daily history covers all required predictor endpoints;
+- whether stable point-in-time security identity can be reconstructed at historical month ends;
+- how many broad-universe instrument-month predictor rows survive for each predeclared hypothesis;
+- which rows fail identity or price availability and why;
+- whether split/dividend sources are complete enough to proceed to a total-return adjustment audit;
+- how many independent development/protected calendar months exist.
 
-If source capacity is insufficient, close LIT-01 as a source-capacity result and move to the next materially different candidate. Do not inspect forward returns to decide whether to repair or resize the experiment.
+Only after source capacity and total-return semantics pass may the branch calibrate/freeze a development experiment. Forward target-month returns remain closed until then.
