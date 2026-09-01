@@ -15,12 +15,12 @@ from packages.backtesting.alpha_gate_sec_13f_feasibility_v2 import (  # noqa: E4
     SEC_13F_FEASIBILITY_V2_CONTRACT,
     SEC_13F_FEASIBILITY_V2_FINGERPRINT,
 )
-from packages.core.settings import get_settings  # noqa: E402
+from packages.core.settings import load_settings  # noqa: E402
 from packages.providers.sec_13f_datasets import SEC13FDatasetClient  # noqa: E402
 
 
 def main() -> int:
-    settings = get_settings()
+    settings = load_settings()
     print("ATLAS Pre-Phase33 — SEC Form 13F Institutional Positioning Gate0 V2")
     print(f"Feasibility contract: {SEC_13F_FEASIBILITY_V2_CONTRACT}")
     print(f"Feasibility fingerprint: {SEC_13F_FEASIBILITY_V2_FINGERPRINT}")

@@ -41,6 +41,13 @@ def test_v2_evidence_paths_do_not_overwrite_v1() -> None:
     assert "feasibility_v2" in str(SEC_13F_REPORT_RELATIVE_V2)
 
 
+def test_v2_runner_imports_current_settings_api() -> None:
+    from scripts.run_alpha_gate_sec_13f_feasibility_v2 import main
+
+    assert callable(main)
+
+
 def test_v2_static_contract_validator_runs_inside_full_pytest() -> None:
     from scripts.validate_alpha_gate_sec_13f_feasibility_v2 import main
+
     assert main() == 0
