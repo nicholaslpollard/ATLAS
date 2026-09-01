@@ -41,12 +41,22 @@ class AlpacaRawPayloadStore:
     Windows path budget under long checkout/temp roots, category+partition provenance
     is represented in the directory layout by a deterministic 80-bit key; the full
     human-readable category and partition remain in the sidecar metadata record.
+
+    ``namespace`` isolates independent acquisition programs under the Alpaca provider
+    root. Its default preserves the accepted historical-backfill path exactly.
     """
 
-    def __init__(self, settings: AtlasSettings) -> None:
+    def __init__(
+        self,
+        settings: AtlasSettings,
+        *,
+        namespace: str = "historical_backfill",
+    ) -> None:
         self.settings = settings
         provider_root = settings.resolved_path(settings.data.paths.provider)
-        self.root = provider_root / "alpaca" / "historical_backfill" / "raw"
+        clean_namespace = self._clean_component(namespace)
+        self.namespace = clean_namespace
+        self.root = provider_root / "alpaca" / clean_namespace / "raw"
 
     @staticmethod
     def _clean_component(value: str) -> str:
