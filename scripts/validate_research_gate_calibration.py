@@ -11,6 +11,12 @@ from packages.backtesting.research_gate_calibration import (
     phase26_selection_reachability,
     phase26_synthetic_power,
 )
+from packages.backtesting.research_population_coverage import (
+    RESEARCH_POPULATION_COVERAGE_CONTRACT_VERSION,
+    PopulationCoverageStage,
+    PopulationScope,
+    assess_population_coverage,
+)
 
 
 def main() -> int:
@@ -79,6 +85,66 @@ def main() -> int:
         )
     )
 
+    broad_universe_funnel = assess_population_coverage(
+        (
+            PopulationCoverageStage(
+                name="eligible_universe",
+                rows=1_000_000,
+                sessions=250,
+                instruments=5_000,
+                scope=PopulationScope.FULL_ELIGIBLE_UNIVERSE,
+            ),
+            PopulationCoverageStage(
+                name="discovery_population",
+                rows=20_000,
+                sessions=250,
+                instruments=1_200,
+                scope=PopulationScope.FILTERED_POPULATION,
+            ),
+            PopulationCoverageStage(
+                name="route_eligible",
+                rows=12_000,
+                sessions=240,
+                instruments=900,
+                scope=PopulationScope.FILTERED_POPULATION,
+            ),
+        )
+    )
+    probe_funnel = assess_population_coverage(
+        (
+            PopulationCoverageStage(
+                name="source_probe",
+                rows=500,
+                sessions=5,
+                instruments=300,
+                scope=PopulationScope.PROBE_ONLY,
+                complete_scope=False,
+            ),
+            PopulationCoverageStage(
+                name="probe_signals",
+                rows=100,
+                sessions=5,
+                instruments=80,
+                scope=PopulationScope.FILTERED_POPULATION,
+                complete_scope=False,
+            ),
+        )
+    )
+    invalid_expansion = assess_population_coverage(
+        (
+            PopulationCoverageStage(
+                name="eligible",
+                rows=100,
+                scope=PopulationScope.FULL_ELIGIBLE_UNIVERSE,
+            ),
+            PopulationCoverageStage(
+                name="filtered",
+                rows=120,
+                scope=PopulationScope.FILTERED_POPULATION,
+            ),
+        )
+    )
+
     checks = {
         "phase26_arithmetic_passable": phase26.arithmetic_passable,
         "phase26_null_rejected": null.promotions == 0,
@@ -95,9 +161,19 @@ def main() -> int:
             bounded_probe.disposition
             is ReachabilityDisposition.REACHABLE_CAPACITY_UNPROVEN
         ),
+        "full_universe_scope_proven": broad_universe_funnel.source_scope_proven,
+        "severe_population_narrowing_is_visible": (
+            broad_universe_funnel.requires_bottleneck_explanation
+            and broad_universe_funnel.bottleneck_stages == ("discovery_population",)
+        ),
+        "probe_cannot_claim_full_coverage": (
+            probe_funnel.valid_contract and not probe_funnel.source_scope_proven
+        ),
+        "same_grain_population_expansion_rejected": not invalid_expansion.valid_contract,
     }
     payload = {
         "contract_version": RESEARCH_GATE_CALIBRATION_CONTRACT_VERSION,
+        "population_coverage_contract_version": RESEARCH_POPULATION_COVERAGE_CONTRACT_VERSION,
         "pass": all(checks.values()),
         "checks": checks,
         "phase26_reachability": phase26.to_dict(),
@@ -107,6 +183,9 @@ def main() -> int:
         "synthetic_impossible_resolution": impossible_resolution.to_dict(),
         "synthetic_complete_capacity_failure": complete_capacity_failure.to_dict(),
         "synthetic_bounded_probe": bounded_probe.to_dict(),
+        "synthetic_full_universe_funnel": broad_universe_funnel.to_dict(),
+        "synthetic_probe_funnel": probe_funnel.to_dict(),
+        "synthetic_invalid_expansion": invalid_expansion.to_dict(),
         "protected_outcome_reads": 0,
         "broker_reads": 0,
         "broker_writes": 0,
