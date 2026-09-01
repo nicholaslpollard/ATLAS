@@ -115,19 +115,53 @@ Exact Alpaca response bytes are retained under an isolated provider namespace:
 
 This keeps the accepted historical-backfill namespace unchanged while retaining reproducible source provenance for the experiment.
 
-### Pre-target total-return source audit
+### Pre-target total-return source audit v1
 
-The first Alpaca audit is intentionally bounded before any bulk adjusted-history reconstruction.
+The first Alpaca audit was intentionally bounded before any bulk adjusted-history reconstruction.
 
-- Alpaca corporate actions and deterministic price cases are used only to establish provider/source semantics.
-- Every Alpaca price case is frozen to end no later than **2021-08-31**.
-- The first LIT-01 formation/target month is **2021-09**, so the source audit cannot inspect a LIT-01 development target month.
-- The audit samples Massive dividends with missing adjustment factors, Massive dividends with factors, and Massive splits across the safe historical interval.
-- Each price case requests both literal-symbol `raw` and `adjustment=all` Alpaca daily bars and retains exact source payload hashes.
-- Massive and Alpaca action values/dates are reconciled, while raw-versus-adjusted return/scale behavior is reported for inspection.
-- The first real provider run ends at `TOTAL_RETURN_SOURCE_AUDIT_READY_FOR_REVIEW`; that label is intentionally **not** a scientific PASS. Reconciliation tolerances are not invented after seeing target returns, and development outcomes remain closed.
+- Every Alpaca price case ended no later than **2021-08-31**.
+- The first LIT-01 formation/target month is **2021-09**, so the audit could not inspect a LIT-01 development target month.
+- The audit sampled Massive dividends with missing adjustment factors, Massive dividends with factors, and Massive splits across the safe historical interval.
+- Each price case requested both literal-symbol `raw` and `adjustment=all` Alpaca daily bars and retained exact source payload hashes.
 
-Only after this source audit establishes defensible semantics may ATLAS freeze the provider-neutral total-return materialization contract and scale the same acquisition path into a permanent historical daily/monthly total-return dataset.
+The first real target-machine run completed on exact branch head `5fcb3733d2090be4aa44660349485192b4a0cc8c` with status `TOTAL_RETURN_SOURCE_AUDIT_READY_FOR_REVIEW`:
+
+- Alpaca corporate actions: **144,794** normalized rows;
+- selected price cases: **26**;
+- complete raw/all price cases: **9**;
+- exact Alpaca corporate-action matches among the selected cases: **10**;
+- provider-value relative error across matched cases: median **0.0**, maximum **0.2148610855404469**;
+- adjustment-scale relative error across complete cases: median **0.00010431426875107088**, maximum **0.0004481352965559626**;
+- missing-factor dividends: 12 selected, 2 action matches, **0 complete price cases**;
+- with-factor dividends: 6 selected, 4 action matches, 5 complete price cases;
+- splits: 8 selected, 4 action matches, 4 complete price cases;
+- target outcome rows read: **0**;
+- protected return rows read: **0**;
+- protected holdout consumed: **False**;
+- canonical data mutation, global Alpaca adjustment mutation, broker reads, order writes, PAPER submits, and LIVE writes: **none**.
+
+The complete cases provide strong evidence that Alpaca `adjustment=all` behaves consistently with local split/dividend adjustment mathematics where both providers cover the same symbol/event. However, v1 cannot close the missing-factor question because its deterministic all-Massive sample mixed provider-domain coverage with adjustment semantics: the missing-factor cohort had no complete raw/all price case. That is a source-design limitation, not evidence that the adjustment mathematics failed.
+
+V1 remains preserved as evidence; its selection/result is not rewritten.
+
+### Pre-target total-return source audit v2
+
+V2 is additive and repairs the v1 source-design limitation before any target return is opened.
+
+Its rules are frozen before v2 adjusted-price acquisition:
+
+1. Build the full safe-period Massive corporate-action population.
+2. Build an Alpaca action index by **exact action type + literal ticker + event date** using the already-retained pre-target corporate-action cache.
+3. Partition each Massive action family into exact provider overlaps and provider non-overlaps **before any adjusted price is inspected**.
+4. Select the adjustment-validation cases deterministically and evenly across time from the exact-overlap population. Non-overlaps remain a separate coverage diagnostic and are never reclassified as adjustment failures.
+5. Query Alpaca historical bars with `asof=<event date>` rather than `asof=-`. Alpaca documents `asof` as the entity/symbol mapping date; this preserves historical source identity while allowing provider-supported name-change mapping.
+6. For dividends, use Massive `cash_amount` — the original per-share payment — with event-era raw prices. Massive `split_adjusted_cash_amount` is current-share-basis evidence and remains diagnostic only.
+7. Compute two independent expected event scale changes: one from the **Massive original cash amount/split ratio** and one from the **Alpaca action value**. Alpaca `adjustment=all` is then compared with both. A blank Massive cumulative `historical_adjustment_factor` is therefore not filled from Alpaca and does not make the test circular.
+8. Preserve the same hard bar barrier: no price after **2021-08-31**, zero LIT-01 target/protected returns, and no production/broker authority changes.
+
+The v2 goal is specifically to determine whether Massive's original corporate-action values are sufficient to construct provider-neutral total returns even when Massive omits its cumulative historical adjustment factor. No tolerance is silently chosen from LIT-01 target returns; target outcomes remain closed.
+
+Only after v2 establishes defensible semantics may ATLAS freeze the provider-neutral total-return materialization contract and scale the same source logic into a permanent historical daily/monthly total-return dataset.
 
 ### LIT-01 temporal capacity finding
 
@@ -151,15 +185,18 @@ Branch-only or branch-extended files include:
 - `packages/backtesting/literature_momseason_source.py`
 - `packages/backtesting/literature_momseason_feasibility.py`
 - `packages/backtesting/literature_momseason_total_return_source.py`
+- `packages/backtesting/literature_momseason_total_return_source_v2.py`
 - `packages/providers/alpaca/client.py` — backward-compatible explicit historical-bar query overrides;
 - `packages/data/alpaca_backfill_storage.py` — backward-compatible isolated raw-source namespaces;
 - `scripts/run_literature_momseason_source_feasibility.py`
 - `scripts/run_literature_momseason_total_return_source_audit.py`
+- `scripts/run_literature_momseason_total_return_source_audit_v2.py`
 - `tests/unit/test_literature_momseason.py`
 - `tests/unit/test_literature_momseason_total_return_source.py`
+- `tests/unit/test_literature_momseason_total_return_source_v2.py`
 - `.github/workflows/literature-alpha-exploration-tests.yml`
 
-Both source runners record zero target outcome reads, zero protected return reads, zero broker/order/PAPER/LIVE writes, and do not alter production state.
+All LIT-01 source runners record zero target outcome reads, zero protected return reads, zero broker/order/PAPER/LIVE writes, and do not alter production state.
 
 ## Candidate LIT-02 — industry-adjusted short-term reversal
 
@@ -189,13 +226,14 @@ Form 4, Schedule 13D/13G, SEC XBRL quality/accruals, FINRA short interest, 8-K e
 
 ## Immediate branch action
 
-Run the **LIT-01 Massive/Alpaca total-return source audit**.
+Run the **LIT-01 Massive/Alpaca total-return source audit v2**.
 
 The stage now answers only:
 
-- whether Alpaca corporate actions can independently reconcile representative Massive dividends/splits, including the missing-factor dividend population;
-- whether Alpaca `raw` and `adjustment=all` daily bars behave consistently around those events;
-- whether the existing Massive + Alpaca sources are sufficient to freeze a provider-neutral total-return materialization contract;
-- whether any provider-specific mismatch requires root-cause repair before a historical backfill.
+- how much of each Massive corporate-action family has exact Alpaca action overlap versus provider-domain non-overlap;
+- whether a deterministic sample of overlapping missing-factor dividends has complete Alpaca raw/all price evidence;
+- whether Massive's original `cash_amount` or split ratio independently explains Alpaca's observed `raw` versus `adjustment=all` scale change;
+- whether provider-value discrepancies are isolated outliers or a systematic semantic mismatch;
+- whether the existing Massive + Alpaca sources are sufficient to freeze a provider-neutral total-return materialization contract.
 
 The audit reads no LIT-01 target-month or protected return. A full adjusted-history backfill, research-gate calibration, prospective experiment freeze, and development outcomes remain downstream of an accepted source-semantics result.
