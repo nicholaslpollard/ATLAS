@@ -1,8 +1,8 @@
 # ATLAS Current Status and Handoff
 
-**Last synchronized: 2026-08-31 (America/New_York). Accepted numbered foundation remains through Phase32. SEC XBRL, SEC Schedule 13D/13G beneficial ownership, FINRA consolidated short-interest v1, and SEC diluted-EPS earnings-innovation v1 are all scientifically closed accepted-negative research programs. Historical supported alpha remains 0 and Phase33 remains blocked.**
+**Last synchronized: 2026-09-01 (America/New_York). Accepted numbered foundation remains through Phase32. SEC XBRL, SEC Schedule 13D/13G beneficial ownership, FINRA consolidated short-interest v1, SEC diluted-EPS earnings-innovation v1, and SEC Form 13F institutional-positioning v1 are scientifically closed accepted-negative research programs. Historical supported alpha remains 0, Phase33 remains blocked, and ATLAS is operator-paused after the Form 13F closeout pending explicit direction from the ATLAS Review.**
 
-Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_earnings_innovation_source_only_closeout.md`, the retained SEC earnings-innovation feasibility/PIT/diagnostic records, `docs/alpha_gate_finra_short_interest_source_only_closeout.md`, retained FINRA scientific/PIT/source records, accepted beneficial-ownership and XBRL closeouts, `docs/phase32_closeout.md`, `docs/phase_flow.md`, and exact-head CI evidence before continuing.
+Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_13f_source_integrity_closeout.md`, the retained Form 13F feasibility/diagnostic/original-EDGAR reconciliation records, `docs/alpha_gate_sec_earnings_innovation_source_only_closeout.md`, the retained SEC earnings-innovation feasibility/PIT/diagnostic records, `docs/alpha_gate_finra_short_interest_source_only_closeout.md`, retained FINRA scientific/PIT/source records, accepted beneficial-ownership and XBRL closeouts, `docs/phase32_closeout.md`, `docs/phase_flow.md`, and exact-head CI evidence before continuing.
 
 ## Authority state
 
@@ -13,6 +13,7 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_earnings_innovation_sour
 - Beneficial-ownership final scientific disposition: `ACCEPTED_NEGATIVE`.
 - FINRA short-interest v1 final source disposition: `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`.
 - SEC diluted-EPS earnings-innovation v1 final source disposition: `ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`.
+- SEC Form 13F institutional-positioning v1 final source disposition: `ACCEPTED_NEGATIVE_SOURCE_INTEGRITY_FAILURE`.
 - Historical supported alpha remains 0.
 - Phase33 remains blocked because accepted historical `SUPPORTED` alpha remains zero.
 - Phase33 signal-to-trade entry condition: **not satisfied / blocked**.
@@ -20,6 +21,7 @@ Read `docs/roadmap.md`, this file, `docs/alpha_gate_sec_earnings_innovation_sour
 - Master protected outcome window `2026-05-12..2026-08-11`: **unconsumed**.
 - Provider writes, broker reads/writes, orders, PAPER, LIVE, automation, and automatic broker failover: **disabled** for current alpha research.
 - No accepted-negative family grants trading authority.
+- **Operator pause:** after the Form 13F branch is merged and post-merge verification passes, do not start another alpha family, Phase33, or any other new stage until the user explicitly resumes work after the ATLAS Review.
 
 Root cause before workaround remains mandatory. Failed/negative research evidence must be preserved. No family may be rescued after observation by changing thresholds, horizon, costs, features, direction, sample, multiplicity, winner/finalist rules, source-selection/reconciliation rules, or protected policy and calling it the same experiment.
 
@@ -230,13 +232,40 @@ This is a source-quality limitation but **not evidence of corrupted local ATLAS 
 
 The v1 family may not be rescued after observation by selecting a preferred start date/context, tolerating Company Facts versus Submissions filing-date drift, treating `10-Q/A` as `10-Q`, dropping offending rows, or relaxing the frozen zero-tolerance reconciliation rules.
 
+## SEC Form 13F institutional-positioning v1 — accepted-negative source-integrity closeout
+
+Mechanism: `PIT_SEC_FORM13F_INSTITUTIONAL_POSITIONING_CHANGE_AND_CONSENSUS_ACCUMULATION`.
+
+- Gate0 v2 contract: `alpha-gate-sec-13f-feasibility-v2-official-bulk-probe-only-no-market-outcomes`;
+- Gate0 v2 fingerprint: `4f41f7b1ca93bb76d559134d8ef74505ffd6a598e96676011ef515026d491696`;
+- Gate0 result: `PROBE_FEASIBILITY_FAIL` because the 2016Q1 valid-nine-character-CUSIP fraction was **0.993405**, below the frozen **0.995** minimum; all other structural probe gates passed;
+- 2016Q1 affected population: **10,431 malformed rows across 374 accessions** from **1,581,558** initial 13F-HR holding rows;
+- source-only diagnostic found no blanks or long CUSIPs; all malformed values were short, but included heterogeneous values such as `COM`, `ETF`, `0`, and one- through eight-character strings, so mechanical zero-padding was not authorized;
+- original-EDGAR reconciliation V1 locator failure is preserved as `IMPLEMENTATION_DEFECT_FIXED`;
+- original-EDGAR reconciliation V2 used the authoritative SEC quarterly `master.idx` locator and reconciled the same frozen **374 accessions / 10,431 malformed rows**;
+- **374/374** affected accessions matched original-versus-bulk CUSIP row counts;
+- **374/374** had exact original-versus-bulk CUSIP multisets;
+- all **10,431** malformed bulk rows were reproduced exactly in the original as-filed EDGAR XML;
+- exactly one archive CIK differed from the bulk CIK, explaining the repaired V1 locator defect without changing the source-integrity result;
+- closeout contract: `alpha-gate-sec-13f-closeout-v1-as-filed-cusip-source-integrity-failure-no-market-outcomes`;
+- closeout fingerprint: `0375d5567e0547c151f9fb140309aa568d17528246e611a68fa5984a1c481acd`;
+- accepted reconciliation report SHA-256: `e5b0cad238eb13f998c34ca51f659474484ba0ab97e64091a1a73cb604083d47`;
+- final disposition: `ACCEPTED_NEGATIVE_SOURCE_INTEGRITY_FAILURE`;
+- failure taxonomy: `SOURCE_INTEGRITY_FAIL`;
+- provider reads performed by closeout: **0**;
+- target/development outcome rows read: **0**;
+- protected return rows read: **0**; protected holdout consumed: **false**;
+- historical supported alpha remains **0**; Phase33 authority remains **false**.
+
+The exact Form 13F v1 experiment cannot be rescued by lowering the 99.5% CUSIP-validity threshold, zero-padding malformed values, dropping malformed rows or filings, inferring identity from issuer/class, switching source reconciliation rules after observation, or opening outcomes to choose among repairs. Any future institutional-positioning experiment must be prospectively preregistered under a materially different source/identity contract.
+
 ## Immediate next action
 
-1. Merge the accepted-negative SEC earnings-innovation source-only closeout after synchronized living-document exact-head CI passes.
-2. Verify the post-merge retained regression on `main`.
-3. Define and freeze a **materially different economic/information alpha mechanism**. Do not retune the earnings-innovation v1 or prior accepted-negative families.
-4. Phase33 remains blocked until at least one historical alpha earns accepted `SUPPORTED` authority.
+1. Finish repository closure for the accepted-negative SEC Form 13F source-integrity result: synchronized living documents, PR/merge, and post-merge verification on `main`.
+2. **Then STOP. ATLAS is operator-paused.** Do not define, freeze, implement, or run another alpha family; do not advance to Phase33 or another roadmap stage.
+3. Await explicit user direction after the separate **ATLAS Review** exploration. Any future path change must be reconciled back into the normative roadmap/status before implementation resumes.
+4. Phase33 remains blocked until at least one historical alpha earns accepted `SUPPORTED` authority unless a later explicit roadmap revision changes that architecture under proper governance.
 
 ## Downstream boundary
 
-The roadmap is conditional rather than schedule-driven. Accepted-negative research improves ATLAS's retained knowledge but cannot substitute for positive alpha support. LIVE, automatic broker failover, and new trading authority remain unavailable until their later separately accepted gates.
+The roadmap is conditional rather than schedule-driven. Accepted-negative research improves ATLAS's retained knowledge but cannot substitute for positive alpha support. LIVE, automatic broker failover, and new trading authority remain unavailable until their later separately accepted gates. The current operator pause is stricter than the ordinary roadmap: no new stage or alpha-development work begins until explicit resume direction is given.
