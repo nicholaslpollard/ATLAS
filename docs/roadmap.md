@@ -1,17 +1,18 @@
 # ATLAS Master Mission and Roadmap
 
-**Normative project source of truth. Re-synchronized: 2026-08-31 (America/New_York). Accepted numbered foundation remains through Phase32. The later SEC XBRL, SEC Schedule 13D/13G beneficial-ownership, FINRA consolidated short-interest v1, and SEC diluted-EPS earnings-innovation v1 research families are all scientifically closed accepted-negative. Historical supported alpha remains 0 and Phase33 remains blocked.**
+**Normative project source of truth. Re-synchronized: 2026-09-01 (America/New_York). Accepted numbered foundation remains through Phase32. The later SEC XBRL, SEC Schedule 13D/13G beneficial-ownership, FINRA consolidated short-interest v1, SEC diluted-EPS earnings-innovation v1, and SEC Form 13F institutional-positioning v1 research families are scientifically closed accepted-negative. Historical supported alpha remains 0, Phase33 remains blocked, and ATLAS is operator-paused after the Form 13F closeout pending explicit direction from the ATLAS Review.**
 
 Continuation precedence:
 
 1. this roadmap;
 2. `docs/current_status.md`;
-3. `docs/alpha_gate_sec_earnings_innovation_source_only_closeout.md` and retained earnings-innovation feasibility/PIT/diagnostic records;
-4. `docs/alpha_gate_finra_short_interest_source_only_closeout.md` and retained FINRA scientific/PIT/source records;
-5. accepted beneficial-ownership closeout/scientific/source records;
-6. accepted XBRL closeout/scientific/source records;
-7. accepted Phase32 closeout/scientific/source records;
-8. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, accepted code, validators, exact-head CI/PR evidence, and historical phase records.
+3. `docs/alpha_gate_sec_13f_source_integrity_closeout.md` and retained Form 13F feasibility/diagnostic/original-EDGAR reconciliation records;
+4. `docs/alpha_gate_sec_earnings_innovation_source_only_closeout.md` and retained earnings-innovation feasibility/PIT/diagnostic records;
+5. `docs/alpha_gate_finra_short_interest_source_only_closeout.md` and retained FINRA scientific/PIT/source records;
+6. accepted beneficial-ownership closeout/scientific/source records;
+7. accepted XBRL closeout/scientific/source records;
+8. accepted Phase32 closeout/scientific/source records;
+9. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, accepted code, validators, exact-head CI/PR evidence, and historical phase records.
 
 ## 1. Mission
 
@@ -69,6 +70,7 @@ Persistent roles:
 26. If multiplicity is frozen across a finite hypothesis family, a source-only failure in one member cannot be repaired after observation by silently dropping that member. A changed family is a new preregistered experiment.
 27. A source-only sample insufficiency may close an experiment without opening market outcomes when the frozen acceptance contract cannot be satisfied from the available source population.
 28. When an authoritative-source replay reproduces the original source hashes and the same cross-source contradiction/ambiguity, treat it as a source-semantics/provenance limitation rather than local-cache corruption. Preserve raw representations; do not purge/refetch the lake merely to try to make the inconsistency disappear.
+29. **Operator pause overrides ordinary progression.** After the SEC Form 13F source-integrity closeout is merged and post-merge verified, no new alpha family, Phase33 work, or other stage may begin until the user explicitly resumes ATLAS after the ATLAS Review.
 
 ## 4. Required phase/gate cadence
 
@@ -86,6 +88,7 @@ Operational rules:
 - Repository CI proves repository properties; target-machine runs remain mandatory for local source/provider/artifact facts CI cannot establish.
 - Do not run expensive target evidence against a repository head that has not passed the required exact-head repository certification.
 - Negative evidence is valid evidence. A research family can close `ACCEPTED_NEGATIVE` without granting downstream positive authority.
+- When an operator pause is active, complete only the already-authorized closeout/merge verification and then stop before defining or implementing a successor.
 
 ## 5. Accepted foundation through Phase32
 
@@ -294,7 +297,44 @@ Final disposition:
 
 No performance claim is authorized because market outcomes were never opened. Any future SEC XBRL mechanism may define different reconciliation/canonicalization semantics only prospectively under a new preregistration.
 
-## 10. Remaining master roadmap
+## 10. Completed pre-Phase33 SEC Form 13F institutional positioning v1 — `ACCEPTED_NEGATIVE_SOURCE_INTEGRITY_FAILURE`
+
+Mechanism: `PIT_SEC_FORM13F_INSTITUTIONAL_POSITIONING_CHANGE_AND_CONSENSUS_ACCUMULATION`.
+
+Gate0 v2 remained a bounded source probe only. Its frozen valid-CUSIP gate required at least **99.5%** valid nine-character CUSIPs in every anchor. The 2016Q1 anchor returned **0.993405**, while the other structural gates passed, so Gate0 correctly returned `PROBE_FEASIBILITY_FAIL` without freezing science or opening outcomes.
+
+The preserved 2016Q1 source contained **1,581,558** original-HR holding rows, of which **10,431** had malformed CUSIPs across **374** affected accessions. The source-only diagnostic found all malformed values were short rather than blank/long, but the population included heterogeneous values such as `COM`, `ETF`, `0`, and one- through eight-character strings. Only a minority satisfied independent same-archive repair signals, so mechanical zero-padding or inferred repair was forbidden.
+
+Original-EDGAR reconciliation V1 exposed an implementation defect because it derived archive paths from the bulk submission CIK and hit a 404 after substantial progress. That incident is preserved as `IMPLEMENTATION_DEFECT_FIXED`. Reconciliation V2 changed only the locator: the exact filing path came from SEC's quarterly `master.idx`, while the frozen **374-accession / 10,431-row** scientific source population remained unchanged.
+
+The completed V2 reconciliation established:
+
+- **374/374** affected accessions had matching bulk-versus-original CUSIP row counts;
+- **374/374** had exact bulk-versus-original CUSIP multisets;
+- all **10,431** malformed bulk rows were reproduced exactly in original as-filed EDGAR XML;
+- one archive CIK differed from the bulk CIK, explaining the V1 locator failure without changing the CUSIP conclusion.
+
+Closeout contract:
+
+`alpha-gate-sec-13f-closeout-v1-as-filed-cusip-source-integrity-failure-no-market-outcomes`
+
+Closeout fingerprint:
+
+`0375d5567e0547c151f9fb140309aa568d17528246e611a68fa5984a1c481acd`
+
+Accepted reconciliation report SHA-256:
+
+`e5b0cad238eb13f998c34ca51f659474484ba0ab97e64091a1a73cb604083d47`
+
+Final disposition:
+
+`ACCEPTED_NEGATIVE_SOURCE_INTEGRITY_FAILURE`
+
+Failure taxonomy: `SOURCE_INTEGRITY_FAIL`. Provider reads performed by closeout = **0**. Target/development outcome rows read = **0**. Protected return rows read = **0**. Protected holdout consumed = **false**. Historical supported alpha remains **0** and Phase33 remains blocked.
+
+The exact Form 13F v1 experiment may not be rescued by lowering the 99.5% CUSIP-validity threshold, zero-padding malformed values, dropping malformed rows or filings, inferring identifiers from issuer/class, changing source reconciliation rules after observation, or opening outcomes to select a repair. Any future institutional-positioning experiment must be prospectively preregistered under a materially different source/identity contract.
+
+## 11. Remaining master roadmap — currently operator-paused
 
 ### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
 
@@ -302,7 +342,9 @@ No performance claim is authorized because market outcomes were never opened. An
 
 **Current state:** **BLOCKED**, because accepted historical supported alpha = 0.
 
-When eligible, convert supported evidence into PASS versus trade, stock versus option/defined-risk structure, entry, invalidation/stop, target/exit, horizon/DTE, quantity, and portfolio admission using accepted capabilities. No LIVE.
+**Operator state:** **PAUSED**. Even if another research idea is available, no successor alpha family, Phase33 work, or alternative roadmap stage begins until the user explicitly resumes ATLAS after the ATLAS Review and any resulting roadmap decision is synchronized here.
+
+When eligible and explicitly resumed, convert supported evidence into PASS versus trade, stock versus option/defined-risk structure, entry, invalidation/stop, target/exit, horizon/DTE, quantity, and portfolio admission using accepted capabilities. No LIVE.
 
 ### Phase34 — End-to-End Historical Replay & Stress Certification + Replay Dashboard
 
@@ -328,8 +370,8 @@ Consolidate the production web application and accepted Python engine; promote P
 
 Enable LIVE only through explicit authorization with deliberately small initial exposure, hard risk/loss limits, reconciliation/health, kill capability, manual fallback, and no automatic broker failover. Scale only from evidence.
 
-## 11. Progression rule
+## 12. Progression rule
 
 The roadmap is **conditional, not schedule-driven**. Phase numbers do not guarantee advancement. Positive downstream authority requires the exact frozen entry condition; accepted-negative science cannot substitute for it.
 
-The current critical path remains historical alpha validation. The next research family must use a **materially different economic/information mechanism** from the now-closed SEC diluted-EPS earnings-innovation v1 and prior accepted-negative families; none may be rescued by post-result source-rule, threshold, feature, direction, sample, multiplicity, or protected-policy changes.
+Historical alpha validation remains the unresolved technical critical path under the current architecture, but **no new alpha-development work is authorized while the operator pause is active**. The next action after the Form 13F merge and post-merge verification is to stop and await explicit user direction from the ATLAS Review. If later resumed under the current architecture, any successor research family must use a materially different economic/information mechanism and prospectively valid source contract; prior accepted-negative families may not be rescued by post-result source-rule, threshold, feature, direction, sample, multiplicity, or protected-policy changes.

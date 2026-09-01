@@ -1,0 +1,56 @@
+name: ATLAS SEC Form 13F alpha-gate contracts
+
+on:
+  push:
+    branches:
+      - 'alpha-gate-sec-13f-*'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  sec-13f-alpha-gate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.14
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+      - name: Install ATLAS from locked dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock
+          python -m pip install --no-deps -e .
+          python -m pip check
+      - name: Compile SEC Form 13F feasibility packages
+        run: python -m compileall -q packages/providers/sec_13f_datasets.py packages/providers/sec_edgar_archive.py packages/backtesting/alpha_gate_sec_13f_feasibility.py packages/backtesting/alpha_gate_sec_13f_feasibility_v2.py packages/backtesting/alpha_gate_sec_13f_cusip_diagnostic.py packages/backtesting/alpha_gate_sec_13f_original_edgar_reconciliation.py packages/backtesting/alpha_gate_sec_13f_original_edgar_reconciliation_v2.py packages/backtesting/alpha_gate_sec_13f_closeout.py scripts/run_alpha_gate_sec_13f_feasibility.py scripts/run_alpha_gate_sec_13f_feasibility_v2.py scripts/run_alpha_gate_sec_13f_cusip_diagnostic.py scripts/run_alpha_gate_sec_13f_original_edgar_reconciliation.py scripts/run_alpha_gate_sec_13f_original_edgar_reconciliation_v2.py scripts/run_alpha_gate_sec_13f_source_only_closeout.py scripts/validate_alpha_gate_sec_13f_feasibility.py scripts/validate_alpha_gate_sec_13f_feasibility_v2.py scripts/validate_alpha_gate_sec_13f_original_edgar_reconciliation.py scripts/validate_alpha_gate_sec_13f_original_edgar_reconciliation_v2.py scripts/validate_alpha_gate_sec_13f_source_only_closeout.py tests/unit/test_sec_13f_datasets.py tests/unit/test_alpha_gate_sec_13f_feasibility.py tests/unit/test_alpha_gate_sec_13f_feasibility_v2.py tests/unit/test_alpha_gate_sec_13f_cusip_diagnostic.py tests/unit/test_alpha_gate_sec_13f_original_edgar_reconciliation.py tests/unit/test_alpha_gate_sec_13f_original_edgar_reconciliation_v2.py tests/unit/test_alpha_gate_sec_13f_closeout.py
+      - name: Retain earnings-innovation accepted-negative closeout boundary
+        run: python scripts/validate_alpha_gate_sec_earnings_innovation_source_only_closeout.py
+      - name: Retain research-gate calibration safeguards
+        run: python scripts/validate_research_gate_calibration.py
+      - name: Validate preserved SEC Form 13F v1 source-only contract
+        run: python scripts/validate_alpha_gate_sec_13f_feasibility.py
+      - name: Validate SEC Form 13F v2 audit-aligned bounded-probe contract
+        run: python scripts/validate_alpha_gate_sec_13f_feasibility_v2.py
+      - name: Validate preserved SEC Form 13F original-EDGAR reconciliation V1 contract
+        run: python scripts/validate_alpha_gate_sec_13f_original_edgar_reconciliation.py
+      - name: Validate SEC Form 13F original-EDGAR reconciliation V2 contract
+        run: python scripts/validate_alpha_gate_sec_13f_original_edgar_reconciliation_v2.py
+      - name: Validate SEC Form 13F source-integrity closeout contract
+        run: python scripts/validate_alpha_gate_sec_13f_source_only_closeout.py
+      - name: Run SEC Form 13F focused unit tests
+        run: python -m pytest -q tests/unit/test_sec_13f_datasets.py tests/unit/test_alpha_gate_sec_13f_feasibility.py tests/unit/test_alpha_gate_sec_13f_feasibility_v2.py tests/unit/test_alpha_gate_sec_13f_cusip_diagnostic.py tests/unit/test_alpha_gate_sec_13f_original_edgar_reconciliation.py tests/unit/test_alpha_gate_sec_13f_original_edgar_reconciliation_v2.py tests/unit/test_alpha_gate_sec_13f_closeout.py tests/unit/test_research_population_coverage.py tests/unit/test_research_gate_freeze.py
