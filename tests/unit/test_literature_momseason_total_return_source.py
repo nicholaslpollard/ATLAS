@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
-from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -23,6 +22,7 @@ from packages.providers.alpaca.client import AlpacaApiPage, AlpacaMarketDataClie
 class _RecordingAlpacaClient(AlpacaMarketDataClient):
     def __init__(self) -> None:
         self.cfg = SimpleNamespace(
+            base_url="https://data.alpaca.markets",
             symbol_batch_size=100,
             timeframe="1Day",
             adjustment="raw",
