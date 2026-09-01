@@ -148,7 +148,7 @@ V1 remains preserved as evidence; its selection/result is not rewritten.
 
 V2 is additive and repairs the v1 source-design limitation before any target return is opened.
 
-Its rules are frozen before v2 adjusted-price acquisition:
+Its rules were frozen before v2 adjusted-price acquisition:
 
 1. Build the full safe-period Massive corporate-action population.
 2. Build an Alpaca action index by **exact action type + literal ticker + event date** using the already-retained pre-target corporate-action cache.
@@ -159,9 +159,50 @@ Its rules are frozen before v2 adjusted-price acquisition:
 7. Compute two independent expected event scale changes: one from the **Massive original cash amount/split ratio** and one from the **Alpaca action value**. Alpaca `adjustment=all` is then compared with both. A blank Massive cumulative `historical_adjustment_factor` is therefore not filled from Alpaca and does not make the test circular.
 8. Preserve the same hard bar barrier: no price after **2021-08-31**, zero LIT-01 target/protected returns, and no production/broker authority changes.
 
-The v2 goal is specifically to determine whether Massive's original corporate-action values are sufficient to construct provider-neutral total returns even when Massive omits its cumulative historical adjustment factor. No tolerance is silently chosen from LIT-01 target returns; target outcomes remain closed.
+The exact-head target-machine v2 run on `561f320098d139fd2edacb07fb0ee64aff29efa5` returned `TOTAL_RETURN_SOURCE_V2_AUDIT_READY_FOR_REVIEW` with:
 
-Only after v2 establishes defensible semantics may ATLAS freeze the provider-neutral total-return materialization contract and scale the same source logic into a permanent historical daily/monthly total-return dataset.
+- Massive missing-factor dividends: **36,658** safe-period candidates, **4,249** exact Alpaca action overlaps, **32,409** non-overlaps;
+- Massive with-factor dividends: **145,685** candidates, **117,514** exact overlaps, **28,171** non-overlaps;
+- Massive splits: **5,247** candidates, **1,498** exact overlaps, **3,749** non-overlaps;
+- 26 selected exact-overlap price cases;
+- complete adjusted-price evidence: **3 / 12** missing-factor dividends, **5 / 6** with-factor dividends, and **5 / 8** splits;
+- raw provider-value relative error: median **0.0**, maximum **0.45913294117647063**;
+- Massive-derived scale relative error across complete cases: median **0.000102937793342242**, maximum **0.0045142185576147196**;
+- Alpaca-derived scale relative error across complete cases: median **0.000102937793342242**, maximum **0.0004853492895708397**;
+- target outcome rows read: **0**;
+- protected return rows read: **0**;
+- protected holdout consumed: **False**;
+- canonical data mutation, global Alpaca adjustment mutation, broker reads, order writes, PAPER submits, and LIVE writes: **none**.
+
+V2 therefore closed the original missing-factor *coverage-selection* defect: real missing-factor events now have complete raw/all price evidence, and Alpaca's own corporate-action value explains its `adjustment=all` scale to less than 5 basis points worst-case in the complete evidence.
+
+V2 also exposed a separate unit-semantics issue. Its largest raw provider-value discrepancies are concentrated in foreign/Canadian names such as `SU` and `TU`. Massive's dividends endpoint retains a `currency` field, and Alpaca's current corporate-action schema also retains `currency`, but the v2 derived case rows did not carry those currency fields forward. A direct numerical comparison of a CAD dividend with a USD-quoted U.S.-equity bar is dimensionally invalid. Therefore the v2 raw provider-value maximum is not accepted as evidence of a bad total-return adjustment until currency is restored.
+
+V2 remains preserved as evidence; its report and price cases are not rewritten.
+
+### Cached currency-aware source acceptance v3
+
+V3 is an additive **cached-only** audit. It performs no new provider request and does not inspect any target or protected return.
+
+It joins the immutable v2 case rows back to the retained Massive and Alpaca corporate-action caches by action id and restores both providers' currency metadata. The source rules are frozen before the v3 target-machine run:
+
+- split ratios are currency-independent and remain directly comparable;
+- dividend provider values are directly compared only when Massive and Alpaca report the same currency;
+- a Massive dividend amount is compared with the USD historical bar scale only when Massive reports `USD`;
+- an Alpaca dividend amount is compared with the USD historical bar scale only when Alpaca reports `USD`;
+- cross-currency dividend rows are retained as source evidence but are classified `NOT_DIRECTLY_COMPARABLE_CURRENCY`, not as adjustment errors;
+- minimum complete price evidence remains **3 cases per source family**;
+- maximum accepted Alpaca adjustment-scale relative error is frozen at **0.001 (10 bps)**;
+- maximum accepted split-ratio relative error is frozen at **0.001 (10 bps)**;
+- maximum accepted same-currency provider-value relative error is frozen at **0.001 (10 bps)**.
+
+These thresholds are source-semantics gates only and were fixed before any LIT-01 development or protected outcome was opened. They are intentionally above the v2 Alpaca worst case (~4.85 bps) while remaining far below an economically meaningful corporate-action mismatch.
+
+If all v3 gates pass, the accepted source conclusion is narrowly:
+
+> `Alpaca historical daily bars adjustment=all` is the primary LIT-01 historical total-return source; Massive PIT reference snapshots + ATLAS identity resolution remain identity authority; Massive corporate actions remain independent reconciliation/provenance evidence, and missing Massive `historical_adjustment_factor` values are not used to compute LIT-01 returns.
+
+A v3 source-semantics pass is **not** LIT-01 alpha support. The next stage would still be a source-only adjusted-endpoint capacity/materialization census over the actual LIT-01 predictor population before research-gate calibration, prospective experiment freeze, or development outcome access.
 
 ### LIT-01 temporal capacity finding
 
@@ -186,14 +227,17 @@ Branch-only or branch-extended files include:
 - `packages/backtesting/literature_momseason_feasibility.py`
 - `packages/backtesting/literature_momseason_total_return_source.py`
 - `packages/backtesting/literature_momseason_total_return_source_v2.py`
+- `packages/backtesting/literature_momseason_total_return_source_v3.py`
 - `packages/providers/alpaca/client.py` — backward-compatible explicit historical-bar query overrides;
 - `packages/data/alpaca_backfill_storage.py` — backward-compatible isolated raw-source namespaces;
 - `scripts/run_literature_momseason_source_feasibility.py`
 - `scripts/run_literature_momseason_total_return_source_audit.py`
 - `scripts/run_literature_momseason_total_return_source_audit_v2.py`
+- `scripts/run_literature_momseason_total_return_source_audit_v3.py`
 - `tests/unit/test_literature_momseason.py`
 - `tests/unit/test_literature_momseason_total_return_source.py`
 - `tests/unit/test_literature_momseason_total_return_source_v2.py`
+- `tests/unit/test_literature_momseason_total_return_source_v3.py`
 - `.github/workflows/literature-alpha-exploration-tests.yml`
 
 All LIT-01 source runners record zero target outcome reads, zero protected return reads, zero broker/order/PAPER/LIVE writes, and do not alter production state.
@@ -226,14 +270,13 @@ Form 4, Schedule 13D/13G, SEC XBRL quality/accruals, FINRA short interest, 8-K e
 
 ## Immediate branch action
 
-Run the **LIT-01 Massive/Alpaca total-return source audit v2**.
+Run the **LIT-01 cached currency-aware total-return source audit v3**.
 
 The stage now answers only:
 
-- how much of each Massive corporate-action family has exact Alpaca action overlap versus provider-domain non-overlap;
-- whether a deterministic sample of overlapping missing-factor dividends has complete Alpaca raw/all price evidence;
-- whether Massive's original `cash_amount` or split ratio independently explains Alpaca's observed `raw` versus `adjustment=all` scale change;
-- whether provider-value discrepancies are isolated outliers or a systematic semantic mismatch;
-- whether the existing Massive + Alpaca sources are sufficient to freeze a provider-neutral total-return materialization contract.
+- whether the large v2 provider-value discrepancies are cross-currency unit mismatches rather than corporate-action adjustment failures;
+- whether same-currency Massive/Alpaca action values reconcile within the frozen source tolerance;
+- whether currency-valid Alpaca action values explain `adjustment=all` scale changes within the frozen source tolerance;
+- whether the source can be accepted with Alpaca adjusted bars as the primary return source and Massive as PIT identity plus reconciliation evidence.
 
-The audit reads no LIT-01 target-month or protected return. A full adjusted-history backfill, research-gate calibration, prospective experiment freeze, and development outcomes remain downstream of an accepted source-semantics result.
+V3 performs **zero new provider calls**. It reads no LIT-01 target-month or protected return. Adjusted-endpoint population materialization, research-gate calibration, prospective experiment freeze, and development outcomes remain downstream of an accepted source-semantics result.
