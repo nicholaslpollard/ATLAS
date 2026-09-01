@@ -86,10 +86,48 @@ The branch therefore uses a **research-only source cache**:
 
 - point-in-time historical Massive stock reference snapshots at the required month-end dates;
 - ATLAS `InstrumentIdentityResolver` to bind historical ticker rows to the same stable security identity used at formation;
-- Massive split and dividend sources for later total-return adjustment audit;
+- Massive split and dividend sources for total-return source reconciliation;
 - canonical daily month-end prices only for lagged predictor months.
 
 No target-month price endpoint is permitted during source feasibility.
+
+### LIT-01 source-capacity finding
+
+The first source acquisition completed all 109 required historical PIT reference periods and proved broad lagged-predictor price/identity capacity without reading a target or protected return. Massive corporate-action acquisition also completed, but 82,613 dividend rows lacked `historical_adjustment_factor`.
+
+That finding is not treated as permission to ignore dividends, delete affected rows, or weaken the signal definition. It triggers a separate source-semantics audit.
+
+### Dual-provider total-return architecture
+
+LIT-01 now uses an additive **Massive + Alpaca** source design rather than rebuilding the accepted ATLAS market lake or mixing provider-specific fields in the same raw table.
+
+Provider responsibilities are separated:
+
+- **Massive** remains the accepted point-in-time identity/reference source, the retained canonical raw market source, and one corporate-action evidence source.
+- **Alpaca** is added as a secondary research-only historical source for corporate-action reconciliation and explicitly requested `raw` versus `adjustment=all` daily bars.
+- **ATLAS derived data** will become the provider-neutral consumer interface only after the two-provider semantics audit is accepted. Strategies should ultimately consume a versioned total-return dataset rather than provider-specific adjustment behavior.
+
+The accepted global Alpaca configuration remains `adjustment: raw`. Research requests use explicit per-call adjustment overrides; no existing canonical or provider data is rewritten.
+
+Exact Alpaca response bytes are retained under an isolated provider namespace:
+
+`data/provider/alpaca/literature_momseason_total_return/raw`
+
+This keeps the accepted historical-backfill namespace unchanged while retaining reproducible source provenance for the experiment.
+
+### Pre-target total-return source audit
+
+The first Alpaca audit is intentionally bounded before any bulk adjusted-history reconstruction.
+
+- Alpaca corporate actions and deterministic price cases are used only to establish provider/source semantics.
+- Every Alpaca price case is frozen to end no later than **2021-08-31**.
+- The first LIT-01 formation/target month is **2021-09**, so the source audit cannot inspect a LIT-01 development target month.
+- The audit samples Massive dividends with missing adjustment factors, Massive dividends with factors, and Massive splits across the safe historical interval.
+- Each price case requests both literal-symbol `raw` and `adjustment=all` Alpaca daily bars and retains exact source payload hashes.
+- Massive and Alpaca action values/dates are reconciled, while raw-versus-adjusted return/scale behavior is reported for inspection.
+- The first real provider run ends at `TOTAL_RETURN_SOURCE_AUDIT_READY_FOR_REVIEW`; that label is intentionally **not** a scientific PASS. Reconciliation tolerances are not invented after seeing target returns, and development outcomes remain closed.
+
+Only after this source audit establishes defensible semantics may ATLAS freeze the provider-neutral total-return materialization contract and scale the same acquisition path into a permanent historical daily/monthly total-return dataset.
 
 ### LIT-01 temporal capacity finding
 
@@ -107,16 +145,21 @@ This does **not** prevent development or internal out-of-sample research. If LIT
 
 ### LIT-01 implementation
 
-Branch-only files:
+Branch-only or branch-extended files include:
 
 - `packages/backtesting/literature_momseason_policy.py`
 - `packages/backtesting/literature_momseason_source.py`
 - `packages/backtesting/literature_momseason_feasibility.py`
+- `packages/backtesting/literature_momseason_total_return_source.py`
+- `packages/providers/alpaca/client.py` — backward-compatible explicit historical-bar query overrides;
+- `packages/data/alpaca_backfill_storage.py` — backward-compatible isolated raw-source namespaces;
 - `scripts/run_literature_momseason_source_feasibility.py`
+- `scripts/run_literature_momseason_total_return_source_audit.py`
 - `tests/unit/test_literature_momseason.py`
+- `tests/unit/test_literature_momseason_total_return_source.py`
 - `.github/workflows/literature-alpha-exploration-tests.yml`
 
-The source runner may acquire research-only historical reference/corporate-action evidence, but it records zero target outcome reads, zero protected return reads, zero broker/order/PAPER/LIVE writes, and does not alter production state.
+Both source runners record zero target outcome reads, zero protected return reads, zero broker/order/PAPER/LIVE writes, and do not alter production state.
 
 ## Candidate LIT-02 — industry-adjusted short-term reversal
 
@@ -146,13 +189,13 @@ Form 4, Schedule 13D/13G, SEC XBRL quality/accruals, FINRA short interest, 8-K e
 
 ## Immediate branch action
 
-Run **LIT-01 source-only feasibility**. The stage answers only:
+Run the **LIT-01 Massive/Alpaca total-return source audit**.
 
-- whether canonical daily history covers all required predictor endpoints;
-- whether stable point-in-time security identity can be reconstructed at historical month ends;
-- how many broad-universe instrument-month predictor rows survive for each predeclared hypothesis;
-- which rows fail identity or price availability and why;
-- whether split/dividend sources are complete enough to proceed to a total-return adjustment audit;
-- how many independent development/protected calendar months exist.
+The stage now answers only:
 
-Only after source capacity and total-return semantics pass may the branch calibrate/freeze a development experiment. Forward target-month returns remain closed until then.
+- whether Alpaca corporate actions can independently reconcile representative Massive dividends/splits, including the missing-factor dividend population;
+- whether Alpaca `raw` and `adjustment=all` daily bars behave consistently around those events;
+- whether the existing Massive + Alpaca sources are sufficient to freeze a provider-neutral total-return materialization contract;
+- whether any provider-specific mismatch requires root-cause repair before a historical backfill.
+
+The audit reads no LIT-01 target-month or protected return. A full adjusted-history backfill, research-gate calibration, prospective experiment freeze, and development outcomes remain downstream of an accepted source-semantics result.
