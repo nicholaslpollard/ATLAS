@@ -49,6 +49,7 @@ Target-machine checks remain mandatory where repository CI cannot prove local da
 
 - Accepted numbered foundation: **through Phase32**, merged into `main`.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE`; historical supported modern alpha remains **0**.
+- Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is `ACCEPTED_NEGATIVE` as well.
 - Phase32 is `ACCEPTED_NEGATIVE`; protected return rows read = 0; holdout consumed = false.
 - Phase31 merge: `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
 - Phase32 PR #37 / merge: `69f8aa81289934b71f2652482c747391917c15a3`.
