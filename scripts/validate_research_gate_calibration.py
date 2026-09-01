@@ -11,6 +11,13 @@ from packages.backtesting.research_gate_calibration import (
     phase26_selection_reachability,
     phase26_synthetic_power,
 )
+from packages.backtesting.research_gate_freeze import (
+    RESEARCH_GATE_FREEZE_CONTRACT_VERSION,
+    MechanismDensity,
+    ProspectiveResearchFreezeSpec,
+    ResearchFreezeDisposition,
+    assess_prospective_research_freeze,
+)
 from packages.backtesting.research_population_coverage import (
     RESEARCH_POPULATION_COVERAGE_CONTRACT_VERSION,
     PopulationCoverageStage,
@@ -145,6 +152,85 @@ def main() -> int:
         )
     )
 
+    freeze_gate = GateReachabilitySpec(
+        name="synthetic_future_sparse_event_alpha",
+        candidate_count=4,
+        family_alpha=0.05,
+        empirical_replicates=2_000,
+        min_rows=750,
+        min_sessions=250,
+        min_instruments=100,
+        capacity=GateCapacityEvidence(
+            rows=2_500,
+            sessions=500,
+            instruments=700,
+            is_upper_bound=True,
+            source="complete_source_only_census",
+        ),
+    )
+    complete_event_source = assess_population_coverage(
+        (
+            PopulationCoverageStage(
+                name="complete_event_source",
+                rows=10_000,
+                sessions=500,
+                instruments=1_000,
+                scope=PopulationScope.NATURAL_EVENT_SOURCE,
+                complete_scope=True,
+                source="point_in_time_source_census",
+            ),
+        )
+    )
+    prospective_ready = assess_prospective_research_freeze(
+        ProspectiveResearchFreezeSpec(
+            name="synthetic_future_sparse_event_alpha",
+            gate=freeze_gate,
+            population=complete_event_source,
+            mechanism_density=MechanismDensity.SPARSE_EVENT,
+            expected_after_cost_edge=0.003,
+            primary_cost_bps=10.0,
+            calibration_trials=10,
+            calibration_promotions=9,
+            target_detection_rate=0.80,
+            sample_size_rationale=(
+                "Effective sample and session floors are calibrated for the sparse event mechanism."
+            ),
+            protected_outcome_reads=0,
+        )
+    )
+    prospective_probe_block = assess_prospective_research_freeze(
+        ProspectiveResearchFreezeSpec(
+            name="synthetic_probe_must_not_freeze",
+            gate=freeze_gate,
+            population=probe_funnel,
+            mechanism_density=MechanismDensity.SPARSE_EVENT,
+            expected_after_cost_edge=0.003,
+            primary_cost_bps=10.0,
+            calibration_trials=10,
+            calibration_promotions=9,
+            target_detection_rate=0.80,
+            sample_size_rationale="Probe-only source coverage is deliberately insufficient for freeze.",
+            protected_outcome_reads=0,
+        )
+    )
+    prospective_underpowered = assess_prospective_research_freeze(
+        ProspectiveResearchFreezeSpec(
+            name="synthetic_underpowered_future_alpha",
+            gate=freeze_gate,
+            population=complete_event_source,
+            mechanism_density=MechanismDensity.SPARSE_EVENT,
+            expected_after_cost_edge=0.003,
+            primary_cost_bps=10.0,
+            calibration_trials=10,
+            calibration_promotions=6,
+            target_detection_rate=0.80,
+            sample_size_rationale=(
+                "This intentionally weak calibration demonstrates a freeze-time power failure."
+            ),
+            protected_outcome_reads=0,
+        )
+    )
+
     checks = {
         "phase26_arithmetic_passable": phase26.arithmetic_passable,
         "phase26_null_rejected": null.promotions == 0,
@@ -170,10 +256,22 @@ def main() -> int:
             probe_funnel.valid_contract and not probe_funnel.source_scope_proven
         ),
         "same_grain_population_expansion_rejected": not invalid_expansion.valid_contract,
+        "prospective_complete_powered_gate_can_freeze": (
+            prospective_ready.disposition is ResearchFreezeDisposition.READY_TO_FREEZE
+        ),
+        "prospective_probe_is_blocked_before_freeze": (
+            prospective_probe_block.disposition
+            is ResearchFreezeDisposition.BLOCKED_POPULATION_EVIDENCE
+        ),
+        "prospective_underpowered_gate_is_blocked": (
+            prospective_underpowered.disposition
+            is ResearchFreezeDisposition.BLOCKED_POWER_PLAN
+        ),
     }
     payload = {
         "contract_version": RESEARCH_GATE_CALIBRATION_CONTRACT_VERSION,
         "population_coverage_contract_version": RESEARCH_POPULATION_COVERAGE_CONTRACT_VERSION,
+        "prospective_freeze_contract_version": RESEARCH_GATE_FREEZE_CONTRACT_VERSION,
         "pass": all(checks.values()),
         "checks": checks,
         "phase26_reachability": phase26.to_dict(),
@@ -186,6 +284,9 @@ def main() -> int:
         "synthetic_full_universe_funnel": broad_universe_funnel.to_dict(),
         "synthetic_probe_funnel": probe_funnel.to_dict(),
         "synthetic_invalid_expansion": invalid_expansion.to_dict(),
+        "synthetic_prospective_ready": prospective_ready.to_dict(),
+        "synthetic_prospective_probe_block": prospective_probe_block.to_dict(),
+        "synthetic_prospective_underpowered": prospective_underpowered.to_dict(),
         "protected_outcome_reads": 0,
         "broker_reads": 0,
         "broker_writes": 0,

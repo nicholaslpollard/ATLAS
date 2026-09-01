@@ -38,5 +38,5 @@ jobs:
           python -m pip check
       - name: Run research gate calibration validator
         run: python scripts/validate_research_gate_calibration.py
-      - name: Run focused calibration and population-coverage unit tests
-        run: python -m pytest -q tests/unit/test_research_gate_calibration.py tests/unit/test_research_population_coverage.py
+      - name: Run focused research-gate audit unit tests
+        run: python -m pytest -q tests/unit/test_research_gate_calibration.py tests/unit/test_research_population_coverage.py tests/unit/test_research_gate_freeze.py
