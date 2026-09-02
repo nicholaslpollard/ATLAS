@@ -28,8 +28,9 @@ This tracker records scientific state only. It does not grant Phase33, PAPER, LI
 | LIT-02 missing-source stress-case plan | ✅ Accepted target-machine freeze | 199 cases; plan fingerprint `c9200212a67171ee7c712a64224263241d622d2e8fe494ce0bc13843a8052880` |
 | LIT-02 source metadata acquisition/classification | ✅ First-pass census complete | 36 resolved / 163 unresolved; zero price/return/protected reads |
 | LIT-02 unresolved-source diagnostic | ✅ Accepted target-machine diagnostic | Diagnostic fingerprint `6253178a77b26d5fa1ae9e99e5ff2036fab913ce9a5b3560a1989f6a6d1a3a2e`; zero provider/outcome reads |
-| LIT-02 source metadata repair v2 | 🟡 Target run interrupted / resume pending | Reached case 131/199 before SEC `IncompleteRead`; completed `m2` checkpoints remain reusable; no price/return outcomes |
-| LIT-02 source coverage decision | ⬜ Pending completed repair-v2 target run | First pass 18.09% vs required 100%; economic design remains blocked |
+| LIT-02 source metadata repair v2 | ✅ Accepted target-machine source-only result | 96 resolved / 103 unresolved; 48.24% coverage; zero price/return/protected reads |
+| LIT-02 repair-v2 residual diagnostic | 🟡 Implementation pending exact-head certification/run | Cached `m2` manifests only; zero provider/outcome reads by contract |
+| LIT-02 source coverage decision | ❌ Incomplete | 48.24% vs required 100%; economic design remains blocked |
 | LIT-02 economic development design | 🔒 Blocked | Only after 100% source feasibility; 2021-09..2026-04 not fresh confirmatory evidence |
 | Protected outcome | 🔒 Unconsumed | Existing protected holdout remains unopened |
 | ATLAS-layer attribution | 🔒 Not authorized | Requires a valid native finalist |
@@ -208,9 +209,57 @@ Repair-v2 predeclares:
 
 The first target-machine repair-v2 acquisition at exact head `a0c9f9e9a46bd15296a87de203920105cdea74d8` reached case 131/199. Case 131 (`2024-05-31 SCX`) completed as `RESOLVED / TERMINAL_CASH`; the next SEC complete-submission transfer was truncated after 9,353,282 bytes and raised `http.client.IncompleteRead`.
 
-That interruption is transport-only. It does not classify source feasibility, does not change the 100% coverage gate, and does not authorize an economic outcome read. The shared SEC archive transport repair discards incomplete bodies, retries the complete GET from byte zero under the existing three-attempt/backoff/rate-limit bounds, never accepts `IncompleteRead.partial`, and preserves both the 20 MB default and explicitly requested 256 MB scientific submission ceilings. Completed `m2` case manifests remain valid and are reused on a non-`--force` resume.
+That interruption was transport-only. The shared SEC archive transport repair discards incomplete bodies, retries the complete GET from byte zero under the existing three-attempt/backoff/rate-limit bounds, never accepts `IncompleteRead.partial`, and preserves both the 20 MB default and explicitly requested 256 MB scientific submission ceilings. Completed `m2` case manifests remain valid and were reused on the non-`--force` resume.
 
-The 100% source-coverage requirement is unchanged.
+### Accepted target-machine repair-v2 result
+
+Exact target-machine head:
+
+`b51857461f7034591b32079ad126ea9c7ffa7310`
+
+- status: `LIT02_DELISTING_AWARE_SOURCE_COVERAGE_INCOMPLETE`
+- feasibility cases: `199`
+- base resolved / unresolved: `36 / 163`
+- resolved after repair-v2: `96`
+- newly resolved: `60`
+- unresolved after repair-v2: `103`
+- source coverage: `48.24%`
+- required source coverage: `100%`
+- path counts: `81 TERMINAL_CASH`, `15 TICKER_CONTINUITY`, `103 SOURCE_UNRESOLVED`
+- source metadata provider reads during resumed run: `481` (`0 Massive`, `481 SEC`)
+- cached repair-v2 cases reused: `131`
+- economic outcome values read: `0`
+- new price/return provider reads: `0`
+- protected return rows read: `0`
+- protected holdout consumed: `False`
+- LIT-02 economic design unblocked: `False`
+- Phase33 signal-to-trade authority: `False`
+- classification fingerprint: `6d11081f7acf39783a9c6b2fde8119a1f19f9b8b3b87be0ab3fac59a8381faa2`
+- report fingerprint: `dca474d2d88c09f904c33e33659fbb88e4cdadcecd9d40666971b4482a1c657e`
+
+Residual reason counts overlap:
+
+- `TERMINAL_TRANSACTION_EFFECTIVE_DATE_UNRESOLVED`: 79
+- `MASSIVE_TICKER_EVENTS_NOT_FOUND`: 71
+- `COMPOSITE_FIGI_UNAVAILABLE`: 25
+- `TERMINAL_TRANSACTION_CONTEXT_UNRESOLVED`: 25
+- `NO_ADMISSIBLE_OFFICIAL_SEC_EVIDENCE_V2`: 15
+- `MULTIPLE_TERMINAL_CASH_VALUES`: 10
+- `SUCCESSOR_TICKER_IDENTITY_REQUIRED`: 4
+- `MULTIPLE_SEC_READY_CLASSIFICATIONS_AT_LATEST_EFFECTIVE_DATE`: 1
+- bounded candidate filing count exceeded (`146 > 128`): 1
+
+This is a source-feasibility result only. It is neither positive nor negative alpha evidence.
+
+## LIT-02 repair-v2 residual diagnostic
+
+Contract:
+
+`lit02-repair-v2-residual-diagnostic-v1-cached-m2-manifests-no-provider-reads`
+
+The diagnostic is pinned to the accepted repair-v2 classification/report fingerprints and exact 199/96/103 counts. It reads only the accepted `development/l2/m2/` report/manifests and records zero provider, market-price/return, protected, broker, order, PAPER, or LIVE reads/writes.
+
+Its purpose is to separate the remaining source mechanisms before any additional source rule is proposed. A further repair is permitted only if this cached evidence supports a general, prospective, outcome-independent mechanism. Ticker-specific exceptions and a weakened coverage threshold remain prohibited.
 
 ## LIT-02 source-feasibility contract
 
@@ -227,10 +276,10 @@ Frozen source paths:
 
 The gate requires **100% source coverage** of the frozen LIT-01 missing-source stress population before any new complete-portfolio MomSeason economic test is allowed. Missing or contradictory source evidence fails closed as unresolved.
 
-Prohibited repairs include silent deletion, zero-fill, arbitrary last-price substitution, unsupported merger consideration, unsupported successor identity, and outcome-driven source-rule selection.
+Prohibited repairs include silent deletion, zero-fill, arbitrary last-price substitution, unsupported merger consideration, unsupported successor identity, ticker-specific exceptions, and outcome-driven source-rule selection.
 
 The LIT-01 development interval `2021-09..2026-04` already opened 40,819 holding returns and therefore may not be represented as fresh confirmatory evidence in LIT-02.
 
 ## Immediate next action
 
-Certify the bounded SEC `IncompleteRead` retry repair on Ubuntu and Windows, then resume the exact-head target-machine repair-v2 acquisition without `--force` so validated `m2` checkpoints are reused. If source coverage remains below 100%, economic testing remains blocked and the remaining source mechanisms must be diagnosed without weakening the gate. If and only if coverage reaches 100%, freeze a fresh/non-reused LIT-02 economic-development design before any new economic outcome read.
+Certify and run the cached LIT-02 repair-v2 residual diagnostic. It must perform zero provider/outcome reads. Use the resulting mechanism breakdown to decide whether one more general source-only repair is justified. If the remaining mechanisms are not fully resolvable under the provider/public-source stack, close LIT-02 as source-infeasible rather than weakening the 100% gate or forcing an economic test.
