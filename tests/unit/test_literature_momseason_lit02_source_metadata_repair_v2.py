@@ -6,8 +6,11 @@ from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v2 i
     LIT02_SOURCE_METADATA_REPAIR_V2_CONTRACT,
     _filtered_sec_rows_v2,
     _select_latest_ready,
-    parse_explicit_sec_ticker_change_v2,
-    parse_sec_terminal_transaction_v2,
+)
+from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v2_certified import (
+    LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION,
+    parse_explicit_sec_ticker_change_v2_certified,
+    parse_sec_terminal_transaction_v2_certified,
 )
 
 
@@ -20,7 +23,7 @@ def test_twitter_style_date_before_merger_consummation_resolves_terminal_cash() 
     stock was canceled and converted into the right to receive $54.20 in cash,
     without interest. Item 2.01. On October 27, 2022, the Merger was consummated.
     """
-    result = parse_sec_terminal_transaction_v2(
+    result = parse_sec_terminal_transaction_v2_certified(
         text,
         endpoint_session=date(2022, 10, 31),
         historical_ticker="TWTR",
@@ -31,6 +34,10 @@ def test_twitter_style_date_before_merger_consummation_resolves_terminal_cash() 
     assert result["effective_date"] == "2022-10-27"
     assert result["cash_per_share"] == 54.20
     assert result["parser_version"] == LIT02_SOURCE_METADATA_REPAIR_V2_CONTRACT
+    assert (
+        result["parser_certification"]
+        == LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION
+    )
 
 
 def test_contextual_cash_prefers_executed_common_share_value_over_unrelated_values() -> None:
@@ -43,7 +50,7 @@ def test_contextual_cash_prefers_executed_common_share_value_over_unrelated_valu
     the Per Share Merger Consideration. An option paragraph later again refers
     to an exercise price of $12.00 per share.
     """
-    result = parse_sec_terminal_transaction_v2(
+    result = parse_sec_terminal_transaction_v2_certified(
         text,
         endpoint_session=date(2022, 10, 31),
         historical_ticker="AVLR",
@@ -61,7 +68,7 @@ def test_scheduled_sec_ticker_change_can_be_verified_later_by_endpoint_identity(
     that time, the Company will continue to trade on the New York Stock Exchange
     under its present symbol HCHC.
     """
-    result = parse_explicit_sec_ticker_change_v2(
+    result = parse_explicit_sec_ticker_change_v2_certified(
         text,
         endpoint_session=date(2021, 9, 30),
         historical_ticker="HCHC",
@@ -158,7 +165,7 @@ def test_future_execution_date_is_not_admitted() -> None:
     On November 15, 2022, the merger was consummated. Each issued and outstanding
     share was converted into the right to receive $10.00 in cash per share.
     """
-    result = parse_sec_terminal_transaction_v2(
+    result = parse_sec_terminal_transaction_v2_certified(
         text,
         endpoint_session=date(2022, 10, 31),
         historical_ticker="AAA",
