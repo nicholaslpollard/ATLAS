@@ -10,7 +10,7 @@ from .literature_momseason_development import MomSeasonDevelopmentResearch
 
 
 LIT01_DEVELOPMENT_IDENTITY_REPAIR_VERSION = (
-    "lit01-development-target-identity-v2-active-pit-then-authoritative-interval"
+    "lit01-development-target-identity-v3-active-pit-authoritative-then-when-issued"
 )
 _SAFE_IDENTITY_QUALITIES = frozenset({"strong", "medium"})
 
@@ -31,6 +31,23 @@ def _safe_ticker_sets(
     return safe, active
 
 
+def _regular_alias_with_when_issued_variant(aliases: set[str]) -> str | None:
+    """Return the regular alias for the exact ``BASE`` + ``BASEw`` pattern.
+
+    NYSE/CTA symbol convention uses a lowercase trailing ``w`` as the compact
+    representation of the ``WI`` (When Issued) suffix.  The rule is deliberately
+    narrow and case-sensitive: only an exact two-alias set ``{BASE, BASEw}`` is
+    resolved here.  Any other simultaneous-alias shape remains ambiguous.
+    """
+
+    if len(aliases) != 2:
+        return None
+    for candidate in aliases:
+        if f"{candidate}w" in aliases:
+            return candidate
+    return None
+
+
 def resolve_target_ticker_from_pit_rows(
     rows: list[dict[str, object]],
     *,
@@ -41,9 +58,11 @@ def resolve_target_ticker_from_pit_rows(
     """Resolve one endpoint alias without using price/outcome information.
 
     A unique active PIT alias is strongest. If the snapshot still contains multiple
-    safe aliases for the same stable instrument, only an authoritative provider
-    ticker-validity interval may disambiguate them. No alphabetical or price-based
-    choice is permitted.
+    safe aliases for the same stable instrument, an authoritative provider ticker
+    validity interval is preferred.  If no interval is available, the only
+    provider-symbol semantic exception is the exact regular/When-Issued pair
+    ``BASE`` and ``BASEw``; the regular line is retained.  No alphabetical,
+    availability, volume, price, or return-based choice is permitted.
     """
 
     safe, active = _safe_ticker_sets(rows)
@@ -55,9 +74,13 @@ def resolve_target_ticker_from_pit_rows(
     if len(active) > 1:
         if authoritative is not None and authoritative in active:
             return authoritative, "AUTHORITATIVE_INTERVAL_ACTIVE_ALIAS"
+        regular = _regular_alias_with_when_issued_variant(active)
+        if regular is not None:
+            return regular, "REGULAR_ALIAS_WITH_WHEN_ISSUED_VARIANT"
         raise RuntimeError(
             "ambiguous active PIT ticker for development target endpoint without "
-            "unique authoritative continuity evidence: "
+            "unique authoritative continuity evidence or exact regular/When-Issued "
+            "alias semantics: "
             f"{endpoint_session} {instrument_id} aliases={sorted(active)}"
         )
 
@@ -81,8 +104,9 @@ class MomSeasonDevelopmentResearchIdentitySafe(MomSeasonDevelopmentResearch):
 
     The scientific contract and accepted freeze are inherited unchanged. This class
     repairs only the pre-outcome source planner: duplicate historical aliases for one
-    stable instrument are resolved by PIT active state and, when needed, the retained
-    Massive authoritative ticker-event interval view.
+    stable instrument are resolved by PIT active state, retained Massive authoritative
+    ticker-event intervals, and the exact regular/When-Issued symbol semantic when
+    applicable.
     """
 
     def _authoritative_interval_ticker(
