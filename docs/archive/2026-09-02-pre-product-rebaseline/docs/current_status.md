@@ -1,10 +1,4 @@
-# ATLAS Current Status and Handoff — Frozen Compatibility Snapshot
-
-> **Archived state, not a living source of truth.** This file is retained at its
-> historical path so accepted phase validators can continue to read the evidence
-> they were written to certify. Its exact pre-rebaseline copy is under
-> `docs/archive/2026-09-02-pre-product-rebaseline/docs/`. Current project status
-> now lives only in `README.md` and `docs/roadmap.md`. Do not update this file.
+# ATLAS Current Status and Handoff
 
 **Last synchronized: 2026-09-01 (America/New_York). Accepted numbered foundation remains through Phase32. SEC XBRL, SEC Schedule 13D/13G beneficial ownership, FINRA consolidated short-interest v1, SEC diluted-EPS earnings-innovation v1, and SEC Form 13F institutional-positioning v1 are scientifically closed accepted-negative research programs. Historical supported alpha remains 0, Phase33 remains blocked, and ATLAS is operator-paused after the Form 13F closeout pending explicit direction from the ATLAS Review.**
 

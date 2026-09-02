@@ -1,9 +1,4 @@
-# ATLAS Plain-English Phase Communication Contract — Frozen Compatibility Snapshot
-
-> **Archived process, not a living source of truth.** Its communication principles
-> are incorporated into `README.md` and `docs/roadmap.md`. The exact pre-rebaseline
-> copy is archived under `docs/archive/2026-09-02-pre-product-rebaseline/docs/`.
-> Do not update this file.
+# ATLAS Plain-English Phase Communication Contract
 
 **Normative communication requirement. Added: 2026-08-26.**
 
