@@ -20,7 +20,7 @@ def _row(ticker: str, *, active: bool, quality: str = "strong") -> dict[str, obj
 
 def test_identity_repair_version_is_explicit() -> None:
     assert LIT01_DEVELOPMENT_IDENTITY_REPAIR_VERSION.startswith(
-        "lit01-development-target-identity-v2"
+        "lit01-development-target-identity-v3"
     )
 
 
@@ -44,6 +44,41 @@ def test_authoritative_interval_disambiguates_multiple_active_aliases() -> None:
     )
     assert ticker == "BBB"
     assert reason == "AUTHORITATIVE_INTERVAL_ACTIVE_ALIAS"
+
+
+def test_exact_when_issued_pair_retains_regular_alias() -> None:
+    ticker, reason = resolve_target_ticker_from_pit_rows(
+        [_row("VMW", active=True), _row("VMWw", active=True)],
+        endpoint_session=date(2021, 10, 29),
+        instrument_id="ins_test",
+        authoritative_ticker=None,
+    )
+    assert ticker == "VMW"
+    assert reason == "REGULAR_ALIAS_WITH_WHEN_ISSUED_VARIANT"
+
+
+def test_when_issued_rule_is_case_sensitive_and_narrow() -> None:
+    with pytest.raises(RuntimeError, match="ambiguous active PIT ticker"):
+        resolve_target_ticker_from_pit_rows(
+            [_row("VMW", active=True), _row("VMWW", active=True)],
+            endpoint_session=date(2021, 10, 29),
+            instrument_id="ins_test",
+            authoritative_ticker=None,
+        )
+
+
+def test_when_issued_rule_does_not_resolve_more_than_exact_pair() -> None:
+    with pytest.raises(RuntimeError, match="ambiguous active PIT ticker"):
+        resolve_target_ticker_from_pit_rows(
+            [
+                _row("AAA", active=True),
+                _row("AAAw", active=True),
+                _row("BBB", active=True),
+            ],
+            endpoint_session=date(2021, 10, 29),
+            instrument_id="ins_test",
+            authoritative_ticker=None,
+        )
 
 
 def test_ambiguous_active_aliases_without_authority_fail_closed() -> None:
