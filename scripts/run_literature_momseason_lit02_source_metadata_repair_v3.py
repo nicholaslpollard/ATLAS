@@ -12,7 +12,11 @@ from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3 i
 )
 from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_certified import (
     LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION,
-    MomSeasonLIT02SourceMetadataRepairV3Certified,
+)
+from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_freeze import (
+    LIT02_SOURCE_METADATA_REPAIR_V3_FREEZE_CONTRACT,
+    MomSeasonLIT02SourceMetadataRepairV3Frozen,
+    lit02_repair_v3_freeze_fingerprint,
 )
 from packages.core.settings import load_settings
 
@@ -50,18 +54,21 @@ def main() -> int:
     print(
         "[LIT-02][REPAIR-V3] "
         f"contract={LIT02_SOURCE_METADATA_REPAIR_V3_CONTRACT} | "
+        f"freeze_contract={LIT02_SOURCE_METADATA_REPAIR_V3_FREEZE_CONTRACT} | "
+        f"freeze={lit02_repair_v3_freeze_fingerprint()} | "
         f"source_expansion={lit02_repair_v3_source_expansion_fingerprint()} | "
         f"base_parser={LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION} | "
         f"v3_parser={LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION} | "
         "repair-v2 resolved cases are immutable/reused; only repair-v2 unresolved cases are retried"
     )
-    report = MomSeasonLIT02SourceMetadataRepairV3Certified(load_settings()).run(force=args.force)
+    report = MomSeasonLIT02SourceMetadataRepairV3Frozen(load_settings()).run(force=args.force)
 
     print("ATLAS Literature-Anchored Alpha Exploration — LIT-02 Source Metadata Repair v3")
     print(f"  status:                              {report['status']}")
+    print(f"  repair-v3 freeze fingerprint:        {report['repair_v3_freeze_fingerprint']}")
     print(f"  source expansion fingerprint:        {report['source_expansion_fingerprint']}")
     print(f"  base parser certification:           {LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION}")
-    print(f"  v3 parser certification:             {LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION}")
+    print(f"  v3 parser certification:             {report['repair_v3_parser_certification']}")
     print(f"  feasibility cases:                   {report['feasibility_cases']}")
     print(f"  base resolved cases:                 {report['base_resolved_cases']}")
     print(f"  base unresolved cases:               {report['base_unresolved_cases']}")
