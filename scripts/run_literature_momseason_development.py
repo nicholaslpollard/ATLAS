@@ -16,8 +16,9 @@ def main() -> None:
         "--acquire",
         action="store_true",
         help=(
-            "Permit source-only FIGI ticker-event continuity reads as needed, then open only "
-            "the frozen development target endpoints and evaluate the native family."
+            "Permit source-only FIGI ticker-event and bounded official SEC 8-K continuity "
+            "reads as needed, then open only the frozen development target endpoints and "
+            "evaluate the native family."
         ),
     )
     parser.add_argument("--force-plan", action="store_true")
@@ -41,16 +42,44 @@ def main() -> None:
             f"{identity_source['provider_calls_performed_this_run']}"
         )
         print(
+            "      Massive ticker-events calls:     "
+            f"{identity_source['massive_provider_calls_performed_this_run']}"
+        )
+        print(
+            "      official SEC source calls:       "
+            f"{identity_source['sec_provider_calls_performed_this_run']}"
+        )
+        print(
             "    cache hits this run:               "
             f"{identity_source['cache_hits_this_run']}"
+        )
+        print(
+            "      Massive cache hits:              "
+            f"{identity_source['massive_cache_hits_this_run']}"
+        )
+        print(
+            "      official SEC cache hits:         "
+            f"{identity_source['sec_cache_hits_this_run']}"
         )
         print(
             "    authoritative endpoint resolutions:"
             f" {identity_source['authoritative_endpoint_resolutions_this_run']}"
         )
         print(
+            "      Massive resolutions:             "
+            f"{identity_source['massive_authoritative_endpoint_resolutions_this_run']}"
+        )
+        print(
+            "      official SEC resolutions:        "
+            f"{identity_source['sec_authoritative_endpoint_resolutions_this_run']}"
+        )
+        print(
             "    canonical ticker store mutated:    "
             f"{identity_source['canonical_ticker_event_store_mutated']}"
+        )
+        print(
+            "    canonical SEC store mutated:       "
+            f"{identity_source['canonical_sec_store_mutated']}"
         )
     plan = result["plan"]
     print("  frozen holdings/target plan:")
