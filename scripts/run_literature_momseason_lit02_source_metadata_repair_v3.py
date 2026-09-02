@@ -8,8 +8,11 @@ from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v2_c
 )
 from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3 import (
     LIT02_SOURCE_METADATA_REPAIR_V3_CONTRACT,
-    MomSeasonLIT02SourceMetadataRepairV3,
     lit02_repair_v3_source_expansion_fingerprint,
+)
+from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_certified import (
+    LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION,
+    MomSeasonLIT02SourceMetadataRepairV3Certified,
 )
 from packages.core.settings import load_settings
 
@@ -19,8 +22,8 @@ def _parser() -> argparse.ArgumentParser:
         description=(
             "Retry only the accepted LIT-02 repair-v2 source-unresolved cases against the "
             "prospectively frozen official-SEC final transaction amendment forms. The frozen "
-            "return paths and certified parser are unchanged; no market-price/return outcomes "
-            "are read."
+            "return paths are unchanged; a certified v3 wrapper adds only explicit executed-event "
+            "to explicit defined-term linkage. No market-price/return outcomes are read."
         )
     )
     parser.add_argument(
@@ -48,15 +51,17 @@ def main() -> int:
         "[LIT-02][REPAIR-V3] "
         f"contract={LIT02_SOURCE_METADATA_REPAIR_V3_CONTRACT} | "
         f"source_expansion={lit02_repair_v3_source_expansion_fingerprint()} | "
-        f"parser={LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION} | "
+        f"base_parser={LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION} | "
+        f"v3_parser={LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION} | "
         "repair-v2 resolved cases are immutable/reused; only repair-v2 unresolved cases are retried"
     )
-    report = MomSeasonLIT02SourceMetadataRepairV3(load_settings()).run(force=args.force)
+    report = MomSeasonLIT02SourceMetadataRepairV3Certified(load_settings()).run(force=args.force)
 
     print("ATLAS Literature-Anchored Alpha Exploration — LIT-02 Source Metadata Repair v3")
     print(f"  status:                              {report['status']}")
     print(f"  source expansion fingerprint:        {report['source_expansion_fingerprint']}")
-    print(f"  parser certification:                {report['parser_certification']}")
+    print(f"  base parser certification:           {LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION}")
+    print(f"  v3 parser certification:             {LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION}")
     print(f"  feasibility cases:                   {report['feasibility_cases']}")
     print(f"  base resolved cases:                 {report['base_resolved_cases']}")
     print(f"  base unresolved cases:               {report['base_unresolved_cases']}")
