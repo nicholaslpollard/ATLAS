@@ -3,8 +3,9 @@ from __future__ import annotations
 import argparse
 import json
 
-from packages.backtesting.literature_momseason_lit02_source_metadata import (
-    MomSeasonLIT02SourceMetadata,
+from packages.backtesting.literature_momseason_lit02_source_metadata_transport import (
+    LIT02_SOURCE_METADATA_TRANSPORT_VERSION,
+    MomSeasonLIT02SourceMetadataTransportSafe,
 )
 from packages.core.settings import load_settings
 
@@ -37,7 +38,12 @@ def main() -> int:
         print("Market-price/return outcomes and the protected holdout remain disabled.")
         return 2
 
-    report = MomSeasonLIT02SourceMetadata(load_settings()).run(force=args.force)
+    print(
+        "[LIT-02][TRANSPORT] "
+        f"{LIT02_SOURCE_METADATA_TRANSPORT_VERSION} | Massive ticker-event HTTP 404 "
+        "continues as source-unavailable evidence; other provider failures remain fatal"
+    )
+    report = MomSeasonLIT02SourceMetadataTransportSafe(load_settings()).run(force=args.force)
     print("ATLAS Literature-Anchored Alpha Exploration — LIT-02 Source Metadata")
     print(f"  status:                              {report['status']}")
     print(f"  feasibility cases:                   {report['feasibility_cases']}")
