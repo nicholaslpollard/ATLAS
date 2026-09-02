@@ -13,9 +13,13 @@ from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3 i
 from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_certified import (
     LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION,
 )
+from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_discovery import (
+    LIT02_REPAIR_V3_DISCOVERY_FREEZE_CONTRACT,
+    MomSeasonLIT02SourceMetadataRepairV3SubjectIndexed,
+    lit02_repair_v3_discovery_freeze_fingerprint,
+)
 from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_freeze import (
     LIT02_SOURCE_METADATA_REPAIR_V3_FREEZE_CONTRACT,
-    MomSeasonLIT02SourceMetadataRepairV3Frozen,
     lit02_repair_v3_freeze_fingerprint,
 )
 from packages.core.settings import load_settings
@@ -25,9 +29,10 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Retry only the accepted LIT-02 repair-v2 source-unresolved cases against the "
-            "prospectively frozen official-SEC final transaction amendment forms. The frozen "
-            "return paths are unchanged; a certified v3 wrapper adds only explicit executed-event "
-            "to explicit defined-term linkage. No market-price/return outcomes are read."
+            "prospectively frozen official-SEC final transaction amendment forms. Discovery uses "
+            "official SEC quarterly master indexes and requires target-CIK SUBJECT COMPANY header "
+            "verification before the certified terminal parser runs. No market-price/return "
+            "outcomes are read."
         )
     )
     parser.add_argument(
@@ -38,7 +43,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Rebuild repair-v3 checkpoints instead of reusing valid repair-v3 manifests.",
+        help="Rebuild repair-v3 checkpoints instead of reusing valid final-freeze repair-v3 manifests.",
     )
     return parser
 
@@ -54,19 +59,27 @@ def main() -> int:
     print(
         "[LIT-02][REPAIR-V3] "
         f"contract={LIT02_SOURCE_METADATA_REPAIR_V3_CONTRACT} | "
-        f"freeze_contract={LIT02_SOURCE_METADATA_REPAIR_V3_FREEZE_CONTRACT} | "
-        f"freeze={lit02_repair_v3_freeze_fingerprint()} | "
+        f"source_parser_freeze_contract={LIT02_SOURCE_METADATA_REPAIR_V3_FREEZE_CONTRACT} | "
+        f"source_parser_freeze={lit02_repair_v3_freeze_fingerprint()} | "
+        f"discovery_freeze_contract={LIT02_REPAIR_V3_DISCOVERY_FREEZE_CONTRACT} | "
+        f"final_freeze={lit02_repair_v3_discovery_freeze_fingerprint()} | "
         f"source_expansion={lit02_repair_v3_source_expansion_fingerprint()} | "
         f"base_parser={LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION} | "
         f"v3_parser={LIT02_SOURCE_METADATA_REPAIR_V3_PARSER_CERTIFICATION} | "
         "repair-v2 resolved cases are immutable/reused; only repair-v2 unresolved cases are retried"
     )
-    report = MomSeasonLIT02SourceMetadataRepairV3Frozen(load_settings()).run(force=args.force)
+    report = MomSeasonLIT02SourceMetadataRepairV3SubjectIndexed(load_settings()).run(
+        force=args.force
+    )
 
     print("ATLAS Literature-Anchored Alpha Exploration — LIT-02 Source Metadata Repair v3")
     print(f"  status:                              {report['status']}")
-    print(f"  repair-v3 freeze fingerprint:        {report['repair_v3_freeze_fingerprint']}")
+    print(f"  final discovery freeze fingerprint:  {report['repair_v3_discovery_freeze_fingerprint']}")
+    print(f"  source/parser freeze fingerprint:    {report['repair_v3_freeze_fingerprint']}")
     print(f"  source expansion fingerprint:        {report['source_expansion_fingerprint']}")
+    print(f"  discovery source:                    {report['repair_v3_discovery_source']}")
+    print(f"  SEC quarterly indexes read:          {report['repair_v3_discovery_quarters_read']}")
+    print(f"  target subject identity required:    {report['repair_v3_subject_identity_verification_required']}")
     print(f"  base parser certification:           {LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION}")
     print(f"  v3 parser certification:             {report['repair_v3_parser_certification']}")
     print(f"  feasibility cases:                   {report['feasibility_cases']}")
@@ -82,7 +95,6 @@ def main() -> int:
         "  unresolved reason counts:            "
         f"{json.dumps(report['unresolved_reason_counts'], sort_keys=True)}"
     )
-    print(f"  SEC lookback days:                   {report['repair_v3_sec_lookback_days']}")
     print(f"  SEC allowed added forms:             {json.dumps(report['repair_v3_sec_allowed_forms'])}")
     print(f"  source metadata provider reads:      {report['source_metadata_provider_reads']}")
     print(f"    Massive metadata reads:            {report['massive_source_metadata_reads']}")
