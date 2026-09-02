@@ -207,8 +207,9 @@ def test_reason_intersections_are_counted_without_forcing_exclusive_buckets(
         == 1
     )
     assert (
-        report["reason_pair_counts"]
-        ["COMPOSITE_FIGI_UNAVAILABLE + MULTIPLE_TERMINAL_CASH_VALUES"]
+        report["reason_pair_counts"][
+            "COMPOSITE_FIGI_UNAVAILABLE + MULTIPLE_TERMINAL_CASH_VALUES"
+        ]
         == 1
     )
 
@@ -232,7 +233,10 @@ def test_diagnostic_refuses_manifest_classification_drift(
     _patch_acceptance(monkeypatch, cases)
     source = _source_report(cases)
     changed = [dict(row) for row in cases]
-    changed[1] = {**changed[1], "historical_ticker": "CHANGED"}
+    changed[1] = {
+        **changed[1],
+        "unresolved_reasons": ["NO_ADMISSIBLE_SEC_8K_EVIDENCE"],
+    }
     with pytest.raises(RuntimeError, match="do not reproduce accepted classification"):
         diagnostic.build_source_metadata_diagnostic(
             source_report=source,
