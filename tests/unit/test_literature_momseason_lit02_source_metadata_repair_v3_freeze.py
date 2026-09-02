@@ -16,6 +16,14 @@ from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_f
 )
 
 
+EXPECTED_REPAIR_V3_SOURCE_EXPANSION_FINGERPRINT = (
+    "c5da7d155c50d7c19ae9c23bb604b1205e21b3359d51157f7367a1c88fed82bb"
+)
+EXPECTED_REPAIR_V3_FREEZE_FINGERPRINT = (
+    "6b7af7b2637ac374d5d6d3cfcb2c12ee8825f6ec86716118306130c7ad8e5f0f"
+)
+
+
 def test_repair_v3_freeze_binds_source_expansion_and_parser_semantics() -> None:
     payload = lit02_repair_v3_freeze_payload()
     assert payload["freeze_contract"] == LIT02_SOURCE_METADATA_REPAIR_V3_FREEZE_CONTRACT
@@ -47,8 +55,10 @@ def test_repair_v3_freeze_explicitly_fails_closed_on_contingent_consideration() 
     assert _contains_contingent_consideration("$27.00 cash per share, without interest") is False
 
 
-def test_repair_v3_freeze_fingerprint_is_deterministic() -> None:
-    first = lit02_repair_v3_freeze_fingerprint()
-    second = lit02_repair_v3_freeze_fingerprint()
-    assert first == second
-    assert len(first) == 64
+def test_repair_v3_freeze_fingerprint_is_exact_and_deterministic() -> None:
+    assert (
+        lit02_repair_v3_source_expansion_fingerprint()
+        == EXPECTED_REPAIR_V3_SOURCE_EXPANSION_FINGERPRINT
+    )
+    assert lit02_repair_v3_freeze_fingerprint() == EXPECTED_REPAIR_V3_FREEZE_FINGERPRINT
+    assert lit02_repair_v3_freeze_fingerprint() == lit02_repair_v3_freeze_fingerprint()
