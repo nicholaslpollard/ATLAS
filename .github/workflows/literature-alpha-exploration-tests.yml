@@ -66,6 +66,7 @@ jobs:
           packages/backtesting/literature_momseason_lit02_source_metadata_transport.py
           packages/backtesting/literature_momseason_lit02_source_metadata_diagnostic.py
           packages/backtesting/literature_momseason_lit02_source_metadata_repair_v2.py
+          packages/backtesting/literature_momseason_lit02_source_metadata_repair_v2_certified.py
           scripts/run_literature_momseason_source_feasibility.py
           scripts/run_literature_momseason_total_return_source_audit.py
           scripts/run_literature_momseason_total_return_source_audit_v2.py
