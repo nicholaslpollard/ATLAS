@@ -18,11 +18,14 @@ The acquisition methodology is fixed before these source reads:
 
 1. Reuse the accepted LIT-01 historical reference snapshots locally to recover source-safe stable identity metadata for the frozen instrument IDs.
 2. If one authoritative Composite FIGI exists, query Massive ticker events. A unique ticker event valid on or before the frozen endpoint can establish `TICKER_CONTINUITY`.
-3. If continuity is not established, use the unique authoritative SEC CIK when available.
-4. Search a bounded SEC filing window from 62 calendar days before through 10 calendar days after the frozen endpoint. A post-endpoint filing may be used only as documentary evidence for a transaction/ticker event whose explicit effective/closing date is on or before the frozen endpoint.
-5. Only original/amended `8-K` evidence is scanned in this first metadata family, limited to Items `2.01`, `3.01`, `5.03`, `8.01` when item metadata is present. Maximum candidate filings per CIK/case: 24.
-6. SEC complete submissions use the already-established bounded scientific archive ceiling of 256,000,000 bytes. Global/default SEC archive limits are not changed.
-7. Every case is checkpointed independently under the compact Windows-safe `development/l2/m/` namespace. A rerun reuses valid checkpoints unless `--force` is explicitly supplied.
+3. A Massive ticker-events HTTP 404 is treated only as `source unavailable` for that optional continuity authority. The case continues to the separately frozen SEC authority. The 404 is retained in evidence and, if the case remains unresolved, contributes `MASSIVE_TICKER_EVENTS_NOT_FOUND`. Non-404 Massive provider failures remain fatal because transport/auth/rate/server failures do not establish source absence.
+4. If continuity is not established, use the unique authoritative SEC CIK when available.
+5. Search a bounded SEC filing window from 62 calendar days before through 10 calendar days after the frozen endpoint. A post-endpoint filing may be used only as documentary evidence for a transaction/ticker event whose explicit effective/closing date is on or before the frozen endpoint.
+6. Only original/amended `8-K` evidence is scanned in this first metadata family, limited to Items `2.01`, `3.01`, `5.03`, `8.01` when item metadata is present. Maximum candidate filings per CIK/case: 24.
+7. SEC complete submissions use the already-established bounded scientific archive ceiling of 256,000,000 bytes. Global/default SEC archive limits are not changed.
+8. Every case is checkpointed independently under the compact Windows-safe `development/l2/m/` namespace. A rerun reuses valid checkpoints unless `--force` is explicitly supplied.
+
+The Massive-404 transport rule is implemented in an isolated LIT-02 wrapper. Shared/production Massive provider behavior is unchanged.
 
 ## Admissible classifications in this source family
 
@@ -81,7 +84,7 @@ The acquisition runner prints live case progress with completed/total, percent, 
 
 The identity scan also prints local snapshot progress. Once built, its compact identity cache is reused.
 
-Each completed case is atomically checkpointed. If a provider or transport failure stops a long run, rerun the same command; valid completed cases are reused automatically.
+Each completed case is atomically checkpointed. If a provider or transport failure stops a long run, rerun the same command; valid completed cases are reused automatically. A Massive ticker-events HTTP 404 does not abort the run under transport version `lit02-source-metadata-transport-v2-massive-404-source-unavailable`; it is cached in memory as unavailable continuity evidence and the case proceeds to SEC.
 
 ## Command
 
