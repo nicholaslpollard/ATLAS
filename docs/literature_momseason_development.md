@@ -59,16 +59,34 @@ The first repair added the retained ATLAS source hierarchy: unique active PIT al
 
 This second failure is not an ordinary unresolved ticker change. Under NYSE/CTA symbol convention, a lowercase trailing `w` is the compact form of the `WI` (When Issued) suffix. Therefore `VMWw` is the When-Issued line paired with regular `VMW`, rather than a basis for choosing between two unrelated security identities.
 
-The repair remains intentionally narrow and source-semantic. Target alias resolution is now:
+The next exact-head invocation on `81de1a757637ffa7653b0d93ef95af7303a70dc1` also stopped during `build_plan()` and exposed a materially different ambiguity:
+
+`2024-11-29 ins_87bc752518fe98997e75b4b1 aliases=['CGA', 'ENFY']`
+
+`CGA` and `ENFY` are unrelated ticker strings, so the When-Issued rule correctly refused to resolve them. Independent public records identify this as the November 2024 China Green Agriculture / Enlightify ticker change, but that outside evidence is not used to select the research ticker. The scientific repair instead reuses ATLAS Phase 4's accepted continuity authority rule: only Massive ticker-event history queried by a unique PIT Composite FIGI is sufficient to establish ticker continuity.
+
+For unresolved multi-alias holdings, an explicit `--acquire` run may now perform a source-only continuity read before any target price is requested:
+
+1. require one internally consistent Composite FIGI across the safe PIT rows for the stable `instrument_id`;
+2. query Massive `ticker_events` with that Composite FIGI, never with one of the competing ticker aliases;
+3. persist the raw provider response and fingerprint in the isolated LIT-01 development `identity_continuity` cache;
+4. interpret ticker-change dates using the same half-open validity semantics as ATLAS Phase 4: the event ticker is valid beginning on its event date until the next authoritative ticker-change event;
+5. require the resulting endpoint ticker to match one of the safe PIT aliases at that endpoint;
+6. fail closed if Composite FIGI is absent or contradictory, a provider event date reports multiple tickers, no authoritative ticker is established by the endpoint date, or the authoritative ticker does not match the safe PIT aliases.
+
+This source repair never writes the canonical Phase 4 ticker-event store or authoritative interval artifact. It uses only the LIT-01 isolated cache, and records zero development/protected outcome rows used for identity resolution.
+
+The complete target alias hierarchy is therefore:
 
 1. prefer a unique active strong/medium PIT alias at the endpoint;
 2. if multiple active safe aliases remain, prefer a unique retained Massive authoritative ticker-validity interval covering that stable instrument and endpoint;
-3. if no authoritative interval resolves the active set, permit only the exact case-sensitive two-alias pattern `{BASE, BASEw}` and retain `BASE` as the regular line;
-4. if only inactive safe aliases exist, a unique authoritative interval may disambiguate them;
-5. where a historical endpoint snapshot is unavailable, authoritative interval evidence is preferred before the already-existing formation-ticker fallback;
-6. no alphabetical choice, data-availability choice, volume choice, price choice, return-based choice, or identity merge is permitted.
+3. if no retained interval resolves the set, permit only the exact case-sensitive two-alias pattern `{BASE, BASEw}` and retain `BASE` as the regular line;
+4. for any other unresolved multi-alias case, an explicit acquisition run may use isolated Composite-FIGI-backed Massive ticker events to derive the authoritative endpoint ticker;
+5. if only inactive safe aliases exist, the same authoritative evidence requirements apply;
+6. where a historical endpoint snapshot is unavailable, retained authoritative interval evidence is preferred before the already-existing formation-ticker fallback;
+7. no alphabetical choice, data-availability choice, volume choice, price choice, return-based choice, ticker-text event query, or identity merge is permitted.
 
-The When-Issued rule does not generalize to uppercase `W`, arbitrary suffixes, three-or-more-alias sets, or any other multi-alias shape. Those cases still fail closed.
+The When-Issued rule does not generalize to uppercase `W`, arbitrary suffixes, three-or-more-alias sets, or any other multi-alias shape. Those cases still require authoritative evidence or fail closed.
 
 None of these repairs changes the accepted research freeze, hypothesis family, native population, predictor formula, ranking, portfolio weights, turnover costs, inference, protected policy, or production authority.
 
