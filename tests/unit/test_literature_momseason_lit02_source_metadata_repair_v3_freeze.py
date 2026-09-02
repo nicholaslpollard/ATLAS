@@ -10,6 +10,7 @@ from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_c
 from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v3_freeze import (
     LIT02_REPAIR_V3_DEFINED_CASH_TERMS,
     LIT02_SOURCE_METADATA_REPAIR_V3_FREEZE_CONTRACT,
+    _contains_contingent_consideration,
     lit02_repair_v3_freeze_fingerprint,
     lit02_repair_v3_freeze_payload,
 )
@@ -41,6 +42,9 @@ def test_repair_v3_freeze_explicitly_fails_closed_on_contingent_consideration() 
     text = str(payload["contingent_rule"])
     assert "CVR" in text
     assert "not admitted" in text
+    assert _contains_contingent_consideration("$1.00 cash plus one CVR per share") is True
+    assert _contains_contingent_consideration("one contingent value right plus cash") is True
+    assert _contains_contingent_consideration("$27.00 cash per share, without interest") is False
 
 
 def test_repair_v3_freeze_fingerprint_is_deterministic() -> None:
