@@ -115,15 +115,80 @@ Repair-v2 per-case checkpoints under `development/l2/m2/` remain reusable. Resum
 
 No market-price/return, protected, broker, order, PAPER, or LIVE authority is added by this transport repair.
 
+## Accepted target-machine repair-v2 result
+
+Exact target-machine head:
+
+`b51857461f7034591b32079ad126ea9c7ffa7310`
+
+Accepted result:
+
+- status: `LIT02_DELISTING_AWARE_SOURCE_COVERAGE_INCOMPLETE`
+- feasibility cases: `199`
+- base resolved: `36`
+- base unresolved: `163`
+- resolved after repair-v2: `96`
+- newly resolved: `60`
+- unresolved after repair-v2: `103`
+- source coverage: `48.24%`
+- required source coverage: `100%`
+- path counts: `81 TERMINAL_CASH`, `15 TICKER_CONTINUITY`, `103 SOURCE_UNRESOLVED`
+- source-metadata provider reads during resumed run: `481` (`0 Massive`, `481 SEC`)
+- cached repair-v2 cases reused: `131`
+- v1 resolved cases reused in the resumed tail: `14`
+- v1 unresolved cases retried in the resumed tail: `54`
+- economic outcome values read: `0`
+- new price/return provider reads: `0`
+- protected return rows read: `0`
+- protected holdout consumed: `False`
+- LIT-02 economic design unblocked: `False`
+- Phase33 signal-to-trade authority: `False`
+- classification fingerprint: `6d11081f7acf39783a9c6b2fde8119a1f19f9b8b3b87be0ab3fac59a8381faa2`
+- report fingerprint: `dca474d2d88c09f904c33e33659fbb88e4cdadcecd9d40666971b4482a1c657e`
+
+Residual unresolved reasons are overlapping:
+
+- `TERMINAL_TRANSACTION_EFFECTIVE_DATE_UNRESOLVED`: 79
+- `MASSIVE_TICKER_EVENTS_NOT_FOUND`: 71
+- `COMPOSITE_FIGI_UNAVAILABLE`: 25
+- `TERMINAL_TRANSACTION_CONTEXT_UNRESOLVED`: 25
+- `NO_ADMISSIBLE_OFFICIAL_SEC_EVIDENCE_V2`: 15
+- `MULTIPLE_TERMINAL_CASH_VALUES`: 10
+- `SUCCESSOR_TICKER_IDENTITY_REQUIRED`: 4
+- `MULTIPLE_SEC_READY_CLASSIFICATIONS_AT_LATEST_EFFECTIVE_DATE`: 1
+- bounded candidate filing count exceeded (`146 > 128`): 1
+
+This result is **not an economic alpha result**. It says only that the currently frozen/public-provider source stack still cannot classify every required missing-return stress case.
+
+## Residual diagnostic gate
+
+The next permitted action is a cached diagnostic over the accepted `m2` manifests. Its contract is:
+
+`lit02-repair-v2-residual-diagnostic-v1-cached-m2-manifests-no-provider-reads`
+
+The diagnostic is pinned to the accepted repair-v2 classification/report fingerprints and exact `96 / 103` counts. It performs no provider reads and no market-price/return reads. It separates residual mechanisms including:
+
+- missing Composite FIGI / Massive event-source absence;
+- SEC filing-candidate bound exhaustion;
+- no admissible official SEC evidence;
+- effective-date extraction gaps;
+- execution-context gaps;
+- terminal cash-value conflicts;
+- successor-ticker identity requirements;
+- latest-effective-date classification conflicts.
+
+The diagnostic may support a subsequent general, prospectively declared source repair only if the residual evidence demonstrates a source mechanism that can be resolved without outcome-dependent or ticker-specific exceptions. Otherwise LIT-02 should close as source-infeasible.
+
 ## Prohibited behavior
 
-Repair-v2 may not:
+Repair-v2 or its residual diagnostic may not:
 
 - drop a frozen case or holding;
 - zero-fill a missing return;
 - substitute an arbitrary last traded price;
 - infer merger consideration from price behavior;
 - select a source rule using LIT-01 return sign or magnitude;
+- create ticker-specific source exceptions;
 - read new market-price or return outcomes;
 - read the protected holdout;
 - weaken the required 100% source coverage gate;
@@ -131,9 +196,7 @@ Repair-v2 may not:
 
 ## Decision rule
 
-After exact-head target-machine acquisition:
-
-- if coverage reaches **100%**, LIT-02 source feasibility is ready and a new fresh/non-reused economic-development design may be frozen before any economic outcome read;
-- if coverage remains below **100%**, economic testing remains blocked and the remaining cases must either receive another prospectively justified source-only repair or LIT-02 must close as source-infeasible.
+- if source coverage reaches **100%** under a prospectively valid source contract, LIT-02 source feasibility is ready and a new fresh/non-reused economic-development design may be frozen before any economic outcome read;
+- if source coverage remains below **100%**, economic testing remains blocked and the remaining cases must either receive another prospectively justified source-only mechanism repair or LIT-02 must close as source-infeasible.
 
 No partial-portfolio economic test is permitted.
