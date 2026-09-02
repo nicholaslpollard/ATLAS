@@ -1,0 +1,89 @@
+# LIT-01 Frozen Development Evaluation
+
+**Branch:** `literature-anchored-alpha-exploration`  
+**Authority:** exploratory / non-authoritative  
+**Accepted research-freeze fingerprint:** `745ff247ecf9404f19aaf67450fdaf08fcec525e3a62c781f30a91662a901cfb`
+
+## Purpose
+
+This package is the first LIT-01 stage permitted to read development target returns. It is hard-bound to the accepted pre-outcome research freeze and cannot request a target endpoint on or after the protected-window start of `2026-05-12`.
+
+The primary experiment remains exactly the externally specified two-hypothesis Heston-Sadka/OpenSourceAP family:
+
+- `momseason_short_year1`
+- `momseason_years2_5`
+
+No hypothesis may be dropped after outcomes are observed.
+
+## Frozen holdings construction
+
+For each of the 56 development target months from `2021-09` through `2026-04`:
+
+1. Reconstruct each hypothesis from accepted Alpaca `adjustment=all` lag endpoints and ATLAS stable PIT identity.
+2. For the years-2-through-5 signal, average all available valid annual lags, with at least one valid lag required, matching the already accepted native-source contract.
+3. Sort the complete native predictor cross-section by predictor value ascending, then stable `instrument_id` as a deterministic exact-tie rule.
+4. Use `floor(N * 0.10)` names in each leg.
+5. Long the highest predictor decile and short the lowest predictor decile.
+6. Equal weight every holding within its leg.
+7. Persist the holdings and target-endpoint plan fingerprints before any target return is evaluated.
+
+Future target availability is never used to select or remove a holding.
+
+## Development target source
+
+Only the prior-month and target-month adjusted month-end closes needed by the frozen holdings are requested.
+
+- provider: Alpaca
+- timeframe: `1Day`
+- adjustment: `all`
+- feed: `sip`
+- `asof`: endpoint session
+- maximum allowed target endpoint: `2026-04-30`
+- protected target reads: forbidden
+
+Exact raw provider responses and invalid-symbol evidence remain in the isolated LIT-01 provider namespace.
+
+If any frozen holding lacks a complete source-grounded target return, the development source is classified incomplete. Missing/delisted holdings are not silently deleted and are not assigned zero or last-price returns.
+
+## Portfolio returns and costs
+
+The independent inferential unit is one calendar-month long-short portfolio return, not an individual stock row.
+
+Gross monthly spread:
+
+`EW(top decile target return) - EW(bottom decile target return)`
+
+One-way turnover for each leg is `0.5 * sum(abs(w_t - w_{t-1}))`; the first development month has turnover 1.0 from cash for each leg.
+
+Costs use the retained ATLAS convention:
+
+- primary: 10 bps per unit of one-way turnover per leg
+- stress: 25 bps per unit of one-way turnover per leg
+
+## Frozen inference
+
+For each fixed hypothesis:
+
+- 56 monthly observations
+- one-sided positive direction
+- 2,000-replicate circular block bootstrap
+- 12-month blocks
+- 90% one-sided lower confidence bound
+- Holm-Bonferroni correction across both fixed hypotheses at family alpha 0.05
+
+A hypothesis becomes an internal development finalist only if all four checks pass:
+
+1. primary after-cost mean > 0
+2. 90% bootstrap lower confidence bound > 0
+3. one-sided bootstrap p-value rejects after Holm correction
+4. 25-bps-per-leg turnover-stress mean > 0
+
+Both hypotheses are always reported. Four chronological folds and month-of-year slices are diagnostics, not adaptive selection gates.
+
+## Protected and production authority
+
+Development success does not consume or authorize use of the current protected window. The current window has only 2 complete months versus the frozen requirement of 12.
+
+If a development finalist emerges, ATLAS must reserve a new prospective protected window with at least 12 complete target calendar months before any protected confirmation.
+
+This experimental package grants no Phase33, mainline, PAPER, LIVE, broker, order, or automatic adoption authority.
