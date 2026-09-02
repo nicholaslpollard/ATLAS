@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+from datetime import date
 from typing import Mapping
 
 from packages.core.atomic_io import atomic_write_text
@@ -31,6 +33,13 @@ LIT02_REPAIR_V3_DEFINED_CASH_TERMS = (
     "OFFER PRICE",
     "PER SHARE MERGER CONSIDERATION",
 )
+_CONTINGENT_CONSIDERATION_RE = re.compile(
+    r"(?i:\bCVRs?\b|\bcontingent\s+value\s+rights?\b)"
+)
+
+
+def _contains_contingent_consideration(value: object) -> bool:
+    return bool(_CONTINGENT_CONSIDERATION_RE.search(str(value or "")))
 
 
 def lit02_repair_v3_freeze_payload() -> dict[str, object]:
@@ -59,8 +68,8 @@ def lit02_repair_v3_freeze_payload() -> dict[str, object]:
             "terminal classifications fail closed"
         ),
         "contingent_rule": (
-            "a definition containing CVR or contingent value right evidence is not admitted as "
-            "TERMINAL_CASH under repair-v3"
+            "CVR or contingent value right evidence in either the defined-term evidence or the "
+            "executed-event consideration context is not admitted as TERMINAL_CASH under repair-v3"
         ),
         "future_event_rule": "effective/execution date must be on or before frozen endpoint",
         "economic_paths_changed": False,
@@ -82,6 +91,46 @@ class MomSeasonLIT02SourceMetadataRepairV3Frozen(
     MomSeasonLIT02SourceMetadataRepairV3Certified
 ):
     """Repair-v3 with a pre-provider-read fingerprint over source + parser semantics."""
+
+    def _sec_resolution_v3(
+        self,
+        *,
+        identity: Mapping[str, object],
+        endpoint_session: date,
+        historical_ticker: str,
+    ) -> tuple[dict[str, object] | None, list[dict[str, object]], list[str]]:
+        candidate, evidence_rows, reasons = super()._sec_resolution_v3(
+            identity=identity,
+            endpoint_session=endpoint_session,
+            historical_ticker=historical_ticker,
+        )
+        if candidate is not None and candidate.get("path_id") == "TERMINAL_CASH":
+            excerpt = candidate.get("matched_excerpt")
+            definition_excerpts = candidate.get("definition_excerpts")
+            combined = " ".join(
+                [
+                    str(excerpt or ""),
+                    *(
+                        [str(value) for value in definition_excerpts]
+                        if isinstance(definition_excerpts, list)
+                        else []
+                    ),
+                ]
+            )
+            if _contains_contingent_consideration(combined):
+                return (
+                    None,
+                    evidence_rows,
+                    sorted(
+                        set(
+                            [
+                                *reasons,
+                                "CONTINGENT_CONSIDERATION_NOT_SUPPORTED_V3",
+                            ]
+                        )
+                    ),
+                )
+        return candidate, evidence_rows, reasons
 
     def _load_cached_case(self, case: Mapping[str, object]) -> dict[str, object] | None:
         result = super()._load_cached_case(case)
