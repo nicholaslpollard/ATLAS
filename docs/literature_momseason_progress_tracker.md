@@ -27,8 +27,9 @@ This tracker records scientific state only. It does not grant Phase33, PAPER, LI
 | LIT-02 delisting-aware source contract | ✅ Accepted target-machine freeze | Policy fingerprint `4768ac204a68bbc7d89fa64c96574934d1e4149169cd6c222ef16be5bc1367ae` |
 | LIT-02 missing-source stress-case plan | ✅ Accepted target-machine freeze | 199 cases; plan fingerprint `c9200212a67171ee7c712a64224263241d622d2e8fe494ce0bc13843a8052880` |
 | LIT-02 source metadata acquisition/classification | ✅ First-pass census complete | 36 resolved / 163 unresolved; zero price/return/protected reads |
-| LIT-02 source coverage decision | ❌ Incomplete | 18.09% vs required 100%; economic design remains blocked |
-| LIT-02 unresolved-source diagnostic | 🟡 Implementation/certification in progress | Cached manifests only; zero provider/outcome reads |
+| LIT-02 unresolved-source diagnostic | ✅ Accepted target-machine diagnostic | Diagnostic fingerprint `6253178a77b26d5fa1ae9e99e5ff2036fab913ce9a5b3560a1989f6a6d1a3a2e`; zero provider/outcome reads |
+| LIT-02 source metadata repair v2 | 🟡 Implementation/certification in progress | Retry only v1 unresolved cases; official SEC metadata only; no price/return outcomes |
+| LIT-02 source coverage decision | ❌ Incomplete pending repair-v2 | First pass 18.09% vs required 100%; economic design remains blocked |
 | LIT-02 economic development design | 🔒 Blocked | Only after 100% source feasibility; 2021-09..2026-04 not fresh confirmatory evidence |
 | Protected outcome | 🔒 Unconsumed | Existing protected holdout remains unopened |
 | ATLAS-layer attribution | 🔒 Not authorized | Requires a valid native finalist |
@@ -122,7 +123,75 @@ First-pass unresolved reason counts are overlapping, not mutually exclusive:
 - `SUCCESSOR_TICKER_IDENTITY_REQUIRED`: 1
 - `SUCCESSOR_TICKER_OVERVIEW_NOT_FOUND`: 1
 
-This source-only census may be diagnosed and repaired without economic contamination because it opened no market-price/return outcome. The 100% source-coverage requirement remains frozen.
+## LIT-02 accepted unresolved-source diagnostic
+
+Exact target-machine diagnostic head:
+
+`b7a65c9a790cdc297ab05da898c54f0c9589df61`
+
+Accepted target-machine diagnostic result:
+
+- status: `LIT02_SOURCE_METADATA_UNRESOLVED_DIAGNOSTIC_READY`
+- feasibility cases validated: `199`
+- resolved cases: `36`
+- unresolved cases: `163`
+- mechanism counts:
+  - `MASSIVE_EVENT_SOURCE_NOT_FOUND`: 109
+  - `SEC_NO_ADMISSIBLE_8K_EVIDENCE`: 70
+  - `SEC_TERMINAL_DATE_ZERO_MATCHES`: 66
+  - `IDENTITY_NO_COMPOSITE_FIGI`: 47
+  - `SEC_TERMINAL_DATE_MULTIPLE_MATCHES`: 27
+  - `SEC_MULTIPLE_CASH_VALUES`: 23
+  - `SEC_MULTIPLE_READY_CLASSIFICATIONS`: 1
+  - `SUCCESSOR_TICKER_IDENTITY_REQUIRED`: 1
+  - `SUCCESSOR_TICKER_OVERVIEW_NOT_FOUND`: 1
+- SEC evidence modes:
+  - `NO_SEC_FILINGS_MATERIALIZED`: 53
+  - `SEC_FILINGS_NO_CANDIDATE_PATTERN`: 17
+  - `SEC_ONLY_INCOMPLETE_OR_CONFLICT_CANDIDATES`: 91
+  - `SEC_READY_CANDIDATE_PRESENT_BUT_CASE_UNRESOLVED`: 2
+- terminal effective-date diagnostic:
+  - zero explicit event-date matches: 68 candidate instances
+  - multiple explicit event-date matches: 27 candidate instances
+- multiple cash-value conflict cases: 23
+- identity gaps:
+  - Massive 404 but CIK available: 109
+  - no FIGI but CIK available: 47
+  - no FIGI and no CIK: 0
+- repeated unresolved tickers: `CO` 7, `NTP` 7, `BF` 2
+- provider reads during diagnostic: 0
+- economic outcome values read: 0
+- new price/return provider reads: 0
+- protected return rows read: 0
+- protected holdout consumed: False
+- LIT-02 economic design unblocked: False
+- Phase33 signal-to-trade authority: False
+- diagnostic fingerprint: `6253178a77b26d5fa1ae9e99e5ff2036fab913ce9a5b3560a1989f6a6d1a3a2e`
+
+The diagnostic establishes that the first-pass failure is source-mechanism structured. It does not authorize source exceptions keyed to individual tickers.
+
+## LIT-02 source metadata repair v2
+
+Repair-v2 is pinned to the accepted first-pass classification and diagnostic and leaves the original `development/l2/m/` evidence immutable. It writes separately to `development/l2/m2/`.
+
+Contract:
+
+`lit02-source-metadata-repair-v2-contextual-sec-execution-370d-6k-no-prices`
+
+Repair-v2 predeclares:
+
+1. reuse the 36 accepted v1 resolved cases unchanged;
+2. retry only the 163 accepted v1 unresolved cases;
+3. use a fixed 370-day official SEC metadata lookback and the existing 10-day filing-forward allowance;
+4. admit official `8-K`, `8-K/A`, `6-K`, and `6-K/A` current reports, with the same frozen economic-fact requirements;
+5. identify explicit executed-event contexts before extracting consideration;
+6. prefer strong common-share consideration phrases over unrelated generic per-share values;
+7. use only effective dates on or before the endpoint session;
+8. when multiple valid events occur within the bounded lookback, use the latest explicit effective event; incompatible same-day classifications fail closed;
+9. continue to require endpoint identity confirmation for ticker continuity and the required successor identity for stock/mixed terminal paths;
+10. perform zero market-price/return, protected, broker, order, PAPER, or LIVE reads/writes.
+
+The 100% source-coverage requirement is unchanged.
 
 ## LIT-02 source-feasibility contract
 
@@ -145,4 +214,4 @@ The LIT-01 development interval `2021-09..2026-04` already opened 40,819 holding
 
 ## Immediate next action
 
-Run the cached unresolved-source diagnostic against the exact first-pass LIT-02 classification population. It must make zero provider reads and reconstruct classification fingerprint `636fb4bce1d5cd1501c535159e053dd39f5a301f9991b919b00ed2c8cc2e872c` before reporting reason intersections, SEC parser/evidence mechanisms, identity gaps, and repeated-ticker patterns. Only then define the smallest outcome-independent source/parser repair. Economic testing remains blocked.
+Certify source metadata repair-v2 on Ubuntu and Windows, then run the exact-head target-machine repair-v2 acquisition. If source coverage remains below 100%, economic testing remains blocked and the remaining source mechanisms must be diagnosed without weakening the gate. If and only if coverage reaches 100%, freeze a fresh/non-reused LIT-02 economic-development design before any new economic outcome read.
