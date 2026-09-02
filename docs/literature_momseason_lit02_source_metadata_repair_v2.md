@@ -95,6 +95,26 @@ Repair-v2 retains the v1 explicit `OLD -> NEW` parser and adds source patterns f
 
 A scheduled SEC notice alone does not finish the path. The existing endpoint identity verification must still confirm the successor ticker through Massive identity data.
 
+## Target-machine transport interruption and repair
+
+The first exact-head repair-v2 acquisition at `a0c9f9e9a46bd15296a87de203920105cdea74d8` reached case `131/199`. Case 131 (`2024-05-31 SCX`) completed as `RESOLVED / TERMINAL_CASH`; the following SEC complete-submission transfer then terminated mid-stream with `http.client.IncompleteRead` after 9,353,282 bytes.
+
+This is a transport interruption, not a source classification or scientific-policy result. The interrupted HTTP body is not admissible evidence and must not be decoded, cached, or classified.
+
+The shared SEC archive client already had a fixed three-attempt retry policy for retryable HTTP/URL/timeout failures. The transport repair adds `http.client.IncompleteRead` to that same bounded retry class. Each incomplete response is discarded in full and the complete GET is reissued from byte zero under the unchanged:
+
+- SEC pacing/rate-limit policy;
+- three-attempt maximum;
+- exponential retry delay;
+- default 20 MB submission ceiling;
+- isolated scientific submission ceiling of 256 MB where explicitly requested.
+
+`IncompleteRead.partial` is never accepted as a submission body and is never cached. Exhausting the existing attempt bound fails closed with `ProviderError`.
+
+Repair-v2 per-case checkpoints under `development/l2/m2/` remain reusable. Resuming without `--force` validates and reuses completed manifests, so the target machine does not intentionally reacquire already completed repair-v2 cases.
+
+No market-price/return, protected, broker, order, PAPER, or LIVE authority is added by this transport repair.
+
 ## Prohibited behavior
 
 Repair-v2 may not:
