@@ -71,6 +71,7 @@ jobs:
           packages/backtesting/literature_momseason_lit02_source_metadata_repair_v2_diagnostic.py
           packages/backtesting/literature_momseason_lit02_source_metadata_repair_v3.py
           packages/backtesting/literature_momseason_lit02_source_metadata_repair_v3_certified.py
+          packages/backtesting/literature_momseason_lit02_source_metadata_repair_v3_freeze.py
           scripts/run_literature_momseason_source_feasibility.py
           scripts/run_literature_momseason_total_return_source_audit.py
           scripts/run_literature_momseason_total_return_source_audit_v2.py
@@ -116,4 +117,5 @@ jobs:
           tests/unit/test_literature_momseason_lit02_source_metadata_repair_v2_diagnostic.py
           tests/unit/test_literature_momseason_lit02_source_metadata_repair_v3.py
           tests/unit/test_literature_momseason_lit02_source_metadata_repair_v3_certified.py
+          tests/unit/test_literature_momseason_lit02_source_metadata_repair_v3_freeze.py
           -q
