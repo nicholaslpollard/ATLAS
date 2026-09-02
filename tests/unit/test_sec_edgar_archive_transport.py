@@ -13,6 +13,9 @@ from packages.providers.sec_edgar_archive import (
 )
 
 
+_TEST_CONTACT_EMAIL = "atlas-transport-test@example.com"
+
+
 class _Response:
     def __init__(self, payload: bytes, *, incomplete: bool = False) -> None:
         self.payload = payload
@@ -50,7 +53,11 @@ def test_incomplete_read_retries_from_zero_and_never_accepts_partial_body() -> N
         calls.append(request.full_url)
         return responses.pop(0)
 
-    client = SECEDGARArchiveClient(opener=opener, sleeper=lambda _seconds: None)
+    client = SECEDGARArchiveClient(
+        contact_email=_TEST_CONTACT_EMAIL,
+        opener=opener,
+        sleeper=lambda _seconds: None,
+    )
     document = client.get_text(_submission_url())
 
     assert len(calls) == 2
@@ -74,7 +81,11 @@ def test_incomplete_read_exhaustion_stays_bounded_and_fails_closed() -> None:
         calls += 1
         return _Response(b"STILL-TRUNCATED", incomplete=True)
 
-    client = SECEDGARArchiveClient(opener=opener, sleeper=lambda _seconds: None)
+    client = SECEDGARArchiveClient(
+        contact_email=_TEST_CONTACT_EMAIL,
+        opener=opener,
+        sleeper=lambda _seconds: None,
+    )
 
     with pytest.raises(ProviderError, match="IncompleteRead"):
         client.get_text(_submission_url())
