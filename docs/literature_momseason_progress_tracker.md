@@ -28,8 +28,8 @@ This tracker records scientific state only. It does not grant Phase33, PAPER, LI
 | LIT-02 missing-source stress-case plan | ✅ Accepted target-machine freeze | 199 cases; plan fingerprint `c9200212a67171ee7c712a64224263241d622d2e8fe494ce0bc13843a8052880` |
 | LIT-02 source metadata acquisition/classification | ✅ First-pass census complete | 36 resolved / 163 unresolved; zero price/return/protected reads |
 | LIT-02 unresolved-source diagnostic | ✅ Accepted target-machine diagnostic | Diagnostic fingerprint `6253178a77b26d5fa1ae9e99e5ff2036fab913ce9a5b3560a1989f6a6d1a3a2e`; zero provider/outcome reads |
-| LIT-02 source metadata repair v2 | 🟡 Implementation/certification in progress | Retry only v1 unresolved cases; official SEC metadata only; no price/return outcomes |
-| LIT-02 source coverage decision | ❌ Incomplete pending repair-v2 | First pass 18.09% vs required 100%; economic design remains blocked |
+| LIT-02 source metadata repair v2 | ✅ Implementation/certification complete | Target-machine acquisition pending; retry only v1 unresolved cases; no price/return outcomes |
+| LIT-02 source coverage decision | ⬜ Pending repair-v2 target run | First pass 18.09% vs required 100%; economic design remains blocked |
 | LIT-02 economic development design | 🔒 Blocked | Only after 100% source feasibility; 2021-09..2026-04 not fresh confirmatory evidence |
 | Protected outcome | 🔒 Unconsumed | Existing protected holdout remains unopened |
 | ATLAS-layer attribution | 🔒 Not authorized | Requires a valid native finalist |
@@ -178,6 +178,21 @@ Contract:
 
 `lit02-source-metadata-repair-v2-contextual-sec-execution-370d-6k-no-prices`
 
+Certified parser:
+
+`lit02-source-metadata-repair-v2-parser-certified-context-forward-window-v2`
+
+The parser certification was completed at exact code head:
+
+`f10c867a26ca38361a6528f76c9255427d30247b`
+
+Exact-head focused regression:
+
+- Ubuntu: `133 passed`
+- Windows: `133 passed`
+
+The certification specifically preserves a forward-only executed-event consideration context so earlier proposed/option values cannot leak backward into a transaction classification, and normalizes terminal punctuation from ticker captures without removing valid internal ticker punctuation.
+
 Repair-v2 predeclares:
 
 1. reuse the 36 accepted v1 resolved cases unchanged;
@@ -214,4 +229,4 @@ The LIT-01 development interval `2021-09..2026-04` already opened 40,819 holding
 
 ## Immediate next action
 
-Certify source metadata repair-v2 on Ubuntu and Windows, then run the exact-head target-machine repair-v2 acquisition. If source coverage remains below 100%, economic testing remains blocked and the remaining source mechanisms must be diagnosed without weakening the gate. If and only if coverage reaches 100%, freeze a fresh/non-reused LIT-02 economic-development design before any new economic outcome read.
+Run the exact-head target-machine repair-v2 acquisition. If source coverage remains below 100%, economic testing remains blocked and the remaining source mechanisms must be diagnosed without weakening the gate. If and only if coverage reaches 100%, freeze a fresh/non-reused LIT-02 economic-development design before any new economic outcome read.
