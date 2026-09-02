@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import PureWindowsPath
 
 import pytest
 
@@ -11,7 +12,10 @@ from packages.backtesting.literature_momseason_lit01_closeout import (
     LIT01_SOURCE_INCONCLUSIVE_CLOSEOUT_STATUS,
 )
 from packages.backtesting.literature_momseason_lit02_source_feasibility import (
+    LIT02_SOURCE_FEASIBILITY_PLAN_FILE,
     LIT02_SOURCE_FEASIBILITY_PLAN_STATUS,
+    LIT02_SOURCE_FEASIBILITY_REPORT_FILE,
+    LIT02_SOURCE_FEASIBILITY_STORAGE_ROOT,
     build_lit02_source_feasibility_plan,
 )
 from packages.backtesting.literature_momseason_lit02_source_policy import (
@@ -131,6 +135,7 @@ def test_valid_plan_freezes_missing_source_keys_without_outcomes() -> None:
     assert report["protected_holdout_consumed"] is False
     assert report["fresh_confirmatory_reuse_of_lit01_2021_09_to_2026_04"] is False
     assert report["phase33_signal_to_trade_authority"] is False
+    assert report["storage_namespace"] == "l2"
     assert len(str(report["feasibility_plan_fingerprint"])) == 64
     assert len(str(report["report_fingerprint"])) == 64
     assert [case["historical_ticker"] for case in cases] == ["PING", "TWTR"]
@@ -138,6 +143,24 @@ def test_valid_plan_freezes_missing_source_keys_without_outcomes() -> None:
     assert cases[0]["resolution_status"] == "UNRESOLVED_PRE_SOURCE_READ"
     assert "ORDINARY_MONTH_END" not in cases[0]["candidate_return_paths"]
     assert "TERMINAL_CASH" in cases[0]["candidate_return_paths"]
+
+
+def test_compact_storage_stays_below_windows_max_path_with_atomic_temp_suffix() -> None:
+    # Reproduce the user's target-machine base path.  atomic_io bounds the visible
+    # final-name prefix to 24 characters, then appends PID + 32-hex UUID + .tmp.
+    base = PureWindowsPath(
+        r"C:\Users\cyberdyne\Desktop\ATLAS\data\derived\strategy_evaluation"
+        r"\literature_anchored\momseason\v1\source\total_return_source"
+        r"\native_population\research_freeze\development"
+    )
+    root = base / LIT02_SOURCE_FEASIBILITY_STORAGE_ROOT
+    for filename in (LIT02_SOURCE_FEASIBILITY_PLAN_FILE, LIT02_SOURCE_FEASIBILITY_REPORT_FILE):
+        final_path = root / filename
+        temp_name = f"{filename[:24]}.4294967295.{'a' * 32}.tmp"
+        temp_path = root / temp_name
+        assert len(str(final_path)) < 220
+        assert len(str(temp_path)) < 240
+        assert len(str(temp_path)) < 260
 
 
 def test_plan_is_deterministic_under_diagnostic_detail_order() -> None:
