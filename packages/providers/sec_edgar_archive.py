@@ -5,6 +5,7 @@ import hashlib
 import time
 import zlib
 from dataclasses import dataclass
+from http.client import IncompleteRead
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -212,7 +213,10 @@ class SECEDGARArchiveClient:
                     ) from exc
                 if exc.code not in SEC_ARCHIVE_RETRYABLE_HTTP or attempt >= SEC_EDGAR_MAX_ATTEMPTS:
                     raise ProviderError(f"SEC EDGAR archive request failed with HTTP {exc.code}") from exc
-            except (URLError, TimeoutError, OSError, UnicodeDecodeError) as exc:
+            except (IncompleteRead, URLError, TimeoutError, OSError, UnicodeDecodeError) as exc:
+                # A truncated chunked response is a failed transport attempt. Never
+                # accept or cache IncompleteRead.partial; retry the complete GET from
+                # byte zero under the same bounded attempt/backoff/rate-limit policy.
                 last_error = exc
                 if attempt >= SEC_EDGAR_MAX_ATTEMPTS:
                     raise ProviderError(
