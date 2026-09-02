@@ -32,8 +32,16 @@ LIT02_SOURCE_FEASIBILITY_PLAN_STATUS = "LIT02_DELISTING_AWARE_SOURCE_FEASIBILITY
 LIT02_SOURCE_FEASIBILITY_PLAN_CONTRACT = (
     "lit02-delisting-aware-source-feasibility-plan-v1-lit01-missing-keys-source-only"
 )
-LIT02_SOURCE_FEASIBILITY_PLAN_FILE = "lit02_source_feasibility_plan.json"
-LIT02_SOURCE_FEASIBILITY_REPORT_FILE = "lit02_source_feasibility_report.json"
+
+# Keep the persisted LIT-02 namespace deliberately compact.  The surrounding
+# literature research root is already deep, and atomic_write_text writes a sibling
+# PID/UUID temp file before promotion.  Long semantic directory/file names can push
+# otherwise valid Windows paths beyond the legacy MAX_PATH boundary.  Full semantic
+# identity remains inside the JSON contract/status/fingerprints; these names are
+# storage locators only.
+LIT02_SOURCE_FEASIBILITY_STORAGE_ROOT = "l2"
+LIT02_SOURCE_FEASIBILITY_PLAN_FILE = "p.json"
+LIT02_SOURCE_FEASIBILITY_REPORT_FILE = "r.json"
 
 
 def _require_zero(report: Mapping[str, object], field: str, *, label: str) -> None:
@@ -169,6 +177,7 @@ def build_lit02_source_feasibility_plan(
         "phase33_signal_to_trade_authority": False,
         "production_authority": False,
         "fresh_confirmatory_reuse_of_lit01_2021_09_to_2026_04": False,
+        "storage_namespace": LIT02_SOURCE_FEASIBILITY_STORAGE_ROOT,
         "next_action": (
             "Acquire only source/identity/transaction metadata for the frozen feasibility cases; "
             "classify each case into an admissible return path or SOURCE_UNRESOLVED. Do not read "
@@ -184,7 +193,7 @@ class MomSeasonLIT02SourceFeasibilityPlan:
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.lit01 = MomSeasonLIT01Closeout(settings)
-        self.root: Path = self.lit01.root / "lit02_source_feasibility"
+        self.root: Path = self.lit01.root / LIT02_SOURCE_FEASIBILITY_STORAGE_ROOT
 
     def closeout_path(self) -> Path:
         return self.lit01.root / LIT01_SOURCE_INCONCLUSIVE_CLOSEOUT_REPORT
