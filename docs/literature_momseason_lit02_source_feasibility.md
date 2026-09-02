@@ -70,6 +70,14 @@ The freeze-plan stage performs:
 - zero broker reads/writes;
 - zero order/PAPER/LIVE writes.
 
+## Windows-safe persistence
+
+The surrounding literature research path is already deep. `atomic_write_text()` creates a sibling PID/UUID temporary file before promotion, so semantic LIT-02 directory and file names can exceed the traditional Windows `MAX_PATH` boundary even when the final JSON path itself appears valid.
+
+LIT-02 therefore uses the compact storage namespace `development/l2/` with `p.json` for the frozen plan and `r.json` for its report. These are storage locators only: the full scientific contract version, status, source-policy fingerprint, plan fingerprint, closeout fingerprint, safety fields, and case identities remain inside the JSON payloads. No scientific rule or case definition is shortened or weakened.
+
+A regression test models the target-machine `C:\Users\cyberdyne\Desktop\ATLAS\...` path and the worst practical PID/UUID atomic suffix to keep the resulting temp path below the legacy Windows limit.
+
 ## Current command
 
 ```powershell
