@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from packages.backtesting.literature_momseason_development_sec_transport import (
-    MomSeasonDevelopmentResearchWithProgressScientificSEC,
+from packages.backtesting.literature_momseason_development_target_transport import (
+    MomSeasonDevelopmentResearchTargetTransportSafe,
 )
 from packages.core.settings import load_settings
 
@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument("--force-acquire", action="store_true")
     args = parser.parse_args()
 
-    result = MomSeasonDevelopmentResearchWithProgressScientificSEC(load_settings()).run(
+    result = MomSeasonDevelopmentResearchTargetTransportSafe(load_settings()).run(
         acquire=args.acquire,
         force_plan=args.force_plan,
         force_acquire=args.force_acquire,
@@ -89,6 +89,25 @@ def main() -> None:
     print(f"    holdings fingerprint:              {plan['holdings_fingerprint']}")
     print(f"    target endpoint rows:              {plan['target_plan_rows']}")
     print(f"    target plan fingerprint:           {plan['target_plan_fingerprint']}")
+    target_transport = result.get("target_transport")
+    if target_transport is not None:
+        print("  target transport:")
+        print(
+            "    shared endpoint/ticker groups:     "
+            f"{target_transport['shared_source_groups']}"
+        )
+        print(
+            "    extra frozen rows sharing source:  "
+            f"{target_transport['extra_frozen_instrument_rows_sharing_source']}"
+        )
+        print(
+            "    frozen instrument rows merged:     "
+            f"{target_transport['frozen_instrument_rows_merged']}"
+        )
+        print(
+            "    target plan rewritten:             "
+            f"{target_transport['target_plan_rewritten']}"
+        )
     acquisition = result.get("acquisition")
     if acquisition is not None:
         print("  target acquisition:")
