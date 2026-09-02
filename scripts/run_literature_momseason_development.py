@@ -15,7 +15,10 @@ def main() -> None:
     parser.add_argument(
         "--acquire",
         action="store_true",
-        help="Open only the frozen development target endpoints and evaluate the native family.",
+        help=(
+            "Permit source-only FIGI ticker-event continuity reads as needed, then open only "
+            "the frozen development target endpoints and evaluate the native family."
+        ),
     )
     parser.add_argument("--force-plan", action="store_true")
     parser.add_argument("--force-acquire", action="store_true")
@@ -30,6 +33,25 @@ def main() -> None:
     print(f"  status:                              {result['status']}")
     print(f"  contract:                            {result['contract_version']}")
     print(f"  freeze fingerprint:                  {result['freeze_fingerprint']}")
+    identity_source = result.get("identity_continuity_source")
+    if identity_source is not None:
+        print("  pre-outcome identity continuity:")
+        print(
+            "    provider calls this run:           "
+            f"{identity_source['provider_calls_performed_this_run']}"
+        )
+        print(
+            "    cache hits this run:               "
+            f"{identity_source['cache_hits_this_run']}"
+        )
+        print(
+            "    authoritative endpoint resolutions:"
+            f" {identity_source['authoritative_endpoint_resolutions_this_run']}"
+        )
+        print(
+            "    canonical ticker store mutated:    "
+            f"{identity_source['canonical_ticker_event_store_mutated']}"
+        )
     plan = result["plan"]
     print("  frozen holdings/target plan:")
     print(f"    development months:                {plan['development_month_count']}")
@@ -71,6 +93,7 @@ def main() -> None:
     print(f"    development outcome rows read:     {result['development_outcome_rows_read']}")
     print(f"    protected return rows read:        {result['protected_return_rows_read']}")
     print(f"    protected holdout consumed:        {result['protected_holdout_consumed']}")
+    print(f"    provider reads this run:           {result['provider_reads_performed_this_run']}")
     print(f"    broker reads performed:            {result['broker_reads_performed']}")
     print(f"    order writes performed:            {result['order_writes_performed']}")
     print(f"    PAPER submits performed:           {result['paper_submits_performed']}")
