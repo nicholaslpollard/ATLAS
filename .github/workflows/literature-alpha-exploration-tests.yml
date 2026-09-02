@@ -43,6 +43,7 @@ jobs:
       - name: Compile exploratory modules
         run: >-
           python -m py_compile
+          packages/providers/sec_edgar_archive.py
           packages/backtesting/literature_momseason_policy.py
           packages/backtesting/literature_momseason_source.py
           packages/backtesting/literature_momseason_feasibility.py
@@ -86,6 +87,7 @@ jobs:
       - name: Run focused exploratory tests
         run: >-
           python -m pytest
+          tests/unit/test_sec_edgar_archive_transport.py
           tests/unit/test_literature_momseason.py
           tests/unit/test_literature_momseason_total_return_source.py
           tests/unit/test_literature_momseason_total_return_source_v2.py
