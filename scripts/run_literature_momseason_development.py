@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 
-from packages.backtesting.literature_momseason_development import MomSeasonDevelopmentResearch
+from packages.backtesting.literature_momseason_development_identity_repair import (
+    MomSeasonDevelopmentResearchIdentitySafe,
+)
 from packages.core.settings import load_settings
 
 
@@ -19,7 +21,7 @@ def main() -> None:
     parser.add_argument("--force-acquire", action="store_true")
     args = parser.parse_args()
 
-    result = MomSeasonDevelopmentResearch(load_settings()).run(
+    result = MomSeasonDevelopmentResearchIdentitySafe(load_settings()).run(
         acquire=args.acquire,
         force_plan=args.force_plan,
         force_acquire=args.force_acquire,
