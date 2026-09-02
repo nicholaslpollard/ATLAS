@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+from datetime import date
+from pathlib import Path
+
 from packages.core.exceptions import ProviderError
 from packages.providers.sec_edgar import SECEDGARClient
 from packages.providers.sec_edgar_archive import (
@@ -13,22 +17,42 @@ from .literature_momseason_development_progress import (
 
 
 LIT01_SEC_IDENTITY_TRANSPORT_REPAIR_VERSION = (
-    "lit01-sec-identity-transport-v1-explicit-scientific-submission-bound"
+    "lit01-sec-identity-transport-v2-scientific-bound-windows-safe-cache"
 )
 LIT01_SEC_IDENTITY_SUBMISSION_MAX_RESPONSE_BYTES = (
     SEC_ARCHIVE_SCIENTIFIC_SUBMISSION_MAX_RESPONSE_BYTES
 )
+LIT01_SEC_IDENTITY_CACHE_KEY_HEX_CHARS = 20
+
+
+def _sec_identity_cache_key(instrument_id: str, endpoint_session: date) -> str:
+    """Return a compact deterministic storage key for validated SEC evidence.
+
+    The key is storage-only. Instrument ID, endpoint, CIK, aliases, source hashes,
+    and the evidence fingerprint remain inside the payload and are revalidated on
+    every cache hit by the identity layer. A key collision therefore fails closed
+    as a payload identity mismatch rather than silently reusing evidence.
+    """
+
+    material = f"{instrument_id}\x00{endpoint_session.isoformat()}".encode("utf-8")
+    return hashlib.sha256(material).hexdigest()[:LIT01_SEC_IDENTITY_CACHE_KEY_HEX_CHARS]
 
 
 class MomSeasonDevelopmentResearchWithProgressScientificSEC(
     MomSeasonDevelopmentResearchWithProgress
 ):
-    """LIT-01 runner with an explicit bounded scientific SEC archive client.
+    """LIT-01 runner with bounded SEC transport and Windows-safe evidence storage.
 
-    This is a transport-only wrapper. It preserves the global/default SEC complete-
-    submission ceiling and opts only this isolated pre-outcome identity-continuity
-    client into ATLAS's already-approved scientific submission ceiling.
+    This remains a transport/persistence-only wrapper. It preserves the global/default
+    SEC complete-submission ceiling and opts only this isolated pre-outcome identity-
+    continuity client into ATLAS's already-approved scientific submission ceiling.
+    It also shortens only the isolated SEC evidence cache path so atomic temporary
+    filenames remain well below legacy Windows path limits on the target machine.
     """
+
+    def sec_identity_evidence_path(self, instrument_id: str, endpoint_session: date) -> Path:
+        key = _sec_identity_cache_key(instrument_id, endpoint_session)
+        return self.root / "si" / f"{key}.json"
 
     def _ensure_sec_clients(self) -> tuple[SECEDGARClient, SECEDGARArchiveClient]:
         try:
@@ -65,6 +89,7 @@ class MomSeasonDevelopmentResearchWithProgressScientificSEC(
         print(
             "[LIT-01][SEC-TRANSPORT] isolated identity submission ceiling"
             f"={LIT01_SEC_IDENTITY_SUBMISSION_MAX_RESPONSE_BYTES} bytes"
+            " | compact Windows-safe SEC evidence cache enabled"
             " | global/default SEC ceiling unchanged",
             flush=True,
         )
