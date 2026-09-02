@@ -27,7 +27,7 @@ from .literature_momseason_lit02_source_metadata_repair_v2 import (
 
 
 LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION = (
-    "lit02-source-metadata-repair-v2-parser-certified-context-forward-window-v1"
+    "lit02-source-metadata-repair-v2-parser-certified-context-forward-window-v2"
 )
 
 _EXECUTION_PATTERNS_CERTIFIED = (
@@ -75,8 +75,8 @@ _STRONG_CASH_PATTERNS_CERTIFIED = (
         r"\$\s*(?P<value>\d+(?:\.\d+)?)\b)"
     ),
     re.compile(
-        r"(?is:\b(?:per\s+share\s+merger\s+consideration|merger\s+consideration|per\s+share\s+price)\b"
-        r".{0,180}?\$\s*(?P<value>\d+(?:\.\d+)?)\b)"
+        r"(?is:\$\s*(?P<value>\d+(?:\.\d+)?)\b.{0,120}?"
+        r"\b(?:per\s+share\s+merger\s+consideration|merger\s+consideration|per\s+share\s+price)\b)"
     ),
     re.compile(
         r"(?is:\$\s*(?P<value>\d+(?:\.\d+)?)\s+in\s+cash\b.{0,100}?\bper\s+share\b)"
@@ -105,6 +105,10 @@ _SCHEDULED_TICKER_CHANGE_CERTIFIED = re.compile(
 )
 
 
+def _normalize_ticker_capture(value: object) -> str:
+    return str(value or "").strip().rstrip(".,;:")
+
+
 def _cash_values_certified(text: str) -> set[float]:
     strong = _float_values(text, _STRONG_CASH_PATTERNS_CERTIFIED)
     return strong if strong else _float_values(text, _GENERIC_CASH_PATTERNS)
@@ -118,7 +122,7 @@ def _successor_tickers_certified(text: str, historical_ticker: str) -> set[str]:
     values: set[str] = set()
     for pattern in _SUCCESSOR_TICKER_PATTERNS_V2:
         for match in pattern.finditer(text):
-            ticker = match.group("ticker").strip()
+            ticker = _normalize_ticker_capture(match.group("ticker"))
             if ticker and ticker != historical_ticker:
                 values.add(ticker)
     return values
@@ -134,10 +138,10 @@ def _execution_contexts_certified(
             parsed = _parse_date_v2(match.group("date"))
             if parsed is None or parsed > endpoint_session:
                 continue
-            # Consideration normally follows the executed-event sentence. Keep only a
-            # very small prefix so historical/proposed values earlier in the filing do
-            # not leak back into the executed transaction context.
-            start = max(0, match.start() - 120)
+            # Executed consideration is expected at or after the execution sentence.
+            # Starting at the match boundary prevents earlier proposed/option values
+            # from contaminating this event while retaining a bounded forward window.
+            start = match.start()
             end = min(len(plain), match.end() + 3200)
             context = plain[start:end]
             key = (parsed, hashlib.sha256(context.encode("utf-8")).hexdigest()[:16])
@@ -172,8 +176,8 @@ def parse_explicit_sec_ticker_change_v2_certified(
         ),
     ):
         for match in pattern.finditer(plain):
-            old = match.group("old").strip()
-            new = match.group("new").strip()
+            old = _normalize_ticker_capture(match.group("old"))
+            new = _normalize_ticker_capture(match.group("new"))
             effective = _parse_date_v2(match.group("date"))
             if (
                 old != historical_ticker
