@@ -45,6 +45,26 @@ Exact raw provider responses and invalid-symbol evidence remain in the isolated 
 
 If any frozen holding lacks a complete source-grounded target return, the development source is classified incomplete. Missing/delisted holdings are not silently deleted and are not assigned zero or last-price returns.
 
+### Pre-outcome target-identity repair
+
+The first target-machine invocation on exact head `49a5debe0b39d30ee7e4375b307a4e4d95332222` stopped during `build_plan()` before target acquisition with:
+
+`ambiguous PIT ticker for development target endpoint: 2021-10-29 ins_b8e04037690e12c4013e8c02`
+
+Because `run()` builds and fingerprints the holdings/target plan before calling target acquisition, that failure exposed no development return and consumed no protected evidence.
+
+The root cause was implementation-level: the first development planner treated more than one safe PIT alias for an already-stable `instrument_id` as fatal without first applying the retained ATLAS ticker-continuity hierarchy. The repair does not change the scientific freeze, holdings ranking, family, costs, or inference.
+
+Target alias resolution is now source-grounded and deterministic:
+
+1. prefer a unique active strong/medium PIT alias at the endpoint;
+2. if multiple active safe aliases remain, require a unique retained Massive authoritative ticker-validity interval covering that stable instrument and endpoint;
+3. if only inactive safe aliases exist, a unique authoritative interval may disambiguate them;
+4. where a historical endpoint snapshot is unavailable, authoritative interval evidence is preferred before the already-existing formation-ticker fallback;
+5. no alphabetical choice, price-based choice, return-based choice, or identity merge is permitted.
+
+If authoritative evidence itself is ambiguous or does not match the safe PIT aliases, the planner still fails closed.
+
 ## Portfolio returns and costs
 
 The independent inferential unit is one calendar-month long-short portfolio return, not an individual stock row.
