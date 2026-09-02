@@ -53,6 +53,7 @@ jobs:
           packages/backtesting/literature_momseason_adjusted_predictor_source.py
           packages/backtesting/literature_momseason_native_population.py
           packages/backtesting/literature_momseason_research_freeze.py
+          packages/backtesting/literature_momseason_development.py
           scripts/run_literature_momseason_source_feasibility.py
           scripts/run_literature_momseason_total_return_source_audit.py
           scripts/run_literature_momseason_total_return_source_audit_v2.py
@@ -61,6 +62,7 @@ jobs:
           scripts/run_literature_momseason_adjusted_predictor_source.py
           scripts/run_literature_momseason_native_population.py
           scripts/run_literature_momseason_research_freeze.py
+          scripts/run_literature_momseason_development.py
 
       - name: Run focused exploratory tests
         run: >-
@@ -73,4 +75,5 @@ jobs:
           tests/unit/test_literature_momseason_adjusted_predictor_source.py
           tests/unit/test_literature_momseason_native_population.py
           tests/unit/test_literature_momseason_research_freeze.py
+          tests/unit/test_literature_momseason_development.py
           -q
