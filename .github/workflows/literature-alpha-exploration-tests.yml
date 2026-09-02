@@ -54,6 +54,7 @@ jobs:
           packages/backtesting/literature_momseason_native_population.py
           packages/backtesting/literature_momseason_research_freeze.py
           packages/backtesting/literature_momseason_development.py
+          packages/backtesting/literature_momseason_development_identity_repair.py
           scripts/run_literature_momseason_source_feasibility.py
           scripts/run_literature_momseason_total_return_source_audit.py
           scripts/run_literature_momseason_total_return_source_audit_v2.py
@@ -76,4 +77,5 @@ jobs:
           tests/unit/test_literature_momseason_native_population.py
           tests/unit/test_literature_momseason_research_freeze.py
           tests/unit/test_literature_momseason_development.py
+          tests/unit/test_literature_momseason_development_identity_repair.py
           -q
