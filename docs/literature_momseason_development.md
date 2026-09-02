@@ -63,18 +63,28 @@ The next exact-head invocation on `81de1a757637ffa7653b0d93ef95af7303a70dc1` als
 
 `2024-11-29 ins_87bc752518fe98997e75b4b1 aliases=['CGA', 'ENFY']`
 
-`CGA` and `ENFY` are unrelated ticker strings, so the When-Issued rule correctly refused to resolve them. Independent public records identify this as the November 2024 China Green Agriculture / Enlightify ticker change, but that outside evidence is not used to select the research ticker. The scientific repair instead reuses ATLAS Phase 4's accepted continuity authority rule: only Massive ticker-event history queried by a unique PIT Composite FIGI is sufficient to establish ticker continuity.
+`CGA` and `ENFY` are unrelated ticker strings, so the When-Issued rule correctly refused to resolve them. The repair reused ATLAS Phase 4's accepted continuity authority rule: only Massive ticker-event history queried by a unique PIT Composite FIGI is sufficient to establish ticker continuity. The raw provider response is fingerprinted in the isolated LIT-01 development `identity_continuity` cache; the canonical Phase 4 ticker-event store is not mutated.
 
-For unresolved multi-alias holdings, an explicit `--acquire` run may now perform a source-only continuity read before any target price is requested:
+The next target-machine invocation on exact head `6eb4cb0f5109d4b3e98fd4e094e29a0fea087250` again stopped during `build_plan()` before any target-price acquisition, now at:
 
-1. require one internally consistent Composite FIGI across the safe PIT rows for the stable `instrument_id`;
-2. query Massive `ticker_events` with that Composite FIGI, never with one of the competing ticker aliases;
-3. persist the raw provider response and fingerprint in the isolated LIT-01 development `identity_continuity` cache;
-4. interpret ticker-change dates using the same half-open validity semantics as ATLAS Phase 4: the event ticker is valid beginning on its event date until the next authoritative ticker-change event;
-5. require the resulting endpoint ticker to match one of the safe PIT aliases at that endpoint;
-6. fail closed if Composite FIGI is absent or contradictory, a provider event date reports multiple tickers, no authoritative ticker is established by the endpoint date, or the authoritative ticker does not match the safe PIT aliases.
+`2025-04-30 ins_8baf6f337bd90aade5b27626 aliases=['BTTR', 'SRXH']`
 
-This source repair never writes the canonical Phase 4 ticker-event store or authoritative interval artifact. It uses only the LIT-01 isolated cache, and records zero development/protected outcome rows used for identity resolution.
+The isolated Massive Composite-FIGI ticker-event read did not establish a ticker valid at that endpoint. This is a source-completeness limitation of an experimental continuity endpoint, not permission to choose one alias by price, availability, alphabetical order, or outcome.
+
+Independent public SEC evidence confirms the underlying source condition: Better Choice Company disclosed in an 8-K that its trading symbol would change from `BTTR` to `SRXH` commencing on April 30, 2025. The LIT-01 implementation does not hard-code that company, date, or symbol pair. Instead it adds a bounded, generic official-SEC fallback that is still source-only and pre-outcome.
+
+When Massive Composite-FIGI continuity cannot resolve an ambiguous endpoint, an explicit `--acquire` run may now:
+
+1. require one internally consistent SEC CIK across the same safe PIT rows;
+2. query the official `data.sec.gov/submissions/CIK##########.json` source under ATLAS's existing SEC fair-access client;
+3. inspect only original `8-K` filings filed during the 31 calendar days ending on the ambiguous endpoint, following at most the existing bounded number of SEC-declared submissions shards;
+4. cap the search at 24 matching 8-K filings and fail closed if that bound is exceeded;
+5. fetch only those complete submissions through the existing bounded SEC archive client;
+6. accept only explicit filing language that a `trading symbol` or `ticker symbol` changed, or will change, **from one of the competing PIT aliases to another** and that also states an explicit `effective`, `commencing`, or `beginning` date in the nearby filing text;
+7. resolve the old ticker before that effective date and the new ticker on/after that date;
+8. fail closed on mere alias co-mention, missing effective date, conflicting CIKs, conflicting explicit transition dates, conflicting SEC filings, or a resolved ticker outside the safe PIT alias set;
+9. retain source URLs, source SHA-256 values, filing metadata, the narrow matched excerpt, and an evidence fingerprint in the isolated `identity_continuity_sec` cache;
+10. record zero development/protected outcome rows used for identity and never mutate canonical SEC or ticker-event stores.
 
 The complete target alias hierarchy is therefore:
 
@@ -82,9 +92,10 @@ The complete target alias hierarchy is therefore:
 2. if multiple active safe aliases remain, prefer a unique retained Massive authoritative ticker-validity interval covering that stable instrument and endpoint;
 3. if no retained interval resolves the set, permit only the exact case-sensitive two-alias pattern `{BASE, BASEw}` and retain `BASE` as the regular line;
 4. for any other unresolved multi-alias case, an explicit acquisition run may use isolated Composite-FIGI-backed Massive ticker events to derive the authoritative endpoint ticker;
-5. if only inactive safe aliases exist, the same authoritative evidence requirements apply;
-6. where a historical endpoint snapshot is unavailable, retained authoritative interval evidence is preferred before the already-existing formation-ticker fallback;
-7. no alphabetical choice, data-availability choice, volume choice, price choice, return-based choice, ticker-text event query, or identity merge is permitted.
+5. if the experimental Massive event source still cannot resolve the endpoint, a bounded official SEC 8-K continuity read may resolve only an explicit dated ticker-symbol transition for the same PIT CIK and competing aliases;
+6. if only inactive safe aliases exist, the same authoritative evidence requirements apply;
+7. where a historical endpoint snapshot is unavailable, retained authoritative interval evidence is preferred before the already-existing formation-ticker fallback;
+8. no alphabetical choice, data-availability choice, volume choice, price choice, return-based choice, ticker-text event query, or identity merge is permitted.
 
 The When-Issued rule does not generalize to uppercase `W`, arbitrary suffixes, three-or-more-alias sets, or any other multi-alias shape. Those cases still require authoritative evidence or fail closed.
 
