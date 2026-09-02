@@ -5,7 +5,10 @@ import json
 
 from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v2 import (
     LIT02_SOURCE_METADATA_REPAIR_V2_CONTRACT,
-    MomSeasonLIT02SourceMetadataRepairV2,
+)
+from packages.backtesting.literature_momseason_lit02_source_metadata_repair_v2_certified import (
+    LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION,
+    MomSeasonLIT02SourceMetadataRepairV2Certified,
 )
 from packages.core.settings import load_settings
 
@@ -41,11 +44,15 @@ def main() -> int:
     print(
         "[LIT-02][REPAIR-V2] "
         f"contract={LIT02_SOURCE_METADATA_REPAIR_V2_CONTRACT} | "
+        f"parser={LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION} | "
         "v1 resolved cases are immutable/reused; only v1 unresolved cases are retried"
     )
-    report = MomSeasonLIT02SourceMetadataRepairV2(load_settings()).run(force=args.force)
+    report = MomSeasonLIT02SourceMetadataRepairV2Certified(load_settings()).run(
+        force=args.force
+    )
     print("ATLAS Literature-Anchored Alpha Exploration — LIT-02 Source Metadata Repair v2")
     print(f"  status:                              {report['status']}")
+    print(f"  parser certification:                {LIT02_SOURCE_METADATA_REPAIR_V2_PARSER_CERTIFICATION}")
     print(f"  feasibility cases:                   {report['feasibility_cases']}")
     print(f"  base resolved cases:                 {report['base_resolved_cases']}")
     print(f"  base unresolved cases:               {report['base_unresolved_cases']}")
