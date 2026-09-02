@@ -38,7 +38,10 @@ from .literature_momseason_lit02_source_policy import (
     LIT02_REQUIRED_SOURCE_COVERAGE,
     LIT02_SOURCE_POLICY_STATUS,
 )
-from .literature_momseason_source import MOMSEASON_SOURCE_ROOT_RELATIVE, canonical_json
+from .literature_momseason_source import (
+    MOMSEASON_SOURCE_ROOT_RELATIVE,
+    canonical_json,
+)
 
 
 LIT02_SOURCE_METADATA_CONTRACT = (
@@ -279,7 +282,10 @@ def _terminal_event_dates(plain: str, endpoint_session: date) -> set[date]:
     return values
 
 
-def _unique_float_matches(plain: str, patterns: tuple[re.Pattern[str], ...]) -> set[float]:
+def _unique_float_matches(
+    plain: str,
+    patterns: tuple[re.Pattern[str], ...],
+) -> set[float]:
     values: set[float] = set()
     for pattern in patterns:
         for match in pattern.finditer(plain):
@@ -447,7 +453,9 @@ def classify_massive_ticker_events(
 
 def _normalize_cik(value: object) -> str | None:
     text = str(value or "").strip()
-    if not text or not text.isdigit():
+    if not text:
+        return None
+    if not text.isdigit():
         return None
     return str(int(text)).zfill(10)
 
@@ -461,7 +469,8 @@ def select_identity_authorities(
     safe_rows = [
         row
         for row in rows
-        if str(row.get("identity_quality") or "").strip().lower() in LIT02_IDENTITY_QUALITIES
+        if str(row.get("identity_quality") or "").strip().lower()
+        in LIT02_IDENTITY_QUALITIES
     ]
     nearby = []
     for row in safe_rows:
@@ -536,7 +545,10 @@ def _submission_rows(payload: Mapping[str, object]) -> list[dict[str, object]]:
 
 
 def _declared_shard_urls(
-    payload: Mapping[str, object], *, start_date: date, end_date: date
+    payload: Mapping[str, object],
+    *,
+    start_date: date,
+    end_date: date,
 ) -> list[str]:
     filings = payload.get("filings")
     files = filings.get("files") if isinstance(filings, Mapping) else None
@@ -565,7 +577,10 @@ def _declared_shard_urls(
 
 
 def _filtered_sec_rows(
-    rows: list[dict[str, object]], *, start_date: date, end_date: date
+    rows: list[dict[str, object]],
+    *,
+    start_date: date,
+    end_date: date,
 ) -> list[dict[str, object]]:
     unique: dict[str, dict[str, object]] = {}
     for row in rows:
@@ -617,7 +632,9 @@ def build_source_coverage_report(
 ) -> dict[str, object]:
     total = len(case_results)
     resolved = sum(
-        1 for row in case_results if str(row.get("resolution_status") or "") == "RESOLVED"
+        1
+        for row in case_results
+        if str(row.get("resolution_status") or "") == "RESOLVED"
     )
     path_counts = Counter(
         str(row.get("path_id") or "SOURCE_UNRESOLVED") for row in case_results
@@ -636,7 +653,9 @@ def build_source_coverage_report(
     coverage = (resolved / total) if total else 0.0
     ready = total > 0 and coverage >= LIT02_REQUIRED_SOURCE_COVERAGE
     report: dict[str, object] = {
-        "status": LIT02_SOURCE_METADATA_READY if ready else LIT02_SOURCE_METADATA_INCOMPLETE,
+        "status": (
+            LIT02_SOURCE_METADATA_READY if ready else LIT02_SOURCE_METADATA_INCOMPLETE
+        ),
         "contract_version": LIT02_SOURCE_METADATA_CONTRACT,
         "source_policy_fingerprint": LIT02_ACCEPTED_SOURCE_POLICY_FINGERPRINT,
         "feasibility_plan_fingerprint": LIT02_ACCEPTED_FEASIBILITY_PLAN_FINGERPRINT,
@@ -751,7 +770,9 @@ class MomSeasonLIT02SourceMetadata:
         key = hashlib.sha256(case_id.encode("utf-8")).hexdigest()[:12]
         return self.root / f"{key}.json"
 
-    def _load_and_require_plan(self) -> tuple[list[dict[str, object]], dict[str, object]]:
+    def _load_and_require_plan(
+        self,
+    ) -> tuple[list[dict[str, object]], dict[str, object]]:
         if not self.plan_path().is_file() or not self.feasibility_report_path().is_file():
             raise RuntimeError("LIT-02 accepted source-feasibility plan/report are required")
         payload = json.loads(self.plan_path().read_text(encoding="utf-8"))
@@ -763,11 +784,20 @@ class MomSeasonLIT02SourceMetadata:
             raise RuntimeError("LIT-02 feasibility plan status mismatch")
         if report.get("source_contract_status") != LIT02_SOURCE_POLICY_STATUS:
             raise RuntimeError("LIT-02 source policy status mismatch")
-        if str(report.get("source_policy_fingerprint") or "") != LIT02_ACCEPTED_SOURCE_POLICY_FINGERPRINT:
+        if (
+            str(report.get("source_policy_fingerprint") or "")
+            != LIT02_ACCEPTED_SOURCE_POLICY_FINGERPRINT
+        ):
             raise RuntimeError("LIT-02 accepted source policy fingerprint mismatch")
-        if str(report.get("feasibility_plan_fingerprint") or "") != LIT02_ACCEPTED_FEASIBILITY_PLAN_FINGERPRINT:
+        if (
+            str(report.get("feasibility_plan_fingerprint") or "")
+            != LIT02_ACCEPTED_FEASIBILITY_PLAN_FINGERPRINT
+        ):
             raise RuntimeError("LIT-02 accepted feasibility plan fingerprint mismatch")
-        if str(report.get("report_fingerprint") or "") != LIT02_ACCEPTED_FEASIBILITY_REPORT_FINGERPRINT:
+        if (
+            str(report.get("report_fingerprint") or "")
+            != LIT02_ACCEPTED_FEASIBILITY_REPORT_FINGERPRINT
+        ):
             raise RuntimeError("LIT-02 accepted feasibility report fingerprint mismatch")
         if int(report.get("feasibility_cases") or 0) != 199 or len(cases) != 199:
             raise RuntimeError("LIT-02 accepted feasibility population is not 199 cases")
@@ -782,7 +812,8 @@ class MomSeasonLIT02SourceMetadata:
         return [dict(item) for item in cases if isinstance(item, Mapping)], report
 
     def _identity_rows_from_cache(
-        self, cases: list[dict[str, object]]
+        self,
+        cases: list[dict[str, object]],
     ) -> tuple[dict[str, list[dict[str, object]]], str, bool]:
         path = self.identity_cache_path()
         if path.is_file():
@@ -795,11 +826,17 @@ class MomSeasonLIT02SourceMetadata:
                 and str(payload.get("identity_evidence_fingerprint") or "")
             ):
                 rows_by_instrument = {
-                    str(key): [dict(row) for row in value if isinstance(row, Mapping)]
+                    str(key): [
+                        dict(row) for row in value if isinstance(row, Mapping)
+                    ]
                     for key, value in payload["rows_by_instrument"].items()
                     if isinstance(value, list)
                 }
-                return rows_by_instrument, str(payload["identity_evidence_fingerprint"]), True
+                return (
+                    rows_by_instrument,
+                    str(payload["identity_evidence_fingerprint"]),
+                    True,
+                )
 
         needed_ids = sorted(
             {
@@ -815,7 +852,9 @@ class MomSeasonLIT02SourceMetadata:
         }
         files = sorted(self.reference_root.glob("date=*/active_stock_snapshot.jsonl.gz"))
         if not files:
-            raise RuntimeError(f"LIT-02 source identity snapshots are missing: {self.reference_root}")
+            raise RuntimeError(
+                f"LIT-02 source identity snapshots are missing: {self.reference_root}"
+            )
 
         started = time.monotonic()
         for index, path_item in enumerate(files, start=1):
@@ -881,7 +920,10 @@ class MomSeasonLIT02SourceMetadata:
         )
         return normalized, evidence_fingerprint, False
 
-    def _massive_ticker_events(self, composite_figi: str) -> list[dict[str, object]]:
+    def _massive_ticker_events(
+        self,
+        composite_figi: str,
+    ) -> list[dict[str, object]]:
         cached = self._massive_event_cache.get(composite_figi)
         if cached is not None:
             return cached
@@ -891,7 +933,11 @@ class MomSeasonLIT02SourceMetadata:
         self._massive_event_cache[composite_figi] = rows
         return rows
 
-    def _massive_overview(self, ticker: str, endpoint_session: date) -> dict[str, object] | None:
+    def _massive_overview(
+        self,
+        ticker: str,
+        endpoint_session: date,
+    ) -> dict[str, object] | None:
         key = (ticker, endpoint_session)
         if key in self._massive_overview_cache:
             return self._massive_overview_cache[key]
@@ -906,7 +952,9 @@ class MomSeasonLIT02SourceMetadata:
         self._massive_overview_cache[key] = value
         return value
 
-    def _ensure_sec_clients(self) -> tuple[SECEDGARClient, SECEDGARArchiveClient]:
+    def _ensure_sec_clients(
+        self,
+    ) -> tuple[SECEDGARClient, SECEDGARArchiveClient]:
         if self.sec_submissions is None:
             self.sec_submissions = SECEDGARClient()
         if self.sec_archive is None:
@@ -920,7 +968,10 @@ class MomSeasonLIT02SourceMetadata:
             raise RuntimeError("LIT-02 SEC scientific archive bound changed")
         return self.sec_submissions, self.sec_archive
 
-    def _sec_get_json(self, url: str) -> tuple[dict[str, object], str]:
+    def _sec_get_json(
+        self,
+        url: str,
+    ) -> tuple[dict[str, object], str]:
         cached = self._sec_json_cache.get(url)
         if cached is not None:
             return cached
@@ -943,7 +994,10 @@ class MomSeasonLIT02SourceMetadata:
         return document
 
     def _sec_candidate_filings(
-        self, *, cik: str, endpoint_session: date
+        self,
+        *,
+        cik: str,
+        endpoint_session: date,
     ) -> tuple[list[dict[str, object]], str]:
         start_date = endpoint_session - timedelta(days=LIT02_SEC_LOOKBACK_DAYS)
         end_date = endpoint_session + timedelta(days=LIT02_SEC_FORWARD_DAYS)
@@ -956,11 +1010,17 @@ class MomSeasonLIT02SourceMetadata:
             raise
         rows = _submission_rows(payload)
         for shard_url in _declared_shard_urls(
-            payload, start_date=start_date, end_date=end_date
+            payload,
+            start_date=start_date,
+            end_date=end_date,
         ):
             shard_payload, _shard_text = self._sec_get_json(shard_url)
             rows.extend(_submission_rows(shard_payload))
-        filtered = _filtered_sec_rows(rows, start_date=start_date, end_date=end_date)
+        filtered = _filtered_sec_rows(
+            rows,
+            start_date=start_date,
+            end_date=end_date,
+        )
         return filtered, hashlib.sha256(root_text.encode("utf-8")).hexdigest()
 
     def _verify_successor_identity(
@@ -973,13 +1033,25 @@ class MomSeasonLIT02SourceMetadata:
         overview = self._massive_overview(successor_ticker, endpoint_session)
         if overview is None:
             return False, None, "SUCCESSOR_TICKER_OVERVIEW_NOT_FOUND"
-        successor_figi = str(overview.get("composite_figi") or "").strip().upper() or None
+        successor_figi = (
+            str(overview.get("composite_figi") or "").strip().upper() or None
+        )
         successor_cik = _normalize_cik(overview.get("cik"))
-        predecessor_figi = str(predecessor.get("composite_figi") or "").strip().upper() or None
+        predecessor_figi = (
+            str(predecessor.get("composite_figi") or "").strip().upper() or None
+        )
         predecessor_cik = _normalize_cik(predecessor.get("cik"))
         consistent = bool(
-            (predecessor_figi and successor_figi and predecessor_figi == successor_figi)
-            or (predecessor_cik and successor_cik and predecessor_cik == successor_cik)
+            (
+                predecessor_figi
+                and successor_figi
+                and predecessor_figi == successor_figi
+            )
+            or (
+                predecessor_cik
+                and successor_cik
+                and predecessor_cik == successor_cik
+            )
         )
         evidence = {
             "ticker": successor_ticker,
@@ -988,7 +1060,11 @@ class MomSeasonLIT02SourceMetadata:
             "primary_exchange": overview.get("primary_exchange"),
             "security_type": overview.get("type"),
         }
-        return consistent, evidence, "IDENTITY_MATCH" if consistent else "SUCCESSOR_IDENTITY_MISMATCH"
+        return (
+            consistent,
+            evidence,
+            "IDENTITY_MATCH" if consistent else "SUCCESSOR_IDENTITY_MISMATCH",
+        )
 
     def _sec_resolution(
         self,
@@ -1002,7 +1078,8 @@ class MomSeasonLIT02SourceMetadata:
             return None, [], ["CIK_UNAVAILABLE_FOR_SEC_SOURCE"]
         try:
             filings, submissions_sha = self._sec_candidate_filings(
-                cik=cik, endpoint_session=endpoint_session
+                cik=cik,
+                endpoint_session=endpoint_session,
             )
         except RuntimeError as exc:
             return None, [], [str(exc)]
@@ -1052,7 +1129,9 @@ class MomSeasonLIT02SourceMetadata:
                         }
                     )
                 elif status in {"INCOMPLETE", "CONFLICT"}:
-                    incomplete_reasons.append(str(candidate.get("reason") or status))
+                    incomplete_reasons.append(
+                        str(candidate.get("reason") or status)
+                    )
 
         unique_ready: dict[str, dict[str, object]] = {}
         for candidate in ready_candidates:
@@ -1073,7 +1152,11 @@ class MomSeasonLIT02SourceMetadata:
         if len(unique_ready) > 1:
             return None, evidence_rows, ["MULTIPLE_SEC_READY_CLASSIFICATIONS"]
         if not unique_ready:
-            return None, evidence_rows, incomplete_reasons or ["NO_ADMISSIBLE_SEC_8K_EVIDENCE"]
+            return (
+                None,
+                evidence_rows,
+                incomplete_reasons or ["NO_ADMISSIBLE_SEC_8K_EVIDENCE"],
+            )
 
         candidate = next(iter(unique_ready.values()))
         path_id = str(candidate.get("path_id") or "")
@@ -1098,7 +1181,9 @@ class MomSeasonLIT02SourceMetadata:
                 return None, evidence_rows, ["SUCCESSOR_TICKER_OVERVIEW_NOT_FOUND"]
             candidate["successor_identity"] = {
                 "ticker": successor_ticker,
-                "composite_figi": str(overview.get("composite_figi") or "").strip().upper() or None,
+                "composite_figi": (
+                    str(overview.get("composite_figi") or "").strip().upper() or None
+                ),
                 "cik": _normalize_cik(overview.get("cik")),
                 "primary_exchange": overview.get("primary_exchange"),
                 "security_type": overview.get("type"),
@@ -1160,8 +1245,26 @@ class MomSeasonLIT02SourceMetadata:
                         "massive_evidence": massive_evidence,
                         "sec_evidence": [],
                     }
+                if massive_candidate.get("status") == "CONFLICT":
+                    reason = str(
+                        massive_candidate.get("reason")
+                        or "MASSIVE_TICKER_EVENT_CONFLICT"
+                    )
+                    return {
+                        "instrument_id": instrument_id,
+                        "identity": identity,
+                        "resolution_status": "UNRESOLVED",
+                        "path_id": None,
+                        "classification": None,
+                        "unresolved_reasons": [reason],
+                        "massive_evidence": massive_evidence,
+                        "sec_evidence": [],
+                    }
                 unresolved.append(
-                    str(massive_candidate.get("reason") or "MASSIVE_TICKER_EVENT_CONFLICT")
+                    str(
+                        massive_candidate.get("reason")
+                        or "MASSIVE_TICKER_EVENT_UNRESOLVED"
+                    )
                 )
         else:
             massive_evidence = None
@@ -1196,17 +1299,25 @@ class MomSeasonLIT02SourceMetadata:
         }
 
     def _aggregate_case(
-        self, case: Mapping[str, object], instrument_results: list[dict[str, object]]
+        self,
+        case: Mapping[str, object],
+        instrument_results: list[dict[str, object]],
     ) -> dict[str, object]:
         resolved = [
-            row for row in instrument_results if row.get("resolution_status") == "RESOLVED"
+            row
+            for row in instrument_results
+            if row.get("resolution_status") == "RESOLVED"
         ]
         unresolved = [
-            row for row in instrument_results if row.get("resolution_status") != "RESOLVED"
+            row
+            for row in instrument_results
+            if row.get("resolution_status") != "RESOLVED"
         ]
         reasons: set[str] = set()
         for row in unresolved:
-            reasons.update(str(value) for value in (row.get("unresolved_reasons") or []))
+            reasons.update(
+                str(value) for value in (row.get("unresolved_reasons") or [])
+            )
         if unresolved:
             return {
                 "case_id": case.get("case_id"),
@@ -1216,7 +1327,9 @@ class MomSeasonLIT02SourceMetadata:
                 "resolution_status": "UNRESOLVED",
                 "path_id": None,
                 "classification": None,
-                "unresolved_reasons": sorted(reasons or {"INSTRUMENT_SOURCE_UNRESOLVED"}),
+                "unresolved_reasons": sorted(
+                    reasons or {"INSTRUMENT_SOURCE_UNRESOLVED"}
+                ),
                 "instrument_results": instrument_results,
             }
 
@@ -1276,7 +1389,10 @@ class MomSeasonLIT02SourceMetadata:
             "instrument_results": instrument_results,
         }
 
-    def _load_cached_case(self, case: Mapping[str, object]) -> dict[str, object] | None:
+    def _load_cached_case(
+        self,
+        case: Mapping[str, object],
+    ) -> dict[str, object] | None:
         case_id = str(case.get("case_id") or "")
         path = self.case_path(case_id)
         if not path.is_file():
@@ -1295,7 +1411,11 @@ class MomSeasonLIT02SourceMetadata:
             return None
         return dict(payload["result"])
 
-    def _write_case(self, case: Mapping[str, object], result: Mapping[str, object]) -> None:
+    def _write_case(
+        self,
+        case: Mapping[str, object],
+        result: Mapping[str, object],
+    ) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
         atomic_write_text(
             self.case_path(str(case["case_id"])),
@@ -1318,7 +1438,9 @@ class MomSeasonLIT02SourceMetadata:
 
     def run(self, *, force: bool = False) -> dict[str, object]:
         cases, _freeze_report = self._load_and_require_plan()
-        identity_rows, identity_fingerprint, identity_cached = self._identity_rows_from_cache(cases)
+        identity_rows, identity_fingerprint, identity_cached = (
+            self._identity_rows_from_cache(cases)
+        )
 
         case_results: list[dict[str, object]] = []
         cached_cases = 0
