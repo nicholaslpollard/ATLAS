@@ -11,9 +11,13 @@ unsuccessful alpha research a global blocker for the product.
 
 Every continuation chat must read the root `README.md` and this roadmap in full
 before recommending or changing anything. Update both in the same commit whenever
-mission, current state, authority, roadmap order, active work, or material evidence
-changes. Do not create another current-status, handoff, plan, roadmap, or living
-README.
+mission, current state, authority, roadmap order, active work, material evidence, or
+implemented capability changes. Every repository-changing implementation package
+must document its goal, capability change, result/test evidence, exact authority or
+safety impact, unresolved limitations, and next work in both living documents before
+it is accepted or merged. A future chat must be able to reconstruct the current
+product and research state from these two files without depending on a prior chat.
+Do not create another current-status, handoff, plan, roadmap, or living README.
 
 All older README and roadmap files were moved verbatim to
 `docs/archive/2026-09-02-pre-product-rebaseline/`. The old `docs/current_status.md`,
@@ -25,7 +29,8 @@ become a competing current plan.
 
 If these two living documents conflict, progression fails closed until both are
 reconciled. Code and tests remain the authority for actual behavior; Git history and
-accepted artifacts remain the authority for what happened.
+accepted artifacts remain the authority for what happened. A code package with
+stale living documents is incomplete even if its tests pass.
 
 ## 2. Mission
 
@@ -59,12 +64,17 @@ risk, and risk of ruin. Profit is never guaranteed. Trade frequency is not succe
 Complete the operating system:
 
 `market data → features → regimes → discovery → strategies → candidate promotion →
-trade construction → portfolio/risk → AI review → operational PAPER → outcomes →
-performance/learning → GUI/operator control plane`
+trade construction → portfolio/risk → AI review → operator-observable control plane
+→ operational PAPER → outcomes → performance/learning → production operations`
 
 Reference strategies may exercise every component. They must be visibly labeled
 as baselines and may not gain qualifying-PAPER or LIVE authority merely because the
 product works.
+
+Operational PAPER is not allowed to begin as a black-box backend exercise. Before
+A35 broker mutation starts, the operator must already have an accepted browser view
+of the authoritative runtime state so candidate reasoning, positions, P&L, orders,
+fills, exits, and system health can be watched as they change.
 
 ### Track B — ATLAS Strategy & Research Lab
 
@@ -104,7 +114,8 @@ deterministic case → independent AI audit → SHADOW/PAPER execution → outco
 - **ML:** predictive evidence and ranking, never standalone trading authority.
 - **AI:** independent review/challenge, never unilateral trading authority.
 - **Browser GUI:** operator surface over the same engine, never a second trading
-  engine.
+  engine. It may format and aggregate authoritative records but must not maintain a
+  separate trading truth or independently recompute trading decisions.
 
 Accepted daily historical boundary remains Alpaca SIP through `2021-08-13` and
 Massive from `2021-08-16`. Provider boundaries must remain explicit. Multi-provider
@@ -282,7 +293,8 @@ not be resumed by retuning the observed version.
 - No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
   `LIVE_ELIGIBLE`, or LIVE-authorized status.
 - Operational PAPER may be built and used with labeled baselines under its own
-  explicit controls.
+  explicit controls, but actual A35 PAPER testing is blocked until A34.5 operator
+  live observability is accepted.
 - Qualifying PAPER may begin only for historically validated frozen versions.
 - LIVE remains disabled until every later gate passes and the operator explicitly
   enables it.
@@ -611,11 +623,25 @@ Every learned condition rule or selector revision is a frozen challenger:
 
 ## 16. PAPER is the practical bridge to LIVE
 
+### Operator-observability prerequisite
+
+No Operational PAPER or Qualifying PAPER session may begin until the A34.5 browser
+observability gate is accepted. The operator must be able to watch the same
+engine-owned state used by execution/reconciliation change without manual page
+refresh: account/equity, open positions, live unrealized/realized P&L, strategy and
+setup rationale, sizing/risk, order/fill lifecycle, exits, history, and system/data/
+broker health. Unknown/stale state must be explicit. This requirement improves
+operational control and debuggability; it does not validate a strategy.
+
 ### Operational PAPER
 
 Purpose: prove the complete product can ingest, decide, construct, size, route,
 execute, manage, reconcile, record, and display without real money. Baselines are
 allowed. Its results cannot silently count toward LIVE qualification.
+
+Operational PAPER starts only after A34.5 proves the browser is connected to the
+authoritative runtime event/state path. During PAPER, every material lifecycle event
+must be visible and retrospectively traceable from candidate through final exit.
 
 ### Qualifying PAPER
 
@@ -680,7 +706,8 @@ gain falls below stronger trusted-data experiments.
 9. Scientific families and variants are frozen before governed performance.
 10. ML and AI are evidence/audit, not authority.
 11. Research code never writes to providers or brokers.
-12. Unknown data, mutation, broker, order, fill, or exposure state fails closed.
+12. Unknown data, mutation, broker, order, fill, exposure, or operator-display state
+    fails closed.
 13. LONG geometry requires `stop < entry < target`; SHORT requires the reverse.
 14. PAPER never implies LIVE; credentials/endpoints/UI controls do not create
     authority.
@@ -690,6 +717,9 @@ gain falls below stronger trusted-data experiments.
 17. Root cause before workaround; accepted evidence and failed evidence are
     preserved.
 18. Prefer the largest safe coherent package over conversational micro-gates.
+19. Operational PAPER may not run ahead of accepted operator live observability.
+20. Every repository-changing implementation package updates both living documents
+    in the same commit before acceptance/merge.
 
 ## 19. Roadmap from the rebaseline
 
@@ -805,6 +835,61 @@ A34 context work is therefore ticker, sector, and correlation control only after
 their evidence contracts exist; none should delay the first honest fixed-policy
 replay on the trusted lake.
 
+PR #51 merged the exact PIT market-regime context as
+`e2dd741b4cdd3f5b729c4ec1cb510451887c748c`; its post-merge `main` test workflow
+passed. This preserves zero protected reads and zero provider/broker/PAPER/LIVE
+writes.
+
+### A34.5 — Operator Live Observability and Paper Dashboard Gate
+
+**New hard prerequisite established 2026-09-03 before Operational PAPER.** Extend
+the authoritative stacked Phase19 browser/control plane from historical/research
+inspection into the near-live operator surface that will be used during A35. The
+front end must be connected before PAPER broker testing begins so the operator can
+see the product acting rather than infer behavior later from logs.
+
+The dashboard acceptance surface must include, at minimum:
+
+1. **Account:** equity, cash/buying power, gross/net exposure where applicable,
+   realized P&L, unrealized P&L, and useful session/day totals.
+2. **Open positions:** ticker/instrument, strategy/version, side, quantity, entry and
+   current price, stop/target/invalidation, risk amount, unrealized dollar and
+   percent P&L, and age/hold state.
+3. **Decision feed and reasoning:** setup/signal that fired, relevant regime/
+   condition context, concise deterministic selection or rejection reasons,
+   strategy authority, sizing/risk rationale, and AI review/audit state when used.
+4. **Order/fill lifecycle:** planned, submitted, accepted, partial, filled,
+   canceled, rejected, and reconciliation state with timestamps and broker/order
+   identifiers where safe to expose locally.
+5. **Exits/sales:** exit trigger/reason, exit price, realized dollar/percent P&L,
+   modeled/observed costs, hold duration, and final reconciliation state.
+6. **History/statistics:** searchable recent decisions and closed trades, plus
+   strategy-level and account-level performance/behavior statistics sufficient to
+   understand what has been working, losing, abstained, or blocked.
+7. **Health/control:** market-data freshness, provider and broker health, last
+   successful update, orchestration state, current execution/authority mode, stale
+   or unknown state warnings, and visible kill/emergency-control status.
+
+The browser must update without operator-initiated page refresh through an accepted
+event-driven or short-polling mechanism. The implementation may choose SSE,
+WebSocket, or bounded polling based on the existing control-plane architecture; the
+contract is freshness, traceability, and single-source-of-truth behavior rather than
+a specific transport.
+
+The GUI must consume the same engine-owned decision, order, fill, position, account,
+health, and reconciliation records used by execution. It may create read models and
+aggregations but may not create a second trading state or independently decide what
+ATLAS bought/sold. Unknown, stale, hash-invalid, or inconsistent state must be
+visibly degraded and fail closed. Historical replay views remain supported and
+should reuse the same lifecycle concepts where practical so replay and PAPER are
+operator-comparable.
+
+A34.5 acceptance requires focused schema/read-model/UI tests, no accidental broker
+mutation, exact-head full regression and cross-platform CI, and updates to both
+living documents in the same accepted package. **A34.5 grants no PAPER strategy
+authority and no broker-write authority by itself.** It only satisfies the
+operator-observability prerequisite for A35.
+
 ### B34 — Intraday Source Readiness and Opening/Premarket Pack
 
 Audit trusted minute and extended-hours coverage without performance. If ready,
@@ -815,11 +900,18 @@ data repair branch.
 
 ### A35 — Operational PAPER and Operator Web Beta
 
-Run the same engine prospectively with PAPER money: ingest, generate, select,
-construct, risk-check, submit under centralized authority, manage, reconcile, record,
-and display. Prove restart/idempotency, duplicate prevention, stale-data handling,
+**May begin only after A34.5 is accepted.** Run the same engine prospectively with
+PAPER money: ingest, generate, select, construct, risk-check, submit under
+centralized authority, manage, reconcile, record, and display. The accepted A34.5
+browser must show the lifecycle as it happens rather than being added afterward.
+Prove restart/idempotency, duplicate prevention, stale-data handling,
 partial/cancel/reject behavior, kill controls, and clear operational-versus-qualifying
 labels. LIVE unavailable.
+
+Operational PAPER completion must demonstrate that the operator can reconstruct any
+trade from the dashboard and underlying authoritative records: what fired, why it
+was selected or rejected, how it was sized, what was sent to the broker, how it
+filled, current/realized P&L, why it exited, and whether reconciliation completed.
 
 ### B35/A36 — Conditional Evidence, Selector, Outcomes, and Performance UI
 
@@ -849,7 +941,8 @@ and parity tests. The complete application may remain PAPER-only indefinitely.
 For historically validated frozen strategies only, complete a prospectively defined
 qualifying PAPER program while hardening provider/broker outage, fills, reconciliation,
 buying-power drift, database/network/restart, emergency disable/flatten, and manual
-fallback. No LIVE authority until the complete gate passes.
+fallback. No LIVE authority until the complete gate passes. The accepted live
+operator dashboard remains required throughout qualifying PAPER.
 
 ### Phase39 — Controlled LIVE Activation
 
@@ -872,11 +965,20 @@ One coherent package uses:
 
 `PLAIN-ENGLISH START → DEFINE/FREEZE AUTHORITY AND SCIENCE → IMPLEMENT LARGEST SAFE
 PACKAGE → FOCUSED TESTS → ROOT-CAUSE REPAIR → EXACT-HEAD FULL ACCEPTANCE →
-PLAIN-ENGLISH END → UPDATE BOTH LIVING DOCS → MERGE → POST-MERGE VERIFY`
+PLAIN-ENGLISH END → UPDATE BOTH LIVING DOCS IN THE SAME COMMIT → MERGE →
+POST-MERGE VERIFY`
 
 Operator checkpoints are reserved for destructive actions, external authority,
 broker/provider mutation, qualifying PAPER/LIVE activation, protected evidence, or
 material ambiguity. Internal implementation does not need a conversational gate.
+
+Every repository-changing package must update both living documents before merge.
+Documentation is part of the implementation package, not a later clerical task.
+Each update must leave an auditable handoff including the package goal, what code/
+product capability changed, test and CI result when known, empirical/scientific
+result if any, exact authority gained or not gained, protected-read/write state,
+known limitations, and the next highest-value package. If either living document is
+stale, the package is not complete.
 
 Every closeout reports:
 
@@ -911,19 +1013,27 @@ Every closeout reports:
    only the exact-as-of same-close join; ticker and sector fields must remain
    `UNAVAILABLE`. This independent-strategy replay is evidence input, not authority
    promotion.
-4. Proceed in parallel with accepted ticker/sector/correlation context only when its
-   PIT evidence is available, then move the product toward A35 operational PAPER.
-   Do not begin another difficult regulatory source or unlimited indicator search;
-   do not consume the master protected holdout; do not enable provider/broker
-   mutation, qualifying PAPER, or LIVE.
-5. Keep the frozen A33/B33 validator, focused tests, full repository suite, retained
-   scientific validators, and cross-platform exact-head CI mandatory for every
-   change to these contracts.
+4. In parallel or immediately after that replay, implement and accept **A34.5
+   Operator Live Observability** on the current Phase19 control plane. Connect the
+   authoritative decision/order/position/account/health read models and automatic
+   browser refresh/update path, prove stale/unknown state handling, and show the
+   complete position/P&L/reason/order/exit lifecycle. This must be complete before
+   any Operational PAPER broker submission is permitted.
+5. Proceed with accepted ticker/sector/correlation context only when its PIT evidence
+   is available, then move the product to A35 Operational PAPER **only after A34.5
+   has passed**. Do not begin another difficult regulatory source or unlimited
+   indicator search; do not consume the master protected holdout; do not enable
+   qualifying PAPER or LIVE.
+6. Keep the frozen A33/B33 validator, focused tests, full repository suite, retained
+   scientific validators, cross-platform exact-head CI, and same-commit updates to
+   both living documents mandatory for every implementation package.
 
 The destination is concrete: open the GUI, see versioned strategies operating,
-replay them historically, PAPER trade through the real product path, inspect every
-decision and outcome, learn which families retain credible conditional expectancy,
-and improve the library while LIVE capital remains strongly protected.
+watch candidates become or fail to become trades, see positions and P&L change,
+understand why ATLAS bought or sold, replay the same lifecycle historically, PAPER
+trade through the real product path, inspect every decision and outcome, learn which
+families retain credible conditional expectancy, and improve the library while LIVE
+capital remains strongly protected.
 
 ## 22. Retained exact historical validator statements
 
