@@ -26,6 +26,12 @@ controlled risk, prospective evidence, and reliable operation.
    documents; they do not compete with them as current plans.
 4. If the two living documents conflict, stop and reconcile both in the same change
    before proceeding.
+5. Every repository-changing implementation package must update this README and
+   `docs/roadmap.md` in the same commit before it is accepted or merged. The update
+   must state the package goal, capability change, result/test evidence, exact
+   authority or safety impact, unresolved limitations, and next work. A future chat
+   must be able to reconstruct the current product and research state from these two
+   living documents without depending on a prior conversation window.
 
 All earlier README/roadmap versions were archived verbatim under
 `docs/archive/2026-09-02-pre-product-rebaseline/`. The old `current_status`,
@@ -120,6 +126,17 @@ with a desired trade.
   `f0a45cbff2662e26f4f1f55e8a16c0c356c9266c`; its post-merge Windows and Ubuntu
   full-suite jobs passed. The dashboard now verifies and displays account metrics,
   decisions, rejection reasons, simulated orders, outcomes, and equity/exposure.
+- Exact point-in-time market-regime context was accepted in PR #51 and merged as
+  `e2dd741b4cdd3f5b729c4ec1cb510451887c748c`; its post-merge `main` test workflow
+  passed. Daily close-derived signals now carry the exact XNYS-close availability
+  clock and the replay consumes only the hash-bound same-close market regime that
+  was knowable before next-open entry. Ticker/sector regime remain unavailable.
+- **Operator live observability is now a hard prerequisite to Operational PAPER.**
+  Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
+  state to the browser so the operator can observe account state, positions, live
+  unrealized/realized P&L, strategy/setup rationale, risk/sizing, order/fill state,
+  exits, trade history, and system/provider/broker health without manual refresh.
+  No PAPER broker mutation is authorized merely by documenting this requirement.
 - The former Phase39 LIVE numbering is retained: **Phase39** remains Controlled
   LIVE Activation and is still protected by all preceding evidence and authority
   gates.
@@ -156,6 +173,11 @@ Important limitations:
   fixed, non-learned account replay and browser view now exist; learned selection,
   qualifying PAPER, strategy-management controls, and the complete operator product
   remain unfinished.
+- The existing browser can inspect historical/research replay artifacts, but it is
+  not yet the accepted near-live Operational PAPER dashboard. It must be connected
+  to the same authoritative decision/order/position/account event state before A35
+  starts; a separate UI-only trading state or manual-refresh workflow is not
+  acceptable.
 - PostgreSQL and the root Docker deployment remain historical scaffolds, not an
   accepted operational database or deployment.
 
@@ -320,6 +342,38 @@ regime that was knowable at the signal close and before the next-open entry. Tic
 and sector condition slices remain explicitly `UNAVAILABLE`; they must not be used
 for conditional performance claims until their separate PIT joins are accepted.
 
+## A34.5 operator live observability gate
+
+Operational PAPER may not start until the current browser/control plane is connected
+to the authoritative runtime event/state path and proves near-live operator
+observability. This is a product-readiness gate, not a strategy-evidence promotion.
+The accepted dashboard must make it easy to see, as the PAPER system operates:
+
+- account equity, cash/buying power, exposure, realized P&L, unrealized P&L, and
+  relevant daily/session totals;
+- every open position with ticker, strategy/version, side, quantity, entry/current
+  price, stop/target/invalidation state, risk, and unrealized dollar/percent P&L;
+- the decision stream: what setup fired, relevant market/condition context, concise
+  deterministic selection/rejection reasoning, sizing/risk reasoning, authority,
+  and AI audit/review state when applicable;
+- planned/submitted/accepted/partially-filled/filled/canceled/rejected order events
+  and reconciliation state;
+- exits/sales with exit reason, price, realized dollar/percent P&L, costs, and hold
+  duration;
+- searchable/reviewable closed-trade and decision history plus strategy-level and
+  account-level statistics; and
+- market-data/provider/broker freshness and health, last successful update,
+  orchestration state, authority mode, and kill/emergency-control visibility.
+
+The UI must update through an accepted event-driven or short-polling mechanism
+without requiring the operator to manually refresh the page. It must read the same
+engine-owned decision/order/position/account records used for execution and
+reconciliation; it may format or aggregate them but must not maintain a separate
+trading truth or recompute trading decisions independently. Unknown or stale state
+must be obvious and fail closed. A34.5 completion grants no PAPER authority by
+itself; it removes the observability prerequisite so A35 can begin under its own
+centralized PAPER authority gate.
+
 ## Strategy authority and PAPER/LIVE boundary
 
 Every strategy carries two separate labels:
@@ -335,7 +389,9 @@ opportunity ATLAS prefers. A high score cannot bypass an authority gate.
 Two PAPER modes are required:
 
 - **Operational PAPER** exercises the product with baselines. Results are useful
-  for debugging and learning, but cannot qualify a strategy for LIVE.
+  for debugging and learning, but cannot qualify a strategy for LIVE. Operational
+  PAPER is additionally blocked until the A34.5 operator live-observability gate is
+  accepted.
 - **Qualifying PAPER** begins only after a version is historically validated and
   the prospective policy is frozen. It is the strongest empirical gate to LIVE,
   but still must pass profitability, sample, risk, drawdown, stability, execution,
@@ -409,6 +465,13 @@ ends with a short plain-English account of its goal, capability change, result,
 remaining risk, authority change, and next work. Root causes are repaired at the
 owning layer; validators and scientific rules are never weakened to manufacture a
 pass.
+
+Documentation is part of acceptance, not cleanup. Every repository-changing
+package must update this README and `docs/roadmap.md` together before merge with the
+exact current capability, test/CI state when known, safety/authority effect,
+unresolved limitations, and next action. If implementation changes but the two
+living documents do not, the package is incomplete and must not be treated as the
+new handoff.
 
 ## Historical evidence that remains binding
 
