@@ -1015,7 +1015,8 @@ Every closeout reports:
 5. After the V2 foundation is accepted, run the nine frozen practitioner policies on
    DEVELOPMENT data and continue A34.5/A35 Product work. Database work does not grant
    historical, PAPER, or LIVE authority; protected reads remain zero and LIVE stays
-   disabled.
+   disabled. The retained A34 contract continues to treat ticker and sector regime
+   context as unavailable rather than guessing labels.
 6. Keep focused tests, the full repository suite, retained scientific validators,
    cross-platform exact-head CI, and same-commit updates to both living documents
    mandatory for every package.
