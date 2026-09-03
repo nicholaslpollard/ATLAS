@@ -83,6 +83,60 @@
     </section>
     <section id="pipeline-stages" class="grid pipeline-grid" aria-live="polite"></section>
 
+    <section class="section-head reference-lab-head">
+      <div>
+        <div class="eyebrow">A33 / A34 Strategy Laboratory</div>
+        <h2>Reference strategy and account replay</h2>
+      </div>
+      <p>Frozen practitioner baselines exercise candidate selection, risk, orders, positions, and outcomes. This is RESEARCH evidence, never PAPER or LIVE authority.</p>
+    </section>
+    <section id="reference-lab-banner" class="banner warning" aria-live="polite">
+      Loading frozen strategy and replay state…
+    </section>
+    <section class="grid reference-lab-summary-grid" aria-label="Reference account replay summary">
+      <article class="card">
+        <div class="label">Reference library</div>
+        <div id="reference-lab-strategies" class="metric">Loading…</div>
+        <div id="reference-lab-families" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Account replay return</div>
+        <div id="reference-lab-return" class="metric">Not run</div>
+        <div id="reference-lab-equity" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Closing-equity drawdown</div>
+        <div id="reference-lab-drawdown" class="metric">Not run</div>
+        <div id="reference-lab-trades" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Authority</div>
+        <div id="reference-lab-authority" class="metric state-warn">RESEARCH</div>
+        <div class="muted">Long-only baseline · no qualifying PAPER or LIVE</div>
+      </article>
+    </section>
+    <section class="grid reference-lab-grid">
+      <article class="card table-card">
+        <div class="reference-lab-title"><div class="eyebrow">Frozen policies</div><h3>Strategy library</h3></div>
+        <div class="table-wrap">
+          <table class="reference-lab-table">
+            <thead><tr><th>Strategy</th><th>Family</th><th>Side</th><th>Authority</th></tr></thead>
+            <tbody id="reference-lab-strategy-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="card table-card">
+        <div class="reference-lab-title"><div class="eyebrow">Latest DEVELOPMENT replay</div><h3>Recent completed positions</h3></div>
+        <div id="reference-lab-outcomes-empty" class="empty">No account replay outcomes recorded.</div>
+        <div class="table-wrap">
+          <table id="reference-lab-outcomes-table" class="reference-lab-table" hidden>
+            <thead><tr><th>Exit</th><th>Ticker</th><th>Strategy</th><th>Net P&amp;L</th></tr></thead>
+            <tbody id="reference-lab-outcomes-body"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
     <section class="section-head">
       <div>
         <div class="eyebrow">Market intelligence</div>

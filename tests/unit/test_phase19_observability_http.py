@@ -85,6 +85,26 @@ def test_phase19_observability_endpoint_is_get_only_provider_inert(tmp_path) -> 
         assert observability.calls == 1
         assert ledger.verify()["event_count"] == 0
 
+        with opener.open(f"{base}/api/v1/strategies/reference", timeout=5) as response:
+            catalog = json.loads(response.read().decode("utf-8"))
+        assert catalog["strategy_count"] == 9
+        assert catalog["family_count"] == 6
+        assert all(
+            strategy["authority"]["authority"] == "RESEARCH"
+            for strategy in catalog["strategies"]
+        )
+
+        with opener.open(f"{base}/api/v1/research/reference-replay", timeout=5) as response:
+            replay = json.loads(response.read().decode("utf-8"))
+        assert replay["status"] == "NOT_RUN"
+        assert replay["summary"] is None
+        assert replay["authority"]["provider_writes"] == 0
+        assert replay["authority"]["broker_writes"] == 0
+        assert replay["authority"]["paper_submits"] == 0
+        assert replay["authority"]["live_writes"] == 0
+        assert observability.calls == 1
+        assert ledger.verify()["event_count"] == 0
+
         request = urllib.request.Request(
             f"{base}/api/v1/observability",
             data=b"{}",
@@ -126,6 +146,10 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
             assert 'id="candidate-dialog"' in html
             assert 'id="artifact-recency"' in html
             assert 'id="outcome-win-rate"' in html
+            assert 'id="reference-lab-banner"' in html
+            assert 'id="reference-lab-return"' in html
+            assert 'id="reference-lab-strategy-body"' in html
+            assert 'id="reference-lab-outcomes-table"' in html
             assert "/assets/observability.js" in html
             assert response.headers["Content-Security-Policy"].find("script-src 'self'") >= 0
 
@@ -134,12 +158,15 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
             assert "loadObservability" in js
             assert "renderCandidateRows" in js
             assert "showCandidateDetail" in js
+            assert "renderReferenceLab" in js
             assert "setPhase19LocalRefreshInterval" in js
             assert "phase18-input-checklist" in js
             assert "Every 5 seconds" in js
             assert "Every 15 seconds" in js
             assert "Every 30 seconds" in js
             assert 'fetch("/api/v1/observability"' in js
+            assert "/api/v1/strategies/reference" in js
+            assert "/api/v1/research/reference-replay" in js
             assert "/api/v1/brokers/refresh" not in js
             assert "No automatic broker refresh" in js
             assert "Explicit Phase 18 paper-mutation authorization remains separately required." in js
@@ -153,6 +180,8 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
         with opener.open(f"{base}/assets/observability.css", timeout=5) as response:
             css = response.read().decode("utf-8")
             assert ".pipeline-grid" in css
+            assert ".reference-lab-summary-grid" in css
+            assert ".reference-lab-grid" in css
             assert ".candidate-tools" in css
             assert ".candidate-dialog-shell" in css
             assert ".readiness-checklist" in css

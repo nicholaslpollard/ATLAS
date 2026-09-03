@@ -125,8 +125,9 @@ def main() -> int:
 
     http = _text("packages/control_plane/http_server.py")
     read_model = _text("packages/performance/reference_replay_read_model.py")
-    html = _text("apps/web/index.html")
-    javascript = _text("apps/web/app.js")
+    html = _text("apps/web/phase19.html")
+    javascript = _text("apps/web/observability.js")
+    css = _text("apps/web/observability.css")
     checks.update(
         {
             "read_only_http_endpoint_present": (
@@ -136,17 +137,22 @@ def main() -> int:
             "read_model_fails_closed": all(
                 token in read_model for token in ('"NOT_RUN"', '"INVALID"', '"AVAILABLE"')
             ),
-            "browser_shows_replay_and_authority": all(
+            "current_operator_browser_shows_replay_and_authority": all(
                 token in html
                 for token in (
                     "Reference strategy and account replay",
-                    "reference-total-return",
-                    "reference-max-drawdown",
-                    "reference-authority",
+                    "reference-lab-return",
+                    "reference-lab-drawdown",
+                    "reference-lab-authority",
+                    "reference-lab-strategy-body",
+                    "reference-lab-outcomes-table",
                 )
             )
+            and "renderReferenceLab" in javascript
             and "/api/v1/research/reference-replay" in javascript
-            and "/api/v1/strategies/reference" in javascript,
+            and "/api/v1/strategies/reference" in javascript
+            and ".reference-lab-summary-grid" in css
+            and ".reference-lab-grid" in css,
         }
     )
 
@@ -171,6 +177,7 @@ def main() -> int:
             "test_reference_portfolio_replay.py",
             "test_reference_replay_read_model.py",
             "test_phase16_status_api.py",
+            "test_phase19_observability_http.py",
         )
     )
 

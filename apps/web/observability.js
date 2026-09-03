@@ -21,7 +21,7 @@ function obsClear(node) {
 function obsState(value) {
   const normalized = String(value || "").toUpperCase();
   if (["AVAILABLE", "ACCEPTED", "COMPLETE", "HEALTHY", "PROMOTED", "STACKED_PREP_GREEN", "RECENT", "INPUTS_APPEAR_READY", "SUBSCRIBED", "REALTIME", "FRESH"].includes(normalized)) return "state-ok";
-  if (["STACKED_PREP", "WAITING_EXTERNAL", "WARM", "CAUTIOUS", "OLDER", "CONNECTING", "CONNECTED", "AUTHENTICATED"].includes(normalized)) return "state-warn";
+  if (["STACKED_PREP", "WAITING_EXTERNAL", "WARM", "CAUTIOUS", "OLDER", "CONNECTING", "CONNECTED", "AUTHENTICATED", "RESEARCH", "NOT_RUN"].includes(normalized)) return "state-warn";
   if (["UNAVAILABLE", "BLOCKED", "ERROR", "REJECT", "NOT_READY", "STOPPED", "DEGRADED", "DISCONNECTED", "STALE"].includes(normalized)) return "state-danger";
   return "state-muted";
 }
@@ -452,6 +452,86 @@ function renderOutcomes(payload) {
   });
 }
 
+function renderReferenceLab(catalog, replay) {
+  const strategies = Array.isArray(catalog && catalog.strategies) ? catalog.strategies : [];
+  obsText("reference-lab-strategies", `${strategies.length} policies`);
+  const strategyMetric = obsById("reference-lab-strategies");
+  if (strategyMetric) strategyMetric.className = `metric ${strategies.length ? "state-ok" : "state-warn"}`;
+  obsText("reference-lab-families", `${catalog && catalog.family_count != null ? catalog.family_count : 0} materially different families`);
+
+  const strategyBody = obsById("reference-lab-strategy-body");
+  obsClear(strategyBody);
+  strategies.forEach((row) => {
+    const specification = row.specification || {};
+    const authority = row.authority || {};
+    const tr = document.createElement("tr");
+    [
+      specification.strategy_id || "—",
+      specification.family || "—",
+      specification.direction || "—",
+      authority.authority || "RESEARCH",
+    ].forEach((value, index) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      if (index === 3) td.className = obsState(value);
+      tr.appendChild(td);
+    });
+    strategyBody.appendChild(tr);
+  });
+
+  const status = String((replay && replay.status) || "NOT_RUN");
+  const summary = replay && replay.summary;
+  const banner = obsById("reference-lab-banner");
+  if (banner) {
+    banner.className = status === "AVAILABLE" ? "banner ok" : status === "INVALID" ? "banner danger" : "banner warning";
+    banner.textContent = replay && replay.message ? replay.message : "Reference replay state is unavailable.";
+  }
+  const authority = obsById("reference-lab-authority");
+  if (authority) authority.className = `metric ${status === "INVALID" ? "state-danger" : "state-warn"}`;
+
+  if (status === "AVAILABLE" && summary) {
+    const totalReturn = Number(summary.total_return);
+    const drawdown = Number(summary.maximum_drawdown);
+    obsText("reference-lab-return", obsPercent(totalReturn));
+    const returnNode = obsById("reference-lab-return");
+    if (returnNode) returnNode.className = `metric ${totalReturn >= 0 ? "state-ok" : "state-danger"}`;
+    obsText("reference-lab-equity", `Final equity ${obsMoney(summary.final_equity)} · costs ${obsMoney(summary.total_transaction_cost)}`);
+    obsText("reference-lab-drawdown", obsPercent(drawdown));
+    const drawdownNode = obsById("reference-lab-drawdown");
+    if (drawdownNode) drawdownNode.className = `metric ${drawdown < -0.1 ? "state-danger" : "state-warn"}`;
+    obsText("reference-lab-trades", `${summary.completed_positions || 0} completed · ${summary.admitted_positions || 0} admitted`);
+  } else {
+    obsText("reference-lab-return", "Not run");
+    obsText("reference-lab-equity", "Awaiting trusted-lake DEVELOPMENT replay");
+    obsText("reference-lab-drawdown", "Not run");
+    obsText("reference-lab-trades", "No account outcomes opened");
+    ["reference-lab-return", "reference-lab-drawdown"].forEach((id) => {
+      const node = obsById(id);
+      if (node) node.className = `metric ${status === "INVALID" ? "state-danger" : "state-warn"}`;
+    });
+  }
+
+  const outcomes = Array.isArray(replay && replay.recent_position_outcomes)
+    ? replay.recent_position_outcomes.slice().reverse()
+    : [];
+  const empty = obsById("reference-lab-outcomes-empty");
+  const table = obsById("reference-lab-outcomes-table");
+  const body = obsById("reference-lab-outcomes-body");
+  obsClear(body);
+  if (empty) empty.hidden = outcomes.length > 0;
+  if (table) table.hidden = outcomes.length === 0;
+  outcomes.forEach((item) => {
+    const tr = document.createElement("tr");
+    [item.exit_session || "—", item.ticker || "—", item.strategy_id || "—", obsMoney(item.net_pnl)].forEach((value, index) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      if (index === 3) td.className = Number(item.net_pnl) >= 0 ? "state-ok" : "state-danger";
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
 function renderObservability(payload) {
   renderPhase(payload);
   renderArtifactRecency(payload);
@@ -470,8 +550,13 @@ async function loadObservability() {
     error.textContent = "";
   }
   try {
-    const payload = await obsGetJson("/api/v1/observability");
+    const [payload, catalog, replay] = await Promise.all([
+      obsGetJson("/api/v1/observability"),
+      obsGetJson("/api/v1/strategies/reference"),
+      obsGetJson("/api/v1/research/reference-replay"),
+    ]);
     renderObservability(payload);
+    renderReferenceLab(catalog, replay);
   } catch (exc) {
     if (error) {
       error.hidden = false;

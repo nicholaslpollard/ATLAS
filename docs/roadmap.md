@@ -771,9 +771,13 @@ exits are rejected so every admitted V1 position has an entry, exit, cost, cash
 transition, and reconciled outcome. The full DEVELOPMENT command preregisters this
 policy before performance and writes hash-bound decisions, simulated orders,
 position outcomes, equity, and summary artifacts. The read-only endpoint
-`/api/v1/research/reference-replay` and browser show the honest `NOT_RUN`, `INVALID`,
-or `AVAILABLE` state, the nine strategies and RESEARCH authority, aggregate account
-return/drawdown/costs, and recent completed positions. This is not qualifying
+`/api/v1/research/reference-replay` and the current stacked Phase19 operator
+dashboard show the honest `NOT_RUN`, `INVALID`, or `AVAILABLE` state, the nine
+strategies and RESEARCH authority, aggregate account return/drawdown/costs, and
+recent completed positions. Run it with
+`python scripts/run_phase19_control_plane.py` and open `http://127.0.0.1:8765`.
+The panel uses local read-only endpoints and performs no provider or broker call.
+This is not qualifying
 historical or PAPER evidence; authority promotion and provider/broker/PAPER/LIVE
 writes remain zero.
 
