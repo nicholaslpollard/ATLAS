@@ -175,7 +175,9 @@ def main() -> int:
                 EXTRACT(year FROM CAST(timestamp_utc AS DATE))::INTEGER AS year,
                 symbol,
                 COUNT(*)::BIGINT AS sessions,
-                MEDIAN(CAST(close AS DOUBLE) * CAST(volume AS DOUBLE)) AS median_dollar_volume
+                MEDIAN(CAST(close AS DOUBLE) * CAST(volume AS DOUBLE)) AS median_dollar_volume,
+                MIN(CAST(timestamp_utc AS DATE)) AS first_day,
+                MAX(CAST(timestamp_utc AS DATE)) AS last_day
             FROM read_parquet({sql_string(daily_glob)}, hive_partitioning=true)
             WHERE EXTRACT(year FROM CAST(timestamp_utc AS DATE)) BETWEEN {start_year} AND {max_year}
               AND CAST(close AS DOUBLE) > 0
@@ -185,19 +187,38 @@ def main() -> int:
             """
         ).fetchall()
 
-        by_year_bucket: dict[tuple[int, str], list[tuple[str, int, float]]] = defaultdict(list)
-        for year, symbol, sessions, mdv in stats:
-            if mdv is None:
+        by_year_bucket: dict[
+            tuple[int, str], list[tuple[str, int, float, date, date]]
+        ] = defaultdict(list)
+        for year, symbol, sessions, mdv, first_day, last_day in stats:
+            if mdv is None or first_day is None or last_day is None:
                 continue
             bucket = bucket_name(float(mdv))
-            by_year_bucket[(int(year), bucket)].append((str(symbol), int(sessions), float(mdv)))
+            by_year_bucket[(int(year), bucket)].append(
+                (str(symbol), int(sessions), float(mdv), first_day, last_day)
+            )
 
         weighted: dict[tuple[int, str], YearBucket] = {}
         for year in range(start_year, max_year + 1):
             for bucket, _, _ in BUCKETS:
                 rows = by_year_bucket.get((year, bucket), [])
-                # Retain partial-year listings while excluding one-off/error observations.
-                eligible = [row for row in rows if row[1] >= 40]
+                # The sizing sample uses February/June/October windows. Require the
+                # selected symbol to span the first and last window available in that
+                # year so deterministic sampling does not accidentally choose only a
+                # short-lived listing with zero observations in every sample window.
+                available_windows = []
+                for month, start_day, end_day in WINDOWS:
+                    w_start = date(year, month, start_day)
+                    w_end = min(date(year, month, end_day), max_day)
+                    if w_start <= max_day and w_start <= w_end:
+                        available_windows.append((w_start, w_end))
+                coverage_start = available_windows[0][0] if available_windows else date(year, 1, 1)
+                coverage_end = available_windows[-1][1] if available_windows else min(date(year, 12, 31), max_day)
+                eligible = [
+                    row
+                    for row in rows
+                    if row[1] >= 40 and row[3] <= coverage_start and row[4] >= coverage_end
+                ]
                 selected = sorted(
                     eligible,
                     key=lambda row: sample_key(year, bucket, row[0]),
