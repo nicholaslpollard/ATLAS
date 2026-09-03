@@ -1000,8 +1000,9 @@ Every closeout reports:
    decommission mode. It produces an exact allowlisted SHA-256-bound manifest,
    requires its derived confirmation token, rejects symlinks/path drift, preserves
    live/model/unrelated-research state, retains a completion or partial-failure
-   receipt, and then stops. It does not acquire bars, identities, or corporate
-   actions; the combined delete-and-rebuild path remains code-locked.
+   receipt, prints each exact target with file count and size for operator review,
+   and then stops. It does not acquire bars, identities, or corporate actions; the
+   combined delete-and-rebuild path remains code-locked.
 2. Implement deterministic native `1Day` then native `1Min` acquisition units with
    raw response evidence, request-policy fingerprints, checksums, retries, pagination,
    checkpoints, and restart-safe idempotency. No V1 persisted row may fill a V2 gap.
