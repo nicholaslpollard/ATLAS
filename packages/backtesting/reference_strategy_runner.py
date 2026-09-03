@@ -476,7 +476,7 @@ def _record(
         instrument_id=str(signal["instrument_id"]),
         ticker=str(signal["ticker"]),
         signal_session=signal["session_date"],
-        signal_timestamp_utc=signal["timestamp_utc"].to_pydatetime(),
+        signal_timestamp_utc=signal["signal_available_at_utc"].to_pydatetime(),
         market_regime=_context_label(signal, "market_regime_composite", "market_regime"),
         sector_regime=_context_label(signal, "sector_regime_composite", "sector_regime"),
         ticker_regime=_context_label(signal, "ticker_regime_composite", "ticker_regime"),
@@ -602,8 +602,33 @@ class ReferenceStrategyHistoricalRunner:
                 f"{PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START}.."
                 f"{PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END}"
             )
+        if "timestamp_utc" not in frame.columns:
+            raise ReferenceStrategyRunnerError("reference historical runner requires timestamp_utc")
+        if "signal_available_at_utc" not in frame.columns:
+            raise ReferenceStrategyRunnerError(
+                "reference historical runner requires signal_available_at_utc"
+            )
 
-        features = compute_reference_daily_features(frame)
+        validated_frame = frame.copy()
+        bar_timestamps = pd.to_datetime(
+            validated_frame["timestamp_utc"], utc=True, errors="raise"
+        )
+        signal_available = pd.to_datetime(
+            validated_frame["signal_available_at_utc"], utc=True, errors="raise"
+        )
+        if signal_available.isna().any():
+            raise ReferenceStrategyRunnerError("signal availability timestamps cannot be null")
+        if (signal_available.dt.date != session_dates).any():
+            raise ReferenceStrategyRunnerError(
+                "signal availability date must match its signal session"
+            )
+        if (signal_available <= bar_timestamps).any():
+            raise ReferenceStrategyRunnerError(
+                "close-derived signal availability must follow the canonical daily bar timestamp"
+            )
+        validated_frame["signal_available_at_utc"] = signal_available
+
+        features = compute_reference_daily_features(validated_frame)
         input_fingerprint = reference_input_fingerprint(frame)
 
         records: list[ReferenceOpportunityRecord] = []

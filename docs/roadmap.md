@@ -735,11 +735,13 @@ split-report/hash reconciliation. Because accepted canonical bars are unadjusted
 V1 excludes every split-touched identity and every stream with an internal session
 gap; retained factor-1 streams are exactly equivalent to split-adjusted prices.
 Pre-seam Alpaca and split-affected instruments require a later validated V2 rather
-than guessed factors. V1 does not join historical market/sector/ticker regime
-labels, so those condition fields remain `UNAVAILABLE`; A34 must add an explicit
-PIT-safe regime-context join before regime slices are interpreted. The current
-checkout has no market lake, so no empirical run or ATLAS performance result has
-been produced. PR #47 accepted the adapter and merged it as
+than guessed factors. The canonical provider timestamp remains the regular-open
+stamp, while contract
+`reference-signal-availability-v1-xnys-regular-close-next-open` adds the true XNYS
+close availability time for daily signals. The runner records that close clock and
+still enters no earlier than the next regular-session open. The current checkout has
+no market lake, so no empirical run or ATLAS performance result has been produced.
+PR #47 accepted the adapter and merged it as
 `646db6e6e44ccd2355c7c2263221f35cd01d5da8`; post-merge Windows and Ubuntu full
 tests passed. Protected return rows read: **0**; performance opened:
 **false**; provider/broker/PAPER/LIVE writes: **0**.
@@ -762,7 +764,10 @@ equity per position including primary modeled costs, caps single-position notion
 at `10%`, gross exposure at `100%`, open positions at `10`, and active family
 positions at `3`. The non-learned selector balances current family load and then
 uses stable identifiers; it never ranks same-session candidates with realized
-outcomes. One position per instrument is allowed.
+outcomes. One position per instrument is allowed. This first vertical slice was
+accepted in PR #48 and merged as
+`147b95810936a0b10b24eb08e51cd4d83c16c85b`; its post-merge Windows and Ubuntu
+full suite passed.
 
 V1 is deliberately long-only. It retains short-strategy evidence but rejects short
 account admission until short borrow, locate, and recall economics exist. It also labels
@@ -783,13 +788,22 @@ Run it with
 The panel uses local read-only endpoints and performs no provider or broker call.
 The operator-path correction was accepted in PR #49 and merged as
 `cc0ecc6995ad977ca6eeb5fc00983ba2926317a0`; its post-merge Windows and Ubuntu
-full suite passed. This is not qualifying historical or PAPER evidence; authority
-promotion and provider/broker/PAPER/LIVE writes remain zero.
+full suite passed. The hash-verified operator drilldown was accepted in PR #50 and
+merged as `f0a45cbff2662e26f4f1f55e8a16c0c356c9266c`; its post-merge Windows and
+Ubuntu full suite passed. This is not qualifying historical or PAPER evidence;
+authority promotion and provider/broker/PAPER/LIVE writes remain zero.
 
-Remaining A34 work is the explicit PIT-safe historical regime-context join and any
-correlation/sector control only after its evidence contract exists. These
-improvements must not delay the first honest fixed-policy replay on the trusted
-lake.
+The A34 PIT context slice now uses contract
+`reference-regime-context-v1-exact-asof-hash-bound-same-close-market-only`. It
+accepts only the split-origin manifest whose as-of date is exactly the replay end,
+hash-verifies its snapshot and effective-market history, rejects any future,
+duplicate, blank, or missing-session row, and joins the same-session finalized market regime
+that is available at close for a next-open decision. It never invokes
+the regime writer. Ticker and sector regime context remain `UNAVAILABLE` until an
+accepted PIT ticker-state join and PIT instrument-to-sector map exist. Remaining
+A34 context work is therefore ticker, sector, and correlation control only after
+their evidence contracts exist; none should delay the first honest fixed-policy
+replay on the trusted lake.
 
 ### B34 — Intraday Source Readiness and Opening/Premarket Pack
 
@@ -878,25 +892,30 @@ Every closeout reports:
 ## 21. Immediate next action
 
 1. On the user's machine containing the accepted lake, run the completed read-only
-   adapter and independently confirm its source report. Do not broaden V1 across the
-   provider seam or retain split/gap/identity ambiguity merely to increase coverage.
+   lake and regime adapters and independently confirm both source reports. The regime
+   bundle must be the exact accepted split-origin as-of date matching the replay end;
+   do not substitute a later history or implicitly rebuild it. Do not broaden V1
+   across the provider seam or retain split/gap/identity ambiguity merely to increase
+   coverage.
 2. Run all nine frozen policies and the frozen long-only RESEARCH account replay once
    on those DEVELOPMENT rows only; record both preregistered trials and every
    fired/rejected/counterfactual opportunity, portfolio decision, simulated order,
    position outcome, and equity point. Do not tune a policy after its result is
    visible. The implemented command is
    `scripts/run_a33_b33_reference_development.py`; use `--source-only` for the
-   adapter proof, then run without that flag once the source report is accepted.
+   lake and regime source proofs, then run without that flag once both reports are
+   accepted.
 3. Report honest independent gross/net results, account-level return/drawdown/costs,
    admission rejections, and the available predeclared condition slices,
-   including zero-trade, negative, and underpowered outcomes. Market, sector, and
-   ticker regime fields must remain `UNAVAILABLE` until the PIT-safe A34 context join
-   exists. This independent-strategy replay is evidence input, not an account
-   backtest or authority promotion.
-4. Proceed in parallel with the remaining A34 PIT-safe regime join and richer browser
-   decision/exposure drill-down. Do not begin another difficult regulatory source or unlimited
-   indicator search; do not consume the master protected holdout; do not enable
-   provider/broker mutation, operational or qualifying PAPER, or LIVE.
+   including zero-trade, negative, and underpowered outcomes. Market slices may use
+   only the exact-as-of same-close join; ticker and sector fields must remain
+   `UNAVAILABLE`. This independent-strategy replay is evidence input, not authority
+   promotion.
+4. Proceed in parallel with accepted ticker/sector/correlation context only when its
+   PIT evidence is available, then move the product toward A35 operational PAPER.
+   Do not begin another difficult regulatory source or unlimited indicator search;
+   do not consume the master protected holdout; do not enable provider/broker
+   mutation, qualifying PAPER, or LIVE.
 5. Keep the frozen A33/B33 validator, focused tests, full repository suite, retained
    scientific validators, and cross-platform exact-head CI mandatory for every
    change to these contracts.

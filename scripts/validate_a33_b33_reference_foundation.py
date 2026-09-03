@@ -241,7 +241,7 @@ def main() -> int:
         'print(f"  trial registered before performance: {registration_id}")'
     )
     outcome_run = development_command.index(
-        "run = ReferenceStrategyHistoricalRunner().run(adapted.bars)"
+        "run = ReferenceStrategyHistoricalRunner().run(regime_context.bars)"
     )
     if registration >= outcome_run:
         raise AssertionError("DEVELOPMENT outcome run precedes its trial registration")
