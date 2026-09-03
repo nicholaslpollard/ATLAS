@@ -39,4 +39,4 @@ jobs:
       - name: Validate A34 frozen account replay
         run: python scripts/validate_a34_reference_account_replay.py
       - name: Run focused account replay and browser tests
-        run: python -m pytest -q tests/unit/test_reference_portfolio_replay.py tests/unit/test_reference_replay_read_model.py tests/unit/test_phase16_status_api.py
+        run: python -m pytest -q tests/unit/test_reference_portfolio_replay.py tests/unit/test_reference_replay_read_model.py tests/unit/test_phase16_status_api.py tests/unit/test_phase19_observability_http.py

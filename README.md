@@ -278,6 +278,14 @@ shows `NOT_RUN` honestly until the trusted-lake command produces artifacts. Poli
 promotion: **false**; protected return rows read: **0**; provider writes: **0**;
 broker writes: **0**; PAPER submits: **0**; LIVE writes: **0**.
 
+The current operator entry point is the stacked Phase19 dashboard, not the older
+Phase16 shell. Start it from the repository root with
+`python scripts/run_phase19_control_plane.py` (or
+`.\.venv\Scripts\python.exe scripts\run_phase19_control_plane.py` on Windows), then
+open `http://127.0.0.1:8765`. Its A33/A34 Strategy Laboratory panel reads the
+catalog and latest replay through the two local GET endpoints; loading or refreshing
+the panel does not call a market-data provider or broker.
+
 ## Strategy authority and PAPER/LIVE boundary
 
 Every strategy carries two separate labels:
