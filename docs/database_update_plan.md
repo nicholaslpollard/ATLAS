@@ -1,9 +1,9 @@
 # ATLAS Database Update Plan
 
-**Document type:** Living implementation and handoff plan  
-**Status:** STORAGE PREFLIGHT COMPLETE / REBUILD ORCHESTRATION NEXT  
+**Document type:** Frozen supporting design record; `README.md` and `docs/roadmap.md` are the only living handoff documents
+**Status:** SUPERSEDED IN PART BY OPERATOR V1-DECOMMISSION DECISION / SAFETY ORCHESTRATION IN PROGRESS
 **Last updated:** 2026-09-03  
-**Primary objective:** Replace the active hybrid Alpaca/Massive historical market-data foundation with a clean, newly acquired Alpaca historical foundation, while retaining the current database as an isolated read-only archive until the replacement is fully accepted.
+**Primary objective:** Replace the active hybrid Alpaca/Massive historical market-data foundation with a clean, newly acquired Alpaca historical foundation. The operator subsequently chose precise local V1 historical-data decommissioning instead of a local archive; repository history, accepted results, and non-historical operational/research state remain preserved.
 
 ---
 
@@ -18,7 +18,7 @@ ATLAS currently has a validated historical market-data foundation that combines 
 - the project wants a fresh source-built database rather than additional patches or compatibility layers on top of the current lake;
 - the existing hybrid lake can be retained as strong independent validation evidence without becoming ancestry for the new database.
 
-This file is the authoritative living handoff for the database migration. Future ATLAS chats should read this file before changing the migration design or executing database-rebuild work.
+This file preserves the detailed sizing and design record. It is not a third living source of truth. Future continuation state and any changed decision are authoritative only in `README.md` and `docs/roadmap.md`.
 
 ---
 
@@ -49,11 +49,9 @@ The preferred order is:
 
 This ordering is intentional. The initial long-running acquisition/build should not repeatedly stop for scientific review gates between individual data layers.
 
-### 2.4 V1 preservation
+### 2.4 V1 decommissioning decision (supersedes the original local-archive plan)
 
-The current Alpaca/Massive database generation will be retained initially as a **sealed read-only archive**.
-
-It may be read by comparison/validation tools after the new base is built, but it must never be used as a source for populating the replacement database.
+The current Alpaca/Massive persisted historical database will be removed locally only through an exact inventory- and hash-bound decommission plan. This decision does not authorize deletion of the entire `data/` root. `data/live`, models, unrelated research state, source code, Git history, accepted-negative evidence, and protected-holdout records must remain intact. V1 market/feature files may not populate V2.
 
 ### 2.5 V2 must be source-built, not V1-derived
 
@@ -170,7 +168,7 @@ The project should not launch the full final V2 package on the primary disk with
 2. use a larger/new primary data volume for V2; or
 3. after the native bases are built and exact storage is known, re-run the full-package projection and demonstrate that actual storage is materially below the conservative estimate.
 
-No V1 deletion is authorized merely to make the estimate look better. V1 may be moved to external/archive storage as already planned.
+The operator has explicitly authorized precise V1 historical-data deletion as part of this clean rebuild. Deletion remains fail-closed: exact allowlisted targets, byte/file inventory, content fingerprints, path and symlink validation, a matching confirmation token, and a passing disk preflight are required. A broad recursive deletion of `data/` is prohibited.
 
 ---
 
@@ -449,9 +447,9 @@ Do not merge V1 and V2 directories.
 
 ---
 
-## 12. Post-promotion V1 retention/deletion policy
+## 12. Superseded V1 retention alternatives
 
-After V2 has been accepted and operated successfully, review the actual value of continuing to retain V1 locally.
+The following were considered before the operator selected precise local decommissioning:
 
 Possible later outcomes:
 
@@ -460,13 +458,13 @@ Possible later outcomes:
 - retain only canonical/source/manifests and remove reproducible derived V1 artifacts;
 - delete selected V1 data only after explicit operator approval and only when validation/provenance needs are satisfied.
 
-No automatic deletion is part of the migration.
+Current decision: the orchestrator may delete only its frozen allowlisted V1 historical targets after inventory drift, symlink/path, confirmation-token, and disk checks pass. It may never delete the complete `data/` root.
 
 ---
 
 ## 13. Immediate next implementation steps
 
-Storage inventory and empirical 1-minute sizing are now complete. The next database-migration work is orchestration preparation; do not start the historical download until the operator has moved/sealed V1 externally or otherwise provided the intended build headroom.
+Storage inventory and empirical 1-minute sizing are complete. The first orchestration safety slice is implemented. The operator explicitly accepted a database-only decommission mode to reclaim space before V2 acquisition exists, with the understood result that ATLAS will temporarily have no historical database. The combined delete-and-rebuild path remains locked until acquisition, canonicalization, identity/corporate-action, validation, and resume stages are implemented.
 
 ### Step A — COMPLETE: repository/current-state reconciliation
 
@@ -484,24 +482,24 @@ Measured provider row density and normal raw/Parquet storage are recorded in Sec
 
 The native base is projected to fit comfortably with V1 external. The complete non-optimized V2 package misses the measured post-V1 internal capacity by approximately 1.71 GiB after the required 30 GiB reserve, so it is not accepted as a final whole-package GO yet.
 
-### Step E — NEXT: implement/test resumable V2 base rebuild orchestrator
+### Step E — IN PROGRESS: implement/test resumable V2 base rebuild orchestrator
 
 Requirements:
 
-- entirely new V2 namespace;
+- entirely new V2 namespace — implemented;
 - fresh Alpaca SIP source acquisition;
 - native 1d acquisition/build followed automatically by native 1m acquisition/build;
 - resumable/checkpointed partition units;
 - bounded retry/backoff;
 - permanent failure accounting;
-- disk-floor monitoring;
-- no V1 writes or fallback;
+- disk-floor monitoring — initial 30 GiB reserve guard implemented;
+- no V1 writes or fallback — path/decommission foundation implemented;
 - no manual gate between 1d and 1m;
 - bounded end-to-end rehearsal before the real run.
 
-### Step F — operator storage preparation
+### Step F — operator storage preparation and exact V1 decommission
 
-Before the real base run, move/seal V1 externally (recommended) and re-run free-space verification. The base-run precheck should refuse to launch if free space is below its frozen base-build threshold.
+Before the real base run, generate and review the exact hash-bound V1 historical decommission plan. Execution requires its derived confirmation token and a passing projected post-decommission base-space check. Preserve live/model/unrelated research state and never recursively delete `data/`.
 
 ### Step G — full operator base run
 
@@ -539,7 +537,7 @@ while keeping the research/product work moving and avoiding a return to indefini
 ### 2026-09-03
 
 - Operator chose to proceed with planning for a clean Alpaca historical rebuild.
-- Current hybrid Alpaca/Massive database will be archived initially rather than deleted.
+- Original decision was to archive the hybrid database; the later explicit operator decision supersedes this with precise local V1 historical decommissioning while preserving repository/evidence lineage and non-historical state.
 - New generation must be built fresh from Alpaca; V1 is validation-only.
 - New generation is expected to include both native 1-Day and native 1-Minute bases before base construction is considered complete.
 - Full-run orchestration should not stop for a manual gate between daily and minute construction.
