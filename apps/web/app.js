@@ -14,7 +14,7 @@ function text(id, value) {
 function stateClass(value) {
   const normalized = String(value || "").toUpperCase();
   if (["HEALTHY", "AVAILABLE", "COMPLETED", "AUTHORIZED"].includes(normalized)) return "state-ok";
-  if (["DEGRADED", "UNPOLLED", "AWAITING_CONFIRMATION", "REQUESTED", "EXECUTING"].includes(normalized)) return "state-warn";
+  if (["DEGRADED", "UNPOLLED", "AWAITING_CONFIRMATION", "REQUESTED", "EXECUTING", "RESEARCH"].includes(normalized)) return "state-warn";
   if (["BLOCKED", "ERROR", "UNAVAILABLE", "FAILED", "UNCERTAIN"].includes(normalized)) return "state-danger";
   return "state-muted";
 }
@@ -32,6 +32,16 @@ function money(value) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(number);
+}
+
+function percent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "—";
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(number);
 }
@@ -302,6 +312,87 @@ function renderActions(records) {
       row.appendChild(recovery);
       body.appendChild(row);
     });
+}
+
+function renderReferenceResearch(catalog, replay) {
+  const strategies = Array.isArray(catalog && catalog.strategies) ? catalog.strategies : [];
+  setMetric("reference-strategy-count", `${strategies.length} policies`, strategies.length ? "state-ok" : "state-warn");
+  text("reference-family-count", `${catalog && catalog.family_count != null ? catalog.family_count : 0} materially different families`);
+
+  const strategyBody = $("reference-strategies-body");
+  clear(strategyBody);
+  strategies.forEach((row) => {
+    const specification = row.specification || {};
+    const authority = row.authority || {};
+    const tableRow = document.createElement("tr");
+    [
+      specification.strategy_id || "—",
+      specification.family || "—",
+      specification.direction || "—",
+      authority.authority || "RESEARCH",
+    ].forEach((value, index) => {
+      const cell = document.createElement("td");
+      cell.textContent = String(value);
+      if (index === 3) cell.className = stateClass(value);
+      tableRow.appendChild(cell);
+    });
+    strategyBody.appendChild(tableRow);
+  });
+
+  const status = String((replay && replay.status) || "NOT_RUN");
+  const summary = replay && replay.summary;
+  const banner = $("reference-replay-banner");
+  banner.className = status === "AVAILABLE" ? "banner ok" : status === "INVALID" ? "banner danger" : "banner warning";
+  banner.textContent = replay && replay.message ? replay.message : "Reference replay state is unavailable.";
+  setMetric(
+    "reference-authority",
+    "RESEARCH",
+    status === "INVALID" ? "state-danger" : "state-warn"
+  );
+  text(
+    "reference-authority-detail",
+    "Long-only baseline · short borrow unavailable · no PAPER or LIVE authority"
+  );
+
+  if (status === "AVAILABLE" && summary) {
+    const totalReturn = Number(summary.total_return);
+    const drawdown = Number(summary.maximum_drawdown);
+    setMetric("reference-total-return", percent(totalReturn), totalReturn >= 0 ? "state-ok" : "state-danger");
+    text("reference-final-equity", `Final equity ${money(summary.final_equity)} · costs ${money(summary.total_transaction_cost)}`);
+    setMetric("reference-max-drawdown", percent(drawdown), drawdown < -0.1 ? "state-danger" : "state-warn");
+    text("reference-trade-count", `${summary.completed_positions || 0} completed · ${summary.admitted_positions || 0} admitted`);
+  } else {
+    setMetric("reference-total-return", "Not run", status === "INVALID" ? "state-danger" : "state-warn");
+    text("reference-final-equity", "Awaiting trusted-lake DEVELOPMENT replay");
+    setMetric("reference-max-drawdown", "Not run", status === "INVALID" ? "state-danger" : "state-warn");
+    text("reference-trade-count", "No account outcomes opened");
+  }
+
+  const outcomes = Array.isArray(replay && replay.recent_position_outcomes)
+    ? replay.recent_position_outcomes.slice().reverse()
+    : [];
+  const empty = $("reference-outcomes-empty");
+  const table = $("reference-outcomes-table");
+  const body = $("reference-outcomes-body");
+  clear(body);
+  empty.hidden = outcomes.length > 0;
+  table.hidden = outcomes.length === 0;
+  outcomes.forEach((outcome) => {
+    const row = document.createElement("tr");
+    const values = [
+      outcome.exit_session || "—",
+      outcome.ticker || "—",
+      outcome.strategy_id || "—",
+      money(outcome.net_pnl),
+    ];
+    values.forEach((value, index) => {
+      const cell = document.createElement("td");
+      cell.textContent = String(value);
+      if (index === 3) cell.className = Number(outcome.net_pnl) >= 0 ? "state-ok" : "state-danger";
+      row.appendChild(cell);
+    });
+    body.appendChild(row);
+  });
 }
 
 async function getJson(path) {
@@ -750,14 +841,17 @@ function clearError() {
 async function loadStatus({ refreshBrokers = false } = {}) {
   clearError();
   const suffix = refreshBrokers ? "?refresh=1" : "";
-  const [status, actions] = await Promise.all([
+  const [status, actions, catalog, replay] = await Promise.all([
     getJson(`/api/v1/status/full${suffix}`),
     getJson("/api/v1/actions"),
+    getJson("/api/v1/strategies/reference"),
+    getJson("/api/v1/research/reference-replay"),
   ]);
   currentStatus = status;
   renderSystem(status);
   renderBrokers(status.brokers || [], status.system || {});
   renderActions(actions.actions || []);
+  renderReferenceResearch(catalog, replay);
   return status;
 }
 

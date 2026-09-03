@@ -264,6 +264,17 @@ def test_http_status_is_loopback_host_validated_and_non_action_post_is_405(tmp_p
                 "research_replay_allowed": True,
             }
 
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/v1/research/reference-replay", timeout=5
+        ) as response:
+            replay_payload = json.loads(response.read().decode("utf-8"))
+            assert response.status == 200
+            assert replay_payload["status"] == "NOT_RUN"
+            assert replay_payload["summary"] is None
+            assert replay_payload["authority"]["broker_writes"] == 0
+            assert replay_payload["authority"]["paper_submits"] == 0
+            assert replay_payload["authority"]["live_writes"] == 0
+
         request = urllib.request.Request(
             f"http://127.0.0.1:{port}/api/v1/status", data=b"{}", method="POST"
         )
@@ -321,6 +332,8 @@ def test_browser_dashboard_is_same_origin_csp_locked_and_fixed_allowlist(tmp_pat
             assert response.status == 200
             assert response.headers["Content-Type"].startswith("text/javascript")
             assert "/api/v1/status/full" in js
+            assert "/api/v1/strategies/reference" in js
+            assert "/api/v1/research/reference-replay" in js
             assert "https://" not in js
             assert "http://" not in js
 

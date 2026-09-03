@@ -739,7 +739,9 @@ than guessed factors. V1 does not join historical market/sector/ticker regime
 labels, so those condition fields remain `UNAVAILABLE`; A34 must add an explicit
 PIT-safe regime-context join before regime slices are interpreted. The current
 checkout has no market lake, so no empirical run or ATLAS performance result has
-been produced. An account portfolio replay also does not yet exist. Protected return rows read: **0**; performance opened:
+been produced. PR #47 accepted the adapter and merged it as
+`646db6e6e44ccd2355c7c2263221f35cd01d5da8`; post-merge Windows and Ubuntu full
+tests passed. Protected return rows read: **0**; performance opened:
 **false**; provider/broker/PAPER/LIVE writes: **0**.
 
 ### A34 — Signal-to-Trade Construction, Portfolio Replay, and Replay Dashboard
@@ -749,6 +751,36 @@ Construction** dependency. Construct complete candidate trades, compare strategi
 admit a risk-controlled account portfolio, replay cash/orders/positions/exits as one
 process, and show decisions, counterfactuals, costs, exposure, and outcomes in the
 browser. Baselines remain operational-only unless separately validated.
+
+**First vertical-slice status (2026-09-03): implemented; empirical account replay
+not started.** Frozen portfolio-policy fingerprint:
+`c6528b5619a0058131347715dae771474a7b37babda282856f5f53a430f792fa`.
+The RESEARCH account replay consumes only the exact input-bound independent run and
+uses a fixed event clock: opening exits → opening candidate admission → intraday
+daily-bar exits → closing mark. It begins at `$100,000`, risks `0.25%` of current
+equity per position including primary modeled costs, caps single-position notional
+at `10%`, gross exposure at `100%`, open positions at `10`, and active family
+positions at `3`. The non-learned selector balances current family load and then
+uses stable identifiers; it never ranks same-session candidates with realized
+outcomes. One position per instrument is allowed.
+
+V1 is deliberately long-only. It retains short-strategy evidence but rejects short
+account admission until short borrow, locate, and recall economics exist. It also labels
+correlation and sector controls unavailable rather than fabricating them. Unresolved
+exits are rejected so every admitted V1 position has an entry, exit, cost, cash
+transition, and reconciled outcome. The full DEVELOPMENT command preregisters this
+policy before performance and writes hash-bound decisions, simulated orders,
+position outcomes, equity, and summary artifacts. The read-only endpoint
+`/api/v1/research/reference-replay` and browser show the honest `NOT_RUN`, `INVALID`,
+or `AVAILABLE` state, the nine strategies and RESEARCH authority, aggregate account
+return/drawdown/costs, and recent completed positions. This is not qualifying
+historical or PAPER evidence; authority promotion and provider/broker/PAPER/LIVE
+writes remain zero.
+
+Remaining A34 work is the explicit PIT-safe historical regime-context join, richer
+decision/exposure drill-down in the browser, and any correlation/sector control only
+after its evidence contract exists. These improvements must not delay the first
+honest fixed-policy replay on the trusted lake.
 
 ### B34 — Intraday Source Readiness and Opening/Premarket Pack
 
@@ -839,18 +871,21 @@ Every closeout reports:
 1. On the user's machine containing the accepted lake, run the completed read-only
    adapter and independently confirm its source report. Do not broaden V1 across the
    provider seam or retain split/gap/identity ambiguity merely to increase coverage.
-2. Run all nine frozen policies once on those DEVELOPMENT rows only; record the trial and
-   every fired/rejected/counterfactual opportunity. Do not tune a policy after its
-   result is visible. The implemented command is
+2. Run all nine frozen policies and the frozen long-only RESEARCH account replay once
+   on those DEVELOPMENT rows only; record both preregistered trials and every
+   fired/rejected/counterfactual opportunity, portfolio decision, simulated order,
+   position outcome, and equity point. Do not tune a policy after its result is
+   visible. The implemented command is
    `scripts/run_a33_b33_reference_development.py`; use `--source-only` for the
    adapter proof, then run without that flag once the source report is accepted.
-3. Report honest gross/net results and the available predeclared condition slices,
+3. Report honest independent gross/net results, account-level return/drawdown/costs,
+   admission rejections, and the available predeclared condition slices,
    including zero-trade, negative, and underpowered outcomes. Market, sector, and
    ticker regime fields must remain `UNAVAILABLE` until the PIT-safe A34 context join
    exists. This independent-strategy replay is evidence input, not an account
    backtest or authority promotion.
-4. Proceed in parallel to A34 account portfolio replay and the browser replay
-   dashboard. Do not begin another difficult regulatory source or unlimited
+4. Proceed in parallel with the remaining A34 PIT-safe regime join and richer browser
+   decision/exposure drill-down. Do not begin another difficult regulatory source or unlimited
    indicator search; do not consume the master protected holdout; do not enable
    provider/broker mutation, operational or qualifying PAPER, or LIVE.
 5. Keep the frozen A33/B33 validator, focused tests, full repository suite, retained

@@ -10,6 +10,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 from packages.core.settings import load_settings
+from packages.performance.reference_replay_read_model import reference_replay_read_model
 from packages.schemas.control_plane import (
     ControlPlaneActionKind,
     ControlPlaneActionRequest,
@@ -349,6 +350,12 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/v1/strategies/reference":
                 self._send_json(HTTPStatus.OK, reference_strategy_catalog_read_model())
+                return
+            if path == "/api/v1/research/reference-replay":
+                self._send_json(
+                    HTTPStatus.OK,
+                    reference_replay_read_model(service.settings),
+                )
                 return
             if path == "/api/v1/actions":
                 records = self.atlas_server.action_ledger.records()

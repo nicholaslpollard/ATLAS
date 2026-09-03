@@ -17,6 +17,10 @@ from packages.backtesting.reference_lake_adapter import (
     REFERENCE_LAKE_PROVIDER_SEAM_START,
     ReferenceDailyLakeAdapter,
 )
+from packages.backtesting.reference_portfolio_policy import (
+    reference_portfolio_policy_fingerprint,
+)
+from packages.backtesting.reference_portfolio_replay import ReferenceAccountPortfolioReplay
 from packages.backtesting.reference_strategy_runner import (
     ReferenceStrategyHistoricalRunner,
     reference_input_fingerprint,
@@ -68,6 +72,7 @@ def _trial_draft(
     run_fingerprint: str | None,
     performance_opened: bool,
     notes: tuple[str, ...],
+    hypotheses: tuple[str, ...] | None = None,
 ) -> StrategyTrialDraft:
     specifications = REFERENCE_STRATEGY_CATALOG.all()
     return StrategyTrialDraft(
@@ -79,8 +84,13 @@ def _trial_draft(
         strategy_ids=tuple(item.strategy_id for item in specifications),
         strategy_policy_fingerprint=REFERENCE_STRATEGY_POLICY_FINGERPRINT,
         feature_fingerprint=REFERENCE_DAILY_FEATURE_FINGERPRINT,
-        hypotheses=tuple(
-            f"{item.strategy_id}:primary_10bps_net_expectancy" for item in specifications
+        hypotheses=(
+            hypotheses
+            if hypotheses is not None
+            else tuple(
+                f"{item.strategy_id}:primary_10bps_net_expectancy"
+                for item in specifications
+            )
         ),
         input_fingerprint=input_fingerprint,
         run_fingerprint=run_fingerprint,
@@ -130,7 +140,8 @@ def _write_opportunities(path: Path, opportunities: tuple[object, ...]) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the frozen A33/B33 reference library on Massive-only DEVELOPMENT data."
+            "Run the frozen A33/B33 strategies and A34 account replay on Massive-only "
+            "DEVELOPMENT data."
         )
     )
     parser.add_argument("--start", type=date.fromisoformat, default=REFERENCE_LAKE_PROVIDER_SEAM_START)
@@ -201,14 +212,72 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"  trial registered before performance: {registration_id}")
 
+    portfolio_registration_id = f"a34.account.{run_token}.registration"
+    _append_once(
+        ledger,
+        _trial_draft(
+            trial_id=portfolio_registration_id,
+            disposition=StrategyTrialDisposition.REGISTERED,
+            input_fingerprint=frame_fingerprint,
+            run_fingerprint=None,
+            performance_opened=False,
+            hypotheses=(
+                "a34_fixed_long_only_account_replay_primary_10bps_total_return",
+                "a34_fixed_long_only_account_replay_closing_equity_drawdown",
+            ),
+            notes=(
+                "Frozen A34 account-replay policy registered before outcome calculation.",
+                f"Portfolio policy fingerprint: {reference_portfolio_policy_fingerprint()}.",
+                "Long-only; short borrow, correlation, sector controls, and authority promotion unavailable.",
+            ),
+        ),
+    )
+    print(f"  account replay registered before performance: {portfolio_registration_id}")
+
     run = ReferenceStrategyHistoricalRunner().run(adapted.bars)
+    portfolio = ReferenceAccountPortfolioReplay().run(adapted.bars, run)
     opportunities_path = target / "opportunities.jsonl"
     opportunity_sha = _write_opportunities(opportunities_path, run.opportunities)
+    decisions_path = target / "portfolio_decisions.jsonl"
+    decision_sha = _write_opportunities(decisions_path, portfolio.decisions)
+    orders_path = target / "portfolio_simulated_orders.jsonl"
+    orders_sha = _write_opportunities(orders_path, portfolio.simulated_orders)
+    outcomes_path = target / "portfolio_position_outcomes.jsonl"
+    outcomes_sha = _write_opportunities(outcomes_path, portfolio.position_outcomes)
+    equity_path = target / "portfolio_equity_curve.jsonl"
+    equity_sha = _write_opportunities(equity_path, portfolio.equity_curve)
+    portfolio_summary_payload = portfolio.model_dump(
+        mode="json",
+        exclude={"decisions", "simulated_orders", "position_outcomes", "equity_curve"},
+    )
+    portfolio_summary_payload["decision_records"] = {
+        "path": str(decisions_path.resolve()),
+        "sha256": decision_sha,
+    }
+    portfolio_summary_payload["simulated_order_records"] = {
+        "path": str(orders_path.resolve()),
+        "sha256": orders_sha,
+    }
+    portfolio_summary_payload["position_outcome_records"] = {
+        "path": str(outcomes_path.resolve()),
+        "sha256": outcomes_sha,
+    }
+    portfolio_summary_payload["equity_curve_records"] = {
+        "path": str(equity_path.resolve()),
+        "sha256": equity_sha,
+    }
+    portfolio_summary_path = target / "portfolio_run_summary.json"
+    atomic_write_text(
+        portfolio_summary_path,
+        json.dumps(portfolio_summary_payload, indent=2, sort_keys=True, default=str) + "\n",
+    )
     summary_payload = run.model_dump(mode="json", exclude={"opportunities"})
     summary_payload["opportunities_path"] = str(opportunities_path.resolve())
     summary_payload["opportunities_sha256"] = opportunity_sha
     summary_payload["adapter_report_path"] = str(adapter_report_path.resolve())
     summary_payload["adapter_source_fingerprint"] = adapted.report["source_fingerprint"]
+    summary_payload["portfolio_replay_fingerprint"] = portfolio.replay_fingerprint
+    summary_payload["portfolio_run_summary_path"] = str(portfolio_summary_path.resolve())
     summary_path = target / "run_summary.json"
     atomic_write_text(
         summary_path,
@@ -233,6 +302,31 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
 
+    portfolio_completion_id = f"a34.account.{run_token}.completion"
+    _append_once(
+        ledger,
+        _trial_draft(
+            trial_id=portfolio_completion_id,
+            disposition=StrategyTrialDisposition.COMPLETED,
+            input_fingerprint=portfolio.input_fingerprint,
+            run_fingerprint=portfolio.replay_fingerprint,
+            performance_opened=True,
+            hypotheses=(
+                "a34_fixed_long_only_account_replay_primary_10bps_total_return",
+                "a34_fixed_long_only_account_replay_closing_equity_drawdown",
+            ),
+            notes=(
+                f"Registration record: {portfolio_registration_id}.",
+                f"Portfolio policy fingerprint: {portfolio.portfolio_policy_fingerprint}.",
+                f"Decision evidence SHA-256: {decision_sha}.",
+                f"Simulated-order evidence SHA-256: {orders_sha}.",
+                f"Position-outcome evidence SHA-256: {outcomes_sha}.",
+                f"Equity-curve evidence SHA-256: {equity_sha}.",
+                "Research account replay only; not qualifying historical, PAPER, or authority promotion.",
+            ),
+        ),
+    )
+
     print(f"  run fingerprint: {run.run_fingerprint}")
     print(f"  opportunities: {len(run.opportunities):,} -> {opportunities_path}")
     print("  strategy summaries (10 bps primary cost):")
@@ -245,6 +339,13 @@ def main(argv: list[str] | None = None) -> int:
             f"exited={int(item['exited']):,} mean_net={rendered}"
         )
     print(f"  run summary: {summary_path}")
+    print(
+        "  account replay: "
+        f"admitted={portfolio.admitted_positions:,} completed={portfolio.completed_positions:,} "
+        f"return={portfolio.total_return:+.6%} max_drawdown={portfolio.maximum_drawdown:.6%}"
+    )
+    print(f"  account replay fingerprint: {portfolio.replay_fingerprint}")
+    print(f"  account replay summary: {portfolio_summary_path}")
     print(f"  trials ledger: {ledger.path}")
     print("  authority promotion: none")
     print("  protected return rows read: 0")

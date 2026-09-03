@@ -23,6 +23,67 @@
       Provider-write endpoints are disabled. Live execution is not promoted.
     </section>
 
+    <section class="section-head research-head">
+      <div>
+        <div class="eyebrow">A33 / A34 Strategy Laboratory</div>
+        <h2>Reference strategy and account replay</h2>
+      </div>
+      <p>Frozen practitioner baselines exercise the product path. Historical replay is research evidence, never PAPER or LIVE authority.</p>
+    </section>
+
+    <section id="reference-replay-banner" class="banner warning" aria-live="polite">
+      Loading frozen strategy and replay state…
+    </section>
+
+    <section class="grid summary-grid" aria-label="Reference account replay summary">
+      <article class="card">
+        <div class="label">Reference library</div>
+        <div id="reference-strategy-count" class="metric">Loading…</div>
+        <div id="reference-family-count" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Account replay return</div>
+        <div id="reference-total-return" class="metric">Not run</div>
+        <div id="reference-final-equity" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Portfolio drawdown</div>
+        <div id="reference-max-drawdown" class="metric">Not run</div>
+        <div id="reference-trade-count" class="muted"></div>
+      </article>
+      <article class="card">
+        <div class="label">Research authority</div>
+        <div id="reference-authority" class="metric state-warn">RESEARCH</div>
+        <div id="reference-authority-detail" class="muted">No PAPER or LIVE authority</div>
+      </article>
+    </section>
+
+    <section class="grid research-grid">
+      <article class="card table-card">
+        <div class="research-card-title">
+          <div><div class="eyebrow">Frozen policies</div><h3>Strategy library</h3></div>
+        </div>
+        <div class="table-wrap">
+          <table class="research-table">
+            <thead><tr><th>Strategy</th><th>Family</th><th>Side</th><th>Authority</th></tr></thead>
+            <tbody id="reference-strategies-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="card table-card">
+        <div class="research-card-title">
+          <div><div class="eyebrow">Latest DEVELOPMENT replay</div><h3>Recent completed positions</h3></div>
+        </div>
+        <div id="reference-outcomes-empty" class="empty">No account replay outcomes recorded.</div>
+        <div class="table-wrap">
+          <table id="reference-outcomes-table" class="research-table" hidden>
+            <thead><tr><th>Exit</th><th>Ticker</th><th>Strategy</th><th>Net P&amp;L</th></tr></thead>
+            <tbody id="reference-outcomes-body"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
     <section class="grid summary-grid" aria-label="System summary">
       <article class="card">
         <div class="label">System health</div>
