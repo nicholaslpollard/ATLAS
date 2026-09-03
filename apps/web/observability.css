@@ -117,6 +117,74 @@ main {
   min-width: 620px;
 }
 
+.reference-strategy-table {
+  min-width: 980px;
+}
+
+.reference-equity-card {
+  padding: 0;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.reference-chart-title {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.reference-chart-title .muted {
+  margin: 0;
+  text-align: right;
+}
+
+.reference-equity-chart {
+  display: block;
+  width: 100%;
+  height: clamp(180px, 24vw, 280px);
+  padding: 14px 18px 4px;
+  overflow: visible;
+}
+
+.reference-chart-baseline {
+  stroke: rgba(147, 164, 188, 0.32);
+  stroke-width: 1;
+}
+
+.reference-chart-area {
+  fill: rgba(94, 200, 255, 0.09);
+}
+
+.reference-chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.reference-chart-point {
+  fill: var(--accent);
+  stroke: var(--panel);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.reference-chart-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 18px 16px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.reference-lab-drilldown-grid {
+  margin-bottom: 28px;
+}
+
 .intel-summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 14px;
@@ -386,6 +454,16 @@ main {
 
   .ai-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reference-chart-title,
+  .reference-chart-caption {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reference-chart-title .muted {
+    text-align: left;
   }
 }
 

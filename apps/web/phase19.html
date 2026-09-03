@@ -113,14 +113,15 @@
         <div class="label">Authority</div>
         <div id="reference-lab-authority" class="metric state-warn">RESEARCH</div>
         <div class="muted">Long-only baseline · no qualifying PAPER or LIVE</div>
+        <div id="reference-lab-integrity" class="muted">Replay artifacts not present.</div>
       </article>
     </section>
     <section class="grid reference-lab-grid">
       <article class="card table-card">
         <div class="reference-lab-title"><div class="eyebrow">Frozen policies</div><h3>Strategy library</h3></div>
         <div class="table-wrap">
-          <table class="reference-lab-table">
-            <thead><tr><th>Strategy</th><th>Family</th><th>Side</th><th>Authority</th></tr></thead>
+          <table class="reference-lab-table reference-strategy-table">
+            <thead><tr><th>Strategy</th><th>Family</th><th>Side</th><th>Signals</th><th>Admitted</th><th>Completed</th><th>Net P&amp;L</th><th>Authority</th></tr></thead>
             <tbody id="reference-lab-strategy-body"></tbody>
           </table>
         </div>
@@ -130,8 +131,39 @@
         <div id="reference-lab-outcomes-empty" class="empty">No account replay outcomes recorded.</div>
         <div class="table-wrap">
           <table id="reference-lab-outcomes-table" class="reference-lab-table" hidden>
-            <thead><tr><th>Exit</th><th>Ticker</th><th>Strategy</th><th>Net P&amp;L</th></tr></thead>
+            <thead><tr><th>Exit</th><th>Ticker</th><th>Family</th><th>Strategy</th><th>Reason</th><th>Net return</th><th>Net P&amp;L</th></tr></thead>
             <tbody id="reference-lab-outcomes-body"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+    <section class="card reference-equity-card">
+      <div class="reference-lab-title reference-chart-title">
+        <div><div class="eyebrow">Account state</div><h3>Closing equity and exposure</h3></div>
+        <div id="reference-lab-equity-latest" class="muted">No replay equity recorded.</div>
+      </div>
+      <div id="reference-lab-equity-empty" class="empty">Run the frozen DEVELOPMENT replay to populate the equity curve.</div>
+      <svg id="reference-lab-equity-chart" class="reference-equity-chart" viewBox="0 0 720 210" role="img" aria-label="Closing account equity over replay sessions" hidden></svg>
+      <div id="reference-lab-equity-caption" class="reference-chart-caption" hidden></div>
+    </section>
+    <section class="grid reference-lab-grid reference-lab-drilldown-grid">
+      <article class="card table-card">
+        <div class="reference-lab-title"><div class="eyebrow">Portfolio selector</div><h3>Recent admission decisions</h3></div>
+        <div id="reference-lab-decisions-empty" class="empty">No portfolio decisions recorded.</div>
+        <div class="table-wrap">
+          <table id="reference-lab-decisions-table" class="reference-lab-table" hidden>
+            <thead><tr><th>Entry</th><th>Ticker</th><th>Family</th><th>Status</th><th>Qty</th><th>Notional</th><th>Reason</th></tr></thead>
+            <tbody id="reference-lab-decisions-body"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="card table-card">
+        <div class="reference-lab-title"><div class="eyebrow">Simulated execution</div><h3>Recent order events</h3></div>
+        <div id="reference-lab-orders-empty" class="empty">No simulated order events recorded.</div>
+        <div class="table-wrap">
+          <table id="reference-lab-orders-table" class="reference-lab-table" hidden>
+            <thead><tr><th>Session</th><th>Ticker</th><th>Event</th><th>Timing</th><th>Qty</th><th>Price</th><th>Cost</th><th>Cash after</th></tr></thead>
+            <tbody id="reference-lab-orders-body"></tbody>
           </table>
         </div>
       </article>

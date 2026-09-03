@@ -20,9 +20,9 @@ function obsClear(node) {
 
 function obsState(value) {
   const normalized = String(value || "").toUpperCase();
-  if (["AVAILABLE", "ACCEPTED", "COMPLETE", "HEALTHY", "PROMOTED", "STACKED_PREP_GREEN", "RECENT", "INPUTS_APPEAR_READY", "SUBSCRIBED", "REALTIME", "FRESH"].includes(normalized)) return "state-ok";
+  if (["AVAILABLE", "ACCEPTED", "COMPLETE", "HEALTHY", "PROMOTED", "STACKED_PREP_GREEN", "RECENT", "INPUTS_APPEAR_READY", "SUBSCRIBED", "REALTIME", "FRESH", "ADMITTED"].includes(normalized)) return "state-ok";
   if (["STACKED_PREP", "WAITING_EXTERNAL", "WARM", "CAUTIOUS", "OLDER", "CONNECTING", "CONNECTED", "AUTHENTICATED", "RESEARCH", "NOT_RUN"].includes(normalized)) return "state-warn";
-  if (["UNAVAILABLE", "BLOCKED", "ERROR", "REJECT", "NOT_READY", "STOPPED", "DEGRADED", "DISCONNECTED", "STALE"].includes(normalized)) return "state-danger";
+  if (["UNAVAILABLE", "BLOCKED", "ERROR", "REJECT", "REJECTED", "NOT_READY", "STOPPED", "DEGRADED", "DISCONNECTED", "STALE"].includes(normalized)) return "state-danger";
   return "state-muted";
 }
 
@@ -454,6 +454,7 @@ function renderOutcomes(payload) {
 
 function renderReferenceLab(catalog, replay) {
   const strategies = Array.isArray(catalog && catalog.strategies) ? catalog.strategies : [];
+  const summary = replay && replay.summary;
   obsText("reference-lab-strategies", `${strategies.length} policies`);
   const strategyMetric = obsById("reference-lab-strategies");
   if (strategyMetric) strategyMetric.className = `metric ${strategies.length ? "state-ok" : "state-warn"}`;
@@ -464,23 +465,30 @@ function renderReferenceLab(catalog, replay) {
   strategies.forEach((row) => {
     const specification = row.specification || {};
     const authority = row.authority || {};
+    const statistics = summary && summary.summary_by_strategy
+      ? summary.summary_by_strategy[specification.strategy_id] || {}
+      : null;
     const tr = document.createElement("tr");
     [
       specification.strategy_id || "—",
       specification.family || "—",
       specification.direction || "—",
+      statistics ? statistics.signals : "—",
+      statistics ? statistics.admitted : "—",
+      statistics ? statistics.completed : "—",
+      statistics ? obsMoney(statistics.net_pnl) : "—",
       authority.authority || "RESEARCH",
     ].forEach((value, index) => {
       const td = document.createElement("td");
       td.textContent = String(value);
-      if (index === 3) td.className = obsState(value);
+      if (index === 6 && statistics) td.className = Number(statistics.net_pnl) >= 0 ? "state-ok" : "state-danger";
+      if (index === 7) td.className = obsState(value);
       tr.appendChild(td);
     });
     strategyBody.appendChild(tr);
   });
 
   const status = String((replay && replay.status) || "NOT_RUN");
-  const summary = replay && replay.summary;
   const banner = obsById("reference-lab-banner");
   if (banner) {
     banner.className = status === "AVAILABLE" ? "banner ok" : status === "INVALID" ? "banner danger" : "banner warning";
@@ -488,6 +496,20 @@ function renderReferenceLab(catalog, replay) {
   }
   const authority = obsById("reference-lab-authority");
   if (authority) authority.className = `metric ${status === "INVALID" ? "state-danger" : "state-warn"}`;
+  const integrity = (replay && replay.artifact_integrity) || {};
+  const integrityNode = obsById("reference-lab-integrity");
+  if (integrityNode) {
+    if (integrity.all_sha256_verified) {
+      integrityNode.textContent = `${integrity.verified_artifacts}/${integrity.expected_artifacts} replay artifacts SHA-256 verified.`;
+      integrityNode.className = "muted state-ok";
+    } else if (status === "INVALID") {
+      integrityNode.textContent = "Replay artifact validation failed closed.";
+      integrityNode.className = "muted state-danger";
+    } else {
+      integrityNode.textContent = "Replay artifacts not present.";
+      integrityNode.className = "muted";
+    }
+  }
 
   if (status === "AVAILABLE" && summary) {
     const totalReturn = Number(summary.total_return);
@@ -522,10 +544,152 @@ function renderReferenceLab(catalog, replay) {
   if (table) table.hidden = outcomes.length === 0;
   outcomes.forEach((item) => {
     const tr = document.createElement("tr");
-    [item.exit_session || "—", item.ticker || "—", item.strategy_id || "—", obsMoney(item.net_pnl)].forEach((value, index) => {
+    [
+      item.exit_session || "—",
+      item.ticker || "—",
+      item.family || "—",
+      item.strategy_id || "—",
+      item.exit_reason || "—",
+      obsPercent(item.net_return_on_entry_notional),
+      obsMoney(item.net_pnl),
+    ].forEach((value, index) => {
       const td = document.createElement("td");
       td.textContent = String(value);
-      if (index === 3) td.className = Number(item.net_pnl) >= 0 ? "state-ok" : "state-danger";
+      if (index === 5 || index === 6) td.className = Number(item.net_pnl) >= 0 ? "state-ok" : "state-danger";
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+
+  renderReferenceEquity(replay && replay.equity_curve_tail, summary);
+  renderReferenceDecisions(replay && replay.recent_portfolio_decisions);
+  renderReferenceOrders(replay && replay.recent_simulated_orders);
+}
+
+function renderReferenceEquity(rawPoints, summary) {
+  const svg = obsById("reference-lab-equity-chart");
+  const empty = obsById("reference-lab-equity-empty");
+  const caption = obsById("reference-lab-equity-caption");
+  const points = Array.isArray(rawPoints)
+    ? rawPoints.filter((row) => row && Number.isFinite(Number(row.equity)))
+    : [];
+  obsClear(svg);
+  obsClear(caption);
+  if (!svg || points.length === 0) {
+    if (empty) empty.hidden = false;
+    if (svg) svg.hidden = true;
+    if (caption) caption.hidden = true;
+    obsText("reference-lab-equity-latest", "No replay equity recorded.");
+    return;
+  }
+
+  if (empty) empty.hidden = true;
+  svg.hidden = false;
+  if (caption) caption.hidden = false;
+  const width = 720;
+  const height = 210;
+  const padding = 18;
+  const values = points.map((row) => Number(row.equity));
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const span = maximum - minimum || Math.max(Math.abs(maximum) * 0.01, 1);
+  const x = (index) => padding + (points.length === 1 ? (width - 2 * padding) / 2 : index * (width - 2 * padding) / (points.length - 1));
+  const y = (value) => padding + (maximum - value) * (height - 2 * padding) / span;
+  const linePoints = points.map((row, index) => `${x(index).toFixed(2)},${y(Number(row.equity)).toFixed(2)}`);
+  const namespace = "http://www.w3.org/2000/svg";
+  const baseline = document.createElementNS(namespace, "line");
+  baseline.setAttribute("x1", String(padding));
+  baseline.setAttribute("x2", String(width - padding));
+  baseline.setAttribute("y1", String(height - padding));
+  baseline.setAttribute("y2", String(height - padding));
+  baseline.setAttribute("class", "reference-chart-baseline");
+  svg.appendChild(baseline);
+  const area = document.createElementNS(namespace, "polygon");
+  area.setAttribute("points", `${x(0)},${height - padding} ${linePoints.join(" ")} ${x(points.length - 1)},${height - padding}`);
+  area.setAttribute("class", "reference-chart-area");
+  svg.appendChild(area);
+  const line = document.createElementNS(namespace, "polyline");
+  line.setAttribute("points", linePoints.join(" "));
+  line.setAttribute("class", "reference-chart-line");
+  svg.appendChild(line);
+  const lastPoint = document.createElementNS(namespace, "circle");
+  lastPoint.setAttribute("cx", String(x(points.length - 1)));
+  lastPoint.setAttribute("cy", String(y(values[values.length - 1])));
+  lastPoint.setAttribute("r", "4.5");
+  lastPoint.setAttribute("class", "reference-chart-point");
+  svg.appendChild(lastPoint);
+
+  const first = points[0];
+  const last = points[points.length - 1];
+  svg.setAttribute("aria-label", `Closing account equity from ${obsMoney(first.equity)} to ${obsMoney(last.equity)} over ${points.length} displayed sessions`);
+  obsText(
+    "reference-lab-equity-latest",
+    `${last.session || "Latest"} · ${obsMoney(last.equity)} · ${obsPercent(last.gross_exposure_fraction)} gross · ${last.open_positions || 0} open`
+  );
+  if (caption) {
+    [
+      `${first.session || "Start"}: ${obsMoney(first.equity)}`,
+      `Displayed range ${obsMoney(minimum)}–${obsMoney(maximum)} · last ${Math.min(points.length, 120)} sessions`,
+      `${last.session || "End"}: ${obsMoney(last.equity)} · max drawdown ${obsPercent(summary && summary.maximum_drawdown)}`,
+    ].forEach((value) => {
+      const spanNode = document.createElement("span");
+      spanNode.textContent = value;
+      caption.appendChild(spanNode);
+    });
+  }
+}
+
+function renderReferenceDecisions(rawRows) {
+  const rows = Array.isArray(rawRows) ? rawRows.slice().reverse() : [];
+  const empty = obsById("reference-lab-decisions-empty");
+  const table = obsById("reference-lab-decisions-table");
+  const body = obsById("reference-lab-decisions-body");
+  obsClear(body);
+  if (empty) empty.hidden = rows.length > 0;
+  if (table) table.hidden = rows.length === 0;
+  rows.forEach((item) => {
+    const tr = document.createElement("tr");
+    const reasons = Array.isArray(item.reason_codes) ? item.reason_codes.join(" · ") : "—";
+    [
+      item.requested_entry_session || item.signal_session || "—",
+      item.ticker || "—",
+      item.family || "—",
+      item.status || "—",
+      item.admitted_quantity == null ? "—" : item.admitted_quantity,
+      item.admitted_notional == null ? "—" : obsMoney(item.admitted_notional),
+      reasons,
+    ].forEach((value, index) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
+      if (index === 3) td.className = obsState(value);
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+function renderReferenceOrders(rawRows) {
+  const rows = Array.isArray(rawRows) ? rawRows.slice().reverse() : [];
+  const empty = obsById("reference-lab-orders-empty");
+  const table = obsById("reference-lab-orders-table");
+  const body = obsById("reference-lab-orders-body");
+  obsClear(body);
+  if (empty) empty.hidden = rows.length > 0;
+  if (table) table.hidden = rows.length === 0;
+  rows.forEach((item) => {
+    const tr = document.createElement("tr");
+    [
+      item.session || "—",
+      item.ticker || "—",
+      item.kind || "—",
+      item.timing || "—",
+      item.quantity == null ? "—" : item.quantity,
+      obsMoney(item.price),
+      obsMoney(item.transaction_cost),
+      obsMoney(item.cash_after),
+    ].forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = String(value);
       tr.appendChild(td);
     });
     body.appendChild(tr);

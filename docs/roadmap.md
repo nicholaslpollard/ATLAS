@@ -773,18 +773,23 @@ policy before performance and writes hash-bound decisions, simulated orders,
 position outcomes, equity, and summary artifacts. The read-only endpoint
 `/api/v1/research/reference-replay` and the current stacked Phase19 operator
 dashboard show the honest `NOT_RUN`, `INVALID`, or `AVAILABLE` state, the nine
-strategies and RESEARCH authority, aggregate account return/drawdown/costs, and
-recent completed positions. Run it with
+strategies and RESEARCH authority, per-strategy account statistics, aggregate
+account return/drawdown/costs, recent completed positions, portfolio admission
+decisions, simulated order events, and a closing-equity/exposure curve. The read
+model verifies the recorded SHA-256 and row schema of all four replay artifacts
+before displaying an available result; any drift fails the complete view closed.
+Run it with
 `python scripts/run_phase19_control_plane.py` and open `http://127.0.0.1:8765`.
 The panel uses local read-only endpoints and performs no provider or broker call.
-This is not qualifying
-historical or PAPER evidence; authority promotion and provider/broker/PAPER/LIVE
-writes remain zero.
+The operator-path correction was accepted in PR #49 and merged as
+`cc0ecc6995ad977ca6eeb5fc00983ba2926317a0`; its post-merge Windows and Ubuntu
+full suite passed. This is not qualifying historical or PAPER evidence; authority
+promotion and provider/broker/PAPER/LIVE writes remain zero.
 
-Remaining A34 work is the explicit PIT-safe historical regime-context join, richer
-decision/exposure drill-down in the browser, and any correlation/sector control only
-after its evidence contract exists. These improvements must not delay the first
-honest fixed-policy replay on the trusted lake.
+Remaining A34 work is the explicit PIT-safe historical regime-context join and any
+correlation/sector control only after its evidence contract exists. These
+improvements must not delay the first honest fixed-policy replay on the trusted
+lake.
 
 ### B34 — Intraday Source Readiness and Opening/Premarket Pack
 

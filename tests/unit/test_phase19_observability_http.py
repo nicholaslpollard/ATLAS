@@ -148,8 +148,12 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
             assert 'id="outcome-win-rate"' in html
             assert 'id="reference-lab-banner"' in html
             assert 'id="reference-lab-return"' in html
+            assert 'id="reference-lab-integrity"' in html
             assert 'id="reference-lab-strategy-body"' in html
             assert 'id="reference-lab-outcomes-table"' in html
+            assert 'id="reference-lab-equity-chart"' in html
+            assert 'id="reference-lab-decisions-table"' in html
+            assert 'id="reference-lab-orders-table"' in html
             assert "/assets/observability.js" in html
             assert response.headers["Content-Security-Policy"].find("script-src 'self'") >= 0
 
@@ -159,6 +163,9 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
             assert "renderCandidateRows" in js
             assert "showCandidateDetail" in js
             assert "renderReferenceLab" in js
+            assert "renderReferenceEquity" in js
+            assert "renderReferenceDecisions" in js
+            assert "renderReferenceOrders" in js
             assert "setPhase19LocalRefreshInterval" in js
             assert "phase18-input-checklist" in js
             assert "Every 5 seconds" in js
@@ -182,6 +189,8 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
             assert ".pipeline-grid" in css
             assert ".reference-lab-summary-grid" in css
             assert ".reference-lab-grid" in css
+            assert ".reference-equity-chart" in css
+            assert ".reference-chart-line" in css
             assert ".candidate-tools" in css
             assert ".candidate-dialog-shell" in css
             assert ".readiness-checklist" in css

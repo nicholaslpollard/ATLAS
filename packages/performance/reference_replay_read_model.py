@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
+from collections import deque
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
+
+from pydantic import BaseModel
 
 from packages.backtesting.reference_portfolio_policy import (
     REFERENCE_PORTFOLIO_BROKER_WRITES,
@@ -12,16 +16,26 @@ from packages.backtesting.reference_portfolio_policy import (
     reference_portfolio_policy_fingerprint,
 )
 from packages.core.settings import AtlasSettings
-from packages.schemas.reference_portfolio import REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION
+from packages.schemas.reference_portfolio import (
+    REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION,
+    ReferencePortfolioDecision,
+    ReferencePortfolioEquityPoint,
+    ReferencePortfolioPositionOutcome,
+    ReferenceSimulatedOrderEvent,
+)
 
 
 REFERENCE_REPLAY_READ_MODEL_CONTRACT_VERSION = (
-    "reference-replay-read-model-v1-latest-summary-recent-outcomes-read-only"
+    "reference-replay-read-model-v2-hash-bound-operator-drilldown-read-only"
 )
 _MAX_SUMMARY_BYTES = 2 * 1024 * 1024
 _MAX_JSONL_BYTES = 32 * 1024 * 1024
+_RECENT_DECISION_LIMIT = 50
+_RECENT_ORDER_LIMIT = 50
 _RECENT_OUTCOME_LIMIT = 25
 _EQUITY_TAIL_LIMIT = 120
+_EXPECTED_ARTIFACTS = 4
+_ModelT = TypeVar("_ModelT", bound=BaseModel)
 
 
 def _base_payload(status: str) -> dict[str, object]:
@@ -41,6 +55,11 @@ def _base_payload(status: str) -> dict[str, object]:
             "paper_submits": REFERENCE_PORTFOLIO_PAPER_SUBMITS,
             "live_writes": REFERENCE_PORTFOLIO_LIVE_WRITES,
         },
+        "artifact_integrity": {
+            "expected_artifacts": _EXPECTED_ARTIFACTS,
+            "verified_artifacts": 0,
+            "all_sha256_verified": False,
+        },
     }
 
 
@@ -54,21 +73,64 @@ def _read_json(path: Path, maximum_bytes: int) -> dict[str, Any]:
     return payload
 
 
-def _read_jsonl_tail(path: Path, limit: int) -> list[dict[str, Any]]:
-    if not path.is_file():
-        return []
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _bound_artifact(
+    summary_path: Path,
+    summary: dict[str, Any],
+    metadata_field: str,
+    filename: str,
+) -> Path:
+    candidate = summary_path.with_name(filename).resolve()
+    metadata = summary.get(metadata_field)
+    if not isinstance(metadata, dict):
+        raise ValueError(f"missing artifact binding: {metadata_field}")
+    recorded_path = metadata.get("path")
+    recorded_sha = metadata.get("sha256")
+    if not isinstance(recorded_path, str) or Path(recorded_path).resolve() != candidate:
+        raise ValueError(f"artifact path binding failed: {metadata_field}")
+    if (
+        not isinstance(recorded_sha, str)
+        or len(recorded_sha) != 64
+        or any(character not in "0123456789abcdef" for character in recorded_sha)
+    ):
+        raise ValueError(f"artifact SHA-256 binding is invalid: {metadata_field}")
+    if not candidate.is_file() or _sha256_file(candidate) != recorded_sha:
+        raise ValueError(f"artifact SHA-256 mismatch: {metadata_field}")
+    return candidate
+
+
+def _read_jsonl_tail(
+    path: Path,
+    limit: int,
+    model: type[_ModelT],
+) -> list[dict[str, Any]]:
     size = path.stat().st_size
     if size < 0 or size > _MAX_JSONL_BYTES:
         raise ValueError("JSONL artifact exceeds the read-model boundary")
-    rows: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        item = json.loads(line)
-        if not isinstance(item, dict):
-            raise ValueError("JSONL row must be an object")
-        rows.append(item)
-    return rows[-limit:]
+    rows: deque[dict[str, Any]] = deque(maxlen=limit)
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            item = json.loads(line)
+            if not isinstance(item, dict):
+                raise ValueError("JSONL row must be an object")
+            rows.append(model.model_validate(item).model_dump(mode="json"))
+    return list(rows)
+
+
+def _empty_operator_rows(payload: dict[str, object]) -> None:
+    payload["recent_portfolio_decisions"] = []
+    payload["recent_simulated_orders"] = []
+    payload["recent_position_outcomes"] = []
+    payload["equity_curve_tail"] = []
 
 
 def reference_replay_read_model(settings: AtlasSettings) -> dict[str, object]:
@@ -82,8 +144,7 @@ def reference_replay_read_model(settings: AtlasSettings) -> dict[str, object]:
             "frozen DEVELOPMENT command on the machine containing the accepted lake."
         )
         payload["summary"] = None
-        payload["recent_position_outcomes"] = []
-        payload["equity_curve_tail"] = []
+        _empty_operator_rows(payload)
         return payload
 
     summary_path = summaries[-1].resolve()
@@ -104,25 +165,67 @@ def reference_replay_read_model(settings: AtlasSettings) -> dict[str, object]:
         ):
             if summary.get(field) != 0:
                 raise ValueError(f"portfolio replay authority boundary failed: {field}")
+        decisions_path = _bound_artifact(
+            summary_path,
+            summary,
+            "decision_records",
+            "portfolio_decisions.jsonl",
+        )
+        orders_path = _bound_artifact(
+            summary_path,
+            summary,
+            "simulated_order_records",
+            "portfolio_simulated_orders.jsonl",
+        )
+        outcomes_path = _bound_artifact(
+            summary_path,
+            summary,
+            "position_outcome_records",
+            "portfolio_position_outcomes.jsonl",
+        )
+        equity_path = _bound_artifact(
+            summary_path,
+            summary,
+            "equity_curve_records",
+            "portfolio_equity_curve.jsonl",
+        )
+        decisions = _read_jsonl_tail(
+            decisions_path,
+            _RECENT_DECISION_LIMIT,
+            ReferencePortfolioDecision,
+        )
+        orders = _read_jsonl_tail(
+            orders_path,
+            _RECENT_ORDER_LIMIT,
+            ReferenceSimulatedOrderEvent,
+        )
         recent = _read_jsonl_tail(
-            summary_path.with_name("portfolio_position_outcomes.jsonl"),
+            outcomes_path,
             _RECENT_OUTCOME_LIMIT,
+            ReferencePortfolioPositionOutcome,
         )
         equity_tail = _read_jsonl_tail(
-            summary_path.with_name("portfolio_equity_curve.jsonl"),
+            equity_path,
             _EQUITY_TAIL_LIMIT,
+            ReferencePortfolioEquityPoint,
         )
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
         payload = _base_payload("INVALID")
         payload["message"] = "Latest portfolio replay artifacts failed closed validation."
         payload["summary"] = None
-        payload["recent_position_outcomes"] = []
-        payload["equity_curve_tail"] = []
+        _empty_operator_rows(payload)
         return payload
 
     payload = _base_payload("AVAILABLE")
     payload["message"] = "Latest frozen DEVELOPMENT account replay is available read-only."
     payload["summary"] = summary
+    payload["artifact_integrity"] = {
+        "expected_artifacts": _EXPECTED_ARTIFACTS,
+        "verified_artifacts": _EXPECTED_ARTIFACTS,
+        "all_sha256_verified": True,
+    }
+    payload["recent_portfolio_decisions"] = decisions
+    payload["recent_simulated_orders"] = orders
     payload["recent_position_outcomes"] = recent
     payload["equity_curve_tail"] = equity_tail
     return payload
