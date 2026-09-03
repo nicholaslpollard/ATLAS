@@ -1,7 +1,7 @@
 # ATLAS Database Update Plan
 
 **Document type:** Living implementation and handoff plan  
-**Status:** PLANNING / PRE-MIGRATION  
+**Status:** STORAGE PREFLIGHT COMPLETE / REBUILD ORCHESTRATION NEXT  
 **Last updated:** 2026-09-03  
 **Primary objective:** Replace the active hybrid Alpaca/Massive historical market-data foundation with a clean, newly acquired Alpaca historical foundation, while retaining the current database as an isolated read-only archive until the replacement is fully accepted.
 
@@ -73,64 +73,104 @@ Existing ATLAS code may be reused when it is independently appropriate, but pers
 
 ---
 
-## 3. Storage policy and preflight requirement
+## 3. Storage policy and completed preflight
 
-### 3.1 Current operator storage
+### 3.1 Measured workstation/V1 storage
 
-At planning time the workstation has approximately:
+The read-only storage inventory completed on 2026-09-03 reported:
 
-- **476 GB total disk capacity**
-- **225 GB currently free**
+- total disk: **476.29 GiB**;
+- used: **251.23 GiB**;
+- free with V1 local: **225.06-225.07 GiB**;
+- complete ATLAS `data/` footprint: **148.80 GiB**;
+- projected free space if the entire current V1 `data/` tree is moved off the primary disk: **373.87 GiB**.
 
-If the archived current database is moved to external storage, the operator expects approximately **400 GB free** on the primary disk.
+Major existing V1 components were:
 
-These values are planning inputs only and must be re-measured immediately before migration.
+- `derived/features`: **41.00 GiB**;
+- `provider/massive`: **29.41 GiB**;
+- `canonical/stocks`: **25.89 GiB**;
+- `raw/minute_aggs_v1`: **22.68 GiB**;
+- `derived/historical_backfill`: **9.40 GiB**;
+- `derived/bars`: **7.43 GiB**.
 
-### 3.2 Full-size estimate required before starting the rebuild
+The earlier operator estimate of approximately 400 GB free after moving V1 was directionally close, but the measured result is approximately **373.9 GiB** unless additional non-ATLAS files are moved/removed.
 
-Before the long-running rebuild command is authorized, ATLAS must estimate whether the **entire intended replacement generation fits**, including 1-Day and 1-Minute data, without relying on later space optimizations to make the plan work.
+### 3.2 Alpaca 1-Minute empirical sizing result
 
-The preflight should conservatively account for peak simultaneous usage from:
+The bounded Alpaca SIP `1Min`, `adjustment=raw`, `asof=-` storage preflight completed on 2026-09-03 without modifying V1 or configuration files.
 
-- archived V1 data remaining on the primary disk;
-- new raw/staging acquisition files if retained by the acquisition design;
-- new canonical native 1-Day data;
-- new canonical native 1-Minute data;
-- manifests/checkpoints;
-- temporary build artifacts;
-- corporate-action/identity artifacts required after base acquisition;
-- derived higher timeframes required by ATLAS;
-- regenerated features/state required for acceptance;
-- validation/comparison outputs;
-- a free-space safety reserve.
+Sample evidence:
 
-The first estimate should reflect the intended straightforward storage design. Do not make the project appear to fit only by introducing aggressive compression, pruning, data-type reduction, selective-universe reduction, or deletion of required data.
+- daily weighting range: **2016-01-04 through 2026-08-21**;
+- canonical daily rows used for weighting: **25,341,368**;
+- sample years: **2016-2026**;
+- liquidity strata: five buckets from `<$250K` through `$25M+` median daily dollar volume;
+- sample per bucket/year: **6**;
+- sample windows executed: **32**;
+- Alpaca response pages: **120**;
+- sampled minute rows: **1,046,094**;
+- raw JSON sample: **98.19 MiB**;
+- gzip raw-evidence sample: **17.72 MiB**;
+- canonical-shape Zstd Parquet sample: **18.27 MiB**;
+- gzip storage density: **17.76 bytes/minute-row**;
+- Parquet storage density: **18.32 bytes/minute-row**.
 
-### 3.3 Empirical minute-data sizing
+Weighted estimate:
 
-Because full-universe 1-Minute history can be orders of magnitude larger than daily history, do not extrapolate from daily row counts alone.
+- projected native 1-minute rows: **3,781,281,073**;
+- projected native 1-minute canonical Parquet: **64.51 GiB**;
+- projected Alpaca raw 1-minute gzip evidence: **62.55 GiB**;
+- native 1-day planning allowance: **755.93 MiB**;
+- inferred native 1-minute canonical scale versus V1: **2.555x**.
 
-Before the full build, use a representative Alpaca 1-Minute sample to measure at minimum:
+### 3.3 Conservative full-package estimate
 
-- rows returned;
-- compressed bytes written using the intended normal Parquet/schema implementation;
-- bytes per row;
-- symbol/session coverage;
-- expected historical universe size by period;
-- estimated final canonical 1-Minute size;
-- estimated peak migration footprint.
+The intentionally non-optimized planning model, which scales normal ATLAS layers rather than making V2 artificially compact, produced:
 
-The estimate must be written to a durable preflight report.
+- native/raw/daily/derived/features persistent planning: **270.07 GiB**;
+- ancillary allowance (15%): **40.51 GiB**;
+- transient build/validation reserve: **35.00 GiB**;
+- estimated V2 migration peak: **345.58 GiB**;
+- separate post-build free-space reserve: **30.00 GiB**;
+- total free capacity required under this conservative policy: approximately **375.58 GiB**.
 
-### 3.4 Storage decision
+Disk verdicts:
 
-Use the following decision policy:
+- **V1 retained locally:** 225.07 GiB free -> **NO-GO**;
+- **V1 moved externally:** 373.87 GiB free -> **NO-GO under the conservative full-package rule**.
 
-- If the complete replacement plus V1 archive and safety reserve fit comfortably with the current free space, keep V1 on the primary disk during migration.
-- If the complete replacement does not fit comfortably while V1 remains local, move the sealed V1 archive to external storage **before** starting the full rebuild.
-- If approximately 400 GB free still cannot safely accommodate the projected peak footprint, stop before the full rebuild and revise the physical-storage plan. Do not begin a job expected to exhaust the disk.
+The second NO-GO is extremely close: approximately **1.71 GiB short** of the modeled peak plus the 30 GiB safety reserve. This must not be rounded into a GO because the 3.78-billion-row result is an empirical estimate, not an exact final byte count. A margin of only ~1.7 GiB is operationally unsafe.
 
-No V1 deletion is authorized merely to make the first estimate look better. Deletion of old data is a post-promotion decision unless the operator explicitly approves another action after reviewing the storage evidence.
+### 3.4 Important distinction: native base build versus complete post-base V2 package
+
+The operator explicitly wants the long-running initial job to build both native bases completely first, and only then proceed with additional enrichment/validation work.
+
+The measured native-base storage is much smaller than the conservative complete-package projection:
+
+- projected native 1-minute canonical: **64.51 GiB**;
+- projected raw 1-minute evidence: **62.55 GiB**;
+- projected native 1-day allowance: **~0.74 GiB**;
+- combined native base + raw evidence planning: approximately **127.8 GiB**, before small manifests/checkpoints and transient partition-building overhead.
+
+Therefore:
+
+- the complete native 1d + 1m source/canonical base is expected to fit after V1 is moved externally with substantial headroom;
+- it may even fit in the current 225 GiB free space, but keeping V1 local is **not** the recommended launch configuration because it leaves much less failure/retry/temporary headroom and does not solve the later complete-package constraint;
+- the safest current architecture is to move/seal V1 externally before launching the full native base rebuild;
+- after both native bases are complete, derived bars/features/enrichment can be built in controlled post-base phases while exact V2 sizes replace the preflight estimates.
+
+This staged execution does **not** weaken the final V2 requirement. V2 is not promoted until the complete required package and validation pass. It only respects the operator's requested order: build both authoritative native bases first, then add/validate the rest.
+
+### 3.5 Storage decision going forward
+
+The project should not launch the full final V2 package on the primary disk with only the measured 373.87 GiB free and assume it will fit. To meet the operator's requirement that V2 fit in totality without relying on space-efficiency tricks, one of the following must be true before the post-base full package is completed:
+
+1. free additional primary-disk capacity beyond the 373.87 GiB projection (targeting a meaningful margin, not merely 1-2 GiB); or
+2. use a larger/new primary data volume for V2; or
+3. after the native bases are built and exact storage is known, re-run the full-package projection and demonstrate that actual storage is materially below the conservative estimate.
+
+No V1 deletion is authorized merely to make the estimate look better. V1 may be moved to external/archive storage as already planned.
 
 ---
 
@@ -426,59 +466,57 @@ No automatic deletion is part of the migration.
 
 ## 13. Immediate next implementation steps
 
-The next database-migration work should be limited to preflight and orchestration preparation. Do not start the full historical download until the size estimate is accepted.
+Storage inventory and empirical 1-minute sizing are now complete. The next database-migration work is orchestration preparation; do not start the historical download until the operator has moved/sealed V1 externally or otherwise provided the intended build headroom.
 
-### Step A — Repository/current-state reconciliation
+### Step A — COMPLETE: repository/current-state reconciliation
 
-Before coding, re-read:
+The migration plan, accepted historical backfill/audit code, and current data paths were reviewed before the preflight tooling was added.
 
-- this document;
-- `docs/current_status.md`;
-- `docs/roadmap.md`;
-- current README/data-provider documentation;
-- accepted historical backfill/audit scripts and evidence;
-- current active Review/Product branch changes that may affect data paths.
+### Step B — COMPLETE: read-only storage inventory
 
-### Step B — Read-only storage inventory
+Measured V1 and disk footprint are recorded in Section 3.
 
-Create/run a read-only tool that reports exact bytes by major V1 category and current disk free space.
+### Step C — COMPLETE: Alpaca 1-Minute empirical scale sample
 
-At minimum report:
+Measured provider row density and normal raw/Parquet storage are recorded in Section 3.
 
-- raw/source market data;
-- canonical daily;
-- canonical minute/intraday;
-- derived timeframes;
-- features;
-- DuckDB/state databases;
-- research/audit caches;
-- total V1 footprint;
-- current free bytes.
+### Step D — COMPLETE: conservative peak-space projection
 
-### Step C — Alpaca 1-Minute empirical scale sample
+The native base is projected to fit comfortably with V1 external. The complete non-optimized V2 package misses the measured post-V1 internal capacity by approximately 1.71 GiB after the required 30 GiB reserve, so it is not accepted as a final whole-package GO yet.
 
-Create/run a bounded read-only/sample acquisition that does not modify V1. Write to an isolated temporary V2/preflight location and measure normal on-disk size using the intended schema/Parquet implementation.
+### Step E — NEXT: implement/test resumable V2 base rebuild orchestrator
 
-### Step D — Peak-space projection
+Requirements:
 
-Produce a durable report estimating:
+- entirely new V2 namespace;
+- fresh Alpaca SIP source acquisition;
+- native 1d acquisition/build followed automatically by native 1m acquisition/build;
+- resumable/checkpointed partition units;
+- bounded retry/backoff;
+- permanent failure accounting;
+- disk-floor monitoring;
+- no V1 writes or fallback;
+- no manual gate between 1d and 1m;
+- bounded end-to-end rehearsal before the real run.
 
-- new daily size;
-- new minute size;
-- additional required V2 artifacts;
-- expected temporary peak;
-- required safety reserve;
-- peak with V1 retained locally;
-- peak with V1 moved externally;
-- GO/NO-GO recommendation.
+### Step F — operator storage preparation
 
-### Step E — Only after storage GO
+Before the real base run, move/seal V1 externally (recommended) and re-run free-space verification. The base-run precheck should refuse to launch if free space is below its frozen base-build threshold.
 
-Implement/test the resumable top-level V2 rebuild orchestrator and a small end-to-end bounded sample.
+### Step G — full operator base run
 
-### Step F — Full operator run
+Provide one command that begins the complete base rebuild and automatically proceeds through both native 1-Day and native 1-Minute construction.
 
-Provide the operator one command that begins the complete base rebuild and automatically proceeds through both native 1-Day and native 1-Minute construction.
+### Step H — exact post-base remeasurement and enrichment
+
+After both bases are built:
+
+1. measure actual raw/canonical V2 bytes and row counts;
+2. replace the estimated 3.78B-row storage projection with exact measurements;
+3. re-project the final derived/features/enrichment footprint;
+4. confirm sufficient final-package space;
+5. build corporate actions/PIT identity, derived bars, features, validations, and acceptance artifacts;
+6. promote only after the full package passes.
 
 ---
 
@@ -505,8 +543,14 @@ while keeping the research/product work moving and avoiding a return to indefini
 - New generation must be built fresh from Alpaca; V1 is validation-only.
 - New generation is expected to include both native 1-Day and native 1-Minute bases before base construction is considered complete.
 - Full-run orchestration should not stop for a manual gate between daily and minute construction.
-- Full projected storage footprint must be determined before the full rebuild starts.
-- Initial sizing should not depend on aggressive space-efficiency changes.
-- Current planning free space is ~225 GB; moving V1 externally is expected to increase free space to ~400 GB if needed.
-- Post-base corporate actions, identity, higher timeframes, features, and final validation may be completed after both native bases have been constructed.
+- Initial sizing must not depend on aggressive space-efficiency changes.
+- Read-only inventory measured V1 at 148.80 GiB and primary-disk free space at 225.06-225.07 GiB.
+- Moving the full V1 `data/` tree externally is projected to raise primary-disk free space to 373.87 GiB.
+- Empirical Alpaca SIP 1-minute sampling measured 1,046,094 minute rows and estimated the full historical minute base at 3,781,281,073 rows.
+- Estimated native 1-minute canonical storage is 64.51 GiB; raw gzip evidence is 62.55 GiB; native 1-day allowance is ~0.74 GiB.
+- Conservative non-optimized full-package peak is 345.58 GiB plus a separate 30 GiB free-space reserve, requiring approximately 375.58 GiB.
+- V1-local is a clear NO-GO for the complete package.
+- V1-external at 373.87 GiB is also a formal NO-GO for the complete package because it is ~1.71 GiB below the conservative requirement and has effectively no estimation-error margin.
+- The native 1d+1m base itself is expected to fit comfortably once V1 is moved externally, so the migration will honor the requested base-first execution order and remeasure exact storage before post-base enrichment.
+- Post-base corporate actions, identity, higher timeframes, features, and final validation remain mandatory before promotion.
 - Webull remains the intended primary PAPER/LIVE broker and live/current streaming path is kept architecturally separate from historical Alpaca acquisition, subject to final verification against the active broker/data architecture before implementation.
