@@ -131,6 +131,19 @@ with a desired trade.
   passed. Daily close-derived signals now carry the exact XNYS-close availability
   clock and the replay consumes only the hash-bound same-close market regime that
   was knowable before next-open entry. Ticker/sector regime remain unavailable.
+- Alpaca SIP V2 is now the immediate data-foundation priority. Empirical sizing
+  estimates 3.781B native minute rows, 64.51 GiB canonical minute Parquet, 62.55
+  GiB compressed raw evidence, and a conservative 375.58 GiB peak-plus-reserve
+  requirement. The operator chose precise local V1 historical-data decommissioning,
+  not a local V1 archive. The first rebuild-safety package provides a generation-
+  isolated `data/v2_build/alpaca_sip_v2` layout, atomic run state, a 30 GiB reserve
+  guard, and an allowlisted content-hash-bound V1 decommission plan. It deliberately
+  preserves live, model, unrelated research, repository, and accepted evidence
+  state. The explicit `--decommission-v1-only` mode may now reclaim space and stop,
+  but requires the plan-derived confirmation token and retains a completion/partial-
+  failure receipt. Native acquisition/canonicalization is not yet implemented, so
+  this mode intentionally leaves ATLAS without a historical database until V2 is
+  built. The combined delete-and-rebuild mode remains code-locked.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live
@@ -434,7 +447,9 @@ When historical data becomes materially questionable:
 1. investigate root cause and reconcile local files, transformations, provider
    semantics, and authoritative sources;
 2. repair V1 only when the economic meaning remains trustworthy;
-3. otherwise freeze and preserve V1 and its results;
+3. otherwise preserve V1 results/provenance and either freeze the persisted V1 lake
+   or, when explicitly authorized as here, decommission only its exact historical
+   namespaces through a reviewed hash-bound plan;
 4. build a separately versioned V2 with authoritative sources and explicit
    canonical rules;
 5. never substitute V2 underneath an observed experiment or describe it as the

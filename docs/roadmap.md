@@ -673,14 +673,17 @@ When data is materially questionable:
 
 1. perform a serious root-cause/reconciliation investigation covering local
    corruption, transformations, provider semantics, and authoritative limitations;
-2. if V1 cannot remain economically trustworthy, freeze V1, results, hashes, and
-   provenance;
+2. if V1 cannot remain economically trustworthy, preserve its results, hashes, and
+   provenance; persisted V1 historical files may be decommissioned only under an
+   explicit operator decision and exact fail-closed deletion manifest;
 3. build a clean separately named V2 from the best authoritative sources and
    documented canonical rules;
 4. do not substitute V2 beneath an observed experiment or pretend it is the same
    experiment;
 5. rerun only as a new prospectively declared experiment; and
-6. preserve both versions for audit.
+6. preserve audit lineage and never use persisted V1 rows as V2 ancestry; retaining
+   both physical lakes is preferred but is not mandatory when precise V1
+   decommissioning has been explicitly authorized.
 
 Existing valid caches are evidence. A clean authoritative replay that reproduces a
 contradiction means purge/refetch is not a repair. Source integrity is a supporting
@@ -993,40 +996,30 @@ Every closeout reports:
 
 ## 21. Immediate next action
 
-1. On the user's machine containing the accepted lake, run the completed read-only
-   lake and regime adapters and independently confirm both source reports. The regime
-   bundle must be the exact accepted split-origin as-of date matching the replay end;
-   do not substitute a later history or implicitly rebuild it. Do not broaden V1
-   across the provider seam or retain split/gap/identity ambiguity merely to increase
-   coverage.
-2. Run all nine frozen policies and the frozen long-only RESEARCH account replay once
-   on those DEVELOPMENT rows only; record both preregistered trials and every
-   fired/rejected/counterfactual opportunity, portfolio decision, simulated order,
-   position outcome, and equity point. Do not tune a policy after its result is
-   visible. The implemented command is
-   `scripts/run_a33_b33_reference_development.py`; use `--source-only` for the
-   lake and regime source proofs, then run without that flag once both reports are
-   accepted.
-3. Report honest independent gross/net results, account-level return/drawdown/costs,
-   admission rejections, and the available predeclared condition slices,
-   including zero-trade, negative, and underpowered outcomes. Market slices may use
-   only the exact-as-of same-close join; ticker and sector fields must remain
-   `UNAVAILABLE`. This independent-strategy replay is evidence input, not authority
-   promotion.
-4. In parallel or immediately after that replay, implement and accept **A34.5
-   Operator Live Observability** on the current Phase19 control plane. Connect the
-   authoritative decision/order/position/account/health read models and automatic
-   browser refresh/update path, prove stale/unknown state handling, and show the
-   complete position/P&L/reason/order/exit lifecycle. This must be complete before
-   any Operational PAPER broker submission is permitted.
-5. Proceed with accepted ticker/sector/correlation context only when its PIT evidence
-   is available, then move the product to A35 Operational PAPER **only after A34.5
-   has passed**. Do not begin another difficult regulatory source or unlimited
-   indicator search; do not consume the master protected holdout; do not enable
-   qualifying PAPER or LIVE.
-6. Keep the frozen A33/B33 validator, focused tests, full repository suite, retained
-   scientific validators, cross-platform exact-head CI, and same-commit updates to
-   both living documents mandatory for every implementation package.
+1. The operator may reclaim space now with the explicit database-only V1
+   decommission mode. It produces an exact allowlisted SHA-256-bound manifest,
+   requires its derived confirmation token, rejects symlinks/path drift, preserves
+   live/model/unrelated-research state, retains a completion or partial-failure
+   receipt, and then stops. It does not acquire bars, identities, or corporate
+   actions; the combined delete-and-rebuild path remains code-locked.
+2. Implement deterministic native `1Day` then native `1Min` acquisition units with
+   raw response evidence, request-policy fingerprints, checksums, retries, pagination,
+   checkpoints, and restart-safe idempotency. No V1 persisted row may fill a V2 gap.
+3. Build V2 PIT identity/lifecycle and corporate-action layers covering splits,
+   reverse splits, dividends, symbol/name changes, mergers, delistings, and spin-offs;
+   ticker text alone must never establish identity.
+4. Canonicalize and validate each base independently, remeasure actual disk use, then
+   allow derived bars/features only if the phase-specific peak plus reserve passes.
+   Promotion is an explicit config/path switch after full acceptance, never a merge
+   into V1 paths.
+5. After the V2 foundation is accepted, run the nine frozen practitioner policies on
+   DEVELOPMENT data and continue A34.5/A35 Product work. Database work does not grant
+   historical, PAPER, or LIVE authority; protected reads remain zero and LIVE stays
+   disabled. The retained A34 contract continues to treat ticker and sector regime
+   context as unavailable rather than guessing labels.
+6. Keep focused tests, the full repository suite, retained scientific validators,
+   cross-platform exact-head CI, and same-commit updates to both living documents
+   mandatory for every package.
 
 The destination is concrete: open the GUI, see versioned strategies operating,
 watch candidates become or fail to become trades, see positions and P&L change,
