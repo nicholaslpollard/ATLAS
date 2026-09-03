@@ -10,6 +10,7 @@ from packages.core.enums import LiveFreshness
 from packages.core.settings import AtlasSettings
 from packages.data.paths import MarketDataPaths
 from packages.execution.phase15_policy import PHASE15_MAX_QUOTE_AGE_SECONDS
+from packages.schemas.discovery_score import DiscoveryDirection
 from packages.schemas.execution import ExecutionOutcome
 from packages.schemas.execution_attempt import ExecutionAttemptRecord
 from packages.schemas.live_market import LiveStateSnapshot
@@ -220,12 +221,16 @@ class PaperDashboardService:
             unrealized_pnl: float | None = None
             unrealized_return: float | None = None
             if mark is not None:
-                if intent.direction.value == "BULLISH":
+                if intent.direction == DiscoveryDirection.BULLISH:
                     mark_price = float(mark["bid"])
                     delta = mark_price - order.average_fill_price
-                else:
+                elif intent.direction == DiscoveryDirection.BEARISH:
                     mark_price = float(mark["ask"])
                     delta = order.average_fill_price - mark_price
+                else:
+                    raise PaperDashboardError(
+                        f"unsupported marked-position direction: {intent.direction.value}"
+                    )
                 unrealized_pnl = delta * order.filled_quantity
                 unrealized_return = delta / order.average_fill_price
             rows.append(
