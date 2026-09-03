@@ -39,4 +39,4 @@ jobs:
       - name: Validate A33 B33 frozen reference foundation
         run: python scripts/validate_a33_b33_reference_foundation.py
       - name: Run focused reference strategy tests
-        run: python -m pytest -q tests/unit/test_a33_b33_foundations.py tests/unit/test_reference_strategy_policy.py tests/unit/test_reference_daily_features.py tests/unit/test_reference_strategy_runner.py tests/unit/test_strategy_trial_ledger.py tests/unit/test_phase16_status_api.py
+        run: python -m pytest -q tests/unit/test_a33_b33_foundations.py tests/unit/test_reference_strategy_policy.py tests/unit/test_reference_daily_features.py tests/unit/test_reference_lake_adapter.py tests/unit/test_reference_strategy_runner.py tests/unit/test_strategy_trial_ledger.py tests/unit/test_phase16_status_api.py

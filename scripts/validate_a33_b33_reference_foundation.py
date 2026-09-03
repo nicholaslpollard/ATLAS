@@ -31,6 +31,16 @@ def main() -> int:
         REFERENCE_STRATEGY_RUNNER_LIVE_WRITES,
         REFERENCE_STRATEGY_RUNNER_PAPER_SUBMITS,
     )
+    from packages.backtesting.reference_lake_adapter import (
+        REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION,
+        REFERENCE_LAKE_BROKER_WRITES,
+        REFERENCE_LAKE_DEVELOPMENT_END,
+        REFERENCE_LAKE_LIVE_WRITES,
+        REFERENCE_LAKE_PAPER_SUBMITS,
+        REFERENCE_LAKE_PROTECTED_RETURN_READS,
+        REFERENCE_LAKE_PROVIDER_SEAM_START,
+        REFERENCE_LAKE_PROVIDER_WRITES,
+    )
     from packages.features.feature_registry import CORE_FEATURE_REGISTRY
     from packages.features.reference_daily import (
         REFERENCE_DAILY_FEATURE_FINGERPRINT,
@@ -106,6 +116,25 @@ def main() -> int:
         raise AssertionError("master protected start changed")
     if PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END.isoformat() != "2026-08-11":
         raise AssertionError("master protected end changed")
+    if not REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION.endswith(
+        "massive-development-split-free-identity-exact"
+    ):
+        raise AssertionError("reference lake adapter contract drifted")
+    if REFERENCE_LAKE_PROVIDER_SEAM_START.isoformat() != "2021-08-16":
+        raise AssertionError("reference lake Massive seam boundary changed")
+    if REFERENCE_LAKE_DEVELOPMENT_END.isoformat() != "2026-05-11":
+        raise AssertionError("reference lake DEVELOPMENT boundary changed")
+    if any(
+        value != 0
+        for value in (
+            REFERENCE_LAKE_PROTECTED_RETURN_READS,
+            REFERENCE_LAKE_PROVIDER_WRITES,
+            REFERENCE_LAKE_BROKER_WRITES,
+            REFERENCE_LAKE_PAPER_SUBMITS,
+            REFERENCE_LAKE_LIVE_WRITES,
+        )
+    ):
+        raise AssertionError("reference lake adapter gained protected or external authority")
 
     runner_text = _read("packages/backtesting/reference_strategy_runner.py")
     runner_tree = ast.parse(runner_text)
@@ -126,6 +155,36 @@ def main() -> int:
     for token in ("submit_order", "place_order", "read_parquet", "forward_return"):
         if token in runner_text:
             raise AssertionError(f"reference runner gained forbidden outcome/trading token: {token}")
+
+    adapter_text = _read("packages/backtesting/reference_lake_adapter.py")
+    adapter_tree = ast.parse(adapter_text)
+    adapter_imports = {
+        node.module or ""
+        for node in ast.walk(adapter_tree)
+        if isinstance(node, ast.ImportFrom)
+    }
+    adapter_forbidden_imports = sorted(
+        name
+        for name in adapter_imports
+        if name.startswith("packages.providers")
+        or name.startswith("packages.brokers")
+        or name.startswith("packages.execution")
+    )
+    if adapter_forbidden_imports:
+        raise AssertionError(
+            "reference lake adapter imported provider/broker execution: "
+            f"{adapter_forbidden_imports}"
+        )
+    for token in (
+        "submit_order",
+        "place_order",
+        "atomic_write_text",
+        ".write_text(",
+        "COPY (",
+        "CREATE TABLE",
+    ):
+        if token in adapter_text:
+            raise AssertionError(f"reference lake adapter gained mutation token: {token}")
 
     read_model = reference_strategy_catalog_read_model()
     if read_model["family_count"] != 6 or read_model["strategy_count"] != 9:
@@ -154,12 +213,38 @@ def main() -> int:
             _require(text, fingerprint, f"{path} A33/B33 frozen fingerprint")
         _require(text, "nine direction-specific", f"{path} catalog count")
         _require(text, "protected return rows read: **0**", f"{path} protected boundary")
+        _require(
+            text,
+            REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION,
+            f"{path} reference lake adapter contract",
+        )
 
     workflow = _read(".github/workflows/a33-b33-reference-strategy-tests.yml")
     _require(workflow, "persist-credentials: false", "focused workflow credential boundary")
     _require(workflow, "validate_a33_b33_reference_foundation.py", "focused validator step")
     _require(workflow, "test_a33_b33_foundations.py", "accepted PR 45 foundation tests")
     _require(workflow, "test_reference_strategy_runner.py", "focused runner tests")
+    _require(workflow, "test_reference_lake_adapter.py", "focused lake adapter tests")
+
+    development_command = _read("scripts/run_a33_b33_reference_development.py")
+    _require(
+        development_command,
+        "--source-only",
+        "DEVELOPMENT command source-only preflight mode",
+    )
+    _require(
+        development_command,
+        "performance_outcomes_opened=performance_opened",
+        "DEVELOPMENT command trial outcome-access record",
+    )
+    registration = development_command.index(
+        'print(f"  trial registered before performance: {registration_id}")'
+    )
+    outcome_run = development_command.index(
+        "run = ReferenceStrategyHistoricalRunner().run(adapted.bars)"
+    )
+    if registration >= outcome_run:
+        raise AssertionError("DEVELOPMENT outcome run precedes its trial registration")
 
     print("ATLAS A33/B33 reference strategy foundation contracts: PASS")
     print(f"- policy fingerprint: {EXPECTED_POLICY_FINGERPRINT}")
@@ -168,6 +253,8 @@ def main() -> int:
     print("- six families / nine direction-specific policies remain RESEARCH_REPLAY only")
     print("- accepted Phase 11 registry/families, PR 45 seed, and 33-feature core are unchanged")
     print("- master protected window is rejected; protected return reads remain zero")
+    print("- post-seam Massive DEVELOPMENT adapter is read-only and excludes split/gap ambiguity")
+    print("- DEVELOPMENT command registers the frozen trial before opening performance")
     print("- provider, broker, PAPER, and LIVE writes remain zero")
     return 0
 

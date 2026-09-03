@@ -100,6 +100,9 @@ with a desired trade.
 - A33/B33 foundation implementation is complete and protected by its exact-head
   acceptance workflow. It has not opened ATLAS historical performance, changed
   strategy authority, or submitted any provider, broker, PAPER, or LIVE mutation.
+- The first trusted-lake adapter is implemented for the Massive-only post-seam
+  DEVELOPMENT interval. It remains source-only in this repository: no historical
+  strategy result has been created or inspected here.
 - The former Phase39 LIVE numbering is retained: **Phase39** remains Controlled
   LIVE Activation and is still protected by all preceding evidence and authority
   gates.
@@ -132,8 +135,9 @@ Important limitations:
   conditional, walk-forward strategy performance or calibrated probability.
 - A provider-free independent-strategy runner, condition-sliced opportunity/outcome
   records, append-only strategy-trials ledger, and read-only catalog API now exist.
-  A trusted-lake adapter, account portfolio replay, selector, strategy-management
-  UI, and complete operator product are not yet accepted.
+  A read-only trusted-lake adapter now supplies its exact input contract. Account
+  portfolio replay, selector, strategy-management UI, and the complete operator
+  product are not yet accepted.
 - PostgreSQL and the root Docker deployment remain historical scaffolds, not an
   accepted operational database or deployment.
 
@@ -158,7 +162,9 @@ foundation implements:
    and direction without mining sparse condition combinations;
 7. a read-only product/control-plane catalog view and append-only trials ledger;
 8. proof that these research baselines cannot become PAPER or LIVE
-   authority accidentally.
+   authority accidentally; and
+9. a read-only adapter from accepted Massive canonical daily partitions and
+   retained identity/split evidence into the frozen runner input contract.
 
 The first six families contain nine direction-specific policy versions:
 
@@ -188,6 +194,8 @@ Frozen A33/B33 contracts:
   `a23ec27367ae540b869abc428d118241e84436719a8a543cbdbc3f3b678c69c5`;
 - daily reference-feature fingerprint:
   `26a2892a4c4bb5597d2e688e78be8cb7da4fc656872a30fe887cf60669476cb8`.
+- trusted-lake adapter contract:
+  `reference-lake-adapter-v1-massive-development-split-free-identity-exact`.
 
 All nine policies remain `RESEARCH` authority and are permitted only in
 `RESEARCH_REPLAY`. The runner accepts caller-supplied split-adjusted daily bars,
@@ -199,10 +207,40 @@ account portfolio replay and contains no empirical ATLAS result. Master
 protected return rows read: **0**; holdout consumed: **false**; broker writes:
 **0**; PAPER submits: **0**; LIVE writes: **0**.
 
-The next safe package is the trusted analytical-lake adapter and a DEVELOPMENT-only
-historical run of these frozen policies, followed by A34 portfolio replay and the
-browser replay dashboard. Any data adapter must preserve instrument identity,
-provider boundary, split-adjustment lineage, and the protected-window rejection.
+The adapter is deliberately narrower than the accepted complete daily history. V1
+uses Massive only from `2021-08-16` through at most `2026-05-11`, requires every
+requested XNYS partition, resolves exact identity without current active/delisted
+filters, rejects internal stream gaps, and excludes an entire identity if any of its
+observed tickers has a documented split in scope. Because retained canonical prices
+are unadjusted, only these factor-1-equivalent streams may be labeled
+`SPLIT_ADJUSTED`; no factor is guessed. This costs coverage but prevents false
+signals and returns. Alpaca pre-seam and split-affected streams remain deferred to a
+separately validated adjustment-capable V2.
+
+V1 does not attach historical market, sector, or ticker regime labels. The runner
+therefore records those three context fields as `UNAVAILABLE`; price/volume
+conditions such as volatility, liquidity, and direction remain available. A34 must
+join the accepted regime path with an explicit PIT contract before any regime-sliced
+result is reported as evidence.
+
+The next safe operation is one DEVELOPMENT-only historical run of all nine frozen
+policies on the user's existing trusted lake, followed by A34 portfolio replay and
+the browser replay dashboard. This repository checkout contains no market lake, so
+no empirical ATLAS result has been fabricated. Protected return rows read: **0**;
+performance opened: **false**.
+
+The accepted local command first runs the adapter, binds its source fingerprint,
+and registers the frozen trial before calculating any strategy outcome. It can stop
+after source validation or continue through the independent-strategy replay:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py --source-only
+.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py
+```
+
+The full command writes its adapter report, opportunity ledger, run summary, and
+append-only trial records under `data/derived/strategy_lab/`; it does not write to a
+provider, broker, PAPER account, or LIVE account and cannot promote authority.
 
 ## Strategy authority and PAPER/LIVE boundary
 

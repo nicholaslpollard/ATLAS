@@ -436,6 +436,8 @@ versions. Before ATLAS performance access, the frozen A33/B33 fingerprints are:
   `a23ec27367ae540b869abc428d118241e84436719a8a543cbdbc3f3b678c69c5`;
 - daily reference features:
   `26a2892a4c4bb5597d2e688e78be8cb7da4fc656872a30fe887cf60669476cb8`.
+- trusted-lake adapter:
+  `reference-lake-adapter-v1-massive-development-split-free-identity-exact`.
 
 Every version remains `PRACTITIONER_BASELINE`, `RESEARCH`, and
 `RESEARCH_REPLAY`-only. Master protected return rows read: **0**; holdout consumed:
@@ -708,8 +710,8 @@ tests, retained scientific facts, and zero accidental PAPER/LIVE authority. It a
 produces the first honest historical reports; each strategy may pass, fail, or remain
 underpowered independently.
 
-**Implementation status (2026-09-03): reference foundation complete; empirical run
-not started.** The separate catalog contains six families and nine
+**Implementation status (2026-09-03): reference foundation and first trusted-lake
+adapter complete; empirical run not started.** The separate catalog contains six families and nine
 direction-specific policies. The accepted Phase11 eight-rule registry and accepted
 33-feature core remain unchanged. PR #45 merged the accepted phase-start seed and
 opportunity-event contracts as
@@ -723,8 +725,22 @@ counterfactual records; an atomic append-only hash-chain ledger records strategy
 trials; and the control plane exposes the catalog read-only at
 `/api/v1/strategies/reference`. The runner hard-rejects the retained master
 protected dates before feature work and has zero provider/broker/PAPER/LIVE writes.
-This foundation does not yet contain a trusted-lake adapter, an account portfolio
-replay, or an ATLAS performance result.
+The read-only adapter contract
+`reference-lake-adapter-v1-massive-development-split-free-identity-exact` scans
+accepted canonical partitions without provider calls or writes. Its V1 scope is the
+Massive-only DEVELOPMENT interval `2021-08-16..2026-05-11`: exact XNYS partition
+and regular-open semantics, retained reference metadata no later than the run end,
+authoritative-or-unique identity, no current active/delisted filter, and complete
+split-report/hash reconciliation. Because accepted canonical bars are unadjusted,
+V1 excludes every split-touched identity and every stream with an internal session
+gap; retained factor-1 streams are exactly equivalent to split-adjusted prices.
+Pre-seam Alpaca and split-affected instruments require a later validated V2 rather
+than guessed factors. V1 does not join historical market/sector/ticker regime
+labels, so those condition fields remain `UNAVAILABLE`; A34 must add an explicit
+PIT-safe regime-context join before regime slices are interpreted. The current
+checkout has no market lake, so no empirical run or ATLAS performance result has
+been produced. An account portfolio replay also does not yet exist. Protected return rows read: **0**; performance opened:
+**false**; provider/broker/PAPER/LIVE writes: **0**.
 
 ### A34 — Signal-to-Trade Construction, Portfolio Replay, and Replay Dashboard
 
@@ -820,15 +836,19 @@ Every closeout reports:
 
 ## 21. Immediate next action
 
-1. Build one read-only adapter from the trusted analytical lake into the frozen
-   daily input contract. Fail closed on PIT identity, provider-boundary,
-   split-adjustment, missing-session, or lineage ambiguity.
-2. Run all nine frozen policies once on DEVELOPMENT data only; record the trial and
+1. On the user's machine containing the accepted lake, run the completed read-only
+   adapter and independently confirm its source report. Do not broaden V1 across the
+   provider seam or retain split/gap/identity ambiguity merely to increase coverage.
+2. Run all nine frozen policies once on those DEVELOPMENT rows only; record the trial and
    every fired/rejected/counterfactual opportunity. Do not tune a policy after its
-   result is visible.
-3. Report honest gross/net results and predeclared condition slices, including
-   zero-trade, negative, and underpowered outcomes. This independent-strategy replay
-   is evidence input, not an account backtest or authority promotion.
+   result is visible. The implemented command is
+   `scripts/run_a33_b33_reference_development.py`; use `--source-only` for the
+   adapter proof, then run without that flag once the source report is accepted.
+3. Report honest gross/net results and the available predeclared condition slices,
+   including zero-trade, negative, and underpowered outcomes. Market, sector, and
+   ticker regime fields must remain `UNAVAILABLE` until the PIT-safe A34 context join
+   exists. This independent-strategy replay is evidence input, not an account
+   backtest or authority promotion.
 4. Proceed in parallel to A34 account portfolio replay and the browser replay
    dashboard. Do not begin another difficult regulatory source or unlimited
    indicator search; do not consume the master protected holdout; do not enable

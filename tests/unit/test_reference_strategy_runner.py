@@ -9,6 +9,7 @@ from packages.backtesting.reference_strategy_runner import (
     ProtectedMasterWindowError,
     ReferenceStrategyHistoricalRunner,
     plan_reference_trade,
+    reference_input_fingerprint,
     simulate_reference_trade,
 )
 from packages.schemas.strategy_lab import (
@@ -109,6 +110,7 @@ def test_runner_records_selected_opportunity_and_is_deterministic() -> None:
     first = runner.run(frame)
     second = runner.run(frame)
     assert first.run_fingerprint == second.run_fingerprint
+    assert first.input_fingerprint == reference_input_fingerprint(frame)
     assert first.protected_master_return_rows_read == 0
     assert first.broker_writes == first.paper_submits == first.live_writes == 0
 
