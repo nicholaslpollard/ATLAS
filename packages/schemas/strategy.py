@@ -21,6 +21,8 @@ class StrategyFamily(StrEnum):
     MOMENTUM = "momentum"
     BREAKOUT = "breakout"
     PULLBACK = "pullback"
+    MEAN_REVERSION = "mean_reversion"
+    VOLATILITY_BREAKOUT = "volatility_breakout"
 
 
 class StrategyRegimeFit(StrEnum):

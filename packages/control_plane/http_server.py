@@ -19,6 +19,7 @@ from packages.schemas.control_plane_cleanup import (
     ControlPlaneCleanupPlanConfirmationGrant,
 )
 from packages.schemas.execution import BrokerName
+from packages.strategies.read_models import reference_strategy_catalog_read_model
 
 from .action_ledger import (
     ControlPlaneActionConflict,
@@ -345,6 +346,9 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     self.atlas_server.session_guard.public_payload(),
                     extra_headers={"Set-Cookie": self.atlas_server.session_guard.cookie_header()},
                 )
+                return
+            if path == "/api/v1/strategies/reference":
+                self._send_json(HTTPStatus.OK, reference_strategy_catalog_read_model())
                 return
             if path == "/api/v1/actions":
                 records = self.atlas_server.action_ledger.records()

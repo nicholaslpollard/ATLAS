@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-02 (UTC). This roadmap and the root `README.md` are the
+**Current as of 2026-09-03 (UTC). This roadmap and the root `README.md` are the
 only living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -411,17 +411,36 @@ assumption unless lower-timeframe authoritative data resolves order.
 | ID | Setup and entry | Exit/risk | Native question |
 |---|---|---|---|
 | `ma_trend_cross_50_200_long_v1` | SMA50 crosses from at/below to above SMA200; buy next session | initial stop 2 ATR below entry; exit on reverse cross, 3 ATR trailing stop, or 126 sessions | Does slow trend transition produce positive after-cost long expectancy? |
-| `ema_pullback_20_50_long_v1` | EMA20 > EMA50; pullback reaches within 0.5 ATR of EMA20 without closing below EMA50; first close back above EMA20 enters next session | stop below pullback low or 1.5 ATR, whichever is farther but within risk cap; exit at 2.5R, close below EMA50, or 15 sessions | Does a confirmed retracement inside an uptrend resume? |
-| `macd_shift_12_26_9_v1` | MACD crosses above signal while both are below zero for LONG; mirror above zero for SHORT; next-session entry | 1.5 ATR stop; 3R target; opposite MACD cross or 20 sessions | Does momentum turn before/through broader continuation? |
+| `ema_pullback_20_50_long_v1` | EMA20 > EMA50; a 1–5-session pullback bar intersects the EMA20 ±0.5 ATR zone without closing below EMA50; the first close above EMA20 enters next session, including a one-bar touch-and-recovery | stop below pullback low or 1.5 ATR, whichever is farther but within risk cap; exit at 2.5R, close below EMA50, or 15 sessions | Does a confirmed retracement inside an uptrend resume? |
+| `macd_shift_12_26_9_long_v1` / `macd_shift_12_26_9_short_v1` | MACD crosses above signal while both are below zero for LONG; distinct SHORT version crosses below signal while both are above zero; next-session entry | 1.5 ATR stop; 3R target; opposite MACD cross or 20 sessions | Does momentum turn before/through broader continuation? |
 | `rsi_recovery_14_trend_long_v1` | close above EMA200; RSI14 was below 30 and crosses back above 30; enter next session | 2 ATR stop; exit at EMA20, RSI >= 60, or 10 sessions | Does oversold recovery inside a long trend mean-revert after costs? |
-| `donchian_breakout_20_volume_v1` | close crosses prior 20-session high for LONG (low for SHORT); relative volume20 >= 1.5; EMA50 slope agrees; next-session entry | stop at channel boundary or 2 ATR subject to risk cap; 3 ATR trail; 20-session maximum | Does range escape with participation continue? |
-| `bollinger_squeeze_breakout_20_v1` | BB width20 is at/below its trailing 126-session 10th percentile, then close crosses the corresponding outer band with relative volume >= 1.25; next-session entry | stop at BB midline or 1.5 ATR; 3R/trailing exit; 20-session maximum | Does directional escape from compression continue? |
+| `donchian_breakout_20_volume_long_v1` / `donchian_breakout_20_volume_short_v1` | close crosses the prior 20-session high for LONG or low for SHORT; relative volume20 >= 1.5; EMA50 slope agrees; next-session entry | initial stop is the closer adverse price of the channel boundary or 2 ATR; 3 ATR trail; 20-session maximum | Does range escape with participation continue? |
+| `bollinger_squeeze_breakout_20_long_v1` / `bollinger_squeeze_breakout_20_short_v1` | prior session BB width20 is at/below its trailing 126-session 10th percentile, then current close crosses the corresponding outer band with relative volume >= 1.25; next-session entry | stop at BB midline or 1.5 ATR; 2 ATR trail; 3R target; 20-session maximum | Does directional escape from compression continue? |
 
-The EMA pullback stop rule must resolve to one exact price algorithm in code before
-outcome access; “whichever is farther” may not exceed the frozen account-risk cap or
-silently reject losing histories. The same applies symmetrically to short policies,
-including borrow/locate and asymmetric costs. Long and short are distinct versions,
-not automatic mirrors.
+The code resolves the EMA pullback as a bounded 1–5-session pullback and first
+EMA20 recovery. Its initial stop is the farther adverse price of the pullback
+extreme or 1.5 ATR; the opportunity is risk-rejected when that stop exceeds the
+frozen 10% maximum stop distance rather than silently tightening the stop. The
+Donchian stop is the closer adverse price of the channel boundary or 2 ATR. The
+Bollinger trigger requires prior-session compression and uses a 2 ATR trail. The
+same controls apply symmetrically to short policies, including later borrow/locate
+and asymmetric executable costs. Long and short are distinct versions, not
+automatic mirrors.
+
+The six materially different families comprise nine direction-specific policy
+versions. Before ATLAS performance access, the frozen A33/B33 fingerprints are:
+
+- reference strategy policy:
+  `00a4dc4f50cc9300668f54e7785aa6d75c9013caffc20098eabe4400cbee397e`;
+- strategy authority:
+  `6fa57f15e5d8945e9bcd429018403e32ca8784de2d8a0f260e39c2a1242f337d`;
+- daily reference features:
+  `26a2892a4c4bb5597d2e688e78be8cb7da4fc656872a30fe887cf60669476cb8`.
+
+Every version remains `PRACTITIONER_BASELINE`, `RESEARCH`, and
+`RESEARCH_REPLAY`-only. Master protected return rows read: **0**; holdout consumed:
+**false**; provider writes: **0**; broker writes: **0**; PAPER submits: **0**; LIVE
+writes: **0**.
 
 ### Later intraday reference pack
 
@@ -689,6 +708,19 @@ tests, retained scientific facts, and zero accidental PAPER/LIVE authority. It a
 produces the first honest historical reports; each strategy may pass, fail, or remain
 underpowered independently.
 
+**Implementation status (2026-09-03): reference foundation complete; empirical run
+not started.** The separate catalog contains six families and nine
+direction-specific policies. The accepted Phase11 eight-rule registry and accepted
+33-feature core remain unchanged. A separate daily feature overlay implements exact
+transition features; a provider-free runner performs independent-strategy replay
+from caller-supplied bars; versioned opportunity/run schemas retain rejected,
+selected, and overlap-suppressed counterfactual records; an atomic append-only
+hash-chain ledger records strategy trials; and the control plane exposes the catalog
+read-only at `/api/v1/strategies/reference`. The runner hard-rejects the retained
+master protected dates before feature work and has zero provider/broker/PAPER/LIVE
+writes. This foundation does not yet contain a trusted-lake adapter, an account
+portfolio replay, or an ATLAS performance result.
+
 ### A34 — Signal-to-Trade Construction, Portfolio Replay, and Replay Dashboard
 
 This replaces the former global alpha-blocked **Phase33 — Signal-to-Trade
@@ -783,15 +815,22 @@ Every closeout reports:
 
 ## 21. Immediate next action
 
-1. Merge this documentation rebaseline only after validating archival completeness,
-   source-of-truth consistency, retained safety facts, and repository tests.
-2. Start A33/B33 with a phase-start contract that freezes the six daily strategy
-   implementations and the reusable historical/outcome architecture before
-   performance access.
-3. Do not begin with another difficult regulatory source or an unlimited indicator
-   search.
-4. Do not consume the existing master protected holdout.
-5. Do not enable broker mutation, qualifying PAPER, or LIVE in A33/B33.
+1. Build one read-only adapter from the trusted analytical lake into the frozen
+   daily input contract. Fail closed on PIT identity, provider-boundary,
+   split-adjustment, missing-session, or lineage ambiguity.
+2. Run all nine frozen policies once on DEVELOPMENT data only; record the trial and
+   every fired/rejected/counterfactual opportunity. Do not tune a policy after its
+   result is visible.
+3. Report honest gross/net results and predeclared condition slices, including
+   zero-trade, negative, and underpowered outcomes. This independent-strategy replay
+   is evidence input, not an account backtest or authority promotion.
+4. Proceed in parallel to A34 account portfolio replay and the browser replay
+   dashboard. Do not begin another difficult regulatory source or unlimited
+   indicator search; do not consume the master protected holdout; do not enable
+   provider/broker mutation, operational or qualifying PAPER, or LIVE.
+5. Keep the frozen A33/B33 validator, focused tests, full repository suite, retained
+   scientific validators, and cross-platform exact-head CI mandatory for every
+   change to these contracts.
 
 The destination is concrete: open the GUI, see versioned strategies operating,
 replay them historically, PAPER trade through the real product path, inspect every

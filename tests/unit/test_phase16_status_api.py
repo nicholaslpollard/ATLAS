@@ -247,6 +247,23 @@ def test_http_status_is_loopback_host_validated_and_non_action_post_is_405(tmp_p
             assert response.headers.get("Access-Control-Allow-Origin") is None
             assert response.headers["Cache-Control"] == "no-store"
 
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/v1/strategies/reference", timeout=5
+        ) as response:
+            strategy_payload = json.loads(response.read().decode("utf-8"))
+            assert response.status == 200
+            assert strategy_payload["family_count"] == 6
+            assert strategy_payload["strategy_count"] == 9
+            assert strategy_payload["execution_boundaries"] == {
+                "broker_writes": 0,
+                "live_allowed": False,
+                "live_writes": 0,
+                "operational_paper_allowed": False,
+                "paper_submits": 0,
+                "qualifying_paper_allowed": False,
+                "research_replay_allowed": True,
+            }
+
         request = urllib.request.Request(
             f"http://127.0.0.1:{port}/api/v1/status", data=b"{}", method="POST"
         )
