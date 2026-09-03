@@ -135,7 +135,16 @@ def main() -> int:
                 and "reference_replay_read_model(service.settings)" in http
             ),
             "read_model_fails_closed": all(
-                token in read_model for token in ('"NOT_RUN"', '"INVALID"', '"AVAILABLE"')
+                token in read_model
+                for token in (
+                    '"NOT_RUN"',
+                    '"INVALID"',
+                    '"AVAILABLE"',
+                    "_bound_artifact",
+                    "_sha256_file",
+                    "recent_portfolio_decisions",
+                    "recent_simulated_orders",
+                )
             ),
             "current_operator_browser_shows_replay_and_authority": all(
                 token in html
@@ -146,13 +155,21 @@ def main() -> int:
                     "reference-lab-authority",
                     "reference-lab-strategy-body",
                     "reference-lab-outcomes-table",
+                    "reference-lab-integrity",
+                    "reference-lab-equity-chart",
+                    "reference-lab-decisions-table",
+                    "reference-lab-orders-table",
                 )
             )
             and "renderReferenceLab" in javascript
+            and "renderReferenceEquity" in javascript
+            and "renderReferenceDecisions" in javascript
+            and "renderReferenceOrders" in javascript
             and "/api/v1/research/reference-replay" in javascript
             and "/api/v1/strategies/reference" in javascript
             and ".reference-lab-summary-grid" in css
-            and ".reference-lab-grid" in css,
+            and ".reference-lab-grid" in css
+            and ".reference-equity-chart" in css,
         }
     )
 

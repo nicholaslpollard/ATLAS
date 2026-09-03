@@ -110,6 +110,10 @@ with a desired trade.
   candidate admission, cash/position accounting, simulated orders, outcomes, equity
   curve, read-only API, and visible browser state. No empirical replay exists in this
   checkout.
+- The accepted Phase19 operator-path correction is merged in PR #49 as
+  `cc0ecc6995ad977ca6eeb5fc00983ba2926317a0`; its post-merge Windows and Ubuntu
+  full-suite jobs passed. The current stacked dashboard, not the legacy Phase16
+  shell, is the authoritative local GUI entry point.
 - The former Phase39 LIVE numbering is retained: **Phase39** remains Controlled
   LIVE Activation and is still protected by all preceding evidence and authority
   gates.
@@ -273,7 +277,11 @@ historical exit are rejected so the V1 account finishes cash-reconciled and flat
 
 The local control plane exposes the latest result read-only at
 `/api/v1/research/reference-replay`. The browser shows all nine frozen policies,
-RESEARCH authority, replay return/drawdown/costs, and recent completed positions. It
+RESEARCH authority, per-strategy account statistics, replay
+return/drawdown/costs, recent completed positions, admission decisions, simulated
+order events, and a closing-equity/exposure curve. Before displaying an available
+run, the read model verifies the recorded SHA-256 binding and schema of every
+decision, order, outcome, and equity artifact; drift fails closed as `INVALID`. It
 shows `NOT_RUN` honestly until the trusted-lake command produces artifacts. Policy
 promotion: **false**; protected return rows read: **0**; provider writes: **0**;
 broker writes: **0**; PAPER submits: **0**; LIVE writes: **0**.
