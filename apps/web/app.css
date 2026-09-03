@@ -87,6 +87,7 @@ main {
 .grid { display: grid; gap: 14px; }
 .summary-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .broker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.research-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 14px 0 30px; }
 
 .card {
   border: 1px solid var(--line);
@@ -118,6 +119,10 @@ main {
   margin: 30px 0 12px;
 }
 .section-head p { color: var(--muted); margin: 0; max-width: 680px; text-align: right; }
+.research-head { margin-top: 8px; }
+.research-card-title { padding: 16px 17px 12px; border-bottom: 1px solid var(--line); }
+.research-card-title h3 { margin: 3px 0 0; font-size: 1.05rem; }
+.research-table { min-width: 620px; }
 
 .broker-title {
   display: flex;
@@ -243,6 +248,7 @@ footer {
 @media (max-width: 980px) {
   .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .broker-grid { grid-template-columns: 1fr; }
+  .research-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {

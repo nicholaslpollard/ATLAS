@@ -103,6 +103,13 @@ with a desired trade.
 - The first trusted-lake adapter is implemented for the Massive-only post-seam
   DEVELOPMENT interval. It remains source-only in this repository: no historical
   strategy result has been created or inspected here.
+- The adapter package was accepted in PR #47 and merged as
+  `646db6e6e44ccd2355c7c2263221f35cd01d5da8`; its post-merge Windows and Ubuntu
+  full-suite jobs passed.
+- The first A34 RESEARCH account-replay vertical slice is implemented: deterministic
+  candidate admission, cash/position accounting, simulated orders, outcomes, equity
+  curve, read-only API, and visible browser state. No empirical replay exists in this
+  checkout.
 - The former Phase39 LIVE numbering is retained: **Phase39** remains Controlled
   LIVE Activation and is still protected by all preceding evidence and authority
   gates.
@@ -135,9 +142,10 @@ Important limitations:
   conditional, walk-forward strategy performance or calibrated probability.
 - A provider-free independent-strategy runner, condition-sliced opportunity/outcome
   records, append-only strategy-trials ledger, and read-only catalog API now exist.
-  A read-only trusted-lake adapter now supplies its exact input contract. Account
-  portfolio replay, selector, strategy-management UI, and the complete operator
-  product are not yet accepted.
+  A read-only trusted-lake adapter now supplies its exact input contract. The first
+  fixed, non-learned account replay and browser view now exist; learned selection,
+  qualifying PAPER, strategy-management controls, and the complete operator product
+  remain unfinished.
 - PostgreSQL and the root Docker deployment remain historical scaffolds, not an
   accepted operational database or deployment.
 
@@ -238,9 +246,37 @@ after source validation or continue through the independent-strategy replay:
 .\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py
 ```
 
-The full command writes its adapter report, opportunity ledger, run summary, and
-append-only trial records under `data/derived/strategy_lab/`; it does not write to a
-provider, broker, PAPER account, or LIVE account and cannot promote authority.
+The full command writes its adapter report, independent opportunity ledger, account
+admission decisions, simulated orders, position outcomes, equity curve, summaries,
+and append-only trial records under `data/derived/strategy_lab/`; it does not write
+to a provider, broker, PAPER account, or LIVE account and cannot promote authority.
+
+## A34 RESEARCH account replay
+
+The first A34 product vertical slice has frozen portfolio-policy fingerprint
+`c6528b5619a0058131347715dae771474a7b37babda282856f5f53a430f792fa`.
+It processes each session in this order: opening exits, opening candidate admission,
+intraday daily-bar exits, then closing valuation. The fixed baseline begins with
+`$100,000`, risks at most `0.25%` of current equity per admitted position, caps one
+position at `10%` of equity, gross exposure at `100%`, open positions at `10`, and
+active positions from one strategy family at `3`. Same-session candidates are
+balanced by current family load and then stable identifiers; realized returns are
+never used to rank them.
+
+This is a **RESEARCH account replay**, not qualifying historical validation. V1 is
+long-only: short signals and their independent counterfactual results are retained,
+but account admission rejects them until short borrow, locate fees, recalls, and
+asymmetric execution are modeled. Correlation and sector controls also remain
+explicitly unavailable rather than guessed. A conservative `10` bps round-trip cost
+is charged as `5` bps on entry and `5` bps on exit. Candidates without a resolved
+historical exit are rejected so the V1 account finishes cash-reconciled and flat.
+
+The local control plane exposes the latest result read-only at
+`/api/v1/research/reference-replay`. The browser shows all nine frozen policies,
+RESEARCH authority, replay return/drawdown/costs, and recent completed positions. It
+shows `NOT_RUN` honestly until the trusted-lake command produces artifacts. Policy
+promotion: **false**; protected return rows read: **0**; provider writes: **0**;
+broker writes: **0**; PAPER submits: **0**; LIVE writes: **0**.
 
 ## Strategy authority and PAPER/LIVE boundary
 
