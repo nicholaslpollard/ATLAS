@@ -42,7 +42,8 @@ def _write_bound_jsonl(
     raw = "".join(
         json.dumps(row.model_dump(mode="json"), sort_keys=True) + "\n" for row in rows
     )
-    path.write_text(raw, encoding="utf-8")
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        handle.write(raw)
     return {
         "path": str(path.resolve()),
         "sha256": hashlib.sha256(raw.encode("utf-8")).hexdigest(),
