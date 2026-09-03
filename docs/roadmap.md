@@ -180,6 +180,16 @@ XBRL protected return rows read = **0**.
 
 ## 7. Completed Pre-Phase33 SEC Schedule 13D/13G beneficial ownership — `ACCEPTED_NEGATIVE`
 
+Source-only feasibility mechanism:
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
+
+Frozen feasibility fingerprint:
+`f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+
+Those identifiers are retained historical source-gate lineage and accepted-
+validator compatibility anchors; they are not the later scientific mechanism or
+new Phase33 authority.
+
 Mechanism:
 `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
 

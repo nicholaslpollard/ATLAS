@@ -70,6 +70,12 @@ with a desired trade.
   `ACCEPTED_NEGATIVE` as well.
 - Later XBRL, beneficial-ownership, FINRA short-interest, diluted-EPS, and Form 13F
   branches are also closed accepted-negative/source-limited results.
+- Retained beneficial-ownership source-gate lineage: source-only feasibility
+  mechanism `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`; frozen
+  feasibility fingerprint
+  `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+  These are historical source-feasibility identifiers, distinct from the later
+  frozen scientific mechanism and preserved for accepted-validator compatibility.
 - Historical supported modern alpha remains **0**. No existing strategy is
   historically validated, paper validated, live eligible, or live authorized.
 - The master protected outcome window `2026-05-12..2026-08-11` remains
