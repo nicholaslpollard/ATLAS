@@ -89,6 +89,22 @@ def _cost_key(value: float) -> str:
     return format(float(value), "g")
 
 
+def reference_input_fingerprint(frame: pd.DataFrame) -> str:
+    """Bind the exact caller-supplied rows before any feature or outcome work."""
+
+    required = {"instrument_id", "session_date"}
+    missing = sorted(required.difference(frame.columns))
+    if missing:
+        raise ReferenceStrategyRunnerError(
+            "reference input fingerprint requires columns: " + ", ".join(missing)
+        )
+    input_columns = sorted(str(column) for column in frame.columns)
+    input_payload = frame[input_columns].sort_values(
+        ["instrument_id", "session_date"], kind="stable"
+    ).to_dict(orient="records")
+    return _stable_hash(input_payload)
+
+
 def _finite(value: object) -> bool:
     try:
         return math.isfinite(float(value))
@@ -588,11 +604,7 @@ class ReferenceStrategyHistoricalRunner:
             )
 
         features = compute_reference_daily_features(frame)
-        input_columns = sorted(str(column) for column in frame.columns)
-        input_payload = frame[input_columns].sort_values(
-            ["instrument_id", "session_date"], kind="stable"
-        ).to_dict(orient="records")
-        input_fingerprint = _stable_hash(input_payload)
+        input_fingerprint = reference_input_fingerprint(frame)
 
         records: list[ReferenceOpportunityRecord] = []
         for specification in self.catalog.all():
