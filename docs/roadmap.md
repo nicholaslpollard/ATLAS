@@ -1,377 +1,812 @@
-# ATLAS Master Mission and Roadmap
+# ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Normative project source of truth. Re-synchronized: 2026-09-01 (America/New_York). Accepted numbered foundation remains through Phase32. The later SEC XBRL, SEC Schedule 13D/13G beneficial-ownership, FINRA consolidated short-interest v1, SEC diluted-EPS earnings-innovation v1, and SEC Form 13F institutional-positioning v1 research families are scientifically closed accepted-negative. Historical supported alpha remains 0, Phase33 remains blocked, and ATLAS is operator-paused after the Form 13F closeout pending explicit direction from the ATLAS Review.**
+**Current as of 2026-09-02 (UTC). This roadmap and the root `README.md` are the
+only living project documents.**
 
-Continuation precedence:
+This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
+all valid evidence and safeguards while correcting the process drift that made
+unsuccessful alpha research a global blocker for the product.
 
-1. this roadmap;
-2. `docs/current_status.md`;
-3. `docs/alpha_gate_sec_13f_source_integrity_closeout.md` and retained Form 13F feasibility/diagnostic/original-EDGAR reconciliation records;
-4. `docs/alpha_gate_sec_earnings_innovation_source_only_closeout.md` and retained earnings-innovation feasibility/PIT/diagnostic records;
-5. `docs/alpha_gate_finra_short_interest_source_only_closeout.md` and retained FINRA scientific/PIT/source records;
-6. accepted beneficial-ownership closeout/scientific/source records;
-7. accepted XBRL closeout/scientific/source records;
-8. accepted Phase32 closeout/scientific/source records;
-9. `docs/phase_flow.md`, `docs/phase_plain_english_contract.md`, accepted code, validators, exact-head CI/PR evidence, and historical phase records.
+## 1. Document authority and continuation
 
-## 1. Mission
+Every continuation chat must read the root `README.md` and this roadmap in full
+before recommending or changing anything. Update both in the same commit whenever
+mission, current state, authority, roadmap order, active work, or material evidence
+changes. Do not create another current-status, handoff, plan, roadmap, or living
+README.
 
-ATLAS is the **Autonomous Trading, Learning, and Analysis System** and the greenfield successor to Chart Monitor.
+All older README and roadmap files were moved verbatim to
+`docs/archive/2026-09-02-pre-product-rebaseline/`. The old `docs/current_status.md`,
+`docs/phase_flow.md`, and `docs/phase_plain_english_contract.md` remain only as
+frozen compatibility snapshots for accepted historical validators; exact originals
+are in the same archive. All other documentation is immutable specification,
+research, incident, or acceptance evidence. It may be cited but must not silently
+become a competing current plan.
 
-> Use trustworthy market evidence, validated quantitative edge, disciplined risk management, appropriate stock/options trade construction, reliable execution, and outcome learning to make educated trades with the objective of growing account equity and producing profit over time after realistic costs.
+If these two living documents conflict, progression fails closed until both are
+reconciled. Code and tests remain the authority for actual behavior; Git history and
+accepted artifacts remain the authority for what happened.
 
-Profit is never guaranteed. ATLAS is judged by defensible positive expected value after realistic costs while controlling drawdown, tail risk, concentration, execution risk, and risk of ruin—not by trade count, alert count, or attractive backtests.
+## 2. Mission
 
-## 2. Locked architecture
+ATLAS is the **Autonomous Trading, Learning, and Analysis System**, the greenfield
+successor to Chart Monitor.
 
-`market/reference/regulatory data -> Parquet lake -> DuckDB analytics -> features -> broad discovery -> market/sector/ticker regimes -> ML probability evidence -> deterministic strategy/alpha evaluation -> candidate promotion -> analogue/scenario/news research -> stock/options instrument selection -> entry/exit/geometry -> portfolio risk/sizing -> consolidated deterministic case -> independent AI audit -> alerts -> SHADOW/PAPER/LIVE execution -> outcome/performance learning -> browser/web control plane -> production deployment/operations`
+Its product mission is to become an operator-usable quantitative trading system
+that can:
 
-Persistent roles:
+1. ingest and reconstruct trustworthy information point in time;
+2. discover opportunities and identify current market, sector, ticker, volatility,
+   liquidity, and event conditions;
+3. evaluate multiple independently specified strategy families;
+4. estimate probability, expected net return, downside, cost, and confidence;
+5. select and construct appropriate stock or options trades;
+6. size and admit them under portfolio risk constraints;
+7. run historical replay and prospective PAPER without hindsight;
+8. manage positions and exits;
+9. record every decision, non-decision, execution, and outcome;
+10. show the operator current state, evidence, performance, and controls; and
+11. improve through versioned research without silently changing production.
 
-- Parquet = durable analytical/history lake.
-- DuckDB = analytical/query engine.
-- PostgreSQL = later persistent operational state after promotion.
-- Massive = primary broad-market/reference/regulatory provider where entitlement and PIT semantics are proven.
-- Current Massive subscription = **Stocks Starter**; no other entitlement is assumed.
-- Official SEC EDGAR/XBRL = read-only authoritative regulatory provenance when phase-gated.
-- Webull = primary PAPER/sandbox and intended primary LIVE broker only after separate LIVE acceptance.
-- Alpaca = explicit/manual secondary broker; **no automatic broker failover**.
-- ML = predictive evidence, never standalone authority.
-- AI = independent audit/challenge layer, not unilateral authority.
-- Browser GUI = operator surface, never a second trading engine.
+The financial objective is positive expected value and account growth after
+realistic costs while controlling drawdown, tail loss, concentration, execution
+risk, and risk of ruin. Profit is never guaranteed. Trade frequency is not success.
 
-## 3. Persistent non-negotiables
+## 3. Two parallel tracks
 
-1. Alpha remains the critical path while accepted execution/safety foundations already exist.
-2. Zero candidates/trades is legitimate; thresholds are never weakened to force activity.
-3. PIT data, chronology, realistic costs, leakage controls, dependence-aware statistics, multiplicity controls, protected evidence, and reproducibility are mandatory.
-4. No silent self-modification of strategy/model/support/risk authority.
-5. Research/community/provider ideas are hypotheses or source claims, not performance evidence.
-6. Reuse accepted components rather than creating parallel authority without measured cause.
-7. Every numbered phase starts and ends with a plain-English operator explanation.
-8. GUI is a product surface, not business-logic authority.
-9. Deployment is engineered/tested, not improvised.
-10. Fail closed on ambiguous identity, stale/missing data, uncertain mutation state, invalid geometry, unknown broker/order state, or unreconciled exposure.
-11. PAPER does not imply LIVE.
-12. No automatic cross-broker failover.
-13. **Root cause before workaround:** an error stops progression until the cause is diagnosed and a proper correction is implemented/tested. Validators, thresholds, chronology, identity, multiplicity, protected rules, or authority may not be weakened to manufacture PASS.
-14. Preserve provider-native ticker text/case and exact PIT identity; ticker alone never proves continuity.
-15. No fabricated pre-2021 intraday history.
-16. Finalized canonical facts outrank provisional state.
-17. LONG geometry requires `stop < entry < target`; SHORT requires the reverse.
-18. Protected performance is finalist-only. Once a holdout outcome is read, that holdout is consumed for later alpha selection.
-19. A legitimate negative research phase may be accepted but cannot satisfy a downstream positive-entry condition.
-20. When a research family fails or closes negative, the next family must change the economic/information mechanism rather than retune the observed family.
-21. Provider plan/history/entitlement claims require evidence and, where material, empirical verification.
-22. Regulatory event dates are not automatically decision timestamps; authoritative publication/acceptance time controls where available.
-23. Material source/architecture/scientific decisions and completed gates must be synchronized into roadmap/status/phase docs/README before work is complete.
-24. Long-running target-machine runners should emit lightweight terminal progress; observability may never alter scientific logic.
-25. Existing valid source caches are evidence and must not be deleted merely to simplify a repaired rerun.
-26. If multiplicity is frozen across a finite hypothesis family, a source-only failure in one member cannot be repaired after observation by silently dropping that member. A changed family is a new preregistered experiment.
-27. A source-only sample insufficiency may close an experiment without opening market outcomes when the frozen acceptance contract cannot be satisfied from the available source population.
-28. When an authoritative-source replay reproduces the original source hashes and the same cross-source contradiction/ambiguity, treat it as a source-semantics/provenance limitation rather than local-cache corruption. Preserve raw representations; do not purge/refetch the lake merely to try to make the inconsistency disappear.
-29. **Operator pause overrides ordinary progression.** After the SEC Form 13F source-integrity closeout is merged and post-merge verified, no new alpha family, Phase33 work, or other stage may begin until the user explicitly resumes ATLAS after the ATLAS Review.
+### Track A — ATLAS Product
 
-## 4. Required phase/gate cadence
+Complete the operating system:
 
-The roadmap is conditional, not schedule-driven. One numbered phase is one acceptance gate:
+`market data → features → regimes → discovery → strategies → candidate promotion →
+trade construction → portfolio/risk → AI review → operational PAPER → outcomes →
+performance/learning → GUI/operator control plane`
 
-`PLAIN-ENGLISH PHASE START -> DEFINE/LOCK -> IMPLEMENT LARGEST SAFE COHERENT PACKAGE -> FOCUSED TESTS -> ROOT-CAUSE REPAIR IF NEEDED -> COMPLETE EXACT-HEAD FULL PHASE-END ACCEPTANCE -> PLAIN-ENGLISH PHASE END -> DOCUMENT -> ACCEPT OR REPAIR -> MERGE -> POST-MERGE VERIFY -> NEXT PHASE`
+Reference strategies may exercise every component. They must be visibly labeled
+as baselines and may not gain qualifying-PAPER or LIVE authority merely because the
+product works.
 
-Operational rules:
+### Track B — ATLAS Strategy & Research Lab
 
-- Do not create conversational approval gates for internal implementation steps that do not change scientific/provider/broker/destructive/LIVE authority.
-- Freeze scientific/source policy before reading the outcomes governed by that policy.
-- Run focused validation before expensive or broad acceptance tests.
-- If a failure occurs, preserve it, diagnose the owning layer, make the narrowest proper repair, add regression coverage, and rerun exact-head certification.
-- Never weaken validators or frozen science to obtain PASS.
-- Repository CI proves repository properties; target-machine runs remain mandatory for local source/provider/artifact facts CI cannot establish.
-- Do not run expensive target evidence against a repository head that has not passed the required exact-head repository certification.
-- Negative evidence is valid evidence. A research family can close `ACCEPTED_NEGATIVE` without granting downstream positive authority.
-- When an operator pause is active, complete only the already-authorized closeout/merge verification and then stop before defining or implementing a successor.
+Build and challenge the strategy library:
+
+- practitioner indicator/setup strategies first;
+- regime and condition evaluation;
+- literature-anchored academic mechanisms next;
+- event, SEC, options, news/NLP, cross-sectional, ML, and novel-source research
+  when its expected information gain justifies the effort;
+- continuous strategy degradation, improvement, and challenger research.
+
+Track B failure does not block ordinary Track A product completion. Track A may not
+misrepresent a baseline as supported alpha. Both tracks join only at the stronger
+qualification gates for LIVE.
+
+## 4. Locked architecture and roles
+
+`market/reference/regulatory → Parquet analytical lake → DuckDB analytics →
+versioned features → broad discovery → market/sector/ticker regimes → deterministic
+strategy evaluation → optional ML probability evidence → authority gate →
+opportunity ranking → stock/options construction → portfolio risk/sizing →
+deterministic case → independent AI audit → SHADOW/PAPER execution → outcome ledger
+→ walk-forward learning → API/browser control plane → production operations`
+
+- **Parquet:** durable analytical/history lake.
+- **DuckDB:** analytical and replay query engine.
+- **PostgreSQL:** future operational state after its schema, migrations, recovery,
+  concurrency, and ownership boundaries are accepted. Current files are scaffolds.
+- **Massive:** primary broad-market/reference provider where entitlement and PIT
+  semantics are proven. Current known plan: Stocks Starter.
+- **Official SEC EDGAR/XBRL:** read-only regulatory provenance only within an
+  explicitly authorized source contract.
+- **Webull:** primary PAPER/sandbox and intended primary LIVE broker only after
+  separate acceptance.
+- **Alpaca:** explicit/manual secondary broker. No automatic broker failover.
+- **ML:** predictive evidence and ranking, never standalone trading authority.
+- **AI:** independent review/challenge, never unilateral trading authority.
+- **Browser GUI:** operator surface over the same engine, never a second trading
+  engine.
+
+Accepted daily historical boundary remains Alpaca SIP through `2021-08-13` and
+Massive from `2021-08-16`. Provider boundaries must remain explicit. Multi-provider
+data is not automatically invalid. Pre-2021 intraday history must not be fabricated.
 
 ## 5. Accepted foundation through Phase32
 
-Phases1–25 accepted the project/config/session foundation, provider ingestion, canonical Parquet/DuckDB data, PIT identity/history, live market state, deterministic features, universe/discovery/regime/ML/strategy routing, promoted-only deep research, news/options/instrument/geometry/portfolio-risk planning, independent AI audit, broker-neutral SHADOW/PAPER execution, Webull-primary/Alpaca-manual-secondary operations, browser/API primitives, restart-safe orchestration, centralized PAPER authority, and exact historical production-path reconstruction.
+Phases1–25 accepted project/config/session foundations, provider ingestion,
+canonical Parquet/DuckDB data, PIT identity/history, live market state,
+deterministic features, universe/discovery/regime/ML/strategy routing,
+promoted-only deeper research, news/options/instrument/geometry/portfolio-risk
+planning, independent AI audit, broker-neutral SHADOW/PAPER primitives,
+Webull-primary/Alpaca-manual-secondary operations, API/browser primitives,
+restart-safe orchestration, centralized PAPER authority, and exact historical
+production-path reconstruction.
 
-Accepted daily historical boundary remains Alpaca SIP through `2021-08-13` and Massive from `2021-08-16` onward. No synthetic pre-2021 1h/4h history exists.
-
-Modern alpha phases:
+Modern alpha phases remain:
 
 - Phase26 deterministic/composite self-feature alpha — `ACCEPTED_NEGATIVE`.
 - Phase27 cross-sectional expected-return learning/ranking — `ACCEPTED_NEGATIVE`.
 - Phase28 cross-stock lead-lag/residual network alpha — `ACCEPTED_NEGATIVE`.
-- Phase29 relative-value statistical-arbitrage alpha — `ACCEPTED_NEGATIVE`.
+- Phase29 relative-value statistical arbitrage — `ACCEPTED_NEGATIVE`.
 - Phase30 public-news-arrival alpha — `ACCEPTED_NEGATIVE`.
-- Phase31 SEC Form-4 insider-transaction alpha — `ACCEPTED_NEGATIVE`.
-- Phase32 SEC 8-K material corporate-event alpha — `ACCEPTED_NEGATIVE`.
+- Phase31 SEC Form 4 insider transactions — `ACCEPTED_NEGATIVE`; merge
+  `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+- Phase32 SEC 8-K material corporate events — `ACCEPTED_NEGATIVE`; PR #37 merge
+  `69f8aa81289934b71f2652482c747391917c15a3`.
 
-Phase31 merged at `ab9fe4f31ea55c013ff7d0fbb52425f9e790f2f4`.
+Phase32 policy fingerprint:
+`4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`.
+Exactly five hypotheses were frozen before performance. Its frozen finalist was
+`solvency_distress_short`. Protected source-only evidence was **46 event rows / 33
+signal sessions / 40 unique instruments** versus **50 / 20 / 20**. Protected
+stock/SPY returns remain unread; holdout consumed is false.
 
-Phase32 merged through PR #37 at `69f8aa81289934b71f2652482c747391917c15a3` under frozen policy fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`.
+Phase32's old immediate-successor rule required a **materially different
+point-in-time fundamental-information mechanism**. The later XBRL branch satisfied
+that historical change-of-mechanism requirement. Nothing here reopens Phase32.
+Later work may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
 
-Exactly five hypotheses were frozen before performance. The frozen finalist was `solvency_distress_short`. Its protected source-only evidence was **46 event rows / 33 signal sessions / 40 unique instruments** versus the frozen **50 / 20 / 20** minimum. Protected stock/SPY returns remain unread; holdout unconsumed.
-
-The Phase32 closure requires a materially different point-in-time fundamental-information mechanism for its immediate successor family. Later research may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
-
-Historical supported alpha remains **zero**. Historical supported modern alpha remains **0**.
+Historical supported alpha remains **zero**. Historical supported modern alpha
+remains **0**. This prevents any claim of historical validation or LIVE authority;
+it no longer prevents Product work using explicit baselines.
 
 ## 6. Completed Pre-Phase33 SEC XBRL mechanism — `ACCEPTED_NEGATIVE`
 
-Mechanism: `PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
-
-Retained source-only feasibility lineage:
+Mechanism:
+`PIT_SEC_XBRL_QUARTERLY_FUNDAMENTAL_PROFITABILITY_AND_ACCRUAL_QUALITY`.
 
 - Phase32 source merge: `69f8aa81289934b71f2652482c747391917c15a3`;
+- feasibility contract:
+  `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`;
 - feasibility state: `FEASIBILITY_PASS`;
-- feasibility contract: `alpha-gate-xbrl-feasibility-v1-quarterly-fundamental-source-only-no-market-outcomes`;
-- feasibility fingerprint: `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`;
-- accepted feasibility evidence fingerprint: `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`;
-- retained PIT audit fingerprint: `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`.
+- feasibility fingerprint:
+  `6574a9c942d085fb897b7737961d26dd3da0c3a85b69992081a21f044960d152`;
+- accepted feasibility evidence fingerprint:
+  `33953ffe4543e2e9a98160821b67efd966d1974bc1685850fb2633ee138365a9`;
+- frozen PIT audit fingerprint:
+  `50e68495d71f15b24e27800b66e32ab12b914162be60906058086ffc14b1519c`;
+- feasibility: 200 Company Facts documents, 170 accrual-history-ready issuers,
+  92 profitability-history-ready issuers;
+- original PIT failure preserved; common-stock active-only identity repair passed
+  without changing source population or numeric gates;
+- scientific fingerprint:
+  `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`;
+- development: 0 selection passers, 0 winners, 0 internal finalists;
+- protected return rows read: 0; holdout consumed: false;
+- closeout fingerprint:
+  `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`;
+- PR #38 merge: `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`.
 
-- source feasibility: **200** Company Facts docs, **170** accrual-history-ready issuers, **92** profitability-history-ready issuers;
-- original PIT audit failure preserved; targeted common-stock active-only identity repair passed without changing source population or numeric gates;
-- scientific fingerprint: `2602ca0e89c5af6c8272e5a6324474b66da9cc6c153974e5a32c35339a0f1490`;
-- development: **0 selection passers / 0 winners / 0 internal finalists**;
-- protected return rows read: **0**; holdout consumed: **false**;
-- closeout evidence fingerprint: `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`;
-- merged through PR #38 at `083c0a5742b161cf4b7c04d5bf0246f3057f6c19`.
+XBRL protected return rows read = **0**.
 
 ## 7. Completed Pre-Phase33 SEC Schedule 13D/13G beneficial ownership — `ACCEPTED_NEGATIVE`
 
-Source-only feasibility mechanism: `PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
-
-Frozen feasibility fingerprint: `f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
-
-Scientific mechanism: `PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
-
-- targeted source repair: **43/43 quarterly indexes**, **200/200 complete submissions**, **195 unique authoritative subject CIKs**, **200 decision sessions**, **142 PIT active common-stock mappings**;
-- scientific fingerprint: `4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`;
-- predictor rows: **3,652** = **2,763 DEVELOPMENT / 889 PROTECTED**;
-- usable development outcomes: **2,412**;
-- selection passers/winners/internal finalists: **0 / 0 / 0**;
-- protected return rows read: **0**; holdout consumed: **false**;
-- closeout evidence fingerprint: `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`;
-- merged through PR #39 at `208529c5562920cc0b2bcf2bae546e2b9af0a25b`.
-
-The family is permanently closed to post-result ownership-threshold, form/amendment, direction, taxonomy/filter, horizon, cost, sample, multiplicity, winner/finalist, or protected-policy rescue.
-
-## 8. Completed pre-Phase33 FINRA consolidated short interest v1 — `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`
-
-Mechanism: `PIT_FINRA_CONSOLIDATED_SHORT_INTEREST_POSITIONING_AND_CROWDING`.
-
-### 8.1 Source feasibility and PIT identity
-
-Feasibility contract:
-
-`alpha-gate-finra-short-interest-feasibility-v1-consolidated-position-source-only-no-market-outcomes`
+Source-only feasibility mechanism:
+`PIT_SEC_SCHEDULE_13D_13G_BENEFICIAL_OWNERSHIP_DISCLOSURE`.
 
 Frozen feasibility fingerprint:
-
-`cc80a87f020a4dece88430d20aa62e13d4dcd898656d60d53dea49b3ef975bc4`
-
-Accepted feasibility result: **12/12 files**, **244,979 total rows**, **137,575 exchange-listed rows**, **20,248 unique exchange-listed symbols**, years 2021–2026, zero market outcomes.
-
-PIT audit fingerprint:
-
-`ffdb7389ceae73f31a3781a79a8d825338102b9084cb30dd03bf21f6bf003846`
-
-Accepted PIT result: **136,731 immutable exchange-listed rows**, **63,761 PIT-eligible rows**, **8,054 unique PIT instruments**, all **12/12** files above the frozen per-file minimum, zero market outcomes.
-
-### 8.2 Frozen science
-
-Scientific contract:
-
-`alpha-gate-finra-short-interest-scientific-v1-four-position-change-crowding-buckets`
-
-Scientific fingerprint:
-
-`0b32d59677e86544777807525cd4aba13dd36fd0fcfd7744458556205561d13f`
-
-Exactly four hypotheses were frozen:
-
-1. `rapid_short_build_crowded_short` — SHORT;
-2. `rapid_short_build_non_crowded_short` — SHORT;
-3. `rapid_short_cover_crowded_long` — LONG;
-4. `rapid_short_cover_non_crowded_long` — LONG.
-
-Global multiplicity: `HOLM_BONFERRONI_GLOBAL_4`.
-
-The source-only stage required each hypothesis to meet frozen development minimums **900 rows / 30 signal sessions / 500 unique instruments** and protected minimums **300 rows / 16 signal sessions / 200 unique instruments** before any development performance could open.
-
-### 8.3 Accepted full source-only reconstruction
-
-Accepted source target head:
-
-`d312ec95752ab49a6fcbec18973faacb96d4aa89`
-
-The full **116-settlement** reconstruction processed **116 FINRA files** and **232 Massive PIT snapshots** and produced **19,343** predictor rows: **14,841 DEVELOPMENT / 4,502 PROTECTED**.
-
-Candidate totals:
-
-- `rapid_short_build_crowded_short`: **2,036**;
-- `rapid_short_build_non_crowded_short`: **8,025**;
-- `rapid_short_cover_crowded_long`: **1,257**;
-- `rapid_short_cover_non_crowded_long`: **8,025**.
-
-All source gates passed except:
-
-`rapid_short_cover_crowded_long -> protected_min_rows`
-
-Its protected source population was **257 event rows / 26 signal sessions / 211 unique instruments** versus frozen minimums **300 / 16 / 200**. Thus the exact failure was **257 < 300 rows** while session and instrument support passed.
-
-The source-only predictor returned `SOURCE_ONLY_PREDICTOR_FAIL` and stopped. Development/target market outcome rows read = **0**. Protected return rows read = **0**. Holdout consumed = **false**.
-
-Accepted predictor report SHA-256:
-
-`56479707945a59752aeb2056f3cfbcfd2df1e4a87ada31c9e8e6d3ed93f314cd`
-
-Accepted predictor rows SHA-256:
-
-`21c7dd2e44013ba0f1d290019db70f7b0f23b0603c5e965cbd8b441128190e48`
-
-Accepted persisted-artifact probe head:
-
-`5ceac74ad67c8f3539b03192cf1946d51d476434`
-
-Accepted probe evidence fingerprint:
-
-`c624da82b45fb8d530c2400262598f266ec6309e614a0dcd135b38d9ba5518ce`
-
-Accepted closeout evidence fingerprint:
-
-`bdd494a01ed23d891c460e353831cba6f9cf010c5bf38cf1c9c527b4abe8b565`
-
-Final disposition:
-
-`ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`
-
-This is a source-capacity negative, not a performance negative. No return or alpha-performance claim is authorized because market outcomes were never opened.
-
-### 8.4 Permanent anti-retuning boundary
-
-The exact FINRA v1 experiment cannot be rescued by dropping `rapid_short_cover_crowded_long`, lowering the 300-row protected floor, changing the 10% change-tail or 80% crowding thresholds, changing deterministic sampling, chronology, horizon, costs, folds, dependence treatment, multiplicity, direction, bucket definitions, or protected policy after observing the source result.
-
-A future short-interest experiment, if any, must be a newly preregistered scientific version before outcomes.
-
-## 9. Completed pre-Phase33 SEC diluted-EPS earnings innovation v1 — `ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`
-
-Mechanism: `PIT_SEC_XBRL_DILUTED_EPS_SEASONAL_EARNINGS_INNOVATION_POST_PERIODIC_FILING_DRIFT`.
-
-Feasibility passed source-only on a deterministic 300-CIK sample with 300/300 Company Facts successes, **5,905** direct-quarter observations, **204** issuers with at least 12 direct quarters, **170** with at least 16, years **2013–2026**, and no market outcomes.
-
-Frozen feasibility fingerprint:
-
-`c32e4aa83b25cdc23476098ffc30bd48908123d047d75f18f0d45b2acaffcd0d`
-
-Frozen PIT audit fingerprint:
-
-`423528f7518273f91432ee0cfaf0f43fec8cf33fa11a59f40af5523b4f9d6baa`
-
-The PIT audit required the earliest retained non-amendment periodic-filing accession to have an unambiguous direct-quarter context/value and required accession/form/filing date to reconcile exactly against official SEC Submissions metadata.
-
-The first PIT audit preserved **5,902** original-accession candidates and **5,896** audited observations, but failed exactly two zero-tolerance gates:
-
-- **3 ambiguous earliest period contexts**;
-- **6 accession/form/filing-date contradictions**.
-
-All other frozen PIT source gates passed. Target outcome rows read = **0**. Protected return rows read = **0**. Holdout consumed = **false**.
-
-The V2 source-only diagnostic re-fetched all 300 Company Facts documents and reproduced **300/300 exact Gate0 hashes**. It re-read official SEC Submissions metadata for all 300 issuers and reproduced the same six contradictions with zero missing accession metadata. Diagnostic fingerprint:
-
-`399e7d0bece8088e63c4835566d276b51375a5031d81f4db4781675351a87961`
-
-This establishes a source-semantics/provenance limitation, not local ATLAS data corruption. Blind cache/lake deletion or refetch is not an authorized repair: a clean official-source replay already reproduced the evidence. Raw official representations remain preserved.
-
-Three contradictions were filing-date mismatches despite matching accession/form; three represented facts as `10-Q` in Company Facts while official Submissions identified the accession as `10-Q/A`. The ambiguous period cases contained multiple qualifying contexts in the same earliest accession; two also carried different diluted-EPS values.
-
-Because the frozen v1 contract explicitly requires unambiguous context/value and exact metadata reconciliation, selecting a preferred context, tolerating date drift, reclassifying amendments, dropping offending rows, or relaxing zero-tolerance gates after seeing these records would be post-result retuning.
-
-Closeout fingerprint:
-
-`29e72b427aa63c6ae2e0c25917fad0c9c948f2a2cd97c0d51f390ecd343baacc`
-
-Final disposition:
-
-`ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`
-
-No performance claim is authorized because market outcomes were never opened. Any future SEC XBRL mechanism may define different reconciliation/canonicalization semantics only prospectively under a new preregistration.
-
-## 10. Completed pre-Phase33 SEC Form 13F institutional positioning v1 — `ACCEPTED_NEGATIVE_SOURCE_INTEGRITY_FAILURE`
-
-Mechanism: `PIT_SEC_FORM13F_INSTITUTIONAL_POSITIONING_CHANGE_AND_CONSENSUS_ACCUMULATION`.
-
-Gate0 v2 remained a bounded source probe only. Its frozen valid-CUSIP gate required at least **99.5%** valid nine-character CUSIPs in every anchor. The 2016Q1 anchor returned **0.993405**, while the other structural gates passed, so Gate0 correctly returned `PROBE_FEASIBILITY_FAIL` without freezing science or opening outcomes.
-
-The preserved 2016Q1 source contained **1,581,558** original-HR holding rows, of which **10,431** had malformed CUSIPs across **374** affected accessions. The source-only diagnostic found all malformed values were short rather than blank/long, but the population included heterogeneous values such as `COM`, `ETF`, `0`, and one- through eight-character strings. Only a minority satisfied independent same-archive repair signals, so mechanical zero-padding or inferred repair was forbidden.
-
-Original-EDGAR reconciliation V1 exposed an implementation defect because it derived archive paths from the bulk submission CIK and hit a 404 after substantial progress. That incident is preserved as `IMPLEMENTATION_DEFECT_FIXED`. Reconciliation V2 changed only the locator: the exact filing path came from SEC's quarterly `master.idx`, while the frozen **374-accession / 10,431-row** scientific source population remained unchanged.
-
-The completed V2 reconciliation established:
-
-- **374/374** affected accessions had matching bulk-versus-original CUSIP row counts;
-- **374/374** had exact bulk-versus-original CUSIP multisets;
-- all **10,431** malformed bulk rows were reproduced exactly in original as-filed EDGAR XML;
-- one archive CIK differed from the bulk CIK, explaining the V1 locator failure without changing the CUSIP conclusion.
-
-Closeout contract:
-
-`alpha-gate-sec-13f-closeout-v1-as-filed-cusip-source-integrity-failure-no-market-outcomes`
-
-Closeout fingerprint:
-
-`0375d5567e0547c151f9fb140309aa568d17528246e611a68fa5984a1c481acd`
-
-Accepted reconciliation report SHA-256:
-
-`e5b0cad238eb13f998c34ca51f659474484ba0ab97e64091a1a73cb604083d47`
-
-Final disposition:
-
-`ACCEPTED_NEGATIVE_SOURCE_INTEGRITY_FAILURE`
-
-Failure taxonomy: `SOURCE_INTEGRITY_FAIL`. Provider reads performed by closeout = **0**. Target/development outcome rows read = **0**. Protected return rows read = **0**. Protected holdout consumed = **false**. Historical supported alpha remains **0** and Phase33 remains blocked.
-
-The exact Form 13F v1 experiment may not be rescued by lowering the 99.5% CUSIP-validity threshold, zero-padding malformed values, dropping malformed rows or filings, inferring identifiers from issuer/class, changing source reconciliation rules after observation, or opening outcomes to select a repair. Any future institutional-positioning experiment must be prospectively preregistered under a materially different source/identity contract.
-
-## 11. Remaining master roadmap — currently operator-paused
-
-### Phase33 — Signal-to-Trade Construction & Portfolio Optimization + Web Data Contracts/Prototype
-
-**Entry condition:** at least one strategy/alpha model has accepted historical analytical `SUPPORTED` authority.
-
-**Current state:** **BLOCKED**, because accepted historical supported alpha = 0.
-
-**Operator state:** **PAUSED**. Even if another research idea is available, no successor alpha family, Phase33 work, or alternative roadmap stage begins until the user explicitly resumes ATLAS after the ATLAS Review and any resulting roadmap decision is synchronized here.
-
-When eligible and explicitly resumed, convert supported evidence into PASS versus trade, stock versus option/defined-risk structure, entry, invalidation/stop, target/exit, horizon/DTE, quantity, and portfolio admission using accepted capabilities. No LIVE.
-
-### Phase34 — End-to-End Historical Replay & Stress Certification + Replay Dashboard
-
-Replay the frozen supported system as one account-level process and certify net expectancy, drawdown/tail loss, costs, concentration, capacity, regime/year behavior, and stress outcomes.
-
-### Phase35 — Prospective SHADOW/PAPER Certification + Operator Web Beta
-
-Operate on genuinely new unseen sessions with SHADOW and Webull-primary PAPER. LIVE remains unavailable.
-
-### Phase36 — Outcomes, Learning, Drift Monitoring & Governance + Performance UI
-
-Trace decisions/trades/outcomes to exact data/model/strategy/risk versions and monitor calibration, economics, slippage, and degradation. Learning never silently self-authorizes changes.
-
-### Phase37 — Production Web Application, Operations & Deployment
-
-Consolidate the production web application and accepted Python engine; promote PostgreSQL operational state/autonomous scheduling only with proven parity, recovery safety, idempotency, and auditability.
-
-### Phase38 — LIVE Readiness, Deployment Hardening, Reconciliation & Failure Certification
-
-**No LIVE authority yet.** Harden stale-data, provider/broker outage, partial-fill, cancel/replace, API/UI/network/database/restart, duplicate-prevention, buying-power drift, reconciliation, emergency-disable/flatten, and manual-broker-fallback behavior.
-
-### Phase39 — Controlled LIVE Activation & Evidence-Based Scaling
-
-Enable LIVE only through explicit authorization with deliberately small initial exposure, hard risk/loss limits, reconciliation/health, kill capability, manual fallback, and no automatic broker failover. Scale only from evidence.
-
-## 12. Progression rule
-
-The roadmap is **conditional, not schedule-driven**. Phase numbers do not guarantee advancement. Positive downstream authority requires the exact frozen entry condition; accepted-negative science cannot substitute for it.
-
-Historical alpha validation remains the unresolved technical critical path under the current architecture, but **no new alpha-development work is authorized while the operator pause is active**. The next action after the Form 13F merge and post-merge verification is to stop and await explicit user direction from the ATLAS Review. If later resumed under the current architecture, any successor research family must use a materially different economic/information mechanism and prospectively valid source contract; prior accepted-negative families may not be rescued by post-result source-rule, threshold, feature, direction, sample, multiplicity, or protected-policy changes.
+`f1b6a5b22be1e5bbb3c5317118d0af88baaac40836a6b7051e6bc4789b3bb3bb`.
+
+Those identifiers are retained historical source-gate lineage and accepted-
+validator compatibility anchors; they are not the later scientific mechanism or
+new Phase33 authority.
+
+Mechanism:
+`PIT_SEC_SCHEDULE_13D_13G_INITIAL_BENEFICIAL_OWNERSHIP_INTENT_AND_CONCENTRATION`.
+
+- repaired source: 43/43 quarterly indexes, 200/200 complete submissions, 195
+  unique subject CIKs, 200 decision sessions, 142 unambiguous PIT common-stock
+  mappings;
+- scientific fingerprint:
+  `4bf51f02fb74a219609e2affef3319b24b7c98eb06fa9d88e405ae4f7448434c`;
+- 3,652 predictors and 2,412 usable development outcomes;
+- 0 selection passers, 0 winners, 0 internal finalists;
+- protected return rows read: 0; holdout consumed: false;
+- closeout fingerprint:
+  `c67f21ace68b9ead20afb1db123e67e574b3ac3d26bf2fd897c6fcca215746b8`;
+- PR #39 merge: `208529c5562920cc0b2bcf2bae546e2b9af0a25b`.
+
+## 8. Other completed pre-Phase33 research
+
+### FINRA consolidated short interest v1
+
+Disposition: `ACCEPTED_NEGATIVE_PROTECTED_SOURCE_INSUFFICIENT`.
+
+- mechanism:
+  `PIT_FINRA_CONSOLIDATED_SHORT_INTEREST_POSITIONING_AND_CROWDING`;
+- scientific fingerprint:
+  `0b32d59677e86544777807525cd4aba13dd36fd0fcfd7744458556205561d13f`;
+- 19,343 predictors = 14,841 DEVELOPMENT + 4,502 PROTECTED;
+- the only frozen source-count failure was
+  `rapid_short_cover_crowded_long`: 257 protected rows versus 300 required;
+  sessions 26 versus 16 and instruments 211 versus 200 passed;
+- development/target outcome rows read: 0; protected returns read: 0;
+- closeout fingerprint:
+  `bdd494a01ed23d891c460e353831cba6f9cf010c5bf38cf1c9c527b4abe8b565`.
+
+This was a source-capacity result, not a return result. The four-hypothesis family,
+sampling, buckets, chronology, multiplicity, costs, and protected rules remain
+closed to post-result alteration.
+
+### SEC diluted-EPS earnings innovation v1
+
+Disposition: `ACCEPTED_NEGATIVE_PIT_SOURCE_INTEGRITY_FAILURE`.
+
+- mechanism:
+  `PIT_SEC_XBRL_DILUTED_EPS_SEASONAL_EARNINGS_INNOVATION_POST_PERIODIC_FILING_DRIFT`;
+- feasibility produced 5,905 unique direct-quarter observations;
+- PIT audit retained 5,896 observations from 5,902 candidates but found 3 ambiguous
+  earliest period contexts and 6 accession/form/filing-date contradictions;
+- a clean V2 replay matched all 300 Company Facts hashes and reproduced the SEC
+  Submissions contradictions, proving an upstream source-semantics limitation rather
+  than local corruption;
+- diagnostic fingerprint:
+  `399e7d0bece8088e63c4835566d276b51375a5031d81f4db4781675351a87961`;
+- closeout fingerprint:
+  `29e72b427aa63c6ae2e0c25917fad0c9c948f2a2cd97c0d51f390ecd343baacc`;
+- development/protected outcome rows read: 0; holdout consumed: false.
+
+### SEC Form 13F institutional positioning v1
+
+Disposition: `ACCEPTED_NEGATIVE_SOURCE_INTEGRITY_FAILURE`.
+
+- mechanism:
+  `PIT_SEC_FORM13F_INSTITUTIONAL_POSITIONING_CHANGE_AND_CONSENSUS_ACCUMULATION`;
+- 2016Q1 valid-nine-character-CUSIP fraction was 0.993405 versus frozen 0.995;
+- 10,431 malformed holdings across 374 accessions;
+- original EDGAR V2 reconciled 374/374 exact CUSIP multisets and reproduced all
+  10,431 malformed values in original as-filed XML;
+- the V1 archive locator 404 is preserved separately as
+  `IMPLEMENTATION_DEFECT_FIXED`; it did not cause the source defect;
+- closeout fingerprint:
+  `0375d5567e0547c151f9fb140309aa568d17528246e611a68fa5984a1c481acd`;
+- accepted reconciliation SHA-256:
+  `e5b0cad238eb13f998c34ca51f659474484ba0ab97e64091a1a73cb604083d47`;
+- development/protected outcome rows read: 0; holdout consumed: false.
+
+These families cannot be rescued by lowering observed gates, selecting preferred
+contexts, padding or dropping identifiers, changing source reconciliation,
+substituting runners-up, or opening outcomes to select a repair. This family may
+not be resumed by retuning the observed version.
+
+### Unmerged ATLAS Review research lineage
+
+- LIT-01 Heston-Sadka calendar-seasonality work is source-inconclusive.
+- LIT-02 terminal/source repair work remains deferred and incomplete.
+- These branches remain preserved for audit, are not merged product authority, and
+  grant no historical support, PAPER authority, or LIVE authority.
+
+## 9. Current protected and trading authority
+
+- Master protected window: `2026-05-12..2026-08-11` — **unconsumed**.
+- Retained branch protected return reads: **0**.
+- No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
+  `LIVE_ELIGIBLE`, or LIVE-authorized status.
+- Operational PAPER may be built and used with labeled baselines under its own
+  explicit controls.
+- Qualifying PAPER may begin only for historically validated frozen versions.
+- LIVE remains disabled until every later gate passes and the operator explicitly
+  enables it.
+- Automatic broker failover remains forbidden.
+
+## 10. Strategy taxonomy: signals are not strategies
+
+ATLAS will model five distinct objects:
+
+1. **Indicator/feature:** a deterministic PIT value such as RSI, EMA, relative
+   volume, ATR, or a premarket range.
+2. **Setup/signal:** a time-local condition such as a crossover, recovery, squeeze,
+   pullback, or range break.
+3. **Strategy policy:** a versioned universe, setup, direction, entry timing, stop,
+   target/exit, maximum hold, sizing, liquidity, cost, and invalidation contract.
+4. **Router/selector:** determines whether an authorized policy is compatible and
+   estimates its conditional economics relative to other opportunities.
+5. **Authority:** determines whether the policy may run in research, operational
+   PAPER, qualifying PAPER, or LIVE.
+
+An RSI value is not a strategy. “Buy the breakout” is not reproducible until the
+range, bar, order timing, false-break definition, stop, exit, and cost are fixed.
+
+Popular descriptions must be corrected before implementation:
+
+- a crossover is a transition from the prior bar, not merely `fast > slow`;
+- RSI below 30 means strong recent downside momentum, not intrinsic
+  “undervaluation”; the initial rule uses a recovery trigger and trend context;
+- Bollinger compression predicts neither direction nor guaranteed expansion; a
+  separate range/band break supplies direction;
+- ADX measures trend strength, not direction;
+- an EMA “bounce” needs a numeric ATR tolerance and confirmation event;
+- ribbons use one canonical period set before any alternatives;
+- same-bar indicator calculation and fill are prohibited.
+
+## 11. Evidence and authority model
+
+### Evidence source
+
+- `PRACTITIONER_BASELINE`: transparent practitioner/chart/community rule; low prior
+  authority and unverified until ATLAS tests it.
+- `LITERATURE_ANCHORED`: supported by credible academic/replication or transparent
+  institutional evidence; higher prior research weight, never guaranteed.
+- `INTERNAL_CHALLENGER`: an ATLAS-created variant or selector; lowest external prior
+  unless independently supported.
+
+Evidence source affects research priority and prior confidence. It never grants
+execution permission.
+
+### Strategy authority
+
+`RESEARCH → CANDIDATE → HISTORICALLY_VALIDATED → PAPER_VALIDATED → LIVE_ELIGIBLE`
+
+- **RESEARCH:** specified/implemented; no trading authority.
+- **CANDIDATE:** source rationale and faithful ATLAS implementation accepted;
+  historical evaluation in progress.
+- **HISTORICALLY_VALIDATED:** passed frozen PIT, after-cost, walk-forward,
+  robustness, concentration, and statistical gates; eligible for qualifying PAPER.
+- **PAPER_VALIDATED:** profitable prospective expectancy is credible across a
+  meaningful sample with acceptable drawdown, stability, execution, and risk.
+- **LIVE_ELIGIBLE:** historical, PAPER, system, risk, governance, and operational
+  gates passed. Actual LIVE still requires explicit operator activation.
+
+Authority controls permission. Conditional ranking controls preference only among
+permitted strategies. No score, AI opinion, or GUI action can bypass authority.
+
+## 12. Practitioner strategy catalog
+
+The catalog stores aliases under materially different families so five momentum
+parameterizations do not masquerade as five independent discoveries.
+
+| Family | Common practitioner setups | Canonical research object | Data readiness | Order |
+|---|---|---|---|---|
+| Moving-average trend | Golden/death cross, fast/slow EMA, price/MA cross, 5-8-13, ribbon/Guppy | transition in slow/fast trend structure | Daily ready; some features needed | Pack 1 |
+| Trend continuation | higher highs/lows, ADX trend, multi-timeframe alignment | persistent directional structure | Daily partial | Pack 2 |
+| Pullback continuation | 9/21 EMA bounce, 20 EMA pullback, first pullback, breakout retest | temporary retracement inside prior trend | Daily partial | Pack 1 |
+| Momentum | MACD signal/zero cross, RSI midline, stochastic pop, ROC | acceleration/continuation | Daily partial | Pack 1/2 |
+| Price breakout | Donchian, support/resistance break, consolidation break | close beyond prior PIT range | Daily ready | Pack 1 |
+| Volatility expansion | Bollinger squeeze, TTM squeeze, VCP, ATR expansion, NR7 | compression followed by directional break | Daily partial | Pack 1/2 |
+| Mean reversion | RSI recovery, RSI(2), Bollinger/EMA/z-score/VWAP reversion | short-horizon reversal after stretch | Daily partial | Pack 1/2 |
+| Exhaustion reversal | divergence, volume climax, failed break | failed continuation/exhaustion | Needs pattern definitions | Pack 3 |
+| Volume confirmation | relative volume, OBV, accumulation/distribution, climax | participation confirms or rejects price move | Daily partial | Pack 1/2 |
+| Relative strength | market/sector/industry relative strength, RS breakout | focal asset out/underperformance | Daily data ready; features needed | Pack 2 |
+| Gap | gap-and-go, continuation, fill, reversal | opening discontinuity plus response | Minute/session work needed | Intraday pack |
+| Opening range | 5/15/30-minute ORB, prior-day break | regular-session price discovery break | Minute/session work needed | Intraday pack |
+| Premarket | premarket high, flag, high relative volume, consolidation break | extended-hours attention and range break | Extended-hours audit needed | Intraday pack |
+| Support/resistance | bounce, rejection, break/reclaim/retest | reaction at PIT structural level | Definitions needed | Pack 3 |
+| Composite | trend+momentum, breakout+volume, Triple Screen | prespecified evidence intersection | Components first | Pack 3 |
+| Regime-conditioned | trend in trend, reversion in range, breakout after compression | strategy/context interaction | Outcomes/selector needed | Selector pack |
+
+The catalog is deliberately broad; implementation is deliberately finite. New
+aliases enter an existing family unless they change the mechanism, timing, or
+trade policy materially.
+
+Practitioner source anchors are definitions and idea provenance, not proof of
+profitability: [Fidelity's technical-analysis overview](https://www.fidelity.com/learning-center/trading-investing/technical-analysis/what-is-technical-analysis),
+[Golden Cross](https://chartschool.stockcharts.com/table-of-contents/trading-strategies-and-models/trading-strategies/moving-average-trading-strategies/trading-using-the-golden-cross),
+[Guppy/ribbon](https://chartschool.stockcharts.com/table-of-contents/trading-strategies-and-models/trading-strategies/moving-average-trading-strategies/guppy-multiple-moving-average-an-ma-ribbon-designed-to-tip-the-markets-hand),
+[moving-average support/pullback](https://chartschool.stockcharts.com/table-of-contents/trading-strategies-and-models/trading-strategies/moving-average-trading-strategies/finding-support-and-resistance-in-moving-averages),
+[MACD zero-line setup](https://chartschool.stockcharts.com/table-of-contents/trading-strategies-and-models/trading-strategies/macd-zero-line-crosses-with-swing-points),
+[Bollinger squeeze](https://chartschool.stockcharts.com/table-of-contents/trading-strategies-and-models/trading-strategies/bollinger-band-squeeze),
+[RSI(2)](https://chartschool.stockcharts.com/table-of-contents/trading-strategies-and-models/trading-strategies/rsi-2),
+and [gap strategies](https://chartschool.stockcharts.com/table-of-contents/trading-strategies-and-models/trading-strategies/gap-trading-strategies).
+
+## 13. First reference library: frozen starting specifications
+
+These are the starting contracts to implement before ATLAS performance is viewed.
+They are practitioner baselines, not claims of edge. Phase A33/B33 may correct an
+implementation ambiguity before outcome access, but any material change must be
+versioned and recorded in the trials ledger.
+
+Common daily universe: PIT-active U.S. common stocks; no ETFs unless a strategy
+explicitly says so; adjusted analytical bars with raw/execution-price lineage;
+close at least $5; prior 20-session median dollar volume at least $5 million;
+sufficient warm-up; no ambiguous identity; signal at finalized daily close; earliest
+entry next regular-session executable price. Research reports both long-only and
+benchmark-relative results where appropriate, but a benchmark is not a fabricated
+hedge order.
+
+Common risk/cost diagnostics: equal-risk sizing at a fixed small portfolio risk
+budget; no lookahead sizing; `0/5/10/25/50` bps round-trip signal grid, 10 bps
+primary and 25 bps stress; executable replay later uses spread/slippage/order/ADV
+economics. Stop/target collision inside a bar uses the conservative adverse-first
+assumption unless lower-timeframe authoritative data resolves order.
+
+| ID | Setup and entry | Exit/risk | Native question |
+|---|---|---|---|
+| `ma_trend_cross_50_200_long_v1` | SMA50 crosses from at/below to above SMA200; buy next session | initial stop 2 ATR below entry; exit on reverse cross, 3 ATR trailing stop, or 126 sessions | Does slow trend transition produce positive after-cost long expectancy? |
+| `ema_pullback_20_50_long_v1` | EMA20 > EMA50; pullback reaches within 0.5 ATR of EMA20 without closing below EMA50; first close back above EMA20 enters next session | stop below pullback low or 1.5 ATR, whichever is farther but within risk cap; exit at 2.5R, close below EMA50, or 15 sessions | Does a confirmed retracement inside an uptrend resume? |
+| `macd_shift_12_26_9_v1` | MACD crosses above signal while both are below zero for LONG; mirror above zero for SHORT; next-session entry | 1.5 ATR stop; 3R target; opposite MACD cross or 20 sessions | Does momentum turn before/through broader continuation? |
+| `rsi_recovery_14_trend_long_v1` | close above EMA200; RSI14 was below 30 and crosses back above 30; enter next session | 2 ATR stop; exit at EMA20, RSI >= 60, or 10 sessions | Does oversold recovery inside a long trend mean-revert after costs? |
+| `donchian_breakout_20_volume_v1` | close crosses prior 20-session high for LONG (low for SHORT); relative volume20 >= 1.5; EMA50 slope agrees; next-session entry | stop at channel boundary or 2 ATR subject to risk cap; 3 ATR trail; 20-session maximum | Does range escape with participation continue? |
+| `bollinger_squeeze_breakout_20_v1` | BB width20 is at/below its trailing 126-session 10th percentile, then close crosses the corresponding outer band with relative volume >= 1.25; next-session entry | stop at BB midline or 1.5 ATR; 3R/trailing exit; 20-session maximum | Does directional escape from compression continue? |
+
+The EMA pullback stop rule must resolve to one exact price algorithm in code before
+outcome access; “whichever is farther” may not exceed the frozen account-risk cap or
+silently reject losing histories. The same applies symmetrically to short policies,
+including borrow/locate and asymmetric costs. Long and short are distinct versions,
+not automatic mirrors.
+
+### Later intraday reference pack
+
+Intraday work starts only after timestamp, extended-hours flag, split adjustment,
+auction, halt, missing-bar, and provider-coverage semantics pass a source-only gate.
+
+- **Gap-and-go / 15-minute opening-range breakout:** frozen gap threshold, opening
+  range, relative-volume clock, next-bar entry, range stop, R-based exits, and
+  end-of-day flat rule.
+- **Premarket relative-volume consolidation breakout:** source idea includes the
+  Reddit “Highest Volume Day Strategy.” ATLAS will replace subjective phrases with
+  a fixed premarket window, prior-volume lookback, minimum price/liquidity, gap,
+  consolidation-width/duration, one-consolidation algorithm, next-bar premarket-high
+  break, explicit stop, partial/target logic, and end-of-day exit before opening
+  performance. Reported social-media gains and win rates are unverified claims.
+
+No “highest day ever” comparison may depend on how many years happen to exist in a
+ticker's file. Use a fixed prior lookback and disclose the resulting population.
+
+## 14. Historical testing system
+
+### 14.1 One reusable engine
+
+Do not build a bespoke backtester per indicator. A versioned engine must accept a
+strategy policy and produce:
+
+- PIT universe and exact feature snapshot;
+- every eligible setup and every reason for rejection;
+- route/authority decision;
+- next-executable-event entry and conservative fill;
+- stop, target, trailing, time exit, corporate action, halt, delisting, and missing
+  data handling;
+- gross and net returns under primary and stress economics;
+- maximum favorable/adverse excursion and target-before-stop outcome;
+- account-level cash, exposure, overlap, portfolio admissions, conflicts, and
+  capacity;
+- exact data, feature, strategy, selector, cost, risk, and code versions.
+
+### 14.2 Record all opportunities, not just chosen trades
+
+The outcome ledger must retain fired, routed-out, risk-rejected, not-selected,
+shadow/counterfactual, planned, submitted, filled, partially filled, canceled,
+exited, and unreconciled opportunities. Otherwise ATLAS cannot distinguish a weak
+strategy from a strong strategy that the portfolio selector consistently ignored.
+
+Counterfactual outcomes are research evidence only. A blocked strategy is never
+sent to a broker merely to gather data.
+
+### 14.3 Chronology and partitions
+
+- Use expanding or rolling walk-forward folds in time order.
+- Fit thresholds, calibration, conditional models, and selectors only on prior
+  windows.
+- Purge and embargo around overlapping outcome horizons.
+- Keep final qualifying historical evidence separate from development.
+- Preserve the existing master protected window; use a newly declared future
+  confirmation policy for the practitioner program.
+- Never choose a parameter, regime rule, cost, or exit after observing the period
+  meant to qualify it.
+
+### 14.4 What gets measured
+
+At signal, trade, session, and account levels report:
+
+- count of trades and independent opportunities;
+- coverage and abstention;
+- win/loss distribution, expectancy, payoff ratio, profit factor;
+- total return, drawdown, volatility, downside/tail loss, Sharpe/Sortino where
+  meaningful;
+- gross-to-net cost decay and cost stress;
+- MFE/MAE and target-before-stop calibration;
+- turnover, holding time, liquidity/capacity, spread/slippage, borrow/locate;
+- performance by year/fold and predeclared market, sector, ticker, volatility,
+  liquidity, direction, and time-of-day conditions;
+- concentration by session, ticker, sector, strategy, and unusually successful
+  trade;
+- stability against small *predeclared* neighboring parameter checks;
+- benchmark and simple-family comparator.
+
+Raw trade win rate is not a universal gate; positive expectancy may have a low win
+rate with asymmetric payoffs. Likewise, a high win rate may hide rare ruinous loss.
+
+### 14.5 Multiple testing and overfitting
+
+Maintain an append-only trials ledger including failures. Test at the strategy-family
+level, treat nearby parameters as related trials, use dependence-aware bootstrap or
+appropriate panel/session methods, and apply a frozen family-wise or false-discovery
+procedure. White's Reality Check, Hansen's Superior Predictive Ability test,
+deflated performance measures, and probability-of-backtest-overfitting diagnostics
+are available tools, selected prospectively rather than only when convenient.
+
+This follows the central warning from [White's Reality Check](https://doi.org/10.1111/1468-0262.00152),
+[Hansen's SPA test](https://doi.org/10.1198/073500105000000063), and the
+[Probability of Backtest Overfitting](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253):
+the best-looking rule from a large search is not evaluated honestly as if it were
+the only rule tried. Empirical results for technical rules are mixed after these
+corrections—one U.S. futures study found significance in only 2 of 17 markets,
+while a large Chinese-equity study reported surviving rules after costs—so ATLAS
+must test rather than assume ([Park & Irwin](https://doi.org/10.1002/fut.20435),
+[Jiang et al.](https://doi.org/10.1111/irfi.12161)).
+
+## 15. Learning what works where
+
+The correct goal is conditional evidence, not a giant sparse table of every
+indicator crossed with every regime.
+
+### 15.1 Condition profile
+
+For each frozen strategy version, accumulate outcomes by a limited predeclared set:
+
+- direction and native timeframe;
+- market, sector, and ticker regime;
+- volatility and liquidity bucket;
+- gap/extended-hours state for intraday strategies;
+- strategy age and recent prospective window.
+
+Report raw counts, effective independent sample size, net expectancy, calibrated
+target-before-stop probability, downside, uncertainty interval, and degradation.
+Never show a strong conditional estimate without its support and uncertainty.
+
+### 15.2 Partial pooling before hard routing
+
+Use regularization or hierarchical partial pooling so small cells shrink toward the
+family/global estimate instead of producing extreme probabilities. A condition may
+become `PREFERRED`, `ALLOWED`, or `BLOCKED` only with a prospectively frozen minimum
+effective sample and evidence threshold. Until then it is `UNKNOWN`, not favorable.
+
+### 15.3 Walk-forward selector
+
+The selector is fitted only on prior outcomes and produces, per current opportunity:
+
+- calibrated `P(target before stop)` and/or win probability;
+- expected gross and net return;
+- expected downside/tail loss;
+- cost and fill confidence;
+- estimate uncertainty and data support;
+- correlation/concentration effect on the current portfolio;
+- evidence source and authority.
+
+A useful ranking quantity is expected net utility:
+
+`expected payoff after cost − downside penalty − concentration/correlation penalty`
+
+but its exact function, coefficients, abstention threshold, and calibration method
+must be frozen before qualifying evaluation. Prefer stable forecast combinations or
+simple regularized models to a large tournament when performance is close; forecast
+combination can reduce instability, while conditional predictive-ability testing
+supports comparing forecasts in changing environments
+([Rapach, Strauss & Zhou](https://academic.oup.com/rfs/article/23/2/821/1604687),
+[Giacomini & White](https://doi.org/10.1111/j.1468-0262.2006.00718.x)).
+
+The selector may abstain. It may recommend a strategy family for a *new versioned
+research experiment*. It may not tune that family on the live opportunity, alter a
+production rule, or grant itself authority.
+
+### 15.4 Challenger promotion
+
+Every learned condition rule or selector revision is a frozen challenger:
+
+1. train on prior windows;
+2. compare out of sample to the incumbent and simple no-selector baseline;
+3. evaluate costs, turnover, calibration, drawdown, and regime stability;
+4. run operational PAPER if needed;
+5. run a new qualifying prospective window when seeking authority; and
+6. promote explicitly with version and rollback plan.
+
+## 16. PAPER is the practical bridge to LIVE
+
+### Operational PAPER
+
+Purpose: prove the complete product can ingest, decide, construct, size, route,
+execute, manage, reconcile, record, and display without real money. Baselines are
+allowed. Its results cannot silently count toward LIVE qualification.
+
+### Qualifying PAPER
+
+Purpose: forward-test a historically validated frozen strategy and full portfolio
+process on genuinely new information. Before it starts, freeze sample and minimum
+duration logic, cost/slippage comparison, profitability/expectancy, drawdown,
+tail-loss, concentration, stability, execution/reconciliation, and system-health
+gates.
+
+Qualification evaluates completed trades and independent opportunities, net
+expectancy, return, profit factor, drawdown, risk-adjusted measures when meaningful,
+tail loss, concentration, regime dependence, modeled-versus-observed slippage,
+stability through time, and dependence on exceptional winners. `PAPER P&L > 0`
+alone does not pass.
+
+Paper fills differ from live queue position, spread capture, partial fills, latency,
+and impact. PAPER validation is therefore necessary, not sufficient.
+
+### LIVE
+
+LIVE is deliberately difficult. It requires a `LIVE_ELIGIBLE` strategy/portfolio,
+accepted system readiness, explicit operator activation, small initial risk, hard
+loss/exposure limits, health/reconciliation, emergency disable/flatten capability,
+and manual fallback. No automatic broker failover.
+
+## 17. Data integrity and V2 policy
+
+When data is materially questionable:
+
+1. perform a serious root-cause/reconciliation investigation covering local
+   corruption, transformations, provider semantics, and authoritative limitations;
+2. if V1 cannot remain economically trustworthy, freeze V1, results, hashes, and
+   provenance;
+3. build a clean separately named V2 from the best authoritative sources and
+   documented canonical rules;
+4. do not substitute V2 beneath an observed experiment or pretend it is the same
+   experiment;
+5. rerun only as a new prospectively declared experiment; and
+6. preserve both versions for audit.
+
+Existing valid caches are evidence. A clean authoritative replay that reproduces a
+contradiction means purge/refetch is not a repair. Source integrity is a supporting
+gate, not the product, and a source branch should stop when its expected information
+gain falls below stronger trusted-data experiments.
+
+## 18. Persistent safeguards
+
+1. PIT population, identity, chronology, publication/acceptance timing, and session
+   rules are mandatory.
+2. Preserve provider-native ticker case and exact identity; ticker text alone does
+   not prove continuity.
+3. Corporate actions, delistings, missing bars, stale data, halts, auctions, and
+   universe membership must be explicit.
+4. Signals formed at a close cannot enter before the next executable event.
+5. Same-bar stop/target ambiguity is conservative unless authoritative finer data
+   resolves it.
+6. Transaction costs, spread, slippage, borrow, fees, market impact, and capacity
+   cannot be chosen to make a result pass.
+7. Protected performance is finalist-only; a read consumes the governed holdout for
+   later selection.
+8. Negative/zero-trade results are valid and never rescued by post-result retuning.
+9. Scientific families and variants are frozen before governed performance.
+10. ML and AI are evidence/audit, not authority.
+11. Research code never writes to providers or brokers.
+12. Unknown data, mutation, broker, order, fill, or exposure state fails closed.
+13. LONG geometry requires `stop < entry < target`; SHORT requires the reverse.
+14. PAPER never implies LIVE; credentials/endpoints/UI controls do not create
+    authority.
+15. No automatic cross-broker failover.
+16. No silent self-modification; every change is versioned, replayed, qualified,
+    promoted, observable, and reversible.
+17. Root cause before workaround; accepted evidence and failed evidence are
+    preserved.
+18. Prefer the largest safe coherent package over conversational micro-gates.
+
+## 19. Roadmap from the rebaseline
+
+Track A and Track B gates may proceed in parallel when they do not contaminate each
+other's evidence. Product gates A33–A37 do not require supported alpha. A38/A39 LIVE
+progression requires qualifying strategy and system evidence.
+
+### A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline
+
+Build stable strategy/source/authority/version contracts, a non-placeholder catalog,
+the first six daily policies, missing daily indicators, reusable PIT backtest/trade
+simulation, trials ledger, complete opportunity/outcome ledger, condition slices,
+and API read models. Connect baselines to the accepted discovery/regime/risk path.
+
+Acceptance proves code correctness, exact signal transitions, next-event timing,
+cost application, portfolio overlap, failure paths, reproducibility, cross-platform
+tests, retained scientific facts, and zero accidental PAPER/LIVE authority. It also
+produces the first honest historical reports; each strategy may pass, fail, or remain
+underpowered independently.
+
+### A34 — Signal-to-Trade Construction, Portfolio Replay, and Replay Dashboard
+
+This replaces the former global alpha-blocked **Phase33 — Signal-to-Trade
+Construction** dependency. Construct complete candidate trades, compare strategies,
+admit a risk-controlled account portfolio, replay cash/orders/positions/exits as one
+process, and show decisions, counterfactuals, costs, exposure, and outcomes in the
+browser. Baselines remain operational-only unless separately validated.
+
+### B34 — Intraday Source Readiness and Opening/Premarket Pack
+
+Audit trusted minute and extended-hours coverage without performance. If ready,
+freeze and implement gap/opening-range and premarket relative-volume consolidation
+strategies, including a quantified Highest Volume Day variant. If not ready, record
+the limitation and proceed with daily strategies rather than entering an open-ended
+data repair branch.
+
+### A35 — Operational PAPER and Operator Web Beta
+
+Run the same engine prospectively with PAPER money: ingest, generate, select,
+construct, risk-check, submit under centralized authority, manage, reconcile, record,
+and display. Prove restart/idempotency, duplicate prevention, stale-data handling,
+partial/cancel/reject behavior, kill controls, and clear operational-versus-qualifying
+labels. LIVE unavailable.
+
+### B35/A36 — Conditional Evidence, Selector, Outcomes, and Performance UI
+
+Build the walk-forward condition profiles and frozen selector challenger; compare it
+to simple family baselines. Add strategy management, calibration, degradation,
+regime, slippage, portfolio contribution, and trials-ledger views. Learning may
+recommend but never self-promote.
+
+### B36 — Literature-Anchored Reference Library
+
+After the product loop works, research and rank established mechanisms—cross-
+sectional momentum, time-series momentum/trend, short-term reversal, volatility
+management, quality/profitability, value/quality composites, PEAD/revisions, and
+other credible families—by replication breadth, costs, persistence, ATLAS data
+compatibility, PIT risk, retail suitability, and diversification. Add only a small
+diverse batch with frozen formulations.
+
+### A37 — Production Web Application and Operations
+
+Consolidate the Python engine and browser control plane; promote PostgreSQL
+operational state only after schema/migration/recovery/ownership acceptance; add
+scheduling, observability, backup/recovery, deployment, authentication/authorization,
+and parity tests. The complete application may remain PAPER-only indefinitely.
+
+### A38 — Qualifying PAPER and LIVE Readiness
+
+For historically validated frozen strategies only, complete a prospectively defined
+qualifying PAPER program while hardening provider/broker outage, fills, reconciliation,
+buying-power drift, database/network/restart, emergency disable/flatten, and manual
+fallback. No LIVE authority until the complete gate passes.
+
+### Phase39 — Controlled LIVE Activation
+
+Enable LIVE only after explicit operator authorization for `LIVE_ELIGIBLE` versions,
+with deliberately small exposure, hard risk/loss limits, reconciliation/health,
+kill capability, and evidence-based scaling. This phase may never be reached; a
+complete PAPER-only ATLAS remains a valid product.
+
+### Continuing Track B — Research Lab
+
+After the reference library, continue academic mechanisms, event/SEC research,
+options, alternative ML, news/NLP, regime science, cross-sectional models, and new
+data sources by research value per unit effort. Each experiment is finite,
+preregistered, versioned, and stoppable. No research delay globally blocks the
+finished product.
+
+## 20. Phase/package cadence and progress reporting
+
+One coherent package uses:
+
+`PLAIN-ENGLISH START → DEFINE/FREEZE AUTHORITY AND SCIENCE → IMPLEMENT LARGEST SAFE
+PACKAGE → FOCUSED TESTS → ROOT-CAUSE REPAIR → EXACT-HEAD FULL ACCEPTANCE →
+PLAIN-ENGLISH END → UPDATE BOTH LIVING DOCS → MERGE → POST-MERGE VERIFY`
+
+Operator checkpoints are reserved for destructive actions, external authority,
+broker/provider mutation, qualifying PAPER/LIVE activation, protected evidence, or
+material ambiguity. Internal implementation does not need a conversational gate.
+
+Every closeout reports:
+
+- functioning product progress: strategy implemented, replay completed, candidate
+  generated, portfolio/trade constructed, PAPER event processed, position managed,
+  outcome recorded, statistics/calibration updated, dashboard/control working;
+- scientific controls: PIT, costs, lookahead, trials/multiplicity, dependence,
+  folds, concentration, protected reads, fingerprints, reproducibility;
+- exact authority gained or not gained;
+- negative results and unresolved risks;
+- next highest-value coherent package.
+
+## 21. Immediate next action
+
+1. Merge this documentation rebaseline only after validating archival completeness,
+   source-of-truth consistency, retained safety facts, and repository tests.
+2. Start A33/B33 with a phase-start contract that freezes the six daily strategy
+   implementations and the reusable historical/outcome architecture before
+   performance access.
+3. Do not begin with another difficult regulatory source or an unlimited indicator
+   search.
+4. Do not consume the existing master protected holdout.
+5. Do not enable broker mutation, qualifying PAPER, or LIVE in A33/B33.
+
+The destination is concrete: open the GUI, see versioned strategies operating,
+replay them historically, PAPER trade through the real product path, inspect every
+decision and outcome, learn which families retain credible conditional expectancy,
+and improve the library while LIVE capital remains strongly protected.
+
+## 22. Retained exact historical validator statements
+
+These literals preserve accepted phase-validator recognition. They describe the
+closed historical state and do not restore the superseded product dependency:
+
+- Exactly five hypotheses were frozen before performance under policy fingerprint `4e9d22e9ec3bae8058484a6a0e78e786c2c2822bc5a8607b294a21fb17a0bff7`.
+- Frozen finalist: `solvency_distress_short`; source evidence: 46 event rows / 33 signal sessions / 40 unique instruments versus 50 / 20 / 20.
+- Protected stock/SPY returns remain unread.
+- Historical supported alpha remains **zero**.
+- Accepted foundation through Phase32; Completed Pre-Phase33 SEC XBRL; Phase33 — Signal-to-Trade Construction; Phase39 — Controlled LIVE Activation.
+- The historical successor was required to use a materially different point-in-time fundamental-information mechanism.
+- The historical XBRL successor may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.

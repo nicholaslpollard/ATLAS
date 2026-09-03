@@ -1,10 +1,4 @@
-# ATLAS Phase Execution Flow — Frozen Compatibility Snapshot
-
-> **Archived process, not a living source of truth.** This file remains at its
-> historical path for accepted validator compatibility. Its exact pre-rebaseline
-> copy is archived under `docs/archive/2026-09-02-pre-product-rebaseline/docs/`.
-> Current process and progression rules live only in `README.md` and
-> `docs/roadmap.md`. Do not update this file.
+# ATLAS Phase Execution Flow
 
 **Normative phase-as-gate development contract. Re-baselined: 2026-08-30 after Phase32, SEC XBRL, SEC Schedule 13D/13G beneficial ownership, and FINRA consolidated short-interest v1 accepted-negative closeouts.**
 
