@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-02 (UTC). This README and `docs/roadmap.md` are the only
+**Current as of 2026-09-03 (UTC). This README and `docs/roadmap.md` are the only
 living project documents. Every continuation chat must read both in full before
 making recommendations or changes.**
 
@@ -90,8 +90,16 @@ with a desired trade.
 - The former statement `Phase33 signal-to-trade remains blocked` is retained only
   as historical roadmap provenance. Product signal-to-trade work is now unblocked
   for historical replay and operational PAPER baselines. LIVE remains blocked.
-- Rebaseline provenance: branch `review-chat-3-product-strategy-rebaseline`, based
-  on `main` merge `34343ff` (PR #43 Form 13F closeout).
+- Product/strategy rebaseline: PR #44 merged to `main` as
+  `6b972c4d26dfa350580e269d8010038fe526cf4f`, based on the accepted PR #43 Form
+  13F closeout.
+- A33/B33 phase-start contracts: PR #45 merged as
+  `bc105be4958cce808dbbeb306f0ec58f23b13a6d`. Its six pre-outcome seed
+  specifications, broader research taxonomy, authority transition rules, and
+  shared opportunity-event contract remain preserved.
+- A33/B33 foundation implementation is complete and protected by its exact-head
+  acceptance workflow. It has not opened ATLAS historical performance, changed
+  strategy authority, or submitted any provider, broker, PAPER, or LIVE mutation.
 - The former Phase39 LIVE numbering is retained: **Phase39** remains Controlled
   LIVE Activation and is still protected by all preceding evidence and authority
   gates.
@@ -108,18 +116,24 @@ reconstruction.
 
 Important limitations:
 
-- The strategy registry contains only eight simplified daily rule variants across
-  trend, momentum, breakout, and pullback families.
-- Most named strategy files and strategy documentation are placeholders.
-- Strategy assessments are setup evidence, not complete versioned entry, stop,
-  target, sizing, exit, and execution policies.
-- The feature engine has useful daily trend/momentum/volatility/volume/structure
-  primitives, but not the full practitioner indicator set or complete intraday,
-  premarket, and opening-session features.
+- The accepted Phase11 strategy registry still contains eight simplified daily
+  rule variants. A33/B33 adds a separate, versioned reference-strategy catalog so
+  accepted behavior is not silently changed.
+- The accepted PR #45 six-specification seed catalog remains an immutable
+  pre-outcome compatibility layer. The nine direction-specific policies resolve
+  its declared implementation blockers without rewriting that accepted lineage.
+- The first six practitioner families now have nine direction-specific, complete
+  research policies covering universe, signal, side, timing, stop, target, exit,
+  sizing, costs, and authority.
+- A separate daily reference-feature overlay now supplies the exact indicator
+  transitions needed by those policies without changing the accepted 33-feature
+  core. Intraday, premarket, and opening-session features remain deferred.
 - The existing router applies fixed regime compatibility; it does not yet learn
   conditional, walk-forward strategy performance or calibrated probability.
-- The full opportunity/outcome ledger, selector, strategy-management UI, and
-  complete operator product are not yet accepted.
+- A provider-free independent-strategy runner, condition-sliced opportunity/outcome
+  records, append-only strategy-trials ledger, and read-only catalog API now exist.
+  A trusted-lake adapter, account portfolio replay, selector, strategy-management
+  UI, and complete operator product are not yet accepted.
 - PostgreSQL and the root Docker deployment remain historical scaffolds, not an
   accepted operational database or deployment.
 
@@ -128,25 +142,25 @@ Accepted daily historical provider boundary remains Alpaca SIP through
 merely because it crosses that documented boundary. No pre-2021 intraday history
 may be fabricated.
 
-## Immediate active package
+## A33/B33 reference foundation
 
-The next coherent package is **A33/B33 — Practitioner Strategy Laboratory and
-Product Rebaseline**. It will:
+The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
+foundation implements:
 
-1. replace the placeholder strategy catalog with stable, versioned specifications;
+1. a stable, versioned reference catalog alongside the accepted registry;
 2. separate indicators, setup signals, complete trade policies, routing, and
    authority;
-3. add the missing daily features required by the first six reference families;
-4. implement the first finite daily reference library;
-5. build a reusable, PIT-safe historical runner and complete opportunity/outcome
+3. the missing daily features required by the first six reference families;
+4. the first finite daily reference library;
+5. a reusable, PIT-safe historical runner and opportunity/outcome
    ledger that records fired, rejected, routed, and counterfactual strategies;
-6. report performance by time, market/sector/ticker regime, volatility, liquidity,
+6. report structures by time, market/sector/ticker regime, volatility, liquidity,
    and direction without mining sparse condition combinations;
-7. expose the same versioned records to the product pipeline and replay interface;
-8. prove that operational PAPER baselines cannot become qualifying PAPER or LIVE
+7. a read-only product/control-plane catalog view and append-only trials ledger;
+8. proof that these research baselines cannot become PAPER or LIVE
    authority accidentally.
 
-The first six daily reference families are:
+The first six families contain nine direction-specific policy versions:
 
 1. 50/200 moving-average trend cross;
 2. 20/50 EMA pullback continuation;
@@ -165,6 +179,30 @@ No historical performance is opened until each implemented strategy version has 
 frozen universe, signal, direction, timing, exit, risk, cost, and evaluation
 contract. One canonical version per genuinely different family comes before
 variants.
+
+Frozen A33/B33 contracts:
+
+- reference strategy-policy fingerprint:
+  `26a6aae124b1a5d2b14b8a11a72671b06ac34d3cf94eb7ac47f16d2cfb94a8b3`;
+- strategy-authority fingerprint:
+  `a23ec27367ae540b869abc428d118241e84436719a8a543cbdbc3f3b678c69c5`;
+- daily reference-feature fingerprint:
+  `26a2892a4c4bb5597d2e688e78be8cb7da4fc656872a30fe887cf60669476cb8`.
+
+All nine policies remain `RESEARCH` authority and are permitted only in
+`RESEARCH_REPLAY`. The runner accepts caller-supplied split-adjusted daily bars,
+rejects the retained master protected window before feature calculation, creates
+signals only at finalized closes, and enters no earlier than the next session open.
+It retains fired, rejected, selected-independent, and overlap-suppressed
+counterfactual opportunities across the `0/5/10/25/50` bps grid. This is not yet an
+account portfolio replay and contains no empirical ATLAS result. Master
+protected return rows read: **0**; holdout consumed: **false**; broker writes:
+**0**; PAPER submits: **0**; LIVE writes: **0**.
+
+The next safe package is the trusted analytical-lake adapter and a DEVELOPMENT-only
+historical run of these frozen policies, followed by A34 portfolio replay and the
+browser replay dashboard. Any data adapter must preserve instrument identity,
+provider boundary, split-adjustment lineage, and the protected-window rejection.
 
 ## Strategy authority and PAPER/LIVE boundary
 
