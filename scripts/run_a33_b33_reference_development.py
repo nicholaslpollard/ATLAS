@@ -21,6 +21,7 @@ from packages.backtesting.reference_portfolio_policy import (
     reference_portfolio_policy_fingerprint,
 )
 from packages.backtesting.reference_portfolio_replay import ReferenceAccountPortfolioReplay
+from packages.backtesting.reference_regime_context import ReferenceRegimeContextAdapter
 from packages.backtesting.reference_strategy_runner import (
     ReferenceStrategyHistoricalRunner,
     reference_input_fingerprint,
@@ -152,7 +153,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--source-only",
         action="store_true",
-        help="Validate and materialize no outcomes; stop after the read-only adapter report.",
+        help=(
+            "Validate lake and exact-as-of regime sources, materialize no outcomes, "
+            "and stop after the read-only reports."
+        ),
     )
     return parser
 
@@ -185,11 +189,29 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"  adapter source fingerprint: {adapted.report['source_fingerprint']}")
     print(f"  adapter report: {adapter_report_path}")
+
+    regime_context = ReferenceRegimeContextAdapter(settings).attach(
+        adapted.bars,
+        args.start,
+        args.end,
+    )
+    regime_report_path = target / "regime_context_report.json"
+    atomic_write_text(
+        regime_report_path,
+        json.dumps(regime_context.report, indent=2, sort_keys=True, default=str) + "\n",
+    )
+    print(
+        "  PIT market regime context: PASS "
+        f"states={len(regime_context.report['market_state_counts']):,}"
+    )
+    print(f"  regime source fingerprint: {regime_context.report['source_fingerprint']}")
+    print("  ticker/sector regime context: UNAVAILABLE (not guessed)")
+    print(f"  regime context report: {regime_report_path}")
     if args.source_only:
         print("  performance opened: false (--source-only)")
         return 0
 
-    frame_fingerprint = reference_input_fingerprint(adapted.bars)
+    frame_fingerprint = reference_input_fingerprint(regime_context.bars)
     run_token = f"{args.start:%Y%m%d}_{args.end:%Y%m%d}"
     ledger = StrategyTrialLedger(
         Path(args.trial_ledger) if args.trial_ledger else _ledger_path(settings)
@@ -206,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
             notes=(
                 "Frozen nine-policy DEVELOPMENT replay registered before outcome calculation.",
                 f"Adapter source fingerprint: {adapted.report['source_fingerprint']}.",
+                f"Regime source fingerprint: {regime_context.report['source_fingerprint']}.",
                 "No authority promotion is implied by this trial.",
             ),
         ),
@@ -234,8 +257,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"  account replay registered before performance: {portfolio_registration_id}")
 
-    run = ReferenceStrategyHistoricalRunner().run(adapted.bars)
-    portfolio = ReferenceAccountPortfolioReplay().run(adapted.bars, run)
+    run = ReferenceStrategyHistoricalRunner().run(regime_context.bars)
+    portfolio = ReferenceAccountPortfolioReplay().run(regime_context.bars, run)
     opportunities_path = target / "opportunities.jsonl"
     opportunity_sha = _write_opportunities(opportunities_path, run.opportunities)
     decisions_path = target / "portfolio_decisions.jsonl"
@@ -276,6 +299,10 @@ def main(argv: list[str] | None = None) -> int:
     summary_payload["opportunities_sha256"] = opportunity_sha
     summary_payload["adapter_report_path"] = str(adapter_report_path.resolve())
     summary_payload["adapter_source_fingerprint"] = adapted.report["source_fingerprint"]
+    summary_payload["regime_context_report_path"] = str(regime_report_path.resolve())
+    summary_payload["regime_source_fingerprint"] = regime_context.report[
+        "source_fingerprint"
+    ]
     summary_payload["portfolio_replay_fingerprint"] = portfolio.replay_fingerprint
     summary_payload["portfolio_run_summary_path"] = str(portfolio_summary_path.resolve())
     summary_path = target / "run_summary.json"
@@ -296,6 +323,7 @@ def main(argv: list[str] | None = None) -> int:
             notes=(
                 f"Registration record: {registration_id}.",
                 f"Adapter source fingerprint: {adapted.report['source_fingerprint']}.",
+                f"Regime source fingerprint: {regime_context.report['source_fingerprint']}.",
                 f"Opportunity evidence SHA-256: {opportunity_sha}.",
                 "Independent-strategy replay only; not an account backtest or authority promotion.",
             ),

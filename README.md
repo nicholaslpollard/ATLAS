@@ -109,11 +109,17 @@ with a desired trade.
 - The first A34 RESEARCH account-replay vertical slice is implemented: deterministic
   candidate admission, cash/position accounting, simulated orders, outcomes, equity
   curve, read-only API, and visible browser state. No empirical replay exists in this
-  checkout.
+  checkout. It was accepted in PR #48 and merged as
+  `147b95810936a0b10b24eb08e51cd4d83c16c85b`; its post-merge Windows and Ubuntu
+  full-suite jobs passed.
 - The accepted Phase19 operator-path correction is merged in PR #49 as
   `cc0ecc6995ad977ca6eeb5fc00983ba2926317a0`; its post-merge Windows and Ubuntu
   full-suite jobs passed. The current stacked dashboard, not the legacy Phase16
   shell, is the authoritative local GUI entry point.
+- The hash-verified A34 operator drilldown was accepted in PR #50 and merged as
+  `f0a45cbff2662e26f4f1f55e8a16c0c356c9266c`; its post-merge Windows and Ubuntu
+  full-suite jobs passed. The dashboard now verifies and displays account metrics,
+  decisions, rejection reasons, simulated orders, outcomes, and equity/exposure.
 - The former Phase39 LIVE numbering is retained: **Phase39** remains Controlled
   LIVE Activation and is still protected by all preceding evidence and authority
   gates.
@@ -229,17 +235,30 @@ are unadjusted, only these factor-1-equivalent streams may be labeled
 signals and returns. Alpaca pre-seam and split-affected streams remain deferred to a
 separately validated adjustment-capable V2.
 
-V1 does not attach historical market, sector, or ticker regime labels. The runner
-therefore records those three context fields as `UNAVAILABLE`; price/volume
-conditions such as volatility, liquidity, and direction remain available. A34 must
-join the accepted regime path with an explicit PIT contract before any regime-sliced
-result is reported as evidence.
+The replay input now has two separate clocks. The canonical daily
+`timestamp_utc` remains the provider's regular-open stamp for source provenance;
+`signal_available_at_utc` is derived from the XNYS regular close under contract
+`reference-signal-availability-v1-xnys-regular-close-next-open`. Close-derived
+signals are recorded at that availability time and still cannot enter before the
+next regular-session open. This corrects evidence labeling without changing the
+previous next-open return simulation or claiming that any empirical result exists.
+
+The read-only regime adapter contract
+`reference-regime-context-v1-exact-asof-hash-bound-same-close-market-only` attaches
+the accepted same-session finalized market regime to a next-open decision. It
+requires the split-origin manifest whose `as_of_date` exactly equals the replay end,
+verifies the bound snapshot and `market_effective.parquet` SHA-256 values, rejects
+future, duplicate, blank, or missing-session state, and writes no production state.
+No accepted PIT instrument-to-sector mapping or reference ticker-state join exists,
+so ticker and sector regime fields remain `UNAVAILABLE` rather than inferred.
 
 The next safe operation is one DEVELOPMENT-only historical run of all nine frozen
-policies on the user's existing trusted lake, followed by A34 portfolio replay and
-the browser replay dashboard. This repository checkout contains no market lake, so
-no empirical ATLAS result has been fabricated. Protected return rows read: **0**;
-performance opened: **false**.
+policies on the user's existing trusted lake and its exact-end-date accepted
+split-origin regime artifacts, followed by inspection in the A34 browser dashboard.
+If that exact regime bundle is absent, the command fails closed instead of consuming
+a later as-of history or rebuilding production state implicitly. This repository
+checkout contains no market lake, so no empirical ATLAS result has been fabricated.
+Protected return rows read: **0**; performance opened: **false**.
 
 The accepted local command first runs the adapter, binds its source fingerprint,
 and registers the frozen trial before calculating any strategy outcome. It can stop
@@ -250,10 +269,12 @@ after source validation or continue through the independent-strategy replay:
 .\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py
 ```
 
-The full command writes its adapter report, independent opportunity ledger, account
-admission decisions, simulated orders, position outcomes, equity curve, summaries,
-and append-only trial records under `data/derived/strategy_lab/`; it does not write
-to a provider, broker, PAPER account, or LIVE account and cannot promote authority.
+The full command writes its lake-adapter and regime-context reports, independent
+opportunity ledger, account admission decisions, simulated orders, position
+outcomes, equity curve, summaries, and append-only trial records under
+`data/derived/strategy_lab/`; it does not write to a provider, broker, PAPER account,
+or LIVE account and cannot promote authority. `--source-only` validates both source
+bundles and stops before any performance outcome is opened.
 
 ## A34 RESEARCH account replay
 
@@ -293,6 +314,11 @@ Phase16 shell. Start it from the repository root with
 open `http://127.0.0.1:8765`. Its A33/A34 Strategy Laboratory panel reads the
 catalog and latest replay through the two local GET endpoints; loading or refreshing
 the panel does not call a market-data provider or broker.
+
+Market-regime condition slices now use the hash-bound same-session finalized market
+regime that was knowable at the signal close and before the next-open entry. Ticker
+and sector condition slices remain explicitly `UNAVAILABLE`; they must not be used
+for conditional performance claims until their separate PIT joins are accepted.
 
 ## Strategy authority and PAPER/LIVE boundary
 

@@ -8,6 +8,7 @@ import pytest
 from packages.backtesting.reference_strategy_runner import (
     ProtectedMasterWindowError,
     ReferenceStrategyHistoricalRunner,
+    ReferenceStrategyRunnerError,
     plan_reference_trade,
     reference_input_fingerprint,
     simulate_reference_trade,
@@ -37,6 +38,7 @@ def _simulation_frame() -> pd.DataFrame:
 
 def _daily_frame(closes: list[float]) -> pd.DataFrame:
     timestamps = pd.date_range("2024-01-02", periods=len(closes), freq="B", tz="UTC")
+    signal_available = timestamps + pd.Timedelta(hours=21)
     high = [value + 1.0 for value in closes]
     low = [value - 1.0 for value in closes]
     if len(closes) > 201:
@@ -47,6 +49,7 @@ def _daily_frame(closes: list[float]) -> pd.DataFrame:
             "ticker": "TEST",
             "session_date": timestamps.date,
             "timestamp_utc": timestamps,
+            "signal_available_at_utc": signal_available,
             "open": closes,
             "high": high,
             "low": low,
@@ -123,7 +126,20 @@ def test_runner_records_selected_opportunity_and_is_deterministic() -> None:
     opportunity = rows[0]
     assert opportunity.disposition == OpportunityDisposition.SELECTED_INDEPENDENT_REPLAY
     assert opportunity.signal_session == frame.loc[200, "session_date"]
+    assert opportunity.signal_timestamp_utc == frame.loc[200, "signal_available_at_utc"]
     assert opportunity.entry_session == frame.loc[201, "session_date"]
     assert opportunity.outcome_status == OpportunityOutcomeStatus.EXITED
     assert opportunity.exit_reason == ReferenceExitReason.INITIAL_OR_TRAILING_STOP
     assert opportunity.counterfactual_only is False
+
+
+def test_runner_rejects_missing_or_noncausal_signal_availability() -> None:
+    frame = _daily_frame([100.0, 101.0, 102.0])
+    with pytest.raises(ReferenceStrategyRunnerError, match="signal_available_at_utc"):
+        ReferenceStrategyHistoricalRunner().run(
+            frame.drop(columns=["signal_available_at_utc"])
+        )
+
+    frame["signal_available_at_utc"] = frame["timestamp_utc"]
+    with pytest.raises(ReferenceStrategyRunnerError, match="must follow"):
+        ReferenceStrategyHistoricalRunner().run(frame)

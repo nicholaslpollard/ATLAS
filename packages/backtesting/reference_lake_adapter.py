@@ -20,6 +20,9 @@ from packages.schemas.canonical_market import canonical_stock_daily_schema_match
 REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION = (
     "reference-lake-adapter-v1-massive-development-split-free-identity-exact"
 )
+REFERENCE_SIGNAL_AVAILABILITY_CONTRACT_VERSION = (
+    "reference-signal-availability-v1-xnys-regular-close-next-open"
+)
 REFERENCE_LAKE_PROVIDER_SEAM_START = date(2021, 8, 16)
 REFERENCE_LAKE_DEVELOPMENT_END = date(2026, 5, 11)
 REFERENCE_LAKE_PROTECTED_RETURN_READS = 0
@@ -400,6 +403,9 @@ class ReferenceDailyLakeAdapter:
                 "regular_open_utc": [
                     self.calendar.regular_open_close(session)[0] for session in sessions
                 ],
+                "regular_close_utc": [
+                    self.calendar.regular_open_close(session)[1] for session in sessions
+                ],
             }
         )
         source_partitions = pd.DataFrame(
@@ -425,7 +431,8 @@ class ReferenceDailyLakeAdapter:
                 "CREATE TEMP TABLE expected_sessions AS "
                 "SELECT CAST(session_date AS DATE) session_date, "
                 "CAST(session_sequence AS BIGINT) session_sequence, "
-                "CAST(regular_open_utc AS TIMESTAMPTZ) regular_open_utc "
+                "CAST(regular_open_utc AS TIMESTAMPTZ) regular_open_utc, "
+                "CAST(regular_close_utc AS TIMESTAMPTZ) regular_close_utc "
                 "FROM expected_sessions_input"
             )
             con.execute(
@@ -450,7 +457,7 @@ class ReferenceDailyLakeAdapter:
             con.execute(
                 f"""
                 CREATE TEMP VIEW source_bars AS
-                SELECT b.*, p.partition_date, s.regular_open_utc
+                SELECT b.*, p.partition_date, s.regular_open_utc, s.regular_close_utc
                 FROM read_parquet(
                     {canonical_sql}, hive_partitioning=false, filename=true
                 ) b
@@ -626,6 +633,7 @@ class ReferenceDailyLakeAdapter:
                     b.symbol ticker,
                     CAST(b.session_date AS DATE) session_date,
                     b.timestamp_utc,
+                    b.regular_close_utc,
                     b.open, b.high, b.low, b.close, b.volume,
                     b.provider, b.dataset, b.source_id, b.is_adjusted,
                     r.interval_count, r.unique_instrument_count
@@ -707,6 +715,7 @@ class ReferenceDailyLakeAdapter:
                     b.ticker,
                     b.session_date,
                     b.timestamp_utc,
+                    b.regular_close_utc AS signal_available_at_utc,
                     CAST(b.open AS DOUBLE) AS open,
                     CAST(b.high AS DOUBLE) AS high,
                     CAST(b.low AS DOUBLE) AS low,
@@ -762,6 +771,9 @@ class ReferenceDailyLakeAdapter:
                 "reference lake adapter produced no identity-safe split-free contiguous rows"
             )
         output["timestamp_utc"] = pd.to_datetime(output["timestamp_utc"], utc=True)
+        output["signal_available_at_utc"] = pd.to_datetime(
+            output["signal_available_at_utc"], utc=True
+        )
         output["session_date"] = pd.to_datetime(output["session_date"]).dt.date
         report: dict[str, object] = {
             "contract_version": REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION,
@@ -788,6 +800,10 @@ class ReferenceDailyLakeAdapter:
             "output_rows": int(len(output)),
             "output_instruments": int(output["instrument_id"].nunique()),
             "price_adjustment_policy": "FACTOR_1_ONLY_EXCLUDE_ANY_DOCUMENTED_SPLIT_IDENTITY",
+            "signal_availability_contract": REFERENCE_SIGNAL_AVAILABILITY_CONTRACT_VERSION,
+            "canonical_bar_timestamp_semantics": "PROVIDER_REGULAR_OPEN_STAMP_PRESERVED",
+            "signal_available_at_semantics": "XNYS_REGULAR_CLOSE_AFTER_DAILY_BAR_FINALIZATION",
+            "entry_timing_semantics": "NO_EARLIER_THAN_NEXT_REGULAR_SESSION_OPEN",
             "current_active_filter_used": False,
             "current_delisted_filter_used": False,
             "future_reference_snapshot_used": False,
@@ -805,6 +821,7 @@ class ReferenceDailyLakeAdapter:
                 "canonical_session_inventory_exact": True,
                 "canonical_schema_exact": True,
                 "massive_postseam_semantics_exact": True,
+                "daily_close_availability_clock_explicit": True,
                 "identity_fail_closed": True,
                 "stable_metadata_only": True,
                 "split_affected_identity_excluded": True,

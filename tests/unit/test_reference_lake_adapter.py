@@ -12,6 +12,7 @@ import pytest
 from packages.backtesting.reference_lake_adapter import (
     EXPECTED_SPLIT_REPORT_CONTRACT,
     REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION,
+    REFERENCE_SIGNAL_AVAILABILITY_CONTRACT_VERSION,
     ReferenceDailyLakeAdapter,
     ReferenceLakeAdapterError,
     ReferenceLakeScopeError,
@@ -205,6 +206,11 @@ def test_reference_lake_adapter_keeps_only_identity_exact_split_free_contiguous_
     assert REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION.endswith("split-free-identity-exact")
     assert result.bars["instrument_id"].unique().tolist() == ["ins-good"]
     assert result.bars["ticker"].tolist() == ["GOOD", "GOOD", "GOOD"]
+    assert result.bars["signal_available_at_utc"].tolist() == [
+        pd.Timestamp("2025-01-02T21:00:00Z"),
+        pd.Timestamp("2025-01-03T21:00:00Z"),
+        pd.Timestamp("2025-01-06T21:00:00Z"),
+    ]
     assert result.bars["price_adjustment_mode"].eq("SPLIT_ADJUSTED").all()
     assert result.bars["split_adjustment_method"].eq(
         "FACTOR_1_CERTIFIED_NO_DOCUMENTED_SPLIT"
@@ -214,6 +220,9 @@ def test_reference_lake_adapter_keeps_only_identity_exact_split_free_contiguous_
     assert result.report["gap_excluded_instruments"] == 1
     assert result.report["protected_master_return_rows_read"] == 0
     assert result.report["performance_opened"] is False
+    assert result.report["signal_availability_contract"] == (
+        REFERENCE_SIGNAL_AVAILABILITY_CONTRACT_VERSION
+    )
     assert result.report["provider_writes"] == result.report["broker_writes"] == 0
 
     features = compute_reference_daily_features(result.bars)
