@@ -182,8 +182,8 @@ def main() -> int:
             WHERE EXTRACT(year FROM CAST(timestamp_utc AS DATE)) BETWEEN {start_year} AND {max_year}
               AND CAST(close AS DOUBLE) > 0
               AND CAST(volume AS DOUBLE) >= 0
-            GROUP BY year, symbol
-            ORDER BY year, symbol
+            GROUP BY 1, 2
+            ORDER BY 1, 2
             """
         ).fetchall()
 
