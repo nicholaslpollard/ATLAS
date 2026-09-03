@@ -143,7 +143,9 @@ with a desired trade.
   but requires the plan-derived confirmation token and retains a completion/partial-
   failure receipt. Native acquisition/canonicalization is not yet implemented, so
   this mode intentionally leaves ATLAS without a historical database until V2 is
-  built. The combined delete-and-rebuild mode remains code-locked.
+  built. Before confirmation it prints every exact target with its kind, file count,
+  and size so the operator can review deletion scope. The combined
+  delete-and-rebuild mode remains code-locked.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live

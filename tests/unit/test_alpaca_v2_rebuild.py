@@ -134,3 +134,20 @@ def test_decommission_journal_records_completion(tmp_path: Path) -> None:
         journal_path=journal,
     ) == 1
     assert '"completed_targets": [\n    "canonical"' in journal.read_text()
+
+
+def test_preflight_prints_each_exact_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    data = tmp_path / "data"
+    (data / "canonical").mkdir(parents=True)
+    (data / "canonical" / "old.parquet").write_bytes(b"old")
+    monkeypatch.setattr(run_alpaca_v2_rebuild, "PROJECT_ROOT", tmp_path)
+
+    assert run_alpaca_v2_rebuild.main([]) == 0
+
+    output = capsys.readouterr().out
+    assert "exact historical targets:" in output
+    assert "canonical (directory; 1 files; 3.00 B)" in output

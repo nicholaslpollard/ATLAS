@@ -27,6 +27,15 @@ NATIVE_BASE_ESTIMATE_BYTES = int(127.8 * 1024**3)
 REBUILD_ACQUISITION_READY = False
 
 
+def _human_bytes(value: int) -> str:
+    size = float(value)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if size < 1024.0 or unit == "TiB":
+            return f"{size:,.2f} {unit}"
+        size /= 1024.0
+    return f"{value:,} B"
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(
         description="Resumable top-level Alpaca SIP V2 rebuild coordinator."
@@ -81,6 +90,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  reclaimable bytes: {plan.total_bytes:,}")
     print(f"  confirmation token: {plan.confirmation_token}")
     print(f"  base storage accepted after decommission: {projected_free['accepted_after_decommission']}")
+    print("  exact historical targets:")
+    if not plan.entries:
+        print("    <none>")
+    for entry in plan.entries:
+        print(
+            f"    {entry.relative_path} "
+            f"({entry.kind}; {entry.files:,} files; {_human_bytes(entry.bytes)})"
+        )
 
     if not args.execute_v1_decommission and not args.decommission_v1_only:
         print("Result: PREFLIGHT_ONLY — no files deleted and no provider requests made")
