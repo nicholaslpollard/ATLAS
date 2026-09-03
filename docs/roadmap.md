@@ -1047,3 +1047,137 @@ closed historical state and do not restore the superseded product dependency:
 - Accepted foundation through Phase32; Completed Pre-Phase33 SEC XBRL; Phase33 — Signal-to-Trade Construction; Phase39 — Controlled LIVE Activation.
 - The historical successor was required to use a materially different point-in-time fundamental-information mechanism.
 - The historical XBRL successor may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
+
+## 23. Broker/data-source separation, operator switching, and verified Webull capability
+
+**Current direction established 2026-09-03; this section supersedes earlier broker
+role wording in this roadmap wherever inconsistent.** This package documents the
+operator/product contract and a completed read-only capability test. It changes no
+strategy authority and authorizes no PAPER or LIVE order.
+
+### 23.1 Separate market-data and execution domains
+
+ATLAS must not bind its market-data provider to its execution broker. The control
+plane and runtime configuration will carry independent selections for:
+
+- market-data provider/feed class and freshness state;
+- PAPER execution broker;
+- future LIVE execution broker;
+- broker health/reconciliation and execution authority.
+
+A supported state such as **Webull real-time market data + Alpaca LIVE execution**
+is intentional. Every decision/order lineage should retain the data provider/feed,
+quote timestamp and age/quality, broker, environment, and reconciliation state so
+ATLAS can later audit what it observed versus where the order was routed. Changing
+a market-data feed alone must not liquidate broker positions.
+
+Feeds are not silently interchangeable. Delayed, stale, unauthorized, or limited-
+coverage feeds must be labeled as such and may be blocked from execution according
+to the accepted strategy/execution contract. Alpaca Basic real-time IEX is a useful
+fallback but is **real-time limited coverage**, not equivalent to consolidated SIP.
+A delayed feed must never be represented as real-time.
+
+### 23.2 Operator-controlled broker selection
+
+The operator must be able to request Webull ↔ Alpaca execution-broker changes from
+the GUI. ATLAS owns the safe transition mechanics, not the decision to switch.
+Automatic cross-broker failover remains prohibited.
+
+When the active broker has exposure, an operator-requested switch must:
+
+1. suspend new entries;
+2. cancel/reconcile source-broker open orders;
+3. close ATLAS-managed source-broker positions under an explicit controlled exit
+   path;
+4. reconcile until the source broker has zero positions and zero open orders;
+5. reconcile the target broker and verify it is clean, healthy, and eligible;
+6. atomically change active execution authority only after both sides satisfy the
+   switch contract;
+7. run a **fresh** ATLAS market, strategy, candidate, and portfolio evaluation; and
+8. submit only new target-broker orders justified by that current evaluation.
+
+ATLAS must not transfer or blindly recreate the old broker's positions. Reverse
+switching follows the same procedure. Existing Phase15 switch authorization already
+requires explicit request, source/target reconciliation, zero orders, zero
+positions, and disabled automatic failover. It currently rejects LIVE switching by
+design; a later LIVE package must extend that accepted safety model rather than
+bypass it.
+
+### 23.3 Planned broker roles
+
+- **Operational/qualifying PAPER:** Webull sandbox/paper preferred; Alpaca paper
+  remains manually selectable for deliberate fallback/comparison testing.
+- **Initial LIVE if ever authorized while Webull LIVE API eligibility/capital is not
+  dependable:** Alpaca LIVE is the intended execution broker.
+- **Later LIVE:** Webull becomes the preferred primary after the then-current Webull
+  API eligibility rule, account readiness/capital reserve, and all ATLAS LIVE gates
+  are proven. Alpaca remains a manually selectable alternate.
+- **No automatic broker failover** in PAPER or LIVE.
+
+Webull currently states a `$100` minimum net account value to qualify for API access,
+but public documentation does not clearly prove whether already-approved API access
+is immediately revoked whenever net account value falls below `$100`. ATLAS will not
+encode an assumption. Capability must be measured directly, visibly degraded when
+unavailable, and reevaluated against then-current provider rules before LIVE. A
+future Webull eligibility reserve should be configurable above the provider minimum
+rather than permanently hard-coding today's `$100` rule.
+
+### 23.4 Read-only Webull paper/OpenAPI capability test — PASS
+
+On `2026-09-03`, the user ran a read-only test from the local ATLAS checkout using
+the actual `.env` `WEBULL_PAPER_APP_KEY` and `WEBULL_PAPER_APP_SECRET`, without
+printing, exposing, or committing either value. The script explicitly loaded the
+local `.env`, constructed Webull sandbox `ApiClient`, `TradeClient`, and
+`DataClient`, pointed the SDK at `api.sandbox.webull.com`, read the paper account
+list, and requested an AAPL U.S.-stock snapshot.
+
+Observed result:
+
+- Webull paper credentials present: **PASS**;
+- paper authentication/account API: **HTTP 200**;
+- paper accounts visible: **5**;
+- market-data snapshot API: **HTTP 200**;
+- market-data access: **PASS**;
+- AAPL snapshot returned current bid/ask and
+  `quote_time=1788471413394`;
+- extended-hours data returned
+  `extend_hour_last_trade_time=1788471540803`;
+- test execution time was approximately `2026-09-03 17:39 ET`, so the returned
+  extended-hours observation was effectively current rather than 15 minutes
+  delayed;
+- **no order was previewed, submitted, modified, or canceled**.
+
+A separate connected Webull read during the same investigation returned current SPY
+and AAPL quotes while an accessible brokerage account showed approximately `$0.01`
+net liquidation value. This supports the practical possibility that a Webull data
+path can remain usable below `$100`, but it does **not** prove a universal or future
+entitlement rule for every Webull OpenAPI credential. Runtime health/entitlement
+checks remain mandatory.
+
+### 23.5 A34.5/A35 implications
+
+A34.5 must expose market-data and execution selection as separate operator-visible
+states. At minimum the dashboard target now includes current mode, selected market-
+data provider/feed class, feed freshness and last update, PAPER broker, future LIVE
+broker, broker/reconciliation health, and halt/kill state. The dashboard must make
+limited/delayed/stale data obvious and fail closed where execution requires fresher
+or broader data.
+
+Changing data source alone must not flatten positions. Changing execution broker
+must invoke the controlled handoff above. Browser controls do not grant strategy or
+LIVE authority by themselves.
+
+A35 remains blocked until A34.5 is accepted. When A35 begins, Webull PAPER remains
+the preferred Operational PAPER broker. Alpaca paper can be selected manually. No
+LIVE work is authorized by this documentation package.
+
+Authority/safety result of this package:
+
+- strategy promotion: **none**;
+- A35 PAPER submission authority: **not granted**;
+- LIVE authority: **false**;
+- LIVE broker switching: **not promoted**;
+- automatic broker failover: **false**;
+- protected return rows read: **0**;
+- holdout consumed: **false**;
+- broker/order mutations from the capability test: **0**.
