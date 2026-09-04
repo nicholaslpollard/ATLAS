@@ -41,4 +41,4 @@ jobs:
       - name: Validate A34 PIT regime context
         run: python scripts/validate_a34_reference_regime_context.py
       - name: Run focused account replay and browser tests
-        run: python -m pytest -q tests/unit/test_reference_lake_adapter.py tests/unit/test_reference_regime_context.py tests/unit/test_reference_strategy_runner.py tests/unit/test_reference_portfolio_replay.py tests/unit/test_reference_replay_read_model.py tests/unit/test_phase16_status_api.py tests/unit/test_phase19_observability_http.py
+        run: python -m pytest -q tests/unit/test_reference_lake_adapter.py tests/unit/test_reference_regime_context.py tests/unit/test_reference_strategy_runner.py tests/unit/test_reference_portfolio_replay.py tests/unit/test_reference_replay_read_model.py tests/unit/test_phase16_status_api.py tests/unit/test_phase19_observability_http.py tests/unit/test_a34_5_paper_dashboard.py
