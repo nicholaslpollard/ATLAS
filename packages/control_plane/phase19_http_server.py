@@ -17,6 +17,7 @@ from .http_server import (
     _BROWSER_CSP,
     create_status_server,
 )
+from .paper_dashboard import PaperDashboardService
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .phase19_observability import Phase19ObservabilityService
 from .session import ControlPlaneSessionGuard
@@ -35,7 +36,11 @@ _PHASE19_STATIC_ASSETS = {
     ),
     "/assets/observability.css": ("observability.css", "text/css; charset=utf-8"),
 }
-_PHASE19_OBSERVABILITY_BUNDLE = ("observability.js", "observability_controls.js")
+_PHASE19_OBSERVABILITY_BUNDLE = (
+    "observability.js",
+    "observability_controls.js",
+    "paper_dashboard.js",
+)
 
 
 def _read_static_part(web_root: Path, filename: str) -> bytes:
@@ -118,6 +123,23 @@ class Phase19ControlPlaneRequestHandler(AtlasControlPlaneRequestHandler):
                 return
             self._send_json(HTTPStatus.OK, payload)
             return
+        if path == "/api/v1/ops/paper-dashboard":
+            try:
+                payload = self.atlas_server.paper_dashboard_service.snapshot()  # type: ignore[attr-defined]
+            except Exception:
+                self._send_json(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {
+                        "error": "PAPER_DASHBOARD_READ_FAILED",
+                        "read_only": True,
+                        "provider_reads": 0,
+                        "provider_writes": 0,
+                        "broker_writes": 0,
+                    },
+                )
+                return
+            self._send_json(HTTPStatus.OK, payload)
+            return
         super()._dispatch_get()
 
 
@@ -125,6 +147,7 @@ def create_phase19_status_server(
     *,
     service: Phase16StatusService,
     observability_service: Phase19ObservabilityService | None = None,
+    paper_dashboard_service: PaperDashboardService | None = None,
     host: str = PHASE16_DEFAULT_BIND_HOST,
     port: int = DEFAULT_CONTROL_PLANE_PORT,
     session_guard: ControlPlaneSessionGuard | None = None,
@@ -151,5 +174,8 @@ def create_phase19_status_server(
     server.observability_service = observability_service or Phase19ObservabilityService(  # type: ignore[attr-defined]
         service.settings,
         status_service=service,
+    )
+    server.paper_dashboard_service = paper_dashboard_service or PaperDashboardService(  # type: ignore[attr-defined]
+        service.settings,
     )
     return server

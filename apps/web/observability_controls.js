@@ -43,6 +43,7 @@ function ensurePhase19WorkspaceNavigation() {
   [
     ["Overview", "#safety-banner"],
     ["Pipeline", "#pipeline-stages"],
+    ["Paper ops", "#paper-dashboard"],
     ["Candidates", "#candidate-search"],
     ["AI audit", "#ai-date"],
     ["Outcomes", "#outcome-count"],
@@ -185,6 +186,9 @@ async function refreshPhase19LocalObservability() {
       window.renderObservability(payload);
     }
     renderPhase18InputChecklist(payload);
+    window.dispatchEvent(new CustomEvent("atlas:observability-refreshed", {
+      detail: { generatedAtUtc: payload.generated_at_utc || null },
+    }));
     if (status) {
       const suffix = phase19Controls.intervalSeconds > 0
         ? ` Auto-refresh every ${phase19Controls.intervalSeconds}s.`
