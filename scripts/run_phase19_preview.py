@@ -21,7 +21,16 @@ preview_server._STATIC_ASSETS["/assets/atlas_console.css"] = (
     "atlas_console.css",
     "text/css; charset=utf-8",
 )
-for console_asset in ("atlas_console.js", "atlas_overview.js", "atlas_console_runtime.js"):
+preview_server._STATIC_ASSETS["/assets/atlas_overview.css"] = (
+    "atlas_overview.css",
+    "text/css; charset=utf-8",
+)
+for console_asset in (
+    "atlas_console.js",
+    "atlas_overview_style.js",
+    "atlas_overview.js",
+    "atlas_console_runtime.js",
+):
     if console_asset not in preview_server._PREVIEW_JS_BUNDLE:
         bundle = list(preview_server._PREVIEW_JS_BUNDLE)
         insert_at = max(0, len(bundle) - 1)
