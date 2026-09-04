@@ -28,6 +28,47 @@ def test_plan_targets_only_allowlisted_historical_namespaces(tmp_path: Path) -> 
     assert plan.total_files == 1
 
 
+def test_residual_cleanup_removes_database_layers_but_preserves_accepted_evidence(
+    tmp_path: Path,
+) -> None:
+    data = tmp_path / "data"
+    targets = (
+        "raw/day_aggs_v1",
+        "provider/alpaca/probe",
+        "derived/ml/training_datasets/run",
+        "derived/discovery",
+        "derived/universe",
+        "manifests/features",
+        "checkpoints/ingestion",
+    )
+    for relative in targets:
+        path = data / relative
+        path.mkdir(parents=True)
+        (path / "old.bin").write_bytes(b"old")
+    preserved = (
+        "derived/strategy_evaluation/phase31/evidence",
+        "provider/pre_phase33_beneficial_ownership/v1",
+        "provider/phase32_sec_8k_predictor_acquisition/v1",
+        "live/journal",
+    )
+    for relative in preserved:
+        path = data / relative
+        path.mkdir(parents=True)
+        (path / "keep.bin").write_bytes(b"keep")
+
+    plan = build_decommission_plan(data)
+    planned = {entry.relative_path for entry in plan.entries}
+
+    assert "raw/day_aggs_v1" in planned
+    assert "provider/alpaca" in planned
+    assert "derived/ml/training_datasets" in planned
+    assert "derived/discovery" in planned
+    assert "derived/universe" in planned
+    assert "manifests/features" in planned
+    assert "checkpoints/ingestion" in planned
+    assert all(not any(item.startswith(relative) for item in planned) for relative in preserved)
+
+
 def test_decommission_is_hash_bound_and_preserves_live_and_research(tmp_path: Path) -> None:
     data = tmp_path / "data"
     (data / "derived" / "features").mkdir(parents=True)
@@ -80,17 +121,9 @@ def test_plan_refuses_symlink_target(tmp_path: Path) -> None:
         build_decommission_plan(data)
 
 
-def test_coordinator_is_code_locked_before_acquisition_exists(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(run_alpaca_v2_rebuild, "PROJECT_ROOT", tmp_path)
-
-    with pytest.raises(RuntimeError, match="code-locked"):
-        run_alpaca_v2_rebuild.main(
-            ["--execute-v1-decommission", "--confirmation-token", "anything"]
-        )
-
-    assert not (tmp_path / "data" / "canonical").exists()
+def test_coordinator_unlocks_only_after_native_acquisition_exists() -> None:
+    assert run_alpaca_v2_rebuild.REBUILD_ACQUISITION_READY is True
+    assert run_alpaca_v2_rebuild.parser().parse_args(["--build-v2"]).build_v2 is True
 
 
 def test_database_only_mode_deletes_v1_and_retains_receipt_and_live(
@@ -115,7 +148,13 @@ def test_database_only_mode_deletes_v1_and_retains_receipt_and_live(
         == 0
     )
 
-    receipt = data / "checkpoints" / "alpaca_v2_migration" / "v1_decommission_receipt.json"
+    receipts = list(
+        (data / "checkpoints" / "alpaca_v2_migration").glob(
+            "v1_decommission_receipt_*.json"
+        )
+    )
+    assert len(receipts) == 1
+    receipt = receipts[0]
     assert not (data / "canonical").exists()
     assert (data / "live" / "state.json").exists()
     assert '"status": "COMPLETE"' in receipt.read_text()
