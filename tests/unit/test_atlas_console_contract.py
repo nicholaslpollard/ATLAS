@@ -58,11 +58,23 @@ def test_console_groups_operator_pages_by_real_data_domains() -> None:
         assert f'"{label}"' in source
 
     assert "Autonomous Trading, Learning & Analysis System" not in source
-    assert "atlas-brand-name\", \"ATLAS\"" in source
     assert "Automatic failover" in source
     assert 'atlasSet("atlas-ctl-failover", "DISABLED")' in source
     assert 'atlasSet("atlas-ctl-live", "DISABLED")' in source
     assert 'atlasSet("atlas-ctl-browser", "READ ONLY")' in source
+
+
+def test_selected_brand_removes_duplicate_html_label_and_centers_artwork() -> None:
+    production_style = (WEB_ROOT / "atlas_overview_style.js").read_text(encoding="utf-8")
+    preview_style = (WEB_ROOT / "phase19_preview.js").read_text(encoding="utf-8")
+
+    removal = 'document.querySelectorAll(".atlas-brand-name").forEach((node) => node.remove())'
+    for source in (production_style, preview_style):
+        assert removal in source
+        assert "atlas-brand-selected" in source
+        assert "width: 150px" in source
+        assert "height: 150px" in source
+        assert "place-items: center" in source
 
 
 def test_overview_is_summary_only_and_drills_into_domain_pages() -> None:
