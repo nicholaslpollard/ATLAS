@@ -247,21 +247,7 @@ class AlpacaMarketDataClient:
         token: str | None = None
         seen_tokens: set[str] = set()
         while True:
-            page = self._request_json(
-                request_name="corporate_actions",
-                base_url=self.cfg.base_url,
-                path="v1/corporate-actions",
-                params={
-                    "start": start,
-                    "end": end,
-                    "region": "us",
-                    "data_quality": "complete",
-                    "limit": 1000,
-                    "sort": "asc",
-                    "page_token": token,
-                },
-                page_token_used=token,
-            )
+            page = self.corporate_action_page(start=start, end=end, page_token=token)
             yield page
             token = page.next_page_token
             if not token:
@@ -270,12 +256,42 @@ class AlpacaMarketDataClient:
                 raise RuntimeError("Alpaca corporate-action pagination repeated a page token")
             seen_tokens.add(token)
 
+    def corporate_action_page(
+        self,
+        *,
+        start: str,
+        end: str,
+        page_token: str | None = None,
+    ) -> AlpacaApiPage:
+        """Fetch one complete-quality corporate-action page for restartable capture."""
+
+        return self._request_json(
+            request_name="corporate_actions",
+            base_url=self.cfg.base_url,
+            path="v1/corporate-actions",
+            params={
+                "start": start,
+                "end": end,
+                "region": "us",
+                "data_quality": "complete",
+                "limit": 1000,
+                "sort": "asc",
+                "page_token": page_token,
+            },
+            page_token_used=page_token,
+        )
+
     def historical_bar_pages(
         self,
         *,
         symbols: list[str] | tuple[str, ...],
         start: str,
         end: str,
+        timeframe: str | None = None,
+        feed: str | None = None,
+        adjustment: str | None = None,
+        asof: str | None = None,
+        page_limit: int | None = None,
     ) -> Iterator[AlpacaApiPage]:
         clean = tuple(dict.fromkeys(str(symbol).strip() for symbol in symbols if str(symbol).strip()))
         if not clean:
@@ -288,23 +304,16 @@ class AlpacaMarketDataClient:
         token: str | None = None
         seen_tokens: set[str] = set()
         while True:
-            page = self._request_json(
-                request_name="historical_bars",
-                base_url=self.cfg.base_url,
-                path="v2/stocks/bars",
-                params={
-                    "symbols": ",".join(clean),
-                    "timeframe": self.cfg.timeframe,
-                    "start": start,
-                    "end": end,
-                    "limit": self.cfg.page_limit,
-                    "adjustment": self.cfg.adjustment,
-                    "feed": self.cfg.feed,
-                    "asof": self.cfg.asof,
-                    "sort": "asc",
-                    "page_token": token,
-                },
-                page_token_used=token,
+            page = self.historical_bar_page(
+                symbols=clean,
+                start=start,
+                end=end,
+                page_token=token,
+                timeframe=timeframe,
+                feed=feed,
+                adjustment=adjustment,
+                asof=asof,
+                page_limit=page_limit,
             )
             yield page
             token = page.next_page_token
@@ -313,3 +322,52 @@ class AlpacaMarketDataClient:
             if token in seen_tokens:
                 raise RuntimeError("Alpaca historical-bar pagination repeated a page token")
             seen_tokens.add(token)
+
+    def historical_bar_page(
+        self,
+        *,
+        symbols: list[str] | tuple[str, ...],
+        start: str,
+        end: str,
+        page_token: str | None = None,
+        timeframe: str | None = None,
+        feed: str | None = None,
+        adjustment: str | None = None,
+        asof: str | None = None,
+        page_limit: int | None = None,
+    ) -> AlpacaApiPage:
+        """Fetch one explicit historical-bar page.
+
+        The single-page form is the restart boundary used by long-running V2
+        acquisition.  The iterator above remains the convenient compatibility
+        surface for earlier research gates.
+        """
+
+        clean = tuple(dict.fromkeys(str(symbol).strip() for symbol in symbols if str(symbol).strip()))
+        if not clean:
+            raise ValueError("historical bars require at least one symbol")
+        if len(clean) > self.cfg.symbol_batch_size:
+            raise ValueError(
+                f"historical bar batch exceeds configured symbol_batch_size={self.cfg.symbol_batch_size}"
+            )
+        limit = self.cfg.page_limit if page_limit is None else int(page_limit)
+        if limit < 1 or limit > 10_000:
+            raise ValueError("historical bar page_limit must be between 1 and 10000")
+        return self._request_json(
+            request_name="historical_bars",
+            base_url=self.cfg.base_url,
+            path="v2/stocks/bars",
+            params={
+                "symbols": ",".join(clean),
+                "timeframe": timeframe or self.cfg.timeframe,
+                "start": start,
+                "end": end,
+                "limit": limit,
+                "adjustment": adjustment or self.cfg.adjustment,
+                "feed": feed or self.cfg.feed,
+                "asof": self.cfg.asof if asof is None else asof,
+                "sort": "asc",
+                "page_token": page_token,
+            },
+            page_token_used=page_token,
+        )

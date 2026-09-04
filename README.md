@@ -144,8 +144,32 @@ with a desired trade.
   147,206,406,678 bytes (137.10 GiB)** were deleted after the exact generated token
   was confirmed. The retained receipt is
   `data/checkpoints/alpaca_v2_migration/v1_decommission_receipt.json`. ATLAS now has
-  no historical market database; native acquisition/canonicalization is not yet
-  implemented. The combined delete-and-rebuild mode remains code-locked.
+  no accepted historical market database. The read-only post-decommission inventory
+  then identified database-generation remnants that were outside the first eight
+  targets: `raw/day_aggs_v1`, legacy `provider/alpaca`, old ML training data,
+  discovery/universe/regime/quality/reference products, and their ingestion/manifests.
+  Accepted strategy-evaluation evidence, SEC/regulatory source evidence, live state,
+  models, source code, and Git history remain outside the expanded cleanup boundary.
+- The fresh-source native V2 package is implemented and awaiting its first operator
+  run. `scripts/run_alpaca_v2_rebuild.py --build-v2` first inventories and asks for
+  exact hash-bound confirmation of only the remaining database-derived targets; it
+  writes a new plan-hash-specific receipt and never overwrites the original receipt.
+  It then freezes the last completed XNYS session, captures fresh active and inactive
+  Alpaca assets plus complete-quality corporate actions, builds an exact-literal
+  acquisition universe, and runs native `1Day` units before native `1Min` units.
+  The source contract is Alpaca SIP, raw adjustments, `asof=-`, 10,000 total bars per
+  page, opaque pagination until the token is null, and New York local-midnight
+  windows with the inclusive API end moved back one microsecond. Every page is an
+  atomic restart boundary; exact response bytes, checksums, request metadata,
+  normalized page shards, unit Parquet, quarantine records, and run/plan manifests
+  live only beneath `data/v2_build/alpaca_sip_v2`. Provider-rejected or anomalous
+  literals are quarantined without substitution. The runner reserves 30 GiB and
+  pauses safely when capacity is insufficient. The estimated 3.781B minute rows mean
+  one overnight run may not finish; rerunning the identical command resumes rather
+  than restarts. This creates an isolated candidate base only: PIT identity/lifecycle,
+  full validation, promotion, historical results, PAPER authority, and LIVE authority
+  remain pending. Local compile-all and the complete retained suite pass at **1,534
+  tests**; exact-head cross-platform CI remains required before operator use.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live
@@ -460,6 +484,18 @@ When historical data becomes materially questionable:
 
 Repeated authoritative-source contradictions do not justify purge/refetch loops
 whose only purpose is to make evidence disappear.
+
+The current Alpaca V2 rebuild is started or resumed from PowerShell with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_alpaca_v2_rebuild.py --build-v2
+```
+
+The first invocation may display a small residual cleanup plan and require its exact
+generated token. Later invocations reuse the frozen cutoff/source/plan and verify
+completed artifacts before continuing. Do not delete the V2 checkpoint tree or vary
+`--start-date` between resumes. `Ctrl+C`, a time limit, a network failure, or the disk
+floor leaves a resumable checkpoint; none grants production-data or trading authority.
 
 ## How progress is reported
 

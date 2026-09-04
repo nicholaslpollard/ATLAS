@@ -685,6 +685,18 @@ When data is materially questionable:
    both physical lakes is preferred but is not mandatory when precise V1
    decommissioning has been explicitly authorized.
 
+The Alpaca SIP V2 generation enforces this policy physically beneath
+`data/v2_build/alpaca_sip_v2`. Its frozen source request contract is native `1Day`
+followed by native `1Min`, SIP feed, raw adjustment, `asof=-` (no provider ticker
+remapping), 10,000 total bars per page, and opaque pagination until null. API windows
+are bounded at New York local midnight; because Alpaca documents `end` as inclusive,
+each window ends one microsecond before the next local midnight. Fresh active and
+inactive assets and complete-quality corporate actions seed acquisition literals, but
+they do not establish identity continuity. Exact provider rejections and response/row
+anomalies are evidence-bearing quarantines, never occasions to guess a replacement.
+Unit Parquet is an isolated candidate base until the identity, completeness, quality,
+provenance, and promotion gates pass.
+
 Existing valid caches are evidence. A clean authoritative replay that reproduces a
 contradiction means purge/refetch is not a repair. Source integrity is a supporting
 gate, not the product, and a source branch should stop when its expected information
@@ -1001,14 +1013,37 @@ Every closeout reports:
    GiB)** and retained
    `data/checkpoints/alpaca_v2_migration/v1_decommission_receipt.json`. Source code,
    Git history, `data/live`, `data/models`, and unrelated research state were outside
-   the deletion scope. ATLAS currently has no historical market database.
-2. **NEXT —** implement deterministic native `1Day` then native `1Min` acquisition units with
-   raw response evidence, request-policy fingerprints, checksums, retries, pagination,
-   checkpoints, and restart-safe idempotency. No V1 persisted row may fill a V2 gap.
-3. Build V2 PIT identity/lifecycle and corporate-action layers covering splits,
+   the deletion scope. ATLAS currently has no accepted historical market database.
+   The subsequent read-only inventory exposed residual V1 database layers that were
+   not in the first eight-target plan (`raw/day_aggs_v1`, legacy Alpaca payloads,
+   training/discovery/universe/regime/quality/reference outputs, and old manifests).
+   They are now in a separate exact hash-bound residual plan; its receipt is
+   plan-hash-specific so the original 137.10 GiB deletion receipt cannot be overwritten.
+2. **IMPLEMENTED / OPERATOR RUN PENDING — fresh native V2 acquisition.** The single
+   `--build-v2` coordinator performs confirmed residual cleanup, freezes the last
+   completed XNYS session, captures fresh active/inactive Alpaca assets and
+   complete-quality corporate actions, freezes an exact-literal universe and plan,
+   then executes deterministic yearly `1Day`/100-symbol units before monthly
+   `1Min`/100-symbol units. Every provider page is durably checkpointed with exact
+   compressed response evidence, request semantics, checksums, normalized Parquet,
+   anomaly evidence, opaque next token, and restart state. Completed unit source and
+   canonical hashes are verified before a resume skip. Invalid provider literals are
+   globally quarantined without mapping or substitution. Unit compaction uses the
+   canonical market schema and exchange schedule; duplicates block that unit rather
+   than being silently collapsed. A 30 GiB reserve plus transient-work guard pauses
+   safely. No V1 persisted row is a V2 input. Synthetic daily/minute end-to-end,
+   page-token resume, corruption fail-closed, rejection quarantine, and cleanup-scope
+   tests pass locally; compile-all and the complete retained suite pass at **1,534
+   tests**. Exact-head Windows/Ubuntu CI acceptance is still required.
+   Given the 3.781B-row estimate and at least roughly 378,100 full minute pages, one
+   overnight run is not promised to finish; the same command resumes the frozen run.
+3. **NEXT AFTER ACQUISITION —** build and validate V2 PIT identity/lifecycle layers
+   from the captured assets/corporate-action evidence, covering splits,
    reverse splits, dividends, symbol/name changes, mergers, delistings, and spin-offs;
    ticker text alone must never establish identity.
-4. Canonicalize and validate each base independently, remeasure actual disk use, then
+4. Validate completeness, session coverage, source-bundle reconstruction, identity,
+   corporate actions, schema, duplicates, OHLCV, and quarantine disposition for each
+   native base independently; remeasure actual disk use, then
    allow derived bars/features only if the phase-specific peak plus reserve passes.
    Promotion is an explicit config/path switch after full acceptance, never a merge
    into V1 paths.
