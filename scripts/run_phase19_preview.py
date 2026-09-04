@@ -8,12 +8,24 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+import packages.control_plane.phase19_preview_server as preview_server
 from packages.control_plane.phase19_preview_server import (
     DEFAULT_PHASE19_PREVIEW_HOST,
     DEFAULT_PHASE19_PREVIEW_PORT,
     PHASE19_PREVIEW_CONTRACT_VERSION,
     create_phase19_preview_server,
 )
+
+# Preview-only asset extension. Production Phase19 keeps its own strict loopback server.
+preview_server._STATIC_ASSETS["/assets/atlas_console.css"] = (
+    "atlas_console.css",
+    "text/css; charset=utf-8",
+)
+if "atlas_console.js" not in preview_server._PREVIEW_JS_BUNDLE:
+    bundle = list(preview_server._PREVIEW_JS_BUNDLE)
+    insert_at = max(0, len(bundle) - 1)
+    bundle.insert(insert_at, "atlas_console.js")
+    preview_server._PREVIEW_JS_BUNDLE = tuple(bundle)
 
 
 def main() -> None:
@@ -29,6 +41,7 @@ def main() -> None:
     print(f"ATLAS Phase19 synthetic preview: http://{host}:{port}")
     print(f"  contract: {PHASE19_PREVIEW_CONTRACT_VERSION}")
     print("  synthetic demo data only: yes")
+    print("  multi-page console shell: enabled")
     print("  market-data/provider connections: 0")
     print("  broker connections: 0")
     print("  provider writes: 0")
