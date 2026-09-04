@@ -721,6 +721,7 @@ class ReferenceDailyLakeAdapter:
                     CAST(b.low AS DOUBLE) AS low,
                     CAST(b.close AS DOUBLE) AS close,
                     CAST(b.volume AS DOUBLE) AS volume,
+                    CAST(b.close AS DOUBLE) AS unadjusted_close,
                     TRUE AS pit_active,
                     b.security_type,
                     TRUE AS identity_clear,

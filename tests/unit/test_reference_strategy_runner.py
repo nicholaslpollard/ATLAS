@@ -55,6 +55,7 @@ def _daily_frame(closes: list[float]) -> pd.DataFrame:
             "low": low,
             "close": closes,
             "volume": 100_000.0,
+            "unadjusted_close": closes,
             "pit_active": True,
             "security_type": "CS",
             "identity_clear": True,

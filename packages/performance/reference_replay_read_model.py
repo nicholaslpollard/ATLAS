@@ -16,6 +16,7 @@ from packages.backtesting.reference_portfolio_policy import (
     reference_portfolio_policy_fingerprint,
 )
 from packages.core.settings import AtlasSettings
+from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.schemas.reference_portfolio import (
     REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION,
     ReferencePortfolioDecision,
@@ -134,15 +135,39 @@ def _empty_operator_rows(payload: dict[str, object]) -> None:
 
 
 def reference_replay_read_model(settings: AtlasSettings) -> dict[str, object]:
-    derived = settings.resolved_path(settings.data.paths.derived).resolve()
-    root = derived / "strategy_lab" / "a33_b33_reference" / "development"
-    summaries = sorted(root.glob("*/portfolio_run_summary.json")) if root.is_dir() else []
+    legacy_derived = settings.resolved_path(settings.data.paths.derived).resolve()
+    v2_derived = V2Layout.beneath(
+        (settings.project_root / "data").resolve()
+    ).derived.resolve()
+    v2_root = v2_derived / "strategy_lab" / "a33_b33_reference" / "development"
+    legacy_root = (
+        legacy_derived / "strategy_lab" / "a33_b33_reference" / "development"
+    )
+    v2_summaries = (
+        sorted(v2_root.glob("*/portfolio_run_summary.json"))
+        if v2_root.is_dir()
+        else []
+    )
+    legacy_summaries = (
+        sorted(legacy_root.glob("*/portfolio_run_summary.json"))
+        if legacy_root.is_dir()
+        else []
+    )
+    if v2_summaries:
+        summaries = v2_summaries
+        derived = v2_derived
+        data_source = "v2"
+    else:
+        summaries = legacy_summaries
+        derived = legacy_derived
+        data_source = "legacy"
     if not summaries:
         payload = _base_payload("NOT_RUN")
         payload["message"] = (
-            "No trusted-lake account replay exists yet. Run source validation, then the "
-            "frozen DEVELOPMENT command on the machine containing the accepted lake."
+            "No hash-verified V2 or retained legacy account replay exists yet. Run "
+            "source validation, then the frozen DEVELOPMENT command on the data machine."
         )
+        payload["data_source"] = None
         payload["summary"] = None
         _empty_operator_rows(payload)
         return payload
@@ -211,13 +236,17 @@ def reference_replay_read_model(settings: AtlasSettings) -> dict[str, object]:
         )
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
         payload = _base_payload("INVALID")
-        payload["message"] = "Latest portfolio replay artifacts failed closed validation."
+        payload["message"] = (
+            f"Latest {data_source} portfolio replay artifacts failed closed validation."
+        )
+        payload["data_source"] = data_source
         payload["summary"] = None
         _empty_operator_rows(payload)
         return payload
 
     payload = _base_payload("AVAILABLE")
     payload["message"] = "Latest frozen DEVELOPMENT account replay is available read-only."
+    payload["data_source"] = data_source
     payload["summary"] = summary
     payload["artifact_integrity"] = {
         "expected_artifacts": _EXPECTED_ARTIFACTS,

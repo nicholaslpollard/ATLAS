@@ -11,6 +11,7 @@ from packages.backtesting.reference_portfolio_policy import (
     reference_portfolio_policy_fingerprint,
 )
 from packages.core.settings import load_settings
+from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.performance.reference_replay_read_model import reference_replay_read_model
 from packages.schemas.reference_portfolio import (
     REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION,
@@ -31,6 +32,13 @@ def _settings_with_derived(tmp_path):
     paths = settings.data.paths.model_copy(update={"derived": tmp_path})
     data = settings.data.model_copy(update={"paths": paths})
     return settings.model_copy(update={"data": data})
+
+
+def _settings_with_v2(tmp_path):
+    settings = load_settings()
+    paths = settings.data.paths.model_copy(update={"derived": tmp_path / "legacy"})
+    data = settings.data.model_copy(update={"paths": paths})
+    return settings.model_copy(update={"project_root": tmp_path, "data": data})
 
 
 def _write_bound_jsonl(
@@ -204,6 +212,7 @@ def test_reference_replay_read_model_returns_latest_valid_summary_and_recent_row
 
     payload = reference_replay_read_model(_settings_with_derived(tmp_path))
     assert payload["status"] == "AVAILABLE"
+    assert payload["data_source"] == "legacy"
     assert payload["summary"] == summary
     assert payload["recent_position_outcomes"][0]["ticker"] == "TEST"
     assert payload["recent_portfolio_decisions"][0]["status"] == "ADMITTED"
@@ -214,6 +223,39 @@ def test_reference_replay_read_model_returns_latest_valid_summary_and_recent_row
         "verified_artifacts": 4,
         "all_sha256_verified": True,
     }
+
+
+def test_reference_replay_read_model_prefers_isolated_v2_over_legacy(tmp_path) -> None:
+    settings = _settings_with_v2(tmp_path)
+    target = (
+        V2Layout.beneath((tmp_path / "data").resolve()).derived
+        / "strategy_lab"
+        / "a33_b33_reference"
+        / "development"
+        / "2021-08-16_2026-05-11"
+    )
+    target.mkdir(parents=True)
+    summary = {
+        "contract_version": REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION,
+        "portfolio_policy_fingerprint": reference_portfolio_policy_fingerprint(),
+        "replay_fingerprint": "b" * 64,
+        "data_source": "v2",
+        "protected_master_return_rows_read": 0,
+        "provider_writes": 0,
+        "broker_writes": 0,
+        "paper_submits": 0,
+        "live_writes": 0,
+    }
+    summary.update(_operator_artifacts(target))
+    (target / "portfolio_run_summary.json").write_text(
+        json.dumps(summary), encoding="utf-8"
+    )
+
+    payload = reference_replay_read_model(settings)
+
+    assert payload["status"] == "AVAILABLE"
+    assert payload["data_source"] == "v2"
+    assert payload["summary"]["data_source"] == "v2"
 
 
 def test_reference_replay_read_model_fails_closed_on_bound_artifact_tamper(tmp_path) -> None:

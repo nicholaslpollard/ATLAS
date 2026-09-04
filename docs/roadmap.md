@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-03 (UTC). This roadmap and the root `README.md` are the
+**Current as of 2026-09-04 (UTC). This roadmap and the root `README.md` are the
 only living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -447,9 +447,13 @@ versions. Before ATLAS performance access, the frozen A33/B33 fingerprints are:
 - strategy authority:
   `a23ec27367ae540b869abc428d118241e84436719a8a543cbdbc3f3b678c69c5`;
 - daily reference features:
-  `26a2892a4c4bb5597d2e688e78be8cb7da4fc656872a30fe887cf60669476cb8`.
-- trusted-lake adapter:
+  `ee7e09b680b64b65280dea88c01d402bd9576a04cc70bc7748d8e3048ff57159`.
+  The pre-outcome revision uses same-session unadjusted close for the PIT price
+  floor while split-adjusted prices remain the indicator/return stream.
+- retained legacy trusted-lake adapter:
   `reference-lake-adapter-v1-massive-development-split-free-identity-exact`.
+- isolated V2 trusted-lake adapter:
+  `reference-v2-lake-adapter-v1-alpaca-sip-hash-bound-isolated-development`.
 
 Every version remains `PRACTITIONER_BASELINE`, `RESEARCH`, and
 `RESEARCH_REPLAY`-only. Master protected return rows read: **0**; holdout consumed:
@@ -697,6 +701,38 @@ anomalies are evidence-bearing quarantines, never occasions to guess a replaceme
 Unit Parquet is an isolated candidate base until the identity, completeness, quality,
 provenance, and promotion gates pass.
 
+The staged post-build contract performs that next daily gate without V1 ancestry.
+It reconstructs and hash-verifies the frozen plan and every native unit, fully scans
+native daily facts, binds assets and complete corporate-action evidence, and builds
+a conservative first V2 identity map. Only one provider asset ID tied to one literal
+symbol and an explicitly common-stock asset name is initially eligible. Current
+active/inactive status is retained but never used as a historical filter; name
+changes, mergers, reorganizations, spin-offs/rights, stock distributions,
+termination/redemption events, ticker reuse, ambiguous security type, response
+anomalies, and internal XNYS gaps are preserved and excluded rather than silently
+repaired until a separate segment and cash-flow policy exists. A separate SIP
+`adjustment=split`, `asof=-` daily capture is resumable and reconciled to raw keys
+and factors. The analytical view preserves raw execution state separately and adds
+same-session unadjusted close for the PIT price floor, preventing a later split from
+rewriting historical `$5` eligibility. The independently captured source can extend
+through its frozen current cutoff, but DEVELOPMENT strategy-input Parquet ends
+physically at `2026-05-11` and materializes zero protected-window return rows. This
+is a research-data promotion only, not a global production path switch.
+Attributable provider rejections or malformed adjusted rows exclude their literal
+symbol globally while preserving the evidence and allowing the clean remainder to
+proceed. An unattributed anomaly or unit-level validation failure remains a hard
+stop; one bad literal does not silently poison or unnecessarily discard the entire
+generation.
+
+The frozen daily indicator engine may consume only the exact hash-bound V2 research
+manifest through the isolated V2 adapter. It cannot discover legacy paths. No V2 PIT
+regime generation is accepted yet, so market, sector, and ticker contexts remain
+explicitly `UNAVAILABLE`; importing retained V1 regime state would violate the clean
+generation boundary. Native minute bundles are hash-verified during base acceptance,
+but full extended-hours/intraday semantic acceptance and adjusted-minute derivation
+remain B34 work. News is a separate source/PIT research package and does not block
+daily database acceptance or the Product track.
+
 Existing valid caches are evidence. A clean authoritative replay that reproduces a
 contradiction means purge/refetch is not a repair. Source integrity is a supporting
 gate, not the product, and a source branch should stop when its expected information
@@ -755,8 +791,11 @@ tests, retained scientific facts, and zero accidental PAPER/LIVE authority. It a
 produces the first honest historical reports; each strategy may pass, fail, or remain
 underpowered independently.
 
-**Implementation status (2026-09-03): reference foundation and first trusted-lake
-adapter complete; empirical run not started.** The separate catalog contains six families and nine
+**Implementation status (2026-09-04): reference foundation, retained legacy adapter,
+and isolated V2 post-build/adapter path implemented; empirical V2 run not started.**
+The operator's accepted native acquisition is still running. The post-build package
+passed exact-head Windows/Ubuntu CI in PR #58; operator execution remains pending.
+The separate catalog contains six families and nine
 direction-specific policies. The accepted Phase11 eight-rule registry and accepted
 33-feature core remain unchanged. PR #45 merged the accepted phase-start seed and
 opportunity-event contracts as
@@ -770,6 +809,8 @@ counterfactual records; an atomic append-only hash-chain ledger records strategy
 trials; and the control plane exposes the catalog read-only at
 `/api/v1/strategies/reference`. The runner hard-rejects the retained master
 protected dates before feature work and has zero provider/broker/PAPER/LIVE writes.
+Compile-all and the complete local suite for the staged V2 post-build package pass
+at **1,546 tests**; all ten PR #58 exact-head workflow groups passed.
 The read-only adapter contract
 `reference-lake-adapter-v1-massive-development-split-free-identity-exact` scans
 accepted canonical partitions without provider calls or writes. Its V1 scope is the
@@ -779,17 +820,25 @@ authoritative-or-unique identity, no current active/delisted filter, and complet
 split-report/hash reconciliation. Because accepted canonical bars are unadjusted,
 V1 excludes every split-touched identity and every stream with an internal session
 gap; retained factor-1 streams are exactly equivalent to split-adjusted prices.
-Pre-seam Alpaca and split-affected instruments require a later validated V2 rather
-than guessed factors. The canonical provider timestamp remains the regular-open
+Pre-seam Alpaca and split-affected instruments require the separately validated V2
+rather than guessed factors. The V2 adapter binds only the exact isolated
+research-daily manifest and all partition hashes; it refuses arbitrary paths and
+legacy fallback. Provider-native split-adjusted analytical bars retain a separate
+unadjusted close for the PIT price floor. The first stream measures price return and
+does not yet credit or debit cash distributions; its replay is diagnostic only until
+dividend and spin-off cash-flow economics are implemented or conservatively bounded.
+The canonical provider timestamp remains the regular-open
 stamp, while contract
 `reference-signal-availability-v1-xnys-regular-close-next-open` adds the true XNYS
 close availability time for daily signals. The runner records that close clock and
 still enters no earlier than the next regular-session open. The current checkout has
 no market lake, so no empirical run or ATLAS performance result has been produced.
-PR #47 accepted the adapter and merged it as
+PR #47 accepted the retained legacy adapter and merged it as
 `646db6e6e44ccd2355c7c2263221f35cd01d5da8`; post-merge Windows and Ubuntu full
 tests passed. Protected return rows read: **0**; performance opened:
-**false**; provider/broker/PAPER/LIVE writes: **0**.
+**false**; provider/broker/PAPER/LIVE writes: **0**. The daily feature fingerprint
+changed before any outcome access solely to bind the unadjusted PIT price-floor
+correction; strategy policy and authority fingerprints remain unchanged.
 
 ### A34 — Signal-to-Trade Construction, Portfolio Replay, and Replay Dashboard
 
@@ -844,7 +893,7 @@ accepts only the split-origin manifest whose as-of date is exactly the replay en
 hash-verifies its snapshot and effective-market history, rejects any future,
 duplicate, blank, or missing-session row, and joins the same-session finalized market regime
 that is available at close for a next-open decision. It never invokes
-the regime writer. Ticker and sector regime context remain `UNAVAILABLE` until an
+the regime writer. The ticker and sector regime context remains `UNAVAILABLE` until an
 accepted PIT ticker-state join and PIT instrument-to-sector map exist. Remaining
 A34 context work is therefore ticker, sector, and correlation control only after
 their evidence contracts exist; none should delay the first honest fixed-policy
@@ -912,6 +961,13 @@ freeze and implement gap/opening-range and premarket relative-volume consolidati
 strategies, including a quantified Highest Volume Day variant. If not ready, record
 the limitation and proceed with daily strategies rather than entering an open-ended
 data repair branch.
+
+The native V2 acceptance stage may verify minute bundle/canonical hashes, but that
+does not by itself accept intraday semantics. B34 must scan actual timestamp/session-
+segment behavior, duplicates, OHLCV, auction/halt/missing-bar implications,
+extended-hours coverage, split adjustment, and the exact premarket information clock.
+Do not materialize billions of indicator rows before this finite readiness report
+shows which intraday pack can be represented faithfully.
 
 ### A35 — Operational PAPER and Operator Web Beta
 
@@ -1019,7 +1075,7 @@ Every closeout reports:
    training/discovery/universe/regime/quality/reference outputs, and old manifests).
    They are now in a separate exact hash-bound residual plan; its receipt is
    plan-hash-specific so the original 137.10 GiB deletion receipt cannot be overwritten.
-2. **IMPLEMENTED / OPERATOR RUN PENDING — fresh native V2 acquisition.** The single
+2. **IN PROGRESS ON OPERATOR WORKSTATION — fresh native V2 acquisition.** The single
    `--build-v2` coordinator performs confirmed residual cleanup, freezes the last
    completed XNYS session, captures fresh active/inactive Alpaca assets and
    complete-quality corporate actions, freezes an exact-literal universe and plan,
@@ -1033,26 +1089,38 @@ Every closeout reports:
    than being silently collapsed. A 30 GiB reserve plus transient-work guard pauses
    safely. No V1 persisted row is a V2 input. Synthetic daily/minute end-to-end,
    page-token resume, corruption fail-closed, rejection quarantine, and cleanup-scope
-   tests pass locally; compile-all and the complete retained suite pass at **1,534
-   tests**. Exact-head Windows/Ubuntu CI acceptance is still required.
+   package was accepted in PR #57. At the latest report, the live resumable run had
+   completed **16,586 / 67,480 units** after roughly 12 hours and was processing
+   native minute history for December 2017. This is telemetry, not acceptance.
    Given the 3.781B-row estimate and at least roughly 378,100 full minute pages, one
    overnight run is not promised to finish; the same command resumes the frozen run.
-3. **NEXT AFTER ACQUISITION —** build and validate V2 PIT identity/lifecycle layers
-   from the captured assets/corporate-action evidence, covering splits,
-   reverse splits, dividends, symbol/name changes, mergers, delistings, and spin-offs;
-   ticker text alone must never establish identity.
-4. Validate completeness, session coverage, source-bundle reconstruction, identity,
-   corporate actions, schema, duplicates, OHLCV, and quarantine disposition for each
-   native base independently; remeasure actual disk use, then
-   allow derived bars/features only if the phase-specific peak plus reserve passes.
-   Promotion is an explicit config/path switch after full acceptance, never a merge
-   into V1 paths.
-5. After the V2 foundation is accepted, run the nine frozen practitioner policies on
-   DEVELOPMENT data and continue A34.5/A35 Product work. Database work does not grant
-   historical, PAPER, or LIVE authority; protected reads remain zero and LIVE stays
-   disabled. The retained A34 contract continues to treat ticker and sector regime
-   context as unavailable rather than guessing labels.
-6. Keep focused tests, the full repository suite, retained scientific validators,
+3. **STAGED / OPERATOR RUN PENDING — V2 daily post-build foundation.** After the
+   native command exits complete, run `scripts/run_alpaca_v2_postbuild.py`. It
+   hash-verifies source/plan/every unit, validates all daily rows, constructs
+   conservative identity/lifecycle evidence, acquires resumable provider-native
+   split-adjusted daily bars, reconciles them to raw, and writes the isolated
+   research-daily manifest. Stable content fingerprints make a clean rerun
+   idempotent. `--validate-only` makes no provider request; `--max-hours` checkpoints
+   adjusted-daily acquisition. Do not run this concurrently with native acquisition.
+4. **STAGED OPTIONAL CONTINUATION — frozen daily replay.** Adding
+   `--through-reference-replay` to the post-build command continues in a fresh
+   process through the nine frozen practitioner policies and A34 fixed research
+   account replay only after every source gate passes. It opens DEVELOPMENT outcomes
+   but cannot cross `2026-05-11`, promote authority, submit PAPER, or write a broker.
+   Without this flag, no performance is opened. The browser read model prefers a
+   hash-valid V2 replay and fails closed rather than silently falling back to legacy
+   artifacts when V2 output exists.
+5. Review the actual post-build exclusion, identity, coverage, split-factor, disk,
+   and replay reports. Record pass/fail honestly before any strategy revision. Daily
+   indicators are computed by the frozen engine on demand; do not first build a
+   redundant full feature lake. Continue A34.5 Product work in parallel regardless
+   of strategy profit.
+6. **AFTER DAILY PATH — finite B34 minute readiness.** Scan intraday and extended-
+   hours semantics before adjusted-minute features or gap/opening/premarket outcomes.
+   News remains a separate, lower-priority provider/PIT package because it cannot
+   validate this price database. A B34 limitation does not block daily replay or
+   A34.5.
+7. Keep focused tests, the full repository suite, retained scientific validators,
    cross-platform exact-head CI, and same-commit updates to both living documents
    mandatory for every package.
 

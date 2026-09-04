@@ -22,6 +22,10 @@ from packages.backtesting.reference_portfolio_policy import (
 )
 from packages.backtesting.reference_portfolio_replay import ReferenceAccountPortfolioReplay
 from packages.backtesting.reference_regime_context import ReferenceRegimeContextAdapter
+from packages.backtesting.reference_v2_lake_adapter import (
+    ReferenceV2DailyLakeAdapter,
+    ReferenceV2UnavailableRegimeContextAdapter,
+)
 from packages.backtesting.reference_strategy_runner import (
     ReferenceStrategyHistoricalRunner,
     reference_input_fingerprint,
@@ -39,6 +43,7 @@ from packages.strategies.reference_library import (
     REFERENCE_STRATEGY_POLICY_FINGERPRINT,
 )
 from packages.features.reference_daily import REFERENCE_DAILY_FEATURE_FINGERPRINT
+from packages.data.alpaca_v2_rebuild import V2Layout
 
 
 def _sha256(path: Path) -> str:
@@ -49,7 +54,21 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _output_root(settings: AtlasSettings, start_date: date, end_date: date) -> Path:
+def _output_root(
+    settings: AtlasSettings,
+    start_date: date,
+    end_date: date,
+    data_source: str,
+) -> Path:
+    if data_source == "v2":
+        data_root = (settings.project_root / "data").resolve()
+        return (
+            V2Layout.beneath(data_root).derived
+            / "strategy_lab"
+            / "a33_b33_reference"
+            / "development"
+            / f"{start_date}_{end_date}"
+        )
     derived = settings.resolved_path(settings.data.paths.derived)
     return (
         derived
@@ -60,7 +79,15 @@ def _output_root(settings: AtlasSettings, start_date: date, end_date: date) -> P
     )
 
 
-def _ledger_path(settings: AtlasSettings) -> Path:
+def _ledger_path(settings: AtlasSettings, data_source: str) -> Path:
+    if data_source == "v2":
+        data_root = (settings.project_root / "data").resolve()
+        return (
+            V2Layout.beneath(data_root).derived
+            / "strategy_lab"
+            / "trials"
+            / "reference_strategy_trials.jsonl"
+        )
     derived = settings.resolved_path(settings.data.paths.derived)
     return derived / "strategy_lab" / "trials" / "reference_strategy_trials.jsonl"
 
@@ -141,21 +168,39 @@ def _write_opportunities(path: Path, opportunities: tuple[object, ...]) -> str:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Run the frozen A33/B33 strategies and A34 account replay on Massive-only "
-            "DEVELOPMENT data."
+            "Run the frozen A33/B33 strategies and A34 account replay on isolated "
+            "Alpaca SIP V2 DEVELOPMENT data by default."
         )
+    )
+    parser.add_argument(
+        "--data-source",
+        choices=("v2", "legacy"),
+        default="v2",
+        help=(
+            "v2 reads only the accepted-postbuild Alpaca SIP V2 research view; legacy preserves "
+            "the former Massive-only evidence path for historical reproducibility."
+        ),
     )
     parser.add_argument("--start", type=date.fromisoformat, default=REFERENCE_LAKE_PROVIDER_SEAM_START)
     parser.add_argument("--end", type=date.fromisoformat, default=REFERENCE_LAKE_DEVELOPMENT_END)
     parser.add_argument("--split-report", type=Path, default=None)
+    parser.add_argument(
+        "--v2-manifest",
+        type=Path,
+        default=None,
+        help=(
+            "Optional explicit V2 manifest path. It must resolve to the isolated "
+            "data/v2_build/alpaca_sip_v2 manifest; arbitrary paths are refused."
+        ),
+    )
     parser.add_argument("--output-root", type=Path, default=None)
     parser.add_argument("--trial-ledger", type=Path, default=None)
     parser.add_argument(
         "--source-only",
         action="store_true",
         help=(
-            "Validate lake and exact-as-of regime sources, materialize no outcomes, "
-            "and stop after the read-only reports."
+            "Validate the selected lake and its regime-context contract, materialize "
+            "no outcomes, and stop after the read-only reports."
         ),
     )
     return parser
@@ -165,19 +210,30 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     settings = load_settings(PROJECT_ROOT)
     target = Path(args.output_root) if args.output_root else _output_root(
-        settings, args.start, args.end
+        settings, args.start, args.end, args.data_source
     )
     target.mkdir(parents=True, exist_ok=True)
 
     print("ATLAS A33/B33 Reference DEVELOPMENT Replay")
     print(f"  scope: {args.start} -> {args.end}")
     print("  safety: DEVELOPMENT only; protected returns and provider/broker writes forbidden")
-    adapter = ReferenceDailyLakeAdapter(settings)
-    adapted = adapter.load(
-        args.start,
-        args.end,
-        split_report=args.split_report,
-    )
+    print(f"  data source: {args.data_source}")
+    if args.data_source == "v2":
+        if args.split_report is not None:
+            raise ValueError("--split-report is valid only with --data-source legacy")
+        adapted = ReferenceV2DailyLakeAdapter(settings).load(
+            args.start,
+            args.end,
+            manifest_path=args.v2_manifest,
+        )
+    else:
+        if args.v2_manifest is not None:
+            raise ValueError("--v2-manifest is valid only with --data-source v2")
+        adapted = ReferenceDailyLakeAdapter(settings).load(
+            args.start,
+            args.end,
+            split_report=args.split_report,
+        )
     adapter_report_path = target / "adapter_report.json"
     atomic_write_text(
         adapter_report_path,
@@ -190,31 +246,45 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  adapter source fingerprint: {adapted.report['source_fingerprint']}")
     print(f"  adapter report: {adapter_report_path}")
 
-    regime_context = ReferenceRegimeContextAdapter(settings).attach(
-        adapted.bars,
-        args.start,
-        args.end,
-    )
+    if args.data_source == "v2":
+        regime_context = ReferenceV2UnavailableRegimeContextAdapter().attach(
+            adapted.bars,
+            args.start,
+            args.end,
+        )
+    else:
+        regime_context = ReferenceRegimeContextAdapter(settings).attach(
+            adapted.bars,
+            args.start,
+            args.end,
+        )
     regime_report_path = target / "regime_context_report.json"
     atomic_write_text(
         regime_report_path,
         json.dumps(regime_context.report, indent=2, sort_keys=True, default=str) + "\n",
     )
-    print(
-        "  PIT market regime context: PASS "
-        f"states={len(regime_context.report['market_state_counts']):,}"
-    )
+    if args.data_source == "v2":
+        print("  PIT market/sector/ticker regime context: UNAVAILABLE (not guessed)")
+    else:
+        print(
+            "  PIT market regime context: PASS "
+            f"states={len(regime_context.report['market_state_counts']):,}"
+        )
     print(f"  regime source fingerprint: {regime_context.report['source_fingerprint']}")
-    print("  ticker/sector regime context: UNAVAILABLE (not guessed)")
+    if args.data_source == "legacy":
+        print("  ticker/sector regime context: UNAVAILABLE (not guessed)")
     print(f"  regime context report: {regime_report_path}")
     if args.source_only:
         print("  performance opened: false (--source-only)")
         return 0
 
     frame_fingerprint = reference_input_fingerprint(regime_context.bars)
-    run_token = f"{args.start:%Y%m%d}_{args.end:%Y%m%d}"
+    source_token = "alpaca_v2" if args.data_source == "v2" else "legacy_massive"
+    run_token = f"{source_token}.{args.start:%Y%m%d}_{args.end:%Y%m%d}"
     ledger = StrategyTrialLedger(
-        Path(args.trial_ledger) if args.trial_ledger else _ledger_path(settings)
+        Path(args.trial_ledger)
+        if args.trial_ledger
+        else _ledger_path(settings, args.data_source)
     )
     registration_id = f"a33b33.dev.{run_token}.registration"
     _append_once(
@@ -273,6 +343,7 @@ def main(argv: list[str] | None = None) -> int:
         mode="json",
         exclude={"decisions", "simulated_orders", "position_outcomes", "equity_curve"},
     )
+    portfolio_summary_payload["data_source"] = args.data_source
     portfolio_summary_payload["decision_records"] = {
         "path": str(decisions_path.resolve()),
         "sha256": decision_sha,
@@ -305,6 +376,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
     summary_payload["portfolio_replay_fingerprint"] = portfolio.replay_fingerprint
     summary_payload["portfolio_run_summary_path"] = str(portfolio_summary_path.resolve())
+    summary_payload["data_source"] = args.data_source
     summary_path = target / "run_summary.json"
     atomic_write_text(
         summary_path,

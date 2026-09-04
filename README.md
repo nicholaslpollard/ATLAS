@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-03 (UTC). This README and `docs/roadmap.md` are the only
+**Current as of 2026-09-04 (UTC). This README and `docs/roadmap.md` are the only
 living project documents. Every continuation chat must read both in full before
 making recommendations or changes.**
 
@@ -150,8 +150,9 @@ with a desired trade.
   discovery/universe/regime/quality/reference products, and their ingestion/manifests.
   Accepted strategy-evaluation evidence, SEC/regulatory source evidence, live state,
   models, source code, and Git history remain outside the expanded cleanup boundary.
-- The fresh-source native V2 package is implemented and awaiting its first operator
-  run. `scripts/run_alpaca_v2_rebuild.py --build-v2` first inventories and asks for
+- The fresh-source native V2 package was accepted in PR #57 and its first operator
+  acquisition is in progress. `scripts/run_alpaca_v2_rebuild.py --build-v2` first
+  inventories and asks for
   exact hash-bound confirmation of only the remaining database-derived targets; it
   writes a new plan-hash-specific receipt and never overwrites the original receipt.
   It then freezes the last completed XNYS session, captures fresh active and inactive
@@ -168,8 +169,27 @@ with a desired trade.
   one overnight run may not finish; rerunning the identical command resumes rather
   than restarts. This creates an isolated candidate base only: PIT identity/lifecycle,
   full validation, promotion, historical results, PAPER authority, and LIVE authority
-  remain pending. Local compile-all and the complete retained suite pass at **1,534
-  tests**; exact-head cross-platform CI remains required before operator use.
+  remain pending. At the latest operator report the resumable run had completed
+  **16,586 / 67,480 units** after roughly 12 hours and was processing native minute
+  history for December 2017. This is progress telemetry, not acceptance.
+- The V2 post-build package passed exact-head Windows/Ubuntu CI in PR #58 but has
+  not yet run against the operator database. Its single resume-safe post-build
+  coordinator hash-verifies every native unit; fully scans native daily schema,
+  provenance, dates, sessions, duplicates, and OHLCV; builds conservative direct-
+  Alpaca-asset identity/lifecycle evidence; acquires a separate provider-native SIP
+  `adjustment=split` daily source; reconciles raw and adjusted bars; and materializes
+  a hash-bound V2 daily research view. Name changes, mergers, reorganizations,
+  spin-offs/rights, stock distributions, termination/redemption events, ticker reuse,
+  uncertain security type, source anomalies, and internally gapped streams are
+  excluded rather than silently stitched until a separate segment and cash-flow
+  policy exists. Native raw prices remain separate. The research view carries
+  unadjusted same-session close for the PIT `$5` universe floor so a future split
+  cannot rewrite historical eligibility. Although source capture continues through
+  its frozen current cutoff, the strategy-input Parquet ends physically at the
+  **2026-05-11 DEVELOPMENT boundary** and materializes zero protected-window return
+  rows. It does not promote a production database or grant historical, PAPER, or
+  LIVE authority. Compile-all and the complete local
+  suite pass at **1,546 tests**; all ten PR #58 exact-head workflow groups passed.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live
@@ -272,9 +292,13 @@ Frozen A33/B33 contracts:
 - strategy-authority fingerprint:
   `a23ec27367ae540b869abc428d118241e84436719a8a543cbdbc3f3b678c69c5`;
 - daily reference-feature fingerprint:
-  `26a2892a4c4bb5597d2e688e78be8cb7da4fc656872a30fe887cf60669476cb8`.
-- trusted-lake adapter contract:
+  `ee7e09b680b64b65280dea88c01d402bd9576a04cc70bc7748d8e3048ff57159`.
+  This pre-outcome correction binds the PIT `$5` price floor to the unadjusted
+  same-session close while indicators and returns remain split-adjusted.
+- retained legacy trusted-lake adapter contract:
   `reference-lake-adapter-v1-massive-development-split-free-identity-exact`.
+- isolated V2 adapter contract:
+  `reference-v2-lake-adapter-v1-alpaca-sip-hash-bound-isolated-development`.
 
 All nine policies remain `RESEARCH` authority and are permitted only in
 `RESEARCH_REPLAY`. The runner accepts caller-supplied split-adjusted daily bars,
@@ -286,7 +310,7 @@ account portfolio replay and contains no empirical ATLAS result. Master
 protected return rows read: **0**; holdout consumed: **false**; broker writes:
 **0**; PAPER submits: **0**; LIVE writes: **0**.
 
-The adapter is deliberately narrower than the accepted complete daily history. V1
+The retained adapter is deliberately narrower than the accepted complete daily history. V1
 uses Massive only from `2021-08-16` through at most `2026-05-11`, requires every
 requested XNYS partition, resolves exact identity without current active/delisted
 filters, rejects internal stream gaps, and excludes an entire identity if any of its
@@ -294,7 +318,11 @@ observed tickers has a documented split in scope. Because retained canonical pri
 are unadjusted, only these factor-1-equivalent streams may be labeled
 `SPLIT_ADJUSTED`; no factor is guessed. This costs coverage but prevents false
 signals and returns. Alpaca pre-seam and split-affected streams remain deferred to a
-separately validated adjustment-capable V2.
+separately validated adjustment-capable V2. The new V2 adapter accepts only
+`data/v2_build/alpaca_sip_v2/manifests/research_daily.json` and its exact partition
+hashes; arbitrary paths and legacy fallback are forbidden. It validates Alpaca SIP,
+split-adjusted, regular-session, identity-clear common-stock provenance and the
+regular-open/source versus regular-close/signal clocks before returning a row.
 
 The replay input now has two separate clocks. The canonical daily
 `timestamp_utc` remains the provider's regular-open stamp for source provenance;
@@ -304,7 +332,7 @@ signals are recorded at that availability time and still cannot enter before the
 next regular-session open. This corrects evidence labeling without changing the
 previous next-open return simulation or claiming that any empirical result exists.
 
-The read-only regime adapter contract
+The retained read-only regime adapter contract
 `reference-regime-context-v1-exact-asof-hash-bound-same-close-market-only` attaches
 the accepted same-session finalized market regime to a next-open decision. It
 requires the split-origin manifest whose `as_of_date` exactly equals the replay end,
@@ -312,30 +340,42 @@ verifies the bound snapshot and `market_effective.parquet` SHA-256 values, rejec
 future, duplicate, blank, or missing-session state, and writes no production state.
 No accepted PIT instrument-to-sector mapping or reference ticker-state join exists,
 so ticker and sector regime fields remain `UNAVAILABLE` rather than inferred.
+No accepted V2 PIT regime generation exists yet. V2 replay therefore labels market,
+sector, and ticker regime `UNAVAILABLE` and reads zero retained V1 regime rows rather
+than importing the decommissioned generation or guessing a label.
 
-The next safe operation is one DEVELOPMENT-only historical run of all nine frozen
-policies on the user's existing trusted lake and its exact-end-date accepted
-split-origin regime artifacts, followed by inspection in the A34 browser dashboard.
-If that exact regime bundle is absent, the command fails closed instead of consuming
-a later as-of history or rebuilding production state implicitly. This repository
-checkout contains no market lake, so no empirical ATLAS result has been fabricated.
-Protected return rows read: **0**; performance opened: **false**.
+The immediate operation is completion of the already-running native V2 acquisition,
+then the staged post-build command below. V2 source preparation can stop without
+opening performance, or one explicit flag can continue through the already-frozen
+nine-policy DEVELOPMENT and A34 research-account replay. The browser read model
+prefers hash-valid V2 replay artifacts; if V2 artifacts exist but are invalid it
+fails closed and does not silently display legacy results. No empirical V2 result
+has been produced in this repository checkout. Protected return rows read: **0**;
+performance opened: **false**.
 
 The accepted local command first runs the adapter, binds its source fingerprint,
 and registers the frozen trial before calculating any strategy outcome. It can stop
 after source validation or continue through the independent-strategy replay:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py --source-only
-.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py
+.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py --data-source v2 --source-only
+.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py --data-source v2
 ```
 
 The full command writes its lake-adapter and regime-context reports, independent
 opportunity ledger, account admission decisions, simulated orders, position
-outcomes, equity curve, summaries, and append-only trial records under
-`data/derived/strategy_lab/`; it does not write to a provider, broker, PAPER account,
-or LIVE account and cannot promote authority. `--source-only` validates both source
-bundles and stops before any performance outcome is opened.
+outcomes, equity curve, summaries, and append-only trial records beneath the V2
+generation; it does not write to a provider, broker, PAPER account, or LIVE account
+and cannot promote authority. `--source-only` validates V2 input and explicit
+unavailable regime context and stops before any performance outcome is opened.
+`--data-source legacy` preserves the former Massive-only evidence path for
+reproducibility; it is never an automatic fallback.
+
+The first V2 analytical stream is provider-native **split-adjusted price return**.
+It does not yet credit or debit cash distributions in position P&L. Any optional
+first replay is therefore a product/research diagnostic, not qualifying historical
+evidence; dividend and spin-off cash-flow economics must be added or conservatively
+bounded before a strategy can earn historical authority.
 
 ## A34 RESEARCH account replay
 
@@ -496,6 +536,40 @@ generated token. Later invocations reuse the frozen cutoff/source/plan and verif
 completed artifacts before continuing. Do not delete the V2 checkpoint tree or vary
 `--start-date` between resumes. `Ctrl+C`, a time limit, a network failure, or the disk
 floor leaves a resumable checkpoint; none grants production-data or trading authority.
+
+After that command returns `NATIVE V2 ACQUISITION COMPLETE`, do not delete or move
+its generation. Pull the accepted post-build package and run one of these:
+
+```powershell
+# Source validation, identity/lifecycle, split-adjusted daily acquisition, and V2 research view.
+.\.venv\Scripts\python.exe scripts\run_alpaca_v2_postbuild.py
+
+# The same fail-closed chain, then the frozen DEVELOPMENT strategy/account replay.
+.\.venv\Scripts\python.exe scripts\run_alpaca_v2_postbuild.py --through-reference-replay
+```
+
+The post-build command is resumable at split-adjusted daily unit boundaries.
+`--max-hours` can create a graceful checkpoint and the identical command continues
+it. `--validate-only` performs no provider request. The optional replay flag is the
+only part of this chain that opens historical strategy outcomes; it preregisters the
+frozen policies, cannot read beyond `2026-05-11`, and cannot promote or submit them.
+Its hash-bound strategy-input files themselves stop at that date; later V2 source
+rows remain outside the DEVELOPMENT view rather than relying only on a query filter.
+Provider rejections and malformed split-source rows remain evidence: when their
+literal symbol is attributable, that symbol is excluded globally and the clean
+remainder may proceed; an unattributed anomaly or unit-level validation failure
+blocks materialization rather than poisoning or discarding the full database.
+If source preparation passes but replay fails, the valid V2 daily foundation remains
+recorded while the replay failure is explicit. Do not start this command in the same
+working tree while the native acquisition process is still running.
+
+Daily indicators are calculated by the frozen reference engine from the promoted V2
+research view when a replay runs; a second giant feature lake is not created merely
+to duplicate them. News acquisition is not part of this database acceptance chain:
+it neither validates price history nor has a frozen provider/PIT contract, so it is
+deferred to its own finite research package. Native minute evidence is hash-verified,
+but extended-hours completeness and intraday strategy readiness remain a separate
+B34 gate before gap, opening-range, or premarket performance may be opened.
 
 ## How progress is reported
 
