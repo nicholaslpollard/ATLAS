@@ -38,6 +38,7 @@ _PHASE19_STATIC_ASSETS = {
     "/assets/atlas_console.css": ("atlas_console.css", "text/css; charset=utf-8"),
     "/assets/atlas_overview.css": ("atlas_overview.css", "text/css; charset=utf-8"),
     "/assets/atlas_tabs.css": ("atlas_tabs.css", "text/css; charset=utf-8"),
+    "/assets/atlas_status.css": ("atlas_status.css", "text/css; charset=utf-8"),
 }
 _PHASE19_OBSERVABILITY_BUNDLE = (
     "observability.js",
