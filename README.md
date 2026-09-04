@@ -139,13 +139,13 @@ with a desired trade.
   isolated `data/v2_build/alpaca_sip_v2` layout, atomic run state, a 30 GiB reserve
   guard, and an allowlisted content-hash-bound V1 decommission plan. It deliberately
   preserves live, model, unrelated research, repository, and accepted evidence
-  state. The explicit `--decommission-v1-only` mode may now reclaim space and stop,
-  but requires the plan-derived confirmation token and retains a completion/partial-
-  failure receipt. Native acquisition/canonicalization is not yet implemented, so
-  this mode intentionally leaves ATLAS without a historical database until V2 is
-  built. Before confirmation it prints every exact target with its kind, file count,
-  and size so the operator can review deletion scope. The combined
-  delete-and-rebuild mode remains code-locked.
+  state. The explicit `--decommission-v1-only` run completed successfully on the
+  operator workstation on 2026-09-03 local time: **8 targets / 38,034 files /
+  147,206,406,678 bytes (137.10 GiB)** were deleted after the exact generated token
+  was confirmed. The retained receipt is
+  `data/checkpoints/alpaca_v2_migration/v1_decommission_receipt.json`. ATLAS now has
+  no historical market database; native acquisition/canonicalization is not yet
+  implemented. The combined delete-and-rebuild mode remains code-locked.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live

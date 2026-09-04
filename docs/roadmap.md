@@ -996,14 +996,13 @@ Every closeout reports:
 
 ## 21. Immediate next action
 
-1. The operator may reclaim space now with the explicit database-only V1
-   decommission mode. It produces an exact allowlisted SHA-256-bound manifest,
-   requires its derived confirmation token, rejects symlinks/path drift, preserves
-   live/model/unrelated-research state, retains a completion or partial-failure
-   receipt, prints each exact target with file count and size for operator review,
-   and then stops. It does not acquire bars, identities, or corporate actions; the
-   combined delete-and-rebuild path remains code-locked.
-2. Implement deterministic native `1Day` then native `1Min` acquisition units with
+1. **COMPLETE — V1 historical database decommission.** The confirmed workstation
+   run deleted exactly **8 targets / 38,034 files / 147,206,406,678 bytes (137.10
+   GiB)** and retained
+   `data/checkpoints/alpaca_v2_migration/v1_decommission_receipt.json`. Source code,
+   Git history, `data/live`, `data/models`, and unrelated research state were outside
+   the deletion scope. ATLAS currently has no historical market database.
+2. **NEXT —** implement deterministic native `1Day` then native `1Min` acquisition units with
    raw response evidence, request-policy fingerprints, checksums, retries, pagination,
    checkpoints, and restart-safe idempotency. No V1 persisted row may fill a V2 gap.
 3. Build V2 PIT identity/lifecycle and corporate-action layers covering splits,
