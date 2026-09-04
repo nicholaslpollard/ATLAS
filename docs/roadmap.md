@@ -794,7 +794,9 @@ underpowered independently.
 **Implementation status (2026-09-04): reference foundation, retained legacy adapter,
 and isolated V2 post-build/adapter path implemented; empirical V2 run not started.**
 The operator's accepted native acquisition is still running. The post-build package
-passed exact-head Windows/Ubuntu CI in PR #58; operator execution remains pending.
+was accepted in PR #58 and merged as
+`8e5abf21fe1ca138cd90125005b8c305a598dd44`; its post-merge `main` workflow passed
+on Windows and Ubuntu. Operator execution remains pending.
 The separate catalog contains six families and nine
 direction-specific policies. The accepted Phase11 eight-rule registry and accepted
 33-feature core remain unchanged. PR #45 merged the accepted phase-start seed and
@@ -809,8 +811,9 @@ counterfactual records; an atomic append-only hash-chain ledger records strategy
 trials; and the control plane exposes the catalog read-only at
 `/api/v1/strategies/reference`. The runner hard-rejects the retained master
 protected dates before feature work and has zero provider/broker/PAPER/LIVE writes.
-Compile-all and the complete local suite for the staged V2 post-build package pass
-at **1,546 tests**; all ten PR #58 exact-head workflow groups passed.
+Compile-all and the complete local suite for the accepted V2 post-build package pass
+at **1,546 tests**; all ten PR #58 exact-head workflow groups and the post-merge
+`main` workflow passed.
 The read-only adapter contract
 `reference-lake-adapter-v1-massive-development-split-free-identity-exact` scans
 accepted canonical partitions without provider calls or writes. Its V1 scope is the
@@ -1094,7 +1097,7 @@ Every closeout reports:
    native minute history for December 2017. This is telemetry, not acceptance.
    Given the 3.781B-row estimate and at least roughly 378,100 full minute pages, one
    overnight run is not promised to finish; the same command resumes the frozen run.
-3. **STAGED / OPERATOR RUN PENDING — V2 daily post-build foundation.** After the
+3. **ACCEPTED / OPERATOR RUN PENDING — V2 daily post-build foundation.** After the
    native command exits complete, run `scripts/run_alpaca_v2_postbuild.py`. It
    hash-verifies source/plan/every unit, validates all daily rows, constructs
    conservative identity/lifecycle evidence, acquires resumable provider-native
@@ -1102,7 +1105,7 @@ Every closeout reports:
    research-daily manifest. Stable content fingerprints make a clean rerun
    idempotent. `--validate-only` makes no provider request; `--max-hours` checkpoints
    adjusted-daily acquisition. Do not run this concurrently with native acquisition.
-4. **STAGED OPTIONAL CONTINUATION — frozen daily replay.** Adding
+4. **ACCEPTED OPTIONAL CONTINUATION — frozen daily replay.** Adding
    `--through-reference-replay` to the post-build command continues in a fresh
    process through the nine frozen practitioner policies and A34 fixed research
    account replay only after every source gate passes. It opens DEVELOPMENT outcomes
