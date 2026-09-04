@@ -1,0 +1,56 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from packages.control_plane.phase19_http_server import (
+    _PHASE19_OBSERVABILITY_BUNDLE,
+    _PHASE19_STATIC_ASSETS,
+)
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+WEB_ROOT = PROJECT_ROOT / "apps" / "web"
+
+
+def test_console_assets_are_part_of_phase19_read_only_surface() -> None:
+    assert _PHASE19_OBSERVABILITY_BUNDLE[-2:] == (
+        "atlas_console.js",
+        "atlas_console_runtime.js",
+    )
+    assert _PHASE19_STATIC_ASSETS["/assets/atlas_console.css"][0] == "atlas_console.css"
+
+    for filename in ("atlas_console.js", "atlas_console_runtime.js", "atlas_console.css"):
+        path = WEB_ROOT / filename
+        assert path.is_file()
+        assert path.stat().st_size > 0
+
+
+def test_console_groups_operator_pages_by_real_data_domains() -> None:
+    source = (WEB_ROOT / "atlas_console.js").read_text(encoding="utf-8")
+    expected_pages = (
+        "Overview",
+        "Market",
+        "Research",
+        "Portfolio",
+        "Execution",
+        "Brokers & Data",
+        "Operations",
+        "Controls",
+    )
+    for label in expected_pages:
+        assert f'"{label}"' in source
+
+    assert "Autonomous Trading, Learning & Analysis System" not in source
+    assert "atlas-brand-name\", \"ATLAS\"" in source
+    assert "Automatic failover" in source
+    assert 'atlasSet("atlas-ctl-failover", "DISABLED")' in source
+    assert 'atlasSet("atlas-ctl-live", "DISABLED")' in source
+    assert 'atlasSet("atlas-ctl-browser", "READ ONLY")' in source
+
+
+def test_codespaces_launcher_adds_console_without_changing_preview_write_boundary() -> None:
+    source = (PROJECT_ROOT / "scripts" / "run_phase19_preview.py").read_text(encoding="utf-8")
+    assert '"atlas_console.css"' in source
+    assert '("atlas_console.js", "atlas_console_runtime.js")' in source
+    assert 'print("  POST requests: disabled")' in source
+    assert 'print("  production loopback guard: unchanged")' in source
