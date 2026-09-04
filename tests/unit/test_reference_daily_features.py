@@ -35,6 +35,7 @@ def _daily_frame(
             "low": [value - 1.0 for value in closes],
             "close": closes,
             "volume": volumes,
+            "unadjusted_close": closes,
             "pit_active": True,
             "security_type": "CS",
             "identity_clear": True,
@@ -66,6 +67,17 @@ def test_prior_liquidity_excludes_current_signal_session() -> None:
     assert result.loc[20, "prior_median_dollar_volume_20"] == pytest.approx(100_000.0)
     assert result.loc[20, "universe_prior_liquidity_ok"] == 0.0
     assert result.loc[20, "reference_common_universe_eligible"] == 0.0
+
+
+def test_price_floor_uses_pit_unadjusted_close_not_future_split_scale() -> None:
+    frame = _daily_frame([4.0] * 21, volumes=[2_000_000.0] * 21)
+    frame["unadjusted_close"] = 40.0
+
+    result = compute_reference_daily_features(frame)
+
+    assert result.loc[20, "close"] == 4.0
+    assert result.loc[20, "unadjusted_close"] == 40.0
+    assert result.loc[20, "universe_close_ok"] == 1.0
 
 
 def test_bollinger_breakout_requires_a_prior_session_squeeze() -> None:

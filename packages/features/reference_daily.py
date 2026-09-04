@@ -29,6 +29,7 @@ REFERENCE_DAILY_REQUIRED_COLUMNS = (
     "low",
     "close",
     "volume",
+    "unadjusted_close",
     "pit_active",
     "security_type",
     "identity_clear",
@@ -83,6 +84,7 @@ def reference_daily_feature_fingerprint() -> str:
             "derived_columns": REFERENCE_DAILY_DERIVED_COLUMNS,
             "feature_stream_key": "instrument_id",
             "prior_liquidity": "median(close*volume) over prior 20 sessions excluding current",
+            "price_floor": "same-session unadjusted close; never a future split-adjusted level",
             "squeeze_threshold": "current width versus prior 126 valid widths; signal requires prior-session squeeze",
             "ema_pullback": "one-to-five sessions; transition from above into EMA20 plus-or-minus 0.5 ATR, never closes below EMA50, first close recovery",
         }
@@ -110,15 +112,21 @@ def _validate_input(frame: pd.DataFrame) -> pd.DataFrame:
     if (result["timestamp_utc"].dt.date != result["session_date"]).any():
         raise ReferenceDailyFeatureInputError("timestamp_utc date must match session_date")
 
-    for column in ("open", "high", "low", "close", "volume"):
+    for column in ("open", "high", "low", "close", "volume", "unadjusted_close"):
         result[column] = pd.to_numeric(result[column], errors="coerce").astype("float64")
-    values = result[["open", "high", "low", "close", "volume"]].to_numpy(dtype="float64")
+    values = result[
+        ["open", "high", "low", "close", "volume", "unadjusted_close"]
+    ].to_numpy(dtype="float64")
     if not np.isfinite(values).all():
         raise ReferenceDailyFeatureInputError("reference daily OHLCV must be finite")
     if (result[["open", "high", "low", "close"]] <= 0.0).any().any():
         raise ReferenceDailyFeatureInputError("reference daily prices must be positive")
     if (result["volume"] < 0.0).any():
         raise ReferenceDailyFeatureInputError("reference daily volume cannot be negative")
+    if (result["unadjusted_close"] <= 0.0).any():
+        raise ReferenceDailyFeatureInputError(
+            "reference daily unadjusted_close must be positive"
+        )
     if (
         (result["high"] < result[["open", "close"]].max(axis=1))
         | (result["low"] > result[["open", "close"]].min(axis=1))
@@ -334,7 +342,7 @@ def _compute_overlay(group: pd.DataFrame) -> pd.DataFrame:
     result["universe_pit_active_ok"] = group["pit_active"].astype("float64")
     result["universe_common_stock_ok"] = (group["security_type"].str.upper() == "CS").astype("float64")
     result["universe_identity_ok"] = group["identity_clear"].astype("float64")
-    result["universe_close_ok"] = (close >= 5.0).astype("float64")
+    result["universe_close_ok"] = (group["unadjusted_close"] >= 5.0).astype("float64")
     result["universe_prior_liquidity_ok"] = (
         result["prior_median_dollar_volume_20"] >= 5_000_000.0
     ).astype("float64")
@@ -395,7 +403,7 @@ def reference_signal_mask(
 
 
 REFERENCE_DAILY_FEATURE_FINGERPRINT = (
-    "26a2892a4c4bb5597d2e688e78be8cb7da4fc656872a30fe887cf60669476cb8"
+    "ee7e09b680b64b65280dea88c01d402bd9576a04cc70bc7748d8e3048ff57159"
 )
 if reference_daily_feature_fingerprint() != REFERENCE_DAILY_FEATURE_FINGERPRINT:
     raise RuntimeError("frozen reference daily feature fingerprint drifted")

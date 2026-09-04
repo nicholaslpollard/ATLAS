@@ -53,6 +53,7 @@ def _bars(*instrument_ids: str) -> pd.DataFrame:
                     "low": min(open_price, close_price) - 1.0,
                     "close": close_price,
                     "volume": 1_000_000.0,
+                    "unadjusted_close": close_price,
                     "pit_active": True,
                     "security_type": "CS",
                     "identity_clear": True,
