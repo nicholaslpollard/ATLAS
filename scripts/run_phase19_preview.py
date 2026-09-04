@@ -25,10 +25,15 @@ preview_server._STATIC_ASSETS["/assets/atlas_overview.css"] = (
     "atlas_overview.css",
     "text/css; charset=utf-8",
 )
+preview_server._STATIC_ASSETS["/assets/atlas_tabs.css"] = (
+    "atlas_tabs.css",
+    "text/css; charset=utf-8",
+)
 for console_asset in (
     "atlas_console.js",
     "atlas_overview_style.js",
     "atlas_overview.js",
+    "atlas_tabs.js",
     "atlas_console_runtime.js",
 ):
     if console_asset not in preview_server._PREVIEW_JS_BUNDLE:
@@ -53,6 +58,7 @@ def main() -> None:
     print("  synthetic demo data only: yes")
     print("  multi-page console shell: enabled")
     print("  overview summary console: enabled")
+    print("  domain detail tabs: enabled")
     print("  market-data/provider connections: 0")
     print("  broker connections: 0")
     print("  provider writes: 0")
