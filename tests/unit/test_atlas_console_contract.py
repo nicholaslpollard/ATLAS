@@ -24,6 +24,7 @@ def test_console_assets_are_part_of_phase19_read_only_surface() -> None:
     assert _PHASE19_STATIC_ASSETS["/assets/atlas_console.css"][0] == "atlas_console.css"
     assert _PHASE19_STATIC_ASSETS["/assets/atlas_overview.css"][0] == "atlas_overview.css"
     assert _PHASE19_STATIC_ASSETS["/assets/atlas_tabs.css"][0] == "atlas_tabs.css"
+    assert _PHASE19_STATIC_ASSETS["/assets/atlas_status.css"][0] == "atlas_status.css"
 
     for filename in (
         "atlas_console.js",
@@ -34,6 +35,7 @@ def test_console_assets_are_part_of_phase19_read_only_surface() -> None:
         "atlas_overview.css",
         "atlas_tabs.js",
         "atlas_tabs.css",
+        "atlas_status.css",
     ):
         path = WEB_ROOT / filename
         assert path.is_file()
@@ -115,6 +117,7 @@ def test_codespaces_launcher_adds_console_without_changing_preview_write_boundar
     assert '"atlas_console.css"' in source
     assert '"atlas_overview.css"' in source
     assert '"atlas_tabs.css"' in source
+    assert '"atlas_status.css"' in source
     assert '"atlas_console.js"' in source
     assert '"atlas_overview_style.js"' in source
     assert '"atlas_overview.js"' in source
