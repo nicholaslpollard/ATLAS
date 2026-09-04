@@ -42,6 +42,7 @@ _PHASE19_OBSERVABILITY_BUNDLE = (
     "observability_controls.js",
     "paper_dashboard.js",
     "atlas_console.js",
+    "atlas_console_runtime.js",
 )
 
 
