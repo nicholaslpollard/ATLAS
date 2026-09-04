@@ -40,5 +40,14 @@ jobs:
         run: python scripts/validate_a34_reference_account_replay.py
       - name: Validate A34 PIT regime context
         run: python scripts/validate_a34_reference_regime_context.py
+      - name: Validate A34.5 browser JavaScript syntax
+        shell: bash
+        run: |
+          node --check apps/web/observability.js
+          node --check apps/web/observability_controls.js
+          node --check apps/web/paper_dashboard.js
+          node --check apps/web/atlas_console.js
+          node --check apps/web/atlas_console_runtime.js
+          node --check apps/web/phase19_preview.js
       - name: Run focused account replay and browser tests
-        run: python -m pytest -q tests/unit/test_reference_lake_adapter.py tests/unit/test_reference_regime_context.py tests/unit/test_reference_strategy_runner.py tests/unit/test_reference_portfolio_replay.py tests/unit/test_reference_replay_read_model.py tests/unit/test_phase16_status_api.py tests/unit/test_phase19_observability_http.py tests/unit/test_a34_5_paper_dashboard.py tests/unit/test_phase19_preview_server.py
+        run: python -m pytest -q tests/unit/test_reference_lake_adapter.py tests/unit/test_reference_regime_context.py tests/unit/test_reference_strategy_runner.py tests/unit/test_reference_portfolio_replay.py tests/unit/test_reference_replay_read_model.py tests/unit/test_phase16_status_api.py tests/unit/test_phase19_observability_http.py tests/unit/test_a34_5_paper_dashboard.py tests/unit/test_phase19_preview_server.py tests/unit/test_atlas_console_contract.py
