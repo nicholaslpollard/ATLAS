@@ -29,6 +29,10 @@ preview_server._STATIC_ASSETS["/assets/atlas_tabs.css"] = (
     "atlas_tabs.css",
     "text/css; charset=utf-8",
 )
+preview_server._STATIC_ASSETS["/assets/atlas_status.css"] = (
+    "atlas_status.css",
+    "text/css; charset=utf-8",
+)
 for console_asset in (
     "atlas_console.js",
     "atlas_overview_style.js",
