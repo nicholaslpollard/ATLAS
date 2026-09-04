@@ -1,9 +1,13 @@
 "use strict";
 
-if (!document.querySelector('link[data-atlas-overview-style="true"]')) {
-  const atlasOverviewStyle = document.createElement("link");
-  atlasOverviewStyle.rel = "stylesheet";
-  atlasOverviewStyle.href = "/assets/atlas_overview.css";
-  atlasOverviewStyle.dataset.atlasOverviewStyle = "true";
-  document.head.appendChild(atlasOverviewStyle);
-}
+[
+  ["atlas-overview-style", "/assets/atlas_overview.css"],
+  ["atlas-tabs-style", "/assets/atlas_tabs.css"],
+].forEach(([key, href]) => {
+  if (document.querySelector(`link[data-atlas-style="${key}"]`)) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = href;
+  link.dataset.atlasStyle = key;
+  document.head.appendChild(link);
+});
