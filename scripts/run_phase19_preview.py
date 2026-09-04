@@ -21,11 +21,12 @@ preview_server._STATIC_ASSETS["/assets/atlas_console.css"] = (
     "atlas_console.css",
     "text/css; charset=utf-8",
 )
-if "atlas_console.js" not in preview_server._PREVIEW_JS_BUNDLE:
-    bundle = list(preview_server._PREVIEW_JS_BUNDLE)
-    insert_at = max(0, len(bundle) - 1)
-    bundle.insert(insert_at, "atlas_console.js")
-    preview_server._PREVIEW_JS_BUNDLE = tuple(bundle)
+for console_asset in ("atlas_console.js", "atlas_console_runtime.js"):
+    if console_asset not in preview_server._PREVIEW_JS_BUNDLE:
+        bundle = list(preview_server._PREVIEW_JS_BUNDLE)
+        insert_at = max(0, len(bundle) - 1)
+        bundle.insert(insert_at, console_asset)
+        preview_server._PREVIEW_JS_BUNDLE = tuple(bundle)
 
 
 def main() -> None:
