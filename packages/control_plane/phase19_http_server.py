@@ -35,11 +35,13 @@ _PHASE19_STATIC_ASSETS = {
         "text/javascript; charset=utf-8",
     ),
     "/assets/observability.css": ("observability.css", "text/css; charset=utf-8"),
+    "/assets/atlas_console.css": ("atlas_console.css", "text/css; charset=utf-8"),
 }
 _PHASE19_OBSERVABILITY_BUNDLE = (
     "observability.js",
     "observability_controls.js",
     "paper_dashboard.js",
+    "atlas_console.js",
 )
 
 
