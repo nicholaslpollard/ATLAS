@@ -793,8 +793,9 @@ underpowered independently.
 
 **Implementation status (2026-09-04): reference foundation, retained legacy adapter,
 and isolated V2 post-build/adapter path implemented; empirical V2 run not started.**
-The operator's accepted native acquisition is still running, and the post-build
-package remains unexecuted and unmerged at this handoff. The separate catalog contains six families and nine
+The operator's accepted native acquisition is still running. The post-build package
+passed exact-head Windows/Ubuntu CI in PR #58; operator execution remains pending.
+The separate catalog contains six families and nine
 direction-specific policies. The accepted Phase11 eight-rule registry and accepted
 33-feature core remain unchanged. PR #45 merged the accepted phase-start seed and
 opportunity-event contracts as
@@ -809,7 +810,7 @@ trials; and the control plane exposes the catalog read-only at
 `/api/v1/strategies/reference`. The runner hard-rejects the retained master
 protected dates before feature work and has zero provider/broker/PAPER/LIVE writes.
 Compile-all and the complete local suite for the staged V2 post-build package pass
-at **1,546 tests**; exact-head cross-platform CI remains pending.
+at **1,546 tests**; all ten PR #58 exact-head workflow groups passed.
 The read-only adapter contract
 `reference-lake-adapter-v1-massive-development-split-free-identity-exact` scans
 accepted canonical partitions without provider calls or writes. Its V1 scope is the

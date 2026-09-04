@@ -172,8 +172,8 @@ with a desired trade.
   remain pending. At the latest operator report the resumable run had completed
   **16,586 / 67,480 units** after roughly 12 hours and was processing native minute
   history for December 2017. This is progress telemetry, not acceptance.
-- The next V2 package is implemented in the current branch but has not run against
-  the operator database or been accepted/merged. Its single resume-safe post-build
+- The V2 post-build package passed exact-head Windows/Ubuntu CI in PR #58 but has
+  not yet run against the operator database. Its single resume-safe post-build
   coordinator hash-verifies every native unit; fully scans native daily schema,
   provenance, dates, sessions, duplicates, and OHLCV; builds conservative direct-
   Alpaca-asset identity/lifecycle evidence; acquires a separate provider-native SIP
@@ -189,8 +189,7 @@ with a desired trade.
   **2026-05-11 DEVELOPMENT boundary** and materializes zero protected-window return
   rows. It does not promote a production database or grant historical, PAPER, or
   LIVE authority. Compile-all and the complete local
-  suite pass at **1,546 tests**; exact-head cross-platform CI remains pending for
-  this branch.
+  suite pass at **1,546 tests**; all ten PR #58 exact-head workflow groups passed.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live
