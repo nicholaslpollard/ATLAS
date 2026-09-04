@@ -26,18 +26,20 @@ function atlasFinalizeSelectedBrandLayout() {
   style.id = "atlas-selected-brand-layout-style";
   style.textContent = `
     .atlas-brand.atlas-brand-selected {
-      min-height: 174px;
+      min-height: 184px;
+      width: 100%;
       padding: 0;
       gap: 0;
       display: grid;
       place-items: center;
     }
     .atlas-brand.atlas-brand-selected .atlas-brand-mark {
-      width: 150px;
-      height: 150px;
+      width: 162px;
+      height: 162px;
       margin: 0 auto;
       display: grid;
       place-items: center;
+      transform: translateX(-6px);
     }
     .atlas-brand.atlas-brand-selected .atlas-brand-mark > canvas,
     .atlas-brand.atlas-brand-selected .atlas-brand-mark > img,
