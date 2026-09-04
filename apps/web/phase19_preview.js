@@ -29,4 +29,48 @@ function enforcePhase19SyntheticPreview() {
   }
 }
 
-window.addEventListener("DOMContentLoaded", enforcePhase19SyntheticPreview);
+function finalizePreviewBrandLayout() {
+  document.querySelectorAll(".atlas-brand-name").forEach((node) => node.remove());
+
+  const brand = document.querySelector(".atlas-brand");
+  const mark = document.querySelector(".atlas-brand-mark");
+  if (!brand || !mark) return;
+  brand.classList.add("atlas-brand-selected");
+
+  if (document.getElementById("atlas-preview-brand-layout-style")) return;
+  const style = document.createElement("style");
+  style.id = "atlas-preview-brand-layout-style";
+  style.textContent = `
+    .atlas-brand.atlas-brand-selected {
+      min-height: 174px;
+      padding: 0;
+      gap: 0;
+      display: grid;
+      place-items: center;
+    }
+    .atlas-brand.atlas-brand-selected .atlas-brand-mark {
+      width: 150px;
+      height: 150px;
+      margin: 0 auto;
+      display: grid;
+      place-items: center;
+    }
+    .atlas-brand.atlas-brand-selected .atlas-brand-mark > canvas,
+    .atlas-brand.atlas-brand-selected .atlas-brand-mark > img,
+    .atlas-brand.atlas-brand-selected .atlas-brand-mark > svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  enforcePhase19SyntheticPreview();
+  window.setTimeout(finalizePreviewBrandLayout, 0);
+  window.setTimeout(finalizePreviewBrandLayout, 180);
+});
+window.addEventListener("atlas:observability-refreshed", finalizePreviewBrandLayout);
