@@ -149,7 +149,7 @@ REFERENCE_OPPORTUNITY_CONTRACT_VERSION = (
     "reference-opportunity-v1-fired-rejected-selected-counterfactual-outcome"
 )
 REFERENCE_HISTORICAL_RUN_CONTRACT_VERSION = (
-    "reference-historical-run-v1-independent-strategy-replay-no-protected-or-broker"
+    "reference-historical-run-v2-explicit-evaluation-scope-protected-accounted-no-broker"
 )
 
 
@@ -207,7 +207,7 @@ class StrategyTrialDraft(BaseModel):
     input_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     run_fingerprint: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     performance_outcomes_opened: bool = False
-    master_protected_return_rows_read: int = Field(default=0, ge=0, le=0)
+    master_protected_return_rows_read: int = Field(default=0, ge=0)
     notes: tuple[str, ...]
 
     @field_validator("family_ids", "strategy_ids", "hypotheses", "notes")
@@ -236,6 +236,18 @@ class StrategyTrialDraft(BaseModel):
         }:
             if self.run_fingerprint is None:
                 raise ValueError("completed replay trials require a run fingerprint")
+        if (
+            self.master_protected_return_rows_read > 0
+            and self.stage != StrategyTrialStage.WALK_FORWARD
+        ):
+            raise ValueError("only a WALK_FORWARD trial may account for master holdout rows")
+        if (
+            self.stage == StrategyTrialStage.WALK_FORWARD
+            and self.disposition == StrategyTrialDisposition.COMPLETED
+            and self.performance_outcomes_opened
+            and self.master_protected_return_rows_read == 0
+        ):
+            raise ValueError("completed walk-forward outcomes require protected-row accounting")
         return self
 
 
@@ -381,13 +393,41 @@ class ReferenceHistoricalRun(BaseModel):
     input_instruments: int = Field(ge=0)
     first_session: date | None
     last_session: date | None
+    evaluation_start_session: date | None = None
+    evaluation_end_session: date | None = None
+    evaluation_scope: str = "DEVELOPMENT"
     opportunities: tuple[ReferenceOpportunityRecord, ...]
     summary_by_strategy: dict[str, dict[str, int | float | None]]
     condition_slices: dict[
         str, dict[str, dict[str, dict[str, int | float | None]]]
     ]
     replay_scope: str = "INDEPENDENT_STRATEGY_REPLAY_NOT_PORTFOLIO_SIMULATION"
-    protected_master_return_rows_read: int = Field(default=0, ge=0, le=0)
+    protected_master_return_rows_read: int = Field(default=0, ge=0)
     broker_writes: int = Field(default=0, ge=0, le=0)
     paper_submits: int = Field(default=0, ge=0, le=0)
     live_writes: int = Field(default=0, ge=0, le=0)
+
+    @model_validator(mode="after")
+    def validate_evaluation_scope(self) -> Self:
+        if (self.evaluation_start_session is None) != (
+            self.evaluation_end_session is None
+        ):
+            raise ValueError("evaluation start/end must be present together")
+        if (
+            self.evaluation_start_session is not None
+            and self.evaluation_end_session is not None
+        ):
+            if self.evaluation_end_session < self.evaluation_start_session:
+                raise ValueError("evaluation end precedes evaluation start")
+            if any(
+                item.signal_session < self.evaluation_start_session
+                or item.signal_session > self.evaluation_end_session
+                for item in self.opportunities
+            ):
+                raise ValueError("opportunity signal lies outside the evaluation scope")
+        if self.evaluation_scope == "FROZEN_ONE_TIME_WALK_FORWARD":
+            if self.protected_master_return_rows_read <= 0:
+                raise ValueError("frozen walk-forward scope requires protected-row accounting")
+        elif self.protected_master_return_rows_read != 0:
+            raise ValueError("protected rows require the frozen walk-forward scope")
+        return self

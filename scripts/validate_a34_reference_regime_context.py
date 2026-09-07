@@ -98,8 +98,8 @@ def main() -> int:
             token in command
             for token in (
                 "reference_input_fingerprint(regime_context.bars)",
-                "ReferenceStrategyHistoricalRunner().run(regime_context.bars)",
-                "ReferenceAccountPortfolioReplay().run(regime_context.bars, run)",
+                "ReferenceStrategyHistoricalRunner().run(",
+                "ReferenceAccountPortfolioReplay().run(",
                 "regime_context_report.json",
                 "regime_source_fingerprint",
             )

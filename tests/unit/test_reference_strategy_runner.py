@@ -13,6 +13,9 @@ from packages.backtesting.reference_strategy_runner import (
     reference_input_fingerprint,
     simulate_reference_trade,
 )
+from packages.backtesting.reference_portfolio_replay import (
+    ReferenceAccountPortfolioReplay,
+)
 from packages.schemas.strategy_lab import (
     OpportunityDisposition,
     OpportunityOutcomeStatus,
@@ -144,3 +147,42 @@ def test_runner_rejects_missing_or_noncausal_signal_availability() -> None:
     frame["signal_available_at_utc"] = frame["timestamp_utc"]
     with pytest.raises(ReferenceStrategyRunnerError, match="must follow"):
         ReferenceStrategyHistoricalRunner().run(frame)
+
+
+def test_authorized_walk_forward_uses_warmup_but_emits_only_forward_signals() -> None:
+    closes = [100.0] * 200 + [200.0] * 70
+    frame = _daily_frame(closes)
+    timestamps = pd.date_range("2025-08-01", periods=len(frame), freq="B", tz="UTC")
+    frame["session_date"] = timestamps.date
+    frame["timestamp_utc"] = timestamps
+    frame["signal_available_at_utc"] = timestamps + pd.Timedelta(hours=21)
+    evaluation_start = date(2026, 5, 12)
+    evaluation_end = frame.iloc[-1]["session_date"]
+
+    with pytest.raises(ProtectedMasterWindowError, match="DEVELOPMENT boundary"):
+        ReferenceStrategyHistoricalRunner().run(frame)
+
+    run = ReferenceStrategyHistoricalRunner().run(
+        frame,
+        evaluation_start=evaluation_start,
+        evaluation_end=evaluation_end,
+        authorize_master_protected=True,
+    )
+    assert run.evaluation_scope == "FROZEN_ONE_TIME_WALK_FORWARD"
+    assert run.evaluation_start_session == evaluation_start
+    assert run.evaluation_end_session == evaluation_end
+    assert run.protected_master_return_rows_read > 0
+    assert all(item.signal_session >= evaluation_start for item in run.opportunities)
+
+    portfolio = ReferenceAccountPortfolioReplay().run(
+        frame,
+        run,
+        evaluation_start=evaluation_start,
+        evaluation_end=evaluation_end,
+        authorize_master_protected=True,
+    )
+    assert portfolio.protected_master_return_rows_read == (
+        run.protected_master_return_rows_read
+    )
+    assert portfolio.replay_scope == "FROZEN_ONE_TIME_WALK_FORWARD_ACCOUNT_REPLAY"
+    assert portfolio.equity_curve[0].session == evaluation_start

@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-04 (UTC). This roadmap and the root `README.md` are the
+**Current as of 2026-09-07 (UTC). This roadmap and the root `README.md` are the
 only living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -117,9 +117,11 @@ deterministic case → independent AI audit → SHADOW/PAPER execution → outco
   engine. It may format and aggregate authoritative records but must not maintain a
   separate trading truth or independently recompute trading decisions.
 
-Accepted daily historical boundary remains Alpaca SIP through `2021-08-13` and
-Massive from `2021-08-16`. Provider boundaries must remain explicit. Multi-provider
-data is not automatically invalid. Pre-2021 intraday history must not be fabricated.
+The decommissioned V1 daily lake used Alpaca SIP through `2021-08-13` and
+Massive from `2021-08-16`; this is retained historical provenance only. The current
+isolated V2 candidate base uses Alpaca SIP throughout its frozen source interval and
+forbids V1 rows or derived-state ancestry. V2 minute capture still requires the finite
+B34 semantics audit before intraday strategies; missing history may not be invented.
 
 ## 5. Accepted foundation through Phase32
 
@@ -288,7 +290,9 @@ not be resumed by retuning the observed version.
 
 ## 9. Current protected and trading authority
 
-- Master protected window: `2026-05-12..2026-08-11` — **unconsumed**.
+- Master protected window: `2026-05-12..2026-08-11` — **unconsumed as of this
+  handoff, with explicit operator authorization now granted for one frozen,
+  separately recorded practitioner walk-forward use**.
 - Retained branch protected return reads: **0**.
 - No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
   `LIVE_ELIGIBLE`, or LIVE-authorized status.
@@ -453,7 +457,7 @@ versions. Before ATLAS performance access, the frozen A33/B33 fingerprints are:
 - retained legacy trusted-lake adapter:
   `reference-lake-adapter-v1-massive-development-split-free-identity-exact`.
 - isolated V2 trusted-lake adapter:
-  `reference-v2-lake-adapter-v1-alpaca-sip-hash-bound-isolated-development`.
+  `reference-v2-lake-adapter-v2-alpaca-sip-hash-bound-explicit-evaluation-scopes`.
 
 Every version remains `PRACTITIONER_BASELINE`, `RESEARCH`, and
 `RESEARCH_REPLAY`-only. Master protected return rows read: **0**; holdout consumed:
@@ -514,8 +518,10 @@ sent to a broker merely to gather data.
   windows.
 - Purge and embargo around overlapping outcome horizons.
 - Keep final qualifying historical evidence separate from development.
-- Preserve the existing master protected window; use a newly declared future
-  confirmation policy for the practitioner program.
+- Preserve the existing master protected window until the frozen practitioner
+  specifications, data lineage, and evaluation boundaries are hash-bound. It may
+  then be consumed once as the one-time walk-forward interval. A new future
+  prospective PAPER period remains necessary and cannot be backfilled from history.
 - Never choose a parameter, regime rule, cost, or exit after observing the period
   meant to qualify it.
 
@@ -717,7 +723,11 @@ same-session unadjusted close for the PIT price floor, preventing a later split 
 rewriting historical `$5` eligibility. The independently captured source can extend
 through its frozen current cutoff, but DEVELOPMENT strategy-input Parquet ends
 physically at `2026-05-11` and materializes zero protected-window return rows. This
-is a research-data promotion only, not a global production path switch.
+is a research-data promotion only, not a global production path switch. A separate
+`walk_forward_daily.json` view may be materialized only after DEVELOPMENT succeeds
+and an immutable source/policy authorization plus permanent consumption receipt have
+been written. Its signal clock begins on `2026-05-12`, its end is exactly the accepted
+V2 cutoff, and any failure after protected materialization begins remains consumed.
 Attributable provider rejections or malformed adjusted rows exclude their literal
 symbol globally while preserving the evidence and allowing the clean remainder to
 proceed. An unattributed anomaly or unit-level validation failure remains a hard
@@ -751,8 +761,10 @@ gain falls below stronger trusted-data experiments.
    resolves it.
 6. Transaction costs, spread, slippage, borrow, fees, market impact, and capacity
    cannot be chosen to make a result pass.
-7. Protected performance is finalist-only; a read consumes the governed holdout for
-   later selection.
+7. Retained alpha branches keep their finalist-only protected-performance rules.
+   The explicitly authorized frozen practitioner library has a separate one-time
+   historical walk-forward contract. Its consumption is permanent, including failed
+   attempts, and the same period cannot qualify a later retuned version.
 8. Negative/zero-trade results are valid and never rescued by post-result retuning.
 9. Scientific families and variants are frozen before governed performance.
 10. ML and AI are evidence/audit, not authority.
@@ -791,9 +803,14 @@ tests, retained scientific facts, and zero accidental PAPER/LIVE authority. It a
 produces the first honest historical reports; each strategy may pass, fail, or remain
 underpowered independently.
 
-**Implementation status (2026-09-04): reference foundation, retained legacy adapter,
-and isolated V2 post-build/adapter path implemented; empirical V2 run not started.**
-The operator's accepted native acquisition is still running. The post-build package
+**Implementation status (2026-09-07): reference foundation, retained legacy adapter,
+isolated V2 post-build/adapter path, and explicit frozen walk-forward controls are
+implemented; empirical V2 strategy performance has not been opened.**
+The operator's native acquisition completed with **67,480 / 67,480 units**,
+including **5,302 daily** and **62,178 minute** units, **3,897,688,734 canonical
+rows**, and **1,757,288 quarantined rows**. This is complete native capture but not
+post-build identity/daily acceptance; quarantines remain evidence for attribution.
+The original post-build package
 was accepted in PR #58 and merged as
 `8e5abf21fe1ca138cd90125005b8c305a598dd44`; its post-merge `main` workflow passed
 on Windows and Ubuntu. Operator execution remains pending.
@@ -809,8 +826,33 @@ performs independent-strategy replay from caller-supplied bars; versioned
 opportunity/run schemas retain rejected, selected, and overlap-suppressed
 counterfactual records; an atomic append-only hash-chain ledger records strategy
 trials; and the control plane exposes the catalog read-only at
-`/api/v1/strategies/reference`. The runner hard-rejects the retained master
-protected dates before feature work and has zero provider/broker/PAPER/LIVE writes.
+`/api/v1/strategies/reference`. The runner hard-rejects all post-DEVELOPMENT rows by
+default. Its separate walk-forward mode requires an immutable source/policy-bound
+authorization, accepts pre-May-12 rows only as feature warm-up, emits signals only
+from May 12 through the exact validated cutoff, and records the protected-row count
+in strategy, account, trial-ledger, post-build, and consumption evidence. It has zero
+provider/broker/PAPER/LIVE writes in either mode.
+The restart repair now preserves each prior receipt state in content-addressed
+history, verifies the complete chain before continuation, retains known row counts
+across retries, and reuses completed results only after operator artifact verification.
+A source-only rerun cannot erase prior holdout consumption. Missing/corrupt receipt
+history and invalid completed results fail closed; incomplete GUI states show the
+attempt and known/pending row accounting without an unopened-outcomes claim.
+The initial Chat 3 correction reported 1,556 passing tests. The continuation also
+repairs the materialization-cutoff failure path: the receipt and post-build summary
+retain the protected-row count already observed when the reported cutoff disagrees
+with the authorized cutoff. Three additional pytest cases cover that failure and
+successful retries after cutoff and replay failures. Local verification passes
+**10 isolated standard-library receipt tests and 13 isolated coordinator checks**,
+plus Python compilation, JavaScript syntax, and secret hygiene. The coordinator
+checks execute the repository functions/assertions with mocked data/provider
+integrations; they do not substitute for full application acceptance. The full
+locked Windows/Ubuntu PR suite and three retained A33/A34 validators remain pending
+because local application dependencies are absent. The prepared branch is
+`alpaca-v2-frozen-walk-forward`. The operator renewed full GitHub/repository
+authorization in this continuation, resolving the earlier publication-approval
+pause. Exact-commit CI, merge, and post-merge verification must pass before
+workstation use. No workstation outcomes were opened.
 Compile-all and the complete local suite for the accepted V2 post-build package pass
 at **1,546 tests**; all ten PR #58 exact-head workflow groups and the post-merge
 `main` workflow passed.
@@ -824,10 +866,15 @@ split-report/hash reconciliation. Because accepted canonical bars are unadjusted
 V1 excludes every split-touched identity and every stream with an internal session
 gap; retained factor-1 streams are exactly equivalent to split-adjusted prices.
 Pre-seam Alpaca and split-affected instruments require the separately validated V2
-rather than guessed factors. The V2 adapter binds only the exact isolated
-research-daily manifest and all partition hashes; it refuses arbitrary paths and
-legacy fallback. Provider-native split-adjusted analytical bars retain a separate
-unadjusted close for the PIT price floor. The first stream measures price return and
+rather than guessed factors. The V2 DEVELOPMENT adapter binds only the exact
+isolated research-daily manifest and all partition hashes; it refuses arbitrary
+paths and legacy fallback. A separate walk-forward adapter accepts only its exact
+manifest, verifies the authorization self-hash, current frozen policy fingerprints,
+and permanent consumption receipt, requires the exact authorized warm-up start plus
+the complete protected interval and source-cutoff end, and is never selected
+implicitly. Provider-native
+split-adjusted analytical bars retain a separate unadjusted close for the PIT price
+floor. The first stream measures price return and
 does not yet credit or debit cash distributions; its replay is diagnostic only until
 dividend and spin-off cash-flow economics are implemented or conservatively bounded.
 The canonical provider timestamp remains the regular-open
@@ -880,6 +927,10 @@ account return/drawdown/costs, recent completed positions, portfolio admission
 decisions, simulated order events, and a closing-equity/exposure curve. The read
 model verifies the recorded SHA-256 and row schema of all four replay artifacts
 before displaying an available result; any drift fails the complete view closed.
+The staged walk-forward extension adds `INCOMPLETE`, prefers a completed separately
+labeled walk-forward over DEVELOPMENT, verifies its final consumption receipt and
+protected-row count, and never hides a failed/incomplete protected run by falling
+back to DEVELOPMENT.
 Run it with
 `python scripts/run_phase19_control_plane.py` and open `http://127.0.0.1:8765`.
 The panel uses local read-only endpoints and performs no provider or broker call.
@@ -908,6 +959,11 @@ passed. This preserves zero protected reads and zero provider/broker/PAPER/LIVE
 writes.
 
 ### A34.5 — Operator Live Observability and Paper Dashboard Gate
+
+Chat 4's operator-console implementation remains in draft PR #60 on
+`a34-5-frontend-operator-dashboard`. It is separate from this backend correction,
+has not been merged, and still needs its two living documents reconciled and full
+acceptance. Existing historical replay display support does not satisfy A34.5.
 
 **New hard prerequisite established 2026-09-03 before Operational PAPER.** Extend
 the authoritative stacked Phase19 browser/control plane from historical/research
@@ -1078,7 +1134,8 @@ Every closeout reports:
    training/discovery/universe/regime/quality/reference outputs, and old manifests).
    They are now in a separate exact hash-bound residual plan; its receipt is
    plan-hash-specific so the original 137.10 GiB deletion receipt cannot be overwritten.
-2. **IN PROGRESS ON OPERATOR WORKSTATION — fresh native V2 acquisition.** The single
+2. **COMPLETE NATIVE CAPTURE / ACCEPTANCE PENDING — fresh native V2 acquisition.**
+   The single
    `--build-v2` coordinator performs confirmed residual cleanup, freezes the last
    completed XNYS session, captures fresh active/inactive Alpaca assets and
    complete-quality corporate actions, freezes an exact-literal universe and plan,
@@ -1092,27 +1149,34 @@ Every closeout reports:
    than being silently collapsed. A 30 GiB reserve plus transient-work guard pauses
    safely. No V1 persisted row is a V2 input. Synthetic daily/minute end-to-end,
    page-token resume, corruption fail-closed, rejection quarantine, and cleanup-scope
-   package was accepted in PR #57. At the latest report, the live resumable run had
-   completed **16,586 / 67,480 units** after roughly 12 hours and was processing
-   native minute history for December 2017. This is telemetry, not acceptance.
-   Given the 3.781B-row estimate and at least roughly 378,100 full minute pages, one
-   overnight run is not promised to finish; the same command resumes the frozen run.
-3. **ACCEPTED / OPERATOR RUN PENDING — V2 daily post-build foundation.** After the
-   native command exits complete, run `scripts/run_alpaca_v2_postbuild.py`. It
+   package was accepted in PR #57. The operator run finished all **67,480 / 67,480
+   units**: **5,302 daily**, **62,178 minute**, **3,897,688,734 canonical rows**, and
+   **1,757,288 quarantined rows**. Its terminal status is `COMPLETE`, but this remains
+   isolated candidate capture: identity, quality, quarantine attribution, analytical
+   acceptance, and production promotion have not passed merely because acquisition
+   ended.
+3. **NEXT OPERATOR RUN — V2 daily post-build foundation.** After pulling the accepted
+   corrected package, run `scripts/run_alpaca_v2_postbuild.py`. It
    hash-verifies source/plan/every unit, validates all daily rows, constructs
    conservative identity/lifecycle evidence, acquires resumable provider-native
    split-adjusted daily bars, reconciles them to raw, and writes the isolated
    research-daily manifest. Stable content fingerprints make a clean rerun
    idempotent. `--validate-only` makes no provider request; `--max-hours` checkpoints
    adjusted-daily acquisition. Do not run this concurrently with native acquisition.
-4. **ACCEPTED OPTIONAL CONTINUATION — frozen daily replay.** Adding
-   `--through-reference-replay` to the post-build command continues in a fresh
-   process through the nine frozen practitioner policies and A34 fixed research
-   account replay only after every source gate passes. It opens DEVELOPMENT outcomes
-   but cannot cross `2026-05-11`, promote authority, submit PAPER, or write a broker.
-   Without this flag, no performance is opened. The browser read model prefers a
-   hash-valid V2 replay and fails closed rather than silently falling back to legacy
-   artifacts when V2 output exists.
+4. **RECOMMENDED EXPLICIT CONTINUATION — DEVELOPMENT plus frozen walk-forward.** Run
+   `scripts/run_alpaca_v2_postbuild.py --through-walk-forward-replay
+   --authorize-master-holdout-consumption` as one command. It first completes the
+   frozen nine-policy and A34 account DEVELOPMENT replay through `2026-05-11`. Only
+   after that succeeds does it persist irreversible consumption evidence, create the
+   separate walk-forward view, and evaluate signals from `2026-05-12` through the
+   exact accepted source cutoff. The holdout remains consumed after any later failure.
+   Every superseded consumption state is preserved beneath
+   `manifests/master_holdout_consumption_history/` before the current receipt changes.
+   Retry attempts keep known protected-row counts; a completed replay is verified and
+   reused, while missing or damaged receipt/history/result evidence stops safely.
+   Historical replay is never relabeled as prospective PAPER; no strategy promotion,
+   broker write, PAPER submit, or LIVE authority is granted. Omitting both flags opens
+   no performance; `--through-reference-replay` remains the DEVELOPMENT-only option.
 5. Review the actual post-build exclusion, identity, coverage, split-factor, disk,
    and replay reports. Record pass/fail honestly before any strategy revision. Daily
    indicators are computed by the frozen engine on demand; do not first build a

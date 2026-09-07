@@ -334,6 +334,7 @@ def test_browser_dashboard_is_same_origin_csp_locked_and_fixed_allowlist(tmp_pat
             assert "/api/v1/status/full" in js
             assert "/api/v1/strategies/reference" in js
             assert "/api/v1/research/reference-replay" in js
+            assert "reference-replay-stage" in js
             assert "https://" not in js
             assert "http://" not in js
 

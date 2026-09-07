@@ -29,6 +29,7 @@ from packages.backtesting.reference_strategy_runner import (
     ProtectedMasterWindowError,
     reference_input_fingerprint,
 )
+from packages.data.alpaca_v2_postbuild import V2_REFERENCE_DEVELOPMENT_END
 from packages.schemas.reference_portfolio import (
     REFERENCE_PORTFOLIO_DECISION_CONTRACT_VERSION,
     REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION,
@@ -52,7 +53,7 @@ from packages.strategies.reference_library import REFERENCE_STRATEGY_CATALOG
 
 
 REFERENCE_PORTFOLIO_REPLAY_ENGINE_CONTRACT_VERSION = (
-    "a34-reference-account-engine-v1-open-exit-entry-intraday-exit-close-mark"
+    "a34-reference-account-engine-v2-explicit-evaluation-open-exit-entry-close-mark"
 )
 
 
@@ -225,17 +226,60 @@ class ReferenceAccountPortfolioReplay:
     Outcome fields are used only when their historical exit session is reached.
     """
 
-    def run(self, frame: pd.DataFrame, independent: ReferenceHistoricalRun) -> ReferencePortfolioReplay:
+    def run(
+        self,
+        frame: pd.DataFrame,
+        independent: ReferenceHistoricalRun,
+        *,
+        evaluation_start: date | None = None,
+        evaluation_end: date | None = None,
+        authorize_master_protected: bool = False,
+    ) -> ReferencePortfolioReplay:
         if frame.empty:
             raise ReferencePortfolioReplayError("reference portfolio replay requires bars")
         session_dates = pd.to_datetime(frame["session_date"], errors="raise").dt.date
-        if session_dates.between(
+        input_start = min(session_dates)
+        input_end = max(session_dates)
+        scoped_start = (
+            evaluation_start or independent.evaluation_start_session or input_start
+        )
+        scoped_end = evaluation_end or independent.evaluation_end_session or input_end
+        if not input_start <= scoped_start <= scoped_end <= input_end:
+            raise ReferencePortfolioReplayError(
+                "portfolio evaluation scope must lie inside the supplied frame"
+            )
+        if input_end != scoped_end:
+            raise ReferencePortfolioReplayError(
+                "portfolio input rows after the evaluation end are forbidden"
+            )
+        protected_rows_read = int(session_dates.between(
             PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START,
             PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END,
-        ).any():
+        ).sum())
+        if (session_dates > V2_REFERENCE_DEVELOPMENT_END).any() and not (
+            authorize_master_protected
+        ):
             raise ProtectedMasterWindowError(
-                "reference portfolio replay cannot read the retained master protected window"
+                "reference portfolio replay cannot cross the DEVELOPMENT boundary "
+                "or master protected window without explicit one-time "
+                "master-holdout authorization"
             )
+        if authorize_master_protected:
+            if (
+                protected_rows_read == 0
+                or scoped_start != PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START
+                or scoped_end < PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END
+            ):
+                raise ProtectedMasterWindowError(
+                    "authorized portfolio walk-forward must contain the complete holdout"
+                )
+            if (
+                independent.evaluation_scope != "FROZEN_ONE_TIME_WALK_FORWARD"
+                or independent.protected_master_return_rows_read != protected_rows_read
+            ):
+                raise ReferencePortfolioReplayError(
+                    "independent walk-forward scope/protected-row accounting disagrees"
+                )
         input_fingerprint = reference_input_fingerprint(frame)
         if input_fingerprint != independent.input_fingerprint:
             raise ReferencePortfolioReplayError(
@@ -244,7 +288,21 @@ class ReferenceAccountPortfolioReplay:
         if independent.catalog_fingerprint != REFERENCE_STRATEGY_CATALOG.fingerprint():
             raise ReferencePortfolioReplayError("independent replay catalog fingerprint drifted")
 
-        bars, sessions = _bar_map(frame)
+        bars, all_sessions = _bar_map(frame)
+        sessions = tuple(
+            session for session in all_sessions if scoped_start <= session <= scoped_end
+        )
+        if not sessions:
+            raise ReferencePortfolioReplayError(
+                "portfolio evaluation scope contains no sessions"
+            )
+        if any(
+            item.signal_session < scoped_start or item.signal_session > scoped_end
+            for item in independent.opportunities
+        ):
+            raise ReferencePortfolioReplayError(
+                "independent opportunity lies outside the portfolio evaluation scope"
+            )
         decisions: list[ReferencePortfolioDecision] = []
         orders: list[ReferenceSimulatedOrderEvent] = []
         outcomes: list[ReferencePortfolioPositionOutcome] = []
@@ -616,7 +674,14 @@ class ReferenceAccountPortfolioReplay:
             "equity_curve": [item.model_dump(mode="json") for item in equity_rows],
             "summary_by_strategy": strategy_summary,
             "summary_by_family": family_summary,
-            "protected_master_return_rows_read": 0,
+            "evaluation_start_session": scoped_start,
+            "evaluation_end_session": scoped_end,
+            "replay_scope": (
+                "FROZEN_ONE_TIME_WALK_FORWARD_ACCOUNT_REPLAY"
+                if authorize_master_protected
+                else "RESEARCH_ACCOUNT_REPLAY_NOT_QUALIFYING_HISTORICAL_OR_PAPER"
+            ),
+            "protected_master_return_rows_read": protected_rows_read,
             "provider_writes": REFERENCE_PORTFOLIO_PROVIDER_WRITES,
             "broker_writes": REFERENCE_PORTFOLIO_BROKER_WRITES,
             "paper_submits": REFERENCE_PORTFOLIO_PAPER_SUBMITS,
@@ -652,4 +717,12 @@ class ReferenceAccountPortfolioReplay:
             equity_curve=equity_rows,
             summary_by_strategy=strategy_summary,
             summary_by_family=family_summary,
+            replay_scope=(
+                "FROZEN_ONE_TIME_WALK_FORWARD_ACCOUNT_REPLAY"
+                if authorize_master_protected
+                else "RESEARCH_ACCOUNT_REPLAY_NOT_QUALIFYING_HISTORICAL_OR_PAPER"
+            ),
+            evaluation_start_session=scoped_start,
+            evaluation_end_session=scoped_end,
+            protected_master_return_rows_read=protected_rows_read,
         )

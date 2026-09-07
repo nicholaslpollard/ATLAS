@@ -11,6 +11,9 @@ from packages.schemas.strategy_lab import StrategyTrialDraft, StrategyTrialRecor
 
 
 STRATEGY_TRIAL_LEDGER_CONTRACT_VERSION = (
+    "strategy-trial-ledger-v2-append-only-hash-chain-protected-accounted"
+)
+LEGACY_STRATEGY_TRIAL_LEDGER_CONTRACT_VERSION = (
     "strategy-trial-ledger-v1-append-only-hash-chain-protected-zero"
 )
 GENESIS_RECORD_HASH = "0" * 64
@@ -60,7 +63,10 @@ class StrategyTrialLedger:
                 raise StrategyTrialLedgerError(
                     f"invalid strategy trial ledger line: {line_number}"
                 ) from exc
-            if record.contract_version != STRATEGY_TRIAL_LEDGER_CONTRACT_VERSION:
+            if record.contract_version not in {
+                LEGACY_STRATEGY_TRIAL_LEDGER_CONTRACT_VERSION,
+                STRATEGY_TRIAL_LEDGER_CONTRACT_VERSION,
+            }:
                 raise StrategyTrialLedgerError(f"trial ledger contract drift at line {line_number}")
             if record.sequence != line_number:
                 raise StrategyTrialLedgerError(f"trial ledger sequence drift at line {line_number}")

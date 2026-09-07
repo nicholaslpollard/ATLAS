@@ -11,22 +11,38 @@ import duckdb
 import numpy as np
 import pandas as pd
 
+from packages.backtesting.reference_portfolio_policy import (
+    reference_portfolio_policy_fingerprint,
+)
 from packages.core.market_calendar import MarketCalendar
 from packages.core.settings import AtlasSettings
 from packages.data.alpaca_v2_postbuild import (
+    MASTER_HOLDOUT_AUTHORIZATION_CONTRACT,
+    MASTER_HOLDOUT_CONSUMPTION_CONTRACT,
     RESEARCH_DAILY_CONTRACT,
     V2_REFERENCE_DEVELOPMENT_END,
+    V2_REFERENCE_MASTER_PROTECTED_END,
+    V2_REFERENCE_MASTER_PROTECTED_START,
+    WALK_FORWARD_DAILY_CONTRACT,
+    master_holdout_authorization_id,
 )
 from packages.data.alpaca_v2_rebuild import V2Layout
+from packages.data.holdout_receipts import read_holdout_receipt
+from packages.features.reference_daily import REFERENCE_DAILY_FEATURE_FINGERPRINT
+from packages.strategies.reference_library import (
+    REFERENCE_STRATEGY_POLICY_FINGERPRINT,
+)
 
 
 REFERENCE_V2_LAKE_ADAPTER_CONTRACT_VERSION = (
-    "reference-v2-lake-adapter-v1-alpaca-sip-hash-bound-isolated-development"
+    "reference-v2-lake-adapter-v2-alpaca-sip-hash-bound-explicit-evaluation-scopes"
 )
 REFERENCE_V2_UNAVAILABLE_REGIME_CONTRACT_VERSION = (
     "reference-v2-regime-context-v1-explicitly-unavailable-no-v1-fallback"
 )
 REFERENCE_V2_DEVELOPMENT_END = V2_REFERENCE_DEVELOPMENT_END
+REFERENCE_V2_MASTER_PROTECTED_START = V2_REFERENCE_MASTER_PROTECTED_START
+REFERENCE_V2_MASTER_PROTECTED_END = V2_REFERENCE_MASTER_PROTECTED_END
 UNAVAILABLE_REGIME_CONTEXT = "UNAVAILABLE"
 
 
@@ -120,6 +136,11 @@ class ReferenceV2DailyLakeAdapter:
         "source_dataset",
         "adjusted_source_id",
     )
+    _MANIFEST_NAME = "research_daily.json"
+    _VIEW_DIRECTORY = "research_daily"
+    _EXPECTED_CONTRACT = RESEARCH_DAILY_CONTRACT
+    _ALLOW_PROTECTED = False
+    _REPORT_SCOPE = "ALPACA_SIP_V2_DEVELOPMENT_ONLY"
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
@@ -128,32 +149,146 @@ class ReferenceV2DailyLakeAdapter:
         self.calendar = MarketCalendar(exchange=settings.data.calendar.exchange)
 
     def _manifest(self, manifest_path: Path | None) -> tuple[Path, dict[str, Any]]:
-        expected = (self.layout.manifests / "research_daily.json").resolve()
+        expected = (self.layout.manifests / self._MANIFEST_NAME).resolve()
         resolved = expected if manifest_path is None else Path(manifest_path).resolve()
         if resolved != expected:
             raise ReferenceV2LakeAdapterError(
-                "V2 adapter accepts only the isolated V2 research-daily manifest"
+                f"V2 adapter accepts only the isolated V2 {self._MANIFEST_NAME} manifest"
             )
         manifest = _read_json(resolved, "V2 research-daily manifest")
         required = {
-            "contract": RESEARCH_DAILY_CONTRACT,
+            "contract": self._EXPECTED_CONTRACT,
             "status": "PASS",
             "v1_ancestry": "FORBIDDEN",
             "v1_rows_read": 0,
-            "master_protected_return_rows_read": 0,
             "historical_performance_opened": False,
             "production_promoted": False,
             "paper_authority": False,
             "live_authority": False,
             "cash_dividend_credits_materialized": False,
-            "development_only": True,
-            "protected_return_rows_materialized": 0,
+            "development_only": not self._ALLOW_PROTECTED,
         }
         for field, expected_value in required.items():
             if manifest.get(field) != expected_value:
                 raise ReferenceV2LakeAdapterError(
                     f"V2 research-daily manifest {field} is not {expected_value!r}"
                 )
+        protected_materialized = int(
+            manifest.get("protected_return_rows_materialized", -1)
+        )
+        if self._ALLOW_PROTECTED:
+            walk_forward_manifest = {
+                "evaluation_scope": "FROZEN_ONE_TIME_WALK_FORWARD",
+                "evaluation_start_session": REFERENCE_V2_MASTER_PROTECTED_START.isoformat(),
+                "evaluation_end_session": manifest.get("cutoff_session"),
+            }
+            for field, expected_value in walk_forward_manifest.items():
+                if manifest.get(field) != expected_value:
+                    raise ReferenceV2LakeAdapterError(
+                        f"V2 walk-forward manifest {field} is not {expected_value!r}"
+                    )
+            if protected_materialized <= 0:
+                raise ReferenceV2LakeAdapterError(
+                    "V2 walk-forward manifest has no materialized protected rows"
+                )
+            if (
+                manifest.get("master_protected_return_rows_read")
+                != protected_materialized
+                or manifest.get("master_protected_holdout_consumed") is not True
+            ):
+                raise ReferenceV2LakeAdapterError(
+                    "V2 walk-forward manifest does not account for consumed protected rows"
+                )
+            authorization_path = (
+                self.layout.manifests / "master_holdout_authorization.json"
+            ).resolve()
+            authorization = _read_json(
+                authorization_path, "master holdout authorization"
+            )
+            required_authorization = {
+                "contract": MASTER_HOLDOUT_AUTHORIZATION_CONTRACT,
+                "status": "AUTHORIZED_PENDING_HOLDOUT_READ",
+                "purpose": "A33_B33_FROZEN_REFERENCE_WALK_FORWARD",
+                "authorization_mechanism": "EXPLICIT_OPERATOR_CLI_FLAG",
+                "master_protected_start": REFERENCE_V2_MASTER_PROTECTED_START.isoformat(),
+                "master_protected_end": REFERENCE_V2_MASTER_PROTECTED_END.isoformat(),
+                "source_cutoff_session": manifest.get("source_cutoff_session"),
+                "development_end": REFERENCE_V2_DEVELOPMENT_END.isoformat(),
+                "native_acceptance_fingerprint": manifest.get(
+                    "native_acceptance_fingerprint"
+                ),
+                "split_daily_fingerprint": manifest.get("split_daily_fingerprint"),
+                "strategy_policy_fingerprint": REFERENCE_STRATEGY_POLICY_FINGERPRINT,
+                "feature_fingerprint": REFERENCE_DAILY_FEATURE_FINGERPRINT,
+                "portfolio_policy_fingerprint": reference_portfolio_policy_fingerprint(),
+                "parameter_changes_during_forward_window_permitted": False,
+                "historical_reclassification_as_paper_permitted": False,
+                "strategy_authority_promoted": False,
+                "paper_authority": False,
+                "live_authority": False,
+            }
+            for field, expected_value in required_authorization.items():
+                if authorization.get(field) != expected_value:
+                    raise ReferenceV2LakeAdapterError(
+                        f"master holdout authorization {field} is not {expected_value!r}"
+                    )
+            authorization_id = str(authorization.get("authorization_id") or "")
+            if (
+                authorization_id != manifest.get("holdout_authorization_id")
+                or authorization_id != master_holdout_authorization_id(authorization)
+            ):
+                raise ReferenceV2LakeAdapterError(
+                    "master holdout authorization is not self-hash bound to the manifest"
+                )
+            try:
+                authorized_at = datetime.fromisoformat(
+                    str(authorization["authorized_at_utc"])
+                )
+            except (KeyError, ValueError) as exc:
+                raise ReferenceV2LakeAdapterError(
+                    "master holdout authorization timestamp is invalid"
+                ) from exc
+            if authorized_at.tzinfo is None or authorized_at.utcoffset() is None:
+                raise ReferenceV2LakeAdapterError(
+                    "master holdout authorization timestamp must be timezone-aware"
+                )
+            receipt = read_holdout_receipt(
+                self.layout.manifests / "master_holdout_consumption.json"
+            )
+            required_receipt = {
+                "contract": MASTER_HOLDOUT_CONSUMPTION_CONTRACT,
+                "authorization_id": authorization_id,
+                "master_protected_start": REFERENCE_V2_MASTER_PROTECTED_START.isoformat(),
+                "master_protected_end": REFERENCE_V2_MASTER_PROTECTED_END.isoformat(),
+                "walk_forward_end": manifest.get("cutoff_session"),
+                "protected_return_rows_read": protected_materialized,
+                "protected_rows_accounting_pending": False,
+                "historical_replay_not_prospective_paper": True,
+                "strategy_authority_promoted": False,
+                "paper_authority": False,
+                "live_authority": False,
+            }
+            for field, expected_value in required_receipt.items():
+                if receipt.get(field) != expected_value:
+                    raise ReferenceV2LakeAdapterError(
+                        f"master holdout consumption receipt {field} is not {expected_value!r}"
+                    )
+            if receipt.get("status") not in {
+                "CONSUMED_REPLAY_STARTED",
+                "CONSUMED_REPLAY_FAILED",
+                "CONSUMED_WALK_FORWARD_COMPLETE",
+            }:
+                raise ReferenceV2LakeAdapterError(
+                    "master holdout consumption receipt does not authorize replay access"
+                )
+        elif (
+            protected_materialized != 0
+            or manifest.get("master_protected_return_rows_read") != 0
+            or manifest.get("master_protected_holdout_consumed") is not False
+        ):
+            raise ReferenceV2LakeAdapterError(
+                "V2 DEVELOPMENT manifest materialized or consumed protected rows"
+            )
         fingerprint = str(manifest.get("source_fingerprint") or "")
         if len(fingerprint) != 64:
             raise ReferenceV2LakeAdapterError(
@@ -169,7 +304,7 @@ class ReferenceV2DailyLakeAdapter:
     ) -> tuple[date, date, tuple[date, ...]]:
         if end_date < start_date:
             raise ReferenceV2LakeScopeError("V2 replay end_date precedes start_date")
-        if end_date > REFERENCE_V2_DEVELOPMENT_END:
+        if not self._ALLOW_PROTECTED and end_date > REFERENCE_V2_DEVELOPMENT_END:
             raise ReferenceV2LakeScopeError(
                 "V2 reference replay cannot read the retained master protected window"
             )
@@ -181,14 +316,40 @@ class ReferenceV2DailyLakeAdapter:
             raise ReferenceV2LakeAdapterError(
                 "V2 research-daily manifest has an invalid date range"
             ) from exc
-        if source_end > REFERENCE_V2_DEVELOPMENT_END:
+        if not self._ALLOW_PROTECTED and source_end > REFERENCE_V2_DEVELOPMENT_END:
             raise ReferenceV2LakeAdapterError(
                 "V2 research-daily source crosses the protected DEVELOPMENT cutoff"
             )
-        if source_end != min(capture_end, REFERENCE_V2_DEVELOPMENT_END):
+        expected_end = (
+            capture_end
+            if self._ALLOW_PROTECTED
+            else min(capture_end, REFERENCE_V2_DEVELOPMENT_END)
+        )
+        if source_end != expected_end:
             raise ReferenceV2LakeAdapterError(
-                "V2 research-daily cutoff is not the exact DEVELOPMENT-safe source cutoff"
+                "V2 research-daily cutoff is not the exact scope-safe source cutoff"
             )
+        if self._ALLOW_PROTECTED:
+            authorization = _read_json(
+                self.layout.manifests / "master_holdout_authorization.json",
+                "master holdout authorization",
+            )
+            if authorization.get("development_start") != start_date.isoformat():
+                raise ReferenceV2LakeScopeError(
+                    "V2 walk-forward warm-up start differs from its frozen authorization"
+                )
+            if start_date > REFERENCE_V2_DEVELOPMENT_END:
+                raise ReferenceV2LakeScopeError(
+                    "V2 walk-forward load requires pre-holdout indicator warm-up history"
+                )
+            if end_date < REFERENCE_V2_MASTER_PROTECTED_END:
+                raise ReferenceV2LakeScopeError(
+                    "V2 walk-forward load must contain the complete master holdout"
+                )
+            if end_date != source_end:
+                raise ReferenceV2LakeScopeError(
+                    "V2 walk-forward load must end at the latest validated source session"
+                )
         if start_date < source_start or end_date > source_end:
             raise ReferenceV2LakeScopeError(
                 f"requested scope is outside V2 research data {source_start}..{source_end}"
@@ -212,7 +373,7 @@ class ReferenceV2DailyLakeAdapter:
             )
         fingerprint = str(manifest["source_fingerprint"])
         expected_root = (
-            self.layout.derived / "research_daily" / fingerprint[:16]
+            self.layout.derived / self._VIEW_DIRECTORY / fingerprint[:16]
         ).resolve()
         paths: list[Path] = []
         inventory: list[dict[str, object]] = []
@@ -362,7 +523,12 @@ class ReferenceV2DailyLakeAdapter:
                            OR s.session_date IS NULL
                            OR b.timestamp_utc <> s.regular_open_utc
                            OR b.signal_available_at_utc <> s.regular_close_utc
-                    ) AS invalid_rows
+                    ) AS invalid_rows,
+                    count(*) FILTER (
+                        WHERE b.session_date BETWEEN
+                            DATE '{REFERENCE_V2_MASTER_PROTECTED_START}'
+                            AND DATE '{REFERENCE_V2_MASTER_PROTECTED_END}'
+                    ) AS protected_rows
                 FROM {source_sql} b
                 LEFT JOIN v2_expected_sessions s USING (session_date)
                 WHERE b.session_date BETWEEN DATE '{start_date}' AND DATE '{end_date}'
@@ -413,6 +579,17 @@ class ReferenceV2DailyLakeAdapter:
             raise ReferenceV2LakeAdapterError(
                 "V2 research-daily scope contains an instrument/ticker identity conflict"
             )
+        protected_rows_read = int(stats[5])
+        if not self._ALLOW_PROTECTED and protected_rows_read != 0:
+            raise ReferenceV2LakeAdapterError(
+                "V2 DEVELOPMENT adapter read protected rows"
+            )
+        if self._ALLOW_PROTECTED and protected_rows_read != int(
+            manifest["protected_return_rows_materialized"]
+        ):
+            raise ReferenceV2LakeAdapterError(
+                "V2 walk-forward protected-row count disagrees with its manifest"
+            )
 
         output["session_date"] = pd.to_datetime(
             output["session_date"], errors="raise"
@@ -447,13 +624,15 @@ class ReferenceV2DailyLakeAdapter:
                     if start_date.year <= int(item["year"]) <= end_date.year
                 ],
                 "v1_fallback": "FORBIDDEN",
+                "evaluation_scope": self._REPORT_SCOPE,
+                "protected_master_return_rows_read": protected_rows_read,
             }
         )
         report: dict[str, object] = {
             "contract_version": REFERENCE_V2_LAKE_ADAPTER_CONTRACT_VERSION,
             "generated_at_utc": datetime.now(UTC).isoformat(),
             "status": "PASS",
-            "scope": "ALPACA_SIP_V2_DEVELOPMENT_ONLY",
+            "scope": self._REPORT_SCOPE,
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
             "source_start_date": source_start.isoformat(),
@@ -462,6 +641,7 @@ class ReferenceV2DailyLakeAdapter:
             "manifest_path": str(resolved_manifest),
             "manifest_sha256": manifest_sha,
             "research_daily_fingerprint": manifest["source_fingerprint"],
+            "holdout_authorization_id": manifest.get("holdout_authorization_id"),
             "source_fingerprint": source_fingerprint,
             "verified_partitions": len(paths),
             "selected_partitions": len(selected),
@@ -479,7 +659,7 @@ class ReferenceV2DailyLakeAdapter:
             "v1_rows_read": 0,
             "v1_ancestry": "FORBIDDEN",
             "legacy_fallback_used": False,
-            "protected_master_return_rows_read": 0,
+            "protected_master_return_rows_read": protected_rows_read,
             "provider_writes": 0,
             "broker_writes": 0,
             "paper_submits": 0,
@@ -492,12 +672,23 @@ class ReferenceV2DailyLakeAdapter:
                 "alpaca_sip_split_adjusted_provenance_exact": True,
                 "daily_availability_clock_exact": True,
                 "identity_and_common_stock_explicit": True,
-                "protected_returns_unread": True,
+                "protected_returns_unread": protected_rows_read == 0,
+                "protected_access_explicitly_authorized": self._ALLOW_PROTECTED,
                 "legacy_fallback_forbidden": True,
                 "external_writes_zero": True,
             },
         }
         return ReferenceV2LakeAdapterResult(bars=output, report=report)
+
+
+class ReferenceV2WalkForwardLakeAdapter(ReferenceV2DailyLakeAdapter):
+    """Load the one-time authorized V2 walk-forward view with warm-up history."""
+
+    _MANIFEST_NAME = "walk_forward_daily.json"
+    _VIEW_DIRECTORY = "walk_forward_daily"
+    _EXPECTED_CONTRACT = WALK_FORWARD_DAILY_CONTRACT
+    _ALLOW_PROTECTED = True
+    _REPORT_SCOPE = "ALPACA_SIP_V2_FROZEN_ONE_TIME_WALK_FORWARD"
 
 
 class ReferenceV2UnavailableRegimeContextAdapter:
@@ -534,6 +725,12 @@ class ReferenceV2UnavailableRegimeContextAdapter:
             raise ReferenceV2LakeAdapterError(
                 "V2 regime input contains an out-of-scope session"
             )
+        protected_rows_read = int(
+            sessions.between(
+                REFERENCE_V2_MASTER_PROTECTED_START,
+                REFERENCE_V2_MASTER_PROTECTED_END,
+            ).sum()
+        )
         result["market_regime_composite"] = UNAVAILABLE_REGIME_CONTEXT
         result["market_regime_available_at_utc"] = pd.to_datetime(
             result["signal_available_at_utc"], utc=True, errors="raise"
@@ -549,6 +746,7 @@ class ReferenceV2UnavailableRegimeContextAdapter:
                 "state": UNAVAILABLE_REGIME_CONTEXT,
                 "reason": "NO_ACCEPTED_V2_PIT_REGIME_GENERATION",
                 "v1_fallback": "FORBIDDEN",
+                "protected_master_return_rows_read": protected_rows_read,
             }
         )
         report: dict[str, object] = {
@@ -569,7 +767,7 @@ class ReferenceV2UnavailableRegimeContextAdapter:
             "ticker_regime_reason": "NO_ACCEPTED_V2_PIT_TICKER_STATE_GENERATION",
             "v1_regime_rows_read": 0,
             "legacy_fallback_used": False,
-            "protected_master_return_rows_read": 0,
+            "protected_master_return_rows_read": protected_rows_read,
             "provider_writes": 0,
             "broker_writes": 0,
             "paper_submits": 0,
@@ -577,7 +775,7 @@ class ReferenceV2UnavailableRegimeContextAdapter:
             "checks": {
                 "unavailable_not_guessed": True,
                 "v1_regime_fallback_forbidden": True,
-                "protected_returns_unread": True,
+                "protected_returns_unread": protected_rows_read == 0,
                 "external_writes_zero": True,
             },
         }
