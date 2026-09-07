@@ -9,7 +9,7 @@ import duckdb
 def main() -> int:
     root = Path("data/v2_build/alpaca_sip_v2").resolve()
     validation = root / "validation"
-    identity_path = root / "identity" / "v2_symbol_identity_map.parquet"
+    identity_path = root / "canonical" / "identity" / "v2_symbol_identity_map.parquet"
     native_inventory_path = validation / "native_unit_inventory.parquet"
     split_inventory_path = validation / "split_adjusted_daily_inventory.parquet"
     split_manifest_path = root / "manifests" / "split_adjusted_daily.json"
