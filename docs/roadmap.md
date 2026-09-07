@@ -293,6 +293,14 @@ not be resumed by retuning the observed version.
 - Master protected window: `2026-05-12..2026-08-11` — **unconsumed as of this
   handoff, with explicit operator authorization now granted for one frozen,
   separately recorded practitioner walk-forward use**.
+- V2 daily split-reconciliation validator repair (2026-09-07): the former
+  inverse-price-factor volume equality is audit-only provider-native evidence.
+  OHLC split-factor consistency, provenance, canonical value validity, and
+  finite/nonnegative volume remain hard acceptance gates. Focused post-build
+  regressions exercise both the allowed volume divergence and the still-fatal
+  price-factor mismatch. No source, strategy, portfolio, PAPER/LIVE authority,
+  or protected-window state changes; the one-time walk-forward remains pending
+  repository acceptance before operator execution.
 - Retained branch protected return reads: **0**.
 - No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
   `LIVE_ELIGIBLE`, or LIVE-authorized status.

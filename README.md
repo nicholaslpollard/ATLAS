@@ -89,6 +89,14 @@ with a desired trade.
   retained branches. The operator has now authorized its future one-time use as the
   frozen practitioner-library walk-forward interval; it remains protected until the
   explicit command records the immutable authorization and opens it.
+- V2 split-reconciliation validator repair: provider-native split-adjusted volume
+  is no longer required to equal the inverse OHLC split factor. That relationship
+  is retained as deterministic audit evidence, while OHLC factor agreement,
+  provider/source provenance, schema, finite/nonnegative volume, and other
+  raw/adjusted integrity gates remain fail-closed. Focused regressions cover both
+  accepted volume divergence and rejected price-factor corruption. This changes no
+  source bytes, strategy/portfolio policy, trading authority, or protected-return
+  state; the master holdout remains unopened.
 - LIVE trading and automatic broker failover remain disabled.
 - The former operator pause is satisfied and superseded by the explicit Review
   direction encoded here. Product and practitioner-library work may resume; it
