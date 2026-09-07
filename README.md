@@ -130,18 +130,21 @@ with a desired trade.
   specifications, broader research taxonomy, authority transition rules, and
   shared opportunity-event contract remain preserved.
 - A33/B33 foundation implementation is complete and protected by its exact-head
-  acceptance workflow. It has not opened ATLAS historical performance, changed
-  strategy authority, or submitted any provider, broker, PAPER, or LIVE mutation.
-- The first trusted-lake adapter is implemented for the Massive-only post-seam
-  DEVELOPMENT interval. It remains source-only in this repository: no historical
-  strategy result has been created or inspected here.
+  acceptance workflow. Historical performance has now been opened only for the
+  frozen V2 DEVELOPMENT and one-time walk-forward versions described below; strategy
+  authority did not change and provider/broker/PAPER/LIVE mutations remain zero.
+- The trusted-lake adapters are implemented. The retained Massive path remains
+  reproducibility-only; the isolated Alpaca SIP V2 adapter produced the completed
+  frozen DEVELOPMENT and walk-forward evidence described below.
 - The adapter package was accepted in PR #47 and merged as
   `646db6e6e44ccd2355c7c2263221f35cd01d5da8`; its post-merge Windows and Ubuntu
   full-suite jobs passed.
 - The first A34 RESEARCH account-replay vertical slice is implemented: deterministic
   candidate admission, cash/position accounting, simulated orders, outcomes, equity
-  curve, read-only API, and visible browser state. No empirical replay exists in this
-  checkout. It was accepted in PR #48 and merged as
+  curve, read-only API, and visible browser state. Empirical V2 DEVELOPMENT and
+  frozen walk-forward account replays now exist and are negative at the aggregate
+  account level; no strategy was promoted. The slice was accepted in PR #48 and
+  merged as
   `147b95810936a0b10b24eb08e51cd4d83c16c85b`; its post-merge Windows and Ubuntu
   full-suite jobs passed.
 - The accepted Phase19 operator-path correction is merged in PR #49 as
@@ -197,10 +200,11 @@ with a desired trade.
   than restarted. The final operator report is `COMPLETE`: **67,480 / 67,480 units**,
   including **5,302 / 5,302 daily** and **62,178 / 62,178 minute** units,
   **3,897,688,734 canonical rows**, and **1,757,288 quarantined rows**. This is a
-  complete isolated native candidate base, not daily identity/quality acceptance or
-  production promotion. The quarantine is retained evidence and must be attributed
-  by the post-build gate rather than discarded or assumed harmless. Historical
-  results, PAPER authority, and LIVE authority remain absent.
+  complete isolated native candidate base, not production promotion. The quarantine
+  is retained evidence and was carried into the post-build gate rather than
+  discarded or assumed harmless. Historical V2 RESEARCH results now exist only for
+  the frozen versions described below; PAPER authority and LIVE authority remain
+  absent.
 - The V2 post-build package was accepted in PR #58 and merged as
   `8e5abf21fe1ca138cd90125005b8c305a598dd44`; its post-merge `main` workflow passed
   on Windows and Ubuntu. It has now run successfully against the completed operator
@@ -266,12 +270,10 @@ with a desired trade.
   the RSI sample is small, cash-distribution economics remain incomplete, and
   **authority promotion is none**. All nine policies remain RESEARCH; PAPER/LIVE
   authority remains absent.
-- **Operator live observability is now a hard prerequisite to Operational PAPER.**
-  Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
-  state to the browser so the operator can observe account state, positions, live
-  unrealized/realized P&L, strategy/setup rationale, risk/sizing, order/fill state,
-  exits, trade history, and system/provider/broker health without manual refresh.
-  No PAPER broker mutation is authorized merely by documenting this requirement.
+- **A34.5 operator live observability is now implemented in PR #60.** Its
+  accepted merge closes the observability prerequisite before A35; A35 itself remains
+  a separate PAPER/broker-authority package and has not begun. No PAPER broker
+  mutation is authorized by A34.5.
 - The former Phase39 LIVE numbering is retained: **Phase39** remains Controlled
   LIVE Activation and is still protected by all preceding evidence and authority
   gates.

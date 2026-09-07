@@ -309,9 +309,9 @@ not be resumed by retuning the observed version.
   drawdown. Authority promotion: **none**.
 - No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
   `LIVE_ELIGIBLE`, or LIVE-authorized status.
-- Operational PAPER may be built and used with labeled baselines under its own
-  explicit controls, but actual A35 PAPER testing is blocked until A34.5 operator
-  live observability is accepted.
+- PR #60 implements the A34.5 operator live-observability prerequisite. Once this
+  exact-head package is merged, A35 may begin only under its own separate PAPER/
+  broker-authority package; A35 has not begun.
 - Qualifying PAPER may begin only for historically validated frozen versions.
 - LIVE remains disabled until every later gate passes and the operator explicitly
   enables it.
