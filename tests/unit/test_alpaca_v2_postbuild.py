@@ -12,6 +12,7 @@ from packages.data.alpaca_v2_acquisition import AlpacaV2NativeAcquirer
 from packages.data.alpaca_v2_postbuild import (
     AlpacaV2NotCompleteError,
     AlpacaV2PostBuildCoordinator,
+    AlpacaV2ValidationError,
     AlpacaV2SplitDailyAcquirer,
     _security_type_from_names,
 )
@@ -159,6 +160,53 @@ class FakePostBuildAlpaca:
         )
 
 
+class FakeSplitVolumeDivergenceAlpaca(FakePostBuildAlpaca):
+    def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
+        page = super().historical_bar_page(**kwargs)
+        if (
+            str(kwargs["timeframe"]) == "1Day"
+            and str(kwargs["adjustment"]) == "split"
+        ):
+            payload = json.loads(page.raw_body)
+            aapl = payload.get("bars", {}).get("AAPL", [])
+            if aapl:
+                aapl[0]["v"] = 2300
+            return _page("historical_bars", payload, token=page.page_token_used)
+        return page
+
+
+class FakeSplitPriceRoundingAlpaca(FakePostBuildAlpaca):
+    def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
+        page = super().historical_bar_page(**kwargs)
+        if (
+            str(kwargs["timeframe"]) == "1Day"
+            and str(kwargs["adjustment"]) == "split"
+        ):
+            payload = json.loads(page.raw_body)
+            aapl = payload.get("bars", {}).get("AAPL", [])
+            if aapl:
+                aapl[0]["o"] = 50.004
+                aapl[0]["h"] = 51.006
+                aapl[0]["l"] = 49.494
+            return _page("historical_bars", payload, token=page.page_token_used)
+        return page
+
+
+class FakeSplitPriceFactorMismatchAlpaca(FakePostBuildAlpaca):
+    def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
+        page = super().historical_bar_page(**kwargs)
+        if (
+            str(kwargs["timeframe"]) == "1Day"
+            and str(kwargs["adjustment"]) == "split"
+        ):
+            payload = json.loads(page.raw_body)
+            aapl = payload.get("bars", {}).get("AAPL", [])
+            if aapl:
+                aapl[0]["o"] = 50.25
+            return _page("historical_bars", payload, token=page.page_token_used)
+        return page
+
+
 class FakeSplitRejectAlpaca(FakePostBuildAlpaca):
     def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
         symbols = tuple(str(value) for value in kwargs["symbols"])
@@ -273,6 +321,91 @@ def test_postbuild_validates_identity_adjusted_source_and_research_view(
     assert research_rerun.report["source_fingerprint"] == research.report[
         "source_fingerprint"
     ]
+
+
+def test_research_daily_audits_provider_native_split_volume_divergence(
+    tmp_path: Path,
+) -> None:
+    client = FakeSplitVolumeDivergenceAlpaca()
+    settings, client = _native(tmp_path, client=client)
+    coordinator = AlpacaV2PostBuildCoordinator(settings)
+    native = coordinator.validate_native()
+    daily = coordinator.validate_daily(native)
+    identity = coordinator.build_identity_lifecycle(native, daily)
+    split_acquirer = AlpacaV2SplitDailyAcquirer(settings, client=client)
+    split_acquirer.base._require_disk = lambda **_: None  # type: ignore[method-assign]
+    split = split_acquirer.run(native)
+
+    research = coordinator.build_research_daily(native, daily, identity, split)
+
+    assert research.report["status"] == "PASS"
+    assert research.report["checks"][
+        "split_factor_and_provenance_failures_zero"
+    ] is True
+    assert research.report["volume_reconciliation_audit"] == {
+        "paired_rows": 2,
+        "positive_raw_volume_rows": 2,
+        "inverse_price_expectation_divergence_rows": 1,
+        "relative_tolerance": 1e-5,
+        "acceptance_effect": "AUDIT_ONLY",
+        "policy": (
+            "Provider-native split-adjusted volume is preserved as supplied; "
+            "inverse-price-factor volume equivalence is diagnostic evidence, "
+            "not a price-factor or provenance acceptance invariant."
+        ),
+    }
+
+
+def test_research_daily_accepts_bounded_provider_price_rounding(
+    tmp_path: Path,
+) -> None:
+    client = FakeSplitPriceRoundingAlpaca()
+    settings, client = _native(tmp_path, client=client)
+    coordinator = AlpacaV2PostBuildCoordinator(settings)
+    native = coordinator.validate_native()
+    daily = coordinator.validate_daily(native)
+    identity = coordinator.build_identity_lifecycle(native, daily)
+    split_acquirer = AlpacaV2SplitDailyAcquirer(settings, client=client)
+    split_acquirer.base._require_disk = lambda **_: None  # type: ignore[method-assign]
+    split = split_acquirer.run(native)
+
+    research = coordinator.build_research_daily(native, daily, identity, split)
+
+    assert research.report["status"] == "PASS"
+    assert research.report["checks"][
+        "split_factor_and_provenance_failures_zero"
+    ] is True
+    assert research.report["price_reconciliation_policy"] == {
+        "anchor": "adjusted_close_div_raw_close",
+        "absolute_adjusted_price_tolerance": 0.10,
+        "relative_factor_tolerance": 0.001,
+        "acceptance_effect": "FAIL_CLOSED",
+        "policy": (
+            "Provider-rounded split-adjusted OHLC must remain within both "
+            "the absolute adjusted-price envelope and the relative split-factor "
+            "envelope around the close-derived factor."
+        ),
+    }
+
+
+def test_research_daily_still_rejects_split_price_factor_corruption(
+    tmp_path: Path,
+) -> None:
+    client = FakeSplitPriceFactorMismatchAlpaca()
+    settings, client = _native(tmp_path, client=client)
+    coordinator = AlpacaV2PostBuildCoordinator(settings)
+    native = coordinator.validate_native()
+    daily = coordinator.validate_daily(native)
+    identity = coordinator.build_identity_lifecycle(native, daily)
+    split_acquirer = AlpacaV2SplitDailyAcquirer(settings, client=client)
+    split_acquirer.base._require_disk = lambda **_: None  # type: ignore[method-assign]
+    split = split_acquirer.run(native)
+
+    with pytest.raises(
+        AlpacaV2ValidationError,
+        match="split_factor_and_provenance_failures_zero",
+    ):
+        coordinator.build_research_daily(native, daily, identity, split)
 
 
 def test_split_adjusted_daily_resume_reuses_completed_units(tmp_path: Path) -> None:

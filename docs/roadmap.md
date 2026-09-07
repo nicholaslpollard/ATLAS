@@ -293,6 +293,14 @@ not be resumed by retuning the observed version.
 - Master protected window: `2026-05-12..2026-08-11` — **unconsumed as of this
   handoff, with explicit operator authorization now granted for one frozen,
   separately recorded practitioner walk-forward use**.
+- V2 daily split-reconciliation validator repair (2026-09-07): the former
+  inverse-price-factor volume equality is audit-only provider-native evidence.
+  OHLC split-factor consistency, provenance, canonical value validity, and
+  finite/nonnegative volume remain hard acceptance gates. Focused post-build
+  regressions exercise both the allowed volume divergence and the still-fatal
+  price-factor mismatch. No source, strategy, portfolio, PAPER/LIVE authority,
+  or protected-window state changes; the one-time walk-forward remains pending
+  repository acceptance before operator execution.
 - Retained branch protected return reads: **0**.
 - No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
   `LIVE_ELIGIBLE`, or LIVE-authorized status.
@@ -1212,3 +1220,13 @@ closed historical state and do not restore the superseded product dependency:
 - Accepted foundation through Phase32; Completed Pre-Phase33 SEC XBRL; Phase33 — Signal-to-Trade Construction; Phase39 — Controlled LIVE Activation.
 - The historical successor was required to use a materially different point-in-time fundamental-information mechanism.
 - The historical XBRL successor may not reuse Phase32 candidate labels, directions, event taxonomy, development performance, finalist choice, or protected result.
+- V2 split-price quantization repair: the real completed V2 source showed that the
+  former absolute `1e-5` OHLC-factor equality was also too strict for provider-rounded
+  split-adjusted prices. The retained quantization diagnostic covered 2,825,114 paired
+  eligible rows: maximum adjusted-price residual was `$0.05841364` and maximum
+  relative factor error was `0.000994532`. Reconciliation now fails closed unless each
+  open/high/low value is within `$0.10` adjusted-price residual **and** `0.001` relative
+  factor error of the close-derived split factor. A new regression accepts bounded
+  provider rounding while the existing corruption regression still rejects a material
+  price-factor mismatch. No source bytes, strategy/portfolio policy, holdout receipt,
+  protected-return state, PAPER authority, or LIVE authority are changed.

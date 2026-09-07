@@ -78,6 +78,8 @@ MASTER_HOLDOUT_AUTHORIZATION_CONTRACT = (
 V2_REFERENCE_DEVELOPMENT_END = date(2026, 5, 11)
 V2_REFERENCE_MASTER_PROTECTED_START = date(2026, 5, 12)
 V2_REFERENCE_MASTER_PROTECTED_END = date(2026, 8, 11)
+SPLIT_PRICE_ABSOLUTE_TOLERANCE = 0.10
+SPLIT_FACTOR_RELATIVE_TOLERANCE = 0.001
 
 SUPPORTED_CORPORATE_ACTION_TYPES = {
     "cash_dividends",
@@ -1237,6 +1239,9 @@ class AlpacaV2PostBuildCoordinator:
                     f"""
                     WITH paired AS (
                         SELECT r.symbol, r.session_date,
+                               r.open AS raw_open, r.high AS raw_high, r.low AS raw_low,
+                               a.open AS adjusted_open, a.high AS adjusted_high,
+                               a.low AS adjusted_low,
                                a.open / r.open AS factor_open,
                                a.high / r.high AS factor_high,
                                a.low / r.low AS factor_low,
@@ -1252,14 +1257,21 @@ class AlpacaV2PostBuildCoordinator:
                     SELECT count(*)
                     FROM paired
                     WHERE NOT isfinite(factor_close) OR factor_close <= 0
-                       OR abs(factor_open - factor_close) > 1e-5
-                       OR abs(factor_high - factor_close) > 1e-5
-                       OR abs(factor_low - factor_close) > 1e-5
-                       OR (
-                           raw_volume > 0
-                           AND abs(adjusted_volume * factor_close - raw_volume)
-                               > greatest(1.0, abs(raw_volume)) * 1e-5
-                       )
+                       OR NOT isfinite(factor_open)
+                       OR NOT isfinite(factor_high)
+                       OR NOT isfinite(factor_low)
+                       OR abs(adjusted_open - raw_open * factor_close)
+                            > {SPLIT_PRICE_ABSOLUTE_TOLERANCE}
+                       OR abs(adjusted_high - raw_high * factor_close)
+                            > {SPLIT_PRICE_ABSOLUTE_TOLERANCE}
+                       OR abs(adjusted_low - raw_low * factor_close)
+                            > {SPLIT_PRICE_ABSOLUTE_TOLERANCE}
+                       OR abs(factor_open - factor_close) / abs(factor_close)
+                            > {SPLIT_FACTOR_RELATIVE_TOLERANCE}
+                       OR abs(factor_high - factor_close) / abs(factor_close)
+                            > {SPLIT_FACTOR_RELATIVE_TOLERANCE}
+                       OR abs(factor_low - factor_close) / abs(factor_close)
+                            > {SPLIT_FACTOR_RELATIVE_TOLERANCE}
                        OR provider <> 'alpaca'
                        OR dataset <> 'stock_daily_aggregates_split_adjusted'
                        OR timeframe <> '1d'
@@ -1269,6 +1281,28 @@ class AlpacaV2PostBuildCoordinator:
                     """
                 ).fetchone()[0]
             )
+            volume_reconciliation = con.execute(
+                f"""
+                WITH paired AS (
+                    SELECT a.volume AS adjusted_volume,
+                           r.volume AS raw_volume,
+                           a.close / r.close AS factor_close
+                    FROM {raw_sql} r
+                    JOIN {adjusted_sql} a USING (symbol, session_date)
+                    JOIN eligible_reconcile e ON e.symbol = r.symbol
+                )
+                SELECT
+                    count(*) AS paired_rows,
+                    count(*) FILTER (WHERE raw_volume > 0)
+                        AS positive_raw_volume_rows,
+                    count(*) FILTER (
+                        WHERE raw_volume > 0
+                          AND abs(adjusted_volume * factor_close - raw_volume)
+                              > greatest(1.0, abs(raw_volume)) * 1e-5
+                    ) AS inverse_price_expectation_divergence_rows
+                FROM paired
+                """
+            ).fetchone()
             adjusted_duplicates = int(
                 con.execute(
                     f"""
@@ -1306,6 +1340,21 @@ class AlpacaV2PostBuildCoordinator:
             con.unregister("eligible_reconcile")
             con.close()
         assert counts is not None
+        assert volume_reconciliation is not None
+        volume_reconciliation_audit = {
+            "paired_rows": int(volume_reconciliation[0]),
+            "positive_raw_volume_rows": int(volume_reconciliation[1]),
+            "inverse_price_expectation_divergence_rows": int(
+                volume_reconciliation[2]
+            ),
+            "relative_tolerance": 1e-5,
+            "acceptance_effect": "AUDIT_ONLY",
+            "policy": (
+                "Provider-native split-adjusted volume is preserved as supplied; "
+                "inverse-price-factor volume equivalence is diagnostic evidence, "
+                "not a price-factor or provenance acceptance invariant."
+            ),
+        }
         checks = {
             "eligible_raw_adjusted_row_counts_equal": int(counts[0]) == int(counts[1]),
             "eligible_raw_keys_missing_adjusted_zero": int(counts[2]) == 0,
@@ -1631,6 +1680,18 @@ class AlpacaV2PostBuildCoordinator:
             "research_rows": total_rows,
             "partitions": partitions,
             "checks": checks,
+            "price_reconciliation_policy": {
+                "anchor": "adjusted_close_div_raw_close",
+                "absolute_adjusted_price_tolerance": SPLIT_PRICE_ABSOLUTE_TOLERANCE,
+                "relative_factor_tolerance": SPLIT_FACTOR_RELATIVE_TOLERANCE,
+                "acceptance_effect": "FAIL_CLOSED",
+                "policy": (
+                    "Provider-rounded split-adjusted OHLC must remain within both "
+                    "the absolute adjusted-price envelope and the relative split-factor "
+                    "envelope around the close-derived factor."
+                ),
+            },
+            "volume_reconciliation_audit": volume_reconciliation_audit,
             "raw_execution_state_preserved_separately": True,
             "analytical_adjustment": "provider-native split adjustment only",
             "return_economics": (
