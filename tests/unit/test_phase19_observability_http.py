@@ -147,6 +147,7 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
             assert 'id="artifact-recency"' in html
             assert 'id="outcome-win-rate"' in html
             assert 'id="reference-lab-banner"' in html
+            assert 'id="reference-lab-stage"' in html
             assert 'id="reference-lab-return"' in html
             assert 'id="reference-lab-integrity"' in html
             assert 'id="reference-lab-strategy-body"' in html
@@ -166,6 +167,7 @@ def test_phase19_server_serves_dedicated_shell_and_local_only_observability_asse
             assert "renderReferenceEquity" in js
             assert "renderReferenceDecisions" in js
             assert "renderReferenceOrders" in js
+            assert "protected rows accounted" in js
             assert "setPhase19LocalRefreshInterval" in js
             assert "phase18-input-checklist" in js
             assert "Every 5 seconds" in js

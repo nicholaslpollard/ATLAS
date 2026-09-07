@@ -13,6 +13,11 @@ from packages.features.reference_daily import (
     reference_daily_feature_fingerprint,
     reference_signal_mask,
 )
+from packages.data.alpaca_v2_postbuild import (
+    V2_REFERENCE_DEVELOPMENT_END,
+    V2_REFERENCE_MASTER_PROTECTED_END,
+    V2_REFERENCE_MASTER_PROTECTED_START,
+)
 from packages.schemas.strategy import StrategyDirection
 from packages.schemas.strategy_lab import (
     REFERENCE_HISTORICAL_RUN_CONTRACT_VERSION,
@@ -34,10 +39,12 @@ from packages.strategies.reference_library import (
 
 
 REFERENCE_STRATEGY_RUNNER_CONTRACT_VERSION = (
-    "reference-strategy-runner-v1-next-open-adverse-first-independent-overlap-ledger"
+    "reference-strategy-runner-v2-explicit-evaluation-next-open-adverse-first-ledger"
 )
-PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START = date(2026, 5, 12)
-PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END = date(2026, 8, 11)
+PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START = (
+    V2_REFERENCE_MASTER_PROTECTED_START
+)
+PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END = V2_REFERENCE_MASTER_PROTECTED_END
 REFERENCE_STRATEGY_RUNNER_BROKER_WRITES = 0
 REFERENCE_STRATEGY_RUNNER_PAPER_SUBMITS = 0
 REFERENCE_STRATEGY_RUNNER_LIVE_WRITES = 0
@@ -586,22 +593,57 @@ class ReferenceStrategyHistoricalRunner:
     def __init__(self, catalog: ReferenceStrategyCatalog = REFERENCE_STRATEGY_CATALOG) -> None:
         self.catalog = catalog
 
-    def run(self, frame: pd.DataFrame) -> ReferenceHistoricalRun:
+    def run(
+        self,
+        frame: pd.DataFrame,
+        *,
+        evaluation_start: date | None = None,
+        evaluation_end: date | None = None,
+        authorize_master_protected: bool = False,
+    ) -> ReferenceHistoricalRun:
         if frame.empty:
             raise ReferenceStrategyRunnerError("reference historical runner requires input rows")
         if "session_date" not in frame.columns:
             raise ReferenceStrategyRunnerError("reference historical runner requires session_date")
         session_dates = pd.to_datetime(frame["session_date"], errors="raise").dt.date
+        input_start = min(session_dates)
+        input_end = max(session_dates)
+        scoped_start = evaluation_start or input_start
+        scoped_end = evaluation_end or input_end
+        if not input_start <= scoped_start <= scoped_end <= input_end:
+            raise ReferenceStrategyRunnerError(
+                "evaluation scope must lie inside the supplied chronological frame"
+            )
+        if input_end != scoped_end:
+            raise ReferenceStrategyRunnerError(
+                "input rows after the evaluation end are forbidden"
+            )
         forbidden = session_dates.between(
             PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START,
             PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END,
         )
-        if forbidden.any():
+        protected_rows_read = int(forbidden.sum())
+        post_development = session_dates > V2_REFERENCE_DEVELOPMENT_END
+        if post_development.any() and not authorize_master_protected:
             raise ProtectedMasterWindowError(
-                "practitioner replay cannot read the retained master protected window "
+                "practitioner replay cannot cross the DEVELOPMENT boundary without "
+                "explicit one-time master-holdout authorization; master protected window "
                 f"{PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START}.."
                 f"{PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END}"
             )
+        if authorize_master_protected:
+            if protected_rows_read == 0:
+                raise ProtectedMasterWindowError(
+                    "authorized walk-forward replay contains no master protected rows"
+                )
+            if scoped_start != PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_START:
+                raise ProtectedMasterWindowError(
+                    "authorized walk-forward evaluation must begin on 2026-05-12"
+                )
+            if scoped_end < PRACTITIONER_FORBIDDEN_MASTER_PROTECTED_END:
+                raise ProtectedMasterWindowError(
+                    "authorized walk-forward evaluation must include the complete holdout"
+                )
         if "timestamp_utc" not in frame.columns:
             raise ReferenceStrategyRunnerError("reference historical runner requires timestamp_utc")
         if "signal_available_at_utc" not in frame.columns:
@@ -636,6 +678,10 @@ class ReferenceStrategyHistoricalRunner:
             for _, instrument in features.groupby("instrument_id", sort=True, observed=True):
                 instrument = instrument.reset_index(drop=True)
                 fired = reference_signal_mask(instrument, specification)
+                instrument_sessions = pd.to_datetime(
+                    instrument["session_date"], errors="raise"
+                ).dt.date
+                fired &= instrument_sessions.between(scoped_start, scoped_end)
                 active_exit_position: float = -1.0
                 for signal_position in fired[fired].index.tolist():
                     signal = instrument.iloc[signal_position]
@@ -729,7 +775,14 @@ class ReferenceStrategyHistoricalRunner:
             "opportunities": [item.model_dump(mode="json") for item in opportunities],
             "summary_by_strategy": summary,
             "condition_slices": condition_slices,
-            "protected_master_return_rows_read": 0,
+            "evaluation_start_session": scoped_start,
+            "evaluation_end_session": scoped_end,
+            "evaluation_scope": (
+                "FROZEN_ONE_TIME_WALK_FORWARD"
+                if authorize_master_protected
+                else "DEVELOPMENT"
+            ),
+            "protected_master_return_rows_read": protected_rows_read,
             "broker_writes": REFERENCE_STRATEGY_RUNNER_BROKER_WRITES,
             "paper_submits": REFERENCE_STRATEGY_RUNNER_PAPER_SUBMITS,
             "live_writes": REFERENCE_STRATEGY_RUNNER_LIVE_WRITES,
@@ -743,7 +796,20 @@ class ReferenceStrategyHistoricalRunner:
             input_instruments=int(features["instrument_id"].nunique()),
             first_session=min(features["session_date"]),
             last_session=max(features["session_date"]),
+            evaluation_start_session=scoped_start,
+            evaluation_end_session=scoped_end,
+            evaluation_scope=(
+                "FROZEN_ONE_TIME_WALK_FORWARD"
+                if authorize_master_protected
+                else "DEVELOPMENT"
+            ),
             opportunities=opportunities,
             summary_by_strategy=summary,
             condition_slices=condition_slices,
+            replay_scope=(
+                "FROZEN_ONE_TIME_WALK_FORWARD"
+                if authorize_master_protected
+                else "INDEPENDENT_STRATEGY_REPLAY_NOT_PORTFOLIO_SIMULATION"
+            ),
+            protected_master_return_rows_read=protected_rows_read,
         )

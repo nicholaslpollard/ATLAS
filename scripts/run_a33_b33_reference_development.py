@@ -25,6 +25,7 @@ from packages.backtesting.reference_regime_context import ReferenceRegimeContext
 from packages.backtesting.reference_v2_lake_adapter import (
     ReferenceV2DailyLakeAdapter,
     ReferenceV2UnavailableRegimeContextAdapter,
+    ReferenceV2WalkForwardLakeAdapter,
 )
 from packages.backtesting.reference_strategy_runner import (
     ReferenceStrategyHistoricalRunner,
@@ -44,6 +45,10 @@ from packages.strategies.reference_library import (
 )
 from packages.features.reference_daily import REFERENCE_DAILY_FEATURE_FINGERPRINT
 from packages.data.alpaca_v2_rebuild import V2Layout
+from packages.data.alpaca_v2_postbuild import (
+    V2_REFERENCE_MASTER_PROTECTED_END,
+    V2_REFERENCE_MASTER_PROTECTED_START,
+)
 
 
 def _sha256(path: Path) -> str:
@@ -59,14 +64,18 @@ def _output_root(
     start_date: date,
     end_date: date,
     data_source: str,
+    evaluation_stage: str,
 ) -> Path:
+    stage_directory = (
+        "walk_forward" if evaluation_stage == "walk-forward" else "development"
+    )
     if data_source == "v2":
         data_root = (settings.project_root / "data").resolve()
         return (
             V2Layout.beneath(data_root).derived
             / "strategy_lab"
             / "a33_b33_reference"
-            / "development"
+            / stage_directory
             / f"{start_date}_{end_date}"
         )
     derived = settings.resolved_path(settings.data.paths.derived)
@@ -74,7 +83,7 @@ def _output_root(
         derived
         / "strategy_lab"
         / "a33_b33_reference"
-        / "development"
+        / stage_directory
         / f"{start_date}_{end_date}"
     )
 
@@ -101,12 +110,14 @@ def _trial_draft(
     performance_opened: bool,
     notes: tuple[str, ...],
     hypotheses: tuple[str, ...] | None = None,
+    stage: StrategyTrialStage = StrategyTrialStage.DEVELOPMENT_REPLAY,
+    protected_rows_read: int = 0,
 ) -> StrategyTrialDraft:
     specifications = REFERENCE_STRATEGY_CATALOG.all()
     return StrategyTrialDraft(
         trial_id=trial_id,
         registered_at_utc=datetime.now(UTC),
-        stage=StrategyTrialStage.DEVELOPMENT_REPLAY,
+        stage=stage,
         disposition=disposition,
         family_ids=REFERENCE_STRATEGY_CATALOG.family_ids(),
         strategy_ids=tuple(item.strategy_id for item in specifications),
@@ -123,7 +134,7 @@ def _trial_draft(
         input_fingerprint=input_fingerprint,
         run_fingerprint=run_fingerprint,
         performance_outcomes_opened=performance_opened,
-        master_protected_return_rows_read=0,
+        master_protected_return_rows_read=protected_rows_read,
         notes=notes,
     )
 
@@ -181,6 +192,32 @@ def build_parser() -> argparse.ArgumentParser:
             "the former Massive-only evidence path for historical reproducibility."
         ),
     )
+    parser.add_argument(
+        "--evaluation-stage",
+        choices=("development", "walk-forward"),
+        default="development",
+        help=(
+            "DEVELOPMENT is the default protected-safe replay. walk-forward is a "
+            "separate one-time frozen evaluation and requires explicit authorization."
+        ),
+    )
+    parser.add_argument(
+        "--evaluation-start",
+        type=date.fromisoformat,
+        default=None,
+        help=(
+            "First signal session. DEVELOPMENT defaults to --start; walk-forward "
+            "must begin at the retained master-holdout boundary."
+        ),
+    )
+    parser.add_argument(
+        "--authorize-master-holdout-consumption",
+        action="store_true",
+        help=(
+            "Explicitly authorize the one-time frozen walk-forward read. This is "
+            "irreversible evidence consumption, not PAPER or LIVE authority."
+        ),
+    )
     parser.add_argument("--start", type=date.fromisoformat, default=REFERENCE_LAKE_PROVIDER_SEAM_START)
     parser.add_argument("--end", type=date.fromisoformat, default=REFERENCE_LAKE_DEVELOPMENT_END)
     parser.add_argument("--split-report", type=Path, default=None)
@@ -208,17 +245,62 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    walk_forward = args.evaluation_stage == "walk-forward"
+    evaluation_start = args.evaluation_start or (
+        V2_REFERENCE_MASTER_PROTECTED_START if walk_forward else args.start
+    )
+    if walk_forward:
+        if args.data_source != "v2":
+            raise ValueError("walk-forward evaluation is available only for V2")
+        if not args.authorize_master_holdout_consumption:
+            raise ValueError(
+                "walk-forward evaluation requires --authorize-master-holdout-consumption"
+            )
+        if evaluation_start != V2_REFERENCE_MASTER_PROTECTED_START:
+            raise ValueError("walk-forward evaluation must begin on 2026-05-12")
+        if args.source_only:
+            raise ValueError(
+                "--source-only is forbidden for walk-forward because protected rows "
+                "must remain coupled to recorded evaluation evidence"
+            )
+        if args.end < V2_REFERENCE_MASTER_PROTECTED_END:
+            raise ValueError("walk-forward evaluation must include the complete holdout")
+    else:
+        if args.authorize_master_holdout_consumption:
+            raise ValueError(
+                "holdout authorization is valid only with --evaluation-stage walk-forward"
+            )
+        if evaluation_start != args.start:
+            raise ValueError("DEVELOPMENT evaluation must begin at --start")
     settings = load_settings(PROJECT_ROOT)
     target = Path(args.output_root) if args.output_root else _output_root(
-        settings, args.start, args.end, args.data_source
+        settings, args.start, args.end, args.data_source, args.evaluation_stage
     )
     target.mkdir(parents=True, exist_ok=True)
 
-    print("ATLAS A33/B33 Reference DEVELOPMENT Replay")
-    print(f"  scope: {args.start} -> {args.end}")
-    print("  safety: DEVELOPMENT only; protected returns and provider/broker writes forbidden")
+    title = "FROZEN WALK-FORWARD" if walk_forward else "DEVELOPMENT"
+    print(f"ATLAS A33/B33 Reference {title} Replay")
+    print(f"  input/warm-up scope: {args.start} -> {args.end}")
+    print(f"  signal evaluation scope: {evaluation_start} -> {args.end}")
+    if walk_forward:
+        print(
+            "  safety: one-time master holdout consumption explicitly authorized; "
+            "provider/broker/PAPER/LIVE writes forbidden"
+        )
+    else:
+        print(
+            "  safety: DEVELOPMENT only; protected returns and provider/broker writes forbidden"
+        )
     print(f"  data source: {args.data_source}")
-    if args.data_source == "v2":
+    if args.data_source == "v2" and walk_forward:
+        if args.split_report is not None:
+            raise ValueError("--split-report is valid only with --data-source legacy")
+        adapted = ReferenceV2WalkForwardLakeAdapter(settings).load(
+            args.start,
+            args.end,
+            manifest_path=args.v2_manifest,
+        )
+    elif args.data_source == "v2":
         if args.split_report is not None:
             raise ValueError("--split-report is valid only with --data-source legacy")
         adapted = ReferenceV2DailyLakeAdapter(settings).load(
@@ -234,6 +316,9 @@ def main(argv: list[str] | None = None) -> int:
             args.end,
             split_report=args.split_report,
         )
+    protected_rows_read = int(
+        adapted.report.get("protected_master_return_rows_read", 0)
+    )
     adapter_report_path = target / "adapter_report.json"
     atomic_write_text(
         adapter_report_path,
@@ -280,13 +365,19 @@ def main(argv: list[str] | None = None) -> int:
 
     frame_fingerprint = reference_input_fingerprint(regime_context.bars)
     source_token = "alpaca_v2" if args.data_source == "v2" else "legacy_massive"
+    stage_token = "wf" if walk_forward else "dev"
     run_token = f"{source_token}.{args.start:%Y%m%d}_{args.end:%Y%m%d}"
     ledger = StrategyTrialLedger(
         Path(args.trial_ledger)
         if args.trial_ledger
         else _ledger_path(settings, args.data_source)
     )
-    registration_id = f"a33b33.dev.{run_token}.registration"
+    trial_stage = (
+        StrategyTrialStage.WALK_FORWARD
+        if walk_forward
+        else StrategyTrialStage.DEVELOPMENT_REPLAY
+    )
+    registration_id = f"a33b33.{stage_token}.{run_token}.registration"
     _append_once(
         ledger,
         _trial_draft(
@@ -296,16 +387,18 @@ def main(argv: list[str] | None = None) -> int:
             run_fingerprint=None,
             performance_opened=False,
             notes=(
-                "Frozen nine-policy DEVELOPMENT replay registered before outcome calculation.",
+                f"Frozen nine-policy {title} replay registered before outcome calculation.",
                 f"Adapter source fingerprint: {adapted.report['source_fingerprint']}.",
                 f"Regime source fingerprint: {regime_context.report['source_fingerprint']}.",
                 "No authority promotion is implied by this trial.",
             ),
+            stage=trial_stage,
+            protected_rows_read=protected_rows_read,
         ),
     )
     print(f"  trial registered before performance: {registration_id}")
 
-    portfolio_registration_id = f"a34.account.{run_token}.registration"
+    portfolio_registration_id = f"a34.account.{stage_token}.{run_token}.registration"
     _append_once(
         ledger,
         _trial_draft(
@@ -323,12 +416,25 @@ def main(argv: list[str] | None = None) -> int:
                 f"Portfolio policy fingerprint: {reference_portfolio_policy_fingerprint()}.",
                 "Long-only; short borrow, correlation, sector controls, and authority promotion unavailable.",
             ),
+            stage=trial_stage,
+            protected_rows_read=protected_rows_read,
         ),
     )
     print(f"  account replay registered before performance: {portfolio_registration_id}")
 
-    run = ReferenceStrategyHistoricalRunner().run(regime_context.bars)
-    portfolio = ReferenceAccountPortfolioReplay().run(regime_context.bars, run)
+    run = ReferenceStrategyHistoricalRunner().run(
+        regime_context.bars,
+        evaluation_start=evaluation_start,
+        evaluation_end=args.end,
+        authorize_master_protected=walk_forward,
+    )
+    portfolio = ReferenceAccountPortfolioReplay().run(
+        regime_context.bars,
+        run,
+        evaluation_start=evaluation_start,
+        evaluation_end=args.end,
+        authorize_master_protected=walk_forward,
+    )
     opportunities_path = target / "opportunities.jsonl"
     opportunity_sha = _write_opportunities(opportunities_path, run.opportunities)
     decisions_path = target / "portfolio_decisions.jsonl"
@@ -344,6 +450,10 @@ def main(argv: list[str] | None = None) -> int:
         exclude={"decisions", "simulated_orders", "position_outcomes", "equity_curve"},
     )
     portfolio_summary_payload["data_source"] = args.data_source
+    portfolio_summary_payload["evaluation_stage"] = args.evaluation_stage
+    portfolio_summary_payload["master_holdout_authorization_id"] = adapted.report.get(
+        "holdout_authorization_id"
+    )
     portfolio_summary_payload["decision_records"] = {
         "path": str(decisions_path.resolve()),
         "sha256": decision_sha,
@@ -377,13 +487,15 @@ def main(argv: list[str] | None = None) -> int:
     summary_payload["portfolio_replay_fingerprint"] = portfolio.replay_fingerprint
     summary_payload["portfolio_run_summary_path"] = str(portfolio_summary_path.resolve())
     summary_payload["data_source"] = args.data_source
+    summary_payload["evaluation_stage"] = args.evaluation_stage
+    summary_payload["evaluation_start"] = evaluation_start.isoformat()
     summary_path = target / "run_summary.json"
     atomic_write_text(
         summary_path,
         json.dumps(summary_payload, indent=2, sort_keys=True, default=str) + "\n",
     )
 
-    completion_id = f"a33b33.dev.{run_token}.completion"
+    completion_id = f"a33b33.{stage_token}.{run_token}.completion"
     _append_once(
         ledger,
         _trial_draft(
@@ -399,10 +511,12 @@ def main(argv: list[str] | None = None) -> int:
                 f"Opportunity evidence SHA-256: {opportunity_sha}.",
                 "Independent-strategy replay only; not an account backtest or authority promotion.",
             ),
+            stage=trial_stage,
+            protected_rows_read=protected_rows_read,
         ),
     )
 
-    portfolio_completion_id = f"a34.account.{run_token}.completion"
+    portfolio_completion_id = f"a34.account.{stage_token}.{run_token}.completion"
     _append_once(
         ledger,
         _trial_draft(
@@ -424,6 +538,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"Equity-curve evidence SHA-256: {equity_sha}.",
                 "Research account replay only; not qualifying historical, PAPER, or authority promotion.",
             ),
+            stage=trial_stage,
+            protected_rows_read=protected_rows_read,
         ),
     )
 
@@ -448,7 +564,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  account replay summary: {portfolio_summary_path}")
     print(f"  trials ledger: {ledger.path}")
     print("  authority promotion: none")
-    print("  protected return rows read: 0")
+    print(f"  protected return rows read: {protected_rows_read:,}")
     print("  provider/broker/PAPER/LIVE writes: 0")
     return 0
 

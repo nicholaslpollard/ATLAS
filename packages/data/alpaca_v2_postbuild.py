@@ -42,6 +42,10 @@ from packages.data.alpaca_v2_acquisition import (
 )
 from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.data.duckdb_connection import connect_utc
+from packages.data.holdout_receipts import (
+    MASTER_HOLDOUT_CONSUMPTION_CONTRACT,
+    read_holdout_receipt,
+)
 from packages.data.sql import sql_string
 from packages.providers.alpaca import (
     AlpacaInvalidSymbolError,
@@ -64,7 +68,16 @@ RESEARCH_DAILY_CONTRACT = (
     "atlas-alpaca-sip-v2-research-daily-v1-development-only-direct-identity-"
     "contiguous-split-adjusted"
 )
+WALK_FORWARD_DAILY_CONTRACT = (
+    "atlas-alpaca-sip-v2-walk-forward-daily-v1-frozen-one-time-direct-identity-"
+    "contiguous-split-adjusted"
+)
+MASTER_HOLDOUT_AUTHORIZATION_CONTRACT = (
+    "atlas-master-holdout-authorization-v1-immutable-pre-read"
+)
 V2_REFERENCE_DEVELOPMENT_END = date(2026, 5, 11)
+V2_REFERENCE_MASTER_PROTECTED_START = date(2026, 5, 12)
+V2_REFERENCE_MASTER_PROTECTED_END = date(2026, 8, 11)
 
 SUPPORTED_CORPORATE_ACTION_TYPES = {
     "cash_dividends",
@@ -164,6 +177,14 @@ def _sha256_file(path: Path) -> str:
 
 def _stable_hash(value: object) -> str:
     return _sha256_bytes(_stable_json(value))
+
+
+def master_holdout_authorization_id(payload: dict[str, object]) -> str:
+    """Return the self-hash for an immutable holdout authorization payload."""
+
+    hashable = dict(payload)
+    hashable.pop("authorization_id", None)
+    return _stable_hash(hashable)
 
 
 def _read_json(path: Path, label: str) -> dict[str, Any]:
@@ -1084,6 +1105,53 @@ class AlpacaV2PostBuildCoordinator:
         identity: IdentityLifecycleResult,
         split: SplitDailyResult,
     ) -> ResearchDailyResult:
+        return self._build_daily_view(
+            native,
+            daily,
+            identity,
+            split,
+            view="development",
+            holdout_authorization=None,
+        )
+
+    def build_walk_forward_daily(
+        self,
+        native: NativeAcceptanceResult,
+        daily: DailyQualityResult,
+        identity: IdentityLifecycleResult,
+        split: SplitDailyResult,
+        *,
+        holdout_authorization: dict[str, object],
+    ) -> ResearchDailyResult:
+        """Materialize the separately authorized frozen walk-forward view.
+
+        Creating this analytical view does not calculate strategy performance.  It is
+        nevertheless intentionally impossible without an immutable pre-read
+        authorization bound to the exact source and frozen strategy/feature policies.
+        """
+
+        return self._build_daily_view(
+            native,
+            daily,
+            identity,
+            split,
+            view="walk_forward",
+            holdout_authorization=holdout_authorization,
+        )
+
+    def _build_daily_view(
+        self,
+        native: NativeAcceptanceResult,
+        daily: DailyQualityResult,
+        identity: IdentityLifecycleResult,
+        split: SplitDailyResult,
+        *,
+        view: str,
+        holdout_authorization: dict[str, object] | None,
+    ) -> ResearchDailyResult:
+        if view not in {"development", "walk_forward"}:
+            raise ValueError(f"unsupported V2 daily analytical view: {view}")
+        walk_forward = view == "walk_forward"
         if split.report.get("status") != "COMPLETE":
             raise AlpacaV2NotCompleteError("split-adjusted daily acquisition is not complete")
         native_fingerprint = native.report.get("acceptance_fingerprint")
@@ -1262,11 +1330,105 @@ class AlpacaV2PostBuildCoordinator:
             raise AlpacaV2ValidationError(
                 "V2 daily quality scope disagrees with native acceptance"
             )
-        cutoff = min(source_cutoff, V2_REFERENCE_DEVELOPMENT_END)
+        cutoff = (
+            source_cutoff
+            if walk_forward
+            else min(source_cutoff, V2_REFERENCE_DEVELOPMENT_END)
+        )
         if start > cutoff:
             raise AlpacaV2ValidationError(
                 "V2 source begins after the frozen reference DEVELOPMENT cutoff"
             )
+        authorization_id: str | None = None
+        if walk_forward:
+            if source_cutoff < V2_REFERENCE_MASTER_PROTECTED_END:
+                raise AlpacaV2ValidationError(
+                    "V2 source does not contain the complete retained master holdout"
+                )
+            authorization = holdout_authorization or {}
+            required_authorization = {
+                "contract": MASTER_HOLDOUT_AUTHORIZATION_CONTRACT,
+                "status": "AUTHORIZED_PENDING_HOLDOUT_READ",
+                "purpose": "A33_B33_FROZEN_REFERENCE_WALK_FORWARD",
+                "authorization_mechanism": "EXPLICIT_OPERATOR_CLI_FLAG",
+                "master_protected_start": V2_REFERENCE_MASTER_PROTECTED_START.isoformat(),
+                "master_protected_end": V2_REFERENCE_MASTER_PROTECTED_END.isoformat(),
+                "native_acceptance_fingerprint": native.report["acceptance_fingerprint"],
+                "split_daily_fingerprint": split.report["source_fingerprint"],
+                "source_cutoff_session": source_cutoff.isoformat(),
+                "development_end": V2_REFERENCE_DEVELOPMENT_END.isoformat(),
+                "parameter_changes_during_forward_window_permitted": False,
+                "historical_reclassification_as_paper_permitted": False,
+                "strategy_authority_promoted": False,
+                "paper_authority": False,
+                "live_authority": False,
+            }
+            for field, expected in required_authorization.items():
+                if authorization.get(field) != expected:
+                    raise AlpacaV2ValidationError(
+                        f"walk-forward authorization {field} is not {expected!r}"
+                    )
+            for field in (
+                "authorization_id",
+                "strategy_policy_fingerprint",
+                "feature_fingerprint",
+                "portfolio_policy_fingerprint",
+            ):
+                value = str(authorization.get(field) or "")
+                if len(value) != 64 or any(ch not in "0123456789abcdef" for ch in value):
+                    raise AlpacaV2ValidationError(
+                        f"walk-forward authorization {field} is missing or malformed"
+                    )
+            authorization_id = str(authorization["authorization_id"])
+            if authorization_id != master_holdout_authorization_id(authorization):
+                raise AlpacaV2ValidationError(
+                    "walk-forward authorization self-hash does not verify"
+                )
+            try:
+                authorized_at = datetime.fromisoformat(
+                    str(authorization["authorized_at_utc"])
+                )
+            except (KeyError, ValueError) as exc:
+                raise AlpacaV2ValidationError(
+                    "walk-forward authorization timestamp is invalid"
+                ) from exc
+            if authorized_at.tzinfo is None or authorized_at.utcoffset() is None:
+                raise AlpacaV2ValidationError(
+                    "walk-forward authorization timestamp must be timezone-aware"
+                )
+            try:
+                development_start = date.fromisoformat(
+                    str(authorization["development_start"])
+                )
+            except (KeyError, ValueError) as exc:
+                raise AlpacaV2ValidationError(
+                    "walk-forward authorization development_start is invalid"
+                ) from exc
+            if not start <= development_start <= V2_REFERENCE_DEVELOPMENT_END:
+                raise AlpacaV2ValidationError(
+                    "walk-forward authorization development_start is outside the V2 source"
+                )
+            consumption = read_holdout_receipt(
+                self.layout.manifests / "master_holdout_consumption.json"
+            )
+            required_consumption = {
+                "contract": MASTER_HOLDOUT_CONSUMPTION_CONTRACT,
+                "status": "CONSUMED_MATERIALIZATION_STARTED",
+                "authorization_id": authorization_id,
+                "master_protected_start": V2_REFERENCE_MASTER_PROTECTED_START.isoformat(),
+                "master_protected_end": V2_REFERENCE_MASTER_PROTECTED_END.isoformat(),
+                "walk_forward_end": source_cutoff.isoformat(),
+                "protected_rows_accounting_pending": True,
+                "historical_replay_not_prospective_paper": True,
+                "strategy_authority_promoted": False,
+                "paper_authority": False,
+                "live_authority": False,
+            }
+            for field, expected in required_consumption.items():
+                if consumption.get(field) != expected:
+                    raise AlpacaV2ValidationError(
+                        f"walk-forward consumption receipt {field} is not {expected!r}"
+                    )
         schedule = pd.DataFrame(
             [
                 {
@@ -1276,16 +1438,25 @@ class AlpacaV2PostBuildCoordinator:
                 for session in self.calendar.sessions_in_range(start, cutoff)
             ]
         )
+        view_contract = (
+            WALK_FORWARD_DAILY_CONTRACT if walk_forward else RESEARCH_DAILY_CONTRACT
+        )
+        materialization_policy = (
+            "EXPLICITLY_AUTHORIZED_FROZEN_WALK_FORWARD"
+            if walk_forward
+            else "FORBIDDEN"
+        )
         source_fingerprint = _stable_hash(
             {
-                "contract": RESEARCH_DAILY_CONTRACT,
+                "contract": view_contract,
                 "native_acceptance_fingerprint": native.report["acceptance_fingerprint"],
                 "daily_quality_fingerprint": daily.report["quality_fingerprint"],
                 "identity_fingerprint": identity.report["identity_fingerprint"],
                 "split_daily_fingerprint": split.report["source_fingerprint"],
                 "source_cutoff_session": source_cutoff.isoformat(),
                 "research_cutoff_session": cutoff.isoformat(),
-                "protected_row_materialization": "FORBIDDEN",
+                "protected_row_materialization": materialization_policy,
+                "holdout_authorization_id": authorization_id,
                 "split_source_excluded_symbols": sorted(split_excluded_symbols),
                 "eligibility_policy": (
                     "direct-provider-asset-id; exact common-stock name; no continuity-"
@@ -1294,8 +1465,10 @@ class AlpacaV2PostBuildCoordinator:
                 ),
             }
         )
-        root = self.layout.derived / "research_daily" / source_fingerprint[:16]
-        manifest_path = self.layout.manifests / "research_daily.json"
+        view_directory = "walk_forward_daily" if walk_forward else "research_daily"
+        manifest_name = "walk_forward_daily.json" if walk_forward else "research_daily.json"
+        root = self.layout.derived / view_directory / source_fingerprint[:16]
+        manifest_path = self.layout.manifests / manifest_name
         if manifest_path.is_file():
             existing = _read_json(manifest_path, "V2 research daily manifest")
             if existing.get("source_fingerprint") != source_fingerprint:
@@ -1328,6 +1501,8 @@ class AlpacaV2PostBuildCoordinator:
         con.register("v2_schedule", schedule)
         partitions: list[dict[str, object]] = []
         total_rows = 0
+        protected_rows_materialized = 0
+        post_protected_rows_materialized = 0
         try:
             for year in range(start.year, cutoff.year + 1):
                 year_start = max(start, date(year, 1, 1))
@@ -1372,17 +1547,30 @@ class AlpacaV2PostBuildCoordinator:
                     (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 100000)
                     """
                 )
-                rows = int(
-                    con.execute(
-                        f"SELECT count(*) FROM read_parquet({sql_string(temp)}, "
-                        "hive_partitioning=false)"
-                    ).fetchone()[0]
-                )
+                row_counts = con.execute(
+                    f"""
+                    SELECT
+                        count(*),
+                        count(*) FILTER (
+                            WHERE session_date BETWEEN
+                                DATE '{V2_REFERENCE_MASTER_PROTECTED_START}'
+                                AND DATE '{V2_REFERENCE_MASTER_PROTECTED_END}'
+                        ),
+                        count(*) FILTER (
+                            WHERE session_date > DATE '{V2_REFERENCE_MASTER_PROTECTED_END}'
+                        )
+                    FROM read_parquet({sql_string(temp)}, hive_partitioning=false)
+                    """
+                ).fetchone()
+                assert row_counts is not None
+                rows = int(row_counts[0])
                 if rows == 0:
                     temp.unlink(missing_ok=True)
                     continue
                 replace_with_retry(temp, target)
                 total_rows += rows
+                protected_rows_materialized += int(row_counts[1])
+                post_protected_rows_materialized += int(row_counts[2])
                 partitions.append(
                     {
                         "year": year,
@@ -1399,8 +1587,17 @@ class AlpacaV2PostBuildCoordinator:
         if total_rows == 0:
             raise AlpacaV2ValidationError("V2 research daily materialization produced no rows")
 
+        if not walk_forward and protected_rows_materialized != 0:
+            raise AlpacaV2ValidationError(
+                "DEVELOPMENT materialization unexpectedly crossed the protected cutoff"
+            )
+        if walk_forward and protected_rows_materialized == 0:
+            raise AlpacaV2ValidationError(
+                "authorized walk-forward materialization contains no master holdout rows"
+            )
+
         report = {
-            "contract": RESEARCH_DAILY_CONTRACT,
+            "contract": view_contract,
             "generated_at_utc": datetime.now(UTC).isoformat(),
             "status": "PASS",
             "source_fingerprint": source_fingerprint,
@@ -1409,8 +1606,19 @@ class AlpacaV2PostBuildCoordinator:
             "start_date": start.isoformat(),
             "cutoff_session": cutoff.isoformat(),
             "source_cutoff_session": source_cutoff.isoformat(),
-            "development_only": True,
-            "protected_return_rows_materialized": 0,
+            "development_only": not walk_forward,
+            "evaluation_scope": (
+                "FROZEN_ONE_TIME_WALK_FORWARD" if walk_forward else "DEVELOPMENT"
+            ),
+            "evaluation_start_session": (
+                V2_REFERENCE_MASTER_PROTECTED_START.isoformat()
+                if walk_forward
+                else start.isoformat()
+            ),
+            "evaluation_end_session": cutoff.isoformat(),
+            "holdout_authorization_id": authorization_id,
+            "protected_return_rows_materialized": protected_rows_materialized,
+            "post_protected_rows_materialized": post_protected_rows_materialized,
             "eligible_symbols": len(eligible),
             "excluded_noncontiguous_symbols": int(
                 (
@@ -1431,7 +1639,10 @@ class AlpacaV2PostBuildCoordinator:
             "cash_dividend_credits_materialized": False,
             "identity_policy": identity.report["continuity_policy"],
             "current_active_status_used_as_historical_filter": False,
-            "master_protected_return_rows_read": 0,
+            "master_protected_return_rows_read": (
+                protected_rows_materialized if walk_forward else 0
+            ),
+            "master_protected_holdout_consumed": walk_forward,
             "historical_performance_opened": False,
             "strategy_authority_promoted": False,
             "production_promoted": False,

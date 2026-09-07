@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-04 (UTC). This README and `docs/roadmap.md` are the only
+**Current as of 2026-09-07 (UTC). This README and `docs/roadmap.md` are the only
 living project documents. Every continuation chat must read both in full before
 making recommendations or changes.**
 
@@ -85,7 +85,10 @@ with a desired trade.
 - Historical supported modern alpha remains **0**. No existing strategy is
   historically validated, paper validated, live eligible, or live authorized.
 - The master protected outcome window `2026-05-12..2026-08-11` remains
-  **unconsumed**. Protected return rows read remain **0** for the retained branches.
+  **unconsumed as of this handoff**. Protected return rows read remain **0** for the
+  retained branches. The operator has now authorized its future one-time use as the
+  frozen practitioner-library walk-forward interval; it remains protected until the
+  explicit command records the immutable authorization and opens it.
 - LIVE trading and automatic broker failover remain disabled.
 - The former operator pause is satisfied and superseded by the explicit Review
   direction encoded here. Product and practitioner-library work may resume; it
@@ -151,7 +154,8 @@ with a desired trade.
   Accepted strategy-evaluation evidence, SEC/regulatory source evidence, live state,
   models, source code, and Git history remain outside the expanded cleanup boundary.
 - The fresh-source native V2 package was accepted in PR #57 and its first operator
-  acquisition is in progress. `scripts/run_alpaca_v2_rebuild.py --build-v2` first
+  acquisition completed on 2026-09-07. `scripts/run_alpaca_v2_rebuild.py --build-v2`
+  first
   inventories and asks for
   exact hash-bound confirmation of only the remaining database-derived targets; it
   writes a new plan-hash-specific receipt and never overwrites the original receipt.
@@ -166,12 +170,14 @@ with a desired trade.
   live only beneath `data/v2_build/alpaca_sip_v2`. Provider-rejected or anomalous
   literals are quarantined without substitution. The runner reserves 30 GiB and
   pauses safely when capacity is insufficient. The estimated 3.781B minute rows mean
-  one overnight run may not finish; rerunning the identical command resumes rather
-  than restarts. This creates an isolated candidate base only: PIT identity/lifecycle,
-  full validation, promotion, historical results, PAPER authority, and LIVE authority
-  remain pending. At the latest operator report the resumable run had completed
-  **16,586 / 67,480 units** after roughly 12 hours and was processing native minute
-  history for December 2017. This is progress telemetry, not acceptance.
+  one overnight run was not assumed; rerunning the identical command resumed rather
+  than restarted. The final operator report is `COMPLETE`: **67,480 / 67,480 units**,
+  including **5,302 / 5,302 daily** and **62,178 / 62,178 minute** units,
+  **3,897,688,734 canonical rows**, and **1,757,288 quarantined rows**. This is a
+  complete isolated native candidate base, not daily identity/quality acceptance or
+  production promotion. The quarantine is retained evidence and must be attributed
+  by the post-build gate rather than discarded or assumed harmless. Historical
+  results, PAPER authority, and LIVE authority remain absent.
 - The V2 post-build package was accepted in PR #58 and merged as
   `8e5abf21fe1ca138cd90125005b8c305a598dd44`; its post-merge `main` workflow passed
   on Windows and Ubuntu. It has not yet run against the operator database. Its
@@ -193,6 +199,41 @@ with a desired trade.
   LIVE authority. Compile-all and the complete local
   suite pass at **1,546 tests**; all ten PR #58 exact-head workflow groups and the
   post-merge `main` workflow passed.
+- The frozen walk-forward package is implemented and tested in PR #61 after native
+  completion and before any operator V2 performance read. The default DEVELOPMENT
+  manifest and adapter still end
+  physically at `2026-05-11` and reject every later row. A separate
+  `walk_forward_daily.json` generation can be created only after an immutable,
+  self-hash-bound authorization records the exact native/split source plus frozen
+  strategy, feature, and portfolio fingerprints. Its signal interval begins exactly
+  `2026-05-12`; earlier rows are indicator warm-up only, and its end must equal the
+  latest validated V2 source session. The trials ledger, strategy replay, account
+  replay, post-build manifest, and permanent consumption receipt all account for the
+  protected rows. A failed attempt after opening remains consumed. No parameter
+  revision, historical-to-PAPER relabeling, strategy promotion, or external write is
+  permitted by this path. The restart repair preserves each superseded consumption
+  receipt as a content-addressed snapshot, verifies the complete history before
+  continuation, retains known protected-row counts across attempts, and reuses a
+  completed replay only after its operator artifact verification passes. Missing or
+  inconsistent current/history receipts fail closed; source-only reruns cannot erase
+  prior consumption. The GUI shows the attempt and known/pending row accounting and
+  never describes an incomplete run as unopened. The materialization-cutoff failure
+  path also preserves an observed protected-row count in both the receipt and
+  post-build summary. Three additional pytest cases cover that failure and successful
+  retries after cutoff and replay failures. The complete implementation revision
+  `0879bbed7f22c53108f58db0b790f58c61a04987` passed all **ten PR #61 workflow
+  groups**, including the locked Windows and Ubuntu full suites at **1,581 tests
+  plus 4 subtests per platform** and all three retained A33/A34 validators. Local
+  checks also passed 10 isolated standard-library receipt tests, 13 isolated
+  coordinator checks, Python compilation, JavaScript syntax, dependency-lock
+  validation, and secret hygiene. Local isolation was necessary because application
+  dependencies were absent; the full application evidence comes from locked CI.
+  The final closeout changes only the two living documents. Full CI on the final PR
+  revision and post-merge `main` verification remain mandatory release gates.
+  The next operation is the authorized workstation command below: source acceptance,
+  DEVELOPMENT, then the frozen one-time walk-forward. No workstation outcomes were
+  opened during implementation; all nine policies remain RESEARCH and PAPER/LIVE
+  authority remains absent.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live
@@ -243,10 +284,12 @@ Important limitations:
 - PostgreSQL and the root Docker deployment remain historical scaffolds, not an
   accepted operational database or deployment.
 
-Accepted daily historical provider boundary remains Alpaca SIP through
-`2021-08-13` and Massive from `2021-08-16`. Multi-provider history is not invalid
-merely because it crosses that documented boundary. No pre-2021 intraday history
-may be fabricated.
+The decommissioned V1 daily lake used Alpaca SIP through `2021-08-13` and
+Massive from `2021-08-16`. That boundary is retained historical provenance, not the
+current data path. The fresh V2 candidate base is Alpaca SIP throughout its frozen
+acquisition interval. No V1 row, derived indicator, regime, or identity product may
+be silently reused as V2 input. Earlier source limitations do not authorize invented
+intraday history; V2 minute semantics remain subject to the finite B34 audit.
 
 ## A33/B33 reference foundation
 
@@ -301,12 +344,15 @@ Frozen A33/B33 contracts:
 - retained legacy trusted-lake adapter contract:
   `reference-lake-adapter-v1-massive-development-split-free-identity-exact`.
 - isolated V2 adapter contract:
-  `reference-v2-lake-adapter-v1-alpaca-sip-hash-bound-isolated-development`.
+  `reference-v2-lake-adapter-v2-alpaca-sip-hash-bound-explicit-evaluation-scopes`.
 
 All nine policies remain `RESEARCH` authority and are permitted only in
 `RESEARCH_REPLAY`. The runner accepts caller-supplied split-adjusted daily bars,
-rejects the retained master protected window before feature calculation, creates
-signals only at finalized closes, and enters no earlier than the next session open.
+rejects every post-DEVELOPMENT row by default, creates signals only at finalized
+closes, and enters no earlier than the next session open. Its distinct one-time
+walk-forward mode requires explicit master-holdout authorization, uses earlier rows
+only for indicator warm-up, filters signal generation to `2026-05-12` onward, and
+counts the protected rows it reads.
 It retains fired, rejected, selected-independent, and overlap-suppressed
 counterfactual opportunities across the `0/5/10/25/50` bps grid. This is not yet an
 account portfolio replay and contains no empirical ATLAS result. Master
@@ -326,6 +372,12 @@ separately validated adjustment-capable V2. The new V2 adapter accepts only
 hashes; arbitrary paths and legacy fallback are forbidden. It validates Alpaca SIP,
 split-adjusted, regular-session, identity-clear common-stock provenance and the
 regular-open/source versus regular-close/signal clocks before returning a row.
+A separate `ReferenceV2WalkForwardLakeAdapter` accepts only
+`walk_forward_daily.json`, verifies its immutable authorization self-hash and frozen
+strategy/feature/portfolio fingerprints, requires a permanent consumption receipt,
+requires the exact authorized warm-up start plus the complete protected interval,
+and requires the requested end to equal the source cutoff. It is never an automatic
+fallback.
 
 The replay input now has two separate clocks. The canonical daily
 `timestamp_utc` remains the provider's regular-open stamp for source provenance;
@@ -347,16 +399,17 @@ No accepted V2 PIT regime generation exists yet. V2 replay therefore labels mark
 sector, and ticker regime `UNAVAILABLE` and reads zero retained V1 regime rows rather
 than importing the decommissioned generation or guessing a label.
 
-The immediate operation is completion of the already-running native V2 acquisition,
-then the staged post-build command below. V2 source preparation can stop without
-opening performance, or one explicit flag can continue through the already-frozen
-nine-policy DEVELOPMENT and A34 research-account replay. The browser read model
+The native V2 acquisition is complete; the immediate operation is the
+post-build command below. V2 source preparation can stop without opening
+performance, one flag can continue through the frozen DEVELOPMENT replay, or the
+explicit two-flag authorization can run DEVELOPMENT and then consume the master
+holdout once as a chronological walk-forward through the V2 cutoff. The browser read model
 prefers hash-valid V2 replay artifacts; if V2 artifacts exist but are invalid it
 fails closed and does not silently display legacy results. No empirical V2 result
 has been produced in this repository checkout. Protected return rows read: **0**;
 performance opened: **false**.
 
-The accepted local command first runs the adapter, binds its source fingerprint,
+The local command first runs the adapter, binds its source fingerprint,
 and registers the frozen trial before calculating any strategy outcome. It can stop
 after source validation or continue through the independent-strategy replay:
 
@@ -407,7 +460,11 @@ return/drawdown/costs, recent completed positions, admission decisions, simulate
 order events, and a closing-equity/exposure curve. Before displaying an available
 run, the read model verifies the recorded SHA-256 binding and schema of every
 decision, order, outcome, and equity artifact; drift fails closed as `INVALID`. It
-shows `NOT_RUN` honestly until the trusted-lake command produces artifacts. Policy
+shows `NOT_RUN` honestly until the trusted-lake command produces artifacts. After
+the one-time walk-forward completes, it prefers that separately labeled result,
+verifies the completed consumption receipt and protected-row count, and labels the
+GUI `WALK-FORWARD`; an incomplete/failed consumption never falls back to a seemingly
+clean DEVELOPMENT display. Policy
 promotion: **false**; protected return rows read: **0**; provider writes: **0**;
 broker writes: **0**; PAPER submits: **0**; LIVE writes: **0**.
 
@@ -425,6 +482,11 @@ and sector condition slices remain explicitly `UNAVAILABLE`; they must not be us
 for conditional performance claims until their separate PIT joins are accepted.
 
 ## A34.5 operator live observability gate
+
+Chat 4's operator-console work remains separate in draft PR #60
+(`a34-5-frontend-operator-dashboard`). It has not been merged or accepted as the
+A34.5 gate. Its living-document reconciliation and full acceptance remain pending;
+the present backend package only maintains the existing replay display contract.
 
 Operational PAPER may not start until the current browser/control plane is connected
 to the authoritative runtime event/state path and proves near-live operator
@@ -501,7 +563,10 @@ hard loss limits, reconciliation, a kill control, and no automatic broker failov
   indicator parameterizations are not a hundred independent discoveries.
 - Use chronological walk-forward selection, purging/embargo where labels overlap,
   frozen challengers, and untouched qualifying periods.
-- Do not reuse the master protected window for practitioner-library selection.
+- Use the master protected window only once for the already-frozen practitioner
+  walk-forward evaluation. Never use its results to select parameters and then call
+  the same interval validation; any revision becomes a new version whose evidence
+  starts after the revision.
 - No production self-modification. A learned selector or strategy revision is a new
   version that must be frozen, replayed, PAPER qualified, and explicitly promoted.
 - Zero trades or negative results are valid. Stop a branch when expected information
@@ -549,15 +614,32 @@ its generation. Pull the accepted post-build package and run one of these:
 
 # The same fail-closed chain, then the frozen DEVELOPMENT strategy/account replay.
 .\.venv\Scripts\python.exe scripts\run_alpaca_v2_postbuild.py --through-reference-replay
+
+# Recommended authorized chain: DEVELOPMENT through May 11, then one-time
+# walk-forward from May 12 through the exact validated V2 cutoff.
+.\.venv\Scripts\python.exe scripts\run_alpaca_v2_postbuild.py --through-walk-forward-replay --authorize-master-holdout-consumption
 ```
 
 The post-build command is resumable at split-adjusted daily unit boundaries.
 `--max-hours` can create a graceful checkpoint and the identical command continues
-it. `--validate-only` performs no provider request. The optional replay flag is the
-only part of this chain that opens historical strategy outcomes; it preregisters the
-frozen policies, cannot read beyond `2026-05-11`, and cannot promote or submit them.
-Its hash-bound strategy-input files themselves stop at that date; later V2 source
-rows remain outside the DEVELOPMENT view rather than relying only on a query filter.
+it. `--validate-only` performs no provider request. `--through-reference-replay`
+opens DEVELOPMENT outcomes only and cannot read beyond `2026-05-11`.
+`--through-walk-forward-replay` first completes that same DEVELOPMENT run, then
+requires `--authorize-master-holdout-consumption`. Before any protected performance
+read it writes an immutable self-hash-bound authorization tied to the exact source
+and frozen policy fingerprints. After DEVELOPMENT succeeds and before protected
+materialization starts, it writes the permanent consumption receipt; a materialization
+or replay failure therefore remains consumed and cannot reset the holdout. Before
+each receipt update, its previous state is preserved under
+`manifests/master_holdout_consumption_history/`; the current self-hash and every
+prior snapshot are verified on reads and retries. Known protected-row counts cannot
+be cleared or changed. A verified completed run is reused without repeating either
+replay; a missing or damaged completed result stops for repair. It then
+creates a separate analytical manifest, starts signals on `2026-05-12`, and advances
+chronologically through the exact source cutoff. Earlier rows in that input are
+warm-up only. Neither replay may promote a strategy or submit a PAPER/LIVE order.
+The DEVELOPMENT files remain physically capped at May 11; the authorized walk-forward
+files and results remain separately labeled.
 Provider rejections and malformed split-source rows remain evidence: when their
 literal symbol is attributable, that symbol is excluded globally and the clean
 remainder may proceed; an unattributed anomaly or unit-level validation failure
@@ -640,8 +722,10 @@ The complete ledger is in the roadmap and immutable closeout documents. Key fact
   `0375d5567e0547c151f9fb140309aa568d17528246e611a68fa5984a1c481acd`.
 
 These results may inform future work but may not be retuned into positive findings.
-The protected holdout remains unconsumed. LIVE and automatic broker failover remain
-disabled.
+The protected holdout remains unconsumed as of this repository handoff; the
+authorized local walk-forward command will change that status permanently and its
+receipt becomes the authority for the workstation result. LIVE and automatic broker
+failover remain disabled.
 
 ### Retained exact historical validator statements
 

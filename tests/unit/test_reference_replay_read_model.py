@@ -11,7 +11,9 @@ from packages.backtesting.reference_portfolio_policy import (
     reference_portfolio_policy_fingerprint,
 )
 from packages.core.settings import load_settings
+from packages.data.alpaca_v2_postbuild import MASTER_HOLDOUT_CONSUMPTION_CONTRACT
 from packages.data.alpaca_v2_rebuild import V2Layout
+from packages.data.holdout_receipts import begin_holdout_consumption, write_holdout_receipt
 from packages.performance.reference_replay_read_model import reference_replay_read_model
 from packages.schemas.reference_portfolio import (
     REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION,
@@ -41,6 +43,21 @@ def _settings_with_v2(tmp_path):
     return settings.model_copy(update={"project_root": tmp_path, "data": data})
 
 
+def _holdout_receipt(layout: V2Layout, *, complete: bool):
+    path = layout.manifests / "master_holdout_consumption.json"
+    receipt = begin_holdout_consumption(
+        path, authorization_id="a" * 64, walk_forward_end=date(2026, 8, 12),
+        walk_forward_manifest=layout.manifests / "walk_forward_daily.json",
+    )
+    if complete:
+        receipt.update(status="CONSUMED_REPLAY_STARTED", protected_return_rows_read=123,
+                       protected_rows_accounting_pending=False)
+        receipt = write_holdout_receipt(path, receipt)
+        receipt.update(status="CONSUMED_WALK_FORWARD_COMPLETE", replay_exit_code=0)
+        receipt = write_holdout_receipt(path, receipt)
+    return receipt
+
+
 def _write_bound_jsonl(
     target: Path,
     filename: str,
@@ -58,7 +75,19 @@ def _write_bound_jsonl(
     }
 
 
-def _operator_artifacts(target: Path) -> dict[str, dict[str, str]]:
+def _operator_artifacts(
+    target: Path,
+    *,
+    evaluation_stage: str = "development",
+) -> dict[str, dict[str, str]]:
+    if evaluation_stage == "walk-forward":
+        signal_session = date(2026, 5, 12)
+        entry_session = date(2026, 5, 13)
+        exit_session = date(2026, 5, 14)
+    else:
+        signal_session = date(2025, 1, 2)
+        entry_session = date(2025, 1, 3)
+        exit_session = date(2025, 1, 6)
     decision = ReferencePortfolioDecision(
         decision_id="1" * 64,
         opportunity_id="2" * 64,
@@ -67,8 +96,8 @@ def _operator_artifacts(target: Path) -> dict[str, dict[str, str]]:
         direction=StrategyDirection.LONG,
         instrument_id="figi:TEST",
         ticker="TEST",
-        signal_session=date(2025, 1, 2),
-        requested_entry_session=date(2025, 1, 3),
+        signal_session=signal_session,
+        requested_entry_session=entry_session,
         status=ReferencePortfolioDecisionStatus.ADMITTED,
         reason_codes=("RISK_SIZE_PASS",),
         admitted_quantity=10,
@@ -90,7 +119,7 @@ def _operator_artifacts(target: Path) -> dict[str, dict[str, str]]:
             ticker="TEST",
             kind=ReferenceSimulatedOrderKind.ENTRY,
             timing=ReferenceSimulatedOrderTiming.REGULAR_OPEN,
-            session=date(2025, 1, 3),
+            session=entry_session,
             quantity=10,
             price=100.0,
             gross_notional=1_000.0,
@@ -106,7 +135,7 @@ def _operator_artifacts(target: Path) -> dict[str, dict[str, str]]:
             ticker="TEST",
             kind=ReferenceSimulatedOrderKind.EXIT,
             timing=ReferenceSimulatedOrderTiming.INTRADAY_DAILY_BAR,
-            session=date(2025, 1, 6),
+            session=exit_session,
             quantity=10,
             price=110.0,
             gross_notional=1_100.0,
@@ -122,8 +151,8 @@ def _operator_artifacts(target: Path) -> dict[str, dict[str, str]]:
         instrument_id="figi:TEST",
         ticker="TEST",
         direction=StrategyDirection.LONG,
-        entry_session=date(2025, 1, 3),
-        exit_session=date(2025, 1, 6),
+        entry_session=entry_session,
+        exit_session=exit_session,
         quantity=10,
         entry_price=100.0,
         exit_price=110.0,
@@ -136,7 +165,7 @@ def _operator_artifacts(target: Path) -> dict[str, dict[str, str]]:
         holding_sessions=2,
     )
     equity = ReferencePortfolioEquityPoint(
-        session=date(2025, 1, 6),
+        session=exit_session,
         cash=100_099.0,
         market_value=0.0,
         equity=100_099.0,
@@ -256,6 +285,135 @@ def test_reference_replay_read_model_prefers_isolated_v2_over_legacy(tmp_path) -
     assert payload["status"] == "AVAILABLE"
     assert payload["data_source"] == "v2"
     assert payload["summary"]["data_source"] == "v2"
+
+
+def test_reference_replay_read_model_exposes_completed_walk_forward(tmp_path) -> None:
+    settings = _settings_with_v2(tmp_path)
+    layout = V2Layout.beneath((tmp_path / "data").resolve())
+    target = (
+        layout.derived
+        / "strategy_lab"
+        / "a33_b33_reference"
+        / "walk_forward"
+        / "2021-08-16_2026-08-12"
+    )
+    target.mkdir(parents=True)
+    authorization_id = "a" * 64
+    protected_rows = 123
+    summary = {
+        "contract_version": REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION,
+        "portfolio_policy_fingerprint": reference_portfolio_policy_fingerprint(),
+        "replay_fingerprint": "c" * 64,
+        "data_source": "v2",
+        "evaluation_stage": "walk-forward",
+        "evaluation_start_session": "2026-05-12",
+        "evaluation_end_session": "2026-08-12",
+        "replay_scope": "FROZEN_ONE_TIME_WALK_FORWARD_ACCOUNT_REPLAY",
+        "master_holdout_authorization_id": authorization_id,
+        "protected_master_return_rows_read": protected_rows,
+        "provider_writes": 0,
+        "broker_writes": 0,
+        "paper_submits": 0,
+        "live_writes": 0,
+    }
+    summary.update(_operator_artifacts(target, evaluation_stage="walk-forward"))
+    (target / "portfolio_run_summary.json").write_text(
+        json.dumps(summary), encoding="utf-8"
+    )
+    layout.manifests.mkdir(parents=True, exist_ok=True)
+    _holdout_receipt(layout, complete=True)
+
+    payload = reference_replay_read_model(settings)
+
+    assert payload["status"] == "AVAILABLE"
+    assert payload["evaluation_stage"] == "walk-forward"
+    assert payload["replay_scope"] == "FROZEN_ONE_TIME_WALK_FORWARD_ACCOUNT_REPLAY"
+    assert payload["summary"]["protected_master_return_rows_read"] == protected_rows
+    assert "historical walk-forward" in payload["message"]
+
+
+def test_reference_replay_read_model_does_not_hide_incomplete_consumption(
+    tmp_path,
+) -> None:
+    settings = _settings_with_v2(tmp_path)
+    layout = V2Layout.beneath((tmp_path / "data").resolve())
+    layout.manifests.mkdir(parents=True, exist_ok=True)
+    _holdout_receipt(layout, complete=False)
+
+    payload = reference_replay_read_model(settings)
+
+    assert payload["status"] == "INCOMPLETE"
+    assert payload["evaluation_stage"] == "walk-forward"
+    assert payload["summary"] is None
+
+
+def test_reference_replay_read_model_rejects_malformed_consumption_receipt(
+    tmp_path,
+) -> None:
+    settings = _settings_with_v2(tmp_path)
+    layout = V2Layout.beneath((tmp_path / "data").resolve())
+    layout.manifests.mkdir(parents=True, exist_ok=True)
+    (layout.manifests / "master_holdout_consumption.json").write_text(
+        json.dumps({"status": "CONSUMED_MATERIALIZATION_STARTED"}),
+        encoding="utf-8",
+    )
+
+    payload = reference_replay_read_model(settings)
+
+    assert payload["status"] == "INVALID"
+    assert payload["evaluation_stage"] == "walk-forward"
+    assert payload["summary"] is None
+
+
+def test_reference_replay_read_model_preserves_retry_accounting_over_stale_summary(tmp_path):
+    settings = _settings_with_v2(tmp_path)
+    layout = V2Layout.beneath((tmp_path / "data").resolve())
+    receipt = _holdout_receipt(layout, complete=False)
+    path = layout.manifests / "master_holdout_consumption.json"
+    receipt.update(status="CONSUMED_REPLAY_STARTED", protected_return_rows_read=123,
+                   protected_rows_accounting_pending=False)
+    receipt = write_holdout_receipt(path, receipt)
+    receipt["status"] = "CONSUMED_REPLAY_FAILED"
+    write_holdout_receipt(path, receipt)
+    failed = reference_replay_read_model(settings)
+    assert failed["status"] == "INVALID"
+    assert failed["holdout_consumption"]["protected_return_rows_read"] == 123
+    _holdout_receipt(layout, complete=False)
+    target = layout.derived / "strategy_lab/a33_b33_reference/walk_forward/stale"
+    target.mkdir(parents=True)
+    (target / "portfolio_run_summary.json").write_text("invalid stale partial summary")
+    payload = reference_replay_read_model(settings)
+    assert payload["status"] == "INCOMPLETE"
+    assert payload["summary"] is None
+    assert payload["holdout_consumption"]["attempt_number"] == 2
+    assert payload["holdout_consumption"]["protected_return_rows_read"] == 123
+    assert payload["holdout_consumption"]["preserved_prior_states"] == 3
+
+
+def test_reference_replay_read_model_rejects_missing_current_receipt_with_history(tmp_path):
+    settings = _settings_with_v2(tmp_path)
+    layout = V2Layout.beneath((tmp_path / "data").resolve())
+    _holdout_receipt(layout, complete=True)
+    (layout.manifests / "master_holdout_consumption.json").unlink()
+    payload = reference_replay_read_model(settings)
+    assert payload["status"] == "INVALID"
+    assert payload["evaluation_stage"] == "walk-forward"
+    assert payload["summary"] is None
+
+
+def test_reference_replay_read_model_rejects_complete_receipt_without_summary(
+    tmp_path,
+) -> None:
+    settings = _settings_with_v2(tmp_path)
+    layout = V2Layout.beneath((tmp_path / "data").resolve())
+    layout.manifests.mkdir(parents=True, exist_ok=True)
+    _holdout_receipt(layout, complete=True)
+
+    payload = reference_replay_read_model(settings)
+
+    assert payload["status"] == "INVALID"
+    assert payload["evaluation_stage"] == "walk-forward"
+    assert payload["summary"] is None
 
 
 def test_reference_replay_read_model_fails_closed_on_bound_artifact_tamper(tmp_path) -> None:
