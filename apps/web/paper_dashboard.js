@@ -37,6 +37,20 @@ function paperTime(value) {
   return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString();
 }
 
+function paperAge(startValue, endValue) {
+  if (!startValue) return "Unavailable";
+  const start = new Date(startValue);
+  const end = endValue ? new Date(endValue) : new Date();
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return "Unavailable";
+  const totalMinutes = Math.floor((end.getTime() - start.getTime()) / 60000);
+  if (totalMinutes < 60) return `${totalMinutes}m`;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours < 24) return `${hours}h ${minutes}m`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ${hours % 24}h`;
+}
+
 function paperStatusClass(status) {
   const value = String(status || "").toUpperCase();
   if (value === "AVAILABLE" || value === "FILLED" || value === "SHADOW_FILLED") return "state-ok";
@@ -161,7 +175,7 @@ function ensurePaperDashboard() {
     "paper-positions-empty",
     "paper-positions-table",
     "paper-positions-body",
-    ["Ticker", "Side", "Qty", "Entry", "Current mark", "Unrealized", "Stop", "Target", "Strategy", "State"]
+    ["Ticker", "Side", "Qty", "Entry", "Current mark", "Unrealized", "Stop", "Target", "Risk at stop", "Age", "Strategy", "State"]
   );
 
   const activityGrid = document.createElement("section");
@@ -240,6 +254,8 @@ function renderPaperRows(payload) {
       paperCell(pnl),
       paperCell(paperMoney(item.stop)),
       paperCell(paperMoney(item.target)),
+      paperCell(paperMoney(item.proposed_loss_at_stop)),
+      paperCell(paperAge(item.submitted_at_utc, payload.generated_at_utc)),
       paperCell(item.strategy_id || "Unavailable upstream"),
       paperCell(item.reconciliation_state)
     );
@@ -408,7 +424,7 @@ function renderPaperDashboard(payload) {
   const accountDetail = paperById("paper-account-detail");
   if (accountDetail) {
     accountDetail.textContent = account
-      ? `${account.snapshot_kind} · cash ${paperMoney(account.cash)} · buying power ${paperMoney(account.buying_power)} · ${paperTime(account.as_of_utc)}`
+      ? `${account.snapshot_kind} · cash ${paperMoney(account.cash)} · buying power ${paperMoney(account.buying_power)} · gross exposure ${paperMoney(account.gross_market_value)} · ${paperTime(account.as_of_utc)}`
       : "No hash-verified reconciliation snapshot available.";
   }
 
