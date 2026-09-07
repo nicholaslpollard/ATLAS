@@ -160,7 +160,7 @@ with a desired trade.
   passed. Daily close-derived signals now carry the exact XNYS-close availability
   clock and the replay consumes only the hash-bound same-close market regime that
   was knowable before next-open entry. Ticker/sector regime remain unavailable.
-- Alpaca SIP V2 is now the immediate data-foundation priority. Empirical sizing
+- Alpaca SIP V2 daily source/replay preparation is complete; the next V2 data task is the finite B34 minute/intraday semantics audit. Empirical sizing
   estimates 3.781B native minute rows, 64.51 GiB canonical minute Parquet, 62.55
   GiB compressed raw evidence, and a conservative 375.58 GiB peak-plus-reserve
   requirement. The operator chose precise local V1 historical-data decommissioning,
@@ -770,10 +770,11 @@ The complete ledger is in the roadmap and immutable closeout documents. Key fact
   `0375d5567e0547c151f9fb140309aa568d17528246e611a68fa5984a1c481acd`.
 
 These results may inform future work but may not be retuned into positive findings.
-The protected holdout remains unconsumed as of this repository handoff; the
-authorized local walk-forward command will change that status permanently and its
-receipt becomes the authority for the workstation result. LIVE and automatic broker
-failover remain disabled.
+The retained master holdout was subsequently consumed exactly once by the frozen
+A33/B33 V2 walk-forward on 2026-09-07; that consumption does not rewrite the
+separate earlier branch statements below, which correctly record zero protected
+return reads for those experiments. LIVE and automatic broker failover remain
+disabled.
 
 ### Retained exact historical validator statements
 
