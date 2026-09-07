@@ -290,18 +290,23 @@ not be resumed by retuning the observed version.
 
 ## 9. Current protected and trading authority
 
-- Master protected window: `2026-05-12..2026-08-11` — **unconsumed as of this
-  handoff, with explicit operator authorization now granted for one frozen,
-  separately recorded practitioner walk-forward use**.
+- Master protected window: `2026-05-12..2026-08-11` — **consumed exactly once
+  on 2026-09-07** by the frozen practitioner-library V2 walk-forward. Completed
+  accounting records **93,380 master-protected return rows read**. The same frozen
+  version continued without parameter change through the accepted V2 source cutoff
+  `2026-09-03`; later rows are tracked separately as post-protected continuation.
 - V2 daily split-reconciliation validator repair (2026-09-07): the former
   inverse-price-factor volume equality is audit-only provider-native evidence.
   OHLC split-factor consistency, provenance, canonical value validity, and
   finite/nonnegative volume remain hard acceptance gates. Focused post-build
   regressions exercise both the allowed volume divergence and the still-fatal
-  price-factor mismatch. No source, strategy, portfolio, PAPER/LIVE authority,
-  or protected-window state changes; the one-time walk-forward remains pending
-  repository acceptance before operator execution.
-- Retained branch protected return reads: **0**.
+  price-factor mismatch. At repair acceptance it changed no source, strategy,
+  portfolio, PAPER/LIVE authority, or protected-window state. The later frozen
+  replay subsequently consumed the master holdout exactly once.
+- Frozen A33/B33 V2 master-protected return reads: **93,380**. DEVELOPMENT account
+  replay: **-17.912608%** return / **-20.803073%** max drawdown. Frozen walk-forward
+  account replay through `2026-09-03`: **-8.372772%** return / **-8.372772%** max
+  drawdown. Authority promotion: **none**.
 - No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
   `LIVE_ELIGIBLE`, or LIVE-authorized status.
 - Operational PAPER may be built and used with labeled baselines under its own
@@ -526,9 +531,10 @@ sent to a broker merely to gather data.
   windows.
 - Purge and embargo around overlapping outcome horizons.
 - Keep final qualifying historical evidence separate from development.
-- Preserve the existing master protected window until the frozen practitioner
-  specifications, data lineage, and evaluation boundaries are hash-bound. It may
-  then be consumed once as the one-time walk-forward interval. A new future
+- The retained master protected window was hash-bound and consumed exactly once
+  by the frozen practitioner V2 walk-forward on 2026-09-07. It may never be reused
+  to qualify a revision. The unchanged frozen version continued afterward through
+  the V2 source cutoff as post-protected historical continuation. A new future
   prospective PAPER period remains necessary and cannot be backfilled from history.
 - Never choose a parameter, regime rule, cost, or exit after observing the period
   meant to qualify it.
@@ -891,14 +897,17 @@ The canonical provider timestamp remains the regular-open
 stamp, while contract
 `reference-signal-availability-v1-xnys-regular-close-next-open` adds the true XNYS
 close availability time for daily signals. The runner records that close clock and
-still enters no earlier than the next regular-session open. The current checkout has
-no market lake, so no empirical run or ATLAS performance result has been produced.
+still enters no earlier than the next regular-session open. The operator V2 run has now produced the first empirical frozen reference results.
 PR #47 accepted the retained legacy adapter and merged it as
 `646db6e6e44ccd2355c7c2263221f35cd01d5da8`; post-merge Windows and Ubuntu full
-tests passed. Protected return rows read: **0**; performance opened:
-**false**; provider/broker/PAPER/LIVE writes: **0**. The daily feature fingerprint
-changed before any outcome access solely to bind the unadjusted PIT price-floor
-correction; strategy policy and authority fingerprints remain unchanged.
+tests passed. DEVELOPMENT produced **161,347 opportunities** and account return
+**-17.912608%** with **-20.803073%** max drawdown. The frozen walk-forward produced
+**14,081 opportunities**, read **93,380** rows from the retained master holdout,
+and returned **-8.372772%** with **-8.372772%** max drawdown through `2026-09-03`.
+Provider/broker/PAPER/LIVE writes remained **0**. The daily feature fingerprint
+changed before outcome access solely to bind the unadjusted PIT price-floor
+correction; strategy policy and authority fingerprints remain unchanged and no
+strategy was promoted.
 
 ### A34 — Signal-to-Trade Construction, Portfolio Replay, and Replay Dashboard
 
@@ -908,8 +917,9 @@ admit a risk-controlled account portfolio, replay cash/orders/positions/exits as
 process, and show decisions, counterfactuals, costs, exposure, and outcomes in the
 browser. Baselines remain operational-only unless separately validated.
 
-**First vertical-slice status (2026-09-03): implemented; empirical account replay
-not started.** Frozen portfolio-policy fingerprint:
+**First vertical-slice status (2026-09-07): implemented and empirically replayed;
+result is negative at the account level and grants no authority promotion.** Frozen
+portfolio-policy fingerprint:
 `c6528b5619a0058131347715dae771474a7b37babda282856f5f53a430f792fa`.
 The RESEARCH account replay consumes only the exact input-bound independent run and
 uses a fixed event clock: opening exits → opening candidate admission → intraday
@@ -970,16 +980,24 @@ writes.
 
 ### A34.5 — Operator Live Observability and Paper Dashboard Gate
 
-Chat 4's operator-console implementation remains in draft PR #60 on
-`a34-5-frontend-operator-dashboard`. It is separate from this backend correction,
-has not been merged, and still needs its two living documents reconciled and full
-acceptance. Existing historical replay display support does not satisfy A34.5.
+PR #60 on `a34-5-frontend-operator-dashboard` now implements the A34.5
+operator-observability gate and closes it when this exact-head package is accepted
+and merged. `PaperDashboardService` reads accepted local Phase15 execution evidence
+plus Phase5 persisted marks; path/hash/schema drift fails `INVALID`, stale or
+uncertain provider state is visibly `DEGRADED`, and passive refresh initializes no
+provider or broker object. Fresh LONG positions mark at bid and SHORT positions at
+ask. Upstream-unbound strategy provenance and gross-only realized P&L remain
+explicitly unavailable rather than fabricated.
 
-**New hard prerequisite established 2026-09-03 before Operational PAPER.** Extend
-the authoritative stacked Phase19 browser/control plane from historical/research
-inspection into the near-live operator surface that will be used during A35. The
-front end must be connected before PAPER broker testing begins so the operator can
-see the product acting rather than infer behavior later from logs.
+The existing loopback-only Phase19 server exposes GET-only
+`/api/v1/ops/paper-dashboard`. The browser uses bounded 5/15/30-second polling over
+the same engine-owned evidence and organizes the operator console into Overview,
+Market, Research, Portfolio, Execution, Brokers & Data, Operations, and Controls.
+The separate synthetic preview never loads `.env`, never initializes a real provider
+or broker, disables mutation controls, and rejects POST. **A34.5 grants no PAPER
+strategy authority and no broker-write authority.** Its completion only removes the
+observability prerequisite so A35 may begin under a separate explicit authority
+package.
 
 The dashboard acceptance surface must include, at minimum:
 
@@ -1040,7 +1058,9 @@ shows which intraday pack can be represented faithfully.
 
 ### A35 — Operational PAPER and Operator Web Beta
 
-**May begin only after A34.5 is accepted.** Run the same engine prospectively with
+**Next Track-A package after PR #60 merges. A34.5 observability is satisfied, but
+A35 PAPER/broker authority has not begun and must be granted separately.** Run the
+same engine prospectively with
 PAPER money: ingest, generate, select, construct, risk-check, submit under
 centralized authority, manage, reconcile, record, and display. The accepted A34.5
 browser must show the lifecycle as it happens rather than being added afterward.

@@ -84,19 +84,22 @@ with a desired trade.
   frozen scientific mechanism and preserved for accepted-validator compatibility.
 - Historical supported modern alpha remains **0**. No existing strategy is
   historically validated, paper validated, live eligible, or live authorized.
-- The master protected outcome window `2026-05-12..2026-08-11` remains
-  **unconsumed as of this handoff**. Protected return rows read remain **0** for the
-  retained branches. The operator has now authorized its future one-time use as the
-  frozen practitioner-library walk-forward interval; it remains protected until the
-  explicit command records the immutable authorization and opens it.
+- The retained master protected outcome window `2026-05-12..2026-08-11` was
+  **consumed exactly once on 2026-09-07** by the frozen A33/B33 V2 walk-forward.
+  The completed receipt/accounting reports **93,380 master-protected return rows
+  read**. The frozen version then continued unchanged through the accepted V2
+  source cutoff `2026-09-03`; rows after `2026-08-11` are separately tracked as
+  post-protected continuation, not a redefinition of the master holdout. This is
+  historical out-of-sample evidence, not prospective PAPER.
 - V2 split-reconciliation validator repair: provider-native split-adjusted volume
   is no longer required to equal the inverse OHLC split factor. That relationship
   is retained as deterministic audit evidence, while OHLC factor agreement,
   provider/source provenance, schema, finite/nonnegative volume, and other
   raw/adjusted integrity gates remain fail-closed. Focused regressions cover both
-  accepted volume divergence and rejected price-factor corruption. This changes no
-  source bytes, strategy/portfolio policy, trading authority, or protected-return
-  state; the master holdout remains unopened.
+  accepted volume divergence and rejected price-factor corruption. At repair
+  acceptance this changed no source bytes, strategy/portfolio policy, trading
+  authority, or protected-return state; the later frozen replay described below
+  subsequently consumed the master holdout exactly once.
 - V2 split-price quantization repair: the real completed V2 source showed that the
   former absolute `1e-5` OHLC-factor equality was also too strict for provider-rounded
   split-adjusted prices. The retained quantization diagnostic covered 2,825,114 paired
@@ -105,8 +108,10 @@ with a desired trade.
   open/high/low value is within `$0.10` adjusted-price residual **and** `0.001` relative
   factor error of the close-derived split factor. A new regression accepts bounded
   provider rounding while the existing corruption regression still rejects a material
-  price-factor mismatch. No source bytes, strategy/portfolio policy, holdout receipt,
-  protected-return state, PAPER authority, or LIVE authority are changed.
+  price-factor mismatch. At repair acceptance it changed no source bytes,
+  strategy/portfolio policy, holdout receipt, protected-return state, PAPER
+  authority, or LIVE authority; the later frozen replay subsequently consumed the
+  master holdout exactly once.
 - LIVE trading and automatic broker failover remain disabled.
 - The former operator pause is satisfied and superseded by the explicit Review
   direction encoded here. Product and practitioner-library work may resume; it
@@ -198,8 +203,11 @@ with a desired trade.
   results, PAPER authority, and LIVE authority remain absent.
 - The V2 post-build package was accepted in PR #58 and merged as
   `8e5abf21fe1ca138cd90125005b8c305a598dd44`; its post-merge `main` workflow passed
-  on Windows and Ubuntu. It has not yet run against the operator database. Its
-  single resume-safe post-build
+  on Windows and Ubuntu. It has now run successfully against the completed operator
+  V2 source: native validation passed **67,480 / 67,480 units**, the provider-native
+  split source reused **5,302 / 5,302 complete units**, and the reconciled research
+  view materialized **2,706,154 rows across 1,582 symbols**. Its single resume-safe
+  post-build
   coordinator hash-verifies every native unit; fully scans native daily schema,
   provenance, dates, sessions, duplicates, and OHLCV; builds conservative direct-
   Alpaca-asset identity/lifecycle evidence; acquires a separate provider-native SIP
@@ -246,11 +254,17 @@ with a desired trade.
   coordinator checks, Python compilation, JavaScript syntax, dependency-lock
   validation, and secret hygiene. Local isolation was necessary because application
   dependencies were absent; the full application evidence comes from locked CI.
-  The final closeout changes only the two living documents. Full CI on the final PR
-  revision and post-merge `main` verification remain mandatory release gates.
-  The next operation is the authorized workstation command below: source acceptance,
-  DEVELOPMENT, then the frozen one-time walk-forward. No workstation outcomes were
-  opened during implementation; all nine policies remain RESEARCH and PAPER/LIVE
+  The implementation closeout changed only the two living documents after the code
+  package. The authorized workstation run has now completed. DEVELOPMENT produced
+  **161,347 opportunities**, account replay **-17.912608%** return and
+  **-20.803073%** max drawdown. The frozen walk-forward evaluated signals
+  `2026-05-12..2026-09-03`, produced **14,081 opportunities**, consumed the retained
+  master holdout exactly once with **93,380 protected return rows read**, and ended
+  with account replay **-8.372772%** return and **-8.372772%** max drawdown. Signal-
+  level mean net return was positive for Bollinger-long, EMA-pullback-long,
+  MACD-long, and RSI-recovery-long, but the aggregate account evidence is negative,
+  the RSI sample is small, cash-distribution economics remain incomplete, and
+  **authority promotion is none**. All nine policies remain RESEARCH; PAPER/LIVE
   authority remains absent.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
@@ -294,11 +308,10 @@ Important limitations:
   fixed, non-learned account replay and browser view now exist; learned selection,
   qualifying PAPER, strategy-management controls, and the complete operator product
   remain unfinished.
-- The existing browser can inspect historical/research replay artifacts, but it is
-  not yet the accepted near-live Operational PAPER dashboard. It must be connected
-  to the same authoritative decision/order/position/account event state before A35
-  starts; a separate UI-only trading state or manual-refresh workflow is not
-  acceptable.
+- A34.5 now supplies the accepted read-only near-live Operational PAPER dashboard
+  contract over engine-owned evidence: no second GUI trading truth, no independent
+  trade decisions, bounded automatic refresh, and visible fail-closed degraded/
+  invalid state. A35 broker mutation remains a separate authority package.
 - PostgreSQL and the root Docker deployment remain historical scaffolds, not an
   accepted operational database or deployment.
 
@@ -372,10 +385,12 @@ walk-forward mode requires explicit master-holdout authorization, uses earlier r
 only for indicator warm-up, filters signal generation to `2026-05-12` onward, and
 counts the protected rows it reads.
 It retains fired, rejected, selected-independent, and overlap-suppressed
-counterfactual opportunities across the `0/5/10/25/50` bps grid. This is not yet an
-account portfolio replay and contains no empirical ATLAS result. Master
-protected return rows read: **0**; holdout consumed: **false**; broker writes:
-**0**; PAPER submits: **0**; LIVE writes: **0**.
+counterfactual opportunities across the `0/5/10/25/50` bps grid. Empirical V2
+DEVELOPMENT and frozen walk-forward account replays now exist. The retained master
+holdout was consumed exactly once; **93,380** master-protected return rows were
+read. The frozen walk-forward continued unchanged through `2026-09-03`; no
+parameter revision or strategy promotion occurred. Broker writes: **0**; PAPER
+submits: **0**; LIVE writes: **0**.
 
 The retained adapter is deliberately narrower than the accepted complete daily history. V1
 uses Massive only from `2021-08-16` through at most `2026-05-11`, requires every
@@ -417,15 +432,15 @@ No accepted V2 PIT regime generation exists yet. V2 replay therefore labels mark
 sector, and ticker regime `UNAVAILABLE` and reads zero retained V1 regime rows rather
 than importing the decommissioned generation or guessing a label.
 
-The native V2 acquisition is complete; the immediate operation is the
-post-build command below. V2 source preparation can stop without opening
-performance, one flag can continue through the frozen DEVELOPMENT replay, or the
-explicit two-flag authorization can run DEVELOPMENT and then consume the master
-holdout once as a chronological walk-forward through the V2 cutoff. The browser read model
-prefers hash-valid V2 replay artifacts; if V2 artifacts exist but are invalid it
-fails closed and does not silently display legacy results. No empirical V2 result
-has been produced in this repository checkout. Protected return rows read: **0**;
-performance opened: **false**.
+The native V2 acquisition, post-build, DEVELOPMENT replay, and frozen one-time
+walk-forward have all completed on the operator workstation. The browser read model
+prefers the hash-valid completed walk-forward and fails closed rather than silently
+falling back to legacy or DEVELOPMENT evidence when protected-state artifacts are
+invalid. DEVELOPMENT account replay returned **-17.912608%** with
+**-20.803073%** max drawdown. The frozen walk-forward through `2026-09-03` returned
+**-8.372772%** with **-8.372772%** max drawdown and read **93,380** rows from the
+retained master protected interval. Performance is now opened for these frozen
+versions; no strategy was promoted.
 
 The local command first runs the adapter, binds its source fingerprint,
 and registers the frozen trial before calculating any strategy outcome. It can stop
@@ -483,8 +498,9 @@ the one-time walk-forward completes, it prefers that separately labeled result,
 verifies the completed consumption receipt and protected-row count, and labels the
 GUI `WALK-FORWARD`; an incomplete/failed consumption never falls back to a seemingly
 clean DEVELOPMENT display. Policy
-promotion: **false**; protected return rows read: **0**; provider writes: **0**;
-broker writes: **0**; PAPER submits: **0**; LIVE writes: **0**.
+promotion: **false**; master-protected return rows read: **93,380**; holdout
+consumed: **true exactly once**; provider writes: **0**; broker writes: **0**; PAPER
+submits: **0**; LIVE writes: **0**.
 
 The current operator entry point is the stacked Phase19 dashboard, not the older
 Phase16 shell. Start it from the repository root with
@@ -501,14 +517,26 @@ for conditional performance claims until their separate PIT joins are accepted.
 
 ## A34.5 operator live observability gate
 
-Chat 4's operator-console work remains separate in draft PR #60
-(`a34-5-frontend-operator-dashboard`). It has not been merged or accepted as the
-A34.5 gate. Its living-document reconciliation and full acceptance remain pending;
-the present backend package only maintains the existing replay display contract.
+PR #60 (`a34-5-frontend-operator-dashboard`) completes the A34.5 read-only
+operator-observability gate when this closeout is accepted and merged.
+`PaperDashboardService` reads accepted local Phase15 execution evidence plus
+Phase5 persisted marks, verifies artifact path/hash/schema before display, and
+never initializes a provider or broker merely to refresh the browser. Fresh LONG
+positions mark conservatively at bid and SHORT positions at ask; stale marks cannot
+create P&L, provider uncertainty is visibly `DEGRADED`, and invalid evidence is
+`INVALID`. Strategy provenance and realized net P&L remain explicitly unavailable
+where the accepted upstream evidence does not bind them.
 
-Operational PAPER may not start until the current browser/control plane is connected
-to the authoritative runtime event/state path and proves near-live operator
-observability. This is a product-readiness gate, not a strategy-evidence promotion.
+The production surface is GET-only at `/api/v1/ops/paper-dashboard` on the existing
+loopback-only Phase19 server. The operator console uses bounded 5/15/30-second
+polling and organizes Overview, Market, Research, Portfolio, Execution, Brokers &
+Data, Operations, and Controls without maintaining a second trading truth. A
+separate synthetic Codespaces preview never loads `.env`, never initializes real
+providers/brokers, disables mutation controls, and rejects POST. A34.5 grants no
+PAPER strategy authority or broker-write authority; it only satisfies the
+observability prerequisite so A35 can begin under its own explicit authority gate.
+
+This is a product-readiness gate, not a strategy-evidence promotion.
 The accepted dashboard must make it easy to see, as the PAPER system operates:
 
 - account equity, cash/buying power, exposure, realized P&L, unrealized P&L, and
