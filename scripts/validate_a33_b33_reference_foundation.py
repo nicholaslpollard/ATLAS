@@ -214,7 +214,12 @@ def main() -> int:
         ):
             _require(text, fingerprint, f"{path} A33/B33 frozen fingerprint")
         _require(text, "nine direction-specific", f"{path} catalog count")
-        _require(text, "protected return rows read: **0**", f"{path} protected boundary")
+        if "protected return rows read: **0**" not in text:
+            # Living documents are current-state handoffs, not frozen Phase-start artifacts.
+            # After the one-time master holdout is legitimately consumed, forcing them
+            # to retain the pre-read zero would make accepted current evidence stale.
+            _require(text, "consumed exactly once", f"{path} post-consumption boundary")
+            _require(text, "93,380", f"{path} post-consumption protected-row accounting")
         _require(
             text,
             REFERENCE_LAKE_ADAPTER_CONTRACT_VERSION,

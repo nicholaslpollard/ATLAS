@@ -133,6 +133,13 @@ with a desired trade.
   acceptance workflow. Historical performance has now been opened only for the
   frozen V2 DEVELOPMENT and one-time walk-forward versions described below; strategy
   authority did not change and provider/broker/PAPER/LIVE mutations remain zero.
+- A33/B33 compatibility validation now treats living-document protected state as a
+  monotonic lifecycle: before outcome access it requires the original zero-read
+  boundary; after an accepted one-time consumption it requires the current
+  consumption statement and protected-row accounting instead. Frozen policy,
+  authority, and feature fingerprints remain mandatory. This prevents current
+  evidence from being rewritten backward merely to satisfy a historical handoff
+  token.
 - The trusted-lake adapters are implemented. The retained Massive path remains
   reproducibility-only; the isolated Alpaca SIP V2 adapter produced the completed
   frozen DEVELOPMENT and walk-forward evidence described below.

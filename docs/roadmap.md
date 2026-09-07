@@ -307,6 +307,11 @@ not be resumed by retuning the observed version.
   replay: **-17.912608%** return / **-20.803073%** max drawdown. Frozen walk-forward
   account replay through `2026-09-03`: **-8.372772%** return / **-8.372772%** max
   drawdown. Authority promotion: **none**.
+- A33/B33 compatibility validation distinguishes immutable pre-outcome foundation
+  evidence from the living current-state handoff. It accepts only the original
+  zero-read documentation state before consumption or the exact one-time-consumed
+  state with protected-row accounting afterward; frozen fingerprints and authority
+  boundaries remain unchanged.
 - No strategy currently has `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`,
   `LIVE_ELIGIBLE`, or LIVE-authorized status.
 - PR #60 implements the A34.5 operator live-observability prerequisite. Once this
