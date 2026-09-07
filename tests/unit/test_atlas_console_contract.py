@@ -108,6 +108,16 @@ def test_overview_is_summary_only_and_drills_into_domain_pages() -> None:
     assert "XMLHttpRequest" not in source
 
 
+def test_paper_dashboard_surfaces_position_risk_age_and_account_exposure() -> None:
+    source = (WEB_ROOT / "paper_dashboard.js").read_text(encoding="utf-8")
+    assert '"Risk at stop"' in source
+    assert '"Age"' in source
+    assert "item.proposed_loss_at_stop" in source
+    assert "paperAge(item.submitted_at_utc, payload.generated_at_utc)" in source
+    assert "gross exposure" in source
+    assert "account.gross_market_value" in source
+
+
 def test_detail_pages_use_tabs_only_for_existing_data_domains() -> None:
     source = (WEB_ROOT / "atlas_tabs.js").read_text(encoding="utf-8")
     expected_tabs = (
