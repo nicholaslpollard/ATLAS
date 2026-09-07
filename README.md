@@ -97,6 +97,16 @@ with a desired trade.
   accepted volume divergence and rejected price-factor corruption. This changes no
   source bytes, strategy/portfolio policy, trading authority, or protected-return
   state; the master holdout remains unopened.
+- V2 split-price quantization repair: the real completed V2 source showed that the
+  former absolute `1e-5` OHLC-factor equality was also too strict for provider-rounded
+  split-adjusted prices. The retained quantization diagnostic covered 2,825,114 paired
+  eligible rows: maximum adjusted-price residual was `$0.05841364` and maximum
+  relative factor error was `0.000994532`. Reconciliation now fails closed unless each
+  open/high/low value is within `$0.10` adjusted-price residual **and** `0.001` relative
+  factor error of the close-derived split factor. A new regression accepts bounded
+  provider rounding while the existing corruption regression still rejects a material
+  price-factor mismatch. No source bytes, strategy/portfolio policy, holdout receipt,
+  protected-return state, PAPER authority, or LIVE authority are changed.
 - LIVE trading and automatic broker failover remain disabled.
 - The former operator pause is satisfied and superseded by the explicit Review
   direction encoded here. Product and practitioner-library work may resume; it
