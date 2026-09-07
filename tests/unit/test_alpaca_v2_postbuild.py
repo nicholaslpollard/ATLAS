@@ -175,6 +175,23 @@ class FakeSplitVolumeDivergenceAlpaca(FakePostBuildAlpaca):
         return page
 
 
+class FakeSplitPriceRoundingAlpaca(FakePostBuildAlpaca):
+    def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
+        page = super().historical_bar_page(**kwargs)
+        if (
+            str(kwargs["timeframe"]) == "1Day"
+            and str(kwargs["adjustment"]) == "split"
+        ):
+            payload = json.loads(page.raw_body)
+            aapl = payload.get("bars", {}).get("AAPL", [])
+            if aapl:
+                aapl[0]["o"] = 50.004
+                aapl[0]["h"] = 51.006
+                aapl[0]["l"] = 49.494
+            return _page("historical_bars", payload, token=page.page_token_used)
+        return page
+
+
 class FakeSplitPriceFactorMismatchAlpaca(FakePostBuildAlpaca):
     def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
         page = super().historical_bar_page(**kwargs)
@@ -335,6 +352,38 @@ def test_research_daily_audits_provider_native_split_volume_divergence(
             "Provider-native split-adjusted volume is preserved as supplied; "
             "inverse-price-factor volume equivalence is diagnostic evidence, "
             "not a price-factor or provenance acceptance invariant."
+        ),
+    }
+
+
+def test_research_daily_accepts_bounded_provider_price_rounding(
+    tmp_path: Path,
+) -> None:
+    client = FakeSplitPriceRoundingAlpaca()
+    settings, client = _native(tmp_path, client=client)
+    coordinator = AlpacaV2PostBuildCoordinator(settings)
+    native = coordinator.validate_native()
+    daily = coordinator.validate_daily(native)
+    identity = coordinator.build_identity_lifecycle(native, daily)
+    split_acquirer = AlpacaV2SplitDailyAcquirer(settings, client=client)
+    split_acquirer.base._require_disk = lambda **_: None  # type: ignore[method-assign]
+    split = split_acquirer.run(native)
+
+    research = coordinator.build_research_daily(native, daily, identity, split)
+
+    assert research.report["status"] == "PASS"
+    assert research.report["checks"][
+        "split_factor_and_provenance_failures_zero"
+    ] is True
+    assert research.report["price_reconciliation_policy"] == {
+        "anchor": "adjusted_close_div_raw_close",
+        "absolute_adjusted_price_tolerance": 0.10,
+        "relative_factor_tolerance": 0.001,
+        "acceptance_effect": "FAIL_CLOSED",
+        "policy": (
+            "Provider-rounded split-adjusted OHLC must remain within both "
+            "the absolute adjusted-price envelope and the relative split-factor "
+            "envelope around the close-derived factor."
         ),
     }
 
