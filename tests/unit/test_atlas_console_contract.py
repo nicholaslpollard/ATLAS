@@ -72,9 +72,19 @@ def test_selected_brand_removes_duplicate_html_label_and_centers_artwork() -> No
     for source in (production_style, preview_style):
         assert removal in source
         assert "atlas-brand-selected" in source
-        assert "width: 150px" in source
-        assert "height: 150px" in source
         assert "place-items: center" in source
+
+    # Production intentionally uses the later enlarged/offset sidebar artwork while
+    # the isolated synthetic preview keeps the original compact geometry.
+    assert "min-height: 184px" in production_style
+    assert "width: 162px" in production_style
+    assert "height: 162px" in production_style
+    assert "transform: translateX(-6px)" in production_style
+
+    assert "min-height: 174px" in preview_style
+    assert "width: 150px" in preview_style
+    assert "height: 150px" in preview_style
+    assert "transform: translateX(-6px)" not in preview_style
 
 
 def test_overview_is_summary_only_and_drills_into_domain_pages() -> None:
