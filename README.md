@@ -199,8 +199,9 @@ with a desired trade.
   LIVE authority. Compile-all and the complete local
   suite pass at **1,546 tests**; all ten PR #58 exact-head workflow groups and the
   post-merge `main` workflow passed.
-- The frozen walk-forward correction is staged after native completion and before
-  any V2 performance read. The default DEVELOPMENT manifest and adapter still end
+- The frozen walk-forward package is implemented and tested in PR #61 after native
+  completion and before any operator V2 performance read. The default DEVELOPMENT
+  manifest and adapter still end
   physically at `2026-05-11` and reject every later row. A separate
   `walk_forward_daily.json` generation can be created only after an immutable,
   self-hash-bound authorization records the exact native/split source plus frozen
@@ -216,22 +217,23 @@ with a desired trade.
   completed replay only after its operator artifact verification passes. Missing or
   inconsistent current/history receipts fail closed; source-only reruns cannot erase
   prior consumption. The GUI shows the attempt and known/pending row accounting and
-  never describes an incomplete run as unopened. The previous Chat 3 implementation
-  reported 1,556 passing tests. The current repair passes 10 dependency-free receipt
-  tests. The continuation also repairs the materialization-cutoff failure path so
-  it preserves an observed protected-row count in both the receipt and post-build
-  summary. Three additional pytest cases cover that failure and successful retries
-  after cutoff and replay failures. Local verification passes **10 isolated
-  standard-library receipt tests and 13 isolated coordinator checks**, plus Python
-  compilation, JavaScript syntax, and secret hygiene. The coordinator checks execute
-  the repository functions/assertions with mocked data/provider integrations; they
-  are not full application acceptance. Full locked Windows/Ubuntu PR acceptance and
-  the retained A33/A34 validators remain pending because the local application
-  dependencies are absent. The prepared branch is
-  `alpaca-v2-frozen-walk-forward`. The operator renewed full GitHub/repository
-  authorization in this continuation, resolving the earlier publication-approval
-  pause. Exact-commit CI and merge verification remain required before the corrected
-  workstation command is released. No workstation outcomes were opened.
+  never describes an incomplete run as unopened. The materialization-cutoff failure
+  path also preserves an observed protected-row count in both the receipt and
+  post-build summary. Three additional pytest cases cover that failure and successful
+  retries after cutoff and replay failures. The complete implementation revision
+  `0879bbed7f22c53108f58db0b790f58c61a04987` passed all **ten PR #61 workflow
+  groups**, including the locked Windows and Ubuntu full suites at **1,581 tests
+  plus 4 subtests per platform** and all three retained A33/A34 validators. Local
+  checks also passed 10 isolated standard-library receipt tests, 13 isolated
+  coordinator checks, Python compilation, JavaScript syntax, dependency-lock
+  validation, and secret hygiene. Local isolation was necessary because application
+  dependencies were absent; the full application evidence comes from locked CI.
+  The final closeout changes only the two living documents. Full CI on the final PR
+  revision and post-merge `main` verification remain mandatory release gates.
+  The next operation is the authorized workstation command below: source acceptance,
+  DEVELOPMENT, then the frozen one-time walk-forward. No workstation outcomes were
+  opened during implementation; all nine policies remain RESEARCH and PAPER/LIVE
+  authority remains absent.
 - **Operator live observability is now a hard prerequisite to Operational PAPER.**
   Before any A35 PAPER test begins, A34.5 must connect the authoritative engine/event
   state to the browser so the operator can observe account state, positions, live
@@ -397,7 +399,7 @@ No accepted V2 PIT regime generation exists yet. V2 replay therefore labels mark
 sector, and ticker regime `UNAVAILABLE` and reads zero retained V1 regime rows rather
 than importing the decommissioned generation or guessing a label.
 
-The native V2 acquisition is complete; the immediate operation is the staged
+The native V2 acquisition is complete; the immediate operation is the
 post-build command below. V2 source preparation can stop without opening
 performance, one flag can continue through the frozen DEVELOPMENT replay, or the
 explicit two-flag authorization can run DEVELOPMENT and then consume the master

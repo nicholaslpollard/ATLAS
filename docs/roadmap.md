@@ -707,7 +707,7 @@ anomalies are evidence-bearing quarantines, never occasions to guess a replaceme
 Unit Parquet is an isolated candidate base until the identity, completeness, quality,
 provenance, and promotion gates pass.
 
-The staged post-build contract performs that next daily gate without V1 ancestry.
+The post-build contract performs that next daily gate without V1 ancestry.
 It reconstructs and hash-verifies the frozen plan and every native unit, fully scans
 native daily facts, binds assets and complete corporate-action evidence, and builds
 a conservative first V2 identity map. Only one provider asset ID tied to one literal
@@ -838,21 +838,23 @@ across retries, and reuses completed results only after operator artifact verifi
 A source-only rerun cannot erase prior holdout consumption. Missing/corrupt receipt
 history and invalid completed results fail closed; incomplete GUI states show the
 attempt and known/pending row accounting without an unopened-outcomes claim.
-The initial Chat 3 correction reported 1,556 passing tests. The continuation also
-repairs the materialization-cutoff failure path: the receipt and post-build summary
-retain the protected-row count already observed when the reported cutoff disagrees
-with the authorized cutoff. Three additional pytest cases cover that failure and
-successful retries after cutoff and replay failures. Local verification passes
-**10 isolated standard-library receipt tests and 13 isolated coordinator checks**,
-plus Python compilation, JavaScript syntax, and secret hygiene. The coordinator
-checks execute the repository functions/assertions with mocked data/provider
-integrations; they do not substitute for full application acceptance. The full
-locked Windows/Ubuntu PR suite and three retained A33/A34 validators remain pending
-because local application dependencies are absent. The prepared branch is
-`alpaca-v2-frozen-walk-forward`. The operator renewed full GitHub/repository
-authorization in this continuation, resolving the earlier publication-approval
-pause. Exact-commit CI, merge, and post-merge verification must pass before
-workstation use. No workstation outcomes were opened.
+The materialization-cutoff failure path also preserves the protected-row count in
+both the receipt and post-build summary when the reported cutoff disagrees with the
+authorized cutoff. Three additional pytest cases cover that failure and successful
+retries after cutoff and replay failures. The complete implementation revision
+`0879bbed7f22c53108f58db0b790f58c61a04987` passed all **ten PR #61 workflow
+groups**, including the locked Windows and Ubuntu full suites at **1,581 tests
+plus 4 subtests per platform** and all three retained A33/A34 validators. Local
+checks also passed 10 isolated standard-library receipt tests, 13 isolated
+coordinator checks, Python compilation, JavaScript syntax, dependency-lock
+validation, and secret hygiene. Local isolation was necessary because application
+dependencies were absent; the full application evidence comes from locked CI.
+The final closeout changes only these two living documents. Full CI on the final
+PR revision and post-merge `main` verification remain mandatory release gates.
+The next operation is the authorized workstation chain: source acceptance,
+DEVELOPMENT, then the frozen one-time walk-forward. No workstation outcomes were
+opened during implementation; all nine policies remain RESEARCH and PAPER/LIVE
+authority remains absent.
 Compile-all and the complete local suite for the accepted V2 post-build package pass
 at **1,546 tests**; all ten PR #58 exact-head workflow groups and the post-merge
 `main` workflow passed.
@@ -927,7 +929,7 @@ account return/drawdown/costs, recent completed positions, portfolio admission
 decisions, simulated order events, and a closing-equity/exposure curve. The read
 model verifies the recorded SHA-256 and row schema of all four replay artifacts
 before displaying an available result; any drift fails the complete view closed.
-The staged walk-forward extension adds `INCOMPLETE`, prefers a completed separately
+The implemented walk-forward extension adds `INCOMPLETE`, prefers a completed separately
 labeled walk-forward over DEVELOPMENT, verifies its final consumption receipt and
 protected-row count, and never hides a failed/incomplete protected run by falling
 back to DEVELOPMENT.
