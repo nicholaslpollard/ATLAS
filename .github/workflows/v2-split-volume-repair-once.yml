@@ -1,0 +1,300 @@
+name: One-shot V2 split volume validator repair
+
+on:
+  push:
+    branches:
+      - alpha-gate-v2-split-volume-audit
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: alpha-gate-v2-split-volume-audit
+          fetch-depth: 0
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Install ATLAS from locked dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock
+          python -m pip install --no-deps -e .
+          python -m pip check
+
+      - name: Apply bounded validator repair and regressions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('packages/data/alpaca_v2_postbuild.py')
+          source = source_path.read_text(encoding='utf-8')
+
+          old_volume_gate = """                       OR (
+                           raw_volume > 0
+                           AND abs(adjusted_volume * factor_close - raw_volume)
+                               > greatest(1.0, abs(raw_volume)) * 1e-5
+                       )
+                       OR provider <> 'alpaca'
+"""
+          new_volume_gate = """                       OR provider <> 'alpaca'
+"""
+          if source.count(old_volume_gate) != 1:
+              raise SystemExit('expected exactly one coupled split-volume fatal gate')
+          source = source.replace(old_volume_gate, new_volume_gate, 1)
+
+          duplicate_marker = """            adjusted_duplicates = int(
+"""
+          volume_audit_query = """            volume_reconciliation = con.execute(
+                f\"\"\"
+                WITH paired AS (
+                    SELECT a.volume AS adjusted_volume,
+                           r.volume AS raw_volume,
+                           a.close / r.close AS factor_close
+                    FROM {raw_sql} r
+                    JOIN {adjusted_sql} a USING (symbol, session_date)
+                    JOIN eligible_reconcile e ON e.symbol = r.symbol
+                )
+                SELECT
+                    count(*) AS paired_rows,
+                    count(*) FILTER (WHERE raw_volume > 0)
+                        AS positive_raw_volume_rows,
+                    count(*) FILTER (
+                        WHERE raw_volume > 0
+                          AND abs(adjusted_volume * factor_close - raw_volume)
+                              > greatest(1.0, abs(raw_volume)) * 1e-5
+                    ) AS inverse_price_expectation_divergence_rows
+                FROM paired
+                \"\"\"
+            ).fetchone()
+            adjusted_duplicates = int(
+"""
+          if source.count(duplicate_marker) != 1:
+              raise SystemExit('expected one adjusted duplicate reconciliation marker')
+          source = source.replace(duplicate_marker, volume_audit_query, 1)
+
+          counts_marker = """        assert counts is not None
+        checks = {
+"""
+          counts_replacement = """        assert counts is not None
+        assert volume_reconciliation is not None
+        volume_reconciliation_audit = {
+            \"paired_rows\": int(volume_reconciliation[0]),
+            \"positive_raw_volume_rows\": int(volume_reconciliation[1]),
+            \"inverse_price_expectation_divergence_rows\": int(
+                volume_reconciliation[2]
+            ),
+            \"relative_tolerance\": 1e-5,
+            \"acceptance_effect\": \"AUDIT_ONLY\",
+            \"policy\": (
+                \"Provider-native split-adjusted volume is preserved as supplied; \"
+                \"inverse-price-factor volume equivalence is diagnostic evidence, \"
+                \"not a price-factor or provenance acceptance invariant.\"
+            ),
+        }
+        checks = {
+"""
+          if source.count(counts_marker) != 1:
+              raise SystemExit('expected one reconciliation checks marker')
+          source = source.replace(counts_marker, counts_replacement, 1)
+
+          report_marker = """            \"partitions\": partitions,
+            \"checks\": checks,
+            \"raw_execution_state_preserved_separately\": True,
+"""
+          report_replacement = """            \"partitions\": partitions,
+            \"checks\": checks,
+            \"volume_reconciliation_audit\": volume_reconciliation_audit,
+            \"raw_execution_state_preserved_separately\": True,
+"""
+          if source.count(report_marker) != 1:
+              raise SystemExit('expected one research report checks marker')
+          source = source.replace(report_marker, report_replacement, 1)
+          source_path.write_text(source, encoding='utf-8')
+
+          test_path = Path('tests/unit/test_alpaca_v2_postbuild.py')
+          tests = test_path.read_text(encoding='utf-8')
+          import_marker = """    AlpacaV2NotCompleteError,
+    AlpacaV2PostBuildCoordinator,
+"""
+          import_replacement = """    AlpacaV2NotCompleteError,
+    AlpacaV2PostBuildCoordinator,
+    AlpacaV2ValidationError,
+"""
+          if tests.count(import_marker) != 1:
+              raise SystemExit('expected one V2 post-build import marker')
+          tests = tests.replace(import_marker, import_replacement, 1)
+
+          class_marker = """class FakeSplitRejectAlpaca(FakePostBuildAlpaca):
+"""
+          new_classes = """class FakeSplitVolumeDivergenceAlpaca(FakePostBuildAlpaca):
+    def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
+        page = super().historical_bar_page(**kwargs)
+        if (
+            str(kwargs[\"timeframe\"]) == \"1Day\"
+            and str(kwargs[\"adjustment\"]) == \"split\"
+        ):
+            payload = json.loads(page.raw_body)
+            aapl = payload.get(\"bars\", {}).get(\"AAPL\", [])
+            if aapl:
+                aapl[0][\"v\"] = 2300
+            return _page(
+                \"historical_bars\",
+                payload,
+                token=page.page_token_used,
+            )
+        return page
+
+
+class FakeSplitPriceFactorMismatchAlpaca(FakePostBuildAlpaca):
+    def historical_bar_page(self, **kwargs: object) -> AlpacaApiPage:
+        page = super().historical_bar_page(**kwargs)
+        if (
+            str(kwargs[\"timeframe\"]) == \"1Day\"
+            and str(kwargs[\"adjustment\"]) == \"split\"
+        ):
+            payload = json.loads(page.raw_body)
+            aapl = payload.get(\"bars\", {}).get(\"AAPL\", [])
+            if aapl:
+                aapl[0][\"o\"] = 49.0
+            return _page(
+                \"historical_bars\",
+                payload,
+                token=page.page_token_used,
+            )
+        return page
+
+
+class FakeSplitRejectAlpaca(FakePostBuildAlpaca):
+"""
+          if tests.count(class_marker) != 1:
+              raise SystemExit('expected one FakeSplitRejectAlpaca marker')
+          tests = tests.replace(class_marker, new_classes, 1)
+
+          test_insert_marker = """def test_split_adjusted_daily_resume_reuses_completed_units(tmp_path: Path) -> None:
+"""
+          new_tests = """def test_research_daily_audits_provider_native_split_volume_divergence(
+    tmp_path: Path,
+) -> None:
+    client = FakeSplitVolumeDivergenceAlpaca()
+    settings, client = _native(tmp_path, client=client)
+    coordinator = AlpacaV2PostBuildCoordinator(settings)
+    native = coordinator.validate_native()
+    daily = coordinator.validate_daily(native)
+    identity = coordinator.build_identity_lifecycle(native, daily)
+    split_acquirer = AlpacaV2SplitDailyAcquirer(settings, client=client)
+    split_acquirer.base._require_disk = lambda **_: None  # type: ignore[method-assign]
+    split = split_acquirer.run(native)
+
+    research = coordinator.build_research_daily(native, daily, identity, split)
+
+    assert research.report[\"status\"] == \"PASS\"
+    assert research.report[\"checks\"][
+        \"split_factor_and_provenance_failures_zero\"
+    ] is True
+    assert research.report[\"volume_reconciliation_audit\"] == {
+        \"paired_rows\": 2,
+        \"positive_raw_volume_rows\": 2,
+        \"inverse_price_expectation_divergence_rows\": 1,
+        \"relative_tolerance\": 1e-5,
+        \"acceptance_effect\": \"AUDIT_ONLY\",
+        \"policy\": (
+            \"Provider-native split-adjusted volume is preserved as supplied; \"
+            \"inverse-price-factor volume equivalence is diagnostic evidence, \"
+            \"not a price-factor or provenance acceptance invariant.\"
+        ),
+    }
+
+
+def test_research_daily_still_rejects_split_price_factor_corruption(
+    tmp_path: Path,
+) -> None:
+    client = FakeSplitPriceFactorMismatchAlpaca()
+    settings, client = _native(tmp_path, client=client)
+    coordinator = AlpacaV2PostBuildCoordinator(settings)
+    native = coordinator.validate_native()
+    daily = coordinator.validate_daily(native)
+    identity = coordinator.build_identity_lifecycle(native, daily)
+    split_acquirer = AlpacaV2SplitDailyAcquirer(settings, client=client)
+    split_acquirer.base._require_disk = lambda **_: None  # type: ignore[method-assign]
+    split = split_acquirer.run(native)
+
+    with pytest.raises(
+        AlpacaV2ValidationError,
+        match=\"split_factor_and_provenance_failures_zero\",
+    ):
+        coordinator.build_research_daily(native, daily, identity, split)
+
+
+def test_split_adjusted_daily_resume_reuses_completed_units(tmp_path: Path) -> None:
+"""
+          if tests.count(test_insert_marker) != 1:
+              raise SystemExit('expected one split resume test marker')
+          tests = tests.replace(test_insert_marker, new_tests, 1)
+          test_path.write_text(tests, encoding='utf-8')
+
+          readme_path = Path('README.md')
+          readme = readme_path.read_text(encoding='utf-8')
+          readme_anchor = "- LIVE trading and automatic broker failover remain disabled.\n"
+          readme_note = (
+              "- V2 split-reconciliation validator repair: provider-native split-adjusted volume\n"
+              "  is no longer required to equal the inverse OHLC split factor. That relationship\n"
+              "  is retained as deterministic audit evidence, while OHLC factor agreement,\n"
+              "  provider/source provenance, schema, finite/nonnegative volume, and other\n"
+              "  raw/adjusted integrity gates remain fail-closed. Focused regressions cover both\n"
+              "  accepted volume divergence and rejected price-factor corruption. This changes no\n"
+              "  source bytes, strategy/portfolio policy, trading authority, or protected-return\n"
+              "  state; the master holdout remains unopened.\n"
+          )
+          if readme.count(readme_anchor) != 1:
+              raise SystemExit('expected one README current-truth anchor')
+          readme = readme.replace(readme_anchor, readme_note + readme_anchor, 1)
+          readme_path.write_text(readme, encoding='utf-8')
+
+          roadmap_path = Path('docs/roadmap.md')
+          roadmap = roadmap_path.read_text(encoding='utf-8')
+          roadmap_anchor = "- Retained branch protected return reads: **0**.\n"
+          roadmap_note = (
+              "- V2 daily split-reconciliation validator repair (2026-09-07): the former\n"
+              "  inverse-price-factor volume equality is audit-only provider-native evidence.\n"
+              "  OHLC split-factor consistency, provenance, canonical value validity, and\n"
+              "  finite/nonnegative volume remain hard acceptance gates. Focused post-build\n"
+              "  regressions exercise both the allowed volume divergence and the still-fatal\n"
+              "  price-factor mismatch. No source, strategy, portfolio, PAPER/LIVE authority,\n"
+              "  or protected-window state changes; the one-time walk-forward remains pending\n"
+              "  repository acceptance before operator execution.\n"
+          )
+          if roadmap.count(roadmap_anchor) != 1:
+              raise SystemExit('expected one roadmap protected-state anchor')
+          roadmap = roadmap.replace(roadmap_anchor, roadmap_note + roadmap_anchor, 1)
+          roadmap_path.write_text(roadmap, encoding='utf-8')
+          PY
+
+      - name: Compile repaired files
+        run: python -m compileall -q packages/data/alpaca_v2_postbuild.py tests/unit/test_alpaca_v2_postbuild.py
+
+      - name: Run focused V2 post-build regressions
+        run: python -m pytest -q tests/unit/test_alpaca_v2_postbuild.py
+
+      - name: Commit repaired package and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/v2-split-volume-repair-once.yml
+          git add packages/data/alpaca_v2_postbuild.py tests/unit/test_alpaca_v2_postbuild.py README.md docs/roadmap.md
+          git commit -m 'Repair V2 split volume reconciliation semantics'
+          git push origin HEAD:alpha-gate-v2-split-volume-audit
