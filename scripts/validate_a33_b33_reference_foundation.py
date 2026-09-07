@@ -200,7 +200,9 @@ def main() -> int:
         "live_writes": 0,
     }:
         raise AssertionError("reference API authority boundary drifted")
-    if "append-only-hash-chain-protected-zero" not in STRATEGY_TRIAL_LEDGER_CONTRACT_VERSION:
+    if "append-only-hash-chain-protected-accounted" not in (
+        STRATEGY_TRIAL_LEDGER_CONTRACT_VERSION
+    ):
         raise AssertionError("strategy trial ledger contract drifted")
 
     for path in ("README.md", "docs/roadmap.md"):
@@ -241,7 +243,7 @@ def main() -> int:
         'print(f"  trial registered before performance: {registration_id}")'
     )
     outcome_run = development_command.index(
-        "run = ReferenceStrategyHistoricalRunner().run(regime_context.bars)"
+        "run = ReferenceStrategyHistoricalRunner().run("
     )
     if registration >= outcome_run:
         raise AssertionError("DEVELOPMENT outcome run precedes its trial registration")
@@ -252,7 +254,10 @@ def main() -> int:
     print(f"- feature fingerprint: {EXPECTED_FEATURE_FINGERPRINT}")
     print("- six families / nine direction-specific policies remain RESEARCH_REPLAY only")
     print("- accepted Phase 11 registry/families, PR 45 seed, and 33-feature core are unchanged")
-    print("- master protected window is rejected; protected return reads remain zero")
+    print(
+        "- master protected window is rejected by default and only the explicit "
+        "one-time walk-forward path may account for protected reads"
+    )
     print("- post-seam Massive DEVELOPMENT adapter is read-only and excludes split/gap ambiguity")
     print("- DEVELOPMENT command registers the frozen trial before opening performance")
     print("- provider, broker, PAPER, and LIVE writes remain zero")

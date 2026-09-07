@@ -489,6 +489,19 @@ function renderReferenceLab(catalog, replay) {
   });
 
   const status = String((replay && replay.status) || "NOT_RUN");
+  const consumption = replay && replay.holdout_consumption;
+  const evaluationStage = replay && replay.evaluation_stage === "walk-forward"
+    ? "WALK-FORWARD"
+    : "DEVELOPMENT";
+  obsText("reference-lab-stage", `Latest ${evaluationStage} replay`);
+  obsText(
+    "reference-lab-authority-detail",
+    evaluationStage === "WALK-FORWARD" && summary
+      ? `Historical walk-forward · ${summary.protected_master_return_rows_read || 0} protected rows accounted · no qualifying PAPER or LIVE`
+      : consumption
+        ? `Holdout consumed · attempt ${consumption.attempt_number} · ${consumption.protected_return_rows_read ?? "unknown"} protected rows · accounting ${consumption.protected_rows_accounting_pending ? "pending" : "complete"}`
+        : "Long-only baseline · no qualifying PAPER or LIVE"
+  );
   const banner = obsById("reference-lab-banner");
   if (banner) {
     banner.className = status === "AVAILABLE" ? "banner ok" : status === "INVALID" ? "banner danger" : "banner warning";
@@ -523,10 +536,15 @@ function renderReferenceLab(catalog, replay) {
     if (drawdownNode) drawdownNode.className = `metric ${drawdown < -0.1 ? "state-danger" : "state-warn"}`;
     obsText("reference-lab-trades", `${summary.completed_positions || 0} completed · ${summary.admitted_positions || 0} admitted`);
   } else {
-    obsText("reference-lab-return", "Not run");
-    obsText("reference-lab-equity", "Awaiting trusted-lake DEVELOPMENT replay");
-    obsText("reference-lab-drawdown", "Not run");
-    obsText("reference-lab-trades", "No account outcomes opened");
+    const unavailable = status === "NOT_RUN" ? "Not run" : status;
+    obsText("reference-lab-return", unavailable);
+    obsText("reference-lab-equity", `Awaiting trusted-lake ${evaluationStage} replay`);
+    obsText(
+      "reference-lab-equity-empty",
+      `Run the frozen ${evaluationStage} replay to populate the equity curve.`
+    );
+    obsText("reference-lab-drawdown", unavailable);
+    obsText("reference-lab-trades", status === "NOT_RUN" ? "No account outcomes opened" : "No verified complete result is available");
     ["reference-lab-return", "reference-lab-drawdown"].forEach((id) => {
       const node = obsById(id);
       if (node) node.className = `metric ${status === "INVALID" ? "state-danger" : "state-warn"}`;

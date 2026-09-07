@@ -341,6 +341,11 @@ function renderReferenceResearch(catalog, replay) {
 
   const status = String((replay && replay.status) || "NOT_RUN");
   const summary = replay && replay.summary;
+  const consumption = replay && replay.holdout_consumption;
+  const evaluationStage = replay && replay.evaluation_stage === "walk-forward"
+    ? "WALK-FORWARD"
+    : "DEVELOPMENT";
+  text("reference-replay-stage", `Latest ${evaluationStage} replay`);
   const banner = $("reference-replay-banner");
   banner.className = status === "AVAILABLE" ? "banner ok" : status === "INVALID" ? "banner danger" : "banner warning";
   banner.textContent = replay && replay.message ? replay.message : "Reference replay state is unavailable.";
@@ -351,7 +356,11 @@ function renderReferenceResearch(catalog, replay) {
   );
   text(
     "reference-authority-detail",
-    "Long-only baseline · short borrow unavailable · no PAPER or LIVE authority"
+    evaluationStage === "WALK-FORWARD" && summary
+      ? `Historical walk-forward · ${summary.protected_master_return_rows_read || 0} protected rows accounted · no PAPER or LIVE authority`
+      : consumption
+        ? `Holdout consumed · attempt ${consumption.attempt_number} · ${consumption.protected_return_rows_read ?? "unknown"} protected rows · accounting ${consumption.protected_rows_accounting_pending ? "pending" : "complete"}`
+        : "Long-only baseline · short borrow unavailable · no PAPER or LIVE authority"
   );
 
   if (status === "AVAILABLE" && summary) {
@@ -362,10 +371,11 @@ function renderReferenceResearch(catalog, replay) {
     setMetric("reference-max-drawdown", percent(drawdown), drawdown < -0.1 ? "state-danger" : "state-warn");
     text("reference-trade-count", `${summary.completed_positions || 0} completed · ${summary.admitted_positions || 0} admitted`);
   } else {
-    setMetric("reference-total-return", "Not run", status === "INVALID" ? "state-danger" : "state-warn");
-    text("reference-final-equity", "Awaiting trusted-lake DEVELOPMENT replay");
-    setMetric("reference-max-drawdown", "Not run", status === "INVALID" ? "state-danger" : "state-warn");
-    text("reference-trade-count", "No account outcomes opened");
+    const unavailable = status === "NOT_RUN" ? "Not run" : status;
+    setMetric("reference-total-return", unavailable, status === "INVALID" ? "state-danger" : "state-warn");
+    text("reference-final-equity", `Awaiting trusted-lake ${evaluationStage} replay`);
+    setMetric("reference-max-drawdown", unavailable, status === "INVALID" ? "state-danger" : "state-warn");
+    text("reference-trade-count", status === "NOT_RUN" ? "No account outcomes opened" : "No verified complete result is available");
   }
 
   const outcomes = Array.isArray(replay && replay.recent_position_outcomes)

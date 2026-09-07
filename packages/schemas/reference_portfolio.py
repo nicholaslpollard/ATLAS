@@ -21,7 +21,7 @@ REFERENCE_PORTFOLIO_OUTCOME_CONTRACT_VERSION = (
     "reference-portfolio-outcome-v1-cash-and-cost-reconciled"
 )
 REFERENCE_PORTFOLIO_REPLAY_CONTRACT_VERSION = (
-    "reference-portfolio-replay-v1-cash-position-equity-and-rejections"
+    "reference-portfolio-replay-v2-explicit-evaluation-scope-protected-accounted"
 )
 
 
@@ -195,12 +195,14 @@ class ReferencePortfolioReplay(BaseModel):
     summary_by_strategy: dict[str, dict[str, int | float | None]]
     summary_by_family: dict[str, dict[str, int | float | None]]
     replay_scope: str = "RESEARCH_ACCOUNT_REPLAY_NOT_QUALIFYING_HISTORICAL_OR_PAPER"
+    evaluation_start_session: date | None = None
+    evaluation_end_session: date | None = None
     selector_is_learned: bool = False
     short_borrow_modeled: bool = False
     correlation_model_available: bool = False
     sector_model_available: bool = False
     authority_promotion: bool = False
-    protected_master_return_rows_read: int = Field(default=0, ge=0, le=0)
+    protected_master_return_rows_read: int = Field(default=0, ge=0)
     provider_writes: int = Field(default=0, ge=0, le=0)
     broker_writes: int = Field(default=0, ge=0, le=0)
     paper_submits: int = Field(default=0, ge=0, le=0)
@@ -223,7 +225,26 @@ class ReferencePortfolioReplay(BaseModel):
         if len(self.simulated_orders) != 2 * self.completed_positions:
             raise ValueError("resolved long-only replay requires one entry and one exit event")
         if self.open_positions_at_end != 0:
-            raise ValueError("v1 rejects unresolved exits and must finish flat")
+            raise ValueError("reference replay rejects unresolved exits and must finish flat")
         if self.selector_is_learned or self.short_borrow_modeled or self.authority_promotion:
-            raise ValueError("v1 replay cannot imply learned selection, short borrow, or promotion")
+            raise ValueError(
+                "reference replay cannot imply learned selection, short borrow, or promotion"
+            )
+        if (self.evaluation_start_session is None) != (
+            self.evaluation_end_session is None
+        ):
+            raise ValueError("portfolio evaluation start/end must be present together")
+        if (
+            self.evaluation_start_session is not None
+            and self.evaluation_end_session is not None
+            and self.evaluation_end_session < self.evaluation_start_session
+        ):
+            raise ValueError("portfolio evaluation end precedes its start")
+        if self.replay_scope == "FROZEN_ONE_TIME_WALK_FORWARD_ACCOUNT_REPLAY":
+            if self.protected_master_return_rows_read <= 0:
+                raise ValueError(
+                    "frozen walk-forward account scope requires protected-row accounting"
+                )
+        elif self.protected_master_return_rows_read != 0:
+            raise ValueError("protected rows require the frozen walk-forward account scope")
         return self
