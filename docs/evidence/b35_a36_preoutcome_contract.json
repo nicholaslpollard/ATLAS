@@ -1,0 +1,387 @@
+{
+  "authority": {
+    "broad_minute_materialization_authority": false,
+    "broker_reads": 0,
+    "broker_writes": 0,
+    "development_outcome_access_permitted": false,
+    "future_blind_outcome_access_permitted": false,
+    "live_authority": false,
+    "minute_replay_read_authority": false,
+    "next_gate": "exact-head acceptance of this contract, followed by a separate hash-bound finite DEVELOPMENT replay authorization that still excludes the consumed master and future blind windows",
+    "paper_authority": false,
+    "performance_outcomes_opened": false,
+    "promotion_authority": false,
+    "provider_calls": 0
+  },
+  "baselines": [
+    "independent_strategy_signal_profiles",
+    "a34_stable_nonlearned_long_only_portfolio",
+    "cash_abstention"
+  ],
+  "blind_release": {
+    "blind_rows_may_not_become_development_after_a_bad_result": true,
+    "minimum_complete_xnys_sessions": 63,
+    "no_performance_ui_before_unblind": true,
+    "no_selector_refit_on_blind_window": true,
+    "one_time_consumption_receipt_required": true
+  },
+  "bound_b34_pack": {
+    "contract": "atlas-b34-opening-premarket-pack-v1-pre-outcome",
+    "fingerprint": "6f7239fcda11ac6c890d2635980d431ec49e346707d9cc549f111bd50daaa4bf",
+    "strategy_ids": [
+      "b34_gap_continuation_v1",
+      "b34_opening_range_breakout_15m_v1",
+      "b34_premarket_relvol_consolidation_v1",
+      "b34_highest_volume_day_style_v1"
+    ]
+  },
+  "conditions": [
+    {
+      "asof_rule": "exact accepted market-regime value finalized no later than the PRIOR regular-session close; never same-day close",
+      "buckets": [
+        "EXACT_ACCEPTED_LABEL",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "prior_market_regime",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "prior regular-session close",
+      "buckets": [
+        "LT_5",
+        "5_TO_20",
+        "20_TO_100",
+        "GE_100"
+      ],
+      "condition_id": "prior_close_price",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "median of the prior 20 eligible regular sessions using only data available by the prior close",
+      "buckets": [
+        "LT_1M",
+        "1M_TO_10M",
+        "10M_TO_50M",
+        "50M_TO_250M",
+        "GE_250M",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "median_dollar_volume_20",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "annualized close-to-close realized volatility over the prior 20 eligible sessions, through prior close only",
+      "buckets": [
+        "LT_25PCT",
+        "25_TO_50PCT",
+        "50_TO_100PCT",
+        "GE_100PCT",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "realized_volatility_20",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "prior close versus prior-close SMA20/SMA50; no current-session bars",
+      "buckets": [
+        "UP",
+        "MIXED",
+        "DOWN",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "prior_trend_20_50",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "current regular open versus prior regular close; known at/after the open",
+      "buckets": [
+        "LT_2PCT",
+        "2_TO_5PCT",
+        "5_TO_10PCT",
+        "GE_10PCT"
+      ],
+      "condition_id": "absolute_gap_pct",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "frozen at 09:30 ET from observed 04:00..09:29 bars and exactly 20 prior eligible premarkets",
+      "buckets": [
+        "LT_2",
+        "2_TO_4",
+        "4_TO_8",
+        "GE_8",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "premarket_relvol_20",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "frozen at 09:30 ET from observed premarket bars only",
+      "buckets": [
+        "LT_250K",
+        "250K_TO_1M",
+        "1M_TO_5M",
+        "5M_TO_25M",
+        "GE_25M",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "premarket_dollar_volume",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "available only from 09:45 ET after bars stamped 09:30..09:44 are closed",
+      "buckets": [
+        "LT_1PCT",
+        "1_TO_2PCT",
+        "2_TO_4PCT",
+        "GE_4PCT",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "opening_range_width_pct",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "signal decision time, never the future entry/exit time",
+      "buckets": [
+        "0931_TO_0944",
+        "0945_TO_1000",
+        "1001_TO_1030",
+        "1031_TO_1130"
+      ],
+      "condition_id": "signal_time_et",
+      "selector_eligible": true
+    },
+    {
+      "asof_rule": "current observed premarket volume / maximum regular daily volume of exactly 252 prior eligible sessions",
+      "buckets": [
+        "LT_1",
+        "1_TO_1_5",
+        "1_5_TO_2",
+        "GE_2",
+        "UNAVAILABLE"
+      ],
+      "condition_id": "hvd_volume_ratio",
+      "selector_eligible": true
+    }
+  ],
+  "contract": "atlas-b35-a36-conditional-evidence-v1-pre-outcome",
+  "costs": {
+    "all_in_round_trip_grid_bps": [
+      0,
+      10,
+      25,
+      50,
+      100
+    ],
+    "application": "split equally across entry and exit and applied adversely by direction",
+    "execution_stress_cost_bps": 100,
+    "interpretation": "bar-only all-in spread/slippage/fee proxy; not a quote-level execution claim. Positive results must be shown across the full frozen cost grid.",
+    "selector_scoring_cost_bps": 50
+  },
+  "entry_exit": {
+    "entry": "After the frozen signal decision, submit at the next eligible regular-session minute. Fill at the first observed bar open within 5 minutes; if none, retain the fired opportunity as a no-entry liquidity/data outcome. Entry must preserve valid stop/target geometry. Only the first entry attempt per strategy/instrument/session is eligible.",
+    "exit_policies": [
+      {
+        "maximum_hold": "same_session",
+        "stop_anchor": "prior_regular_close",
+        "strategy_id": "b34_gap_continuation_v1",
+        "target_r_multiple": 2.0,
+        "time_exit_rule": "submit fixed time exit at 15:55 ET; use the first observed regular-session bar stamped 15:55..15:59 and fill at that bar open; otherwise mark unresolved"
+      },
+      {
+        "maximum_hold": "same_session",
+        "stop_anchor": "opposite_opening_range_boundary",
+        "strategy_id": "b34_opening_range_breakout_15m_v1",
+        "target_r_multiple": 2.0,
+        "time_exit_rule": "submit fixed time exit at 15:55 ET; use the first observed regular-session bar stamped 15:55..15:59 and fill at that bar open; otherwise mark unresolved"
+      },
+      {
+        "maximum_hold": "same_session",
+        "stop_anchor": "premarket_consolidation_low",
+        "strategy_id": "b34_premarket_relvol_consolidation_v1",
+        "target_r_multiple": 2.0,
+        "time_exit_rule": "submit fixed time exit at 15:55 ET; use the first observed regular-session bar stamped 15:55..15:59 and fill at that bar open; otherwise mark unresolved"
+      },
+      {
+        "maximum_hold": "same_session",
+        "stop_anchor": "premarket_consolidation_low",
+        "strategy_id": "b34_highest_volume_day_style_v1",
+        "target_r_multiple": 2.0,
+        "time_exit_rule": "submit fixed time exit at 15:55 ET; use the first observed regular-session bar stamped 15:55..15:59 and fill at that bar open; otherwise mark unresolved"
+      }
+    ],
+    "same_bar_stop_target_collision": "adverse_stop_first",
+    "stop_gap_rule": "if an observed bar opens beyond the stop, exit at that worse open",
+    "target_gap_rule": "target fills no better than the target price",
+    "target_r_multiple": 2.0,
+    "unresolved_policy": "never silently drop; report explicitly and exclude from completed-return claims"
+  },
+  "evidence_windows": {
+    "consumed_master": [
+      "2026-05-12",
+      "2026-08-11"
+    ],
+    "development_last_scoring_session": "2026-04-30",
+    "future_blind_min_complete_xnys_sessions": 63,
+    "future_blind_start_on_or_after": "2026-09-08",
+    "policy": "Development fitting and scored outcomes end 2026-04-30. The consumed master interval may never supply fitting labels or scored outcomes. Rows after development and before the future blind may be used only as fixed-feature warm-up for a future signal. Such warm-up is counted separately and cannot fit the selector, change a strategy, or contribute a return label."
+  },
+  "fingerprint": "7bfd1cfdd65e946d45caa99dd2a35a90d8b424cb82cad5941ad26cac51816c4c",
+  "multiplicity": {
+    "all_primary_trials_ledgered": true,
+    "benjamini_hochberg_primary_fdr_q": 0.05,
+    "deflated_sharpe_required_as_diagnostic": true,
+    "pbo_cscv_partitions": 16,
+    "pbo_required_as_diagnostic_when_evaluable": true,
+    "selector_lcb_quantile": 0.05,
+    "session_cluster_bootstrap_draws": 1000,
+    "unadjusted_condition_p_values_cannot_promote": true
+  },
+  "portfolio": {
+    "bound_a34_policy_fingerprint": "c6528b5619a0058131347715dae771474a7b37babda282856f5f53a430f792fa",
+    "event_order": "exits before new admissions at the same timestamp; stable tie-breaks",
+    "max_active_family_positions": 3,
+    "max_gross_exposure_fraction": 1.0,
+    "max_open_positions": 10,
+    "max_single_position_notional_fraction": 0.1,
+    "one_position_per_instrument": true,
+    "risk_fraction_of_equity_per_position": 0.0025,
+    "short_blocker": "borrow/locate/recall economics remain unavailable",
+    "short_portfolio_admission": false,
+    "short_signal_profiles": "research-only after separate outcome authorization",
+    "starting_equity_usd": 100000
+  },
+  "primary_condition_interactions": [
+    [
+      "prior_market_regime",
+      "realized_volatility_20"
+    ],
+    [
+      "prior_close_price",
+      "median_dollar_volume_20"
+    ],
+    [
+      "absolute_gap_pct",
+      "premarket_relvol_20"
+    ],
+    [
+      "absolute_gap_pct",
+      "opening_range_width_pct"
+    ]
+  ],
+  "reporting": [
+    "opportunities",
+    "unique_sessions",
+    "unique_instruments",
+    "win_rate",
+    "mean_and_median_net_return",
+    "mean_and_median_net_r",
+    "session_level_sharpe_and_deflated_sharpe",
+    "profit_factor",
+    "mfe_mae",
+    "holding_time",
+    "cost_drag",
+    "max_drawdown",
+    "turnover",
+    "gross_exposure",
+    "worst_day",
+    "loss_streak",
+    "pnl_concentration",
+    "abstention_rate",
+    "unresolved_rate",
+    "fold_stability"
+  ],
+  "robustness": {
+    "perturbation_cannot_replace_primary_frozen_strategy": true,
+    "perturbations": {
+      "all_in_round_trip_cost_bps": [
+        0,
+        10,
+        25,
+        50,
+        100
+      ],
+      "entry_delay_minutes": [
+        0,
+        1,
+        2
+      ],
+      "gap_threshold_multiplier": [
+        0.9,
+        1.0,
+        1.1
+      ],
+      "opening_range_minutes": [
+        14,
+        15,
+        16
+      ],
+      "premarket_consolidation_range_multiplier": [
+        0.9,
+        1.0,
+        1.1
+      ],
+      "premarket_relvol_threshold_multiplier": [
+        0.9,
+        1.0,
+        1.1
+      ]
+    },
+    "perturbations_are_diagnostic_only": true,
+    "report_losing_streak_and_pnl_concentration": true,
+    "session_bootstrap_draws_for_tail_and_drawdown": 10000
+  },
+  "selector": {
+    "eligible_score": "strictly greater than zero; otherwise abstain/cash",
+    "fallback_hierarchy": [
+      [
+        "strategy_id",
+        "prior_market_regime",
+        "realized_volatility_20",
+        "median_dollar_volume_20",
+        "setup_intensity"
+      ],
+      [
+        "strategy_id",
+        "prior_market_regime",
+        "realized_volatility_20",
+        "setup_intensity"
+      ],
+      [
+        "strategy_id",
+        "prior_market_regime",
+        "setup_intensity"
+      ],
+      [
+        "strategy_id",
+        "setup_intensity"
+      ],
+      [
+        "strategy_id"
+      ]
+    ],
+    "learning_may_recommend_never_self_promote": true,
+    "minimum_cell": {
+      "opportunities": 60,
+      "unique_instruments": 20,
+      "unique_sessions": 30
+    },
+    "ranking": "descending score, then stable strategy_id and instrument_id tie-breaks",
+    "same_session_outcomes_forbidden": true,
+    "score": "5th percentile of 1000 deterministic session-cluster bootstrap means of net risk-multiple at 50 bps all-in round trip cost, using training-fold outcomes only",
+    "setup_intensity_by_strategy": {
+      "b34_gap_continuation_v1": "absolute_gap_pct",
+      "b34_highest_volume_day_style_v1": "hvd_volume_ratio",
+      "b34_opening_range_breakout_15m_v1": "opening_range_width_pct",
+      "b34_premarket_relvol_consolidation_v1": "premarket_relvol_20"
+    }
+  },
+  "walk_forward": {
+    "condition_selector_fit_training_only": true,
+    "embargo_sessions": 1,
+    "rolling_train_sessions": 504,
+    "step_sessions": 63,
+    "strategy_parameters_refit": false,
+    "test_sessions": 63
+  }
+}
