@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from datetime import UTC, date, datetime
@@ -11,8 +12,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from packages.backtesting.b35_development_authorization import (
+    ensure_development_authorization,
+)
 from packages.backtesting.b35_development_replay import B35DevelopmentReplayEngine
 from packages.backtesting.b35_development_source import B35DevelopmentMinuteSource
+from packages.backtesting.b35_split_evidence import (
+    load_b35_split_evidence,
+    split_evidence_report,
+)
 from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings, load_settings
 from packages.data.alpaca_v2_acquisition import V2_DEFAULT_START
@@ -29,6 +37,13 @@ from packages.strategies.b35_conditional_evidence_contract import (
     B35_PREOUTCOME_FINGERPRINT,
     DEVELOPMENT_LAST_SCORING_SESSION,
 )
+
+
+def _stable_hash(payload: object) -> str:
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str).encode(
+        "utf-8"
+    )
+    return hashlib.sha256(raw).hexdigest()
 
 
 def _output_root(settings: AtlasSettings, start: date, end: date) -> Path:
@@ -51,7 +66,7 @@ def _trial(
     *,
     trial_id: str,
     disposition: StrategyTrialDisposition,
-    source_fingerprint: str,
+    input_fingerprint: str,
     run_fingerprint: str | None,
     outcomes_opened: bool,
     notes: tuple[str, ...],
@@ -71,7 +86,7 @@ def _trial(
             "b35_premarket_relvol_50bps_conditioned_expectancy",
             "b35_hvd_style_50bps_conditioned_expectancy",
         ),
-        input_fingerprint=source_fingerprint,
+        input_fingerprint=input_fingerprint,
         run_fingerprint=run_fingerprint,
         performance_outcomes_opened=outcomes_opened,
         master_protected_return_rows_read=0,
@@ -120,14 +135,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--source-only",
         action="store_true",
-        help="Plan the hash-bound pre-protected source and stop before any outcome is opened.",
+        help=(
+            "Validate the exact frozen minute plan and split evidence, then stop "
+            "before creating outcome authorization or opening any outcome."
+        ),
     )
     parser.add_argument(
         "--authorize-development-outcomes",
         action="store_true",
         help=(
-            "Explicitly open only the frozen B35 DEVELOPMENT outcomes through 2026-04-30. "
-            "This does not authorize master/future-blind reads, PAPER, LIVE, provider, or broker access."
+            "Create/verify the immutable hash-bound authorization and open only the "
+            "frozen B35 DEVELOPMENT outcomes through 2026-04-30. This does not "
+            "authorize master/future-blind reads, PAPER, LIVE, provider, or broker access."
         ),
     )
     return parser
@@ -146,6 +165,7 @@ def main(argv: list[str] | None = None) -> int:
     settings = load_settings(PROJECT_ROOT)
     source = B35DevelopmentMinuteSource(settings)
     plan = source.plan(args.start, args.end)
+    split_evidence = load_b35_split_evidence(source.layout)
     output_root = (
         Path(args.output_root).resolve()
         if args.output_root is not None
@@ -157,46 +177,82 @@ def main(argv: list[str] | None = None) -> int:
         output_root / "source_plan.json",
         json.dumps(source_report, indent=2, sort_keys=True, default=str) + "\n",
     )
+    atomic_write_text(
+        output_root / "split_evidence.json",
+        json.dumps(
+            split_evidence_report(split_evidence),
+            indent=2,
+            sort_keys=True,
+            default=str,
+        )
+        + "\n",
+    )
 
     print("ATLAS B35 Frozen DEVELOPMENT Conditional Replay")
     print(f"  scope: {args.start} -> {args.end}")
     print(f"  source units: {len(plan.units):,}")
     print(f"  source fingerprint: {plan.source_fingerprint}")
+    print(f"  split evidence fingerprint: {split_evidence.fingerprint}")
     print(f"  B35 contract fingerprint: {B35_PREOUTCOME_FINGERPRINT}")
     print("  consumed master rows permitted/read: 0 / 0")
     print("  future blind rows permitted/read: 0 / 0")
     print("  provider calls / broker reads / broker writes: 0 / 0 / 0")
     print("  PAPER / LIVE authority: false / false")
     if args.source_only:
+        print("  outcome authorization created: false")
         print("  outcomes opened: false (--source-only)")
         print(f"  source plan: {output_root / 'source_plan.json'}")
+        print(f"  split evidence: {output_root / 'split_evidence.json'}")
         return 0
+
+    authorization_path = output_root / "development_outcome_authorization.json"
+    authorization = ensure_development_authorization(
+        authorization_path,
+        plan=plan,
+        split_evidence=split_evidence,
+    )
+    authorization_id = str(authorization["authorization_id"])
+    input_fingerprint = _stable_hash(
+        {
+            "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
+            "source_fingerprint": plan.source_fingerprint,
+            "split_evidence_fingerprint": split_evidence.fingerprint,
+            "authorization_id": authorization_id,
+        }
+    )
 
     ledger = StrategyTrialLedger(
         Path(args.trial_ledger).resolve()
         if args.trial_ledger is not None
         else _ledger_path(settings)
     )
-    token = f"{args.start:%Y%m%d}_{args.end:%Y%m%d}.{plan.source_fingerprint[:12]}"
+    token = f"{args.start:%Y%m%d}_{args.end:%Y%m%d}.{input_fingerprint[:12]}"
     registration_id = f"b35.dev.{token}.registration"
     _append_once(
         ledger,
         _trial(
             trial_id=registration_id,
             disposition=StrategyTrialDisposition.REGISTERED,
-            source_fingerprint=plan.source_fingerprint,
+            input_fingerprint=input_fingerprint,
             run_fingerprint=None,
             outcomes_opened=False,
             notes=(
                 "Frozen B35 DEVELOPMENT outcome replay registered before first outcome calculation.",
+                f"Immutable DEVELOPMENT authorization: {authorization_id}.",
+                f"Split evidence fingerprint: {split_evidence.fingerprint}.",
                 "Scored source ends 2026-04-30; consumed master and future blind are structurally forbidden.",
                 "No provider/broker/PAPER/LIVE access or strategy promotion is authorized.",
             ),
         ),
     )
+    print(f"  immutable outcome authorization: {authorization_id}")
     print(f"  trial registered before outcomes: {registration_id}")
 
-    summary = B35DevelopmentReplayEngine(source).run(plan, output_root=output_root)
+    summary = B35DevelopmentReplayEngine(source).run(
+        plan,
+        output_root=output_root,
+        authorization=authorization,
+    )
     run_fingerprint = str(summary["run_fingerprint"])
     completion_id = f"b35.dev.{token}.completion"
     _append_once(
@@ -204,12 +260,13 @@ def main(argv: list[str] | None = None) -> int:
         _trial(
             trial_id=completion_id,
             disposition=StrategyTrialDisposition.COMPLETED,
-            source_fingerprint=plan.source_fingerprint,
+            input_fingerprint=input_fingerprint,
             run_fingerprint=run_fingerprint,
             outcomes_opened=True,
             notes=(
                 "Frozen B35 DEVELOPMENT compact opportunity/outcome materialization completed.",
                 f"Run fingerprint: {run_fingerprint}.",
+                f"Immutable DEVELOPMENT authorization: {authorization_id}.",
                 "Master-protected and future-blind rows read: 0.",
                 "No authority promotion; selector/profile evidence remains RESEARCH.",
             ),
