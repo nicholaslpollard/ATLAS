@@ -1,0 +1,90 @@
+.atlas-command-cell {
+  display: grid !important;
+  grid-template-columns: 38px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  column-gap: 11px;
+  padding-left: 17px !important;
+}
+
+.atlas-command-cell::before {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  align-self: center;
+  justify-self: center;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #0c4a66;
+  border-radius: 50%;
+  background: rgba(3, 20, 33, .86);
+  color: var(--atlas-cyan);
+  font-size: 16px;
+  line-height: 1;
+  box-shadow: inset 0 0 12px rgba(0, 174, 255, .05);
+}
+
+.atlas-command-cell:nth-child(1)::before { content: "↗"; color: var(--atlas-green); border-color: rgba(25, 227, 125, .42); }
+.atlas-command-cell:nth-child(2)::before { content: "♥"; color: var(--atlas-green); border-color: rgba(25, 227, 125, .42); font-size: 13px; }
+.atlas-command-cell:nth-child(3)::before { content: "◒"; color: #7fbfff; border-color: rgba(105, 174, 255, .42); }
+.atlas-command-cell:nth-child(4)::before { content: "▤"; color: var(--atlas-cyan); border-color: rgba(16, 199, 255, .42); font-size: 13px; }
+
+.atlas-command-label,
+.atlas-command-value {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.atlas-command-label {
+  align-self: end;
+}
+
+.atlas-command-value {
+  align-self: start;
+}
+
+.atlas-command-value[data-state="ok"] ~ * {
+  color: var(--atlas-green);
+}
+
+.atlas-command-clock {
+  position: relative;
+}
+
+.atlas-command-clock::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 1px;
+  background: #0a2b3c;
+}
+
+@media (max-width: 1250px) {
+  .atlas-command-cell {
+    grid-template-columns: 30px minmax(0, 1fr);
+    column-gap: 7px;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+  .atlas-command-cell::before {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 860px) {
+  .atlas-command-cell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .atlas-command-cell::before {
+    display: none;
+  }
+  .atlas-command-label,
+  .atlas-command-value {
+    grid-column: 1;
+  }
+}

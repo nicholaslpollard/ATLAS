@@ -1,0 +1,58 @@
+.atlas-domain-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 42px;
+  margin: -8px 0 14px;
+  padding: 0 5px;
+  border-bottom: 1px solid #0b3145;
+  overflow-x: auto;
+}
+
+.atlas-domain-tab {
+  position: relative;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: #718da0 !important;
+  font-size: 10px !important;
+  letter-spacing: .045em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.atlas-domain-tab:hover {
+  color: #cde8f3 !important;
+}
+
+.atlas-domain-tab.active {
+  color: var(--atlas-cyan) !important;
+}
+
+.atlas-domain-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--atlas-cyan);
+  box-shadow: 0 0 8px rgba(16, 199, 255, .55);
+}
+
+.atlas-page > [data-atlas-domain-tab][hidden] {
+  display: none !important;
+}
+
+@media (max-width: 860px) {
+  .atlas-domain-tabs {
+    margin-top: -2px;
+    padding-left: 0;
+  }
+  .atlas-domain-tab {
+    padding: 0 9px;
+    font-size: 9px !important;
+  }
+}
