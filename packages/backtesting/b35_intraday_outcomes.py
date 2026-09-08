@@ -4,7 +4,7 @@ import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime
 from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
@@ -26,7 +26,7 @@ from packages.strategies.intraday_opening_pack import IntradaySetupResult
 
 
 B35_INTRADAY_OUTCOME_CONTRACT = (
-    "atlas-b35-development-intraday-outcome-v1-next-minute-2r-adverse-collision"
+    "atlas-b35-development-intraday-outcome-v2-entry-notional-unresolved-preserved"
 )
 MARKET_TZ = ZoneInfo("America/New_York")
 
@@ -85,8 +85,6 @@ def _regular_session_bars(
             key=lambda bar: bar.timestamp_utc,
         )
     )
-    if not selected:
-        return ()
     previous = None
     for bar in selected:
         if previous is not None and bar.timestamp_utc <= previous:
@@ -105,8 +103,8 @@ def _signal_stamp(
             raise ValueError("B35 breakout timestamp must be timezone-aware")
         return stamp
     if setup.strategy_id == "b34_gap_continuation_v1" and regular:
-        # For sparse/no-trade opens, the current regular-session open is the
-        # first observed regular bar. Its information becomes usable at T+1.
+        # Sparse opens use the first observed regular bar. The entry can only be
+        # attempted on a later observed bar after this one closes.
         return regular[0].timestamp_utc
     return None
 
@@ -137,6 +135,14 @@ def _stop_anchor(setup: IntradaySetupResult, direction: StrategyDirection) -> fl
     return numeric
 
 
+def _gross_return(
+    *, direction: StrategyDirection, entry: float, exit_price: float
+) -> float:
+    if direction == StrategyDirection.LONG:
+        return (exit_price - entry) / entry
+    return (entry - exit_price) / entry
+
+
 def _net_return_with_cost(
     *,
     direction: StrategyDirection,
@@ -144,19 +150,27 @@ def _net_return_with_cost(
     exit_price: float,
     round_trip_cost_bps: float,
 ) -> float:
-    """Apply the frozen all-in cost half at entry and half at exit, adversely."""
+    """Apply half the frozen cost adversely at each side and normalize to entry capital."""
 
     half = round_trip_cost_bps / 20_000.0
     if direction == StrategyDirection.LONG:
         adverse_entry = entry * (1.0 + half)
         adverse_exit = exit_price * (1.0 - half)
-        return adverse_exit / adverse_entry - 1.0
+        return (adverse_exit - adverse_entry) / adverse_entry
     adverse_entry_proceeds = entry * (1.0 - half)
     adverse_cover = exit_price * (1.0 + half)
-    return adverse_entry_proceeds / adverse_cover - 1.0
+    return (adverse_entry_proceeds - adverse_cover) / adverse_entry_proceeds
 
 
-def _empty(
+def _excursion(
+    *, direction: StrategyDirection, entry: float, bar: CanonicalBar
+) -> tuple[float, float]:
+    if direction == StrategyDirection.LONG:
+        return (float(bar.high) - entry) / entry, (float(bar.low) - entry) / entry
+    return (entry - float(bar.low)) / entry, (entry - float(bar.high)) / entry
+
+
+def _noncomparable(
     *,
     setup: IntradaySetupResult,
     symbol: str,
@@ -165,48 +179,43 @@ def _empty(
     status: str,
     reasons: tuple[str, ...],
     signal_stamp: datetime | None = None,
+    entry_bar: CanonicalBar | None = None,
+    entry_price: float | None = None,
+    stop_price: float | None = None,
+    target_price: float | None = None,
+    mfe: float | None = None,
+    mae: float | None = None,
+    observed: int = 0,
 ) -> B35IntradayOutcome:
-    payload = {
+    fields = {
         "contract": B35_INTRADAY_OUTCOME_CONTRACT,
         "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
         "strategy_id": setup.strategy_id,
         "symbol": symbol,
         "session_date": session_date.isoformat(),
         "direction": direction.value,
+        "comparable": False,
         "status": status,
-        "reasons": reasons,
-        "signal_stamp": signal_stamp.isoformat() if signal_stamp is not None else None,
+        "reason_codes": reasons,
+        "signal_bar_timestamp_utc": signal_stamp.isoformat() if signal_stamp else None,
+        "entry_bar_timestamp_utc": entry_bar.timestamp_utc.isoformat() if entry_bar else None,
+        "entry_price": entry_price,
+        "stop_price": stop_price,
+        "target_price": target_price,
+        "exit_bar_timestamp_utc": None,
+        "exit_price": None,
+        "exit_reason": None,
+        "same_bar_collision_adverse_first": False,
+        "gross_directional_return": None,
+        "net_directional_returns_by_cost_bps": {},
+        "primary_50bps_net_directional_return": None,
+        "risk_multiple": None,
+        "maximum_favorable_excursion": mfe,
+        "maximum_adverse_excursion": mae,
+        "bars_observed_after_entry": observed,
     }
-    return B35IntradayOutcome(
-        contract=B35_INTRADAY_OUTCOME_CONTRACT,
-        b35_preoutcome_fingerprint=B35_PREOUTCOME_FINGERPRINT,
-        strategy_id=setup.strategy_id,
-        symbol=symbol,
-        session_date=session_date.isoformat(),
-        direction=direction.value,
-        comparable=False,
-        status=status,
-        reason_codes=reasons,
-        signal_bar_timestamp_utc=(
-            signal_stamp.isoformat() if signal_stamp is not None else None
-        ),
-        entry_bar_timestamp_utc=None,
-        entry_price=None,
-        stop_price=None,
-        target_price=None,
-        exit_bar_timestamp_utc=None,
-        exit_price=None,
-        exit_reason=None,
-        same_bar_collision_adverse_first=False,
-        gross_directional_return=None,
-        net_directional_returns_by_cost_bps={},
-        primary_50bps_net_directional_return=None,
-        risk_multiple=None,
-        maximum_favorable_excursion=None,
-        maximum_adverse_excursion=None,
-        bars_observed_after_entry=0,
-        outcome_fingerprint=_stable_hash(payload),
-    )
+    fingerprint = _stable_hash(fields)
+    return B35IntradayOutcome(**fields, outcome_fingerprint=fingerprint)
 
 
 def simulate_intraday_outcome(
@@ -225,10 +234,11 @@ def simulate_intraday_outcome(
         raise ValueError("B35 outcome simulation requires a ready fired B34 setup")
     if setup.session_date != session_date.isoformat():
         raise ValueError("B35 setup/session mismatch")
+
     direction = StrategyDirection(setup.direction)
     regular = _regular_session_bars(bars, session_date=session_date)
     if not regular:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
@@ -239,7 +249,7 @@ def simulate_intraday_outcome(
 
     signal_stamp = _signal_stamp(setup, regular)
     if signal_stamp is None:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
@@ -248,7 +258,7 @@ def simulate_intraday_outcome(
             reasons=("SIGNAL_BAR_TIMESTAMP_UNAVAILABLE",),
         )
     if signal_stamp.astimezone(MARKET_TZ).date() != session_date:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
@@ -260,7 +270,7 @@ def simulate_intraday_outcome(
 
     entry_candidates = [bar for bar in regular if bar.timestamp_utc > signal_stamp]
     if not entry_candidates:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
@@ -272,7 +282,7 @@ def simulate_intraday_outcome(
     entry_bar = entry_candidates[0]
     delay = (entry_bar.timestamp_utc - signal_stamp).total_seconds() / 60.0
     if delay > MAX_ENTRY_DELAY_MINUTES:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
@@ -281,10 +291,11 @@ def simulate_intraday_outcome(
             reasons=("NEXT_ENTRY_BAR_EXCEEDS_MAX_DELAY",),
             signal_stamp=signal_stamp,
         )
+
     entry = float(entry_bar.open)
     stop = _stop_anchor(setup, direction)
     if stop is None:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
@@ -302,7 +313,7 @@ def simulate_intraday_outcome(
         geometry_valid = stop > entry
         target = entry - TARGET_R_MULTIPLE * risk_per_share
     if not geometry_valid or risk_per_share <= 0 or target <= 0:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
@@ -329,14 +340,13 @@ def simulate_intraday_outcome(
             exit_reason = "TIME_EXIT"
             break
 
-        # Gap-through orders are resolved at the bar open before intrabar range
-        # ambiguity. Stops receive the worse open; targets receive no improvement.
+        # Resolve price gaps at the bar open before intrabar range ambiguity.
         if direction == StrategyDirection.LONG:
-            stop_gap = bar.open < stop
-            target_gap = bar.open > target
+            stop_gap = float(bar.open) < stop
+            target_gap = float(bar.open) > target
         else:
-            stop_gap = bar.open > stop
-            target_gap = bar.open < target
+            stop_gap = float(bar.open) > stop
+            target_gap = float(bar.open) < target
         if stop_gap:
             exit_bar = bar
             exit_price = float(bar.open)
@@ -349,11 +359,11 @@ def simulate_intraday_outcome(
             break
 
         if direction == StrategyDirection.LONG:
-            stop_hit = bar.low <= stop
-            target_hit = bar.high >= target
+            stop_hit = float(bar.low) <= stop
+            target_hit = float(bar.high) >= target
         else:
-            stop_hit = bar.high >= stop
-            target_hit = bar.low <= target
+            stop_hit = float(bar.high) >= stop
+            target_hit = float(bar.low) <= target
         if stop_hit and target_hit:
             exit_bar = bar
             exit_price = stop
@@ -371,31 +381,32 @@ def simulate_intraday_outcome(
             exit_reason = "TARGET_2R"
             break
 
-        if direction == StrategyDirection.LONG:
-            favorable = bar.high / entry - 1.0
-            adverse = bar.low / entry - 1.0
-        else:
-            favorable = entry / bar.low - 1.0
-            adverse = entry / bar.high - 1.0
+        favorable, adverse = _excursion(direction=direction, entry=entry, bar=bar)
         mfe = max(mfe, favorable)
         mae = min(mae, adverse)
 
     if exit_bar is None or exit_price is None or exit_reason is None:
-        return _empty(
+        return _noncomparable(
             setup=setup,
             symbol=symbol,
             session_date=session_date,
             direction=direction,
-            status="NONCOMPARABLE_UNRESOLVED_EXIT",
+            status="NONCOMPARABLE_UNRESOLVED_EXIT_AFTER_ENTRY",
             reasons=("NO_STOP_TARGET_OR_OBSERVED_TIME_EXIT",),
             signal_stamp=signal_stamp,
+            entry_bar=entry_bar,
+            entry_price=entry,
+            stop_price=stop,
+            target_price=target,
+            mfe=mfe,
+            mae=mae,
+            observed=observed,
         )
 
+    gross = _gross_return(direction=direction, entry=entry, exit_price=exit_price)
     if direction == StrategyDirection.LONG:
-        gross = exit_price / entry - 1.0
         r_multiple = (exit_price - entry) / risk_per_share
     else:
-        gross = entry / exit_price - 1.0
         r_multiple = (entry - exit_price) / risk_per_share
     mfe = max(mfe, gross)
     mae = min(mae, gross)
@@ -408,58 +419,35 @@ def simulate_intraday_outcome(
         )
         for cost_bps in ALL_IN_ROUND_TRIP_COST_GRID_BPS
     }
-    payload = {
+    fields = {
         "contract": B35_INTRADAY_OUTCOME_CONTRACT,
         "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
         "strategy_id": setup.strategy_id,
         "symbol": symbol,
         "session_date": session_date.isoformat(),
         "direction": direction.value,
-        "signal": signal_stamp,
-        "entry_bar": entry_bar.timestamp_utc,
-        "entry": entry,
-        "stop": stop,
-        "target": target,
-        "exit_bar": exit_bar.timestamp_utc,
-        "exit": exit_price,
+        "comparable": True,
+        "status": "EXITED",
+        "reason_codes": ("FROZEN_B35_OUTCOME_RESOLVED",),
+        "signal_bar_timestamp_utc": signal_stamp.isoformat(),
+        "entry_bar_timestamp_utc": entry_bar.timestamp_utc.isoformat(),
+        "entry_price": entry,
+        "stop_price": stop,
+        "target_price": target,
+        "exit_bar_timestamp_utc": exit_bar.timestamp_utc.isoformat(),
+        "exit_price": exit_price,
         "exit_reason": exit_reason,
-        "collision": collision,
-        "gross": gross,
-        "net": net,
-        "r_multiple": r_multiple,
-        "mfe": mfe,
-        "mae": mae,
-        "observed": observed,
+        "same_bar_collision_adverse_first": collision,
+        "gross_directional_return": gross,
+        "net_directional_returns_by_cost_bps": net,
+        "primary_50bps_net_directional_return": net["50"],
+        "risk_multiple": r_multiple,
+        "maximum_favorable_excursion": mfe,
+        "maximum_adverse_excursion": mae,
+        "bars_observed_after_entry": observed,
     }
-    fingerprint = _stable_hash(payload)
-    return B35IntradayOutcome(
-        contract=B35_INTRADAY_OUTCOME_CONTRACT,
-        b35_preoutcome_fingerprint=B35_PREOUTCOME_FINGERPRINT,
-        strategy_id=setup.strategy_id,
-        symbol=symbol,
-        session_date=session_date.isoformat(),
-        direction=direction.value,
-        comparable=True,
-        status="EXITED",
-        reason_codes=("FROZEN_B35_OUTCOME_RESOLVED",),
-        signal_bar_timestamp_utc=signal_stamp.isoformat(),
-        entry_bar_timestamp_utc=entry_bar.timestamp_utc.isoformat(),
-        entry_price=entry,
-        stop_price=stop,
-        target_price=target,
-        exit_bar_timestamp_utc=exit_bar.timestamp_utc.isoformat(),
-        exit_price=exit_price,
-        exit_reason=exit_reason,
-        same_bar_collision_adverse_first=collision,
-        gross_directional_return=gross,
-        net_directional_returns_by_cost_bps=net,
-        primary_50bps_net_directional_return=net["50"],
-        risk_multiple=r_multiple,
-        maximum_favorable_excursion=mfe,
-        maximum_adverse_excursion=mae,
-        bars_observed_after_entry=observed,
-        outcome_fingerprint=fingerprint,
-    )
+    fingerprint = _stable_hash(fields)
+    return B35IntradayOutcome(**fields, outcome_fingerprint=fingerprint)
 
 
 def outcome_to_dict(outcome: B35IntradayOutcome) -> dict[str, object]:

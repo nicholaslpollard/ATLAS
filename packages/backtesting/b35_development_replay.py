@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime, time, timedelta
@@ -43,7 +44,7 @@ from packages.strategies.intraday_opening_pack import (
 
 
 B35_DEVELOPMENT_REPLAY_CONTRACT = (
-    "atlas-b35-development-replay-v1-restartable-compact-opportunity-evidence"
+    "atlas-b35-development-replay-v2-self-hash-restartable-compact-evidence"
 )
 MARKET_TZ = ZoneInfo("America/New_York")
 
@@ -85,6 +86,10 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(4 * 1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _receipt_id(receipt: dict[str, object]) -> str:
+    return _stable_hash({key: value for key, value in receipt.items() if key != "receipt_id"})
 
 
 def _canonical_bars(frame: pd.DataFrame) -> tuple[CanonicalBar, ...]:
@@ -159,7 +164,7 @@ def _current_regular_open(
 
 
 def _split_epoch(split_dates: Sequence[date], session_date: date) -> float:
-    # Equality-only epoch token. It is intentionally not an adjustment ratio.
+    # Equality-only epoch token, intentionally not an adjustment ratio.
     return float(1 + sum(1 for item in split_dates if item <= session_date))
 
 
@@ -210,16 +215,16 @@ def _evaluate_setups(
     first_regular = _first_regular_bar(bars, session_date)
     if first_regular is None:
         return ()
-    # The B35 condition taxonomy requires a prior regular close. The first
-    # observed session for a provider-literal symbol is therefore warm-up only.
     prior = history.daily[-1] if history.daily else None
     if prior is None:
+        # Provider-literal first observation is warm-up: B35 context requires a
+        # prior regular close before any scored opportunity can be materialized.
         return ()
 
     current_open = float(first_regular.open)
     results: list[IntradaySetupResult] = []
     gap_decision = first_regular.timestamp_utc + timedelta(minutes=1)
-    if gap_decision.astimezone(MARKET_TZ).time() <= time(11, 30):
+    if gap_decision.astimezone(MARKET_TZ).time() <= time(11, 31):
         gap = evaluate_gap_continuation(
             session_date=session_date,
             prior_regular_close=float(prior.close),
@@ -232,6 +237,8 @@ def _evaluate_setups(
         if gap.ready and gap.fired:
             results.append(gap)
 
+    # B34 remains unchanged: its cutoff is the underlying bar stamp through
+    # 11:30. B35 later profiles the information-safe decision at bar+1 minute.
     opening = _first_fired(
         evaluate_opening_range_breakout,
         bars,
@@ -308,7 +315,10 @@ def _group_units(
     output: list[tuple[str, tuple[B35DevelopmentUnitBinding, ...]]] = []
     for symbols, units in groups.items():
         ordered = tuple(
-            sorted(units, key=lambda item: (item.year, item.month, item.unit_id))
+            sorted(
+                units,
+                key=lambda item: (item.year, item.month, item.batch_index, item.unit_id),
+            )
         )
         seen_months: set[tuple[int, int]] = set()
         for unit in ordered:
@@ -321,12 +331,19 @@ def _group_units(
         group_fingerprint = _stable_hash(
             {
                 "contract": B35_DEVELOPMENT_REPLAY_CONTRACT,
+                "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
                 "source_fingerprint": plan.source_fingerprint,
                 "split_evidence_fingerprint": split_evidence_fingerprint,
                 "authorization_id": authorization_id,
                 "symbols": symbols,
                 "units": [
-                    (unit.unit_id, unit.canonical_sha256, unit.year, unit.month)
+                    (
+                        unit.unit_id,
+                        unit.canonical_sha256,
+                        unit.year,
+                        unit.month,
+                        unit.batch_index,
+                    )
                     for unit in ordered
                 ],
             }
@@ -336,30 +353,48 @@ def _group_units(
     return tuple(output)
 
 
-def _completed_group(
-    receipt_path: Path,
+def _validate_strategy_counts(
+    counts: object, *, record_count: int
+) -> dict[str, dict[str, int]]:
+    if not isinstance(counts, dict):
+        raise B35DevelopmentReplayError("group receipt strategy counts are malformed")
+    normalized: dict[str, dict[str, int]] = {}
+    total_fired = 0
+    for strategy_id in B34_STRATEGY_IDS:
+        item = counts.get(strategy_id)
+        if not isinstance(item, dict):
+            raise B35DevelopmentReplayError("group receipt is missing strategy counts")
+        values: dict[str, int] = {}
+        for field in ("evaluated_fired", "comparable", "noncomparable"):
+            value = item.get(field)
+            if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                raise B35DevelopmentReplayError("group receipt strategy count is invalid")
+            values[field] = value
+        if values["comparable"] + values["noncomparable"] != values["evaluated_fired"]:
+            raise B35DevelopmentReplayError("group receipt strategy accounting does not reconcile")
+        total_fired += values["evaluated_fired"]
+        normalized[strategy_id] = values
+    if set(counts) != set(B34_STRATEGY_IDS):
+        raise B35DevelopmentReplayError("group receipt contains unexpected strategy ids")
+    if total_fired != record_count:
+        raise B35DevelopmentReplayError("group receipt record count does not reconcile")
+    return normalized
+
+
+def _validate_group_receipt(
+    receipt: dict[str, object],
     output_path: Path,
     *,
+    units: Sequence[B35DevelopmentUnitBinding],
     group_fingerprint: str,
     source_fingerprint: str,
     split_evidence_fingerprint: str,
     authorization_id: str,
-) -> dict[str, object] | None:
-    if not receipt_path.is_file():
-        if output_path.exists():
-            raise B35DevelopmentReplayError(
-                f"group output exists without completion receipt: {output_path}"
-            )
-        return None
-    try:
-        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise B35DevelopmentReplayError(f"invalid group receipt: {receipt_path}") from exc
-    if not isinstance(receipt, dict):
-        raise B35DevelopmentReplayError("group receipt is not an object")
+) -> str:
     required = {
         "contract": B35_DEVELOPMENT_REPLAY_CONTRACT,
         "status": "COMPLETE",
+        "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
         "group_fingerprint": group_fingerprint,
         "source_fingerprint": source_fingerprint,
         "split_evidence_fingerprint": split_evidence_fingerprint,
@@ -370,16 +405,80 @@ def _completed_group(
         "provider_calls": 0,
         "broker_reads": 0,
         "broker_writes": 0,
+        "paper_authority": False,
+        "live_authority": False,
+        "strategy_promotion": False,
+        "selector_promotion": False,
     }
     for field, expected in required.items():
         if receipt.get(field) != expected:
             raise B35DevelopmentReplayError(
                 f"group receipt {field} does not match the frozen run"
             )
+    expected_units = [
+        {
+            "unit_id": unit.unit_id,
+            "canonical_sha256": unit.canonical_sha256,
+            "year": unit.year,
+            "month": unit.month,
+            "batch_index": unit.batch_index,
+        }
+        for unit in units
+    ]
+    if receipt.get("unit_bindings") != expected_units or receipt.get("unit_count") != len(units):
+        raise B35DevelopmentReplayError("group receipt unit bindings drifted")
+    record_count = receipt.get("record_count")
+    if not isinstance(record_count, int) or isinstance(record_count, bool) or record_count < 0:
+        raise B35DevelopmentReplayError("group receipt record count is invalid")
+    _validate_strategy_counts(receipt.get("strategy_counts"), record_count=record_count)
+    actual_id = str(receipt.get("receipt_id") or "")
+    if len(actual_id) != 64 or actual_id != _receipt_id(receipt):
+        raise B35DevelopmentReplayError("group completion receipt is not self-hash bound")
     if not output_path.is_file():
         raise B35DevelopmentReplayError("completed group output is missing")
     if receipt.get("output_sha256") != _sha256_file(output_path):
         raise B35DevelopmentReplayError("completed group output SHA-256 drifted")
+    return actual_id
+
+
+def _completed_group(
+    receipt_path: Path,
+    output_path: Path,
+    *,
+    units: Sequence[B35DevelopmentUnitBinding],
+    group_fingerprint: str,
+    source_fingerprint: str,
+    split_evidence_fingerprint: str,
+    authorization_id: str,
+) -> dict[str, object] | None:
+    if not receipt_path.is_file():
+        if output_path.exists():
+            # Output publication happens before receipt publication. If a crash
+            # occurs in that gap, the output is untrusted derived data. Remove it
+            # and deterministically recompute; presence alone can never imply
+            # completion.
+            try:
+                output_path.unlink()
+            except OSError as exc:
+                raise B35DevelopmentReplayError(
+                    f"cannot remove orphan unreceipted group output: {output_path}"
+                ) from exc
+        return None
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise B35DevelopmentReplayError(f"invalid group receipt: {receipt_path}") from exc
+    if not isinstance(receipt, dict):
+        raise B35DevelopmentReplayError("group receipt is not an object")
+    _validate_group_receipt(
+        receipt,
+        output_path,
+        units=units,
+        group_fingerprint=group_fingerprint,
+        source_fingerprint=source_fingerprint,
+        split_evidence_fingerprint=split_evidence_fingerprint,
+        authorization_id=authorization_id,
+    )
     return receipt
 
 
@@ -417,6 +516,7 @@ class B35DevelopmentReplayEngine:
             existing = _completed_group(
                 receipt_path,
                 output_path,
+                units=units,
                 group_fingerprint=group_fingerprint,
                 source_fingerprint=plan.source_fingerprint,
                 split_evidence_fingerprint=split_evidence.fingerprint,
@@ -459,21 +559,15 @@ class B35DevelopmentReplayEngine:
                                     f"unit emitted symbol outside its frozen batch: {symbol}"
                                 )
                             if not isinstance(session_date, date):
-                                raise B35DevelopmentReplayError(
-                                    "session date is not a date"
-                                )
+                                raise B35DevelopmentReplayError("session date is not a date")
                             bars = _canonical_bars(session_frame)
                             current_open = _current_regular_open(bars, session_date)
                             if current_open is None:
                                 pm_volume = _premarket_volume(bars, session_date)
                                 if pm_volume is not None:
-                                    histories[symbol].append_premarket(
-                                        session_date, pm_volume
-                                    )
+                                    histories[symbol].append_premarket(session_date, pm_volume)
                                 continue
-                            symbol_splits = split_evidence.split_dates_by_symbol.get(
-                                symbol, ()
-                            )
+                            symbol_splits = split_evidence.split_dates_by_symbol.get(symbol, ())
                             current_epoch = _split_epoch(symbol_splits, session_date)
                             setups = _evaluate_setups(
                                 bars,
@@ -530,9 +624,7 @@ class B35DevelopmentReplayEngine:
 
                             pm_volume = _premarket_volume(bars, session_date)
                             if pm_volume is not None:
-                                histories[symbol].append_premarket(
-                                    session_date, pm_volume
-                                )
+                                histories[symbol].append_premarket(session_date, pm_volume)
                             summary = summarize_regular_session(
                                 bars,
                                 session_date=session_date,
@@ -540,16 +632,16 @@ class B35DevelopmentReplayEngine:
                             )
                             if summary is not None:
                                 histories[symbol].append_daily(summary)
+                    handle.flush()
+                    os.fsync(handle.fileno())
                 replace_with_retry(temp, output_path)
             except Exception:
                 temp.unlink(missing_ok=True)
                 raise
 
-            output_sha = _sha256_file(output_path)
             receipt: dict[str, object] = {
                 "contract": B35_DEVELOPMENT_REPLAY_CONTRACT,
                 "status": "COMPLETE",
-                "completed_at_utc": datetime.now(UTC).isoformat(),
                 "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
                 "source_fingerprint": plan.source_fingerprint,
                 "split_evidence_fingerprint": split_evidence.fingerprint,
@@ -557,11 +649,20 @@ class B35DevelopmentReplayEngine:
                 "group_fingerprint": group_fingerprint,
                 "symbols": list(units[0].symbols),
                 "unit_count": len(units),
-                "unit_ids": [unit.unit_id for unit in units],
+                "unit_bindings": [
+                    {
+                        "unit_id": unit.unit_id,
+                        "canonical_sha256": unit.canonical_sha256,
+                        "year": unit.year,
+                        "month": unit.month,
+                        "batch_index": unit.batch_index,
+                    }
+                    for unit in units
+                ],
                 "record_count": record_count,
                 "strategy_counts": counters,
                 "output_path": str(output_path),
-                "output_sha256": output_sha,
+                "output_sha256": _sha256_file(output_path),
                 "consumed_master_rows_read": 0,
                 "future_blind_rows_read": 0,
                 "provider_calls": 0,
@@ -569,10 +670,23 @@ class B35DevelopmentReplayEngine:
                 "broker_writes": 0,
                 "paper_authority": False,
                 "live_authority": False,
+                "strategy_promotion": False,
+                "selector_promotion": False,
             }
+            receipt["receipt_id"] = _receipt_id(receipt)
+            _validate_group_receipt(
+                receipt,
+                output_path,
+                units=units,
+                group_fingerprint=group_fingerprint,
+                source_fingerprint=plan.source_fingerprint,
+                split_evidence_fingerprint=split_evidence.fingerprint,
+                authorization_id=authorization_id,
+            )
             atomic_write_text(
                 receipt_path,
                 json.dumps(receipt, indent=2, sort_keys=True, default=str) + "\n",
+                fsync=True,
             )
             group_receipts.append(receipt)
 
@@ -585,20 +699,18 @@ class B35DevelopmentReplayEngine:
             }
             for strategy_id in B34_STRATEGY_IDS
         }
+        receipt_ids: list[str] = []
         for receipt in group_receipts:
-            counts = receipt.get("strategy_counts")
-            if not isinstance(counts, dict):
-                raise B35DevelopmentReplayError(
-                    "group receipt strategy counts are malformed"
-                )
+            receipt_id = str(receipt.get("receipt_id") or "")
+            if len(receipt_id) != 64 or receipt_id != _receipt_id(receipt):
+                raise B35DevelopmentReplayError("aggregate received an invalid group receipt id")
+            receipt_ids.append(receipt_id)
+            counts = _validate_strategy_counts(
+                receipt.get("strategy_counts"), record_count=int(receipt["record_count"])
+            )
             for strategy_id in B34_STRATEGY_IDS:
-                item = counts.get(strategy_id)
-                if not isinstance(item, dict):
-                    raise B35DevelopmentReplayError(
-                        "group receipt is missing strategy counts"
-                    )
                 for field in ("evaluated_fired", "comparable", "noncomparable"):
-                    aggregate[strategy_id][field] += int(item[field])
+                    aggregate[strategy_id][field] += counts[strategy_id][field]
 
         summary: dict[str, object] = {
             "contract": B35_DEVELOPMENT_REPLAY_CONTRACT,
@@ -614,6 +726,7 @@ class B35DevelopmentReplayEngine:
             "start_session": plan.start_session.isoformat(),
             "end_session": plan.end_session.isoformat(),
             "group_count": len(group_receipts),
+            "group_receipt_ids": sorted(receipt_ids),
             "source_unit_count": len(plan.units),
             "fired_opportunity_records": total_records,
             "strategy_counts": aggregate,
@@ -627,6 +740,7 @@ class B35DevelopmentReplayEngine:
             "paper_authority": False,
             "live_authority": False,
             "strategy_promotion": False,
+            "selector_promotion": False,
         }
         summary["run_fingerprint"] = _stable_hash(
             {key: value for key, value in summary.items() if key != "completed_at_utc"}
@@ -634,5 +748,6 @@ class B35DevelopmentReplayEngine:
         atomic_write_text(
             output_root / "summary.json",
             json.dumps(summary, indent=2, sort_keys=True, default=str) + "\n",
+            fsync=True,
         )
         return summary

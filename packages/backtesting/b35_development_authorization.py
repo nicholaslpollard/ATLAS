@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import time
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -18,7 +21,7 @@ from packages.strategies.b35_conditional_evidence_contract import (
 
 
 B35_DEVELOPMENT_AUTHORIZATION_CONTRACT = (
-    "atlas-b35-development-outcome-authorization-v1-immutable-pre-read"
+    "atlas-b35-development-outcome-authorization-v2-exclusive-immutable-pre-read"
 )
 B35_DEVELOPMENT_AUTHORIZATION_PURPOSE = (
     "B35_FROZEN_INTRADAY_CONDITIONAL_DEVELOPMENT_REPLAY"
@@ -37,7 +40,9 @@ def _stable_hash(payload: object) -> str:
 
 
 def _authorization_id(document: dict[str, object]) -> str:
-    return _stable_hash({key: value for key, value in document.items() if key != "authorization_id"})
+    return _stable_hash(
+        {key: value for key, value in document.items() if key != "authorization_id"}
+    )
 
 
 def _required_binding(
@@ -48,7 +53,7 @@ def _required_binding(
         "contract": B35_DEVELOPMENT_AUTHORIZATION_CONTRACT,
         "status": "AUTHORIZED_PENDING_DEVELOPMENT_OUTCOME_READ",
         "purpose": B35_DEVELOPMENT_AUTHORIZATION_PURPOSE,
-        "authorization_mechanism": "EXPLICIT_OPERATOR_CLI_FLAG",
+        "authorization_mechanism": "EXPLICIT_OPERATOR_CLI_FLAG_EXCLUSIVE_PUBLICATION",
         "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
         "b34_pack_fingerprint": B34_PACK_FINGERPRINT,
         "source_contract": plan.contract,
@@ -108,39 +113,103 @@ def validate_development_authorization(
     return actual_id
 
 
-def ensure_development_authorization(
+def _read_existing(
     path: Path,
     *,
     plan: B35DevelopmentSourcePlan,
     split_evidence: B35SplitEvidence,
 ) -> dict[str, object]:
-    path = path.resolve()
-    if path.is_file():
-        try:
-            document = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise B35DevelopmentAuthorizationError(
-                f"invalid existing B35 DEVELOPMENT authorization: {path}"
-            ) from exc
-        if not isinstance(document, dict):
-            raise B35DevelopmentAuthorizationError(
-                "existing B35 DEVELOPMENT authorization is not an object"
-            )
-        validate_development_authorization(
-            document,
-            plan=plan,
-            split_evidence=split_evidence,
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise B35DevelopmentAuthorizationError(
+            f"invalid existing B35 DEVELOPMENT authorization: {path}"
+        ) from exc
+    if not isinstance(document, dict):
+        raise B35DevelopmentAuthorizationError(
+            "existing B35 DEVELOPMENT authorization is not an object"
         )
-        return document
-
-    document = {
-        **_required_binding(plan, split_evidence),
-        "authorized_at_utc": datetime.now(UTC).isoformat(),
-    }
-    document["authorization_id"] = _authorization_id(document)
-    atomic_write_text(
-        path,
-        json.dumps(document, indent=2, sort_keys=True, default=str) + "\n",
-        fsync=True,
+    validate_development_authorization(
+        document,
+        plan=plan,
+        split_evidence=split_evidence,
     )
     return document
+
+
+def ensure_development_authorization(
+    path: Path,
+    *,
+    plan: B35DevelopmentSourcePlan,
+    split_evidence: B35SplitEvidence,
+    wait_seconds: float = 5.0,
+) -> dict[str, object]:
+    """Create exactly one immutable authorization under concurrent attempts.
+
+    A sibling O_EXCL claim serializes writers while the final JSON is published
+    atomically. Losers only accept the final file after full binding/self-hash
+    validation. A stranded/partial claim never grants authority.
+    """
+
+    path = path.resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        return _read_existing(path, plan=plan, split_evidence=split_evidence)
+
+    claim_path = path.with_name(path.name + ".claim")
+    deadline = time.monotonic() + max(0.1, wait_seconds)
+    while True:
+        try:
+            fd = os.open(claim_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            if path.is_file():
+                return _read_existing(path, plan=plan, split_evidence=split_evidence)
+            if time.monotonic() >= deadline:
+                raise B35DevelopmentAuthorizationError(
+                    "B35 DEVELOPMENT authorization publication claim is stranded; authority was not granted"
+                )
+            time.sleep(0.025)
+            continue
+
+        claim_token = uuid.uuid4().hex
+        try:
+            claim = {
+                "contract": B35_DEVELOPMENT_AUTHORIZATION_CONTRACT,
+                "status": "PUBLICATION_CLAIM_ONLY_NOT_AUTHORITY",
+                "token": claim_token,
+                "claimed_at_utc": datetime.now(UTC).isoformat(),
+                "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
+                "source_fingerprint": plan.source_fingerprint,
+                "split_evidence_fingerprint": split_evidence.fingerprint,
+            }
+            payload = (json.dumps(claim, sort_keys=True) + "\n").encode("utf-8")
+            os.write(fd, payload)
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+        try:
+            # Another process cannot legitimately publish while this claim is
+            # held. If a final file somehow appeared, validate it rather than
+            # replacing it.
+            if path.is_file():
+                return _read_existing(path, plan=plan, split_evidence=split_evidence)
+            document = {
+                **_required_binding(plan, split_evidence),
+                "authorized_at_utc": datetime.now(UTC).isoformat(),
+            }
+            document["authorization_id"] = _authorization_id(document)
+            atomic_write_text(
+                path,
+                json.dumps(document, indent=2, sort_keys=True, default=str) + "\n",
+                fsync=True,
+            )
+            return _read_existing(path, plan=plan, split_evidence=split_evidence)
+        finally:
+            try:
+                claim_path.unlink(missing_ok=True)
+            except OSError:
+                # A stale claim without a valid final file still grants no
+                # authority. With a valid final file, later callers validate the
+                # immutable final document before proceeding.
+                pass

@@ -27,7 +27,7 @@ from packages.strategies.intraday_opening_pack import IntradaySetupResult
 
 
 B35_DEVELOPMENT_CONTEXT_CONTRACT = (
-    "atlas-b35-development-context-v1-prior-only-raw-minute-derived"
+    "atlas-b35-development-context-v2-prior-only-split-clock-corrected"
 )
 MARKET_TZ = ZoneInfo("America/New_York")
 
@@ -38,8 +38,7 @@ class DailySessionSummary:
     close: float
     regular_volume: float
     dollar_volume: float
-    # This token is an equality-only split epoch, not an adjustment ratio. It
-    # changes whenever a provider-literal split is effective for the symbol.
+    # Equality-only split epoch token, never an adjustment ratio.
     split_factor: float | None = None
 
 
@@ -133,8 +132,7 @@ def _prior_window_split_free(
     if len(prior) < required:
         return False
     window = prior[-required:]
-    latest_factor = window[-1].split_factor
-    return split_free(window, current_factor=latest_factor)
+    return split_free(window, current_factor=window[-1].split_factor)
 
 
 def split_crossed_prior_close(
@@ -161,8 +159,8 @@ def _median_dollar_volume(prior: Sequence[DailySessionSummary]) -> float | None:
 
 
 def _realized_volatility(prior: Sequence[DailySessionSummary]) -> float | None:
-    # Twenty close-to-close returns require 21 already-completed sessions. Raw
-    # prices cannot cross a split epoch; such a window is explicitly unavailable.
+    # Twenty close-to-close returns require 21 already-completed closes, all in
+    # one raw-price split epoch.
     if len(prior) < 21 or not _prior_window_split_free(prior, 21):
         return None
     closes = [float(item.close) for item in prior[-21:]]
@@ -218,7 +216,9 @@ def _signal_time(setup: IntradaySetupResult) -> time:
         stamp = datetime.fromisoformat(raw.replace("Z", "+00:00"))
         if stamp.tzinfo is None or stamp.utcoffset() is None:
             raise ValueError("setup breakout timestamp must be timezone-aware")
-        # A bar stamped T is decision-safe at T+1 minute.
+        # B34 bar timestamps are left/start edges. A bar stamped T becomes
+        # information-safe at T+1 minute, so an 11:30 bar is a valid 11:31
+        # B35 decision.
         local = stamp.astimezone(MARKET_TZ)
         minute = local.minute + 1
         hour = local.hour
@@ -252,12 +252,13 @@ def build_condition_snapshot(
     prior_close = prior.close if prior is not None else None
     if prior_close is None or prior_close <= 0:
         raise ValueError("condition snapshot requires a prior regular close")
+
     crossed = split_crossed_prior_close(prior, current_factor=current_split_factor)
-    if crossed:
-        raise ValueError(
-            "condition snapshot refuses raw prior-close/current-open comparison across a split"
-        )
-    gap_pct = current_regular_open / prior_close - 1.0
+    if setup.strategy_id == "b34_gap_continuation_v1" and crossed:
+        # B34 itself is frozen to fail closed for gap continuation across a split.
+        raise ValueError("gap continuation cannot be profiled across a split-crossed prior close")
+    gap_pct = None if crossed else current_regular_open / prior_close - 1.0
+
     median_dv = _median_dollar_volume(prior_daily)
     realized = _realized_volatility(prior_daily)
     pm_relvol = setup.evidence.get("premarket_relvol")
@@ -267,6 +268,7 @@ def build_condition_snapshot(
     opening_width: float | None = None
     if range_high is not None and range_low is not None and current_regular_open > 0:
         opening_width = (float(range_high) - float(range_low)) / current_regular_open
+
     signal_time_value = signal_time_et_override or _signal_time(setup)
     signal_bucket = bucket_signal_time_et(signal_time_value)
     relvol_bucket = bucket_premarket_relvol_20(
@@ -276,11 +278,10 @@ def build_condition_snapshot(
         float(hvd_ratio) if hvd_ratio is not None else None
     )
     opening_bucket = bucket_opening_range_width_pct(opening_width)
+    gap_bucket = bucket_absolute_gap_pct(gap_pct)
+
     intensity_by_strategy = {
-        "b34_gap_continuation_v1": (
-            "absolute_gap_pct",
-            bucket_absolute_gap_pct(gap_pct),
-        ),
+        "b34_gap_continuation_v1": ("absolute_gap_pct", gap_bucket),
         "b34_opening_range_breakout_15m_v1": (
             "opening_range_width_pct",
             opening_bucket,
@@ -294,7 +295,10 @@ def build_condition_snapshot(
     if setup.strategy_id not in intensity_by_strategy:
         raise ValueError(f"unsupported B35 strategy: {setup.strategy_id}")
     intensity_dimension, intensity_bucket = intensity_by_strategy[setup.strategy_id]
-    split20 = _prior_window_split_free(prior_daily, 20)
+
+    # `split_free_20` is the audit flag for the 20-return realized-volatility
+    # feature, which correctly requires 21 completed closes.
+    split20 = _prior_window_split_free(prior_daily, 21)
     split252 = _prior_window_split_free(prior_daily, 252)
     values = {
         "contract": B35_DEVELOPMENT_CONTEXT_CONTRACT,
@@ -307,7 +311,7 @@ def build_condition_snapshot(
         "median_dollar_volume_20": bucket_median_dollar_volume_20(median_dv),
         "realized_volatility_20": bucket_realized_volatility_20(realized),
         "prior_trend_20_50": _trend(prior_daily),
-        "absolute_gap_pct": bucket_absolute_gap_pct(gap_pct),
+        "absolute_gap_pct": gap_bucket,
         "premarket_relvol_20": relvol_bucket,
         "premarket_dollar_volume": bucket_premarket_dollar_volume(
             _premarket_dollar_volume(bars, session_date)

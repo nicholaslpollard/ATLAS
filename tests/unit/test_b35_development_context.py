@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from packages.backtesting.b35_development_context import (
     DailySessionSummary,
     build_condition_snapshot,
@@ -55,8 +57,8 @@ def _history(count: int, *, factor: float = 1.0) -> list[DailySessionSummary]:
     ]
 
 
-def _opening_setup() -> IntradaySetupResult:
-    breakout = datetime(2026, 4, 30, 9, 45, tzinfo=ET).astimezone(UTC)
+def _opening_setup(*, hour: int = 9, minute: int = 45) -> IntradaySetupResult:
+    breakout = datetime(2026, 4, 30, hour, minute, tzinfo=ET).astimezone(UTC)
     return IntradaySetupResult(
         contract="b34",
         strategy_id="b34_opening_range_breakout_15m_v1",
@@ -70,6 +72,19 @@ def _opening_setup() -> IntradaySetupResult:
             "opening_range_low": 24.75,
             "breakout_bar_timestamp_utc": breakout.isoformat(),
         },
+    )
+
+
+def _gap_setup() -> IntradaySetupResult:
+    return IntradaySetupResult(
+        contract="b34",
+        strategy_id="b34_gap_continuation_v1",
+        session_date=DAY.isoformat(),
+        ready=True,
+        fired=True,
+        direction="LONG",
+        reason_codes=("GAP_THRESHOLD_MET",),
+        evidence={"prior_regular_close": 25.0, "current_regular_open": 26.0},
     )
 
 
@@ -98,6 +113,48 @@ def test_condition_snapshot_uses_prior_only_and_setup_evidence() -> None:
     assert snapshot.prior_trend_20_50 != "UNAVAILABLE"
 
 
+def test_1130_bar_is_profiled_at_information_safe_1131() -> None:
+    snapshot = build_condition_snapshot(
+        _opening_setup(hour=11, minute=30),
+        (_premarket_bar(9, 0, close=25.0, volume=10_000.0),),
+        symbol="TEST",
+        session_date=DAY,
+        prior_daily=_history(252),
+        current_regular_open=25.0,
+        current_split_factor=1.0,
+    )
+    assert snapshot.signal_time_et == "1031_TO_1131"
+
+
+def test_split_crossed_orb_keeps_snapshot_with_gap_unavailable() -> None:
+    history = _history(252, factor=1.0)
+    snapshot = build_condition_snapshot(
+        _opening_setup(),
+        (_premarket_bar(9, 0, close=50.0, volume=10_000.0),),
+        symbol="TEST",
+        session_date=DAY,
+        prior_daily=history,
+        current_regular_open=50.0,
+        current_split_factor=2.0,
+    )
+    assert snapshot.split_crossed_prior_close is True
+    assert snapshot.absolute_gap_pct == "UNAVAILABLE"
+    assert snapshot.setup_intensity_dimension == "opening_range_width_pct"
+
+
+def test_gap_continuation_still_fails_closed_across_split() -> None:
+    with pytest.raises(ValueError, match="gap continuation cannot be profiled"):
+        build_condition_snapshot(
+            _gap_setup(),
+            (),
+            symbol="TEST",
+            session_date=DAY,
+            prior_daily=_history(252, factor=1.0),
+            current_regular_open=50.0,
+            current_split_factor=2.0,
+        )
+
+
 def test_split_guards_fail_closed_when_epoch_changes() -> None:
     history = _history(20, factor=1.0)
     assert split_free(history, current_factor=1.0) is True
@@ -118,9 +175,12 @@ def test_split_guards_fail_closed_when_factor_is_missing() -> None:
     assert split_crossed_prior_close(history[-1], current_factor=1.0) is True
 
 
-def test_trend_is_unavailable_when_prior_window_crosses_split_epoch() -> None:
+def test_twenty_return_volatility_requires_21_split_safe_closes() -> None:
     history = _history(252, factor=1.0)
-    for index in range(len(history) - 30, len(history)):
+    # Only the final 20 closes are in the current epoch. The 21st close is still
+    # pre-split, so a 20-return realized-volatility calculation would cross the
+    # discontinuity and must remain unavailable.
+    for index in range(len(history) - 20, len(history)):
         item = history[index]
         history[index] = DailySessionSummary(
             session_date=item.session_date,
@@ -137,9 +197,8 @@ def test_trend_is_unavailable_when_prior_window_crosses_split_epoch() -> None:
         prior_daily=history,
         current_regular_open=25.0,
         current_split_factor=2.0,
-        prior_market_regime="UNAVAILABLE",
     )
-    assert snapshot.realized_volatility_20 != "UNAVAILABLE"
+    assert snapshot.realized_volatility_20 == "UNAVAILABLE"
+    assert snapshot.split_free_20 is False
     assert snapshot.prior_trend_20_50 == "UNAVAILABLE"
-    assert snapshot.split_free_20 is True
     assert snapshot.split_free_252 is False

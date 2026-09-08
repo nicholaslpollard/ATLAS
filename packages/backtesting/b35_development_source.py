@@ -4,24 +4,21 @@ import gzip
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import Iterator
+from zoneinfo import ZoneInfo
 
 import duckdb
 import pandas as pd
 
+from packages.core.market_calendar import MarketCalendar
 from packages.core.settings import AtlasSettings
-from packages.data.alpaca_v2_acquisition import ACQUISITION_CONTRACT
+from packages.data.alpaca_v2_acquisition import ACQUISITION_CONTRACT, UNIT_CONTRACT
 from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.data.intraday_semantics_audit import (
     ALPACA_V2_SOURCE_PREFIX,
-    B34_MASTER_PROTECTED_END,
-    B34_MASTER_PROTECTED_START,
     MINUTE_DATASET,
     MINUTE_TIMEFRAME,
-    MinuteUnit,
-    discover_minute_units,
 )
 from packages.strategies.b35_conditional_evidence_contract import (
     B35_PREOUTCOME_FINGERPRINT,
@@ -33,8 +30,9 @@ from packages.strategies.b35_conditional_evidence_contract import (
 
 
 B35_DEVELOPMENT_SOURCE_CONTRACT = (
-    "atlas-b35-development-minute-source-v1-hash-bound-preprotected-lazy-unit"
+    "atlas-b35-development-minute-source-v2-native-plan-exact-path-physical"
 )
+_COMPLETE_STATUSES = {"COMPLETE", "COMPLETE_WITH_QUARANTINE"}
 
 
 class B35DevelopmentSourceError(RuntimeError):
@@ -50,7 +48,12 @@ class B35DevelopmentUnitBinding:
     unit_id: str
     year: int
     month: int
+    batch_index: int
+    window_start: date
+    window_end_exclusive: date
     symbols: tuple[str, ...]
+    policy_sha256: str
+    universe_sha256: str
     canonical_path: Path
     canonical_sha256: str
     checkpoint_path: Path
@@ -87,20 +90,12 @@ def _stable_hash(payload: object) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _stable_json(payload: object) -> str:
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+
+
 def _month_key(value: date) -> tuple[int, int]:
     return value.year, value.month
-
-
-def _binding(unit: MinuteUnit) -> B35DevelopmentUnitBinding:
-    return B35DevelopmentUnitBinding(
-        unit_id=unit.unit_id,
-        year=unit.year,
-        month=unit.month,
-        symbols=unit.symbols,
-        canonical_path=unit.canonical_path.resolve(),
-        canonical_sha256=unit.canonical_sha256,
-        checkpoint_path=unit.checkpoint_path.resolve(),
-    )
 
 
 def _read_json_object(path: Path, label: str) -> dict[str, object]:
@@ -115,54 +110,78 @@ def _read_json_object(path: Path, label: str) -> dict[str, object]:
     return value
 
 
-def _expected_minute_units(
+def _assert_native_path(path: Path, *, expected: Path, root: Path, label: str) -> Path:
+    """Require the exact writer path and reject symlink/root escapes."""
+
+    expected = expected.absolute()
+    root = root.absolute()
+    path = path.absolute()
+    if path != expected:
+        raise B35DevelopmentSourceError(f"{label} is not the exact frozen native-unit path")
+    try:
+        relative = expected.relative_to(root)
+    except ValueError as exc:
+        raise B35DevelopmentSourceError(f"{label} escapes the isolated V2 root") from exc
+    cursor = root
+    if cursor.is_symlink():
+        raise B35DevelopmentSourceError(f"{label} V2 root is a symlink")
+    for part in relative.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise B35DevelopmentSourceError(f"{label} path contains a symlink: {cursor}")
+    resolved_root = root.resolve(strict=False)
+    resolved = expected.resolve(strict=False)
+    try:
+        resolved.relative_to(resolved_root)
+    except ValueError as exc:
+        raise B35DevelopmentSourceError(f"{label} resolves outside isolated V2 root") from exc
+    if resolved != expected.resolve(strict=False):
+        raise B35DevelopmentSourceError(f"{label} resolution drifted")
+    return expected
+
+
+def _load_frozen_minute_plan(
     layout: V2Layout,
     *,
     start_session: date,
     end_session: date,
-) -> tuple[dict[str, dict[str, object]], str, str]:
-    """Load the frozen native acquisition plan without touching market data."""
-
+) -> tuple[list[dict[str, object]], str, str]:
     manifest_path = layout.manifests / "native_acquisition_plan.json"
     plan_path = layout.manifests / "native_acquisition_plan.jsonl.gz"
     manifest = _read_json_object(manifest_path, "V2 native acquisition plan manifest")
-    required = {
+    for field, expected in {
         "contract": ACQUISITION_CONTRACT,
         "status": "FROZEN",
         "v1_ancestry": "FORBIDDEN",
-    }
-    for field, expected in required.items():
+    }.items():
         if manifest.get(field) != expected:
             raise B35DevelopmentSourceError(
                 f"V2 native acquisition plan {field} is not {expected!r}"
             )
-    recorded_path = Path(str(manifest.get("plan_path") or ""))
-    try:
-        if recorded_path.resolve() != plan_path.resolve():
-            raise B35DevelopmentSourceError(
-                "V2 native acquisition plan path does not resolve to the isolated V2 plan"
-            )
-    except OSError as exc:
-        raise B35DevelopmentSourceError("invalid V2 native acquisition plan path") from exc
+    recorded_plan_path = Path(str(manifest.get("plan_path") or "")).absolute()
+    _assert_native_path(
+        recorded_plan_path,
+        expected=plan_path,
+        root=layout.root,
+        label="native acquisition plan",
+    )
     if not plan_path.is_file():
         raise FileNotFoundError(f"missing frozen V2 native acquisition plan: {plan_path}")
-
     compressed_sha = _sha256_file(plan_path)
-    expected_compressed_sha = str(manifest.get("plan_file_sha256") or "")
-    if compressed_sha != expected_compressed_sha:
+    if compressed_sha != str(manifest.get("plan_file_sha256") or ""):
         raise B35DevelopmentSourceError("V2 native acquisition plan file SHA-256 drifted")
     try:
         raw = gzip.decompress(plan_path.read_bytes())
     except (OSError, EOFError) as exc:
         raise B35DevelopmentSourceError("V2 native acquisition plan gzip is unreadable") from exc
     raw_sha = _sha256_bytes(raw)
-    expected_raw_sha = str(manifest.get("plan_sha256") or "")
-    if raw_sha != expected_raw_sha:
+    if raw_sha != str(manifest.get("plan_sha256") or ""):
         raise B35DevelopmentSourceError("V2 native acquisition plan content SHA-256 drifted")
 
     start_month = _month_key(start_session)
     end_month = _month_key(end_session)
-    expected: dict[str, dict[str, object]] = {}
+    records: list[dict[str, object]] = []
+    seen: set[str] = set()
     for line_number, line in enumerate(raw.splitlines(), start=1):
         if not line.strip():
             continue
@@ -183,10 +202,12 @@ def _expected_minute_units(
         try:
             year = int(record["year"])
             month = int(record["month"])
+            batch_index = int(record["batch_index"])
+            window_start = date.fromisoformat(str(record["window_start"]))
+            window_end = date.fromisoformat(str(record["window_end_exclusive"]))
         except (KeyError, TypeError, ValueError) as exc:
-            raise B35DevelopmentSourceError("minute native plan year/month is invalid") from exc
-        key = (year, month)
-        if key < start_month or key > end_month:
+            raise B35DevelopmentSourceError("minute native plan identity is malformed") from exc
+        if (year, month) < start_month or (year, month) > end_month:
             continue
         if year > 2026 or (year == 2026 and month >= 5):
             raise B35DevelopmentSourceError(
@@ -194,86 +215,106 @@ def _expected_minute_units(
             )
         unit_id = str(record.get("unit_id") or "")
         symbols = tuple(str(value) for value in record.get("symbols") or [] if str(value))
-        if not unit_id or not symbols:
-            raise B35DevelopmentSourceError("minute native plan unit identity/symbols are incomplete")
-        if unit_id in expected:
-            raise B35DevelopmentSourceError("minute native plan contains duplicate unit identity")
-        expected[unit_id] = {
-            "unit_id": unit_id,
-            "year": year,
-            "month": month,
-            "symbols": symbols,
-        }
-    if not expected:
-        raise B35DevelopmentSourceError("frozen native plan selects no B35 DEVELOPMENT minute units")
-    return expected, raw_sha, compressed_sha
-
-
-def _validate_expected_coverage(
-    expected: dict[str, dict[str, object]],
-    discovered: tuple[MinuteUnit, ...],
-    *,
-    start_session: date,
-    end_session: date,
-) -> tuple[B35DevelopmentUnitBinding, ...]:
-    start_month = _month_key(start_session)
-    end_month = _month_key(end_session)
-    actual: dict[str, MinuteUnit] = {}
-    for unit in discovered:
-        key = (unit.year, unit.month)
-        if key < start_month or key > end_month:
-            continue
-        if unit.unit_id in actual:
-            raise B35DevelopmentSourceError("completed minute-unit identity is duplicated")
-        actual[unit.unit_id] = unit
-
-    missing = sorted(set(expected) - set(actual))
-    unexpected = sorted(set(actual) - set(expected))
-    if missing or unexpected:
-        detail = []
-        if missing:
-            detail.append(f"missing_expected={len(missing)} first={missing[:3]}")
-        if unexpected:
-            detail.append(f"unexpected_completed={len(unexpected)} first={unexpected[:3]}")
-        raise B35DevelopmentSourceError(
-            "B35 DEVELOPMENT minute coverage is not exact: " + "; ".join(detail)
-        )
-
-    selected: list[B35DevelopmentUnitBinding] = []
-    for unit_id in sorted(expected):
-        record = expected[unit_id]
-        unit = actual[unit_id]
+        policy_sha = str(record.get("policy_sha256") or "")
+        universe_sha = str(record.get("universe_sha256") or "")
         if (
-            unit.year != int(record["year"])
-            or unit.month != int(record["month"])
-            or unit.symbols != tuple(record["symbols"])
+            len(unit_id) != 64
+            or not symbols
+            or batch_index < 0
+            or len(policy_sha) != 64
+            or len(universe_sha) != 64
+            or window_start.year != year
+            or window_start.month != month
+            or window_end <= window_start
         ):
-            raise B35DevelopmentSourceError(
-                f"completed minute unit does not match its frozen plan: {unit_id}"
-            )
-        binding = _binding(unit)
-        if len(binding.canonical_sha256) != 64:
-            raise B35DevelopmentSourceError(
-                f"minute unit has no canonical SHA-256 binding: {binding.unit_id}"
-            )
-        selected.append(binding)
-    return tuple(
-        sorted(selected, key=lambda item: (item.year, item.month, item.symbols, item.unit_id))
+            raise B35DevelopmentSourceError("minute native plan unit binding is incomplete")
+        if unit_id in seen:
+            raise B35DevelopmentSourceError("minute native plan contains duplicate unit identity")
+        seen.add(unit_id)
+        records.append(record)
+    if not records:
+        raise B35DevelopmentSourceError("frozen native plan selects no B35 DEVELOPMENT minute units")
+    return records, raw_sha, compressed_sha
+
+
+def _binding_from_plan(layout: V2Layout, record: dict[str, object]) -> B35DevelopmentUnitBinding:
+    unit_id = str(record["unit_id"])
+    year = int(record["year"])
+    month = int(record["month"])
+    batch = int(record["batch_index"])
+    prefix = unit_id[:20]
+    partition = (
+        Path(f"year={year:04d}") / f"month={month:02d}" / f"batch={batch:04d}"
+    )
+    expected_checkpoint = (
+        layout.checkpoints / "native_units" / "1m" / partition / f"{prefix}.json"
+    ).absolute()
+    expected_canonical = (layout.canonical_minute / partition / f"{prefix}.parquet").absolute()
+    _assert_native_path(
+        expected_checkpoint,
+        expected=expected_checkpoint,
+        root=layout.root,
+        label="minute checkpoint",
+    )
+    _assert_native_path(
+        expected_canonical,
+        expected=expected_canonical,
+        root=layout.root,
+        label="canonical minute parquet",
+    )
+    checkpoint = _read_json_object(expected_checkpoint, "B35 minute checkpoint")
+    if checkpoint.get("contract") != UNIT_CONTRACT:
+        raise B35DevelopmentSourceError(f"minute checkpoint contract drifted: {unit_id}")
+    if str(checkpoint.get("status") or "") not in _COMPLETE_STATUSES:
+        raise B35DevelopmentSourceError(f"minute checkpoint is not accepted complete: {unit_id}")
+    if checkpoint.get("unit_id") != unit_id:
+        raise B35DevelopmentSourceError(f"minute checkpoint unit id drifted: {unit_id}")
+    if checkpoint.get("policy_sha256") != record.get("policy_sha256"):
+        raise B35DevelopmentSourceError(f"minute checkpoint policy binding drifted: {unit_id}")
+    if checkpoint.get("universe_sha256") != record.get("universe_sha256"):
+        raise B35DevelopmentSourceError(f"minute checkpoint universe binding drifted: {unit_id}")
+    if _stable_json(checkpoint.get("unit")) != _stable_json(record):
+        raise B35DevelopmentSourceError(f"minute checkpoint frozen unit body drifted: {unit_id}")
+    canonical = checkpoint.get("canonical")
+    if not isinstance(canonical, dict):
+        raise B35DevelopmentSourceError(f"minute checkpoint has no canonical binding: {unit_id}")
+    recorded_canonical = Path(str(canonical.get("path") or "")).absolute()
+    _assert_native_path(
+        recorded_canonical,
+        expected=expected_canonical,
+        root=layout.root,
+        label="canonical minute parquet",
+    )
+    canonical_sha = str(canonical.get("sha256") or "")
+    if len(canonical_sha) != 64:
+        raise B35DevelopmentSourceError(f"minute checkpoint has no canonical SHA-256: {unit_id}")
+    return B35DevelopmentUnitBinding(
+        unit_id=unit_id,
+        year=year,
+        month=month,
+        batch_index=batch,
+        window_start=date.fromisoformat(str(record["window_start"])),
+        window_end_exclusive=date.fromisoformat(str(record["window_end_exclusive"])),
+        symbols=tuple(str(value) for value in record.get("symbols") or []),
+        policy_sha256=str(record["policy_sha256"]),
+        universe_sha256=str(record["universe_sha256"]),
+        canonical_path=expected_canonical,
+        canonical_sha256=canonical_sha,
+        checkpoint_path=expected_checkpoint,
     )
 
 
 class B35DevelopmentMinuteSource:
-    """Read only accepted pre-protected V2 minute units for B35 DEVELOPMENT.
-
-    Planning verifies exact coverage against the immutable native acquisition plan
-    while reading metadata only. A canonical parquet is hash verified immediately
-    before that one unit is opened. No raw bundle, May-2026 partition, consumed
-    master, future blind, provider, or broker source is opened here.
-    """
+    """Hash-bound, exact-path, pre-protected V2 minute reader for B35 DEVELOPMENT."""
 
     def __init__(self, settings: AtlasSettings) -> None:
         self.settings = settings
         self.layout = V2Layout.beneath((settings.project_root / "data").resolve())
+        self.calendar = MarketCalendar(
+            exchange=settings.data.calendar.exchange,
+            market_tz=ZoneInfo(settings.data.calendar.market_timezone),
+        )
+        self.market_tz = ZoneInfo(settings.data.calendar.market_timezone)
 
     @staticmethod
     def validate_scope(start_session: date, end_session: date) -> None:
@@ -296,18 +337,19 @@ class B35DevelopmentMinuteSource:
         end_session: date = DEVELOPMENT_LAST_SCORING_SESSION,
     ) -> B35DevelopmentSourcePlan:
         self.validate_scope(start_session, end_session)
-        expected, native_plan_sha, native_plan_file_sha = _expected_minute_units(
+        records, native_plan_sha, native_plan_file_sha = _load_frozen_minute_plan(
             self.layout,
             start_session=start_session,
             end_session=end_session,
         )
-        discovered = discover_minute_units(self.layout)
-        selected = _validate_expected_coverage(
-            expected,
-            discovered,
-            start_session=start_session,
-            end_session=end_session,
+        bindings = tuple(
+            sorted(
+                (_binding_from_plan(self.layout, record) for record in records),
+                key=lambda item: (item.year, item.month, item.batch_index, item.unit_id),
+            )
         )
+        if len(bindings) != len(records):
+            raise B35DevelopmentSourceError("B35 exact native-plan coverage accounting drifted")
         payload = {
             "contract": B35_DEVELOPMENT_SOURCE_CONTRACT,
             "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
@@ -315,19 +357,24 @@ class B35DevelopmentMinuteSource:
             "end_session": end_session.isoformat(),
             "native_plan_sha256": native_plan_sha,
             "native_plan_file_sha256": native_plan_file_sha,
-            "expected_unit_count": len(expected),
             "units": [
                 {
                     "unit_id": item.unit_id,
                     "year": item.year,
                     "month": item.month,
+                    "batch_index": item.batch_index,
+                    "window_start": item.window_start.isoformat(),
+                    "window_end_exclusive": item.window_end_exclusive.isoformat(),
                     "symbols": item.symbols,
+                    "policy_sha256": item.policy_sha256,
+                    "universe_sha256": item.universe_sha256,
                     "canonical_path": str(item.canonical_path),
                     "canonical_sha256": item.canonical_sha256,
                     "checkpoint_path": str(item.checkpoint_path),
                 }
-                for item in selected
+                for item in bindings
             ],
+            "exact_native_path_confinement": True,
             "consumed_master_rows_permitted": 0,
             "future_blind_rows_permitted": 0,
             "provider_calls": 0,
@@ -339,18 +386,66 @@ class B35DevelopmentMinuteSource:
             b35_preoutcome_fingerprint=B35_PREOUTCOME_FINGERPRINT,
             start_session=start_session,
             end_session=end_session,
-            units=selected,
+            units=bindings,
             native_plan_sha256=native_plan_sha,
             native_plan_file_sha256=native_plan_file_sha,
             source_fingerprint=_stable_hash(payload),
         )
 
-    @staticmethod
-    def verify_unit(binding: B35DevelopmentUnitBinding) -> str:
+    def verify_unit(self, binding: B35DevelopmentUnitBinding) -> str:
         if binding.year > 2026 or (binding.year == 2026 and binding.month >= 5):
             raise B35DevelopmentSourceError(
                 "refusing to hash/open a minute unit in or after May 2026"
             )
+        prefix = binding.unit_id[:20]
+        partition = (
+            Path(f"year={binding.year:04d}")
+            / f"month={binding.month:02d}"
+            / f"batch={binding.batch_index:04d}"
+        )
+        expected_checkpoint = (
+            self.layout.checkpoints / "native_units" / "1m" / partition / f"{prefix}.json"
+        ).absolute()
+        expected_canonical = (
+            self.layout.canonical_minute / partition / f"{prefix}.parquet"
+        ).absolute()
+        _assert_native_path(
+            binding.checkpoint_path,
+            expected=expected_checkpoint,
+            root=self.layout.root,
+            label="minute checkpoint",
+        )
+        _assert_native_path(
+            binding.canonical_path,
+            expected=expected_canonical,
+            root=self.layout.root,
+            label="canonical minute parquet",
+        )
+        # Revalidate the checkpoint identity before every canonical open so a
+        # post-plan metadata replacement cannot redirect or rebind the unit.
+        checkpoint = _read_json_object(binding.checkpoint_path, "B35 minute checkpoint")
+        if (
+            checkpoint.get("contract") != UNIT_CONTRACT
+            or checkpoint.get("unit_id") != binding.unit_id
+            or str(checkpoint.get("status") or "") not in _COMPLETE_STATUSES
+            or checkpoint.get("policy_sha256") != binding.policy_sha256
+            or checkpoint.get("universe_sha256") != binding.universe_sha256
+        ):
+            raise B35DevelopmentSourceError(
+                f"minute checkpoint identity changed after planning: {binding.unit_id}"
+            )
+        canonical = checkpoint.get("canonical")
+        if not isinstance(canonical, dict):
+            raise B35DevelopmentSourceError("minute checkpoint canonical binding disappeared")
+        recorded_path = Path(str(canonical.get("path") or "")).absolute()
+        _assert_native_path(
+            recorded_path,
+            expected=expected_canonical,
+            root=self.layout.root,
+            label="canonical minute parquet",
+        )
+        if canonical.get("sha256") != binding.canonical_sha256:
+            raise B35DevelopmentSourceError("minute checkpoint canonical hash binding changed")
         if not binding.canonical_path.is_file():
             raise FileNotFoundError(
                 f"missing B35 canonical minute unit: {binding.canonical_path}"
@@ -362,60 +457,129 @@ class B35DevelopmentMinuteSource:
             )
         return actual
 
-    @staticmethod
+    def _calendar_frame(self, binding: B35DevelopmentUnitBinding) -> pd.DataFrame:
+        rows: list[dict[str, object]] = []
+        end = binding.window_end_exclusive - timedelta(days=1)
+        for session in self.calendar.sessions_in_range(binding.window_start, end):
+            regular_open, regular_close = self.calendar.regular_open_close(session)
+            pre_start = datetime.combine(session, time(4, 0), self.market_tz).astimezone(
+                regular_open.tzinfo
+            )
+            after_end = datetime.combine(session, time(20, 0), self.market_tz).astimezone(
+                regular_open.tzinfo
+            )
+            rows.append(
+                {
+                    "session_date": session,
+                    "premarket_start_utc": pre_start,
+                    "regular_open_utc": regular_open,
+                    "regular_close_utc": regular_close,
+                    "after_hours_end_utc": after_end,
+                }
+            )
+        return pd.DataFrame(rows)
+
     def load_unit(
+        self,
         binding: B35DevelopmentUnitBinding,
         *,
         start_session: date,
         end_session: date,
     ) -> pd.DataFrame:
-        B35DevelopmentMinuteSource.validate_scope(start_session, end_session)
+        self.validate_scope(start_session, end_session)
         if (binding.year, binding.month) < _month_key(start_session) or (
             binding.year,
             binding.month,
         ) > _month_key(end_session):
             raise B35DevelopmentSourceError("unit lies outside the requested B35 scope")
-        B35DevelopmentMinuteSource.verify_unit(binding)
+        self.verify_unit(binding)
+        calendar_frame = self._calendar_frame(binding)
+        if calendar_frame.empty:
+            raise B35DevelopmentSourceError("minute unit month contains no accepted exchange sessions")
+
         con = duckdb.connect(":memory:")
         con.execute("SET TimeZone='UTC'")
+        con.register("b35_calendar", calendar_frame)
+        symbol_placeholders = ",".join("?" for _ in binding.symbols)
+        exact_source_id = ALPACA_V2_SOURCE_PREFIX + binding.unit_id
         try:
-            stats = con.execute(
-                """
+            physical_sql = f"""
                 SELECT
-                    count(*) AS rows,
+                    count(*)::BIGINT AS rows,
                     count(*) FILTER (
-                        WHERE session_date > ?
-                           OR session_date BETWEEN ? AND ?
-                           OR session_date >= ?
-                    ) AS forbidden_rows,
-                    count(*) FILTER (
-                        WHERE provider <> 'alpaca'
-                           OR dataset <> ?
-                           OR timeframe <> ?
-                           OR is_adjusted <> FALSE
-                           OR source_id NOT LIKE ?
-                           OR timestamp_utc <> provider_timestamp_utc
+                        WHERE session_date IS NULL
+                           OR session_date < ? OR session_date >= ?
+                           OR symbol IS NULL OR symbol NOT IN ({symbol_placeholders})
+                           OR provider IS DISTINCT FROM 'alpaca'
+                           OR dataset IS DISTINCT FROM ?
+                           OR timeframe IS DISTINCT FROM ?
+                           OR is_adjusted IS DISTINCT FROM FALSE
+                           OR source_id IS DISTINCT FROM ?
+                           OR timestamp_utc IS NULL OR provider_timestamp_utc IS NULL
+                           OR timestamp_utc IS DISTINCT FROM provider_timestamp_utc
+                           OR date_trunc('minute', timestamp_utc) IS DISTINCT FROM timestamp_utc
+                           OR open IS NULL OR high IS NULL OR low IS NULL OR close IS NULL
+                           OR volume IS NULL
+                           OR NOT isfinite(CAST(open AS DOUBLE))
+                           OR NOT isfinite(CAST(high AS DOUBLE))
+                           OR NOT isfinite(CAST(low AS DOUBLE))
+                           OR NOT isfinite(CAST(close AS DOUBLE))
+                           OR NOT isfinite(CAST(volume AS DOUBLE))
                            OR open <= 0 OR high <= 0 OR low <= 0 OR close <= 0
                            OR volume < 0
                            OR high < greatest(open, close)
                            OR low > least(open, close)
                            OR high < low
-                    ) AS invalid_rows
+                           OR (vwap IS NOT NULL AND (
+                                  NOT isfinite(CAST(vwap AS DOUBLE)) OR vwap <= 0
+                              ))
+                           OR (transaction_count IS NOT NULL AND transaction_count < 0)
+                    )::BIGINT AS invalid_physical_rows
                 FROM read_parquet(?, hive_partitioning=false)
-                WHERE session_date BETWEEN ? AND ?
+            """
+            params: list[object] = [
+                binding.window_start,
+                binding.window_end_exclusive,
+                *binding.symbols,
+                MINUTE_DATASET,
+                MINUTE_TIMEFRAME,
+                exact_source_id,
+                str(binding.canonical_path),
+            ]
+            physical = con.execute(physical_sql, params).fetchone()
+            duplicate = con.execute(
+                """
+                SELECT count(*)::BIGINT
+                FROM (
+                    SELECT symbol, timestamp_utc, timeframe, session_segment, count(*) AS n
+                    FROM read_parquet(?, hive_partitioning=false)
+                    GROUP BY symbol, timestamp_utc, timeframe, session_segment
+                    HAVING count(*) > 1
+                )
                 """,
-                [
-                    DEVELOPMENT_LAST_SCORING_SESSION,
-                    B34_MASTER_PROTECTED_START,
-                    B34_MASTER_PROTECTED_END,
-                    FUTURE_BLIND_START_ON_OR_AFTER,
-                    MINUTE_DATASET,
-                    MINUTE_TIMEFRAME,
-                    ALPACA_V2_SOURCE_PREFIX + "%",
-                    str(binding.canonical_path),
-                    start_session,
-                    end_session,
-                ],
+                [str(binding.canonical_path)],
+            ).fetchone()
+            segment = con.execute(
+                """
+                SELECT count(*)::BIGINT
+                FROM read_parquet(?, hive_partitioning=false) p
+                LEFT JOIN b35_calendar c USING (session_date)
+                WHERE c.session_date IS NULL
+                   OR p.session_segment IS NULL
+                   OR CASE
+                        WHEN p.timestamp_utc >= c.premarket_start_utc
+                         AND p.timestamp_utc < c.regular_open_utc
+                            THEN p.session_segment <> 'premarket'
+                        WHEN p.timestamp_utc >= c.regular_open_utc
+                         AND p.timestamp_utc < c.regular_close_utc
+                            THEN p.session_segment <> 'regular'
+                        WHEN p.timestamp_utc >= c.regular_close_utc
+                         AND p.timestamp_utc < c.after_hours_end_utc
+                            THEN p.session_segment <> 'after_hours'
+                        ELSE TRUE
+                      END
+                """,
+                [str(binding.canonical_path)],
             ).fetchone()
             frame = con.execute(
                 """
@@ -432,30 +596,34 @@ class B35DevelopmentMinuteSource:
             ) from exc
         finally:
             con.close()
-        assert stats is not None
-        if int(stats[1]) != 0:
-            raise B35DevelopmentSourceError("B35 unit query exposed forbidden-date rows")
-        if int(stats[2]) != 0:
-            raise B35DevelopmentSourceError("B35 unit contains invalid canonical minute rows")
-        if int(stats[0]) != len(frame):
-            raise B35DevelopmentSourceError("B35 unit row accounting mismatch")
+
+        if physical is None or int(physical[1]) != 0:
+            raise B35DevelopmentSourceError("B35 canonical unit contains invalid physical rows")
+        if duplicate is None or int(duplicate[0]) != 0:
+            raise B35DevelopmentSourceError("B35 canonical unit contains duplicate minute keys")
+        if segment is None or int(segment[0]) != 0:
+            raise B35DevelopmentSourceError("B35 canonical unit contains incorrect session labels")
         return frame
 
     def iter_unit_frames(
-        self,
-        plan: B35DevelopmentSourcePlan,
-    ) -> Iterator[tuple[B35DevelopmentUnitBinding, pd.DataFrame]]:
+        self, plan: B35DevelopmentSourcePlan
+    ) -> tuple[tuple[B35DevelopmentUnitBinding, pd.DataFrame], ...]:
         if plan.contract != B35_DEVELOPMENT_SOURCE_CONTRACT:
             raise B35DevelopmentSourceError("B35 source-plan contract mismatch")
         if plan.b35_preoutcome_fingerprint != B35_PREOUTCOME_FINGERPRINT:
             raise B35DevelopmentSourceError("B35 source-plan pre-outcome fingerprint drifted")
         self.validate_scope(plan.start_session, plan.end_session)
-        for binding in plan.units:
-            yield binding, self.load_unit(
+        return tuple(
+            (
                 binding,
-                start_session=plan.start_session,
-                end_session=plan.end_session,
+                self.load_unit(
+                    binding,
+                    start_session=plan.start_session,
+                    end_session=plan.end_session,
+                ),
             )
+            for binding in plan.units
+        )
 
     @staticmethod
     def report(plan: B35DevelopmentSourcePlan) -> dict[str, object]:
@@ -465,15 +633,16 @@ class B35DevelopmentMinuteSource:
             "status": "PLANNED_PROTECTED_SAFE",
             "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
             "source_fingerprint": plan.source_fingerprint,
+            "native_plan_sha256": plan.native_plan_sha256,
+            "native_plan_file_sha256": plan.native_plan_file_sha256,
             "start_session": plan.start_session.isoformat(),
             "end_session": plan.end_session.isoformat(),
             "unit_count": len(plan.units),
             "month_count": len(months),
             "months": months,
-            "native_plan_sha256": plan.native_plan_sha256,
-            "native_plan_file_sha256": plan.native_plan_file_sha256,
-            "expected_unit_coverage_exact": True,
+            "exact_native_path_confinement": True,
             "lazy_hash_verification": True,
+            "physical_row_validation": True,
             "raw_bundles_opened": 0,
             "consumed_master_interval": [
                 CONSUMED_MASTER_START.isoformat(),
