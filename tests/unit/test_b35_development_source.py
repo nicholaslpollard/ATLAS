@@ -3,7 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,14 +17,30 @@ from packages.backtesting.b35_development_source import (
     B35DevelopmentScopeError,
     B35DevelopmentSourceError,
 )
-from packages.data.alpaca_v2_acquisition import ACQUISITION_CONTRACT, UNIT_CONTRACT
+from packages.data.alpaca_v2_acquisition import (
+    ACQUISITION_CONTRACT,
+    UNIT_CONTRACT,
+    build_native_plan,
+)
 from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.data.intraday_semantics_audit import ALPACA_V2_SOURCE_PREFIX
 
 
-UNIT_ID = "a" * 64
 POLICY_SHA = "b" * 64
 UNIVERSE_SHA = "c" * 64
+NATIVE_UNIT = next(
+    item
+    for item in build_native_plan(
+        symbols=["TEST"],
+        start=date(2026, 4, 1),
+        cutoff=date(2026, 4, 30),
+        universe_sha256=UNIVERSE_SHA,
+        policy_sha256=POLICY_SHA,
+        batch_size=1,
+    )
+    if item.canonical_timeframe == "1m"
+)
+UNIT_ID = NATIVE_UNIT.unit_id
 
 
 def _settings(tmp_path: Path) -> SimpleNamespace:
@@ -40,19 +56,9 @@ def _settings(tmp_path: Path) -> SimpleNamespace:
 
 
 def _record() -> dict[str, object]:
-    return {
-        "unit_id": UNIT_ID,
-        "provider_timeframe": "1Min",
-        "canonical_timeframe": "1m",
-        "window_start": "2026-04-01",
-        "window_end_exclusive": "2026-05-01",
-        "year": 2026,
-        "month": 4,
-        "batch_index": 0,
-        "symbols": ["TEST"],
-        "universe_sha256": UNIVERSE_SHA,
-        "policy_sha256": POLICY_SHA,
-    }
+    # Round-trip through JSON exactly as the persisted acquisition-plan JSONL does:
+    # dataclass tuples become JSON arrays/lists before B35 reads the record.
+    return json.loads(json.dumps(asdict(NATIVE_UNIT)))
 
 
 def _paths(layout: V2Layout) -> tuple[Path, Path]:
@@ -63,7 +69,13 @@ def _paths(layout: V2Layout) -> tuple[Path, Path]:
     return checkpoint, canonical
 
 
-def _write_valid_parquet(path: Path, *, session_segment: str = "regular", adjusted: object = False, duplicate: bool = False) -> None:
+def _write_valid_parquet(
+    path: Path,
+    *,
+    session_segment: str = "regular",
+    adjusted: object = False,
+    duplicate: bool = False,
+) -> None:
     stamp = datetime(2026, 4, 30, 13, 30, tzinfo=UTC)  # 09:30 ET
     rows = [
         {
@@ -130,7 +142,10 @@ def _write_fixture(
                     "policy_sha256": POLICY_SHA,
                     "universe_sha256": UNIVERSE_SHA,
                     "canonical": {"path": str(canonical), "sha256": canonical_sha},
-                    "raw_bundle": {"path": "not-opened-by-b35", "sha256": "d" * 64},
+                    "raw_bundle": {
+                        "path": "not-opened-by-b35",
+                        "sha256": "d" * 64,
+                    },
                 },
                 indent=2,
                 sort_keys=True,
@@ -243,7 +258,9 @@ def test_load_unit_accepts_exact_valid_physical_rows(tmp_path: Path) -> None:
     ],
 )
 def test_load_unit_rejects_malformed_physical_rows(
-    tmp_path: Path, kwargs: dict[str, object], message: str
+    tmp_path: Path,
+    kwargs: dict[str, object],
+    message: str,
 ) -> None:
     source = _write_fixture(tmp_path, **kwargs)
     binding = source.plan(date(2026, 4, 1), date(2026, 4, 30)).units[0]
