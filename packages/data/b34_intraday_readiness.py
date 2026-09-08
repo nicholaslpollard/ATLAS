@@ -185,7 +185,7 @@ def run_b34_source_readiness(project_root: Path) -> dict[str, object]:
             "governed_performance_accessed": False,
         },
         "b34_package_ready_for_repository_acceptance": source_ready,
-        "b35_full_minute_materialization_authority": False,
+        "broad_minute_materialization_authority": False,
         "paper_authority": False,
         "live_authority": False,
         "provider_calls": 0,
