@@ -75,6 +75,18 @@ def test_split_evidence_rejects_corporate_action_hash_drift(tmp_path: Path) -> N
         load_b35_split_evidence(layout)
 
 
+def test_split_evidence_rejects_symlinked_corporate_action_source(tmp_path: Path) -> None:
+    layout, actions_path = _write_fixture(tmp_path)
+    external = tmp_path / "outside-actions.jsonl.gz"
+    actions_path.replace(external)
+    try:
+        actions_path.symlink_to(external)
+    except OSError:
+        pytest.skip("symlink creation is not permitted on this platform")
+    with pytest.raises(B35SplitEvidenceError, match="symlink"):
+        load_b35_split_evidence(layout)
+
+
 def test_split_evidence_rejects_incomplete_source_snapshot(tmp_path: Path) -> None:
     layout, _actions_path = _write_fixture(tmp_path)
     snapshot_path = layout.manifests / "source_snapshot.json"

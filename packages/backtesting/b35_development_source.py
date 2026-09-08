@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
+from typing import Iterator
 from zoneinfo import ZoneInfo
 
 import duckdb
@@ -96,6 +97,78 @@ def _stable_json(payload: object) -> str:
 
 def _month_key(value: date) -> tuple[int, int]:
     return value.year, value.month
+
+
+_NATIVE_PLAN_KEYS = {
+    "unit_id",
+    "provider_timeframe",
+    "canonical_timeframe",
+    "window_start",
+    "window_end_exclusive",
+    "year",
+    "month",
+    "batch_index",
+    "symbols",
+    "universe_sha256",
+    "policy_sha256",
+}
+
+
+def _exact_int(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _validate_native_plan_record(record: dict[str, object], line_number: int) -> None:
+    if set(record) != _NATIVE_PLAN_KEYS:
+        raise B35DevelopmentSourceError(
+            f"native acquisition plan line {line_number} schema drifted"
+        )
+    if not isinstance(record["unit_id"], str) or len(record["unit_id"]) != 64:
+        raise B35DevelopmentSourceError("native acquisition unit id is malformed")
+    if not isinstance(record["provider_timeframe"], str) or not isinstance(
+        record["canonical_timeframe"], str
+    ):
+        raise B35DevelopmentSourceError("native acquisition timeframe schema drifted")
+    if not isinstance(record["window_start"], str) or not isinstance(
+        record["window_end_exclusive"], str
+    ):
+        raise B35DevelopmentSourceError("native acquisition window schema drifted")
+    if not _exact_int(record["year"]) or not _exact_int(record["batch_index"]):
+        raise B35DevelopmentSourceError("native acquisition integer schema drifted")
+    if record["month"] is not None and not _exact_int(record["month"]):
+        raise B35DevelopmentSourceError("native acquisition month schema drifted")
+    symbols = record["symbols"]
+    if (
+        not isinstance(symbols, list)
+        or not symbols
+        or any(not isinstance(item, str) or not item for item in symbols)
+        or symbols != sorted(set(symbols))
+    ):
+        raise B35DevelopmentSourceError("native acquisition symbol schema drifted")
+    for field in ("universe_sha256", "policy_sha256"):
+        if not isinstance(record[field], str) or len(str(record[field])) != 64:
+            raise B35DevelopmentSourceError(f"native acquisition {field} is malformed")
+    try:
+        start = date.fromisoformat(record["window_start"])
+        end = date.fromisoformat(record["window_end_exclusive"])
+    except ValueError as exc:
+        raise B35DevelopmentSourceError("native acquisition window is malformed") from exc
+    expected_id = hashlib.sha256(
+        _stable_json(
+            {
+                "contract": UNIT_CONTRACT,
+                "provider_timeframe": record["provider_timeframe"],
+                "window_start": start.isoformat(),
+                "window_end_exclusive": end.isoformat(),
+                "batch_index": record["batch_index"],
+                "symbols": symbols,
+                "universe_sha256": record["universe_sha256"],
+                "policy_sha256": record["policy_sha256"],
+            }
+        ).encode("utf-8")
+    ).hexdigest()
+    if record["unit_id"] != expected_id:
+        raise B35DevelopmentSourceError("native acquisition unit id does not match writer schema")
 
 
 def _read_json_object(path: Path, label: str) -> dict[str, object]:
@@ -195,9 +268,10 @@ def _load_frozen_minute_plan(
             raise B35DevelopmentSourceError(
                 f"native acquisition plan line {line_number} is not an object"
             )
-        if str(record.get("canonical_timeframe") or "") != MINUTE_TIMEFRAME:
+        _validate_native_plan_record(record, line_number)
+        if record["canonical_timeframe"] != MINUTE_TIMEFRAME:
             continue
-        if str(record.get("provider_timeframe") or "") != "1Min":
+        if record["provider_timeframe"] != "1Min":
             raise B35DevelopmentSourceError("minute native plan provider timeframe drifted")
         try:
             year = int(record["year"])
@@ -597,6 +671,13 @@ class B35DevelopmentMinuteSource:
         finally:
             con.close()
 
+        if "is_adjusted" not in frame.columns or str(frame["is_adjusted"].dtype).lower() not in {
+            "bool",
+            "boolean",
+        }:
+            raise B35DevelopmentSourceError(
+                "B35 canonical schema is_adjusted must be BOOLEAN"
+            )
         if physical is None or int(physical[1]) != 0:
             raise B35DevelopmentSourceError("B35 canonical unit contains invalid physical rows")
         if duplicate is None or int(duplicate[0]) != 0:
@@ -607,26 +688,19 @@ class B35DevelopmentMinuteSource:
 
     def iter_unit_frames(
         self, plan: B35DevelopmentSourcePlan
-    ) -> tuple[tuple[B35DevelopmentUnitBinding, pd.DataFrame], ...]:
-        if plan.contract != B35_DEVELOPMENT_SOURCE_CONTRACT:
-            raise B35DevelopmentSourceError("B35 source-plan contract mismatch")
-        if plan.b35_preoutcome_fingerprint != B35_PREOUTCOME_FINGERPRINT:
-            raise B35DevelopmentSourceError("B35 source-plan pre-outcome fingerprint drifted")
+    ) -> Iterator[tuple[B35DevelopmentUnitBinding, pd.DataFrame]]:
+        validate_source_plan(plan)
         self.validate_scope(plan.start_session, plan.end_session)
-        return tuple(
-            (
+        for binding in plan.units:
+            yield binding, self.load_unit(
                 binding,
-                self.load_unit(
-                    binding,
-                    start_session=plan.start_session,
-                    end_session=plan.end_session,
-                ),
+                start_session=plan.start_session,
+                end_session=plan.end_session,
             )
-            for binding in plan.units
-        )
 
     @staticmethod
     def report(plan: B35DevelopmentSourcePlan) -> dict[str, object]:
+        validate_source_plan(plan)
         months = sorted({f"{item.year:04d}-{item.month:02d}" for item in plan.units})
         return {
             "contract": B35_DEVELOPMENT_SOURCE_CONTRACT,
@@ -660,3 +734,52 @@ class B35DevelopmentMinuteSource:
             "live_authority": False,
             "broad_minute_materialization_authority": False,
         }
+
+
+
+def _source_plan_payload(plan: B35DevelopmentSourcePlan) -> dict[str, object]:
+    return {
+        "contract": plan.contract,
+        "b35_preoutcome_fingerprint": plan.b35_preoutcome_fingerprint,
+        "start_session": plan.start_session.isoformat(),
+        "end_session": plan.end_session.isoformat(),
+        "native_plan_sha256": plan.native_plan_sha256,
+        "native_plan_file_sha256": plan.native_plan_file_sha256,
+        "units": [
+            {
+                "unit_id": item.unit_id,
+                "year": item.year,
+                "month": item.month,
+                "batch_index": item.batch_index,
+                "window_start": item.window_start.isoformat(),
+                "window_end_exclusive": item.window_end_exclusive.isoformat(),
+                "symbols": item.symbols,
+                "policy_sha256": item.policy_sha256,
+                "universe_sha256": item.universe_sha256,
+                "canonical_path": str(item.canonical_path),
+                "canonical_sha256": item.canonical_sha256,
+                "checkpoint_path": str(item.checkpoint_path),
+            }
+            for item in plan.units
+        ],
+        "exact_native_path_confinement": True,
+        "consumed_master_rows_permitted": 0,
+        "future_blind_rows_permitted": 0,
+        "provider_calls": 0,
+        "broker_reads": 0,
+        "broker_writes": 0,
+    }
+
+
+def validate_source_plan(plan: B35DevelopmentSourcePlan) -> str:
+    if plan.contract != B35_DEVELOPMENT_SOURCE_CONTRACT:
+        raise B35DevelopmentSourceError("B35 source-plan contract mismatch")
+    if plan.b35_preoutcome_fingerprint != B35_PREOUTCOME_FINGERPRINT:
+        raise B35DevelopmentSourceError("B35 source-plan pre-outcome fingerprint drifted")
+    B35DevelopmentMinuteSource.validate_scope(plan.start_session, plan.end_session)
+    if not plan.units:
+        raise B35DevelopmentSourceError("B35 source plan contains no units")
+    actual = _stable_hash(_source_plan_payload(plan))
+    if actual != plan.source_fingerprint:
+        raise B35DevelopmentSourceError("B35 source-plan fingerprint does not match its contents")
+    return actual

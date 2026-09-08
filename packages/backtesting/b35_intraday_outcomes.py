@@ -4,7 +4,7 @@ import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
@@ -268,7 +268,8 @@ def simulate_intraday_outcome(
             signal_stamp=signal_stamp,
         )
 
-    entry_candidates = [bar for bar in regular if bar.timestamp_utc > signal_stamp]
+    decision_stamp = signal_stamp + timedelta(minutes=1)
+    entry_candidates = [bar for bar in regular if bar.timestamp_utc >= decision_stamp]
     if not entry_candidates:
         return _noncomparable(
             setup=setup,
@@ -280,7 +281,7 @@ def simulate_intraday_outcome(
             signal_stamp=signal_stamp,
         )
     entry_bar = entry_candidates[0]
-    delay = (entry_bar.timestamp_utc - signal_stamp).total_seconds() / 60.0
+    delay = (entry_bar.timestamp_utc - decision_stamp).total_seconds() / 60.0
     if delay > MAX_ENTRY_DELAY_MINUTES:
         return _noncomparable(
             setup=setup,
@@ -343,10 +344,10 @@ def simulate_intraday_outcome(
         # Resolve price gaps at the bar open before intrabar range ambiguity.
         if direction == StrategyDirection.LONG:
             stop_gap = float(bar.open) < stop
-            target_gap = float(bar.open) > target
+            target_gap = float(bar.open) >= target
         else:
             stop_gap = float(bar.open) > stop
-            target_gap = float(bar.open) < target
+            target_gap = float(bar.open) <= target
         if stop_gap:
             exit_bar = bar
             exit_price = float(bar.open)

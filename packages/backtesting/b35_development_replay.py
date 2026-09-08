@@ -24,8 +24,15 @@ from packages.backtesting.b35_development_source import (
     B35DevelopmentMinuteSource,
     B35DevelopmentSourcePlan,
     B35DevelopmentUnitBinding,
+    validate_source_plan,
 )
 from packages.backtesting.b35_intraday_outcomes import simulate_intraday_outcome
+from packages.backtesting.b35_replay_guard import ensure_read_start_marker, serialized_replay
+from packages.backtesting.b35_setup_scan import (
+    first_fired_hvd,
+    first_fired_opening_range,
+    first_fired_premarket_relvol,
+)
 from packages.backtesting.b35_split_evidence import load_b35_split_evidence
 from packages.core.atomic_io import atomic_write_text, replace_with_retry, unique_temp_path
 from packages.core.enums import SessionSegment
@@ -239,14 +246,7 @@ def _evaluate_setups(
 
     # B34 remains unchanged: its cutoff is the underlying bar stamp through
     # 11:30. B35 later profiles the information-safe decision at bar+1 minute.
-    opening = _first_fired(
-        evaluate_opening_range_breakout,
-        bars,
-        session_date=session_date,
-        earliest_stamp=time(9, 45),
-        latest_stamp=time(11, 30),
-        kwargs={"split_crossed": session_date in symbol_split_dates},
-    )
+    opening = first_fired_opening_range(bars, session_date=session_date)
     if opening is not None:
         results.append(opening)
 
@@ -255,16 +255,11 @@ def _evaluate_setups(
         pm_split_free = not _split_between(
             symbol_split_dates, prior_pm[0][0], session_date
         )
-        relvol = _first_fired(
-            evaluate_premarket_relvol_consolidation,
+        relvol = first_fired_premarket_relvol(
             bars,
             session_date=session_date,
-            earliest_stamp=time(9, 30),
-            latest_stamp=time(11, 30),
-            kwargs={
-                "prior_premarket_volumes": [value for _day, value in prior_pm],
-                "split_free_lookback": pm_split_free,
-            },
+            prior_premarket_volumes=[value for _day, value in prior_pm],
+            split_free_lookback=pm_split_free,
         )
         if relvol is not None:
             results.append(relvol)
@@ -274,16 +269,11 @@ def _evaluate_setups(
         daily_split_free = not _split_between(
             symbol_split_dates, prior_daily[0].session_date, session_date
         )
-        hvd = _first_fired(
-            evaluate_highest_volume_day_style,
+        hvd = first_fired_hvd(
             bars,
             session_date=session_date,
-            earliest_stamp=time(9, 30),
-            latest_stamp=time(11, 30),
-            kwargs={
-                "prior_regular_daily_volumes": [item.regular_volume for item in prior_daily],
-                "split_free_lookback": daily_split_free,
-            },
+            prior_regular_daily_volumes=[item.regular_volume for item in prior_daily],
+            split_free_lookback=daily_split_free,
         )
         if hvd is not None:
             results.append(hvd)
@@ -487,6 +477,7 @@ class B35DevelopmentReplayEngine:
         self.source = source
         self.layout = source.layout
 
+    @serialized_replay
     def run(
         self,
         plan: B35DevelopmentSourcePlan,
@@ -494,6 +485,7 @@ class B35DevelopmentReplayEngine:
         output_root: Path,
         authorization: dict[str, object],
     ) -> dict[str, object]:
+        validate_source_plan(plan)
         output_root = output_root.resolve()
         groups_root = output_root / "groups"
         groups_root.mkdir(parents=True, exist_ok=True)
@@ -503,6 +495,13 @@ class B35DevelopmentReplayEngine:
             plan=plan,
             split_evidence=split_evidence,
         )
+        read_start_marker = ensure_read_start_marker(
+            output_root,
+            source_fingerprint=plan.source_fingerprint,
+            split_evidence_fingerprint=split_evidence.fingerprint,
+            authorization_id=authorization_id,
+        )
+        read_start_marker_id = str(read_start_marker["marker_id"])
         group_receipts: list[dict[str, object]] = []
 
         for group_fingerprint, units in _group_units(
@@ -723,6 +722,7 @@ class B35DevelopmentReplayEngine:
             "split_evidence_fingerprint": split_evidence.fingerprint,
             "corporate_action_split_evidence_sha256": split_evidence.corporate_actions_sha256,
             "authorization_id": authorization_id,
+            "read_start_marker_id": read_start_marker_id,
             "start_session": plan.start_session.isoformat(),
             "end_session": plan.end_session.isoformat(),
             "group_count": len(group_receipts),

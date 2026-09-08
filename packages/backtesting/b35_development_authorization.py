@@ -8,7 +8,11 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
-from packages.backtesting.b35_development_source import B35DevelopmentSourcePlan
+from packages.backtesting.b35_development_source import (
+    B35DevelopmentSourceError,
+    B35DevelopmentSourcePlan,
+    validate_source_plan,
+)
 from packages.backtesting.b35_split_evidence import B35SplitEvidence
 from packages.core.atomic_io import atomic_write_text
 from packages.strategies.b35_conditional_evidence_contract import (
@@ -88,6 +92,12 @@ def validate_development_authorization(
     plan: B35DevelopmentSourcePlan,
     split_evidence: B35SplitEvidence,
 ) -> str:
+    try:
+        validate_source_plan(plan)
+    except B35DevelopmentSourceError as exc:
+        raise B35DevelopmentAuthorizationError(
+            "B35 DEVELOPMENT authorization source plan is not self-consistent"
+        ) from exc
     required = _required_binding(plan, split_evidence)
     for field, expected in required.items():
         if document.get(field) != expected:
@@ -151,6 +161,12 @@ def ensure_development_authorization(
     validation. A stranded/partial claim never grants authority.
     """
 
+    try:
+        validate_source_plan(plan)
+    except B35DevelopmentSourceError as exc:
+        raise B35DevelopmentAuthorizationError(
+            "B35 DEVELOPMENT authorization source plan is not self-consistent"
+        ) from exc
     path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.is_file():

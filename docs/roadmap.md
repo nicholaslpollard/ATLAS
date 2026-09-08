@@ -1082,40 +1082,23 @@ filled, current/realized P&L, why it exited, and whether reconciliation complete
 
 ### B35/A36 — Conditional Evidence, Selector, Outcomes, and Performance UI
 
-Build the walk-forward condition profiles and frozen selector challenger; compare it
-to simple family baselines. Add strategy management, calibration, degradation,
-regime, slippage, portfolio contribution, and trials-ledger views. Learning may
-recommend but never self-promote.
+Build the walk-forward condition profiles and frozen selector challenger; compare it to simple family baselines. Add strategy management, calibration, degradation, regime, slippage, portfolio contribution, and trials-ledger views. Learning may recommend but never self-promote.
 
-**Pre-outcome design frozen (2026-09-08).** Contract
-`atlas-b35-a36-conditional-evidence-v1-pre-outcome` has fingerprint
-`7bfd1cfdd65e946d45caa99dd2a35a90d8b424cb82cad5941ad26cac51816c4c` and binds exactly the accepted B34 opening/premarket
-pack. It reads no outcomes and grants no minute-replay, promotion, PAPER, LIVE,
-provider-call, or broker-read/write authority. Scored DEVELOPMENT and selector fit
-end `2026-04-30`; the consumed `2026-05-12..2026-08-11` master interval is forbidden
-as fitting/scored evidence. Rows after DEVELOPMENT may only be counted fixed-feature
-warm-up for a genuinely future signal, never labels or selector fit. The new blind
-begins on the first XNYS session on/after `2026-09-08`, accrues at least 63 complete
-sessions before one-time unblinding, cannot refit on blind outcomes, and can never be
-recycled into DEVELOPMENT after a bad result.
+**Active pre-outcome contract (2026-09-08): v2 FROZEN; finite DEVELOPMENT replay implementation is on PR #69 for exact-head acceptance.** The original `atlas-b35-a36-conditional-evidence-v1-pre-outcome` fingerprint `7bfd1cfdd65e946d45caa99dd2a35a90d8b424cb82cad5941ad26cac51816c4c` is preserved as superseded pre-outcome lineage and opened no B35 outcomes. Before any outcome access, review found that B34 validly permits a bar stamped 11:30 ET, which is usable only at 11:31, while v1 stopped its decision-time bucket at 11:30. Review also found that an overnight split should make the raw prior-close/current-open gap unavailable without erasing an otherwise valid same-session ORB/premarket/HVD condition snapshot. These are preregistration corrections, not outcome-driven retuning. B34 itself is unchanged.
 
-The frozen evaluation uses 504-session rolling training, 63-session tests, 63-session
-steps and a one-session embargo; strategy thresholds never refit. It preregisters
-same-session entry/stop/2R/time-exit mechanics, adverse same-bar collision handling,
-a 0/10/25/50/100-bps all-in round-trip cost grid with 50 bps selector scoring and
-100 bps stress, prior-close/PIT condition clocks, explicit price/liquidity/volatility/
-gap/premarket/opening-range/time buckets, session-cluster bootstrap lower-confidence
-selection with cash abstention, trials/multiplicity controls, Deflated-Sharpe/PBO
-diagnostics, fixed robustness perturbations, and the accepted A34 long-only portfolio
-risk envelope. Short signals remain research-profile only until borrow/locate/recall
-economics exist. Full mechanics and literature anchors are in
-`docs/b35_a36_preoutcome_conditional_evidence.md`.
+The active contract is `atlas-b35-a36-conditional-evidence-v2-pre-outcome-clock-split-corrected`, fingerprint `145cc8983439b6062fd5e60303539d1611cdf7db0119ed68a7da1e68ffd8eda6`, bound to unchanged B34 pack fingerprint `6f7239fcda11ac6c890d2635980d431ec49e346707d9cc549f111bd50daaa4bf`. B35 decision time is valid through 11:31 ET and the final bucket is `1031_TO_1131`; later decisions fail closed. A split-crossed raw gap is `UNAVAILABLE` for non-gap profiles, while B34 gap continuation remains blocked across the split. Twenty close-to-close realized-volatility returns require 21 completed split-safe closes. All other frozen walk-forward, exit, cost, selector, multiplicity, robustness, blind, and A34 risk-envelope rules remain as preregistered.
 
-The next B35 authority transition, only after exact-head acceptance of this frozen
-contract, is a separate hash-bound finite DEVELOPMENT replay authorization. That
-later authorization must still exclude the consumed master and future blind from
-scored DEVELOPMENT outcomes and must not create a giant permanent minute-feature
-lake merely to run the replay.
+**Finite replay implementation boundary.** The implementation binds the exact DEVELOPMENT minute-unit set to the immutable native acquisition plan and exact `year/month/batch/unit` checkpoint/canonical paths. May-2026-or-later minute partitions remain structurally rejected before open. Paths are confined to isolated V2 roots without symlink escape; canonical SHA-256 is checked lazily immediately before use; raw/unadjusted physical rows, duplicate keys, exchange-session labels, and strict Boolean adjustment schema fail closed. The source plan is itself content-fingerprint validated so a modified in-memory plan cannot retain a stale trusted fingerprint. Split/corporate-action evidence is separately path/hash bound.
+
+Actual outcome replay additionally requires the immutable self-hash DEVELOPMENT authorization. Replay publication is serialized to prevent concurrent writers, writes an immutable self-hash read-start marker before the first authorized outcome read so a failed run cannot erase the fact that outcome access began, and materializes only compact fired-opportunity/context/outcome JSONL by deterministic symbol batch. Completed outputs have self-hash receipts; unreceipted orphan derived outputs are discarded and deterministically recomputed, while receipts missing their exact output fail closed. Restart reuses only validated exact receipts. The final run fingerprint binds validated receipt identities. No permanent broad minute-feature lake is authorized or created.
+
+Frozen mechanics are implemented exactly: an information-safe signal enters at the first observed eligible regular-minute open within five minutes measured from the decision time; stops are strategy-specific; target is 2R; exact target opens resolve at the target before later intrabar ambiguity; stop gaps use the worse open; target gaps receive no improvement; same-bar unresolved stop/target collisions are adverse-stop-first; 15:55..15:59 provides the fixed time exit. The 0/10/25/50/100-bps all-in grid remains adverse by side. Short gross/net returns and MFE/MAE are normalized to entry notional. Entered-but-unresolved opportunities preserve signal/entry/stop/target/excursion evidence while remaining excluded from completed-return claims. The optimized setup scan only reduces repeated evaluation calls; final fired results are confirmed by the unchanged B34 evaluators.
+
+PIT market regime remains `UNAVAILABLE` wherever this minute replay does not have an exact accepted prior-session regime join; it is never guessed. Short signal outcomes may later be RESEARCH-profiled, but A34 portfolio admission remains long-only until borrow/locate/recall economics are accepted. This package does not complete the later conditional-profile/selector analysis.
+
+**Authority during implementation acceptance:** no B35 historical outcomes have been opened. Consumed-master rows read `0`; future-blind rows read `0`; provider calls `0`; broker reads/writes `0/0`; PAPER orders `0`; LIVE operations `0`; strategy promotion `false`; selector promotion `false`; PAPER authority unchanged/absent; LIVE authority `false`. DEVELOPMENT scoring ends `2026-04-30`; the consumed `2026-05-12..2026-08-11` master interval is permanently unavailable for B35 fitting/scoring/qualification; the future blind beginning on/after `2026-09-08` remains unopened.
+
+After exact-head implementation acceptance and merge: (1) run workstation `--source-only`; (2) review source-only evidence in the control chat; (3) only then explicitly run `--authorize-development-outcomes`; (4) materialize the frozen DEVELOPMENT opportunity/outcome evidence; (5) analyze strategy × stock-condition results; (6) build the preregistered walk-forward selector/profile evidence; (7) later evaluate the genuinely new future blind after its required accrual; and (8) never reuse the consumed master interval. Full mechanics and methodology anchors are maintained in `docs/b35_a36_preoutcome_conditional_evidence.md`.
 
 ### B36 — Literature-Anchored Reference Library
 

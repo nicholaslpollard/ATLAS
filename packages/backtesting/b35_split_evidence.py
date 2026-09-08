@@ -58,6 +58,32 @@ def _stable_hash(payload: object) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
+def _assert_v2_path(path: Path, *, expected: Path, root: Path, label: str) -> Path:
+    path = path.absolute()
+    expected = expected.absolute()
+    root = root.absolute()
+    if path != expected:
+        raise B35SplitEvidenceError(f"{label} is not the exact isolated V2 path")
+    try:
+        relative = expected.relative_to(root)
+    except ValueError as exc:
+        raise B35SplitEvidenceError(f"{label} escapes the isolated V2 root") from exc
+    cursor = root
+    if cursor.is_symlink():
+        raise B35SplitEvidenceError(f"{label} V2 root is a symlink")
+    for part in relative.parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            raise B35SplitEvidenceError(f"{label} path contains a symlink: {cursor}")
+    resolved_root = root.resolve(strict=False)
+    resolved = expected.resolve(strict=False)
+    try:
+        resolved.relative_to(resolved_root)
+    except ValueError as exc:
+        raise B35SplitEvidenceError(f"{label} resolves outside the isolated V2 root") from exc
+    return expected
+
+
 def _read_json(path: Path, label: str) -> dict[str, object]:
     if not path.is_file():
         raise FileNotFoundError(f"missing {label}: {path}")
@@ -73,7 +99,13 @@ def _read_json(path: Path, label: str) -> dict[str, object]:
 def load_b35_split_evidence(layout: V2Layout) -> B35SplitEvidence:
     """Load only hash-bound pre-protected split dates from the accepted V2 source."""
 
-    source_snapshot_path = (layout.manifests / "source_snapshot.json").resolve()
+    expected_snapshot = (layout.manifests / "source_snapshot.json").absolute()
+    source_snapshot_path = _assert_v2_path(
+        expected_snapshot,
+        expected=expected_snapshot,
+        root=layout.root,
+        label="V2 source snapshot",
+    )
     source_snapshot = _read_json(source_snapshot_path, "V2 source snapshot")
     if source_snapshot.get("contract") != SOURCE_SNAPSHOT_CONTRACT:
         raise B35SplitEvidenceError("V2 source snapshot contract drifted")
@@ -85,15 +117,14 @@ def load_b35_split_evidence(layout: V2Layout) -> B35SplitEvidence:
     native = source_snapshot.get("corporate_actions_native")
     if not isinstance(native, dict):
         raise B35SplitEvidenceError("V2 source snapshot has no corporate-actions binding")
-    expected_path = (layout.corporate_actions / "native_actions.jsonl.gz").resolve()
-    recorded_path = Path(str(native.get("path") or ""))
-    try:
-        if recorded_path.resolve() != expected_path:
-            raise B35SplitEvidenceError(
-                "corporate-actions path is not the isolated V2 native-actions artifact"
-            )
-    except OSError as exc:
-        raise B35SplitEvidenceError("invalid corporate-actions path") from exc
+    expected_path = (layout.corporate_actions / "native_actions.jsonl.gz").absolute()
+    recorded_path = Path(str(native.get("path") or "")).absolute()
+    _assert_v2_path(
+        recorded_path,
+        expected=expected_path,
+        root=layout.root,
+        label="V2 native corporate actions",
+    )
     if not expected_path.is_file():
         raise FileNotFoundError(f"missing V2 native corporate actions: {expected_path}")
     actions_sha = _sha256_file(expected_path)
