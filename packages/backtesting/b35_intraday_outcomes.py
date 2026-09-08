@@ -156,10 +156,10 @@ def _net_return_with_cost(
     if direction == StrategyDirection.LONG:
         adverse_entry = entry * (1.0 + half)
         adverse_exit = exit_price * (1.0 - half)
-        return (adverse_exit - adverse_entry) / adverse_entry
+        return (adverse_exit - adverse_entry) / entry
     adverse_entry_proceeds = entry * (1.0 - half)
     adverse_cover = exit_price * (1.0 + half)
-    return (adverse_entry_proceeds - adverse_cover) / adverse_entry_proceeds
+    return (adverse_entry_proceeds - adverse_cover) / entry
 
 
 def _excursion(
