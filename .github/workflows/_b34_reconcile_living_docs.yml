@@ -1,0 +1,84 @@
+name: B34 reconcile living documents
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.head_ref == 'b34-opening-premarket-pack'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b34-opening-premarket-pack
+          fetch-depth: 0
+
+      - name: Patch README and roadmap atomically
+        shell: python
+        run: |
+          from pathlib import Path
+
+          readme = Path("README.md")
+          roadmap = Path("docs/roadmap.md")
+
+          r = readme.read_text(encoding="utf-8")
+          r = r.replace(
+              "**Current as of 2026-09-07 (UTC). This README and `docs/roadmap.md` are the only\n",
+              "**Current as of 2026-09-08 (UTC). This README and `docs/roadmap.md` are the only\n",
+              1,
+          )
+          anchor = "## Current repository truth\n\n"
+          block = """- **B34 intraday source readiness is accepted at V1 and its finite opening/premarket continuation is in acceptance.** The 2026-09-08 workstation audit returned `ACCEPTED` with evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`: all five deterministic sample classes and all four selected unit hashes passed, premarket/regular/after-hours bars were represented, and zero partitions overlapping the consumed `2026-05-12..2026-08-11` master interval were opened. Provider calls, broker reads, and broker writes were all zero. The continuation freezes four RESEARCH-only mechanisms (gap continuation, 15-minute opening-range breakout, 20-session premarket relative-volume consolidation, and a quantified 252-session Highest Volume Day style breakout), adds explicit OHLCV/source-clock/split/missing-bar acceptance, and still grants no outcome, PAPER, LIVE, or broad minute-materialization authority. The enhanced workstation audit must return `ACCEPTED` before B34 closes.\n"""
+          if r.count(anchor) != 1:
+              raise SystemExit("README current-truth anchor drifted")
+          if "aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237" not in r:
+              r = r.replace(anchor, anchor + block, 1)
+          readme.write_text(r, encoding="utf-8")
+
+          d = roadmap.read_text(encoding="utf-8")
+          b34_anchor = """Do not materialize billions of indicator rows before this finite readiness report
+shows which intraday pack can be represented faithfully.
+"""
+          b34_block = """
+
+**B34 status (2026-09-08): source-readiness V1 ACCEPTED; finite strategy-pack closeout in acceptance.** The workstation audit returned `ACCEPTED` with evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`. The deterministic liquid, sparse/no-trade, split, other-corporate-action, and DST/session-boundary samples all passed, as did all four selected unit hash checks. Sampled extended-hours coverage included premarket, regular, and after-hours bars. The selector opened zero monthly partitions overlapping the consumed master holdout and made zero provider/broker writes. The continuation explicitly validates OHLCV in the readiness report; preserves absent minutes without zero-fill or halt inference; treats the 09:30 aggregate as an aggregate rather than a separate auction record; keeps native minute bars raw/unadjusted and fails any cross-split comparison closed; and freezes the information clock so a bar stamped `T` is usable only at `T+1m`, premarket freezes after stamp 09:29 at 09:30 ET, and the 15-minute opening range freezes after stamp 09:44 at 09:45 ET.
+
+The ready pre-outcome pack is frozen as four RESEARCH-only references: `b34_gap_continuation_v1` (absolute gap threshold 2%), `b34_opening_range_breakout_15m_v1` (09:30..09:44 range and closed-bar breakout through 11:30 ET), `b34_premarket_relvol_consolidation_v1` (04:00..09:29 observed volume / median of exactly 20 prior eligible premarkets, threshold 2.0, 09:00..09:29 consolidation <=3% with >=5 observed bars, then closed regular breakout), and `b34_highest_volume_day_style_v1` (current observed premarket volume >= maximum regular daily volume across exactly 252 prior eligible sessions, the same consolidation rule, then a closed premarket-high breakout). The HVD-style reference deliberately omits a small-cap market-cap filter until an accepted PIT market-cap source exists. No exits, performance, promotion, PAPER order authority, LIVE authority, or broad minute materialization are granted here. Final B34 closeout requires exact-head CI plus the enhanced workstation audit to return `ACCEPTED`.
+"""
+          if d.count(b34_anchor) != 1:
+              raise SystemExit("roadmap B34 anchor drifted")
+          if "source-readiness V1 ACCEPTED; finite strategy-pack closeout in acceptance" not in d:
+              d = d.replace(b34_anchor, b34_anchor + b34_block, 1)
+
+          old_item = """6. **AFTER DAILY PATH — finite B34 minute readiness.** Scan intraday and extended-
+   hours semantics before adjusted-minute features or gap/opening/premarket outcomes.
+   News remains a separate, lower-priority provider/PIT package because it cannot
+   validate this price database. A B34 limitation does not block daily replay or
+   A34.5.
+"""
+          new_item = """6. **ACTIVE — finite B34 closeout after accepted source readiness.** Preserve the accepted V1 workstation evidence, complete the frozen opening/premarket pack and explicit OHLCV/information-clock checks, then rerun `scripts/audit_v2_intraday_semantics.py`. Do not open strategy performance, the consumed master holdout, PAPER/LIVE authority, or broad B35 minute materialization during this closeout. If the enhanced audit is accepted, reconcile B34 closed and then choose the next Track-A/Track-B package explicitly.
+"""
+          if old_item in d:
+              d = d.replace(old_item, new_item, 1)
+          elif new_item not in d:
+              raise SystemExit("roadmap immediate-action B34 anchor drifted")
+          roadmap.write_text(d, encoding="utf-8")
+
+      - name: Remove one-shot updater and commit living docs
+        shell: bash
+        run: |
+          git rm .github/workflows/_b34_reconcile_living_docs.yml
+          if git diff --cached --quiet && git diff --quiet; then
+            echo "No living-document changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/roadmap.md
+          git commit -m "B34 reconcile living docs for opening/premarket pack"
+          git push origin HEAD:b34-opening-premarket-pack
