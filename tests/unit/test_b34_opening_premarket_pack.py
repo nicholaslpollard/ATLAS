@@ -209,6 +209,29 @@ def test_premarket_relvol_freezes_at_0930_and_needs_closed_regular_breakout() ->
     assert fired.evidence["breakout_bar_timestamp_utc"] == "2026-04-30T13:30:00+00:00"
 
 
+
+def test_premarket_evaluators_materialize_one_shot_iterables() -> None:
+    bars = _premarket_and_breakout()
+
+    relvol = evaluate_premarket_relvol_consolidation(
+        iter(bars),
+        session_date=SESSION,
+        decision_time_utc=datetime(2026, 4, 30, 13, 31, tzinfo=UTC),
+        prior_premarket_volumes=[1000.0] * PREMARKET_LOOKBACK_SESSIONS,
+        split_free_lookback=True,
+    )
+    assert relvol.fired is True
+
+    hvd = evaluate_highest_volume_day_style(
+        iter(bars),
+        session_date=SESSION,
+        decision_time_utc=datetime(2026, 4, 30, 13, 31, tzinfo=UTC),
+        prior_regular_daily_volumes=[2500.0] * HVD_DAILY_LOOKBACK_SESSIONS,
+        split_free_lookback=True,
+    )
+    assert hvd.fired is True
+
+
 def test_highest_volume_day_style_is_quantified_and_split_guarded() -> None:
     bars = _premarket_and_breakout()
     prior = [2500.0] * HVD_DAILY_LOOKBACK_SESSIONS

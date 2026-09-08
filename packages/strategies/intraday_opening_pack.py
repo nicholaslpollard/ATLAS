@@ -520,6 +520,7 @@ def evaluate_premarket_relvol_consolidation(
     split_free_lookback: bool,
 ) -> IntradaySetupResult:
     decision_utc = _require_aware(decision_time_utc)
+    bars = tuple(bars)
     if not split_free_lookback:
         return _result(
             strategy_id="b34_premarket_relvol_consolidation_v1",
@@ -611,6 +612,7 @@ def evaluate_highest_volume_day_style(
     split_free_lookback: bool,
 ) -> IntradaySetupResult:
     decision_utc = _require_aware(decision_time_utc)
+    bars = tuple(bars)
     if not split_free_lookback:
         return _result(
             strategy_id="b34_highest_volume_day_style_v1",
