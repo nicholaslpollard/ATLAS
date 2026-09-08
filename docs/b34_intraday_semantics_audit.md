@@ -63,6 +63,8 @@ The frozen opening/premarket pack uses these clocks:
 - a bar stamped `T` is never available to a historical decision before `T + 1 minute`;
 - post-open breakout signals use only fully closed bars.
 
+The premarket evaluators materialize their input iterable once before performing multiple passes. This makes results deterministic for lists, tuples, and one-shot generators and prevents a consumed iterator from silently deleting the later breakout pass.
+
 ## Enhanced V2 closeout
 
 The original V1 audit already proved timestamp/session/source/hash semantics and the five required sample classes. The B34 continuation adds an explicit OHLCV scan to the same command so the readiness report itself verifies finite positive OHLC prices, valid bar geometry, nonnegative volume, positive VWAP when present, and nonnegative transaction counts.
@@ -94,4 +96,4 @@ The evidence path remains:
 data/v2_build/alpaca_sip_v2/validation/b34_intraday_semantics_audit.json
 ```
 
-The command remains local/read-only with respect to providers and brokers. B34 is not fully closed, and broad B35 minute materialization is not authorized, until this enhanced report returns `status=ACCEPTED` and the exact package passes repository acceptance.
+The command remains local/read-only with respect to providers and brokers. B34 is not fully closed, and broad minute materialization is not authorized, until this enhanced report returns `status=ACCEPTED` and the exact package passes repository acceptance.
