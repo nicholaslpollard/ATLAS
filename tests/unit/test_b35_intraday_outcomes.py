@@ -73,7 +73,7 @@ def test_gap_outcome_enters_next_minute_and_hits_2r_target() -> None:
     assert outcome.exit_price == 112.0
     assert outcome.exit_reason == "TARGET_2R"
     assert outcome.risk_multiple == pytest.approx(2.0)
-    expected_50bps = ((112.0 * 0.9975) - (104.0 * 1.0025)) / (104.0 * 1.0025)
+    expected_50bps = ((112.0 * 0.9975) - (104.0 * 1.0025)) / 104.0
     assert outcome.primary_50bps_net_directional_return == pytest.approx(expected_50bps)
 
 
@@ -97,7 +97,7 @@ def test_short_returns_costs_and_excursions_use_entry_notional() -> None:
     adverse_entry_proceeds = 96.0 * 0.9975
     adverse_cover = 88.0 * 1.0025
     assert outcome.primary_50bps_net_directional_return == pytest.approx(
-        (adverse_entry_proceeds - adverse_cover) / adverse_entry_proceeds
+        (adverse_entry_proceeds - adverse_cover) / 96.0
     )
     assert outcome.maximum_favorable_excursion == pytest.approx((96.0 - 88.0) / 96.0)
     assert outcome.maximum_adverse_excursion == pytest.approx((96.0 - 98.0) / 96.0)
