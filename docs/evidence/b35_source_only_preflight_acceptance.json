@@ -1,0 +1,37 @@
+{
+  "authority_and_access": {
+    "broker_reads": 0,
+    "broker_writes": 0,
+    "consumed_master_rows_permitted": 0,
+    "consumed_master_rows_read": 0,
+    "future_blind_rows_permitted": 0,
+    "future_blind_rows_read": 0,
+    "live_authority": false,
+    "outcome_authorization_created": false,
+    "outcomes_opened": false,
+    "paper_authority": false,
+    "provider_calls": 0,
+    "selector_promotion": false,
+    "strategy_promotion": false
+  },
+  "contract": "atlas-b35-source-only-preflight-acceptance-v1",
+  "fingerprints": {
+    "b35_contract": "145cc8983439b6062fd5e60303539d1611cdf7db0119ed68a7da1e68ffd8eda6",
+    "source": "af371478a68d2dca486ffbaa1a339d24e1166257a67ba5f6ededfdda202a04cd",
+    "split_evidence": "3bcccaddf3937368c675fb27a441f9bbac8cbf34816c26e37a4a3e84d03554f6"
+  },
+  "local_evidence_paths": {
+    "source_plan": "data\\v2_build\\alpaca_sip_v2\\derived\\strategy_lab\\b35_development\\145cc8983439b606\\2016-01-04_2026-04-30\\source_plan.json",
+    "split_evidence": "data\\v2_build\\alpaca_sip_v2\\derived\\strategy_lab\\b35_development\\145cc8983439b606\\2016-01-04_2026-04-30\\split_evidence.json"
+  },
+  "next_gate": "single canonical --authorize-development-outcomes replay",
+  "observed_at_date": "2026-09-08",
+  "repository_main_commit": "4cf27ae9d23ac3b5d1821200e4d303db787f361a",
+  "scope": {
+    "end_session": "2026-04-30",
+    "operator_override": false,
+    "source_unit_count": 59768,
+    "start_session": "2016-01-04"
+  },
+  "status": "ACCEPTED"
+}
