@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-07 (UTC). This README and `docs/roadmap.md` are the only
+**Current as of 2026-09-08 (UTC). This README and `docs/roadmap.md` are the only
 living project documents. Every continuation chat must read both in full before
 making recommendations or changes.**
 
@@ -70,6 +70,7 @@ with a desired trade.
 
 ## Current repository truth
 
+- **B34 intraday source readiness is accepted at V1 and its finite opening/premarket continuation is in acceptance.** The 2026-09-08 workstation audit returned `ACCEPTED` with evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`: all five deterministic sample classes and all four selected unit hashes passed, premarket/regular/after-hours bars were represented, and zero partitions overlapping the consumed `2026-05-12..2026-08-11` master interval were opened. Provider calls, broker reads, and broker writes were all zero. The continuation freezes four RESEARCH-only mechanisms (gap continuation, 15-minute opening-range breakout, 20-session premarket relative-volume consolidation, and a quantified 252-session Highest Volume Day style breakout), adds explicit OHLCV/source-clock/split/missing-bar acceptance, and still grants no outcome, PAPER, LIVE, or broad minute-materialization authority. The enhanced workstation audit must return `ACCEPTED` before B34 closes.
 - Accepted numbered foundation: **through Phase32**, merged on `main`.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE` results.
 - Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is

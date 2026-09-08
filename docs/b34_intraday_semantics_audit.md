@@ -1,87 +1,99 @@
 # B34 Minute / Intraday Semantics Audit
 
-Status: **IN PROGRESS — audit contract and deterministic validator implemented; workstation evidence still required before B34 closeout.**
+Status: **SOURCE-READINESS V1 ACCEPTED — opening/premarket pack frozen; enhanced OHLCV closeout rerun pending.**
 
-B34 is a finite, read-only gate between the completed V2 native acquisition/daily replay work and any full minute-scale feature or strategy materialization. It does **not** authorize PAPER or LIVE trading and does not re-open the frozen reference strategies for rescue-retuning.
+B34 is a finite, read-only gate between the completed V2 native acquisition/daily replay work and any broad minute-scale feature or strategy materialization. It does **not** authorize PAPER or LIVE trading and does not re-open the frozen daily reference strategies for rescue-retuning.
+
+## Accepted workstation evidence
+
+The operator ran the accepted B34 V1 audit on **2026-09-08 UTC**. The returned report was `status=ACCEPTED` with evidence SHA-256:
+
+```text
+aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237
+```
+
+A workstation-path-free summary is retained at `docs/evidence/b34_intraday_source_readiness_acceptance.json`.
+
+The accepted deterministic samples were:
+
+- liquid symbol/day: `ZSL`, `2026-04-30`, 720 rows, including 254 premarket / 388 regular / 78 after-hours;
+- sparse/no-trade symbol/day: `ZNTEW`, `2026-04-30`, zero canonical rows with explicit absence evidence;
+- split day: `UK`, reverse split, `2026-04-30`, 111 rows;
+- other corporate-action day: `YQQQ`, cash dividend, `2026-04-30`, 63 rows;
+- DST/session-boundary day: `AA`, `2026-03-09`, 489 rows, including 69 premarket / 390 regular / 30 after-hours.
+
+All four selected acquisition units passed canonical/raw-bundle SHA-256 verification. Three were `COMPLETE`; the DST unit was `COMPLETE_WITH_QUARANTINE` and still passed its selected-unit integrity checks. The audit made zero provider calls, zero broker reads, zero broker writes, and opened zero canonical partitions overlapping the protected master interval.
 
 ## Locked V2 minute contract
 
 For the current V2 historical base, the canonical minute source is Alpaca SIP native `1Min` data with:
 
-- provider feed: `sip`;
-- provider timeframe: `1Min`;
-- canonical timeframe: `1m`;
-- adjustment: `raw`;
+- provider feed `sip`;
+- provider timeframe `1Min`;
+- canonical timeframe `1m`;
+- adjustment `raw`;
 - `asof=-`;
 - provider timestamp preserved as canonical `timestamp_utc`;
-- timestamps interpreted as the left/start edge of the minute interval;
+- timestamp interpreted as the left/start edge of the minute interval;
+- a historical 1m bar usable only after `timestamp + 1 minute`;
 - `session_date` derived in `America/New_York`;
-- session classification derived from the configured exchange calendar, including premarket, regular, after-hours, closed-session and DST behavior;
-- missing minutes preserved as source absence — B34 must not fabricate bars;
+- exchange-calendar classification into premarket, regular, after-hours, closed, or unknown;
+- missing minute stamps preserved as absence rather than synthesized bars;
 - duplicate canonical bar keys rejected;
-- canonical and raw-bundle hashes re-verified from completed acquisition checkpoints before a sample is accepted.
+- canonical and raw-bundle hashes re-verified from completed acquisition checkpoints.
 
-The timeframe-neutral physical schema is now named `canonical-stock-bar-v1`. The previous daily-named constants/functions remain compatibility aliases so existing daily evidence and imports do not change.
+The timeframe-neutral physical schema is `canonical-stock-bar-v1`; the previous daily-named symbols remain compatibility aliases.
+
+## Missing bars, auctions, and halts
+
+A missing canonical minute is **not** converted to a zero-volume bar and is **not** labeled as a halt. It means the accepted provider aggregate stream contains no canonical bar for that stamp. This can reflect no eligible trades or other market-state effects that the aggregate itself does not distinguish. Strategy aggregates therefore use observed provider bars only.
+
+B34 does not invent a separate opening-auction record from minute aggregates. Any eligible opening trades reported inside the 09:30 aggregate remain part of that provider bar. A future auction-specific mechanism would require separate accepted auction/trade-condition evidence.
+
+## Split handling
+
+The accepted minute source is raw/unadjusted. B34 does not fabricate adjusted minute bars. Any gap, price-range, or volume lookback that crosses a split effective between compared observations is ineligible and fails closed. The accepted split-day sample proves that split-affected raw minute data can be represented, not that cross-split comparisons are economically valid.
+
+## Exact information clock
+
+The frozen opening/premarket pack uses these clocks:
+
+- premarket feature window: `04:00 <= stamp < 09:30` ET; latest eligible stamp `09:29`; state available at `09:30`;
+- opening range: `09:30 <= stamp < 09:45` ET; latest eligible range stamp `09:44`; range available at `09:45`;
+- a bar stamped `T` is never available to a historical decision before `T + 1 minute`;
+- post-open breakout signals use only fully closed bars.
+
+The premarket evaluators materialize their input iterable once before performing multiple passes. This makes results deterministic for lists, tuples, and one-shot generators and prevents a consumed iterator from silently deleting the later breakout pass.
+
+## Enhanced V2 closeout
+
+The original V1 audit already proved timestamp/session/source/hash semantics and the five required sample classes. The B34 continuation adds an explicit OHLCV scan to the same command so the readiness report itself verifies finite positive OHLC prices, valid bar geometry, nonnegative volume, positive VWAP when present, and nonnegative transaction counts.
+
+It also binds the frozen four-strategy opening/premarket pack defined in `packages/strategies/intraday_opening_pack.py`:
+
+1. `b34_gap_continuation_v1`;
+2. `b34_opening_range_breakout_15m_v1`;
+3. `b34_premarket_relvol_consolidation_v1`;
+4. `b34_highest_volume_day_style_v1`.
+
+All remain `RESEARCH`, expose no performance, and grant no broker/PAPER/LIVE authority. The HVD-style variant is deliberately quantified and omits a small-cap market-cap filter until ATLAS has an accepted PIT market-cap source.
 
 ## Protected-holdout boundary
 
-The one-time master holdout remains consumed and must not be reused to qualify later revisions.
+The one-time master holdout remains consumed and may never be reused to qualify a revision. B34 refuses sample dates after **2026-04-30** and excludes the entire May 2026 minute partition, so it cannot open a monthly canonical file overlapping the protected **2026-05-12 through 2026-08-11** interval.
 
-B34 therefore refuses sample dates after **2026-04-30**. More importantly, its deterministic selector excludes the entire May 2026 minute partition, so the audit never opens a monthly canonical file that could physically overlap the protected **2026-05-12 through 2026-08-11** interval.
+## Final closeout command
 
-The B34 report records:
-
-- zero provider calls;
-- zero broker reads;
-- zero broker writes;
-- no PAPER authority;
-- no LIVE authority;
-- no full minute materialization authority.
-
-## Deterministic sample classes
-
-The workstation audit must account for all five roadmap classes:
-
-1. `liquid_symbol_day` — highest observed minute count on the deterministic latest pre-protected sample session;
-2. `sparse_or_no_trade_symbol_day` — deterministic source absence when available, otherwise the lowest positive-count symbol-day;
-3. `split_day` — latest pre-protected split action with a provider-literal symbol/date that has a canonical minute representation;
-4. `other_corporate_action_day` — latest pre-protected non-split action with a canonical minute representation;
-5. `dst_session_boundary_day` — latest pre-protected exchange session where the New York UTC offset changed from the preceding session.
-
-If no usable split or other corporate-action representation exists in the eligible source interval, the report must record `UNAVAILABLE_WITH_EVIDENCE`; it may not silently substitute a different semantic class.
-
-## Acceptance criteria
-
-For every represented canonical sample, B34 verifies:
-
-- exact `1m` / `stock_minute_aggregates` classification;
-- Alpaca V2 provider identity;
-- raw/unadjusted state;
-- SIP / `1Min` / raw / `asof=-` source identity;
-- minute-start timestamp alignment;
-- equality of canonical and provider timestamps;
-- New York local date to `session_date` consistency;
-- exchange-calendar session-segment consistency;
-- unique canonical bar keys;
-- monotonic timestamps;
-- gaps preserved rather than synthesized.
-
-Each selected acquisition unit must also pass current canonical/raw-bundle path and SHA-256 verification. A hash mismatch fails the audit closed.
-
-B34 is accepted only after the real workstation audit returns `status=ACCEPTED` and the evidence is reconciled into the living status/roadmap. Only then may B35 full-universe minute materialization begin.
-
-## Workstation command
-
-From the ATLAS repository root in the project virtual environment:
+After the continuation package is merged, rerun from the repository root:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\audit_v2_intraday_semantics.py
 ```
 
-The persisted local evidence path is:
+The evidence path remains:
 
 ```text
 data/v2_build/alpaca_sip_v2/validation/b34_intraday_semantics_audit.json
 ```
 
-This command reads only existing V2 local evidence and canonical minute partitions. It does not contact Alpaca, Massive, Webull, or any broker.
+The command remains local/read-only with respect to providers and brokers. B34 is not fully closed, and broad minute materialization is not authorized, until this enhanced report returns `status=ACCEPTED` and the exact package passes repository acceptance.
