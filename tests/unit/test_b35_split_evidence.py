@@ -42,6 +42,7 @@ def _write_fixture(tmp_path: Path) -> tuple[V2Layout, Path]:
     actions_sha = hashlib.sha256(actions_path.read_bytes()).hexdigest()
     source_snapshot = {
         "contract": SOURCE_SNAPSHOT_CONTRACT,
+        "status": "COMPLETE",
         "v1_ancestry": "FORBIDDEN",
         "corporate_actions_native": {
             "path": str(actions_path),
@@ -60,7 +61,7 @@ def _write_fixture(tmp_path: Path) -> tuple[V2Layout, Path]:
 def test_split_evidence_binds_only_preprotected_split_actions(tmp_path: Path) -> None:
     layout, _actions_path = _write_fixture(tmp_path)
     evidence = load_b35_split_evidence(layout)
-    assert evidence.split_dates_by_symbol == {"TEST": (evidence.split_dates_by_symbol["TEST"][0],)}
+    assert tuple(evidence.split_dates_by_symbol) == ("TEST",)
     assert evidence.split_dates_by_symbol["TEST"][0].isoformat() == "2026-03-02"
     assert "LATE" not in evidence.split_dates_by_symbol
     assert evidence.split_event_count == 1
@@ -71,4 +72,14 @@ def test_split_evidence_rejects_corporate_action_hash_drift(tmp_path: Path) -> N
     layout, actions_path = _write_fixture(tmp_path)
     actions_path.write_bytes(actions_path.read_bytes() + b"drift")
     with pytest.raises(B35SplitEvidenceError, match="SHA-256 drifted"):
+        load_b35_split_evidence(layout)
+
+
+def test_split_evidence_rejects_incomplete_source_snapshot(tmp_path: Path) -> None:
+    layout, _actions_path = _write_fixture(tmp_path)
+    snapshot_path = layout.manifests / "source_snapshot.json"
+    payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    payload["status"] = "IN_PROGRESS"
+    snapshot_path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(B35SplitEvidenceError, match="not COMPLETE"):
         load_b35_split_evidence(layout)
