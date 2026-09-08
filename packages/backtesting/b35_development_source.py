@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ import duckdb
 import pandas as pd
 
 from packages.core.settings import AtlasSettings
+from packages.data.alpaca_v2_acquisition import ACQUISITION_CONTRACT
 from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.data.intraday_semantics_audit import (
     ALPACA_V2_SOURCE_PREFIX,
@@ -61,6 +63,8 @@ class B35DevelopmentSourcePlan:
     start_session: date
     end_session: date
     units: tuple[B35DevelopmentUnitBinding, ...]
+    native_plan_sha256: str
+    native_plan_file_sha256: str
     source_fingerprint: str
 
 
@@ -70,6 +74,10 @@ def _sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(4 * 1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _sha256_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _stable_hash(payload: object) -> str:
@@ -95,12 +103,172 @@ def _binding(unit: MinuteUnit) -> B35DevelopmentUnitBinding:
     )
 
 
+def _read_json_object(path: Path, label: str) -> dict[str, object]:
+    if not path.is_file():
+        raise FileNotFoundError(f"missing {label}: {path}")
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise B35DevelopmentSourceError(f"invalid {label}: {path}") from exc
+    if not isinstance(value, dict):
+        raise B35DevelopmentSourceError(f"{label} is not a JSON object: {path}")
+    return value
+
+
+def _expected_minute_units(
+    layout: V2Layout,
+    *,
+    start_session: date,
+    end_session: date,
+) -> tuple[dict[str, dict[str, object]], str, str]:
+    """Load the frozen native acquisition plan without touching market data."""
+
+    manifest_path = layout.manifests / "native_acquisition_plan.json"
+    plan_path = layout.manifests / "native_acquisition_plan.jsonl.gz"
+    manifest = _read_json_object(manifest_path, "V2 native acquisition plan manifest")
+    required = {
+        "contract": ACQUISITION_CONTRACT,
+        "status": "FROZEN",
+        "v1_ancestry": "FORBIDDEN",
+    }
+    for field, expected in required.items():
+        if manifest.get(field) != expected:
+            raise B35DevelopmentSourceError(
+                f"V2 native acquisition plan {field} is not {expected!r}"
+            )
+    recorded_path = Path(str(manifest.get("plan_path") or ""))
+    try:
+        if recorded_path.resolve() != plan_path.resolve():
+            raise B35DevelopmentSourceError(
+                "V2 native acquisition plan path does not resolve to the isolated V2 plan"
+            )
+    except OSError as exc:
+        raise B35DevelopmentSourceError("invalid V2 native acquisition plan path") from exc
+    if not plan_path.is_file():
+        raise FileNotFoundError(f"missing frozen V2 native acquisition plan: {plan_path}")
+
+    compressed_sha = _sha256_file(plan_path)
+    expected_compressed_sha = str(manifest.get("plan_file_sha256") or "")
+    if compressed_sha != expected_compressed_sha:
+        raise B35DevelopmentSourceError("V2 native acquisition plan file SHA-256 drifted")
+    try:
+        raw = gzip.decompress(plan_path.read_bytes())
+    except (OSError, EOFError) as exc:
+        raise B35DevelopmentSourceError("V2 native acquisition plan gzip is unreadable") from exc
+    raw_sha = _sha256_bytes(raw)
+    expected_raw_sha = str(manifest.get("plan_sha256") or "")
+    if raw_sha != expected_raw_sha:
+        raise B35DevelopmentSourceError("V2 native acquisition plan content SHA-256 drifted")
+
+    start_month = _month_key(start_session)
+    end_month = _month_key(end_session)
+    expected: dict[str, dict[str, object]] = {}
+    for line_number, line in enumerate(raw.splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise B35DevelopmentSourceError(
+                f"invalid native acquisition plan line {line_number}"
+            ) from exc
+        if not isinstance(record, dict):
+            raise B35DevelopmentSourceError(
+                f"native acquisition plan line {line_number} is not an object"
+            )
+        if str(record.get("canonical_timeframe") or "") != MINUTE_TIMEFRAME:
+            continue
+        if str(record.get("provider_timeframe") or "") != "1Min":
+            raise B35DevelopmentSourceError("minute native plan provider timeframe drifted")
+        try:
+            year = int(record["year"])
+            month = int(record["month"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise B35DevelopmentSourceError("minute native plan year/month is invalid") from exc
+        key = (year, month)
+        if key < start_month or key > end_month:
+            continue
+        if year > 2026 or (year == 2026 and month >= 5):
+            raise B35DevelopmentSourceError(
+                "frozen native plan selection would enter a May-2026-or-later minute partition"
+            )
+        unit_id = str(record.get("unit_id") or "")
+        symbols = tuple(str(value) for value in record.get("symbols") or [] if str(value))
+        if not unit_id or not symbols:
+            raise B35DevelopmentSourceError("minute native plan unit identity/symbols are incomplete")
+        if unit_id in expected:
+            raise B35DevelopmentSourceError("minute native plan contains duplicate unit identity")
+        expected[unit_id] = {
+            "unit_id": unit_id,
+            "year": year,
+            "month": month,
+            "symbols": symbols,
+        }
+    if not expected:
+        raise B35DevelopmentSourceError("frozen native plan selects no B35 DEVELOPMENT minute units")
+    return expected, raw_sha, compressed_sha
+
+
+def _validate_expected_coverage(
+    expected: dict[str, dict[str, object]],
+    discovered: tuple[MinuteUnit, ...],
+    *,
+    start_session: date,
+    end_session: date,
+) -> tuple[B35DevelopmentUnitBinding, ...]:
+    start_month = _month_key(start_session)
+    end_month = _month_key(end_session)
+    actual: dict[str, MinuteUnit] = {}
+    for unit in discovered:
+        key = (unit.year, unit.month)
+        if key < start_month or key > end_month:
+            continue
+        if unit.unit_id in actual:
+            raise B35DevelopmentSourceError("completed minute-unit identity is duplicated")
+        actual[unit.unit_id] = unit
+
+    missing = sorted(set(expected) - set(actual))
+    unexpected = sorted(set(actual) - set(expected))
+    if missing or unexpected:
+        detail = []
+        if missing:
+            detail.append(f"missing_expected={len(missing)} first={missing[:3]}")
+        if unexpected:
+            detail.append(f"unexpected_completed={len(unexpected)} first={unexpected[:3]}")
+        raise B35DevelopmentSourceError(
+            "B35 DEVELOPMENT minute coverage is not exact: " + "; ".join(detail)
+        )
+
+    selected: list[B35DevelopmentUnitBinding] = []
+    for unit_id in sorted(expected):
+        record = expected[unit_id]
+        unit = actual[unit_id]
+        if (
+            unit.year != int(record["year"])
+            or unit.month != int(record["month"])
+            or unit.symbols != tuple(record["symbols"])
+        ):
+            raise B35DevelopmentSourceError(
+                f"completed minute unit does not match its frozen plan: {unit_id}"
+            )
+        binding = _binding(unit)
+        if len(binding.canonical_sha256) != 64:
+            raise B35DevelopmentSourceError(
+                f"minute unit has no canonical SHA-256 binding: {binding.unit_id}"
+            )
+        selected.append(binding)
+    return tuple(
+        sorted(selected, key=lambda item: (item.year, item.month, item.symbols, item.unit_id))
+    )
+
+
 class B35DevelopmentMinuteSource:
     """Read only accepted pre-protected V2 minute units for B35 DEVELOPMENT.
 
-    Planning reads checkpoint metadata only. A canonical parquet is hash verified
-    immediately before that one unit is opened. No raw bundle, May-2026 partition,
-    protected holdout, future blind, provider, or broker source is opened here.
+    Planning verifies exact coverage against the immutable native acquisition plan
+    while reading metadata only. A canonical parquet is hash verified immediately
+    before that one unit is opened. No raw bundle, May-2026 partition, consumed
+    master, future blind, provider, or broker source is opened here.
     """
 
     def __init__(self, settings: AtlasSettings) -> None:
@@ -128,38 +296,26 @@ class B35DevelopmentMinuteSource:
         end_session: date = DEVELOPMENT_LAST_SCORING_SESSION,
     ) -> B35DevelopmentSourcePlan:
         self.validate_scope(start_session, end_session)
+        expected, native_plan_sha, native_plan_file_sha = _expected_minute_units(
+            self.layout,
+            start_session=start_session,
+            end_session=end_session,
+        )
         discovered = discover_minute_units(self.layout)
-        start_month = _month_key(start_session)
-        end_month = _month_key(end_session)
-        selected: list[B35DevelopmentUnitBinding] = []
-        seen_ids: set[str] = set()
-        for unit in discovered:
-            key = (unit.year, unit.month)
-            if key < start_month or key > end_month:
-                continue
-            if unit.year > 2026 or (unit.year == 2026 and unit.month >= 5):
-                raise B35DevelopmentSourceError(
-                    "B35 source planner selected a monthly unit that could overlap protected evidence"
-                )
-            if not unit.unit_id or unit.unit_id in seen_ids:
-                raise B35DevelopmentSourceError("minute-unit identity is blank or duplicated")
-            seen_ids.add(unit.unit_id)
-            binding = _binding(unit)
-            if len(binding.canonical_sha256) != 64:
-                raise B35DevelopmentSourceError(
-                    f"minute unit has no canonical SHA-256 binding: {binding.unit_id}"
-                )
-            selected.append(binding)
-        if not selected:
-            raise B35DevelopmentSourceError("B35 DEVELOPMENT scope selected no minute units")
-        selected.sort(
-            key=lambda item: (item.year, item.month, item.symbols, item.unit_id)
+        selected = _validate_expected_coverage(
+            expected,
+            discovered,
+            start_session=start_session,
+            end_session=end_session,
         )
         payload = {
             "contract": B35_DEVELOPMENT_SOURCE_CONTRACT,
             "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
             "start_session": start_session.isoformat(),
             "end_session": end_session.isoformat(),
+            "native_plan_sha256": native_plan_sha,
+            "native_plan_file_sha256": native_plan_file_sha,
+            "expected_unit_count": len(expected),
             "units": [
                 {
                     "unit_id": item.unit_id,
@@ -183,7 +339,9 @@ class B35DevelopmentMinuteSource:
             b35_preoutcome_fingerprint=B35_PREOUTCOME_FINGERPRINT,
             start_session=start_session,
             end_session=end_session,
-            units=tuple(selected),
+            units=selected,
+            native_plan_sha256=native_plan_sha,
+            native_plan_file_sha256=native_plan_file_sha,
             source_fingerprint=_stable_hash(payload),
         )
 
@@ -312,6 +470,9 @@ class B35DevelopmentMinuteSource:
             "unit_count": len(plan.units),
             "month_count": len(months),
             "months": months,
+            "native_plan_sha256": plan.native_plan_sha256,
+            "native_plan_file_sha256": plan.native_plan_file_sha256,
+            "expected_unit_coverage_exact": True,
             "lazy_hash_verification": True,
             "raw_bundles_opened": 0,
             "consumed_master_interval": [
