@@ -1087,6 +1087,36 @@ to simple family baselines. Add strategy management, calibration, degradation,
 regime, slippage, portfolio contribution, and trials-ledger views. Learning may
 recommend but never self-promote.
 
+**Pre-outcome design frozen (2026-09-08).** Contract
+`atlas-b35-a36-conditional-evidence-v1-pre-outcome` has fingerprint
+`7bfd1cfdd65e946d45caa99dd2a35a90d8b424cb82cad5941ad26cac51816c4c` and binds exactly the accepted B34 opening/premarket
+pack. It reads no outcomes and grants no minute-replay, promotion, PAPER, LIVE,
+provider-call, or broker-read/write authority. Scored DEVELOPMENT and selector fit
+end `2026-04-30`; the consumed `2026-05-12..2026-08-11` master interval is forbidden
+as fitting/scored evidence. Rows after DEVELOPMENT may only be counted fixed-feature
+warm-up for a genuinely future signal, never labels or selector fit. The new blind
+begins on the first XNYS session on/after `2026-09-08`, accrues at least 63 complete
+sessions before one-time unblinding, cannot refit on blind outcomes, and can never be
+recycled into DEVELOPMENT after a bad result.
+
+The frozen evaluation uses 504-session rolling training, 63-session tests, 63-session
+steps and a one-session embargo; strategy thresholds never refit. It preregisters
+same-session entry/stop/2R/time-exit mechanics, adverse same-bar collision handling,
+a 0/10/25/50/100-bps all-in round-trip cost grid with 50 bps selector scoring and
+100 bps stress, prior-close/PIT condition clocks, explicit price/liquidity/volatility/
+gap/premarket/opening-range/time buckets, session-cluster bootstrap lower-confidence
+selection with cash abstention, trials/multiplicity controls, Deflated-Sharpe/PBO
+diagnostics, fixed robustness perturbations, and the accepted A34 long-only portfolio
+risk envelope. Short signals remain research-profile only until borrow/locate/recall
+economics exist. Full mechanics and literature anchors are in
+`docs/b35_a36_preoutcome_conditional_evidence.md`.
+
+The next B35 authority transition, only after exact-head acceptance of this frozen
+contract, is a separate hash-bound finite DEVELOPMENT replay authorization. That
+later authorization must still exclude the consumed master and future blind from
+scored DEVELOPMENT outcomes and must not create a giant permanent minute-feature
+lake merely to run the replay.
+
 ### B36 — Literature-Anchored Reference Library
 
 After the product loop works, research and rank established mechanisms—cross-
@@ -1220,7 +1250,8 @@ Every closeout reports:
    redundant full feature lake. Continue A34.5 Product work in parallel regardless
    of strategy profit.
 6. **COMPLETE — B34 intraday readiness and frozen opening/premarket pack.** Final workstation evidence is `ACCEPTED`; repository acceptance retains the enhanced evidence hash, earlier semantic evidence hash, and frozen strategy-pack fingerprint without opening outcomes or trading authority.
-7. **NEXT Track B — freeze the B35/A36 pre-outcome conditional-evidence contract.** Before any strategy performance is read, define the development-only replay population, realistic spread/slippage/fees and entry timing, outcome/exit conventions, point-in-time-safe stock-condition and market-regime taxonomy, portfolio/account simulation rules, multiple-comparison controls, walk-forward folds, robustness/stress tests, and a new future/blind validation boundary. The consumed `2026-05-12..2026-08-11` master holdout is permanently unavailable for qualifying these B34 strategies. This contract-design package itself must read zero strategy outcomes and grants no PAPER/LIVE authority.
+7. **NEXT Track-B authority transition — finite B35 DEVELOPMENT replay authorization.** The pre-outcome contract is frozen in this package. Only after exact-head acceptance may a separate hash-bound authorization permit finite DEVELOPMENT outcome replay through `2026-04-30`; it must exclude the consumed master and the new future blind, preserve all trials/counterfactuals, and still grant no PAPER/LIVE authority.
+
 8. Keep focused tests, the full repository suite, retained scientific validators,
    cross-platform exact-head CI, and same-commit updates to both living documents
    mandatory for every package.
