@@ -124,14 +124,9 @@ def build_parser() -> argparse.ArgumentParser:
             "The consumed master and future blind are structurally unavailable."
         )
     )
-    parser.add_argument("--start", type=date.fromisoformat, default=V2_DEFAULT_START)
-    parser.add_argument(
-        "--end",
-        type=date.fromisoformat,
-        default=DEVELOPMENT_LAST_SCORING_SESSION,
-    )
-    parser.add_argument("--output-root", type=Path, default=None)
-    parser.add_argument("--trial-ledger", type=Path, default=None)
+    # The governed B35 trial has one frozen scope and one canonical evidence/ledger
+    # location. Operator-selectable slices or alternate ledgers would create an
+    # avoidable data-snooping/audit bypass surface.
     parser.add_argument(
         "--source-only",
         action="store_true",
@@ -162,15 +157,13 @@ def main(argv: list[str] | None = None) -> int:
             "protected/future evidence remains forbidden"
         )
 
+    start = V2_DEFAULT_START
+    end = DEVELOPMENT_LAST_SCORING_SESSION
     settings = load_settings(PROJECT_ROOT)
     source = B35DevelopmentMinuteSource(settings)
-    plan = source.plan(args.start, args.end)
+    plan = source.plan(start, end)
     split_evidence = load_b35_split_evidence(source.layout)
-    output_root = (
-        Path(args.output_root).resolve()
-        if args.output_root is not None
-        else _output_root(settings, args.start, args.end)
-    )
+    output_root = _output_root(settings, start, end)
     output_root.mkdir(parents=True, exist_ok=True)
     source_report = source.report(plan)
     atomic_write_text(
@@ -189,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     print("ATLAS B35 Frozen DEVELOPMENT Conditional Replay")
-    print(f"  scope: {args.start} -> {args.end}")
+    print(f"  scope: {start} -> {end} (frozen; no operator override)")
     print(f"  source units: {len(plan.units):,}")
     print(f"  source fingerprint: {plan.source_fingerprint}")
     print(f"  split evidence fingerprint: {split_evidence.fingerprint}")
@@ -221,12 +214,8 @@ def main(argv: list[str] | None = None) -> int:
         }
     )
 
-    ledger = StrategyTrialLedger(
-        Path(args.trial_ledger).resolve()
-        if args.trial_ledger is not None
-        else _ledger_path(settings)
-    )
-    token = f"{args.start:%Y%m%d}_{args.end:%Y%m%d}.{input_fingerprint[:12]}"
+    ledger = StrategyTrialLedger(_ledger_path(settings))
+    token = f"{start:%Y%m%d}_{end:%Y%m%d}.{input_fingerprint[:12]}"
     registration_id = f"b35.dev.{token}.registration"
     _append_once(
         ledger,
