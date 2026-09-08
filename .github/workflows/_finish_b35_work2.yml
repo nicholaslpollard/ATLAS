@@ -21,6 +21,21 @@ jobs:
         with:
           ref: b35-development-conditional-replay
           fetch-depth: 0
+      - name: Repair known publisher indentation assumption
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/_finish_b35_work2.py")
+          text = path.read_text(encoding="utf-8")
+          old = '''    ''' + "'''" + '''        "authorization_id": authorization_id,\\n        "start_session": plan.start_session.isoformat(),''' + "'''"
+          new = '''    ''' + "'''" + '''            "authorization_id": authorization_id,\\n            "start_session": plan.start_session.isoformat(),''' + "'''"
+          old2 = '''    ''' + "'''" + '''        "authorization_id": authorization_id,\\n        "read_start_marker_id": read_start_marker_id,\\n        "start_session": plan.start_session.isoformat(),''' + "'''"
+          new2 = '''    ''' + "'''" + '''            "authorization_id": authorization_id,\\n            "read_start_marker_id": read_start_marker_id,\\n            "start_session": plan.start_session.isoformat(),''' + "'''"
+          if old not in text or old2 not in text:
+              raise SystemExit("expected publisher summary snippets not found")
+          path.write_text(text.replace(old, new, 1).replace(old2, new2, 1), encoding="utf-8")
+          PY
       - name: Apply deterministic repairs
         run: python scripts/_finish_b35_work2.py
       - name: Verify no outcome artifact was created
