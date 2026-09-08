@@ -252,7 +252,7 @@ def test_load_unit_accepts_exact_valid_physical_rows(tmp_path: Path) -> None:
     ("kwargs", "message"),
     [
         ({"session_segment": "after_hours"}, "incorrect session labels"),
-        ({"adjusted": None}, "invalid physical rows"),
+        ({"adjusted": None}, "is_adjusted must be BOOLEAN"),
         ({"adjusted": "false"}, "is_adjusted must be BOOLEAN"),
         ({"duplicate": True}, "duplicate minute keys"),
     ],
