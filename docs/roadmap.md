@@ -1061,6 +1061,11 @@ extended-hours coverage, split adjustment, and the exact premarket information c
 Do not materialize billions of indicator rows before this finite readiness report
 shows which intraday pack can be represented faithfully.
 
+
+**B34 status (2026-09-08): source-readiness V1 ACCEPTED; finite strategy-pack closeout in acceptance.** The workstation audit returned `ACCEPTED` with evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`. The deterministic liquid, sparse/no-trade, split, other-corporate-action, and DST/session-boundary samples all passed, as did all four selected unit hash checks. Sampled extended-hours coverage included premarket, regular, and after-hours bars. The selector opened zero monthly partitions overlapping the consumed master holdout and made zero provider/broker writes. The continuation explicitly validates OHLCV in the readiness report; preserves absent minutes without zero-fill or halt inference; treats the 09:30 aggregate as an aggregate rather than a separate auction record; keeps native minute bars raw/unadjusted and fails any cross-split comparison closed; and freezes the information clock so a bar stamped `T` is usable only at `T+1m`, premarket freezes after stamp 09:29 at 09:30 ET, and the 15-minute opening range freezes after stamp 09:44 at 09:45 ET.
+
+The ready pre-outcome pack is frozen as four RESEARCH-only references: `b34_gap_continuation_v1` (absolute gap threshold 2%), `b34_opening_range_breakout_15m_v1` (09:30..09:44 range and closed-bar breakout through 11:30 ET), `b34_premarket_relvol_consolidation_v1` (04:00..09:29 observed volume / median of exactly 20 prior eligible premarkets, threshold 2.0, 09:00..09:29 consolidation <=3% with >=5 observed bars, then closed regular breakout), and `b34_highest_volume_day_style_v1` (current observed premarket volume >= maximum regular daily volume across exactly 252 prior eligible sessions, the same consolidation rule, then a closed premarket-high breakout). The HVD-style reference deliberately omits a small-cap market-cap filter until an accepted PIT market-cap source exists. No exits, performance, promotion, PAPER order authority, LIVE authority, or broad minute materialization are granted here. Final B34 closeout requires exact-head CI plus the enhanced workstation audit to return `ACCEPTED`.
+
 ### A35 — Operational PAPER and Operator Web Beta
 
 **Next Track-A package after PR #60 merges. A34.5 observability is satisfied, but
@@ -1217,11 +1222,7 @@ Every closeout reports:
    indicators are computed by the frozen engine on demand; do not first build a
    redundant full feature lake. Continue A34.5 Product work in parallel regardless
    of strategy profit.
-6. **AFTER DAILY PATH — finite B34 minute readiness.** Scan intraday and extended-
-   hours semantics before adjusted-minute features or gap/opening/premarket outcomes.
-   News remains a separate, lower-priority provider/PIT package because it cannot
-   validate this price database. A B34 limitation does not block daily replay or
-   A34.5.
+6. **ACTIVE — finite B34 closeout after accepted source readiness.** Preserve the accepted V1 workstation evidence, complete the frozen opening/premarket pack and explicit OHLCV/information-clock checks, then rerun `scripts/audit_v2_intraday_semantics.py`. Do not open strategy performance, the consumed master holdout, PAPER/LIVE authority, or broad B35 minute materialization during this closeout. If the enhanced audit is accepted, reconcile B34 closed and then choose the next Track-A/Track-B package explicitly.
 7. Keep focused tests, the full repository suite, retained scientific validators,
    cross-platform exact-head CI, and same-commit updates to both living documents
    mandatory for every package.
