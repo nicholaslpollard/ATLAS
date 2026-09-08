@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
+import sys
 from pathlib import Path
 
-from packages.strategies.b35_conditional_evidence_contract import (
-    B35_PREOUTCOME_FINGERPRINT,
-    frozen_contract_manifest,
-)
+
+CONTRACT_PATH = Path("packages/strategies/b35_conditional_evidence_contract.py")
+SPEC = importlib.util.spec_from_file_location("atlas_b35_contract_publish", CONTRACT_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise SystemExit("unable to load B35 contract module")
+CONTRACT = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = CONTRACT
+SPEC.loader.exec_module(CONTRACT)
+B35_PREOUTCOME_FINGERPRINT = CONTRACT.B35_PREOUTCOME_FINGERPRINT
+frozen_contract_manifest = CONTRACT.frozen_contract_manifest
 
 
 def sub_once(text: str, pattern: str, replacement: str, label: str) -> str:
