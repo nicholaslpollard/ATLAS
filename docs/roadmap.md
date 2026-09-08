@@ -1222,7 +1222,7 @@ Every closeout reports:
    indicators are computed by the frozen engine on demand; do not first build a
    redundant full feature lake. Continue A34.5 Product work in parallel regardless
    of strategy profit.
-6. **ACTIVE — finite B34 closeout after accepted source readiness.** Preserve the accepted V1 workstation evidence, complete the frozen opening/premarket pack and explicit OHLCV/information-clock checks, then rerun `scripts/audit_v2_intraday_semantics.py`. Do not open strategy performance, the consumed master holdout, PAPER/LIVE authority, or broad B35 minute materialization during this closeout. If the enhanced audit is accepted, reconcile B34 closed and then choose the next Track-A/Track-B package explicitly.
+6. **ACTIVE — finite B34 closeout after accepted source readiness.** Preserve the accepted V1 workstation evidence, complete the frozen opening/premarket pack and explicit OHLCV/information-clock checks, then rerun `scripts/audit_v2_intraday_semantics.py`. Do not open strategy performance, the consumed master holdout, PAPER/LIVE authority, or broad minute materialization during this closeout. If the enhanced audit is accepted, reconcile B34 closed and then choose the next Track-A/Track-B package explicitly.
 7. Keep focused tests, the full repository suite, retained scientific validators,
    cross-platform exact-head CI, and same-commit updates to both living documents
    mandatory for every package.
