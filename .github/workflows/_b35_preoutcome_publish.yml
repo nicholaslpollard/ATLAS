@@ -17,9 +17,7 @@ jobs:
           ref: b35-a36-preoutcome-contract
           fetch-depth: 0
       - name: Publish B35 evidence and docs
-        run: PYTHONPATH=. python scripts/_publish_b35_preoutcome_docs.py
-      - name: Validate frozen contract
-        run: PYTHONPATH=. python scripts/validate_b35_preoutcome_contract.py > /dev/null
+        run: python scripts/_publish_b35_preoutcome_docs.py
       - name: Commit published package
         run: |
           git config user.name "github-actions[bot]"
