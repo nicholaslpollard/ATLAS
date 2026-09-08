@@ -38,6 +38,8 @@ class DailySessionSummary:
     close: float
     regular_volume: float
     dollar_volume: float
+    # This token is an equality-only split epoch, not an adjustment ratio. It
+    # changes whenever a provider-literal split is effective for the symbol.
     split_factor: float | None = None
 
 
@@ -108,13 +110,31 @@ def summarize_regular_session(
     )
 
 
-def split_free(summaries: Sequence[DailySessionSummary], *, current_factor: float | None) -> bool:
+def split_free(
+    summaries: Sequence[DailySessionSummary], *, current_factor: float | None
+) -> bool:
     if current_factor is None or not math.isfinite(current_factor) or current_factor <= 0:
         return False
     factors = [item.split_factor for item in summaries]
-    if any(value is None or not math.isfinite(float(value)) or float(value) <= 0 for value in factors):
+    if any(
+        value is None or not math.isfinite(float(value)) or float(value) <= 0
+        for value in factors
+    ):
         return False
-    return all(math.isclose(float(value), current_factor, rel_tol=1e-10, abs_tol=1e-12) for value in factors)
+    return all(
+        math.isclose(float(value), current_factor, rel_tol=1e-10, abs_tol=1e-12)
+        for value in factors
+    )
+
+
+def _prior_window_split_free(
+    prior: Sequence[DailySessionSummary], required: int
+) -> bool:
+    if len(prior) < required:
+        return False
+    window = prior[-required:]
+    latest_factor = window[-1].split_factor
+    return split_free(window, current_factor=latest_factor)
 
 
 def split_crossed_prior_close(
@@ -141,20 +161,23 @@ def _median_dollar_volume(prior: Sequence[DailySessionSummary]) -> float | None:
 
 
 def _realized_volatility(prior: Sequence[DailySessionSummary]) -> float | None:
-    # Twenty close-to-close returns require 21 already-completed sessions.
-    if len(prior) < 21:
+    # Twenty close-to-close returns require 21 already-completed sessions. Raw
+    # prices cannot cross a split epoch; such a window is explicitly unavailable.
+    if len(prior) < 21 or not _prior_window_split_free(prior, 21):
         return None
     closes = [float(item.close) for item in prior[-21:]]
     if any(value <= 0 or not math.isfinite(value) for value in closes):
         return None
-    returns = [math.log(closes[index] / closes[index - 1]) for index in range(1, len(closes))]
+    returns = [
+        math.log(closes[index] / closes[index - 1]) for index in range(1, len(closes))
+    ]
     if len(returns) != 20:
         return None
     return float(pstdev(returns) * math.sqrt(252.0))
 
 
 def _trend(prior: Sequence[DailySessionSummary]) -> str:
-    if len(prior) < 50:
+    if len(prior) < 50 or not _prior_window_split_free(prior, 50):
         return "UNAVAILABLE"
     closes = [float(item.close) for item in prior[-50:]]
     sma20 = sum(closes[-20:]) / 20.0
@@ -167,13 +190,17 @@ def _trend(prior: Sequence[DailySessionSummary]) -> str:
     return "MIXED"
 
 
-def _premarket_dollar_volume(bars: Iterable[CanonicalBar], session_date: date) -> float | None:
+def _premarket_dollar_volume(
+    bars: Iterable[CanonicalBar], session_date: date
+) -> float | None:
     eligible = [
         bar
         for bar in bars
         if bar.session_date == session_date
         and bar.session_segment == SessionSegment.PREMARKET
-        and time(4, 0) <= bar.timestamp_utc.astimezone(MARKET_TZ).time() < time(9, 30)
+        and time(4, 0)
+        <= bar.timestamp_utc.astimezone(MARKET_TZ).time()
+        < time(9, 30)
     ]
     if not eligible:
         return None
@@ -214,6 +241,7 @@ def build_condition_snapshot(
     current_regular_open: float,
     current_split_factor: float | None,
     prior_market_regime: str = "UNAVAILABLE",
+    signal_time_et_override: time | None = None,
 ) -> B35ConditionSnapshot:
     if not setup.ready or not setup.fired:
         raise ValueError("condition snapshot requires a fired B34 setup")
@@ -224,6 +252,11 @@ def build_condition_snapshot(
     prior_close = prior.close if prior is not None else None
     if prior_close is None or prior_close <= 0:
         raise ValueError("condition snapshot requires a prior regular close")
+    crossed = split_crossed_prior_close(prior, current_factor=current_split_factor)
+    if crossed:
+        raise ValueError(
+            "condition snapshot refuses raw prior-close/current-open comparison across a split"
+        )
     gap_pct = current_regular_open / prior_close - 1.0
     median_dv = _median_dollar_volume(prior_daily)
     realized = _realized_volatility(prior_daily)
@@ -234,7 +267,8 @@ def build_condition_snapshot(
     opening_width: float | None = None
     if range_high is not None and range_low is not None and current_regular_open > 0:
         opening_width = (float(range_high) - float(range_low)) / current_regular_open
-    signal_bucket = bucket_signal_time_et(_signal_time(setup))
+    signal_time_value = signal_time_et_override or _signal_time(setup)
+    signal_bucket = bucket_signal_time_et(signal_time_value)
     relvol_bucket = bucket_premarket_relvol_20(
         float(pm_relvol) if pm_relvol is not None else None
     )
@@ -243,17 +277,25 @@ def build_condition_snapshot(
     )
     opening_bucket = bucket_opening_range_width_pct(opening_width)
     intensity_by_strategy = {
-        "b34_gap_continuation_v1": ("absolute_gap_pct", bucket_absolute_gap_pct(gap_pct)),
-        "b34_opening_range_breakout_15m_v1": ("opening_range_width_pct", opening_bucket),
-        "b34_premarket_relvol_consolidation_v1": ("premarket_relvol_20", relvol_bucket),
+        "b34_gap_continuation_v1": (
+            "absolute_gap_pct",
+            bucket_absolute_gap_pct(gap_pct),
+        ),
+        "b34_opening_range_breakout_15m_v1": (
+            "opening_range_width_pct",
+            opening_bucket,
+        ),
+        "b34_premarket_relvol_consolidation_v1": (
+            "premarket_relvol_20",
+            relvol_bucket,
+        ),
         "b34_highest_volume_day_style_v1": ("hvd_volume_ratio", hvd_bucket),
     }
     if setup.strategy_id not in intensity_by_strategy:
         raise ValueError(f"unsupported B35 strategy: {setup.strategy_id}")
     intensity_dimension, intensity_bucket = intensity_by_strategy[setup.strategy_id]
-    split20 = split_free(prior_daily[-20:], current_factor=current_split_factor) if len(prior_daily) >= 20 else False
-    split252 = split_free(prior_daily[-252:], current_factor=current_split_factor) if len(prior_daily) >= 252 else False
-    crossed = split_crossed_prior_close(prior, current_factor=current_split_factor)
+    split20 = _prior_window_split_free(prior_daily, 20)
+    split252 = _prior_window_split_free(prior_daily, 252)
     values = {
         "contract": B35_DEVELOPMENT_CONTEXT_CONTRACT,
         "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
