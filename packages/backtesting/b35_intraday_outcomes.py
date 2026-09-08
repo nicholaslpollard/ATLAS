@@ -4,7 +4,7 @@ import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass
-from datetime import date, time, timedelta
+from datetime import date, time
 from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
@@ -141,6 +141,25 @@ def _stop_anchor(setup: IntradaySetupResult, direction: StrategyDirection) -> fl
     return numeric
 
 
+def _net_return_with_cost(
+    *,
+    direction: StrategyDirection,
+    entry: float,
+    exit_price: float,
+    round_trip_cost_bps: float,
+) -> float:
+    """Apply the frozen all-in cost half at entry and half at exit, adversely."""
+
+    half = round_trip_cost_bps / 20_000.0
+    if direction == StrategyDirection.LONG:
+        adverse_entry = entry * (1.0 + half)
+        adverse_exit = exit_price * (1.0 - half)
+        return adverse_exit / adverse_entry - 1.0
+    adverse_entry_proceeds = entry * (1.0 - half)
+    adverse_cover = exit_price * (1.0 + half)
+    return adverse_entry_proceeds / adverse_cover - 1.0
+
+
 def _empty(
     *,
     setup: IntradaySetupResult,
@@ -232,7 +251,10 @@ def simulate_intraday_outcome(
             status="NONCOMPARABLE_NO_SIGNAL_BAR",
             reasons=("SIGNAL_BAR_TIMESTAMP_UNAVAILABLE",),
         )
-    if signal_stamp.date() != regular[0].timestamp_utc.date() and signal_stamp.astimezone(MARKET_TZ).date() != session_date:
+    if (
+        signal_stamp.date() != regular[0].timestamp_utc.date()
+        and signal_stamp.astimezone(MARKET_TZ).date() != session_date
+    ):
         return _empty(
             setup=setup,
             symbol=symbol,
@@ -314,6 +336,25 @@ def simulate_intraday_outcome(
             exit_reason = "TIME_EXIT"
             break
 
+        # Gap-through orders are resolved at the bar open before intrabar range
+        # ambiguity. Stops receive the worse open; targets receive no improvement.
+        if direction == StrategyDirection.LONG:
+            stop_gap = bar.open < stop
+            target_gap = bar.open > target
+        else:
+            stop_gap = bar.open > stop
+            target_gap = bar.open < target
+        if stop_gap:
+            exit_bar = bar
+            exit_price = float(bar.open)
+            exit_reason = "STOP_GAP_WORSE_OPEN"
+            break
+        if target_gap:
+            exit_bar = bar
+            exit_price = target
+            exit_reason = "TARGET_GAP_NO_BETTER_THAN_TARGET"
+            break
+
         if direction == StrategyDirection.LONG:
             stop_hit = bar.low <= stop
             target_hit = bar.high >= target
@@ -366,7 +407,12 @@ def simulate_intraday_outcome(
     mfe = max(mfe, gross)
     mae = min(mae, gross)
     net = {
-        str(cost_bps): gross - float(cost_bps) / 10_000.0
+        str(cost_bps): _net_return_with_cost(
+            direction=direction,
+            entry=entry,
+            exit_price=exit_price,
+            round_trip_cost_bps=float(cost_bps),
+        )
         for cost_bps in ALL_IN_ROUND_TRIP_COST_GRID_BPS
     }
     payload = {
