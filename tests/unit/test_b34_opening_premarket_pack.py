@@ -138,11 +138,11 @@ def test_opening_range_uses_only_closed_0930_through_0944_bars() -> None:
             minute,
             segment=SessionSegment.REGULAR,
             open_=100.0,
-            high=101.0 if minute == 4 else 100.8,
-            low=99.0 if minute == 8 else 99.2,
+            high=101.0 if minute == 34 else 100.8,
+            low=99.0 if minute == 38 else 99.2,
             close=100.0,
         )
-        for minute in range(15)
+        for minute in range(30, 45)
     ]
     bars.append(
         _bar(
@@ -207,7 +207,6 @@ def test_premarket_relvol_freezes_at_0930_and_needs_closed_regular_breakout() ->
     assert fired.evidence["cumulative_volume"] == 3000.0
     assert fired.evidence["premarket_relvol"] == 3.0
     assert fired.evidence["breakout_bar_timestamp_utc"] == "2026-04-30T13:30:00+00:00"
-
 
 
 def test_premarket_evaluators_materialize_one_shot_iterables() -> None:
