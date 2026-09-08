@@ -8,7 +8,15 @@ from enum import StrEnum
 from typing import Final
 
 
-B35_PREOUTCOME_CONTRACT: Final = "atlas-b35-a36-conditional-evidence-v1-pre-outcome"
+B35_PREOUTCOME_CONTRACT: Final = (
+    "atlas-b35-a36-conditional-evidence-v2-pre-outcome-clock-split-corrected"
+)
+B35_SUPERSEDED_PREOUTCOME_CONTRACT: Final = (
+    "atlas-b35-a36-conditional-evidence-v1-pre-outcome"
+)
+B35_SUPERSEDED_PREOUTCOME_FINGERPRINT: Final = (
+    "7bfd1cfdd65e946d45caa99dd2a35a90d8b424cb82cad5941ad26cac51816c4c"
+)
 B34_PACK_CONTRACT: Final = "atlas-b34-opening-premarket-pack-v1-pre-outcome"
 B34_PACK_FINGERPRINT: Final = (
     "6f7239fcda11ac6c890d2635980d431ec49e346707d9cc549f111bd50daaa4bf"
@@ -104,7 +112,7 @@ CONDITION_DIMENSIONS: Final[tuple[ConditionDimension, ...]] = (
     ),
     ConditionDimension(
         "realized_volatility_20",
-        "annualized close-to-close realized volatility over the prior 20 eligible sessions, through prior close only",
+        "annualized close-to-close realized volatility over the prior 20 eligible sessions, through prior close only; requires 21 completed closes in one split epoch",
         ("LT_25PCT", "25_TO_50PCT", "50_TO_100PCT", "GE_100PCT", "UNAVAILABLE"),
     ),
     ConditionDimension(
@@ -114,8 +122,8 @@ CONDITION_DIMENSIONS: Final[tuple[ConditionDimension, ...]] = (
     ),
     ConditionDimension(
         "absolute_gap_pct",
-        "current regular open versus prior regular close; known at/after the open",
-        ("LT_2PCT", "2_TO_5PCT", "5_TO_10PCT", "GE_10PCT"),
+        "current regular open versus prior regular close; unavailable when raw prices cross a split between those sessions",
+        ("LT_2PCT", "2_TO_5PCT", "5_TO_10PCT", "GE_10PCT", "UNAVAILABLE"),
     ),
     ConditionDimension(
         "premarket_relvol_20",
@@ -134,8 +142,8 @@ CONDITION_DIMENSIONS: Final[tuple[ConditionDimension, ...]] = (
     ),
     ConditionDimension(
         "signal_time_et",
-        "signal decision time, never the future entry/exit time",
-        ("0931_TO_0944", "0945_TO_1000", "1001_TO_1030", "1031_TO_1130"),
+        "information-safe signal decision time, never the underlying bar stamp or future entry/exit time",
+        ("0931_TO_0944", "0945_TO_1000", "1001_TO_1030", "1031_TO_1131"),
     ),
     ConditionDimension(
         "hvd_volume_ratio",
@@ -184,7 +192,6 @@ ROBUSTNESS_PERTURBATIONS: Final[dict[str, tuple[object, ...]]] = {
 }
 
 
-
 def classify_session(session_date: date) -> EvidenceWindow:
     if session_date <= DEVELOPMENT_LAST_SCORING_SESSION:
         return EvidenceWindow.DEVELOPMENT
@@ -193,7 +200,6 @@ def classify_session(session_date: date) -> EvidenceWindow:
     if session_date >= FUTURE_BLIND_START_ON_OR_AFTER:
         return EvidenceWindow.FUTURE_BLIND
     return EvidenceWindow.NONSCORING_WARMUP
-
 
 
 def validate_row_use(
@@ -220,7 +226,6 @@ def validate_row_use(
     raise ValueError(f"unsupported row use: {use}")
 
 
-
 def future_blind_unblind_permitted(
     *,
     complete_xnys_sessions: int,
@@ -236,7 +241,6 @@ def future_blind_unblind_permitted(
     )
 
 
-
 def bucket_prior_close_price(value: float) -> str:
     if value < 5.0:
         return "LT_5"
@@ -245,7 +249,6 @@ def bucket_prior_close_price(value: float) -> str:
     if value < 100.0:
         return "20_TO_100"
     return "GE_100"
-
 
 
 def bucket_median_dollar_volume_20(value: float | None) -> str:
@@ -262,7 +265,6 @@ def bucket_median_dollar_volume_20(value: float | None) -> str:
     return "GE_250M"
 
 
-
 def bucket_realized_volatility_20(value: float | None) -> str:
     if value is None:
         return "UNAVAILABLE"
@@ -275,8 +277,9 @@ def bucket_realized_volatility_20(value: float | None) -> str:
     return "GE_100PCT"
 
 
-
-def bucket_absolute_gap_pct(value: float) -> str:
+def bucket_absolute_gap_pct(value: float | None) -> str:
+    if value is None:
+        return "UNAVAILABLE"
     value = abs(value)
     if value < 0.02:
         return "LT_2PCT"
@@ -285,7 +288,6 @@ def bucket_absolute_gap_pct(value: float) -> str:
     if value < 0.10:
         return "5_TO_10PCT"
     return "GE_10PCT"
-
 
 
 def bucket_premarket_relvol_20(value: float | None) -> str:
@@ -298,7 +300,6 @@ def bucket_premarket_relvol_20(value: float | None) -> str:
     if value < 8.0:
         return "4_TO_8"
     return "GE_8"
-
 
 
 def bucket_premarket_dollar_volume(value: float | None) -> str:
@@ -315,7 +316,6 @@ def bucket_premarket_dollar_volume(value: float | None) -> str:
     return "GE_25M"
 
 
-
 def bucket_opening_range_width_pct(value: float | None) -> str:
     if value is None:
         return "UNAVAILABLE"
@@ -326,7 +326,6 @@ def bucket_opening_range_width_pct(value: float | None) -> str:
     if value < 0.04:
         return "2_TO_4PCT"
     return "GE_4PCT"
-
 
 
 def bucket_hvd_volume_ratio(value: float | None) -> str:
@@ -341,23 +340,30 @@ def bucket_hvd_volume_ratio(value: float | None) -> str:
     return "GE_2"
 
 
-
 def bucket_signal_time_et(value: time) -> str:
-    if value < time(9, 31) or value > time(11, 30):
-        raise ValueError("B35 signal-time bucket is restricted to 09:31..11:30 ET")
+    if value < time(9, 31) or value > time(11, 31):
+        raise ValueError("B35 signal-time bucket is restricted to 09:31..11:31 ET")
     if value <= time(9, 44):
         return "0931_TO_0944"
     if value <= time(10, 0):
         return "0945_TO_1000"
     if value <= time(10, 30):
         return "1001_TO_1030"
-    return "1031_TO_1130"
-
+    return "1031_TO_1131"
 
 
 def _payload() -> dict[str, object]:
     return {
         "contract": B35_PREOUTCOME_CONTRACT,
+        "supersedes_preoutcome": {
+            "contract": B35_SUPERSEDED_PREOUTCOME_CONTRACT,
+            "fingerprint": B35_SUPERSEDED_PREOUTCOME_FINGERPRINT,
+            "outcomes_opened": False,
+            "reason": (
+                "pre-outcome correction aligns 11:30 bar stamps with 11:31 information-safe "
+                "decisions and marks raw cross-split gap context unavailable without changing B34 signals"
+            ),
+        },
         "bound_b34_pack": {
             "contract": B34_PACK_CONTRACT,
             "fingerprint": B34_PACK_FINGERPRINT,
@@ -395,7 +401,10 @@ def _payload() -> dict[str, object]:
             "same_bar_stop_target_collision": "adverse_stop_first",
             "stop_gap_rule": "if an observed bar opens beyond the stop, exit at that worse open",
             "target_gap_rule": "target fills no better than the target price",
-            "unresolved_policy": "never silently drop; report explicitly and exclude from completed-return claims",
+            "unresolved_policy": (
+                "never silently drop; preserve attempted-entry evidence, report explicitly, and exclude "
+                "from completed-return claims"
+            ),
         },
         "costs": {
             "all_in_round_trip_grid_bps": ALL_IN_ROUND_TRIP_COST_GRID_BPS,
@@ -504,8 +513,9 @@ def _payload() -> dict[str, object]:
             "broad_minute_materialization_authority": False,
             "promotion_authority": False,
             "next_gate": (
-                "exact-head acceptance of this contract, followed by a separate hash-bound finite DEVELOPMENT "
-                "replay authorization that still excludes the consumed master and future blind windows"
+                "exact-head acceptance of this v2 contract and finite replay implementation, followed by a "
+                "source-only workstation preflight and a separate hash-bound DEVELOPMENT outcome authorization "
+                "that still excludes the consumed master and future blind windows"
             ),
         },
     }

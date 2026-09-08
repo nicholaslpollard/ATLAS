@@ -54,8 +54,9 @@ def test_contract_is_frozen_pre_outcome_and_bound_to_b34() -> None:
         "broad_minute_materialization_authority": False,
         "promotion_authority": False,
         "next_gate": (
-            "exact-head acceptance of this contract, followed by a separate hash-bound finite DEVELOPMENT "
-            "replay authorization that still excludes the consumed master and future blind windows"
+            "exact-head acceptance of this v2 contract and finite replay implementation, followed by a "
+            "source-only workstation preflight and a separate hash-bound DEVELOPMENT outcome authorization "
+            "that still excludes the consumed master and future blind windows"
         ),
     }
 
@@ -185,6 +186,7 @@ def test_condition_bucket_boundaries_are_explicit_and_deterministic() -> None:
     assert bucket_hvd_volume_ratio(1.5) == "1_5_TO_2"
     assert bucket_signal_time_et(time(9, 44)) == "0931_TO_0944"
     assert bucket_signal_time_et(time(9, 45)) == "0945_TO_1000"
-    assert bucket_signal_time_et(time(11, 30)) == "1031_TO_1130"
-    with pytest.raises(ValueError, match="09:31..11:30"):
-        bucket_signal_time_et(time(11, 31))
+    assert bucket_signal_time_et(time(11, 30)) == "1031_TO_1131"
+    assert bucket_signal_time_et(time(11, 31)) == "1031_TO_1131"
+    with pytest.raises(ValueError, match="09:31..11:31"):
+        bucket_signal_time_et(time(11, 32))
