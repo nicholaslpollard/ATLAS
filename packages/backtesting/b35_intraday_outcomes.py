@@ -4,7 +4,7 @@ import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass
-from datetime import date, time
+from datetime import date, datetime, time
 from typing import Iterable, Sequence
 from zoneinfo import ZoneInfo
 
@@ -95,23 +95,19 @@ def _regular_session_bars(
     return selected
 
 
-def _signal_stamp(setup: IntradaySetupResult, regular: Sequence[CanonicalBar]) -> object:
+def _signal_stamp(
+    setup: IntradaySetupResult, regular: Sequence[CanonicalBar]
+) -> datetime | None:
     raw = setup.evidence.get("breakout_bar_timestamp_utc")
     if isinstance(raw, str) and raw:
-        from datetime import datetime
-
         stamp = datetime.fromisoformat(raw.replace("Z", "+00:00"))
         if stamp.tzinfo is None or stamp.utcoffset() is None:
             raise ValueError("B35 breakout timestamp must be timezone-aware")
         return stamp
-    if setup.strategy_id == "b34_gap_continuation_v1":
-        opening = [
-            bar
-            for bar in regular
-            if bar.timestamp_utc.astimezone(MARKET_TZ).time() == time(9, 30)
-        ]
-        if opening:
-            return opening[0].timestamp_utc
+    if setup.strategy_id == "b34_gap_continuation_v1" and regular:
+        # For sparse/no-trade opens, the current regular-session open is the
+        # first observed regular bar. Its information becomes usable at T+1.
+        return regular[0].timestamp_utc
     return None
 
 
@@ -168,7 +164,7 @@ def _empty(
     direction: StrategyDirection,
     status: str,
     reasons: tuple[str, ...],
-    signal_stamp: object = None,
+    signal_stamp: datetime | None = None,
 ) -> B35IntradayOutcome:
     payload = {
         "contract": B35_INTRADAY_OUTCOME_CONTRACT,
@@ -179,7 +175,7 @@ def _empty(
         "direction": direction.value,
         "status": status,
         "reasons": reasons,
-        "signal_stamp": str(signal_stamp) if signal_stamp is not None else None,
+        "signal_stamp": signal_stamp.isoformat() if signal_stamp is not None else None,
     }
     return B35IntradayOutcome(
         contract=B35_INTRADAY_OUTCOME_CONTRACT,
@@ -192,7 +188,7 @@ def _empty(
         status=status,
         reason_codes=reasons,
         signal_bar_timestamp_utc=(
-            signal_stamp.isoformat() if hasattr(signal_stamp, "isoformat") else None
+            signal_stamp.isoformat() if signal_stamp is not None else None
         ),
         entry_bar_timestamp_utc=None,
         entry_price=None,
@@ -251,10 +247,7 @@ def simulate_intraday_outcome(
             status="NONCOMPARABLE_NO_SIGNAL_BAR",
             reasons=("SIGNAL_BAR_TIMESTAMP_UNAVAILABLE",),
         )
-    if (
-        signal_stamp.date() != regular[0].timestamp_utc.date()
-        and signal_stamp.astimezone(MARKET_TZ).date() != session_date
-    ):
+    if signal_stamp.astimezone(MARKET_TZ).date() != session_date:
         return _empty(
             setup=setup,
             symbol=symbol,
