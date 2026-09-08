@@ -55,9 +55,9 @@ def _history(count: int, *, factor: float = 1.0) -> list[DailySessionSummary]:
     ]
 
 
-def test_condition_snapshot_uses_prior_only_and_setup_evidence() -> None:
+def _opening_setup() -> IntradaySetupResult:
     breakout = datetime(2026, 4, 30, 9, 45, tzinfo=ET).astimezone(UTC)
-    setup = IntradaySetupResult(
+    return IntradaySetupResult(
         contract="b34",
         strategy_id="b34_opening_range_breakout_15m_v1",
         session_date=DAY.isoformat(),
@@ -71,8 +71,11 @@ def test_condition_snapshot_uses_prior_only_and_setup_evidence() -> None:
             "breakout_bar_timestamp_utc": breakout.isoformat(),
         },
     )
+
+
+def test_condition_snapshot_uses_prior_only_and_setup_evidence() -> None:
     snapshot = build_condition_snapshot(
-        setup,
+        _opening_setup(),
         (
             _premarket_bar(9, 0, close=25.0, volume=10_000.0),
             _premarket_bar(9, 15, close=25.1, volume=20_000.0),
@@ -91,6 +94,8 @@ def test_condition_snapshot_uses_prior_only_and_setup_evidence() -> None:
     assert snapshot.setup_intensity_dimension == "opening_range_width_pct"
     assert snapshot.split_free_20 is True
     assert snapshot.split_free_252 is True
+    assert snapshot.realized_volatility_20 != "UNAVAILABLE"
+    assert snapshot.prior_trend_20_50 != "UNAVAILABLE"
 
 
 def test_split_guards_fail_closed_when_epoch_changes() -> None:
@@ -111,3 +116,30 @@ def test_split_guards_fail_closed_when_factor_is_missing() -> None:
     )
     assert split_free(history, current_factor=1.0) is False
     assert split_crossed_prior_close(history[-1], current_factor=1.0) is True
+
+
+def test_trend_is_unavailable_when_prior_window_crosses_split_epoch() -> None:
+    history = _history(252, factor=1.0)
+    for index in range(len(history) - 30, len(history)):
+        item = history[index]
+        history[index] = DailySessionSummary(
+            session_date=item.session_date,
+            close=item.close,
+            regular_volume=item.regular_volume,
+            dollar_volume=item.dollar_volume,
+            split_factor=2.0,
+        )
+    snapshot = build_condition_snapshot(
+        _opening_setup(),
+        (_premarket_bar(9, 0, close=25.0, volume=10_000.0),),
+        symbol="TEST",
+        session_date=DAY,
+        prior_daily=history,
+        current_regular_open=25.0,
+        current_split_factor=2.0,
+        prior_market_regime="UNAVAILABLE",
+    )
+    assert snapshot.realized_volatility_20 != "UNAVAILABLE"
+    assert snapshot.prior_trend_20_50 == "UNAVAILABLE"
+    assert snapshot.split_free_20 is True
+    assert snapshot.split_free_252 is False
