@@ -221,6 +221,12 @@ def _load_frozen_minute_plan(
 ) -> tuple[list[dict[str, object]], str, str]:
     manifest_path = layout.manifests / "native_acquisition_plan.json"
     plan_path = layout.manifests / "native_acquisition_plan.jsonl.gz"
+    _assert_native_path(
+        manifest_path,
+        expected=manifest_path,
+        root=layout.root,
+        label="native acquisition plan manifest",
+    )
     manifest = _read_json_object(manifest_path, "V2 native acquisition plan manifest")
     for field, expected in {
         "contract": ACQUISITION_CONTRACT,
