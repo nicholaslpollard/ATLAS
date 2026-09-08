@@ -70,7 +70,7 @@ with a desired trade.
 
 ## Current repository truth
 
-- **B34 intraday source readiness is accepted at V1 and its finite opening/premarket continuation is in acceptance.** The 2026-09-08 workstation audit returned `ACCEPTED` with evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`: all five deterministic sample classes and all four selected unit hashes passed, premarket/regular/after-hours bars were represented, and zero partitions overlapping the consumed `2026-05-12..2026-08-11` master interval were opened. Provider calls, broker reads, and broker writes were all zero. The continuation freezes four RESEARCH-only mechanisms (gap continuation, 15-minute opening-range breakout, 20-session premarket relative-volume consolidation, and a quantified 252-session Highest Volume Day style breakout), adds explicit OHLCV/source-clock/split/missing-bar acceptance, and still grants no outcome, PAPER, LIVE, or broad minute-materialization authority. The enhanced workstation audit must return `ACCEPTED` before B34 closes.
+- **B34 intraday source readiness and the opening/premarket pack are CLOSED / ACCEPTED.** The enhanced 2026-09-08 workstation audit returned `ACCEPTED` under contract `atlas-b34-intraday-source-readiness-v2-ohlcv-pack-frozen` with evidence SHA-256 `415c46c714b80f5cff4950320443088b8b89ed761c9f51d071fccf3e60baefd0`. It preserves the earlier semantic/source-readiness evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`, accepted all five deterministic OHLCV samples, represented premarket/regular/after-hours bars, opened zero partitions overlapping the consumed `2026-05-12..2026-08-11` master interval, and made zero provider calls, broker reads, or broker writes. The frozen RESEARCH-only pack fingerprint is `6f7239fcda11ac6c890d2635980d431ec49e346707d9cc549f111bd50daaa4bf` for `b34_gap_continuation_v1`, `b34_opening_range_breakout_15m_v1`, `b34_premarket_relvol_consolidation_v1`, and `b34_highest_volume_day_style_v1`. B34 opened no outcomes and grants no promotion, PAPER, LIVE, broker-mutation, or broad/full minute-materialization authority.
 - Accepted numbered foundation: **through Phase32**, merged on `main`.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE` results.
 - Phases26–31 are scientifically valid `ACCEPTED_NEGATIVE`; Phase32 is
@@ -168,7 +168,7 @@ with a desired trade.
   passed. Daily close-derived signals now carry the exact XNYS-close availability
   clock and the replay consumes only the hash-bound same-close market regime that
   was knowable before next-open entry. Ticker/sector regime remain unavailable.
-- Alpaca SIP V2 daily source/replay preparation is complete; the next V2 data task is the finite B34 minute/intraday semantics audit. Empirical sizing
+- Alpaca SIP V2 daily source/replay preparation and the finite B34 minute/intraday semantics audit are complete and accepted. Empirical sizing
   estimates 3.781B native minute rows, 64.51 GiB canonical minute Parquet, 62.55
   GiB compressed raw evidence, and a conservative 375.58 GiB peak-plus-reserve
   requirement. The operator chose precise local V1 historical-data decommissioning,
@@ -329,8 +329,7 @@ The decommissioned V1 daily lake used Alpaca SIP through `2021-08-13` and
 Massive from `2021-08-16`. That boundary is retained historical provenance, not the
 current data path. The fresh V2 candidate base is Alpaca SIP throughout its frozen
 acquisition interval. No V1 row, derived indicator, regime, or identity product may
-be silently reused as V2 input. Earlier source limitations do not authorize invented
-intraday history; V2 minute semantics remain subject to the finite B34 audit.
+be silently reused as V2 input. Earlier source limitations do not authorize invented intraday history; V2 minute semantics are now accepted by B34, and missing minute history remains preserved as absence rather than synthesized.
 
 ## A33/B33 reference foundation
 
@@ -708,9 +707,7 @@ Daily indicators are calculated by the frozen reference engine from the promoted
 research view when a replay runs; a second giant feature lake is not created merely
 to duplicate them. News acquisition is not part of this database acceptance chain:
 it neither validates price history nor has a frozen provider/PIT contract, so it is
-deferred to its own finite research package. Native minute evidence is hash-verified,
-but extended-hours completeness and intraday strategy readiness remain a separate
-B34 gate before gap, opening-range, or premarket performance may be opened.
+deferred to its own finite research package. Native minute evidence, extended-hours semantics, and initial intraday strategy readiness are accepted by B34. Gap, opening-range, and premarket performance remain unopened until a separately frozen pre-outcome evaluation contract authorizes development outcome access.
 
 ## How progress is reported
 

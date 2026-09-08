@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-07 (UTC). This roadmap and the root `README.md` are the
+**Current as of 2026-09-08 (UTC). This roadmap and the root `README.md` are the
 only living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -120,8 +120,7 @@ deterministic case → independent AI audit → SHADOW/PAPER execution → outco
 The decommissioned V1 daily lake used Alpaca SIP through `2021-08-13` and
 Massive from `2021-08-16`; this is retained historical provenance only. The current
 isolated V2 candidate base uses Alpaca SIP throughout its frozen source interval and
-forbids V1 rows or derived-state ancestry. V2 minute capture still requires the finite
-B34 semantics audit before intraday strategies; missing history may not be invented.
+forbids V1 rows or derived-state ancestry. V2 minute semantics and the initial opening/premarket strategy pack are accepted by B34; missing history may not be invented, and performance remains separately gated.
 
 ## 5. Accepted foundation through Phase32
 
@@ -757,9 +756,7 @@ The frozen daily indicator engine may consume only the exact hash-bound V2 resea
 manifest through the isolated V2 adapter. It cannot discover legacy paths. No V2 PIT
 regime generation is accepted yet, so market, sector, and ticker contexts remain
 explicitly `UNAVAILABLE`; importing retained V1 regime state would violate the clean
-generation boundary. Native minute bundles are hash-verified during base acceptance,
-but full extended-hours/intraday semantic acceptance and adjusted-minute derivation
-remain B34 work. News is a separate source/PIT research package and does not block
+generation boundary. Native minute bundles are hash-verified during base acceptance, and full extended-hours/intraday semantics are now accepted by B34. Adjusted-minute derivation remains deliberately absent: canonical minute bars are raw and cross-split price/volume lookbacks fail closed. News is a separate source/PIT research package and does not block
 daily database acceptance or the Product track.
 
 Existing valid caches are evidence. A clean authoritative replay that reproduces a
@@ -1062,9 +1059,9 @@ Do not materialize billions of indicator rows before this finite readiness repor
 shows which intraday pack can be represented faithfully.
 
 
-**B34 status (2026-09-08): source-readiness V1 ACCEPTED; finite strategy-pack closeout in acceptance.** The workstation audit returned `ACCEPTED` with evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`. The deterministic liquid, sparse/no-trade, split, other-corporate-action, and DST/session-boundary samples all passed, as did all four selected unit hash checks. Sampled extended-hours coverage included premarket, regular, and after-hours bars. The selector opened zero monthly partitions overlapping the consumed master holdout and made zero provider/broker writes. The continuation explicitly validates OHLCV in the readiness report; preserves absent minutes without zero-fill or halt inference; treats the 09:30 aggregate as an aggregate rather than a separate auction record; keeps native minute bars raw/unadjusted and fails any cross-split comparison closed; and freezes the information clock so a bar stamped `T` is usable only at `T+1m`, premarket freezes after stamp 09:29 at 09:30 ET, and the 15-minute opening range freezes after stamp 09:44 at 09:45 ET.
+**B34 status (2026-09-08): CLOSED / ACCEPTED.** The enhanced workstation audit returned `ACCEPTED` under `atlas-b34-intraday-source-readiness-v2-ohlcv-pack-frozen` with evidence SHA-256 `415c46c714b80f5cff4950320443088b8b89ed761c9f51d071fccf3e60baefd0`, while preserving semantic/source-readiness evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`. All five deterministic OHLCV samples passed, including accepted zero-row source absence; sampled coverage represented 325 premarket, 933 regular, and 125 after-hours bars. The selector opened zero monthly partitions overlapping the consumed `2026-05-12..2026-08-11` master holdout and made zero provider calls, broker reads, or broker writes. Missing minutes remain absence rather than zero-filled or inferred halts; the 09:30 provider aggregate is not rewritten as a separate auction record; canonical minute bars remain raw/unadjusted; cross-split price/volume lookbacks fail closed; and a bar stamped `T` is usable only at `T+1m`, with premarket state available at 09:30 ET after stamp 09:29 and the 15-minute opening range available at 09:45 ET after stamp 09:44.
 
-The ready pre-outcome pack is frozen as four RESEARCH-only references: `b34_gap_continuation_v1` (absolute gap threshold 2%), `b34_opening_range_breakout_15m_v1` (09:30..09:44 range and closed-bar breakout through 11:30 ET), `b34_premarket_relvol_consolidation_v1` (04:00..09:29 observed volume / median of exactly 20 prior eligible premarkets, threshold 2.0, 09:00..09:29 consolidation <=3% with >=5 observed bars, then closed regular breakout), and `b34_highest_volume_day_style_v1` (current observed premarket volume >= maximum regular daily volume across exactly 252 prior eligible sessions, the same consolidation rule, then a closed premarket-high breakout). The HVD-style reference deliberately omits a small-cap market-cap filter until an accepted PIT market-cap source exists. No exits, performance, promotion, PAPER order authority, LIVE authority, or broad minute materialization are granted here. Final B34 closeout requires exact-head CI plus the enhanced workstation audit to return `ACCEPTED`.
+The frozen pre-outcome pack fingerprint is `6f7239fcda11ac6c890d2635980d431ec49e346707d9cc549f111bd50daaa4bf` and contains four RESEARCH-only references: `b34_gap_continuation_v1`, `b34_opening_range_breakout_15m_v1`, `b34_premarket_relvol_consolidation_v1`, and `b34_highest_volume_day_style_v1`. No governed performance was accessed; outcome access remains false. B34 grants no promotion, PAPER order authority, broker mutation, LIVE authority, or broad/full minute materialization. The next research step must freeze its evaluation design and a new blind/future validation boundary before opening development outcomes; the consumed master holdout may never be reused to qualify these strategies.
 
 ### A35 — Operational PAPER and Operator Web Beta
 
@@ -1222,8 +1219,9 @@ Every closeout reports:
    indicators are computed by the frozen engine on demand; do not first build a
    redundant full feature lake. Continue A34.5 Product work in parallel regardless
    of strategy profit.
-6. **ACTIVE — finite B34 closeout after accepted source readiness.** Preserve the accepted V1 workstation evidence, complete the frozen opening/premarket pack and explicit OHLCV/information-clock checks, then rerun `scripts/audit_v2_intraday_semantics.py`. Do not open strategy performance, the consumed master holdout, PAPER/LIVE authority, or broad minute materialization during this closeout. If the enhanced audit is accepted, reconcile B34 closed and then choose the next Track-A/Track-B package explicitly.
-7. Keep focused tests, the full repository suite, retained scientific validators,
+6. **COMPLETE — B34 intraday readiness and frozen opening/premarket pack.** Final workstation evidence is `ACCEPTED`; repository acceptance retains the enhanced evidence hash, earlier semantic evidence hash, and frozen strategy-pack fingerprint without opening outcomes or trading authority.
+7. **NEXT Track B — freeze the B35/A36 pre-outcome conditional-evidence contract.** Before any strategy performance is read, define the development-only replay population, realistic spread/slippage/fees and entry timing, outcome/exit conventions, point-in-time-safe stock-condition and market-regime taxonomy, portfolio/account simulation rules, multiple-comparison controls, walk-forward folds, robustness/stress tests, and a new future/blind validation boundary. The consumed `2026-05-12..2026-08-11` master holdout is permanently unavailable for qualifying these B34 strategies. This contract-design package itself must read zero strategy outcomes and grants no PAPER/LIVE authority.
+8. Keep focused tests, the full repository suite, retained scientific validators,
    cross-platform exact-head CI, and same-commit updates to both living documents
    mandatory for every package.
 
