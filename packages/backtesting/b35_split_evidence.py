@@ -77,6 +77,8 @@ def load_b35_split_evidence(layout: V2Layout) -> B35SplitEvidence:
     source_snapshot = _read_json(source_snapshot_path, "V2 source snapshot")
     if source_snapshot.get("contract") != SOURCE_SNAPSHOT_CONTRACT:
         raise B35SplitEvidenceError("V2 source snapshot contract drifted")
+    if source_snapshot.get("status") != "COMPLETE":
+        raise B35SplitEvidenceError("V2 source snapshot is not COMPLETE")
     if source_snapshot.get("v1_ancestry") != "FORBIDDEN":
         raise B35SplitEvidenceError("V2 source snapshot permits legacy ancestry")
 
