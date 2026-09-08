@@ -1,0 +1,87 @@
+{
+  "contract": "atlas-b34-intraday-source-readiness-acceptance-v1",
+  "accepted": true,
+  "status": "ACCEPTED",
+  "generated_at_utc": "2026-09-08T00:45:43.568371+00:00",
+  "source_audit_contract": "atlas-b34-intraday-semantics-audit-v1",
+  "source_audit_evidence_sha256": "aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237",
+  "provider_contract": {
+    "provider": "alpaca",
+    "feed": "sip",
+    "provider_timeframe": "1Min",
+    "canonical_timeframe": "1m",
+    "adjustment": "raw",
+    "asof": "-",
+    "interval_timestamp": "left_edge_start",
+    "session_timezone": "America/New_York",
+    "missing_minutes": "preserve_absence_no_synthesis"
+  },
+  "protected_interval": {
+    "start": "2026-05-12",
+    "end": "2026-08-11",
+    "max_sample_date": "2026-04-30",
+    "overlapping_canonical_partitions_opened": 0
+  },
+  "samples": [
+    {
+      "class": "liquid_symbol_day",
+      "symbol": "ZSL",
+      "session_date": "2026-04-30",
+      "row_count": 720,
+      "gap_count": 99,
+      "premarket_rows": 254,
+      "regular_rows": 388,
+      "after_hours_rows": 78,
+      "accepted": true
+    },
+    {
+      "class": "sparse_or_no_trade_symbol_day",
+      "symbol": "ZNTEW",
+      "session_date": "2026-04-30",
+      "row_count": 0,
+      "absence_evidence": true,
+      "accepted": true
+    },
+    {
+      "class": "split_day",
+      "symbol": "UK",
+      "session_date": "2026-04-30",
+      "action_type": "reverse_splits",
+      "row_count": 111,
+      "accepted": true
+    },
+    {
+      "class": "other_corporate_action_day",
+      "symbol": "YQQQ",
+      "session_date": "2026-04-30",
+      "action_type": "cash_dividends",
+      "row_count": 63,
+      "accepted": true
+    },
+    {
+      "class": "dst_session_boundary_day",
+      "symbol": "AA",
+      "session_date": "2026-03-09",
+      "row_count": 489,
+      "premarket_rows": 69,
+      "regular_rows": 390,
+      "after_hours_rows": 30,
+      "utc_offset_seconds": [-14400],
+      "accepted": true
+    }
+  ],
+  "selected_unit_integrity": {
+    "unit_count": 4,
+    "accepted_units": 4,
+    "complete_units": 3,
+    "complete_with_quarantine_units": 1,
+    "hash_errors": 0
+  },
+  "provider_calls": 0,
+  "broker_reads": 0,
+  "broker_writes": 0,
+  "paper_authority": false,
+  "live_authority": false,
+  "full_minute_materialization_authority": false,
+  "scope_note": "This preserves the operator-returned source-readiness result without workstation-specific absolute paths. It does not by itself close the full B34 opening/premarket strategy package or authorize outcome replay."
+}
