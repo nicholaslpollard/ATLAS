@@ -5,9 +5,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from packages.backtesting.b35_intraday_outcomes import simulate_intraday_outcome
 from packages.core.enums import DataProvider, DatasetType, SessionSegment, Timeframe
 from packages.schemas.market import CanonicalBar
-from packages.backtesting.b35_intraday_outcomes import simulate_intraday_outcome
 from packages.strategies.intraday_opening_pack import IntradaySetupResult
 
 
@@ -15,7 +15,15 @@ ET = ZoneInfo("America/New_York")
 DAY = date(2026, 4, 30)
 
 
-def _bar(hour: int, minute: int, *, open_: float, high: float, low: float, close: float) -> CanonicalBar:
+def _bar(
+    hour: int,
+    minute: int,
+    *,
+    open_: float,
+    high: float,
+    low: float,
+    close: float,
+) -> CanonicalBar:
     stamp = datetime(2026, 4, 30, hour, minute, tzinfo=ET).astimezone(UTC)
     return CanonicalBar(
         symbol="TEST",
@@ -61,7 +69,9 @@ def test_gap_outcome_enters_next_minute_and_hits_2r_target() -> None:
         _bar(9, 31, open_=104.0, high=105.0, low=103.0, close=104.5),
         _bar(9, 32, open_=104.5, high=112.5, low=104.0, close=112.0),
     )
-    outcome = simulate_intraday_outcome(_gap_setup(), bars, symbol="TEST", session_date=DAY)
+    outcome = simulate_intraday_outcome(
+        _gap_setup(), bars, symbol="TEST", session_date=DAY
+    )
     assert outcome.comparable is True
     assert outcome.entry_price == 104.0
     assert outcome.stop_price == 100.0
@@ -69,9 +79,8 @@ def test_gap_outcome_enters_next_minute_and_hits_2r_target() -> None:
     assert outcome.exit_price == 112.0
     assert outcome.exit_reason == "TARGET_2R"
     assert outcome.risk_multiple == pytest.approx(2.0)
-    assert outcome.primary_50bps_net_directional_return == pytest.approx(
-        112.0 / 104.0 - 1.0 - 0.005
-    )
+    expected_50bps = (112.0 * (1.0 - 0.0025)) / (104.0 * (1.0 + 0.0025)) - 1.0
+    assert outcome.primary_50bps_net_directional_return == pytest.approx(expected_50bps)
 
 
 def test_same_bar_stop_target_collision_is_adverse_first() -> None:
@@ -79,11 +88,41 @@ def test_same_bar_stop_target_collision_is_adverse_first() -> None:
         _bar(9, 30, open_=103.0, high=104.0, low=102.0, close=103.5),
         _bar(9, 31, open_=104.0, high=113.0, low=99.0, close=108.0),
     )
-    outcome = simulate_intraday_outcome(_gap_setup(), bars, symbol="TEST", session_date=DAY)
+    outcome = simulate_intraday_outcome(
+        _gap_setup(), bars, symbol="TEST", session_date=DAY
+    )
     assert outcome.exit_price == 100.0
     assert outcome.exit_reason == "STOP_AND_TARGET_SAME_BAR_ADVERSE_FIRST"
     assert outcome.same_bar_collision_adverse_first is True
     assert outcome.risk_multiple == pytest.approx(-1.0)
+
+
+def test_stop_gap_fills_at_worse_open() -> None:
+    bars = (
+        _bar(9, 30, open_=103.0, high=104.0, low=102.0, close=103.5),
+        _bar(9, 31, open_=104.0, high=105.0, low=103.0, close=104.5),
+        _bar(9, 32, open_=98.0, high=101.0, low=97.0, close=99.0),
+    )
+    outcome = simulate_intraday_outcome(
+        _gap_setup(), bars, symbol="TEST", session_date=DAY
+    )
+    assert outcome.exit_reason == "STOP_GAP_WORSE_OPEN"
+    assert outcome.exit_price == 98.0
+    assert outcome.risk_multiple == pytest.approx(-1.5)
+
+
+def test_target_gap_gets_no_price_improvement() -> None:
+    bars = (
+        _bar(9, 30, open_=103.0, high=104.0, low=102.0, close=103.5),
+        _bar(9, 31, open_=104.0, high=105.0, low=103.0, close=104.5),
+        _bar(9, 32, open_=115.0, high=116.0, low=114.0, close=115.5),
+    )
+    outcome = simulate_intraday_outcome(
+        _gap_setup(), bars, symbol="TEST", session_date=DAY
+    )
+    assert outcome.exit_reason == "TARGET_GAP_NO_BETTER_THAN_TARGET"
+    assert outcome.exit_price == 112.0
+    assert outcome.risk_multiple == pytest.approx(2.0)
 
 
 def test_time_exit_uses_first_observed_1555_to_1559_bar_open() -> None:
@@ -92,7 +131,9 @@ def test_time_exit_uses_first_observed_1555_to_1559_bar_open() -> None:
         _bar(9, 31, open_=104.0, high=105.0, low=103.0, close=104.5),
         _bar(15, 55, open_=106.0, high=120.0, low=90.0, close=100.0),
     )
-    outcome = simulate_intraday_outcome(_gap_setup(), bars, symbol="TEST", session_date=DAY)
+    outcome = simulate_intraday_outcome(
+        _gap_setup(), bars, symbol="TEST", session_date=DAY
+    )
     assert outcome.exit_reason == "TIME_EXIT"
     assert outcome.exit_price == 106.0
     assert outcome.same_bar_collision_adverse_first is False
