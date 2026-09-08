@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from packages.backtesting.b35_development_authorization import (
+    validate_development_authorization,
+)
 from packages.backtesting.b35_development_context import (
-    B35ConditionSnapshot,
     DailySessionSummary,
     build_condition_snapshot,
     summarize_regular_session,
@@ -23,17 +24,14 @@ from packages.backtesting.b35_development_source import (
     B35DevelopmentSourcePlan,
     B35DevelopmentUnitBinding,
 )
-from packages.backtesting.b35_intraday_outcomes import (
-    B35IntradayOutcome,
-    simulate_intraday_outcome,
-)
+from packages.backtesting.b35_intraday_outcomes import simulate_intraday_outcome
+from packages.backtesting.b35_split_evidence import load_b35_split_evidence
 from packages.core.atomic_io import atomic_write_text, replace_with_retry, unique_temp_path
 from packages.core.enums import SessionSegment
 from packages.schemas.market import CanonicalBar
 from packages.strategies.b35_conditional_evidence_contract import (
     B34_STRATEGY_IDS,
     B35_PREOUTCOME_FINGERPRINT,
-    DEVELOPMENT_LAST_SCORING_SESSION,
 )
 from packages.strategies.intraday_opening_pack import (
     IntradaySetupResult,
@@ -42,13 +40,6 @@ from packages.strategies.intraday_opening_pack import (
     evaluate_opening_range_breakout,
     evaluate_premarket_relvol_consolidation,
 )
-from packages.data.intraday_semantics_audit import (
-    _SPLIT_ACTION_TYPES,
-    _action_date,
-    _action_symbols,
-    _corporate_action_records,
-)
-from packages.data.alpaca_v2_rebuild import V2Layout
 
 
 B35_DEVELOPMENT_REPLAY_CONTRACT = (
@@ -128,20 +119,26 @@ def _canonical_bars(frame: pd.DataFrame) -> tuple[CanonicalBar, ...]:
     return tuple(bars)
 
 
-def _premarket_volume(bars: Sequence[CanonicalBar], session_date: date) -> float | None:
+def _premarket_volume(
+    bars: Sequence[CanonicalBar], session_date: date
+) -> float | None:
     selected = [
         bar
         for bar in bars
         if bar.session_date == session_date
         and bar.session_segment == SessionSegment.PREMARKET
-        and time(4, 0) <= bar.timestamp_utc.astimezone(MARKET_TZ).time() < time(9, 30)
+        and time(4, 0)
+        <= bar.timestamp_utc.astimezone(MARKET_TZ).time()
+        < time(9, 30)
     ]
     if not selected:
         return None
     return float(sum(float(bar.volume) for bar in selected))
 
 
-def _current_regular_open(bars: Sequence[CanonicalBar], session_date: date) -> float | None:
+def _first_regular_bar(
+    bars: Sequence[CanonicalBar], session_date: date
+) -> CanonicalBar | None:
     regular = sorted(
         (
             bar
@@ -151,30 +148,24 @@ def _current_regular_open(bars: Sequence[CanonicalBar], session_date: date) -> f
         ),
         key=lambda bar: bar.timestamp_utc,
     )
-    return float(regular[0].open) if regular else None
+    return regular[0] if regular else None
 
 
-def _split_dates(layout: V2Layout) -> tuple[dict[str, tuple[date, ...]], str | None]:
-    result: dict[str, set[date]] = defaultdict(set)
-    path = layout.corporate_actions / "native_actions.jsonl.gz"
-    evidence_sha = _sha256_file(path) if path.is_file() else None
-    for record in _corporate_action_records(layout):
-        if str(record.get("action_type") or "") not in _SPLIT_ACTION_TYPES:
-            continue
-        payload = record.get("payload")
-        action_date = _action_date(payload)
-        if action_date is None or action_date > DEVELOPMENT_LAST_SCORING_SESSION:
-            continue
-        for symbol in _action_symbols(payload):
-            result[symbol].add(action_date)
-    return ({key: tuple(sorted(values)) for key, values in result.items()}, evidence_sha)
+def _current_regular_open(
+    bars: Sequence[CanonicalBar], session_date: date
+) -> float | None:
+    first = _first_regular_bar(bars, session_date)
+    return float(first.open) if first is not None else None
 
 
 def _split_epoch(split_dates: Sequence[date], session_date: date) -> float:
+    # Equality-only epoch token. It is intentionally not an adjustment ratio.
     return float(1 + sum(1 for item in split_dates if item <= session_date))
 
 
-def _split_between(split_dates: Sequence[date], start_exclusive: date, end_inclusive: date) -> bool:
+def _split_between(
+    split_dates: Sequence[date], start_exclusive: date, end_inclusive: date
+) -> bool:
     return any(start_exclusive < item <= end_inclusive for item in split_dates)
 
 
@@ -192,7 +183,9 @@ def _first_fired(
         for bar in bars
         if bar.session_date == session_date
         and bar.session_segment == SessionSegment.REGULAR
-        and earliest_stamp <= bar.timestamp_utc.astimezone(MARKET_TZ).time() <= latest_stamp
+        and earliest_stamp
+        <= bar.timestamp_utc.astimezone(MARKET_TZ).time()
+        <= latest_stamp
     ]
     for bar in regular:
         decision = bar.timestamp_utc + timedelta(minutes=1)
@@ -214,18 +207,24 @@ def _evaluate_setups(
     history: _SymbolHistory,
     symbol_split_dates: Sequence[date],
 ) -> tuple[IntradaySetupResult, ...]:
-    current_open = _current_regular_open(bars, session_date)
-    if current_open is None:
+    first_regular = _first_regular_bar(bars, session_date)
+    if first_regular is None:
         return ()
-    results: list[IntradaySetupResult] = []
+    # The B35 condition taxonomy requires a prior regular close. The first
+    # observed session for a provider-literal symbol is therefore warm-up only.
     prior = history.daily[-1] if history.daily else None
-    if prior is not None:
-        decision = datetime.combine(session_date, time(9, 31), tzinfo=MARKET_TZ).astimezone(UTC)
+    if prior is None:
+        return ()
+
+    current_open = float(first_regular.open)
+    results: list[IntradaySetupResult] = []
+    gap_decision = first_regular.timestamp_utc + timedelta(minutes=1)
+    if gap_decision.astimezone(MARKET_TZ).time() <= time(11, 30):
         gap = evaluate_gap_continuation(
             session_date=session_date,
             prior_regular_close=float(prior.close),
             current_regular_open=current_open,
-            decision_time_utc=decision,
+            decision_time_utc=gap_decision,
             split_crossed=_split_between(
                 symbol_split_dates, prior.session_date, session_date
             ),
@@ -284,15 +283,33 @@ def _evaluate_setups(
     return tuple(results)
 
 
+def _signal_time_override(
+    setup: IntradaySetupResult,
+    bars: Sequence[CanonicalBar],
+    session_date: date,
+) -> time | None:
+    if setup.strategy_id != "b34_gap_continuation_v1":
+        return None
+    first = _first_regular_bar(bars, session_date)
+    if first is None:
+        raise B35DevelopmentReplayError("gap setup has no observed regular-session bar")
+    return (first.timestamp_utc + timedelta(minutes=1)).astimezone(MARKET_TZ).time()
+
+
 def _group_units(
     plan: B35DevelopmentSourcePlan,
+    *,
+    split_evidence_fingerprint: str,
+    authorization_id: str,
 ) -> tuple[tuple[str, tuple[B35DevelopmentUnitBinding, ...]], ...]:
     groups: dict[tuple[str, ...], list[B35DevelopmentUnitBinding]] = defaultdict(list)
     for unit in plan.units:
         groups[unit.symbols].append(unit)
     output: list[tuple[str, tuple[B35DevelopmentUnitBinding, ...]]] = []
     for symbols, units in groups.items():
-        ordered = tuple(sorted(units, key=lambda item: (item.year, item.month, item.unit_id)))
+        ordered = tuple(
+            sorted(units, key=lambda item: (item.year, item.month, item.unit_id))
+        )
         seen_months: set[tuple[int, int]] = set()
         for unit in ordered:
             month = (unit.year, unit.month)
@@ -305,6 +322,8 @@ def _group_units(
             {
                 "contract": B35_DEVELOPMENT_REPLAY_CONTRACT,
                 "source_fingerprint": plan.source_fingerprint,
+                "split_evidence_fingerprint": split_evidence_fingerprint,
+                "authorization_id": authorization_id,
                 "symbols": symbols,
                 "units": [
                     (unit.unit_id, unit.canonical_sha256, unit.year, unit.month)
@@ -323,6 +342,8 @@ def _completed_group(
     *,
     group_fingerprint: str,
     source_fingerprint: str,
+    split_evidence_fingerprint: str,
+    authorization_id: str,
 ) -> dict[str, object] | None:
     if not receipt_path.is_file():
         if output_path.exists():
@@ -341,7 +362,9 @@ def _completed_group(
         "status": "COMPLETE",
         "group_fingerprint": group_fingerprint,
         "source_fingerprint": source_fingerprint,
-        "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
+        "split_evidence_fingerprint": split_evidence_fingerprint,
+        "authorization_id": authorization_id,
+        "output_path": str(output_path),
         "consumed_master_rows_read": 0,
         "future_blind_rows_read": 0,
         "provider_calls": 0,
@@ -370,14 +393,24 @@ class B35DevelopmentReplayEngine:
         plan: B35DevelopmentSourcePlan,
         *,
         output_root: Path,
+        authorization: dict[str, object],
     ) -> dict[str, object]:
         output_root = output_root.resolve()
         groups_root = output_root / "groups"
         groups_root.mkdir(parents=True, exist_ok=True)
-        split_dates, split_evidence_sha = _split_dates(self.layout)
+        split_evidence = load_b35_split_evidence(self.layout)
+        authorization_id = validate_development_authorization(
+            authorization,
+            plan=plan,
+            split_evidence=split_evidence,
+        )
         group_receipts: list[dict[str, object]] = []
 
-        for group_fingerprint, units in _group_units(plan):
+        for group_fingerprint, units in _group_units(
+            plan,
+            split_evidence_fingerprint=split_evidence.fingerprint,
+            authorization_id=authorization_id,
+        ):
             token = group_fingerprint[:20]
             output_path = groups_root / f"{token}.jsonl"
             receipt_path = groups_root / f"{token}.receipt.json"
@@ -386,6 +419,8 @@ class B35DevelopmentReplayEngine:
                 output_path,
                 group_fingerprint=group_fingerprint,
                 source_fingerprint=plan.source_fingerprint,
+                split_evidence_fingerprint=split_evidence.fingerprint,
+                authorization_id=authorization_id,
             )
             if existing is not None:
                 group_receipts.append(existing)
@@ -393,7 +428,11 @@ class B35DevelopmentReplayEngine:
 
             histories = {symbol: _SymbolHistory.empty() for symbol in units[0].symbols}
             counters = {
-                strategy_id: {"evaluated_fired": 0, "comparable": 0, "noncomparable": 0}
+                strategy_id: {
+                    "evaluated_fired": 0,
+                    "comparable": 0,
+                    "noncomparable": 0,
+                }
                 for strategy_id in B34_STRATEGY_IDS
             }
             record_count = 0
@@ -420,15 +459,21 @@ class B35DevelopmentReplayEngine:
                                     f"unit emitted symbol outside its frozen batch: {symbol}"
                                 )
                             if not isinstance(session_date, date):
-                                raise B35DevelopmentReplayError("session date is not a date")
+                                raise B35DevelopmentReplayError(
+                                    "session date is not a date"
+                                )
                             bars = _canonical_bars(session_frame)
                             current_open = _current_regular_open(bars, session_date)
                             if current_open is None:
                                 pm_volume = _premarket_volume(bars, session_date)
                                 if pm_volume is not None:
-                                    histories[symbol].append_premarket(session_date, pm_volume)
+                                    histories[symbol].append_premarket(
+                                        session_date, pm_volume
+                                    )
                                 continue
-                            symbol_splits = split_dates.get(symbol, ())
+                            symbol_splits = split_evidence.split_dates_by_symbol.get(
+                                symbol, ()
+                            )
                             current_epoch = _split_epoch(symbol_splits, session_date)
                             setups = _evaluate_setups(
                                 bars,
@@ -447,6 +492,9 @@ class B35DevelopmentReplayEngine:
                                     current_regular_open=current_open,
                                     current_split_factor=current_epoch,
                                     prior_market_regime="UNAVAILABLE",
+                                    signal_time_et_override=_signal_time_override(
+                                        setup, bars, session_date
+                                    ),
                                 )
                                 outcome = simulate_intraday_outcome(
                                     setup,
@@ -462,6 +510,8 @@ class B35DevelopmentReplayEngine:
                                     "contract": B35_DEVELOPMENT_REPLAY_CONTRACT,
                                     "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
                                     "source_fingerprint": plan.source_fingerprint,
+                                    "split_evidence_fingerprint": split_evidence.fingerprint,
+                                    "authorization_id": authorization_id,
                                     "group_fingerprint": group_fingerprint,
                                     "setup": asdict(setup),
                                     "context": asdict(context),
@@ -480,7 +530,9 @@ class B35DevelopmentReplayEngine:
 
                             pm_volume = _premarket_volume(bars, session_date)
                             if pm_volume is not None:
-                                histories[symbol].append_premarket(session_date, pm_volume)
+                                histories[symbol].append_premarket(
+                                    session_date, pm_volume
+                                )
                             summary = summarize_regular_session(
                                 bars,
                                 session_date=session_date,
@@ -500,6 +552,8 @@ class B35DevelopmentReplayEngine:
                 "completed_at_utc": datetime.now(UTC).isoformat(),
                 "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
                 "source_fingerprint": plan.source_fingerprint,
+                "split_evidence_fingerprint": split_evidence.fingerprint,
+                "authorization_id": authorization_id,
                 "group_fingerprint": group_fingerprint,
                 "symbols": list(units[0].symbols),
                 "unit_count": len(units),
@@ -524,17 +578,25 @@ class B35DevelopmentReplayEngine:
 
         total_records = sum(int(item["record_count"]) for item in group_receipts)
         aggregate: dict[str, dict[str, int]] = {
-            strategy_id: {"evaluated_fired": 0, "comparable": 0, "noncomparable": 0}
+            strategy_id: {
+                "evaluated_fired": 0,
+                "comparable": 0,
+                "noncomparable": 0,
+            }
             for strategy_id in B34_STRATEGY_IDS
         }
         for receipt in group_receipts:
             counts = receipt.get("strategy_counts")
             if not isinstance(counts, dict):
-                raise B35DevelopmentReplayError("group receipt strategy counts are malformed")
+                raise B35DevelopmentReplayError(
+                    "group receipt strategy counts are malformed"
+                )
             for strategy_id in B34_STRATEGY_IDS:
                 item = counts.get(strategy_id)
                 if not isinstance(item, dict):
-                    raise B35DevelopmentReplayError("group receipt is missing strategy counts")
+                    raise B35DevelopmentReplayError(
+                        "group receipt is missing strategy counts"
+                    )
                 for field in ("evaluated_fired", "comparable", "noncomparable"):
                     aggregate[strategy_id][field] += int(item[field])
 
@@ -545,13 +607,16 @@ class B35DevelopmentReplayEngine:
             "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
             "source_contract": plan.contract,
             "source_fingerprint": plan.source_fingerprint,
+            "split_evidence_contract": split_evidence.contract,
+            "split_evidence_fingerprint": split_evidence.fingerprint,
+            "corporate_action_split_evidence_sha256": split_evidence.corporate_actions_sha256,
+            "authorization_id": authorization_id,
             "start_session": plan.start_session.isoformat(),
             "end_session": plan.end_session.isoformat(),
             "group_count": len(group_receipts),
             "source_unit_count": len(plan.units),
             "fired_opportunity_records": total_records,
             "strategy_counts": aggregate,
-            "corporate_action_split_evidence_sha256": split_evidence_sha,
             "compact_group_outputs_only": True,
             "permanent_minute_feature_lake_created": False,
             "consumed_master_rows_read": 0,
