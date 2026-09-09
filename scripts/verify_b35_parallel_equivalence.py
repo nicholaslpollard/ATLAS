@@ -7,6 +7,7 @@ import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
+from typing import TypeVar
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,10 @@ from packages.backtesting.b35_development_replay import (
     _group_units,
     _validate_group_receipt,
 )
-from packages.backtesting.b35_development_source import B35DevelopmentMinuteSource
+from packages.backtesting.b35_development_source import (
+    B35DevelopmentMinuteSource,
+    B35DevelopmentUnitBinding,
+)
 from packages.backtesting.b35_parallel_replay import (
     B35GroupTask,
     _init_b35_worker,
@@ -38,6 +42,9 @@ from packages.strategies.b35_conditional_evidence_contract import (
 )
 
 
+T = TypeVar("T")
+
+
 def _output_root(settings: AtlasSettings) -> Path:
     layout = V2Layout.beneath((settings.project_root / "data").resolve())
     return (
@@ -49,7 +56,7 @@ def _output_root(settings: AtlasSettings) -> Path:
     )
 
 
-def _select_evenly[T](items: list[T], count: int) -> list[T]:
+def _select_evenly(items: list[T], count: int) -> list[T]:
     if count >= len(items):
         return list(items)
     if count == 1:
@@ -120,7 +127,9 @@ def main(argv: list[str] | None = None) -> int:
         authorization_id=authorization_id,
     )
 
-    completed: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+    completed: list[
+        tuple[str, tuple[B35DevelopmentUnitBinding, ...], dict[str, object]]
+    ] = []
     for group_fingerprint, units in _group_units(
         plan,
         split_evidence_fingerprint=split_evidence.fingerprint,
@@ -167,12 +176,11 @@ def main(argv: list[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="b35_parallel_probe_", dir=output_root) as temp_dir:
         probe_root = Path(temp_dir)
         tasks: list[tuple[B35GroupTask, dict[str, object]]] = []
-        for group_fingerprint, units_any, baseline in sample:
-            units = tuple(units_any)
+        for group_fingerprint, units, baseline in sample:
             token = group_fingerprint[:20]
             task = B35GroupTask(
                 group_fingerprint=group_fingerprint,
-                units=units,  # type: ignore[arg-type]
+                units=units,
                 start_session=plan.start_session,
                 end_session=plan.end_session,
                 source_fingerprint=plan.source_fingerprint,
