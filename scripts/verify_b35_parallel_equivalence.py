@@ -109,6 +109,12 @@ def main(argv: list[str] | None = None) -> int:
     plan = source.plan(V2_DEFAULT_START, DEVELOPMENT_LAST_SCORING_SESSION)
     split_evidence = load_b35_split_evidence(source.layout)
     output_root = _output_root(settings).resolve()
+    replay_lock = output_root / ".b35_replay.lock"
+    if replay_lock.exists():
+        raise RuntimeError(
+            "canonical B35 replay lock exists; stop/verify the active replay before "
+            "running the isolated equivalence/performance probe"
+        )
     authorization_path = output_root / "development_outcome_authorization.json"
     if not authorization_path.is_file():
         raise RuntimeError("canonical B35 DEVELOPMENT authorization is missing")
