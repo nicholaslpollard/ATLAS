@@ -651,7 +651,7 @@ class B35DevelopmentMinuteSource:
                            OR (transaction_count IS NOT NULL AND transaction_count < 0)
                     )::BIGINT AS invalid_physical_rows,
                     count(*) FILTER (WHERE duplicate_count > 1)::BIGINT AS duplicate_member_rows,
-                    count(*) FILTER (WHERE NOT segment_ok)::BIGINT AS incorrect_session_rows
+                    count(*) FILTER (WHERE segment_ok IS DISTINCT FROM TRUE)::BIGINT AS incorrect_session_rows
                 FROM checked
             """
             params: list[object] = [
