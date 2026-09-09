@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -15,14 +16,14 @@ if str(PROJECT_ROOT) not in sys.path:
 from packages.backtesting.b35_development_authorization import (
     ensure_development_authorization,
 )
-from packages.backtesting.b35_development_replay import B35DevelopmentReplayEngine
 from packages.backtesting.b35_development_source import B35DevelopmentMinuteSource
+from packages.backtesting.b35_parallel_replay import B35ParallelDevelopmentReplayEngine
 from packages.backtesting.b35_split_evidence import (
     load_b35_split_evidence,
     split_evidence_report,
 )
 from packages.core.atomic_io import atomic_write_text
-from packages.core.execution_profile import resolve_research_execution_profile
+from packages.core.execution_profile import resolve_parallel_research_execution_profile
 from packages.core.settings import AtlasSettings, load_settings
 from packages.data.alpaca_v2_acquisition import V2_DEFAULT_START
 from packages.data.alpaca_v2_rebuild import V2Layout
@@ -148,6 +149,10 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _print(message: str) -> None:
+    print(message, flush=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.source_only and args.authorize_development_outcomes:
@@ -158,13 +163,14 @@ def main(argv: list[str] | None = None) -> int:
             "protected/future evidence remains forbidden"
         )
 
+    process_started = datetime.now(UTC)
     start = V2_DEFAULT_START
     end = DEVELOPMENT_LAST_SCORING_SESSION
     settings = load_settings(PROJECT_ROOT)
-    execution_profile = resolve_research_execution_profile()
+    execution_profile = resolve_parallel_research_execution_profile()
     source = B35DevelopmentMinuteSource(
         settings,
-        duckdb_threads=execution_profile.duckdb_threads,
+        duckdb_threads=execution_profile.duckdb_threads_per_worker,
     )
     plan = source.plan(start, end)
     split_evidence = load_b35_split_evidence(source.layout)
@@ -186,29 +192,34 @@ def main(argv: list[str] | None = None) -> int:
         + "\n",
     )
 
-    print("ATLAS B35 Frozen DEVELOPMENT Conditional Replay")
-    print(f"  scope: {start} -> {end} (frozen; no operator override)")
-    print(f"  source units: {len(plan.units):,}")
-    print(f"  source fingerprint: {plan.source_fingerprint}")
-    print(f"  split evidence fingerprint: {split_evidence.fingerprint}")
-    print(f"  B35 contract fingerprint: {B35_PREOUTCOME_FINGERPRINT}")
+    _print("ATLAS B35 Frozen DEVELOPMENT Conditional Replay")
+    _print(f"  process started UTC: {process_started.isoformat()}")
+    _print(f"  coordinator PID: {os.getpid()}")
+    _print(f"  scope: {start} -> {end} (frozen; no operator override)")
+    _print(f"  source units: {len(plan.units):,}")
+    _print(f"  source fingerprint: {plan.source_fingerprint}")
+    _print(f"  split evidence fingerprint: {split_evidence.fingerprint}")
+    _print(f"  B35 contract fingerprint: {B35_PREOUTCOME_FINGERPRINT}")
     memory_gib = execution_profile.as_dict()["total_memory_gib"]
-    print(
+    _print(
         "  execution profile: "
         f"{execution_profile.logical_cpus} logical CPUs, "
         f"{memory_gib if memory_gib is not None else 'unknown'} GiB RAM, "
-        f"DuckDB threads={execution_profile.duckdb_threads} "
+        f"workers={execution_profile.replay_workers}, "
+        f"DuckDB threads/worker={execution_profile.duckdb_threads_per_worker}, "
+        f"aggregate worker threads={execution_profile.aggregate_worker_threads}, "
+        f"reserved logical CPUs={execution_profile.reserved_logical_cpus} "
         f"({execution_profile.profile_source})"
     )
-    print("  consumed master rows permitted/read: 0 / 0")
-    print("  future blind rows permitted/read: 0 / 0")
-    print("  provider calls / broker reads / broker writes: 0 / 0 / 0")
-    print("  PAPER / LIVE authority: false / false")
+    _print("  consumed master rows permitted/read: 0 / 0")
+    _print("  future blind rows permitted/read: 0 / 0")
+    _print("  provider calls / broker reads / broker writes: 0 / 0 / 0")
+    _print("  PAPER / LIVE authority: false / false")
     if args.source_only:
-        print("  outcome authorization created: false")
-        print("  outcomes opened: false (--source-only)")
-        print(f"  source plan: {output_root / 'source_plan.json'}")
-        print(f"  split evidence: {output_root / 'split_evidence.json'}")
+        _print("  outcome authorization created: false")
+        _print("  outcomes opened: false (--source-only)")
+        _print(f"  source plan: {output_root / 'source_plan.json'}")
+        _print(f"  split evidence: {output_root / 'split_evidence.json'}")
         return 0
 
     authorization_path = output_root / "development_outcome_authorization.json"
@@ -247,10 +258,14 @@ def main(argv: list[str] | None = None) -> int:
             ),
         ),
     )
-    print(f"  immutable outcome authorization: {authorization_id}")
-    print(f"  trial registered before outcomes: {registration_id}")
+    _print(f"  immutable outcome authorization: {authorization_id}")
+    _print(f"  trial registered before outcomes: {registration_id}")
+    _print(f"  non-authoritative runtime status: {output_root / 'progress.json'}")
 
-    summary = B35DevelopmentReplayEngine(source).run(
+    summary = B35ParallelDevelopmentReplayEngine(
+        source,
+        execution_profile=execution_profile,
+    ).run(
         plan,
         output_root=output_root,
         authorization=authorization,
@@ -274,10 +289,11 @@ def main(argv: list[str] | None = None) -> int:
             ),
         ),
     )
-    print(f"  fired opportunities: {int(summary['fired_opportunity_records']):,}")
-    print(f"  run fingerprint: {run_fingerprint}")
-    print(f"  summary: {output_root / 'summary.json'}")
-    print(f"  completion trial: {completion_id}")
+    _print(f"  completed UTC: {datetime.now(UTC).isoformat()}")
+    _print(f"  fired opportunities: {int(summary['fired_opportunity_records']):,}")
+    _print(f"  run fingerprint: {run_fingerprint}")
+    _print(f"  summary: {output_root / 'summary.json'}")
+    _print(f"  completion trial: {completion_id}")
     return 0
 
 
