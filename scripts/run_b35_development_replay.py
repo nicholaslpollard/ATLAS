@@ -22,6 +22,7 @@ from packages.backtesting.b35_split_evidence import (
     split_evidence_report,
 )
 from packages.core.atomic_io import atomic_write_text
+from packages.core.execution_profile import resolve_research_execution_profile
 from packages.core.settings import AtlasSettings, load_settings
 from packages.data.alpaca_v2_acquisition import V2_DEFAULT_START
 from packages.data.alpaca_v2_rebuild import V2Layout
@@ -160,7 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     start = V2_DEFAULT_START
     end = DEVELOPMENT_LAST_SCORING_SESSION
     settings = load_settings(PROJECT_ROOT)
-    source = B35DevelopmentMinuteSource(settings)
+    execution_profile = resolve_research_execution_profile()
+    source = B35DevelopmentMinuteSource(
+        settings,
+        duckdb_threads=execution_profile.duckdb_threads,
+    )
     plan = source.plan(start, end)
     split_evidence = load_b35_split_evidence(source.layout)
     output_root = _output_root(settings, start, end)
@@ -187,6 +192,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  source fingerprint: {plan.source_fingerprint}")
     print(f"  split evidence fingerprint: {split_evidence.fingerprint}")
     print(f"  B35 contract fingerprint: {B35_PREOUTCOME_FINGERPRINT}")
+    memory_gib = execution_profile.as_dict()["total_memory_gib"]
+    print(
+        "  execution profile: "
+        f"{execution_profile.logical_cpus} logical CPUs, "
+        f"{memory_gib if memory_gib is not None else 'unknown'} GiB RAM, "
+        f"DuckDB threads={execution_profile.duckdb_threads} "
+        f"({execution_profile.profile_source})"
+    )
     print("  consumed master rows permitted/read: 0 / 0")
     print("  future blind rows permitted/read: 0 / 0")
     print("  provider calls / broker reads / broker writes: 0 / 0 / 0")

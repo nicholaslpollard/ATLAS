@@ -75,8 +75,9 @@ def _write_valid_parquet(
     session_segment: str = "regular",
     adjusted: object = False,
     duplicate: bool = False,
+    timestamp_utc: datetime | None = None,
 ) -> None:
-    stamp = datetime(2026, 4, 30, 13, 30, tzinfo=UTC)  # 09:30 ET
+    stamp = timestamp_utc or datetime(2026, 4, 30, 13, 30, tzinfo=UTC)  # 09:30 ET
     rows = [
         {
             "symbol": "TEST",
@@ -117,6 +118,7 @@ def _write_fixture(
     session_segment: str = "regular",
     adjusted: object = False,
     duplicate: bool = False,
+    timestamp_utc: datetime | None = None,
 ) -> B35DevelopmentMinuteSource:
     source = B35DevelopmentMinuteSource(_settings(tmp_path))
     layout = source.layout
@@ -127,6 +129,7 @@ def _write_fixture(
         session_segment=session_segment,
         adjusted=adjusted,
         duplicate=duplicate,
+        timestamp_utc=timestamp_utc,
     )
     canonical_sha = hashlib.sha256(canonical.read_bytes()).hexdigest()
     record = _record()
@@ -246,6 +249,40 @@ def test_load_unit_accepts_exact_valid_physical_rows(tmp_path: Path) -> None:
     )
     assert len(frame) == 1
     assert frame.iloc[0]["symbol"] == "TEST"
+
+
+def test_load_unit_accepts_writer_valid_closed_row_without_materializing_it(
+    tmp_path: Path,
+) -> None:
+    source = _write_fixture(
+        tmp_path,
+        session_segment="closed",
+        timestamp_utc=datetime(2026, 4, 30, 7, 59, tzinfo=UTC),  # 03:59 ET
+    )
+    binding = source.plan(date(2026, 4, 1), date(2026, 4, 30)).units[0]
+    frame = source.load_unit(
+        binding,
+        start_session=date(2026, 4, 1),
+        end_session=date(2026, 4, 30),
+    )
+    assert frame.empty
+
+
+def test_load_unit_accepts_writer_valid_after_hours_without_materializing_it(
+    tmp_path: Path,
+) -> None:
+    source = _write_fixture(
+        tmp_path,
+        session_segment="after_hours",
+        timestamp_utc=datetime(2026, 4, 30, 20, 0, tzinfo=UTC),  # 16:00 ET
+    )
+    binding = source.plan(date(2026, 4, 1), date(2026, 4, 30)).units[0]
+    frame = source.load_unit(
+        binding,
+        start_session=date(2026, 4, 1),
+        end_session=date(2026, 4, 30),
+    )
+    assert frame.empty
 
 
 @pytest.mark.parametrize(
