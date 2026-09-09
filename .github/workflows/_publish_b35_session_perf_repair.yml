@@ -1,0 +1,38 @@
+name: B35 session-label performance repair publisher
+
+on:
+  push:
+    branches:
+      - b35-session-label-performance-repair
+    paths:
+      - scripts/_publish_b35_session_perf_repair.py
+      - .github/workflows/_publish_b35_session_perf_repair.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: b35-session-label-performance-repair
+          fetch-depth: 0
+      - name: Apply deterministic repair
+        run: python scripts/_publish_b35_session_perf_repair.py
+      - name: Show permanent diff
+        run: git status --short
+      - name: Commit permanent package
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to publish"
+            exit 1
+          fi
+          git commit -m "B35 repair closed-session validation and scan efficiency"
+          git push origin HEAD:b35-session-label-performance-repair
