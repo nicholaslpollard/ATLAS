@@ -1,0 +1,67 @@
+{
+  "contract": "atlas-b35-first-authorized-development-attempt-interruption-v1",
+  "status": "INTERRUPTED_PRE_COMPLETION",
+  "recorded_at_utc": "2026-09-09T02:42:00Z",
+  "workstation_main_sha": "1d00fb9d362f46c226972ae4d92c45c2fd395413",
+  "development_scope": {
+    "start": "2016-01-04",
+    "end": "2026-04-30",
+    "operator_override": false
+  },
+  "source_units": 59768,
+  "source_fingerprint": "af371478a68d2dca486ffbaa1a339d24e1166257a67ba5f6ededfdda202a04cd",
+  "split_evidence_fingerprint": "3bcccaddf3937368c675fb27a441f9bbac8cbf34816c26e37a4a3e84d03554f6",
+  "b35_contract_fingerprint": "145cc8983439b6062fd5e60303539d1611cdf7db0119ed68a7da1e68ffd8eda6",
+  "authorization": {
+    "created": true,
+    "authorization_id": "562d7104d56151e6203a1bf85457f9d1a90bbf19e60cd4d9359a3f96bc0a7be5"
+  },
+  "trial_registration": {
+    "created_before_outcome_read": true,
+    "trial_id": "b35.dev.20160104_20260430.eb3b7ff9f417.registration"
+  },
+  "outcome_read_attempt_started": true,
+  "completion_summary_created": false,
+  "failure": {
+    "exception_class": "packages.backtesting.b35_development_source.B35DevelopmentSourceError",
+    "message": "B35 canonical unit contains incorrect session labels",
+    "source_file": "packages/backtesting/b35_development_source.py",
+    "source_line_at_failed_main": 692,
+    "classification": "VALIDATOR_WRITER_SEMANTICS_MISMATCH"
+  },
+  "root_cause_review": {
+    "accepted_v2_writer_labels": [
+      "premarket",
+      "regular",
+      "after_hours",
+      "closed"
+    ],
+    "finding": "The accepted V2 canonicalizer intentionally labels provider minute rows outside the configured extended-session clock, including non-session local dates, as closed. The first B35 validator rejected the closed label instead of validating it against the writer clock.",
+    "source_bytes_changed": false,
+    "strategy_rules_changed": false,
+    "b35_preregistration_changed": false,
+    "authorization_identity_must_be_reused_on_restart": true
+  },
+  "repair_scope": {
+    "accept_writer_valid_closed_rows": true,
+    "reject_mislabeled_or_null_session_rows": true,
+    "materialize_only_premarket_and_regular_rows_for_b35": true,
+    "combine_repeated_duckdb_validation_scans": true,
+    "hardware_aware_duckdb_threads": true,
+    "group_order_changed": false,
+    "scientific_output_order_changed": false
+  },
+  "protected_and_external_authority": {
+    "consumed_master_rows_permitted": 0,
+    "consumed_master_rows_read": 0,
+    "future_blind_rows_permitted": 0,
+    "future_blind_rows_read": 0,
+    "provider_calls": 0,
+    "broker_reads": 0,
+    "broker_writes": 0,
+    "paper_authority": false,
+    "live_authority": false,
+    "strategy_promotion": false,
+    "selector_promotion": false
+  }
+}

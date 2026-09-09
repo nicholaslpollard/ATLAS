@@ -387,8 +387,9 @@ def _binding_from_plan(layout: V2Layout, record: dict[str, object]) -> B35Develo
 class B35DevelopmentMinuteSource:
     """Hash-bound, exact-path, pre-protected V2 minute reader for B35 DEVELOPMENT."""
 
-    def __init__(self, settings: AtlasSettings) -> None:
+    def __init__(self, settings: AtlasSettings, *, duckdb_threads: int = 2) -> None:
         self.settings = settings
+        self.duckdb_threads = max(1, int(duckdb_threads))
         self.layout = V2Layout.beneath((settings.project_root / "data").resolve())
         self.calendar = MarketCalendar(
             exchange=settings.data.calendar.exchange,
@@ -579,11 +580,45 @@ class B35DevelopmentMinuteSource:
 
         con = duckdb.connect(":memory:")
         con.execute("SET TimeZone='UTC'")
+        con.execute(f"PRAGMA threads={self.duckdb_threads}")
         con.register("b35_calendar", calendar_frame)
         symbol_placeholders = ",".join("?" for _ in binding.symbols)
         exact_source_id = ALPACA_V2_SOURCE_PREFIX + binding.unit_id
         try:
-            physical_sql = f"""
+            validation_sql = f"""
+                WITH source_rows AS (
+                    SELECT
+                        p.*,
+                        c.session_date AS calendar_session_date,
+                        c.premarket_start_utc,
+                        c.regular_open_utc,
+                        c.regular_close_utc,
+                        c.after_hours_end_utc,
+                        count(*) OVER (
+                            PARTITION BY p.symbol, p.timestamp_utc, p.timeframe, p.session_segment
+                        ) AS duplicate_count
+                    FROM read_parquet(?, hive_partitioning=false) p
+                    LEFT JOIN b35_calendar c
+                      ON p.session_date = c.session_date
+                ), checked AS (
+                    SELECT
+                        *,
+                        CASE
+                            WHEN calendar_session_date IS NULL
+                                THEN session_segment = 'closed'
+                            WHEN timestamp_utc >= premarket_start_utc
+                             AND timestamp_utc < regular_open_utc
+                                THEN session_segment = 'premarket'
+                            WHEN timestamp_utc >= regular_open_utc
+                             AND timestamp_utc < regular_close_utc
+                                THEN session_segment = 'regular'
+                            WHEN timestamp_utc >= regular_close_utc
+                             AND timestamp_utc < after_hours_end_utc
+                                THEN session_segment = 'after_hours'
+                            ELSE session_segment = 'closed'
+                        END AS segment_ok
+                    FROM source_rows
+                )
                 SELECT
                     count(*)::BIGINT AS rows,
                     count(*) FILTER (
@@ -614,58 +649,27 @@ class B35DevelopmentMinuteSource:
                                   NOT isfinite(CAST(vwap AS DOUBLE)) OR vwap <= 0
                               ))
                            OR (transaction_count IS NOT NULL AND transaction_count < 0)
-                    )::BIGINT AS invalid_physical_rows
-                FROM read_parquet(?, hive_partitioning=false)
+                    )::BIGINT AS invalid_physical_rows,
+                    count(*) FILTER (WHERE duplicate_count > 1)::BIGINT AS duplicate_member_rows,
+                    count(*) FILTER (WHERE segment_ok IS DISTINCT FROM TRUE)::BIGINT AS incorrect_session_rows
+                FROM checked
             """
             params: list[object] = [
+                str(binding.canonical_path),
                 binding.window_start,
                 binding.window_end_exclusive,
                 *binding.symbols,
                 MINUTE_DATASET,
                 MINUTE_TIMEFRAME,
                 exact_source_id,
-                str(binding.canonical_path),
             ]
-            physical = con.execute(physical_sql, params).fetchone()
-            duplicate = con.execute(
-                """
-                SELECT count(*)::BIGINT
-                FROM (
-                    SELECT symbol, timestamp_utc, timeframe, session_segment, count(*) AS n
-                    FROM read_parquet(?, hive_partitioning=false)
-                    GROUP BY symbol, timestamp_utc, timeframe, session_segment
-                    HAVING count(*) > 1
-                )
-                """,
-                [str(binding.canonical_path)],
-            ).fetchone()
-            segment = con.execute(
-                """
-                SELECT count(*)::BIGINT
-                FROM read_parquet(?, hive_partitioning=false) p
-                LEFT JOIN b35_calendar c USING (session_date)
-                WHERE c.session_date IS NULL
-                   OR p.session_segment IS NULL
-                   OR CASE
-                        WHEN p.timestamp_utc >= c.premarket_start_utc
-                         AND p.timestamp_utc < c.regular_open_utc
-                            THEN p.session_segment <> 'premarket'
-                        WHEN p.timestamp_utc >= c.regular_open_utc
-                         AND p.timestamp_utc < c.regular_close_utc
-                            THEN p.session_segment <> 'regular'
-                        WHEN p.timestamp_utc >= c.regular_close_utc
-                         AND p.timestamp_utc < c.after_hours_end_utc
-                            THEN p.session_segment <> 'after_hours'
-                        ELSE TRUE
-                      END
-                """,
-                [str(binding.canonical_path)],
-            ).fetchone()
+            validation = con.execute(validation_sql, params).fetchone()
             frame = con.execute(
                 """
                 SELECT *
                 FROM read_parquet(?, hive_partitioning=false)
                 WHERE session_date BETWEEN ? AND ?
+                  AND session_segment IN ('premarket', 'regular')
                 ORDER BY symbol, session_date, timestamp_utc, session_segment
                 """,
                 [str(binding.canonical_path), start_session, end_session],
@@ -684,11 +688,11 @@ class B35DevelopmentMinuteSource:
             raise B35DevelopmentSourceError(
                 "B35 canonical schema is_adjusted must be BOOLEAN"
             )
-        if physical is None or int(physical[1]) != 0:
+        if validation is None or int(validation[1]) != 0:
             raise B35DevelopmentSourceError("B35 canonical unit contains invalid physical rows")
-        if duplicate is None or int(duplicate[0]) != 0:
+        if int(validation[2]) != 0:
             raise B35DevelopmentSourceError("B35 canonical unit contains duplicate minute keys")
-        if segment is None or int(segment[0]) != 0:
+        if int(validation[3]) != 0:
             raise B35DevelopmentSourceError("B35 canonical unit contains incorrect session labels")
         return frame
 
