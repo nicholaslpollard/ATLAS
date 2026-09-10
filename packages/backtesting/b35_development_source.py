@@ -396,6 +396,30 @@ class B35DevelopmentMinuteSource:
             market_tz=ZoneInfo(settings.data.calendar.market_timezone),
         )
         self.market_tz = ZoneInfo(settings.data.calendar.market_timezone)
+        # A B35 source reader is process-local. Parallel replay workers persist
+        # across group tasks, so cache purely operational resources per worker.
+        # This does not cache source bytes, checkpoints, hashes, or validation
+        # results: every canonical unit is still re-bound and SHA-verified.
+        self._calendar_frame_cache: dict[tuple[date, date], pd.DataFrame] = {}
+        self._duckdb_connection: duckdb.DuckDBPyConnection | None = None
+        self._registered_calendar_views: set[str] = set()
+
+    def _connection(self) -> duckdb.DuckDBPyConnection:
+        con = self._duckdb_connection
+        if con is None:
+            con = duckdb.connect(":memory:")
+            con.execute("SET TimeZone='UTC'")
+            con.execute(f"PRAGMA threads={self.duckdb_threads}")
+            con.execute("PRAGMA disable_progress_bar")
+            self._duckdb_connection = con
+        return con
+
+    def close(self) -> None:
+        con = self._duckdb_connection
+        self._duckdb_connection = None
+        self._registered_calendar_views.clear()
+        if con is not None:
+            con.close()
 
     @staticmethod
     def validate_scope(start_session: date, end_session: date) -> None:
@@ -539,6 +563,10 @@ class B35DevelopmentMinuteSource:
         return actual
 
     def _calendar_frame(self, binding: B35DevelopmentUnitBinding) -> pd.DataFrame:
+        key = (binding.window_start, binding.window_end_exclusive)
+        cached = self._calendar_frame_cache.get(key)
+        if cached is not None:
+            return cached
         rows: list[dict[str, object]] = []
         end = binding.window_end_exclusive - timedelta(days=1)
         for session in self.calendar.sessions_in_range(binding.window_start, end):
@@ -558,7 +586,9 @@ class B35DevelopmentMinuteSource:
                     "after_hours_end_utc": after_end,
                 }
             )
-        return pd.DataFrame(rows)
+        frame = pd.DataFrame(rows)
+        self._calendar_frame_cache[key] = frame
+        return frame
 
     def load_unit(
         self,
@@ -578,10 +608,11 @@ class B35DevelopmentMinuteSource:
         if calendar_frame.empty:
             raise B35DevelopmentSourceError("minute unit month contains no accepted exchange sessions")
 
-        con = duckdb.connect(":memory:")
-        con.execute("SET TimeZone='UTC'")
-        con.execute(f"PRAGMA threads={self.duckdb_threads}")
-        con.register("b35_calendar", calendar_frame)
+        con = self._connection()
+        calendar_view = f"b35_calendar_{binding.year:04d}_{binding.month:02d}"
+        if calendar_view not in self._registered_calendar_views:
+            con.register(calendar_view, calendar_frame)
+            self._registered_calendar_views.add(calendar_view)
         symbol_placeholders = ",".join("?" for _ in binding.symbols)
         exact_source_id = ALPACA_V2_SOURCE_PREFIX + binding.unit_id
         try:
@@ -598,7 +629,7 @@ class B35DevelopmentMinuteSource:
                             PARTITION BY p.symbol, p.timestamp_utc, p.timeframe, p.session_segment
                         ) AS duplicate_count
                     FROM read_parquet(?, hive_partitioning=false) p
-                    LEFT JOIN b35_calendar c
+                    LEFT JOIN {calendar_view} c
                       ON p.session_date = c.session_date
                 ), checked AS (
                     SELECT
@@ -678,8 +709,6 @@ class B35DevelopmentMinuteSource:
             raise B35DevelopmentSourceError(
                 f"canonical minute unit violates B35 physical contract: {binding.unit_id}"
             ) from exc
-        finally:
-            con.close()
 
         if "is_adjusted" not in frame.columns or str(frame["is_adjusted"].dtype).lower() not in {
             "bool",

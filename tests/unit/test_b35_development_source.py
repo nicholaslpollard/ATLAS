@@ -239,6 +239,22 @@ def test_verify_unit_rejects_hash_drift(tmp_path: Path) -> None:
         source.verify_unit(binding)
 
 
+def test_worker_source_reuses_connection_and_month_calendar(tmp_path: Path) -> None:
+    source = _write_fixture(tmp_path)
+    binding = source.plan(date(2026, 4, 1), date(2026, 4, 30)).units[0]
+    first_calendar = source._calendar_frame(binding)
+    second_calendar = source._calendar_frame(binding)
+    assert first_calendar is second_calendar
+    first = source.load_unit(binding, start_session=date(2026, 4, 1), end_session=date(2026, 4, 30))
+    connection = source._duckdb_connection
+    second = source.load_unit(binding, start_session=date(2026, 4, 1), end_session=date(2026, 4, 30))
+    assert connection is not None
+    assert source._duckdb_connection is connection
+    pd.testing.assert_frame_equal(first, second)
+    source.close()
+    assert source._duckdb_connection is None
+
+
 def test_load_unit_accepts_exact_valid_physical_rows(tmp_path: Path) -> None:
     source = _write_fixture(tmp_path)
     binding = source.plan(date(2026, 4, 1), date(2026, 4, 30)).units[0]
