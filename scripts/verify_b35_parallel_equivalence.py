@@ -6,6 +6,7 @@ import sys
 import tempfile
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
 
@@ -66,6 +67,15 @@ def _select_evenly(items: list[T], count: int) -> list[T]:
         for index in range(count)
     }
     return [items[index] for index in sorted(indexes)]
+
+
+def _timestamp() -> str:
+    return datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %z")
+
+
+def _run_probe_task(task: B35GroupTask, ordinal: int, total: int) -> dict[str, object]:
+    print(f"[{_timestamp()}] STARTED {ordinal}/{total}: {task.token}", flush=True)
+    return _run_group_task(task)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -199,15 +209,18 @@ def main(argv: list[str] | None = None) -> int:
             total_units += len(units)
 
         results: dict[str, dict[str, object]] = {}
+        total_tasks = len(tasks)
+        completed_tasks = 0
         with ProcessPoolExecutor(
-            max_workers=min(profile.replay_workers, len(tasks)),
+            max_workers=min(profile.replay_workers, total_tasks),
             initializer=_init_b35_worker,
             initargs=(str(settings.project_root), profile.duckdb_threads_per_worker),
         ) as executor:
-            future_map = {
-                executor.submit(_run_group_task, task): (task, baseline)
-                for task, baseline in tasks
-            }
+            future_map = {}
+            for ordinal, (task, baseline) in enumerate(tasks, start=1):
+                future = executor.submit(_run_probe_task, task, ordinal, total_tasks)
+                future_map[future] = (task, baseline)
+
             for future in as_completed(future_map):
                 task, baseline = future_map[future]
                 recomputed = future.result()
@@ -240,9 +253,10 @@ def main(argv: list[str] | None = None) -> int:
                             f"SCIENTIFIC EQUIVALENCE FAILURE for group {task.token}: {field} differs"
                         )
                 results[task.group_fingerprint] = recomputed
+                completed_tasks += 1
                 print(
-                    f"  PASS {task.token}: records={int(recomputed['record_count']):,} "
-                    f"sha256={recomputed['output_sha256']}",
+                    f"[{_timestamp()}] COMPLETED {completed_tasks}/{total_tasks}: {task.token} "
+                    f"| PASS | records={int(recomputed['record_count']):,}",
                     flush=True,
                 )
 
