@@ -1,0 +1,77 @@
+name: B35 single-scan rollback
+
+on:
+  push:
+    branches:
+      - b35-runtime-observability-parallel-replay
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: b35-runtime-observability-parallel-replay
+          fetch-depth: 0
+      - name: Restore proven B35 source path and record rejected experiment
+        shell: bash
+        run: |
+          git checkout 1ba8b7448e2b78e379ac03d016919908dca79d08 -- packages/backtesting/b35_development_source.py tests/unit/test_b35_development_source.py
+          python - <<'PY'
+          from pathlib import Path
+
+          readme_path = Path('README.md')
+          roadmap_path = Path('docs/roadmap.md')
+          readme = readme_path.read_text(encoding='utf-8')
+          roadmap = roadmap_path.read_text(encoding='utf-8')
+
+          old_readme = (
+              'The small 8-to-10-worker gain identifies a shared data/processing bottleneck rather than a concurrency shortage. '
+              'A single-Parquet-scan source-load optimization is now staged: the separate canonical SHA-256 read remains mandatory, '
+              'while DuckDB computes full physical/session/duplicate validation and premarket/regular materialization from one Parquet scan before filtering.'
+          )
+          new_readme = (
+              'The small 8-to-10-worker gain identifies a shared data/processing bottleneck rather than a concurrency shortage. '
+              'The subsequent single-Parquet-scan experiment preserved exact scientific equivalence at **10/10** sampled groups but regressed to '
+              '**820.8 units/hour / 72.8 hours full / 60.4 hours remaining**, versus the proven 10 x 1 baseline '
+              '**2,676.8 units/hour / 22.3 hours full / 18.5 hours remaining**. It is therefore **REJECTED** and the source loader is restored '
+              'to the proven dual-DuckDB-scan path. The best accepted execution shape remains **10 workers x 1 DuckDB thread**; the next optimization '
+              'target is Python/object/strategy processing plus narrower per-worker connection, calendar, cache, and data-layout reuse. Canonical SHA-256 '
+              'verification, fail-closed validators, frozen strategy semantics, and the exact-equivalence gate remain mandatory.'
+          )
+          if readme.count(old_readme) != 1:
+              raise SystemExit(f'README rollback anchor count={readme.count(old_readme)}')
+          readme = readme.replace(old_readme, new_readme, 1)
+
+          old_roadmap = (
+              'Because 10 x 1 adds little over 8 x 1, the next staged execution-only optimization collapses the duplicate DuckDB Parquet '
+              'validation/materialization scans into one scan while preserving the independent canonical file SHA-256 verification and all fail-closed validators.'
+          )
+          new_roadmap = (
+              'Because 10 x 1 adds little over 8 x 1, a single-Parquet-scan execution experiment was tested next. It preserved exact scientific '
+              'equivalence at **10/10** sampled groups but regressed to **820.8 source units/hour** (**72.8 projected full-replay hours / 60.4 remaining**) '
+              'versus the accepted 10 x 1 baseline **2,676.8 source units/hour** (**22.3 full / 18.5 remaining**). That experiment is **REJECTED** and '
+              'the source loader is reverted to the proven dual-DuckDB-scan path. The best accepted shape remains 10 x 1. Further execution-only work '
+              'targets Python/object/strategy processing and narrower per-worker connection/calendar/cache/data-layout reuse; canonical SHA verification, '
+              'all fail-closed validators, frozen strategy semantics, receipt authority, and exact-equivalence acceptance remain unchanged.'
+          )
+          if roadmap.count(old_roadmap) != 1:
+              raise SystemExit(f'roadmap rollback anchor count={roadmap.count(old_roadmap)}')
+          roadmap = roadmap.replace(old_roadmap, new_roadmap, 1)
+
+          readme_path.write_text(readme, encoding='utf-8')
+          roadmap_path.write_text(roadmap, encoding='utf-8')
+          PY
+          rm .github/workflows/b35-revert-single-scan.yml
+          rm -f .b35-revert-trigger
+          python -m py_compile packages/backtesting/b35_development_source.py
+          git diff --check
+          git config user.name "ATLAS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add README.md docs/roadmap.md packages/backtesting/b35_development_source.py tests/unit/test_b35_development_source.py .github/workflows/b35-revert-single-scan.yml .b35-revert-trigger
+          git commit -m "Reject B35 single-scan regression and restore proven source path"
+          git push origin HEAD:b35-runtime-observability-parallel-replay
