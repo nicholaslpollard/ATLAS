@@ -1,0 +1,102 @@
+name: B35 worker resource reuse optimization
+
+on:
+  push:
+    branches:
+      - b35-runtime-observability-parallel-replay
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: b35-runtime-observability-parallel-replay
+          fetch-depth: 0
+      - name: Cache worker DuckDB connection and calendar frames
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          source_path = Path('packages/backtesting/b35_development_source.py')
+          test_path = Path('tests/unit/test_b35_development_source.py')
+          readme_path = Path('README.md')
+          roadmap_path = Path('docs/roadmap.md')
+          source = source_path.read_text(encoding='utf-8')
+          tests = test_path.read_text(encoding='utf-8')
+          readme = readme_path.read_text(encoding='utf-8')
+          roadmap = roadmap_path.read_text(encoding='utf-8')
+
+          old_init = '''        self.market_tz = ZoneInfo(settings.data.calendar.market_timezone)\n'''
+          new_init = '''        self.market_tz = ZoneInfo(settings.data.calendar.market_timezone)\n        # A B35 source reader is process-local. Parallel replay workers persist\n        # across group tasks, so cache purely operational resources per worker.\n        # This does not cache source bytes, checkpoints, hashes, or validation\n        # results: every canonical unit is still re-bound and SHA-verified.\n        self._calendar_frame_cache: dict[tuple[date, date], pd.DataFrame] = {}\n        self._duckdb_connection: duckdb.DuckDBPyConnection | None = None\n        self._registered_calendar_views: set[str] = set()\n\n    def _connection(self) -> duckdb.DuckDBPyConnection:\n        con = self._duckdb_connection\n        if con is None:\n            con = duckdb.connect(\":memory:\")\n            con.execute(\"SET TimeZone='UTC'\")\n            con.execute(f\"PRAGMA threads={self.duckdb_threads}\")\n            con.execute(\"PRAGMA disable_progress_bar\")\n            self._duckdb_connection = con\n        return con\n\n    def close(self) -> None:\n        con = self._duckdb_connection\n        self._duckdb_connection = None\n        self._registered_calendar_views.clear()\n        if con is not None:\n            con.close()\n'''
+          if source.count(old_init) != 1:
+              raise SystemExit(f'init anchor count={source.count(old_init)}')
+          source = source.replace(old_init, new_init, 1)
+
+          old_cal_start = '''    def _calendar_frame(self, binding: B35DevelopmentUnitBinding) -> pd.DataFrame:\n        rows: list[dict[str, object]] = []\n'''
+          new_cal_start = '''    def _calendar_frame(self, binding: B35DevelopmentUnitBinding) -> pd.DataFrame:\n        key = (binding.window_start, binding.window_end_exclusive)\n        cached = self._calendar_frame_cache.get(key)\n        if cached is not None:\n            return cached\n        rows: list[dict[str, object]] = []\n'''
+          if source.count(old_cal_start) != 1:
+              raise SystemExit(f'calendar start anchor count={source.count(old_cal_start)}')
+          source = source.replace(old_cal_start, new_cal_start, 1)
+
+          old_cal_return = '''        return pd.DataFrame(rows)\n\n    def load_unit(\n'''
+          new_cal_return = '''        frame = pd.DataFrame(rows)\n        self._calendar_frame_cache[key] = frame\n        return frame\n\n    def load_unit(\n'''
+          if source.count(old_cal_return) != 1:
+              raise SystemExit(f'calendar return anchor count={source.count(old_cal_return)}')
+          source = source.replace(old_cal_return, new_cal_return, 1)
+
+          old_connection = '''        con = duckdb.connect(\":memory:\")\n        con.execute(\"SET TimeZone='UTC'\")\n        con.execute(f\"PRAGMA threads={self.duckdb_threads}\")\n        con.register(\"b35_calendar\", calendar_frame)\n        symbol_placeholders = \",\".join(\"?\" for _ in binding.symbols)\n'''
+          new_connection = '''        con = self._connection()\n        calendar_view = f\"b35_calendar_{binding.year:04d}_{binding.month:02d}\"\n        if calendar_view not in self._registered_calendar_views:\n            con.register(calendar_view, calendar_frame)\n            self._registered_calendar_views.add(calendar_view)\n        symbol_placeholders = \",\".join(\"?\" for _ in binding.symbols)\n'''
+          if source.count(old_connection) != 1:
+              raise SystemExit(f'connection anchor count={source.count(old_connection)}')
+          source = source.replace(old_connection, new_connection, 1)
+
+          old_join = '''                    LEFT JOIN b35_calendar c\n'''
+          new_join = '''                    LEFT JOIN {calendar_view} c\n'''
+          if source.count(old_join) != 1:
+              raise SystemExit(f'calendar join anchor count={source.count(old_join)}')
+          source = source.replace(old_join, new_join, 1)
+
+          old_finally = '''        finally:\n            con.close()\n\n        if \"is_adjusted\" not in frame.columns'''
+          new_finally = '''\n        if \"is_adjusted\" not in frame.columns'''
+          if source.count(old_finally) != 1:
+              raise SystemExit(f'connection finally anchor count={source.count(old_finally)}')
+          source = source.replace(old_finally, new_finally, 1)
+
+          test_anchor = '''def test_load_unit_accepts_exact_valid_physical_rows(tmp_path: Path) -> None:\n'''
+          new_tests = '''def test_worker_source_reuses_connection_and_month_calendar(tmp_path: Path) -> None:\n    source = _write_fixture(tmp_path)\n    binding = source.plan(date(2026, 4, 1), date(2026, 4, 30)).units[0]\n    first_calendar = source._calendar_frame(binding)\n    second_calendar = source._calendar_frame(binding)\n    assert first_calendar is second_calendar\n    first = source.load_unit(binding, start_session=date(2026, 4, 1), end_session=date(2026, 4, 30))\n    connection = source._duckdb_connection\n    second = source.load_unit(binding, start_session=date(2026, 4, 1), end_session=date(2026, 4, 30))\n    assert connection is not None\n    assert source._duckdb_connection is connection\n    pd.testing.assert_frame_equal(first, second)\n    source.close()\n    assert source._duckdb_connection is None\n\n\n'''
+          if tests.count(test_anchor) != 1:
+              raise SystemExit(f'test anchor count={tests.count(test_anchor)}')
+          tests = tests.replace(test_anchor, new_tests + test_anchor, 1)
+
+          readme_anchor = 'Canonical SHA-256 verification, fail-closed validators, frozen strategy semantics, and the exact-equivalence gate remain mandatory.'
+          readme_append = readme_anchor + ' The next staged execution-only probe reuses one in-memory DuckDB connection per persistent replay worker and caches immutable exchange-calendar frames by native month; source/checkpoint reads, canonical SHA-256 verification, the proven dual-query validation/materialization path, and scientific output bytes remain unchanged.'
+          if readme.count(readme_anchor) != 1:
+              raise SystemExit(f'README anchor count={readme.count(readme_anchor)}')
+          readme = readme.replace(readme_anchor, readme_append, 1)
+
+          roadmap_anchor = 'all fail-closed validators, frozen strategy semantics, receipt authority, and exact-equivalence acceptance remain unchanged.'
+          roadmap_append = roadmap_anchor + ' The next staged execution-only probe therefore reuses one in-memory DuckDB connection per persistent worker and caches immutable month calendar frames, eliminating repeated process-local setup work without caching source bytes, checkpoint bindings, canonical hashes, or validation results.'
+          if roadmap.count(roadmap_anchor) != 1:
+              raise SystemExit(f'roadmap anchor count={roadmap.count(roadmap_anchor)}')
+          roadmap = roadmap.replace(roadmap_anchor, roadmap_append, 1)
+
+          source_path.write_text(source, encoding='utf-8')
+          test_path.write_text(tests, encoding='utf-8')
+          readme_path.write_text(readme, encoding='utf-8')
+          roadmap_path.write_text(roadmap, encoding='utf-8')
+          PY
+          rm .github/workflows/b35-worker-reuse-optimize.yml
+          rm -f .b35-worker-reuse-trigger
+          python -m py_compile packages/backtesting/b35_development_source.py
+          git diff --check
+          git config user.name "ATLAS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add README.md docs/roadmap.md packages/backtesting/b35_development_source.py tests/unit/test_b35_development_source.py .github/workflows/b35-worker-reuse-optimize.yml .b35-worker-reuse-trigger
+          git commit -m "Reuse B35 worker database and calendar resources"
+          git push origin HEAD:b35-runtime-observability-parallel-replay
