@@ -100,36 +100,39 @@ def _receipt_id(receipt: dict[str, object]) -> str:
 
 
 def _canonical_bars(frame: pd.DataFrame) -> tuple[CanonicalBar, ...]:
+    # Retain full CanonicalBar validation; only remove the intermediate
+    # DataFrame.to_dict allocation from the already source-validated B35 path.
     bars: list[CanonicalBar] = []
-    fields = (
-        "symbol",
-        "timestamp_utc",
-        "session_date",
-        "timeframe",
-        "session_segment",
-        "open",
-        "high",
-        "low",
-        "close",
-        "volume",
-        "vwap",
-        "transaction_count",
-        "provider",
-        "dataset",
-        "source_id",
-        "is_adjusted",
-        "provider_timestamp_utc",
-    )
-    for record in frame.to_dict(orient="records"):
-        payload: dict[str, object] = {}
-        for field in fields:
-            value = record.get(field)
-            if field in {"vwap", "transaction_count"} and pd.isna(value):
-                value = None
-            payload[field] = value
-        bars.append(CanonicalBar.model_validate(payload))
+    validate = CanonicalBar.model_validate
+    isna = pd.isna
+    for row in frame.itertuples(index=False):
+        vwap = row.vwap
+        if isna(vwap):
+            vwap = None
+        transaction_count = row.transaction_count
+        if isna(transaction_count):
+            transaction_count = None
+        payload: dict[str, object] = {
+            "symbol": row.symbol,
+            "timestamp_utc": row.timestamp_utc,
+            "session_date": row.session_date,
+            "timeframe": row.timeframe,
+            "session_segment": row.session_segment,
+            "open": row.open,
+            "high": row.high,
+            "low": row.low,
+            "close": row.close,
+            "volume": row.volume,
+            "vwap": vwap,
+            "transaction_count": transaction_count,
+            "provider": row.provider,
+            "dataset": row.dataset,
+            "source_id": row.source_id,
+            "is_adjusted": row.is_adjusted,
+            "provider_timestamp_utc": row.provider_timestamp_utc,
+        }
+        bars.append(validate(payload))
     return tuple(bars)
-
 
 def _premarket_volume(
     bars: Sequence[CanonicalBar], session_date: date
