@@ -249,6 +249,7 @@ def test_load_unit_accepts_exact_valid_physical_rows(tmp_path: Path) -> None:
     )
     assert len(frame) == 1
     assert frame.iloc[0]["symbol"] == "TEST"
+    assert not any(str(column).startswith("__b35_") for column in frame.columns)
 
 
 def test_load_unit_accepts_writer_valid_closed_row_without_materializing_it(

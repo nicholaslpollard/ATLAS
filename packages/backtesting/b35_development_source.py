@@ -585,18 +585,23 @@ class B35DevelopmentMinuteSource:
         symbol_placeholders = ",".join("?" for _ in binding.symbols)
         exact_source_id = ALPACA_V2_SOURCE_PREFIX + binding.unit_id
         try:
-            validation_sql = f"""
+            # One DuckDB read of the frozen Parquet unit performs both full-file
+            # physical/session validation and premarket/regular materialization.
+            # The separate SHA-256 verification above remains unchanged. Window
+            # validation metrics are computed before the outer materialization
+            # filter, so malformed closed/after-hours rows still fail closed.
+            combined_sql = f"""
                 WITH source_rows AS (
                     SELECT
                         p.*,
-                        c.session_date AS calendar_session_date,
-                        c.premarket_start_utc,
-                        c.regular_open_utc,
-                        c.regular_close_utc,
-                        c.after_hours_end_utc,
+                        c.session_date AS __b35_calendar_session_date,
+                        c.premarket_start_utc AS __b35_premarket_start_utc,
+                        c.regular_open_utc AS __b35_regular_open_utc,
+                        c.regular_close_utc AS __b35_regular_close_utc,
+                        c.after_hours_end_utc AS __b35_after_hours_end_utc,
                         count(*) OVER (
                             PARTITION BY p.symbol, p.timestamp_utc, p.timeframe, p.session_segment
-                        ) AS duplicate_count
+                        ) AS __b35_duplicate_count
                     FROM read_parquet(?, hive_partitioning=false) p
                     LEFT JOIN b35_calendar c
                       ON p.session_date = c.session_date
@@ -604,55 +609,87 @@ class B35DevelopmentMinuteSource:
                     SELECT
                         *,
                         CASE
-                            WHEN calendar_session_date IS NULL
+                            WHEN __b35_calendar_session_date IS NULL
                                 THEN session_segment = 'closed'
-                            WHEN timestamp_utc >= premarket_start_utc
-                             AND timestamp_utc < regular_open_utc
+                            WHEN timestamp_utc >= __b35_premarket_start_utc
+                             AND timestamp_utc < __b35_regular_open_utc
                                 THEN session_segment = 'premarket'
-                            WHEN timestamp_utc >= regular_open_utc
-                             AND timestamp_utc < regular_close_utc
+                            WHEN timestamp_utc >= __b35_regular_open_utc
+                             AND timestamp_utc < __b35_regular_close_utc
                                 THEN session_segment = 'regular'
-                            WHEN timestamp_utc >= regular_close_utc
-                             AND timestamp_utc < after_hours_end_utc
+                            WHEN timestamp_utc >= __b35_regular_close_utc
+                             AND timestamp_utc < __b35_after_hours_end_utc
                                 THEN session_segment = 'after_hours'
                             ELSE session_segment = 'closed'
-                        END AS segment_ok
+                        END AS __b35_segment_ok,
+                        (
+                               session_date IS NULL
+                            OR session_date < ? OR session_date >= ?
+                            OR symbol IS NULL OR symbol NOT IN ({symbol_placeholders})
+                            OR provider IS DISTINCT FROM 'alpaca'
+                            OR dataset IS DISTINCT FROM ?
+                            OR timeframe IS DISTINCT FROM ?
+                            OR is_adjusted IS DISTINCT FROM FALSE
+                            OR source_id IS DISTINCT FROM ?
+                            OR timestamp_utc IS NULL OR provider_timestamp_utc IS NULL
+                            OR timestamp_utc IS DISTINCT FROM provider_timestamp_utc
+                            OR date_trunc('minute', timestamp_utc) IS DISTINCT FROM timestamp_utc
+                            OR open IS NULL OR high IS NULL OR low IS NULL OR close IS NULL
+                            OR volume IS NULL
+                            OR NOT isfinite(CAST(open AS DOUBLE))
+                            OR NOT isfinite(CAST(high AS DOUBLE))
+                            OR NOT isfinite(CAST(low AS DOUBLE))
+                            OR NOT isfinite(CAST(close AS DOUBLE))
+                            OR NOT isfinite(CAST(volume AS DOUBLE))
+                            OR open <= 0 OR high <= 0 OR low <= 0 OR close <= 0
+                            OR volume < 0
+                            OR high < greatest(open, close)
+                            OR low > least(open, close)
+                            OR high < low
+                            OR (vwap IS NOT NULL AND (
+                                   NOT isfinite(CAST(vwap AS DOUBLE)) OR vwap <= 0
+                               ))
+                            OR (transaction_count IS NOT NULL AND transaction_count < 0)
+                        ) AS __b35_invalid_physical
                     FROM source_rows
+                ), annotated AS (
+                    SELECT
+                        *,
+                        CAST(count(*) OVER () AS BIGINT) AS __b35_rows,
+                        CAST(count(*) FILTER (
+                            WHERE __b35_invalid_physical
+                        ) OVER () AS BIGINT) AS __b35_invalid_physical_rows,
+                        CAST(count(*) FILTER (
+                            WHERE __b35_duplicate_count > 1
+                        ) OVER () AS BIGINT) AS __b35_duplicate_member_rows,
+                        CAST(count(*) FILTER (
+                            WHERE __b35_segment_ok IS DISTINCT FROM TRUE
+                        ) OVER () AS BIGINT) AS __b35_incorrect_session_rows,
+                        row_number() OVER () AS __b35_probe_row
+                    FROM checked
+                ), selected AS (
+                    SELECT
+                        *,
+                        (
+                            session_date BETWEEN ? AND ?
+                            AND session_segment IN ('premarket', 'regular')
+                        ) AS __b35_materialize
+                    FROM annotated
                 )
-                SELECT
-                    count(*)::BIGINT AS rows,
-                    count(*) FILTER (
-                        WHERE session_date IS NULL
-                           OR session_date < ? OR session_date >= ?
-                           OR symbol IS NULL OR symbol NOT IN ({symbol_placeholders})
-                           OR provider IS DISTINCT FROM 'alpaca'
-                           OR dataset IS DISTINCT FROM ?
-                           OR timeframe IS DISTINCT FROM ?
-                           OR is_adjusted IS DISTINCT FROM FALSE
-                           OR source_id IS DISTINCT FROM ?
-                           OR timestamp_utc IS NULL OR provider_timestamp_utc IS NULL
-                           OR timestamp_utc IS DISTINCT FROM provider_timestamp_utc
-                           OR date_trunc('minute', timestamp_utc) IS DISTINCT FROM timestamp_utc
-                           OR open IS NULL OR high IS NULL OR low IS NULL OR close IS NULL
-                           OR volume IS NULL
-                           OR NOT isfinite(CAST(open AS DOUBLE))
-                           OR NOT isfinite(CAST(high AS DOUBLE))
-                           OR NOT isfinite(CAST(low AS DOUBLE))
-                           OR NOT isfinite(CAST(close AS DOUBLE))
-                           OR NOT isfinite(CAST(volume AS DOUBLE))
-                           OR open <= 0 OR high <= 0 OR low <= 0 OR close <= 0
-                           OR volume < 0
-                           OR high < greatest(open, close)
-                           OR low > least(open, close)
-                           OR high < low
-                           OR (vwap IS NOT NULL AND (
-                                  NOT isfinite(CAST(vwap AS DOUBLE)) OR vwap <= 0
-                              ))
-                           OR (transaction_count IS NOT NULL AND transaction_count < 0)
-                    )::BIGINT AS invalid_physical_rows,
-                    count(*) FILTER (WHERE duplicate_count > 1)::BIGINT AS duplicate_member_rows,
-                    count(*) FILTER (WHERE segment_ok IS DISTINCT FROM TRUE)::BIGINT AS incorrect_session_rows
-                FROM checked
+                SELECT * EXCLUDE (
+                    __b35_calendar_session_date,
+                    __b35_premarket_start_utc,
+                    __b35_regular_open_utc,
+                    __b35_regular_close_utc,
+                    __b35_after_hours_end_utc,
+                    __b35_duplicate_count,
+                    __b35_segment_ok,
+                    __b35_invalid_physical,
+                    __b35_probe_row
+                )
+                FROM selected
+                WHERE __b35_materialize OR __b35_probe_row = 1
+                ORDER BY __b35_materialize DESC, symbol, session_date, timestamp_utc, session_segment
             """
             params: list[object] = [
                 str(binding.canonical_path),
@@ -662,24 +699,32 @@ class B35DevelopmentMinuteSource:
                 MINUTE_DATASET,
                 MINUTE_TIMEFRAME,
                 exact_source_id,
+                start_session,
+                end_session,
             ]
-            validation = con.execute(validation_sql, params).fetchone()
-            frame = con.execute(
-                """
-                SELECT *
-                FROM read_parquet(?, hive_partitioning=false)
-                WHERE session_date BETWEEN ? AND ?
-                  AND session_segment IN ('premarket', 'regular')
-                ORDER BY symbol, session_date, timestamp_utc, session_segment
-                """,
-                [str(binding.canonical_path), start_session, end_session],
-            ).fetchdf()
+            frame = con.execute(combined_sql, params).fetchdf()
         except duckdb.Error as exc:
             raise B35DevelopmentSourceError(
                 f"canonical minute unit violates B35 physical contract: {binding.unit_id}"
             ) from exc
         finally:
             con.close()
+
+        metric_columns = [
+            "__b35_rows",
+            "__b35_invalid_physical_rows",
+            "__b35_duplicate_member_rows",
+            "__b35_incorrect_session_rows",
+        ]
+        if frame.empty:
+            validation = (0, 0, 0, 0)
+        else:
+            first = frame.iloc[0]
+            validation = tuple(int(first[column]) for column in metric_columns)
+        if "__b35_materialize" not in frame.columns:
+            raise B35DevelopmentSourceError("B35 combined source scan lost materialization marker")
+        frame = frame.loc[frame["__b35_materialize"].fillna(False).astype(bool)].copy()
+        frame.drop(columns=["__b35_materialize", *metric_columns], inplace=True)
 
         if "is_adjusted" not in frame.columns or str(frame["is_adjusted"].dtype).lower() not in {
             "bool",
