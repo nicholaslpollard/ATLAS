@@ -1,0 +1,133 @@
+name: B35 living-document reconciliation
+
+on:
+  push:
+    branches:
+      - b35-runtime-observability-parallel-replay
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: b35-runtime-observability-parallel-replay
+          fetch-depth: 0
+      - name: Reconcile README and roadmap atomically
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          readme_path = Path('README.md')
+          roadmap_path = Path('docs/roadmap.md')
+          readme = readme_path.read_text(encoding='utf-8')
+          roadmap = roadmap_path.read_text(encoding='utf-8')
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one anchor, found {count}')
+              return text.replace(old, new, 1)
+
+          readme = replace_once(
+              readme,
+              '**Current as of 2026-09-08 (UTC).',
+              '**Current as of 2026-09-09 (UTC).',
+              'README date',
+          )
+
+          readme_marker = '**B35 observable parallel DEVELOPMENT replay performance package is STAGED / ACCEPTANCE PENDING.**'
+          if readme_marker not in readme:
+              anchor = '## Current repository truth\n\n'
+              insert = (
+                  '- **B35 observable parallel DEVELOPMENT replay performance package is STAGED / ACCEPTANCE PENDING.** '
+                  'The repaired serial replay was deliberately interrupted for an execution-only performance package after an operator snapshot showed '
+                  '**69 / 482 deterministic groups**, **8,556 / 59,768 source units (14.32%)** complete, with the current restart averaging about '
+                  '**660.6 source units/hour** and projecting roughly **77.5 hours** still remaining. PR #72 preserves every frozen scientific input, '
+                  'strategy/outcome rule, group identity, self-hash receipt, authorization/trial identity, source/split fingerprint, protected-data boundary, '
+                  'and final scientific fingerprint semantics while scheduling only independent deterministic groups concurrently. On the dedicated '
+                  '6-core/12-thread, ~24 GiB ATLAS workstation, hardware-auto targets **5 worker processes x 2 DuckDB threads = 10 aggregate worker threads**, '
+                  'reserving two logical CPUs plus practical RAM headroom for Windows/RDP/coordinator work. Existing valid completed receipts remain authoritative '
+                  'and reusable. Before the optimized canonical replay may resume, the isolated real-data equivalence/performance verifier must recompute completed '
+                  'canonical groups through the actual ProcessPool path and require byte-identical JSONL SHA-256 plus scientific receipt-field equivalence. '
+                  'The hard performance objective is a full canonical replay below 24 hours where the hardware permits it, with an 8-12 hour stretch objective; '
+                  '**no runtime target may weaken scientific validation, data coverage, outcome quality, or authority controls.**\n'
+              )
+              readme = replace_once(readme, anchor, anchor + insert, 'README current-truth header')
+
+          progress_marker = '**Mandatory long-running runtime observability.**'
+          if progress_marker not in readme:
+              anchor = '## How progress is reported\n\n'
+              insert = (
+                  '**Mandatory long-running runtime observability.** Any ATLAS command expected to run materially longer than an interactive task must expose '
+                  'operator-visible progress without changing scientific authority. At minimum it reports a start timestamp and PID, frozen scope and execution '
+                  'profile, completed/total groups or units and percentage, elapsed time, restart-reused work, throughput, a timestamped heartbeat at least once '
+                  'every 60 seconds even while one work item is long, and an ETA once enough new work exists (otherwise explicitly unavailable). Completion, failure, '
+                  'and interruption report their timestamp and elapsed duration. Terminal output is flushed promptly, and an atomic machine-readable status artifact '
+                  'is maintained for second-terminal and future GUI inspection. Runtime progress/status is **NON_AUTHORITATIVE**: wall-clock fields, worker order, '
+                  'heartbeats, throughput, ETA, and the status artifact never enter scientific identities, source/group fingerprints, receipt hashes, trial identity, '
+                  'strategy decisions, or final result fingerprints. Validated receipts and final scientific summaries remain the completion authority.\n\n'
+              )
+              readme = replace_once(readme, anchor, anchor + insert, 'README progress header')
+
+          roadmap_marker = '**Runtime observability and execution-efficiency standard.**'
+          if roadmap_marker not in roadmap:
+              anchor = '## 20. Phase/package cadence and progress reporting\n\n'
+              insert = (
+                  '**Runtime observability and execution-efficiency standard.** Long-running workstation commands must never be silent. They must emit a flushed '
+                  'start timestamp/PID/scope/execution profile; completed/total groups or units, percentage, elapsed time, restart-reused work and throughput; a '
+                  'timestamped heartbeat at least every 60 seconds; ETA after a sufficient stable sample or an explicit unavailable state; and terminal '
+                  'COMPLETE/FAILED/INTERRUPTED timestamp plus total elapsed time. The same operational state must be written atomically to a machine-readable status '
+                  'artifact for second-terminal and browser-GUI inspection. These fields are **NON_AUTHORITATIVE** and are forbidden from scientific fingerprints, '
+                  'group/receipt identities, strategy decisions, source authority, or qualification evidence. Receipt/output validation and the final frozen summary '
+                  'remain authoritative. Performance work may increase concurrency, vectorization, filtering, caching, or I/O efficiency only when an equivalence '
+                  'gate proves that the frozen scientific output is unchanged. Runtime targets never justify reducing data coverage, validation strength, or research '
+                  'quality.\n\n'
+              )
+              roadmap = replace_once(roadmap, anchor, anchor + insert, 'roadmap section 20 header')
+
+          item7_pattern = re.compile(
+              r"7\. \*\*CURRENT Track-B gate.*?(?=\n\n8\. Keep focused tests)",
+              re.DOTALL,
+          )
+          matches = list(item7_pattern.finditer(roadmap))
+          if len(matches) != 1:
+              raise SystemExit(f'roadmap item 7: expected one block, found {len(matches)}')
+          new_item7 = (
+              '7. **CURRENT Track-B gate — accept the execution-only B35 observable parallel replay package, then resume the same canonical DEVELOPMENT replay.** '
+              'Source-only preflight and the session-label semantics repair are accepted. The authorized canonical replay was intentionally interrupted after a '
+              'measurement snapshot reached **69 / 482 deterministic groups** and **8,556 / 59,768 source units (14.32%)**; the restart portion averaged about '
+              '**660.6 source units/hour**, implying roughly **77.5 hours** still remaining under the serial coordinator. PR #72 therefore changes execution only: '
+              'independent frozen symbol-batch groups may run concurrently, while each worker uses the same accepted inner replay mechanics and unique group output/receipt. '
+              'The parent revalidates every output SHA/self-hash receipt and restores frozen aggregation order. The dedicated 12-logical-CPU/~24-GiB workstation '
+              'hardware-auto profile targets **5 workers x 2 DuckDB threads = 10 aggregate worker threads**, reserving two logical CPUs and RAM headroom. Existing valid '
+              'receipts remain reusable. Before merge/resume, the workstation must have no active canonical replay lock, its system clock should be corrected for '
+              'meaningful operational timestamps, and `python scripts/verify_b35_parallel_equivalence.py --authorize-development-outcomes --groups 5` must pass against '
+              'completed canonical evidence through the actual parallel path with byte-identical JSONL SHA-256 and equivalent scientific receipt fields. The hard '
+              'performance objective is <24 hours for a full canonical replay where achievable without weakening safeguards; 8-12 hours is a stretch objective, not '
+              'authority to reduce quality. After exact-head Windows/Ubuntu acceptance and a successful workstation equivalence/performance probe, merge PR #72 and '
+              'rerun the same canonical `python scripts/run_b35_development_replay.py --authorize-development-outcomes`; it must reuse the immutable authorization '
+              '`562d7104d56151e6203a1bf85457f9d1a90bbf19e60cd4d9359a3f96bc0a7be5`, trial '
+              '`b35.dev.20160104_20260430.eb3b7ff9f417.registration`, frozen `2016-01-04..2026-04-30` source, and every still-valid completed receipt. Consumed-master '
+              'and future-blind rows remain forbidden; provider/broker/PAPER/LIVE and strategy/selector-promotion authority remain zero/false. After successful B35 '
+              'completion, proceed to strategy x condition evidence and the preregistered selector.'
+          )
+          roadmap = item7_pattern.sub(new_item7, roadmap, count=1)
+
+          readme_path.write_text(readme, encoding='utf-8')
+          roadmap_path.write_text(roadmap, encoding='utf-8')
+          PY
+
+          rm .github/workflows/b35-doc-reconcile.yml
+          git diff --check
+          git config user.name "ATLAS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add README.md docs/roadmap.md .github/workflows/b35-doc-reconcile.yml
+          git commit -m "Document B35 observable parallel replay"
+          git push origin HEAD:b35-runtime-observability-parallel-replay
