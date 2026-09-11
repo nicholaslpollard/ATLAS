@@ -132,6 +132,25 @@ def test_unique_temp_path_bounds_long_content_addressed_filename(tmp_path: Path)
     assert len(temp.name) < len(target.name) + 20
 
 
+def test_atomic_write_text_bounds_full_temp_path_for_deep_windows_layout(tmp_path: Path):
+    parent = tmp_path
+    while len(str(parent)) < 190:
+        parent = parent / "abcdefgh"
+    target = parent / "targeted_perturbation_authorization.json"
+
+    # The destination itself remains below the conservative legacy-safe threshold;
+    # the old fixed 24-character temp prefix pushed the sibling path beyond MAX_PATH.
+    assert len(str(target)) < atomic_io._WINDOWS_LEGACY_SAFE_PATH_CHARS
+    temp = atomic_io.unique_temp_path(target)
+    assert len(str(temp)) <= atomic_io._WINDOWS_LEGACY_SAFE_PATH_CHARS
+    assert temp.parent == target.parent
+    assert temp.name.endswith(".tmp")
+
+    atomic_io.atomic_write_text(target, "{}\n", fsync=False)
+    assert target.read_text(encoding="utf-8") == "{}\n"
+    assert list(parent.glob("*.tmp")) == []
+
+
 def test_persistently_locked_checkpoint_warns_once_then_disables_writes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     calls = 0
 
