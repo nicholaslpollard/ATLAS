@@ -1467,11 +1467,11 @@ activate/deactivate strategy specialties using trailing point-in-time evidence a
 abstain when no specialty clears support, cost, robustness, risk, and authority
 gates. Continuous market coverage is desirable; forced continuous trading is not.
 
-### B36 — Successor 19-family Strategy Laboratory
+### B36 — Successor 21-family Strategy Laboratory
 
 B36 begins only after the merged PR #79 B35 targeted minute-perturbation workstation run closes and its exact evidence is recorded. B36 does not rewrite B35 v1 or reuse the consumed master holdout to qualify a revision.
 
-**Core roster:** retain the ten accepted economic families as immutable baselines and add nine materially distinct mechanisms: Bollinger mean reversion; ATR/range expansion; ADX/DMI continuation/filter; support/resistance rejection; relative-strength momentum versus market/sector where data authority exists; objective head-and-shoulders/inverse; double-top/bottom; flag/pennant/triangle continuation; and objective session-level failed-break/reclaim. Cup-and-handle remains lower priority. Similar indicators/parameterizations remain one family for trials/multiplicity accounting.
+**Core roster:** retain the ten accepted economic families as immutable baselines and add eleven materially distinct mechanisms: Bollinger mean reversion; ATR/range expansion; VWAP reclaim/reject; pivot support/resistance breakout; ADX/DMI continuation/filter; relative-strength momentum versus market/sector where data authority exists; objective head-and-shoulders/inverse; double-top/bottom; flag/pennant continuation; triangle breakout; and objective session-level failed-break/reclaim. Cup-and-handle remains lower priority. Similar indicators/parameterizations remain one family for trials/multiplicity accounting.
 
 **High-priority Opening Range challengers:** `orb_stocks_in_play_5m_v1` is a literature-anchored research policy testing whether abnormal same-time opening participation plus a 5-minute opening-range break produces a viable opening-momentum specialist under realistic costs. A separate versioned 15-minute ORB close/retest challenger isolates whether close-outside-range plus bounded retest/hold confirmation reduces false breaks and MAE enough to improve net expectancy after later entry and lower trade count. Both remain in the Opening Range economic family for multiplicity and confluence.
 

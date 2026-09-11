@@ -723,7 +723,7 @@ ATLAS already contains more practitioner work than the current four-strategy B35
 pack. The accepted A33/B33 reference library has **six daily practitioner families
 with nine direction-specific policies**, and B34/B35 adds **four intraday/opening
 families**. Those ten existing families are retained; the successor package adds
-**eight genuinely new mechanisms** for a planned **18-family practitioner library**.
+**eleven genuinely new mechanisms** for a planned **21-family practitioner library**.
 Do not duplicate an existing mechanism under a new name merely because a later chat
 rediscovers it.
 
@@ -774,7 +774,7 @@ under a new preregistered fingerprint.
     prior high-volume sessions, combined with the frozen price-structure trigger,
     can identify continuation.
 
-### Eight new successor families
+### Eleven new successor families
 
 The next package adds only mechanisms that materially broaden the library. Exact
 lookbacks, tolerances, bar authority, stops, targets and exits are frozen before any
@@ -823,6 +823,9 @@ new performance is opened.
     descending or symmetrical geometry, and fire only on an information-safe
     boundary breakout. Breakout direction controls the signal; the visual pattern
     name alone never does.
+19. **ADX/DMI continuation/filter — `pract_adx_dmi_continuation_v1`.** Use DMI for objective directional state and ADX for trend-strength state under one frozen rule. ADX alone never chooses direction. Test whether established directional strength improves continuation expectancy rather than assuming all high-ADX conditions are favorable.
+20. **Relative-strength momentum — `pract_relative_strength_momentum_v1`.** Measure PIT ticker out/underperformance versus SPY over a small frozen horizon set and test continuation as its own family. The same relative-strength features may also be shared context for other strategies; sector-relative strength waits for an accepted PIT sector map.
+21. **Session-level failed-break/reclaim — `pract_session_failed_break_reclaim_v1`.** Test breach and bounded reclaim of objective previous-day high/low and premarket high/low levels with normalized breach depth, explicit reclaim confirmation, sweep-extreme invalidation and one coherent exit hierarchy. This is observable failed-break/reversal research, not a claim about hidden institutional liquidity.
 
 Cup-and-handle, candlestick-only patterns, stochastic-only systems and other popular
 setups remain backlog candidates. Add them later only if they introduce a genuinely
@@ -887,7 +890,7 @@ recycled, and an existing blind window is never reassigned after results are kno
 
 B35 finishes first under its existing four-strategy fingerprint. After B35 closeout,
 run the frozen B35 strategy x condition evidence and preregistered selector exactly as
-planned. Then freeze the **eight-new-family successor contract** plus the confluence
+planned. Then freeze the **eleven-new-family successor contract** plus the confluence
 feature schema before opening their outcomes. Reuse the six accepted daily families
 and four B34 intraday families rather than reimplementing them. Shared point-in-time
 feature extraction, canonical bars, indicator primitives, deterministic pivots and
@@ -1006,9 +1009,9 @@ the facts they were written to certify:
 - XBRL protected return rows read = **0**; closeout fingerprint `291770f7ee110dc85453f58e6410bee4a4431ac44c17f3e59b272fb88315ac91`.
 - LIVE and automatic broker failover remain disabled.
 
-## Successor Strategy Lab direction — 19 families
+## Successor Strategy Lab direction — 21 families
 
-After the accepted B35 targeted perturbation diagnostic closes, Track B proceeds to a new preregistered successor research package rather than modifying B35 v1. The next broad historical experiment targets **19 economic strategy families** plus a bounded set of explicitly versioned challengers. The ten retained families remain immutable baselines; nine distinct additions are planned: Bollinger mean reversion, ATR/range expansion, ADX/DMI continuation/filter, support/resistance rejection, relative-strength momentum versus market/sector, deterministic head-and-shoulders/inverse, double-top/bottom, flag/pennant/triangle continuation, and objective session-level failed-break/reclaim. Nearby parameterizations remain members of one economic family for multiplicity and confluence.
+After the accepted B35 targeted perturbation diagnostic closes, Track B proceeds to a new preregistered successor research package rather than modifying B35 v1. The next broad historical experiment targets **21 economic strategy families** plus a bounded set of explicitly versioned challengers. The ten retained families remain immutable baselines; eleven distinct additions are planned: Bollinger mean reversion, ATR/range expansion, VWAP reclaim/reject, pivot support/resistance breakout, ADX/DMI continuation/filter, relative-strength momentum versus market/sector, deterministic head-and-shoulders/inverse, double-top/bottom, flag/pennant continuation, triangle breakout, and objective session-level failed-break/reclaim. Nearby parameterizations remain members of one economic family for multiplicity and confluence.
 
 The Opening Range family receives two high-priority successor policies, not two new independent families: a **Stocks-in-Play 5-minute ORB/opening-momentum** policy using abnormal same-time opening participation and executable liquidity/volatility controls, and a **15-minute ORB close + bounded retest confirmation** challenger designed to test false-break reduction. The failed-break/reclaim family uses only observable PIT levels (initially previous-day high/low and premarket high/low) and makes no hidden-liquidity or ICT/SMC claim.
 
