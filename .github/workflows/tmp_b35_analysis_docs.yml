@@ -17,7 +17,9 @@ jobs:
         with:
           fetch-depth: 0
       - name: Apply B35 analysis doc patch
-        run: python scripts/_tmp_patch_b35_analysis_docs.py
+        run: |
+          sed -i 's/old.subn(replacement, text, count=1)/old.subn(lambda _: replacement, text, count=1)/' scripts/_tmp_patch_b35_analysis_docs.py
+          python scripts/_tmp_patch_b35_analysis_docs.py
       - name: Remove temporary patch machinery
         run: |
           rm scripts/_tmp_patch_b35_analysis_docs.py
