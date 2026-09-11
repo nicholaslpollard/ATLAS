@@ -1,7 +1,7 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-08 (UTC). This roadmap and the root `README.md` are the
-only living project documents.**
+**Current as of 2026-09-11 (UTC). This roadmap, the root `README.md`, and
+`docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
 all valid evidence and safeguards while correcting the process drift that made
@@ -9,15 +9,16 @@ unsuccessful alpha research a global blocker for the product.
 
 ## 1. Document authority and continuation
 
-Every continuation chat must read the root `README.md` and this roadmap in full
-before recommending or changing anything. Update both in the same commit whenever
-mission, current state, authority, roadmap order, active work, material evidence, or
-implemented capability changes. Every repository-changing implementation package
-must document its goal, capability change, result/test evidence, exact authority or
-safety impact, unresolved limitations, and next work in both living documents before
-it is accepted or merged. A future chat must be able to reconstruct the current
-product and research state from these two files without depending on a prior chat.
-Do not create another current-status, handoff, plan, roadmap, or living README.
+Every continuation chat must read the root `README.md`, this roadmap, and
+`docs/strategy_evidence_register.md` in full before recommending or changing
+anything. Update README and roadmap whenever mission, current state, authority,
+roadmap order, active work, material evidence, or implemented capability changes.
+Any package that opens, changes, interprets, closes, calibrates, or promotes strategy
+evidence must also update the Strategy Evidence Register in the same package. A
+future chat must be able to reconstruct current product state, research direction,
+and strategy evidence from these three files without depending on a prior chat. Do
+not create another competing current-status, handoff, plan, roadmap, evidence
+register, or living README.
 
 All older README and roadmap files were moved verbatim to
 `docs/archive/2026-09-02-pre-product-rebaseline/`. The old `docs/current_status.md`,
@@ -27,10 +28,10 @@ are in the same archive. All other documentation is immutable specification,
 research, incident, or acceptance evidence. It may be cited but must not silently
 become a competing current plan.
 
-If these two living documents conflict, progression fails closed until both are
+If the three living documents conflict, progression fails closed until they are
 reconciled. Code and tests remain the authority for actual behavior; Git history and
-accepted artifacts remain the authority for what happened. A code package with
-stale living documents is incomplete even if its tests pass.
+accepted artifacts remain the authority for what happened. A code or research
+package with stale applicable living documents is incomplete even if its tests pass.
 
 ## 2. Mission
 
@@ -1442,3 +1443,28 @@ closed historical state and do not restore the superseded product dependency:
   provider rounding while the existing corruption regression still rejects a material
   price-factor mismatch. No source bytes, strategy/portfolio policy, holdout receipt,
   protected-return state, PAPER authority, or LIVE authority are changed.
+
+
+## 21. Living Strategy Evidence Register
+
+`docs/strategy_evidence_register.md` is the living scientific ledger for
+strategy/version evidence. It preserves observed baseline results, supported and
+unsupported condition evidence, walk-forward behavior, robustness status, current
+research disposition, successor hypotheses, unresolved limitations, and authority.
+It does not replace immutable receipts/artifacts or code behavior; it prevents future
+research chats from reconstructing strategy truth from conversational memory.
+
+B35 canonical replay and the first strategy x condition / selector profile are
+complete. The current Track-B gate is the remaining preregistered B35 robustness and
+final research-disposition package. Do not rerun the canonical minute replay and do
+not freeze condition-gated v2 rules until robustness is complete. The register's
+current dispositions are: Gap Continuation = condition-gate/calibrate candidate;
+Opening Range Breakout = condition-gate/calibrate plus execution audit; Premarket
+Rel-Vol = cost/execution-sensitive R&D candidate; Highest-Volume-Day style =
+redefine/insufficient evidence. None is promoted.
+
+After B35 robustness closes, freeze successor strategy versions and the broader
+18-family/confluence package under new fingerprints. The long-term router should
+activate/deactivate strategy specialties using trailing point-in-time evidence and
+abstain when no specialty clears support, cost, robustness, risk, and authority
+gates. Continuous market coverage is desirable; forced continuous trading is not.
