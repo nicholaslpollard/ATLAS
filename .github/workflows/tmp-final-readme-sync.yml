@@ -1,0 +1,37 @@
+name: Temporary final README synchronization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-final-readme-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconcile README implementation order
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('README.md')
+          t = p.read_text(encoding='utf-8')
+          old = '''### Implementation order and efficiency\n\nB35 finishes first under its existing four-strategy fingerprint. After B35 closeout,\nrun the frozen B35 strategy x condition evidence and preregistered selector exactly as\nplanned. Then freeze the **eleven-new-family successor contract** plus the confluence\nfeature schema before opening their outcomes. Reuse the six accepted daily families\nand four B34 intraday families rather than reimplementing them. Shared point-in-time\nfeature extraction, canonical bars, indicator primitives, deterministic pivots and\nthe validated parallel execution pattern should be reused where exact-equivalent,\nwhile every strategy evaluator remains independently testable and deterministic.\n'''
+          new = '''### Implementation order and efficiency\n\nB35 canonical replay, condition/selector analysis, and retained-artifact robustness are complete. PR #79 is merged; the current Track-B action is the single exact targeted minute-perturbation workstation run. After its 27 diagnostic profiles are reviewed and final B35 dispositions are recorded, freeze the **21-family / eleven-new-family successor contract**, only the B35 v2 challengers justified by the completed diagnostics, the bounded shared PIT context schema, and the separate confluence/ranking schema before opening successor performance. Reuse the six accepted daily families and four B34 intraday families rather than reimplementing them. Shared point-in-time feature extraction, canonical bars, indicator primitives, deterministic pivots, market/relative-strength context, and the validated parallel execution pattern should be reused where exact-equivalent, while every strategy evaluator remains independently testable and deterministic.\n'''
+          if old not in t:
+              raise SystemExit('README implementation-order anchor missing')
+          p.write_text(t.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit README sync
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Synchronize README with current Track B sequence"
+          git push origin HEAD:main
