@@ -1,0 +1,9 @@
+name: Temporary living-doc smoke
+on:
+  push:
+    branches: [b35-strategy-evidence-register]
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
