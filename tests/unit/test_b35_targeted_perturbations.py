@@ -96,6 +96,36 @@ def test_baseline_parity_is_fail_closed() -> None:
         _validate_group_baseline_parity(metrics, canonical)
 
 
+def test_baseline_parity_rejects_outcome_metric_drift_with_equal_counts() -> None:
+    metrics = {item.variant_id: _metric_template(item) for item in TARGETED_VARIANTS}
+    canonical = {
+        strategy_id: {
+            "evaluated_fired": 0,
+            "comparable": 0,
+            "noncomparable": 0,
+        }
+        for strategy_id in {
+            item.strategy_id for item in TARGETED_VARIANTS
+        }
+    }
+    duplicate_baselines: dict[str, list[str]] = {}
+    for item in TARGETED_VARIANTS:
+        if item.baseline:
+            duplicate_baselines.setdefault(item.strategy_id, []).append(item.variant_id)
+    strategy_id, variant_ids = next(
+        (strategy_id, variant_ids)
+        for strategy_id, variant_ids in duplicate_baselines.items()
+        if len(variant_ids) > 1
+    )
+    assert strategy_id
+    metrics[variant_ids[1]]["gross_return_sum"] = 0.01
+    with pytest.raises(
+        B35DevelopmentReplayError,
+        match="exact baseline outcome parity failed",
+    ):
+        _validate_group_baseline_parity(metrics, canonical)
+
+
 def test_group_aggregation_preserves_exact_counts_sessions_and_cost_means(
     tmp_path: Path,
 ) -> None:
