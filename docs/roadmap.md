@@ -1139,6 +1139,159 @@ data sources by research value per unit effort. Each experiment is finite,
 preregistered, versioned, and stoppable. No research delay globally blocks the
 finished product.
 
+## 19A. Practitioner strategy-library expansion, confluence, and calibration
+
+**Status: PLANNED SUCCESSOR WORK; DO NOT ALTER THE ACTIVE B35 FOUR-STRATEGY
+EXPERIMENT.** B35 closes under its existing fingerprint first. The successor package
+then expands the practitioner library to 18 independent versioned mechanisms while
+reusing the accepted data, PIT, receipt, cost, observability and execution-efficiency
+standards.
+
+### 19A.1 Initial 18-strategy target
+
+Retain unchanged: `b34_gap_continuation_v1`,
+`b34_opening_range_breakout_15m_v1`, `b34_premarket_relvol_consolidation_v1`, and
+`b34_highest_volume_day_style_v1`.
+
+Add under a new preregistered fingerprint:
+
+- `pract_golden_cross_v1` — 50/200 moving-average Golden Cross long baseline; Death
+  Cross mirrored research-only short profile. Record slopes, price location and age
+  of cross; do not make them hidden entry filters.
+- `pract_ema_trend_pullback_v1` — deterministic EMA trend/alignment, normalized
+  pullback that does not invalidate the trend, then objective continuation trigger.
+- `pract_ema_macd_momentum_v1` — EMA trend structure plus same-direction MACD
+  momentum transition; related calculations remain one correlated evidence family.
+- `pract_donchian_breakout_v1` — information-safe break of a prior rolling high/low
+  channel that excludes the decision bar.
+- `pract_rsi_trend_reversal_v1` — frozen RSI extreme plus objective recovery/failure
+  trigger; trend/regime/divergence are context, not assumptions.
+- `pract_bollinger_mean_reversion_v1` — band excursion plus deterministic rejection/
+  re-entry toward the envelope; band touch alone does not fire.
+- `pract_bollinger_squeeze_breakout_v1` — objectively narrow-band/low-volatility
+  state followed by directional expansion and breakout.
+- `pract_atr_volatility_expansion_v1` — normalized low-ATR consolidation followed by
+  directional range expansion; ATR supplies volatility/risk geometry, not direction.
+- `pract_volume_confirmed_sr_breakout_v1` — prior PIT support/resistance break with
+  relative-volume/OBV evidence retained explicitly, including weak-volume breakouts
+  for comparison.
+- `pract_vwap_reclaim_reject_v1` — intraday reclaim-and-hold above session VWAP for
+  long research and mirrored reject for short research; closed-bar confirmation is
+  required.
+- `pract_head_shoulders_v1` — deterministic five-pivot H&S/inverse H&S with frozen
+  shoulder similarity, head prominence, prior-trend, spacing and neckline rules;
+  neckline break completes the pattern.
+- `pract_double_top_bottom_v1` — two separated tests of a common level, material
+  intervening reversal, then neckline/support/resistance break.
+- `pract_flag_pennant_v1` — normalized impulse leg, bounded short continuation
+  consolidation with frozen retracement/geometry, then same-direction breakout.
+- `pract_triangle_breakout_v1` — deterministic converging-boundary geometry with
+  repeated pivot touches, ascending/descending/symmetrical classification, and
+  information-safe breakout trigger.
+
+For every new strategy, the implementation package freezes before performance:
+bar/timeframe authority; indicator definitions; lookbacks; minimum history; pivot
+algorithm; normalized geometric tolerances; entry timing; duplicate-signal rule;
+stop/target/time exit; cost treatment; long/short authority; sample/coverage minimums;
+condition dimensions; robustness perturbations; and trial/fingerprint identity.
+Chart-pattern implementations must use the shared deterministic pivot/geometry engine;
+visual/manual pattern labeling is forbidden.
+
+### 19A.2 Confluence is evidence, not vote counting
+
+A strategy signal is always first-class and independently testable. The confluence
+layer consumes those immutable signals plus PIT context but never changes whether the
+underlying setup fired. Preserve at minimum:
+
+- primary strategy id/direction and raw same-direction strategy count;
+- distinct evidence-family count and the exact contributing mechanisms;
+- trend evidence;
+- momentum evidence;
+- volume/participation evidence;
+- price-structure evidence;
+- volatility evidence;
+- chart-pattern evidence;
+- market/sector/liquidity/price/time context;
+- opposing/conflicting strategy or evidence-family state;
+- estimated cost, expected holding horizon and signal age.
+
+Signals derived from substantially the same calculation are correlated evidence.
+Within-family contributions are capped, regularized or otherwise prevented from
+multiplying confidence merely because several variants of trend/momentum say the
+same thing. Five moving-average-style confirmations are not equivalent to independent
+agreement across trend, volume, structure, volatility and regime.
+
+Evaluate three preregistered systems: **standalone strategy**, **hard-confirmation
+variant**, and **confluence ranking**. Hard confirmation may be promoted only if it
+improves untouched evidence without destroying useful sample/coverage. Confluence
+ranking initially reports stratified outcome tables rather than hand-designed point
+weights. A later conventional model may estimate `P(profitable)` and/or net
+expectancy using training-only walk-forward data, with calibration, leakage guards,
+regularization and explicit baselines. The model must be interpretable enough to show
+which evidence raised or lowered rank. Arbitrary indicator points are prohibited.
+
+Confluence is itself a hypothesis. It earns authority only if out-of-sample results
+show that distinct corroborating evidence improves probability/expectancy, downside
+or capital efficiency versus standalone strategies. If extra confirmation merely
+reduces sample size or arrives too late, ATLAS keeps the simpler strategy.
+
+### 19A.3 Post-result diagnosis and bounded refinement
+
+Every frozen v1 receives a post-result review whether profitable or not. Review by
+regime, liquidity, price band, time of day, volatility, setup intensity, entry delay,
+MFE/MAE, stop/target path, cost drag, unresolved/no-entry rate, concentration,
+losing streaks and confluence/conflict state. The purpose is causal/operational
+failure attribution, not retrospective threshold shopping.
+
+A strategy family receives at most **three materially distinct v2 candidates per
+research cycle** by default. Each successor requires a ledgered rationale and one or
+a few meaningful rule changes. Dense parameter sweeps, tiny threshold stepping, and
+repeated same-sample optimization are not accepted calibration. Preserve v1 forever.
+The data that motivated v2 is diagnostic/training evidence only; v2 promotion
+requires a fresh walk-forward or other untouched evaluation under a new trial and
+fingerprint. The consumed master window is never reused, and no existing blind window
+is reassigned after results are known.
+
+Possible legitimate v2 changes include adding/removing a condition that clearly
+explains a failure mode, replacing a brittle fixed-dollar stop with preregistered
+volatility-normalized geometry, requiring an objective confirmation that has an
+independent practitioner rationale, or removing a filter that only destroys sample
+without improving expectancy. A v2 may still fail; negative outcomes remain valuable
+strategy-family evidence.
+
+### 19A.4 Efficient implementation
+
+Build one shared, point-in-time feature/context layer for primitives already needed
+across strategies—OHLCV, EMA/SMA, RSI, MACD, Bollinger statistics, ATR/ATRP, VWAP,
+relative volume/OBV, rolling highs/lows, deterministic pivots, regime/liquidity and
+session context—then feed immutable views to independent strategy evaluators. Reuse
+process-local infrastructure and parallelize independent work using the validated
+ATLAS efficiency protocol. Do not create redundant full feature lakes or repeat
+expensive scans when exact-equivalent shared computation is possible. Golden-output
+and receipt equivalence remain mandatory whenever execution mechanics change.
+
+### 19A.5 Ordered successor work after B35
+
+1. Close and validate the active B35 canonical replay; record final throughput and
+   scientific summary without changing the frozen four-strategy result.
+2. Produce the preregistered B35 strategy x condition evidence and selector result.
+3. Freeze the exact 18-strategy successor contract and confluence feature schema
+   **before** opening performance for the 14 new mechanisms.
+4. Implement shared PIT indicators/pivots plus independent deterministic evaluators;
+   run source-only, semantic and exact-equivalence tests.
+5. Run the expanded DEVELOPMENT replay and standalone evidence first.
+6. Evaluate confirmation and confluence as separate hypotheses, including redundancy,
+   conflict, costs and sample-size effects.
+7. Perform one bounded diagnostic/calibration cycle; preregister up to three justified
+   v2 candidates per family and evaluate them only on untouched evidence.
+8. Promote nothing automatically. Strategies/confluence that survive become candidates
+   for the next prospective/PAPER evidence gate; failures remain in the ledger and
+   inform the next research family.
+
+This expansion does not delay Track A product completion. PAPER product plumbing may
+advance independently under its own authority while Track B builds a broader, better
+measured strategy library.
+
 ## 20. Phase/package cadence and progress reporting
 
 ### Validated efficiency protocol for long-running ATLAS work
@@ -1253,7 +1406,7 @@ Every closeout reports:
    redundant full feature lake. Continue A34.5 Product work in parallel regardless
    of strategy profit.
 6. **COMPLETE — B34 intraday readiness and frozen opening/premarket pack.** Final workstation evidence is `ACCEPTED`; repository acceptance retains the enhanced evidence hash, earlier semantic evidence hash, and frozen strategy-pack fingerprint without opening outcomes or trading authority.
-7. **CURRENT Track-B gate — complete the resumed canonical B35 DEVELOPMENT replay using the accepted execution path.** PR #72 is merged as `4a2ec3fcfb33c375a7b883ae8b3473e82fa29f6f`. The fastest tested scientifically equivalent workstation configuration is **10 workers x 1 DuckDB thread** with process-local DuckDB/calendar reuse and `itertuples()` canonical-bar conversion while retaining full per-minute `CanonicalBar.model_validate()`. The final isolated real-data probe passed **10/10 exact JSONL SHA-256 comparisons** at **2,942.2 units/hour**, versus about **660.6 units/hour** on the measured serial restart, approximately **4.45x faster**. The canonical run has resumed from **82 validated groups / 10,168 units** under the unchanged authorization `562d7104d56151e6203a1bf85457f9d1a90bbf19e60cd4d9359a3f96bc0a7be5`, trial `b35.dev.20160104_20260430.eb3b7ff9f417.registration`, frozen `2016-01-04..2026-04-30` source, zero consumed-master/future-blind reads, and zero provider/broker/PAPER/LIVE or promotion authority. Final canonical runtime/throughput will be recorded on completion; after successful B35 completion, proceed to strategy x condition evidence and the preregistered selector.
+7. **CURRENT Track-B gate — complete the resumed canonical B35 DEVELOPMENT replay using the accepted execution path.** PR #72 is merged as `4a2ec3fcfb33c375a7b883ae8b3473e82fa29f6f`. The fastest tested scientifically equivalent workstation configuration is **10 workers x 1 DuckDB thread** with process-local DuckDB/calendar reuse and `itertuples()` canonical-bar conversion while retaining full per-minute `CanonicalBar.model_validate()`. The final isolated real-data probe passed **10/10 exact JSONL SHA-256 comparisons** at **2,942.2 units/hour**, versus about **660.6 units/hour** on the measured serial restart, approximately **4.45x faster**. The canonical run has resumed from **82 validated groups / 10,168 units** under the unchanged authorization `562d7104d56151e6203a1bf85457f9d1a90bbf19e60cd4d9359a3f96bc0a7be5`, trial `b35.dev.20160104_20260430.eb3b7ff9f417.registration`, frozen `2016-01-04..2026-04-30` source, zero consumed-master/future-blind reads, and zero provider/broker/PAPER/LIVE or promotion authority. Final canonical runtime/throughput will be recorded on completion; after successful B35 completion, proceed to strategy x condition evidence and the preregistered selector, then freeze and implement the 18-strategy successor practitioner pack plus the separate confluence/strength layer defined in Section 19A. The active B35 result must not be retroactively mixed with those new hypotheses.
 
 8. Keep focused tests, the full repository suite, retained scientific validators,
    cross-platform exact-head CI, and same-commit updates to both living documents

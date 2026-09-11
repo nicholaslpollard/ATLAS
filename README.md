@@ -713,6 +713,184 @@ to duplicate them. News acquisition is not part of this database acceptance chai
 it neither validates price history nor has a frozen provider/PIT contract, so it is
 deferred to its own finite research package. Native minute evidence, extended-hours semantics, and initial intraday strategy readiness are accepted by B34. Gap, opening-range, and premarket performance remain unopened until a separately frozen pre-outcome evaluation contract authorizes development outcome access.
 
+## Planned practitioner strategy library and confluence architecture
+
+The four frozen B34/B35 strategies remain the first controlled practitioner pack and
+**must not be modified while the active B35 experiment is running**. After B35
+closeout, ATLAS expands toward a deliberately diverse **18-strategy practitioner
+library**. The goal is not to collect indicators; it is to represent materially
+different trading mechanisms that can be tested independently, compared under the
+same point-in-time/cost controls, and later ranked by conditions and corroborating
+evidence.
+
+### Strategy catalog
+
+The retained frozen strategies are:
+
+1. **Gap continuation — `b34_gap_continuation_v1`.** Trades continuation after a
+   material overnight gap using only information available at the decision time;
+   the prior regular close anchors risk under the frozen B34/B35 contract.
+2. **15-minute opening-range breakout — `b34_opening_range_breakout_15m_v1`.** Builds
+   the 09:30-09:44 ET opening range and acts only after that range is complete when
+   price breaks the appropriate boundary; the opposite range boundary anchors risk.
+3. **Premarket relative-volume consolidation breakout —
+   `b34_premarket_relvol_consolidation_v1`.** Requires unusual premarket participation,
+   a defined premarket consolidation, and a post-open breakout; the consolidation
+   boundary anchors risk.
+4. **Highest-volume-day style — `b34_highest_volume_day_style_v1`.** Looks for the
+   practitioner idea that current observed premarket participation is exceptional
+   versus prior high-volume sessions, then requires the frozen price-structure
+   trigger before entry.
+
+The planned successor pack adds these version-1 mechanisms. Exact timeframes,
+lookbacks, tolerances, pivot rules, and stop/target mechanics must be frozen in the
+successor preregistration **before any performance is opened**; the definitions below
+are the mechanism contract future implementation must preserve:
+
+5. **Golden Cross / Death Cross trend regime — `pract_golden_cross_v1`.** Standard
+   50-session moving average crossing the 200-session moving average. The bullish
+   Golden Cross is the long practitioner setup; the bearish Death Cross is retained
+   as a research-only short profile until short execution economics are authorized.
+   Cross direction, MA slopes, price location, and time since cross are recorded as
+   evidence rather than silently added as post-hoc filters.
+6. **EMA trend pullback continuation — `pract_ema_trend_pullback_v1`.** Establishes a
+   deterministic favorable EMA trend/alignment, waits for a controlled pullback
+   toward the trend zone without invalidating the larger trend, and triggers on
+   renewed movement with the trend. Pullback depth and invalidation are ATR/price
+   normalized rather than visually judged.
+7. **EMA/MACD momentum continuation — `pract_ema_macd_momentum_v1`.** Requires trend
+   direction from the moving-average structure and a same-direction MACD momentum
+   transition/confirmation. EMA and MACD are treated as related trend/momentum
+   evidence so confluence logic may not count them as fully independent votes.
+8. **Donchian / N-bar breakout — `pract_donchian_breakout_v1`.** Enters only after an
+   information-safe break of the frozen prior rolling high/low channel. The channel
+   excludes the decision bar, and breakout distance, volume, regime, and volatility
+   are recorded for conditional analysis rather than presumed mandatory.
+9. **RSI pullback/reversal — `pract_rsi_trend_reversal_v1`.** Uses a frozen RSI
+   oscillator definition to identify an extreme and requires an objective recovery
+   trigger rather than buying/selling merely because RSI touched an extreme. Trend,
+   divergence, and volatility are separate context features; strong trends are not
+   assumed to mean-revert.
+10. **Bollinger mean reversion — `pract_bollinger_mean_reversion_v1`.** Detects an
+    excursion to/outside a frozen Bollinger envelope and requires rejection/re-entry
+    toward the band structure. Band width, trend regime, and volume are recorded so
+    ATLAS can learn when mean reversion is appropriate instead of hard-wiring every
+    band touch as a trade.
+11. **Bollinger Squeeze breakout — `pract_bollinger_squeeze_breakout_v1`.** Detects a
+    objectively low-volatility/narrow-band state followed by directional expansion
+    and a price breakout. Volume participation and ATR expansion are corroborating
+    evidence, not automatically independent strategies.
+12. **ATR volatility-expansion breakout — `pract_atr_volatility_expansion_v1`.** Finds
+    a quiet/consolidating state using normalized ATR, then requires a directional
+    range/price expansion beyond a frozen trigger. ATR also supplies adaptive risk
+    geometry; ATR by itself is never directional.
+13. **Volume-confirmed support/resistance breakout —
+    `pract_volume_confirmed_sr_breakout_v1`.** Builds point-in-time support/resistance
+    from prior pivots/ranges and triggers on a confirmed boundary break while
+    preserving relative-volume/OBV participation as explicit evidence. A breakout
+    without participation remains measurable rather than being silently discarded.
+14. **VWAP reclaim / reject — `pract_vwap_reclaim_reject_v1`.** Intraday strategy that
+    uses session VWAP as a dynamic price/volume benchmark: long research signal on a
+    deterministic reclaim-and-hold after trading below VWAP, and short research
+    signal on the mirrored reject. It requires closed bars and an explicit reclaim/
+    failure rule; a single touch is not a signal.
+15. **Head-and-Shoulders / inverse Head-and-Shoulders —
+    `pract_head_shoulders_v1`.** Uses a deterministic pivot engine to identify five
+    alternating pivots forming left shoulder, head, right shoulder, and two neckline
+    points. The head must exceed the shoulders by a frozen normalized amount,
+    shoulders must be similar within a frozen tolerance, a meaningful prior trend is
+    required, and the pattern is not complete until a neckline break. Classic H&S is
+    a research-only short profile; inverse H&S is the long counterpart. Volume and
+    pattern duration are confirmation features.
+16. **Double top / double bottom — `pract_double_top_bottom_v1`.** Requires two
+    separated tests of approximately the same resistance/support area, a material
+    intervening reversal, and a break of the intervening neckline/support/resistance
+    before the pattern fires. Double bottom is the long counterpart; double top is
+    research-only short until short admission exists.
+17. **Flag / pennant continuation — `pract_flag_pennant_v1`.** Requires an objective
+    impulse leg, followed by a bounded short consolidation that retraces only a
+    frozen fraction of the impulse and shows flag/pennant geometry, then a breakout
+    in the original direction. Impulse strength, consolidation contraction, volume,
+    and breakout quality are retained separately for conditional evidence.
+18. **Triangle breakout — `pract_triangle_breakout_v1`.** Uses deterministic pivots to
+    fit converging support/resistance boundaries with the required repeated touches,
+    classifies ascending, descending, or symmetrical geometry, and fires only on an
+    information-safe boundary breakout. Direction is determined by the breakout,
+    not by the pattern label alone.
+
+Cup-and-handle, stochastic-only systems, candlestick-only patterns, and other popular
+setups remain backlog candidates rather than initial-pack obligations. New families
+are added only when they contribute a materially different mechanism or evidence
+source, not to inflate strategy count.
+
+### Confluence / evidence-strength layer
+
+ATLAS will **not** convert simultaneous alerts into a naive confidence score. Every
+strategy fires independently and retains its own lineage and standalone performance.
+A higher layer then measures whether corroborating evidence improves the conditional
+probability/expectancy of that primary setup.
+
+Evidence is grouped into at least seven families: **trend**, **momentum**,
+**volume/participation**, **price structure**, **volatility**, **chart pattern**, and
+**context** (market/sector regime, liquidity, price band, time of day and other
+point-in-time state). Raw same-direction strategy count is recorded, but redundant
+signals inside one family are capped/regularized so several moving-average-derived
+signals cannot masquerade as several independent confirmations. Distinct-family
+agreement is recorded separately. Opposing evidence is preserved as a negative or
+conflict feature; it is never silently deleted.
+
+Research compares three layers: **A) standalone strategies**, **B) explicit
+confirmation-filter variants**, and **C) confluence-ranked candidates**. Early
+research measures the conditional outcome tables without invented manual weights.
+If enough data exists, a later interpretable/conventional probability or expectancy
+model may learn weights walk-forward from training-only evidence. Any displayed
+0-100 strength/confidence must map to a documented calibrated probability,
+percentile, or frozen score; it may not be an arbitrary sum of indicators.
+
+The confluence layer may use strategy identity, distinct evidence-family agreement,
+opposing evidence, regime, trend, volume, volatility, liquidity, price structure,
+cost, signal age/time and other preregistered point-in-time features. Same-session or
+future outcomes are forbidden inputs. Confluence itself must beat standalone
+baselines out of sample before it may influence qualification or capital priority.
+
+### Controlled calibration and refinement
+
+A negative version-1 result is evidence, not an instruction to discard the idea or
+curve-fit it until green. After each frozen v1 evaluation, ATLAS performs one
+structured diagnostic review covering regime, liquidity, price band, time, volatility,
+entry delay, stop/target behavior, MFE/MAE, cost drag, unresolved rate, loss
+concentration and corroborating/conflicting evidence. That review may motivate a
+small number of materially distinct successor hypotheses.
+
+Per strategy family and research cycle, create **no more than three v2 candidates**
+unless a new preregistration explicitly justifies a wider trial budget. Each v2 must
+state the observed failure mode, practitioner/statistical rationale, exact rule
+change, trial count, and untouched evaluation source before performance is opened.
+Do not search dense threshold grids or repeatedly retest tiny parameter changes.
+Original v1 outcomes remain permanently ledgered. Data used to propose a v2 may be
+used diagnostically but cannot serve as the independent promotion evidence for that
+v2; confirmation requires a new walk-forward/untouched evaluation under a new
+fingerprint. Consumed master evidence is never recycled, and the active B35 future
+blind is not silently reassigned to a later strategy.
+
+### Implementation order and efficiency
+
+B35 finishes first under its existing four-strategy fingerprint. After B35 closeout,
+run the frozen B35 strategy x condition evidence and preregistered selector exactly as
+planned. In parallel with that analysis, freeze the successor 18-strategy library
+contract before opening the new strategies' outcomes. Reuse shared point-in-time
+feature extraction, canonical bars, indicator primitives and the validated parallel
+execution pattern where scientifically equivalent, but keep every strategy evaluator
+independent and deterministic. Shared computation may reduce I/O/CPU; it may never
+change strategy truth, scientific ordering, hashes, protected boundaries or trial
+accounting.
+
+The long-term destination is not one universal strategy. It is a portfolio of
+versioned mechanisms whose standalone evidence, condition profile, confluence value,
+execution cost and correlation are known well enough that ATLAS can rank good
+opportunities, abstain when evidence is weak, and explain why one candidate outranks
+another.
+
 ## How progress is reported
 
 ### Reusable validated performance-optimization protocol
