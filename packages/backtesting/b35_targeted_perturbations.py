@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import itertools
 import json
@@ -20,6 +21,7 @@ import packages.backtesting.b35_parallel_replay as parallel
 from packages.backtesting.b35_development_authorization import validate_development_authorization
 from packages.backtesting.b35_development_context import summarize_regular_session
 from packages.backtesting.b35_development_replay import (
+    B35_DEVELOPMENT_REPLAY_CONTRACT,
     B35DevelopmentReplayError,
     _SymbolHistory,
     _canonical_bars,
@@ -208,6 +210,8 @@ class B35PerturbationGroupTask:
     development_authorization_id: str
     targeted_authorization_id: str
     canonical_strategy_counts: dict[str, dict[str, int]]
+    canonical_output_path: str
+    canonical_output_sha256: str
     output_path: str
     receipt_path: str
 
@@ -621,9 +625,11 @@ def _record(
     if offset < 0:
         raise B35DevelopmentReplayError("perturbation session precedes frozen start")
     metric["session_bitset_hex"] = hex(mask | (1 << offset))
-    symbols = set(metric["symbols"])
-    symbols.add(symbol)
-    metric["symbols"] = sorted(symbols)
+    symbols = metric["symbols"]
+    if not isinstance(symbols, list):
+        raise B35DevelopmentReplayError("perturbation symbol accumulator drifted")
+    if symbol not in symbols:
+        symbols.append(symbol)
     if not outcome.comparable:
         metric["noncomparable"] = int(metric["noncomparable"]) + 1
         return
@@ -646,6 +652,112 @@ def _record(
         metric["wins_50bps"] = int(metric["wins_50bps"]) + 1
 
 
+_BASELINE_RESULT_FIELDS = (
+    "fired",
+    "comparable",
+    "noncomparable",
+    "wins_50bps",
+    "gross_return_sum",
+    "risk_multiple_sum",
+    "mfe_sum",
+    "mae_sum",
+    "net_return_sums_by_cost_bps",
+    "status_counts",
+    "direction_counts",
+    "session_bitset_hex",
+    "symbols",
+)
+
+
+def _populate_exact_canonical_baselines(
+    metrics: dict[str, dict[str, object]],
+    task: B35PerturbationGroupTask,
+) -> str:
+    """Reuse accepted canonical outcomes for every zero-change baseline.
+
+    The canonical JSONL has already passed its receipt/output SHA check in the
+    coordinator. The worker re-hashes it while parsing and binds every baseline
+    metric to those exact accepted outcomes. This both strengthens equivalence and
+    avoids re-simulating the same v1 outcome multiple times.
+    """
+
+    representatives: dict[str, PerturbationVariant] = {}
+    baseline_ids: dict[str, list[str]] = {}
+    for variant in TARGETED_VARIANTS:
+        if not variant.baseline:
+            continue
+        representatives.setdefault(variant.strategy_id, variant)
+        baseline_ids.setdefault(variant.strategy_id, []).append(variant.variant_id)
+
+    canonical_metrics = {
+        strategy_id: _metric_template(variant)
+        for strategy_id, variant in representatives.items()
+    }
+    digest = hashlib.sha256()
+    record_count = 0
+    path = Path(task.canonical_output_path)
+    with path.open("rb") as handle:
+        for raw in handle:
+            digest.update(raw)
+            record = json.loads(raw)
+            if not isinstance(record, dict):
+                raise B35DevelopmentReplayError("canonical B35 group record is not an object")
+            required = {
+                "contract": B35_DEVELOPMENT_REPLAY_CONTRACT,
+                "b35_preoutcome_fingerprint": B35_PREOUTCOME_FINGERPRINT,
+                "source_fingerprint": task.source_fingerprint,
+                "split_evidence_fingerprint": task.split_evidence_fingerprint,
+                "authorization_id": task.development_authorization_id,
+                "group_fingerprint": task.canonical_group_fingerprint,
+            }
+            if any(record.get(key) != value for key, value in required.items()):
+                raise B35DevelopmentReplayError("canonical B35 group record identity drifted")
+            setup = record.get("setup")
+            outcome = record.get("outcome")
+            if not isinstance(setup, dict) or not isinstance(outcome, dict):
+                raise B35DevelopmentReplayError("canonical B35 group record schema drifted")
+            strategy_id = str(setup.get("strategy_id") or "")
+            if strategy_id not in canonical_metrics:
+                raise B35DevelopmentReplayError(
+                    f"canonical B35 group emitted unexpected strategy: {strategy_id}"
+                )
+            if str(outcome.get("strategy_id") or "") != strategy_id:
+                raise B35DevelopmentReplayError("canonical setup/outcome strategy mismatch")
+            symbol = str(outcome.get("symbol") or "")
+            if symbol not in task.units[0].symbols:
+                raise B35DevelopmentReplayError("canonical outcome symbol escaped frozen group")
+            try:
+                session_date = date.fromisoformat(str(outcome["session_date"]))
+            except (KeyError, ValueError) as exc:
+                raise B35DevelopmentReplayError("canonical outcome session date is invalid") from exc
+            _record(
+                canonical_metrics[strategy_id],
+                type("CanonicalOutcomeView", (), outcome)(),
+                session_date=session_date,
+                start_session=task.start_session,
+                symbol=symbol,
+            )
+            record_count += 1
+
+    actual_sha = digest.hexdigest()
+    if actual_sha != task.canonical_output_sha256:
+        raise B35DevelopmentReplayError("canonical B35 group output changed during targeted replay")
+    expected_count = sum(
+        int(item["evaluated_fired"])
+        for item in task.canonical_strategy_counts.values()
+    )
+    if record_count != expected_count:
+        raise B35DevelopmentReplayError("canonical B35 group record count drifted")
+
+    for strategy_id, variant_ids in baseline_ids.items():
+        source_metric = canonical_metrics[strategy_id]
+        for variant_id in variant_ids:
+            target = metrics[variant_id]
+            for field in _BASELINE_RESULT_FIELDS:
+                target[field] = copy.deepcopy(source_metric[field])
+    return actual_sha
+
+
 def _baseline_setup_by_strategy(
     canonical_setups: Sequence[IntradaySetupResult],
 ) -> dict[str, IntradaySetupResult]:
@@ -666,7 +778,7 @@ def _evaluate_variant_setups(
     canonical_setups: Sequence[IntradaySetupResult],
 ) -> dict[str, IntradaySetupResult]:
     found: dict[str, IntradaySetupResult] = {}
-    canonical = _baseline_setup_by_strategy(canonical_setups)
+    _baseline_setup_by_strategy(canonical_setups)
     prior = history.daily[-1] if history.daily else None
     if prior is None:
         return found
@@ -677,16 +789,15 @@ def _evaluate_variant_setups(
             "b34_gap_continuation_v1"
         )
         if float(multiplier) == 1.0:
-            setup = canonical.get("b34_gap_continuation_v1")
-        else:
-            setup = _gap_variant(
-                bars,
-                session_date=session_date,
-                prior_close=float(prior.close),
-                symbol_split_dates=symbol_split_dates,
-                prior_session=prior.session_date,
-                multiplier=float(multiplier),
-            )
+            continue
+        setup = _gap_variant(
+            bars,
+            session_date=session_date,
+            prior_close=float(prior.close),
+            symbol_split_dates=symbol_split_dates,
+            prior_session=prior.session_date,
+            multiplier=float(multiplier),
+        )
         if setup is not None:
             found[variant_id] = setup
 
@@ -695,12 +806,10 @@ def _evaluate_variant_setups(
             f"opening_range_minutes:{int(minutes)}:"
             "b34_opening_range_breakout_15m_v1"
         )
-        setup = (
-            canonical.get("b34_opening_range_breakout_15m_v1")
-            if int(minutes) == 15
-            else _opening_range_variant(
-                bars, session_date=session_date, minutes=int(minutes)
-            )
+        if int(minutes) == 15:
+            continue
+        setup = _opening_range_variant(
+            bars, session_date=session_date, minutes=int(minutes)
         )
         if setup is not None:
             found[variant_id] = setup
@@ -718,16 +827,14 @@ def _evaluate_variant_setups(
                 f"premarket_relvol_threshold_multiplier:{float(multiplier):.1f}:"
                 "b34_premarket_relvol_consolidation_v1"
             )
-            setup = (
-                canonical.get("b34_premarket_relvol_consolidation_v1")
-                if float(multiplier) == 1.0
-                else _premarket_relvol_variant(
-                    bars,
-                    session_date=session_date,
-                    prior_premarket_volumes=prior_pm_values,
-                    split_free_lookback=pm_split_free,
-                    relvol_multiplier=float(multiplier),
-                )
+            if float(multiplier) == 1.0:
+                continue
+            setup = _premarket_relvol_variant(
+                bars,
+                session_date=session_date,
+                prior_premarket_volumes=prior_pm_values,
+                split_free_lookback=pm_split_free,
+                relvol_multiplier=float(multiplier),
             )
             if setup is not None:
                 found[variant_id] = setup
@@ -739,16 +846,14 @@ def _evaluate_variant_setups(
                 f"premarket_consolidation_range_multiplier:{float(multiplier):.1f}:"
                 "b34_premarket_relvol_consolidation_v1"
             )
-            setup = (
-                canonical.get("b34_premarket_relvol_consolidation_v1")
-                if float(multiplier) == 1.0
-                else _premarket_relvol_variant(
-                    bars,
-                    session_date=session_date,
-                    prior_premarket_volumes=prior_pm_values,
-                    split_free_lookback=pm_split_free,
-                    consolidation_multiplier=float(multiplier),
-                )
+            if float(multiplier) == 1.0:
+                continue
+            setup = _premarket_relvol_variant(
+                bars,
+                session_date=session_date,
+                prior_premarket_volumes=prior_pm_values,
+                split_free_lookback=pm_split_free,
+                consolidation_multiplier=float(multiplier),
             )
             if setup is not None:
                 found[variant_id] = setup
@@ -766,16 +871,14 @@ def _evaluate_variant_setups(
                 f"premarket_consolidation_range_multiplier:{float(multiplier):.1f}:"
                 "b34_highest_volume_day_style_v1"
             )
-            setup = (
-                canonical.get("b34_highest_volume_day_style_v1")
-                if float(multiplier) == 1.0
-                else _hvd_consolidation_variant(
-                    bars,
-                    session_date=session_date,
-                    prior_regular_daily_volumes=daily_volumes,
-                    split_free_lookback=daily_split_free,
-                    consolidation_multiplier=float(multiplier),
-                )
+            if float(multiplier) == 1.0:
+                continue
+            setup = _hvd_consolidation_variant(
+                bars,
+                session_date=session_date,
+                prior_regular_daily_volumes=daily_volumes,
+                split_free_lookback=daily_split_free,
+                consolidation_multiplier=float(multiplier),
             )
             if setup is not None:
                 found[variant_id] = setup
@@ -786,6 +889,7 @@ def _validate_group_baseline_parity(
     metrics: dict[str, dict[str, object]],
     canonical_strategy_counts: dict[str, dict[str, int]],
 ) -> None:
+    by_strategy: dict[str, list[dict[str, object]]] = {}
     for variant in TARGETED_VARIANTS:
         if not variant.baseline:
             continue
@@ -806,6 +910,17 @@ def _validate_group_baseline_parity(
                 f"targeted perturbation baseline parity failed for {variant.variant_id}: "
                 f"{actual!r} != {target!r}"
             )
+        by_strategy.setdefault(variant.strategy_id, []).append(metric)
+
+    for strategy_id, strategy_metrics in by_strategy.items():
+        reference = strategy_metrics[0]
+        signature = {field: reference[field] for field in _BASELINE_RESULT_FIELDS}
+        for metric in strategy_metrics[1:]:
+            candidate = {field: metric[field] for field in _BASELINE_RESULT_FIELDS}
+            if candidate != signature:
+                raise B35DevelopmentReplayError(
+                    f"targeted perturbation exact baseline outcome parity failed for {strategy_id}"
+                )
 
 
 def _run_group_task(task: B35PerturbationGroupTask) -> dict[str, object]:
@@ -821,6 +936,7 @@ def _run_group_task(task: B35PerturbationGroupTask) -> dict[str, object]:
         item.variant_id: _metric_template(item)
         for item in TARGETED_VARIANTS
     }
+    canonical_output_sha256 = _populate_exact_canonical_baselines(metrics, task)
     histories = {symbol: _SymbolHistory.empty() for symbol in task.units[0].symbols}
 
     for unit in task.units:
@@ -863,6 +979,8 @@ def _run_group_task(task: B35PerturbationGroupTask) -> dict[str, object]:
 
             for setup in canonical_setups:
                 for delay in ROBUSTNESS_PERTURBATIONS["entry_delay_minutes"]:
+                    if int(delay) == 0:
+                        continue
                     variant_id = (
                         f"entry_delay_minutes:{int(delay)}:{setup.strategy_id}"
                     )
@@ -936,7 +1054,8 @@ def _run_group_task(task: B35PerturbationGroupTask) -> dict[str, object]:
         "targeted_authorization_id": task.targeted_authorization_id,
         "unit_count": len(task.units),
         "metrics": [metrics[item.variant_id] for item in TARGETED_VARIANTS],
-        "baseline_parity": "PASS",
+        "baseline_parity": "PASS_EXACT_CANONICAL_OUTCOME_REUSE",
+        "canonical_output_sha256": canonical_output_sha256,
         "consumed_master_rows_read": 0,
         "future_blind_rows_read": 0,
         "provider_calls": 0,
@@ -973,7 +1092,8 @@ def _run_group_task(task: B35PerturbationGroupTask) -> dict[str, object]:
         "unit_count": len(task.units),
         "output_path": str(output_path),
         "output_sha256": _sha256_file(output_path),
-        "baseline_parity": "PASS",
+        "canonical_output_sha256": canonical_output_sha256,
+        "baseline_parity": "PASS_EXACT_CANONICAL_OUTCOME_REUSE",
     }
     receipt["receipt_id"] = _stable_hash(receipt)
     atomic_write_text(
@@ -1011,7 +1131,8 @@ def _completed_targeted_group(
         "targeted_authorization_id": task.targeted_authorization_id,
         "unit_count": len(task.units),
         "output_path": str(output_path),
-        "baseline_parity": "PASS",
+        "canonical_output_sha256": task.canonical_output_sha256,
+        "baseline_parity": "PASS_EXACT_CANONICAL_OUTCOME_REUSE",
     }
     for key, expected in required.items():
         if value.get(key) != expected:
@@ -1274,6 +1395,8 @@ class B35TargetedPerturbationReplayEngine:
                     development_authorization_id=development_authorization_id,
                     targeted_authorization_id=targeted_authorization_id,
                     canonical_strategy_counts=canonical_receipt["strategy_counts"],
+                    canonical_output_path=str(canonical_output),
+                    canonical_output_sha256=str(canonical_receipt["output_sha256"]),
                     output_path=str(groups_root / f"{token}.json"),
                     receipt_path=str(groups_root / f"{token}.receipt.json"),
                 )
@@ -1430,7 +1553,7 @@ class B35TargetedPerturbationReplayEngine:
             "group_receipt_ids": receipt_ids,
             "variant_count": len(TARGETED_VARIANTS),
             "variant_results": variant_results,
-            "baseline_equivalence": "PASS_ALL_GROUPS",
+            "baseline_equivalence": "PASS_EXACT_CANONICAL_OUTCOME_REUSE_ALL_GROUPS",
             "one_axis_at_a_time": True,
             "selector_refit": False,
             "canonical_replay_rewritten": False,
