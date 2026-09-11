@@ -1,0 +1,28 @@
+name: ATLAS corrected practitioner library docs
+
+on:
+  push:
+    branches:
+      - docs-practitioner-library-confluence
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs-practitioner-library-confluence
+      - name: Patch living documents
+        run: python .github/atlas_practitioner_library_correct.py
+      - name: Remove temporary patch files and commit
+        run: |
+          rm .github/workflows/atlas-practitioner-library-correct.yml
+          rm .github/atlas_practitioner_library_correct.py
+          git config user.name "ATLAS Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add README.md docs/roadmap.md .github/workflows/atlas-practitioner-library-correct.yml .github/atlas_practitioner_library_correct.py
+          git commit -m "Correct practitioner strategy catalog and confluence plan"
+          git push origin HEAD:docs-practitioner-library-confluence
