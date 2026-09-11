@@ -2,79 +2,30 @@ name: Temporary B35 analysis living-doc patch
 
 on:
   push:
-    branches: [b35-condition-selector-analysis]
-    paths: [.github/workflows/tmp_b35_analysis_docs.yml]
+    branches:
+      - b35-condition-selector-analysis
 
 permissions:
   contents: write
 
 jobs:
-  patch:
+  patch-docs:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: b35-condition-selector-analysis
-      - name: Update living documents
-        shell: bash
+          fetch-depth: 0
+      - name: Apply B35 analysis doc patch
+        run: python scripts/_tmp_patch_b35_analysis_docs.py
+      - name: Remove temporary patch machinery
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          readme = Path('README.md')
-          text = readme.read_text(encoding='utf-8')
-          text = text.replace('**Current as of 2026-09-10 (UTC).', '**Current as of 2026-09-11 (UTC).', 1)
-          start = '- **B35 observable parallel DEVELOPMENT replay performance package is MERGED / CANONICAL REPLAY RUNNING.**'
-          end = '- **B34 intraday source readiness and the opening/premarket pack are CLOSED / ACCEPTED.**'
-          if start not in text or end not in text:
-              raise SystemExit('README B35 current-truth anchors not found')
-          before, rest = text.split(start, 1)
-          _, after = rest.split(end, 1)
-          current = '''- **B35 canonical DEVELOPMENT replay is CLOSED / ACCEPTED.** The frozen `2016-01-04..2026-04-30` trial completed exactly **482/482 groups, 59,768/59,768 source units, and 482 validated receipt ids**, producing **20,171,286** compact fired opportunity/context/outcome records. Run fingerprint = `8955a282453cb89a24d3bcdf819d80451bebfa3ec9752dc24c113efc668cffe6`; B35/source/split/authorization identities remained exactly frozen. Consumed-master rows read `0`; future-blind rows read `0`; provider calls `0`; broker reads/writes `0/0`; PAPER/LIVE authority `false/false`; strategy/selector promotion `false/false`; no permanent minute feature lake was created. The accepted continuation reused 82 validated groups and computed the remaining 400 groups / 49,600 units in **11:40:46 at 4,246.7 units/hour**, about **6.43x** the original serial restart and **44.3% faster** than the final isolated exact-equivalent benchmark.
-- **B35 strategy x condition / frozen walk-forward selector analyzer is IMPLEMENTED / ACCEPTANCE PENDING in PR #76.** It reads only the completed compact DEVELOPMENT artifacts, validates the authoritative summary plus every receipt/output SHA, normalizes the 20.17M records once to a restartable hash-receipted Parquet view, reports standalone and frozen condition/interactions evidence across the `0/10/25/50/100` bps grid, constructs complete-XNYS `504/63/63/1` walk-forward folds, applies the frozen `60 opportunities / 30 sessions / 20 instruments` cell support rule, and scores training cells with the deterministic **1,000-draw session-cluster bootstrap 5th-percentile net-R at 50 bps**. Broader fallback is allowed only when the more-specific cell lacks minimum support; a supported nonpositive cell abstains rather than being rescued by a broader average. Exact same-fold standalone baselines are retained for fair comparison. Expensive derived analysis stages are atomic, resumable, and self-hash/SHA receipted.
-- **This analyzer grants no promotion or trading authority.** It cannot read the consumed master or future blind, call providers/brokers, write orders, or enable PAPER/LIVE. Its first workstation result is a descriptive and out-of-sample selector **profile**, not a promotion decision. Frozen multiplicity/robustness diagnostics (BH FDR, Deflated Sharpe, PBO/CSCV where evaluable, tail/drawdown/loss-streak/concentration work), portfolio-level comparison, and the bounded post-result diagnostic/calibration decision remain subsequent B35 work. After PR #76 merges, run only `\.\.venv\Scripts\python.exe scripts\run_b35_evidence_analysis.py`; **do not rerun the canonical minute replay.**
-'''
-          text = before + current + end + after
-          readme.write_text(text, encoding='utf-8')
-
-          roadmap = Path('docs/roadmap.md')
-          text = roadmap.read_text(encoding='utf-8')
-          marker = 'The canonical continuation reused 82 validated groups and computed the remaining **400 groups / 49,600 units in 11:40:46 at 4,246.7 units/hour**.'
-          pos = text.find(marker)
-          if pos < 0:
-              raise SystemExit('roadmap canonical performance marker not found')
-          para_end = text.find('\n\n', pos)
-          if para_end < 0:
-              raise SystemExit('roadmap canonical paragraph boundary not found')
-          analyzer = '''\n\n**B35 condition/selector analyzer status (2026-09-11): IMPLEMENTED / ACCEPTANCE PENDING in PR #76.** The analyzer consumes only the completed compact DEVELOPMENT group artifacts and first revalidates the final replay summary, exact receipt set and every group-output SHA. It normalizes the 20,171,286 compact records once into an atomic, hash-receipted Parquet view, computes standalone strategy and frozen condition/interaction evidence across the full `0/10/25/50/100` bps cost grid, and constructs walk-forward folds from the complete XNYS calendar rather than opportunity-bearing dates. Training-cell eligibility remains exactly `60` opportunities / `30` sessions / `20` instruments; selector scoring remains the deterministic 5th percentile of `1,000` XNYS-session-cluster bootstrap mean net-R outcomes at `50` bps. The fallback hierarchy backs off only for insufficient support; a supported cell with nonpositive or undefined score abstains and cannot be rescued by a broader positive cell. Same-fold standalone baselines are recorded beside the out-of-sample selector profile. Derived analysis artifacts are atomic, restartable and self-hash/SHA receipted. This package opens no new outcomes and grants no strategy/selector promotion, PAPER/LIVE, provider, broker, consumed-master or future-blind authority. BH-FDR/Deflated-Sharpe/PBO-CSCV and tail/portfolio robustness remain required before any promotion decision.'''
-          if 'B35 condition/selector analyzer status (2026-09-11)' not in text:
-              text = text[:para_end] + analyzer + text[para_end:]
-
-          old = re.compile(r'Next Track-B sequence: \(1\) analyze the frozen B35 DEVELOPMENT strategy x condition evidence without rescue retuning;.*?Full mechanics and methodology anchors are maintained in `docs/b35_a36_preoutcome_conditional_evidence\.md`\.', re.S)
-          replacement = '''Next Track-B sequence: (1) accept/merge PR #76 only after exact-head Windows+Ubuntu regression is green; (2) run `\.\.venv\\Scripts\\python.exe scripts\\run_b35_evidence_analysis.py` once against the already-completed compact B35 artifacts—**do not rerun the minute replay**; (3) review standalone strategy, frozen condition-cell and out-of-sample selector results, including HVD's known sparse 58-opportunity coverage; (4) complete the preregistered multiplicity/robustness and portfolio-level diagnostics before any promotion claim; (5) perform the bounded diagnostic/calibration review while preserving every v1 result; (6) freeze the eight-new-family successor contract and confluence schema before opening their outcomes; (7) later evaluate the genuinely new future blind only after required accrual and without refitting on it; and (8) never reuse the consumed master interval. Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence.md`.'''
-          text, count = old.subn(replacement, text, count=1)
-          if count != 1:
-              raise SystemExit(f'roadmap next-sequence replacement count={count}')
-
-          text = text.replace(
-              '**Status: PLANNED SUCCESSOR WORK; B35 DEVELOPMENT REPLAY CLOSED / ACCEPTED.**',
-              '**Status: PLANNED SUCCESSOR WORK; B35 DEVELOPMENT REPLAY CLOSED / ACCEPTED; B35 CONDITION/SELECTOR ANALYZER ACCEPTANCE ACTIVE.**',
-              1,
-          )
-          text = text.replace(
-              '1. Close and validate the active B35 canonical replay; record final throughput and\n   scientific summary without changing the frozen four-strategy result.\n2. Produce the preregistered B35 strategy x condition evidence and selector result.',
-              '1. **DONE:** close and validate the B35 canonical replay; preserve the frozen four-strategy result and final real-run performance.\n2. **ACTIVE:** accept PR #76, then produce the preregistered B35 strategy x condition evidence and out-of-sample selector profile from the completed compact artifacts without another minute replay.',
-              1,
-          )
-          roadmap.write_text(text, encoding='utf-8')
-          PY
-      - name: Remove temporary workflow and commit
-        shell: bash
+          rm scripts/_tmp_patch_b35_analysis_docs.py
+          rm .github/workflows/tmp_b35_analysis_docs.yml
+      - name: Commit documentation update
         run: |
           git config user.name "ATLAS Automation"
           git config user.email "actions@users.noreply.github.com"
-          git rm .github/workflows/tmp_b35_analysis_docs.yml
-          git add README.md docs/roadmap.md
+          git add README.md docs/roadmap.md scripts/_tmp_patch_b35_analysis_docs.py .github/workflows/tmp_b35_analysis_docs.yml
           git commit -m "Document B35 evidence analyzer handoff"
-          git push origin HEAD:b35-condition-selector-analysis
+          git push
