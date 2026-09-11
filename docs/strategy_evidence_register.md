@@ -196,32 +196,21 @@ Candidate successor selector dimensions motivated by B35 diagnostics include **d
 
 ## 6. Next B35 scientific work
 
-**Implementation status (2026-09-11): retained-artifact robustness COMPLETE; exact targeted perturbation implementation ACTIVE in PR #79.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; the workstation run completed under robustness fingerprint `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107`. Its 50-bps multiplicity/Deflated-Sharpe result is negative and grants no promotion. The exact minute-path perturbations could not be reconstructed from compact outputs, so PR #79 implements them together in one bounded pass rather than approximating them or rerunning the canonical evidence separately per variant.
+**Current gate (2026-09-11): retained-artifact robustness COMPLETE; PR #79 MERGED; exact targeted perturbation workstation run PENDING.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; the accepted workstation robustness fingerprint is `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107`. BH-FDR, Deflated Sharpe, 16-partition PBO/CSCV, the deterministic 10,000-draw session bootstrap, losing-streak/concentration diagnostics and same-fold profile/cash comparisons are complete. Their 50-bps conclusion is negative and grants no promotion.
 
-PR #79 binds the same 59,768-unit DEVELOPMENT source, split evidence and immutable DEVELOPMENT authorization plus the accepted robustness fingerprint. It requires a new explicit hash-bound targeted authorization, validates every canonical B35 group output/receipt before use, publishes only restartable diagnostic group summaries/receipts, and fails each group closed unless all baseline perturbation values reproduce canonical fired/comparable/noncomparable counts. The pass changes one axis at a time, does not refit the selector, does not rewrite canonical B35 v1, and grants no strategy/selector/PAPER/LIVE authority.
+PR #79 merged to `main` as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`. It implements the five frozen minute-path perturbation families together in one DEVELOPMENT-only pass: entry delay 0/1/2, gap threshold x0.9/1.0/1.1, ORB 14/15/16 minutes, premarket relative-volume threshold x0.9/1.0/1.1, and premarket consolidation width x0.9/1.0/1.1 for premarket-relvol/HVD. There are 27 one-axis-at-a-time strategy/variant profiles. Unchanged baseline variants are populated from the exact accepted canonical B35 outcome files with SHA-256 verification and exact outcome-economic parity; only true perturbations are recomputed. The pass is restartable and hash-receipted, does not refit the selector, does not rewrite canonical B35 v1, reads no consumed-master or future-blind outcomes, and grants no provider/broker/PAPER/LIVE or promotion authority.
 
-Before freezing any condition-gated v2 rule, complete the remaining preregistered robustness package over the accepted B35 analysis artifacts:
-
-1. BH FDR q=.05 across the declared hypothesis family;
-2. Deflated Sharpe diagnostics;
-3. PBO/CSCV using 16 partitions where evaluable;
-4. deterministic 10,000-draw XNYS-session bootstrap for tail/downside/drawdown uncertainty;
-5. losing-streak and P&L-concentration diagnostics;
-6. perturbation diagnostics under the frozen B35 perturbation policy where the retained compact artifacts permit exact evaluation; any perturbation that requires a new outcome replay must be separately authorized and labeled rather than approximated;
-7. selector comparison versus same-fold standalone strategies, the A34 stable nonlearned long-only reference portfolio where comparable, and cash;
-8. record a final B35 research disposition without promotion.
-
-Only after that closeout should ATLAS freeze condition-gated/calibrated successor candidates and the eight-new-family strategy/confluence package under new fingerprints. The future blind remains untouched and may not be opened to rescue or choose these hypotheses.
+Immediate action: run `.\.venv\Scripts\python.exe scripts\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once from current `main`, review the resulting 27 profiles, and record the final B35 dispositions. Only then freeze any justified B35 v2 challengers and the successor **21-family / eleven-new-family** strategy, shared-PIT-context, and separate-confluence contracts under new fingerprints. The future blind remains untouched and cannot be opened to rescue or choose these hypotheses.
 
 ## 7. Authority
 
 As of this update, historical supported modern alpha remains **zero**. No B35 strategy, selector, condition cell, successor hypothesis, or confluence mechanism is `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`, or `LIVE_ELIGIBLE`. B35 research reads no consumed-master or future-blind outcomes and grants no provider, broker, PAPER, LIVE, strategy-promotion, or selector-promotion authority.
 
-## 7. Successor research hypotheses accepted for testing
+## 8. Successor research hypotheses accepted for testing
 
 These entries are **approved research hypotheses only**. They are not strategy validation, authority promotion, or permission to reinterpret B35 v1. Exact strategy specifications and fingerprints are frozen only in the successor package after B35 targeted perturbation evidence closes.
 
-### 7.1 `orb_stocks_in_play_5m_v1` — planned / high priority
+### 8.1 `orb_stocks_in_play_5m_v1` — planned / high priority
 
 - Family: Opening Range / opening momentum; it is not independent confluence from other ORB variants.
 - Evidence source: `LITERATURE_ANCHORED` idea prior plus independent ATLAS motivation from weak unrestricted ORB and condition-sensitive B35 behavior.
@@ -229,14 +218,14 @@ These entries are **approved research hypotheses only**. They are not strategy v
 - Must define before performance: universe/liquidity floor, same-time opening-volume baseline, finite activity-selection rule, 5-minute range, breakout confirmation, entry clock, stop/invalidation, exit/EOD flat rule, sizing and cost assumptions.
 - Primary question: does activity selection transform broad negative ORB into a viable opening-momentum specialist after realistic costs?
 
-### 7.2 15-minute ORB close + retest challenger — planned / high priority
+### 8.2 15-minute ORB close + retest challenger — planned / high priority
 
 - Family: Opening Range; versioned challenger to `b34_opening_range_breakout_15m_v1`, not a new economic family.
 - Evidence source: `INTERNAL_CHALLENGER` / practitioner-motivated false-break hypothesis.
 - Freeze objective close-outside-range, retest distance, retest window, hold/rejection confirmation, entry, stop, exit and no-retest handling before performance.
 - Compare directly with v1 for trade-count reduction, MAE, MFE sacrificed by later entry, win rate, net expectancy/net-R, execution quality and condition stability.
 
-### 7.3 Objective session-level failed-break/reclaim — planned / medium-high priority
+### 8.3 Objective session-level failed-break/reclaim — planned / medium-high priority
 
 - Family: Exhaustion reversal / structural failed break.
 - Evidence source: `PRACTITIONER_BASELINE` with mechanism support; do not use hidden-liquidity/ICT/SMC claims.
@@ -244,17 +233,17 @@ These entries are **approved research hypotheses only**. They are not strategy v
 - Freeze normalized breach depth, maximum reclaim time, confirmation, entry, sweep-extreme stop/invalidation and one coherent exit hierarchy before performance.
 - Primary question: does breach-then-reclaim of universally observable session levels contain measurable reversal/continuation information after costs?
 
-### 7.4 Shared successor context / routing evidence
+### 8.4 Shared successor context / routing evidence
 
 Accepted for measurement in the next full historical run, not as automatic hard gates: broad-market directional alignment and volatility state; ticker relative strength/weakness versus SPY over a small preregistered horizon set; bounded higher-timeframe ticker trend; trend maturity/extension; opening/premarket/same-time volume participation and dollar-volume quality; overnight gap; price band; signal time; realized volatility; and execution/liquidity quality. Sector-relative strength waits for a PIT-valid sector map.
 
 Confluence remains a separate layer. Standalone strategy outcomes are preserved first; then incremental evidence is measured across independent families (price structure, participation, market state, relative strength, higher-timeframe state, volatility/liquidity, and later event/fundamental context). RSI/MACD/EMA variants are not counted as independent votes merely because they are numerically different transforms of price.
 
-### 7.5 Deferred/rejected near-term ideas
+### 8.5 Deferred/rejected near-term ideas
 
 Fundamentals are deferred for intraday ORB; future swing-conditioning research may ask whether technical setups vary by PIT fundamental/event quality without reopening closed SEC alpha hypotheses. Portfolio daily-loss limits, simultaneous-position competition, concentration, strategy exposure and capital allocation belong to account/PAPER simulation. Anchored VWAP waits for objective anchor semantics. Level-2/order-book, options-flow and GEX require separate historical source authority. Fixed arbitrary stop percentages/R:R, human psychology rules, small discretionary watchlists, Fibonacci and subjective ICT/FVG/order-block terminology are not adopted from the reviewed practitioner material.
 
-### 7.6 Successor laboratory target
+### 8.6 Successor laboratory target
 
 The next major Track-B experiment targets **21 economic strategy families**: the ten retained families plus eleven distinct additions. Nearby policy variants, including the two ORB challengers, remain within their economic family for multiplicity and confluence accounting. B35 perturbation results determine which additional gap/premarket/HVD/ORB v2 challengers earn one of the bounded research slots before the successor contract is fingerprinted.
 
