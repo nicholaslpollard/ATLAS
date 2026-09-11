@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/tmp_sync_successor_research_docs.py'
+      - 'scripts/tmp_sync_successor_research_docs_v2.py'
       - '.github/workflows/tmp-sync-successor-research-docs.yml'
 
 permissions:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply living-document reconciliation
-        run: python scripts/tmp_sync_successor_research_docs.py
+        run: python scripts/tmp_sync_successor_research_docs_v2.py
       - name: Commit reconciled living documents
         shell: bash
         run: |
