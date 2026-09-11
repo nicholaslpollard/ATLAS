@@ -47,6 +47,7 @@ def _threads() -> int:
 
 
 def main() -> int:
+    # The runner intentionally exposes no alternate scientific scope or evidence root.
     output_root = _output_root()
     threads = _threads()
     print("ATLAS B35 DEVELOPMENT Strategy x Condition / Selector Analysis", flush=True)
