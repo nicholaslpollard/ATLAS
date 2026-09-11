@@ -1,0 +1,49 @@
+name: Temporary Windows MAX_PATH repair doc sync
+
+on:
+  push:
+    branches:
+      - fix/windows-atomic-temp-max-path
+    paths:
+      - '.github/workflows/tmp-sync-max-path-repair-docs.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: fix/windows-atomic-temp-max-path
+      - name: Reconcile living documents
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          old = ('Outputs are diagnostic, hash-receipted and restartable; canonical B35 v1 is immutable, selector refit is forbidden, and no promotion/PAPER/LIVE/master/future/provider/broker authority is granted. Immediate Track-B action is the workstation run `scripts/run_b35_targeted_perturbations.py --authorize-targeted-perturbations`; do not start the successor full-library replay until this bounded diagnostic closes.')
+          new = ('Outputs are diagnostic, hash-receipted and restartable; canonical B35 v1 is immutable, selector refit is forbidden, and no promotion/PAPER/LIVE/master/future/provider/broker authority is granted. The first Windows workstation invocation on 2026-09-11 stopped before targeted authorization persistence or any perturbation evidence because the atomic sibling temp filename pushed the otherwise valid deep output path beyond legacy Windows MAX_PATH. The owning `atomic_io` repair now budgets the entire temp path while preserving same-directory atomic promotion and full UUID entropy whenever it fits; a cross-platform regression reproduces the deep `targeted_perturbation_authorization.json` layout. Immediate Track-B action remains the same frozen workstation command after pulling this repair; do not start the successor full-library replay until this bounded diagnostic closes.')
+          if old not in text:
+              raise SystemExit('README targeted-perturbation anchor missing')
+          readme.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          roadmap = Path('docs/roadmap.md')
+          text = roadmap.read_text(encoding='utf-8')
+          old = ('2. Run `.\\.venv\\Scripts\\python.exe scripts\\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once. The run is DEVELOPMENT-only, restartable, reuses exact accepted baseline outcomes, opens no consumed-master/future-blind data, and grants no promotion/PAPER/LIVE authority.')
+          new = ('2. Pull the Windows atomic-temp-path repair, then rerun `.\\.venv\\Scripts\\python.exe scripts\\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once. The first 2026-09-11 invocation failed before targeted authorization persistence or any perturbation evidence because its sibling temp filename exceeded legacy Windows MAX_PATH; the repaired atomic writer bounds the entire temp path and preserves same-directory atomic promotion. The run remains DEVELOPMENT-only, restartable, reuses exact accepted baseline outcomes, opens no consumed-master/future-blind data, and grants no promotion/PAPER/LIVE authority.')
+          if old not in text:
+              raise SystemExit('roadmap immediate-action anchor missing')
+          roadmap.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit living-document repair note
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/roadmap.md
+          git commit -m "Document Windows atomic path repair gate"
+          git push origin HEAD:fix/windows-atomic-temp-max-path
