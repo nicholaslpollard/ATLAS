@@ -1106,9 +1106,9 @@ The canonical continuation reused 82 validated groups and computed the remaining
 
 **B35 condition/selector analyzer status (2026-09-11): COMPLETE / PROFILE-ONLY.** PR #76 merged as `cceccdc23569f6d48395a52322a83f59ba555b23`; the workstation analysis completed with fingerprint `8369790cc019e84091d9ff431e0ba82678e8b23ec09f65f010cdfaca35d3254f`. It normalized all 20,171,286 accepted compact opportunities and constructed 33 complete-XNYS 504/63/63/1 walk-forward folds. The frozen selector evaluated 17,030,985 test opportunities, selected 3,747 (3,188 comparable), and abstained on 99.978%. Selected mean return across the exact cost grid was +0.2984% / +0.1984% / +0.0485% / -0.2015% / -0.7014% at 0/10/25/50/100 bps. Strategy-level interpretation and current dispositions live in `docs/strategy_evidence_register.md`; no strategy or selector was promoted.
 
-**B35 retained-artifact robustness is COMPLETE / NO PROMOTION; exact targeted minute perturbations are CURRENT in PR #79.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; workstation robustness fingerprint `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107` covers 2,079 complete XNYS test sessions. All five declared 50-bps profiles have negative mean session return and Deflated-Sharpe probability `0.0`; 13 selected-cell hypotheses produced 0 BH-FDR q=.05 rejections. The frozen selector retains positive low-cost evidence at 0/10/25 bps but is negative at 50/100 bps. PBO/CSCV ~0.01% is ranking-stability context only, not a profitability claim. PR #79 implements the remaining frozen minute-path perturbations together in one DEVELOPMENT-only, restartable, hash-receipted pass with 27 one-axis-at-a-time strategy/variant profiles and per-group canonical baseline-equivalence gates. It does not refit the selector or rewrite B35 v1 and grants no promotion/PAPER/LIVE/provider/broker/master/future authority.
+**B35 retained-artifact robustness is COMPLETE / NO PROMOTION; exact targeted minute perturbations are MERGED / WORKSTATION RUN PENDING.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; workstation robustness fingerprint `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107` covers 2,079 complete XNYS test sessions. All five declared 50-bps profiles have negative mean session return and Deflated-Sharpe probability `0.0`; 13 selected-cell hypotheses produced 0 BH-FDR q=.05 rejections. The frozen selector retains positive low-cost evidence at 0/10/25 bps but is negative at 50/100 bps. PBO/CSCV ~0.01% is ranking-stability context only, not a profitability claim. PR #79 merged to `main` as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`. Its DEVELOPMENT-only, restartable, hash-receipted pass contains 27 one-axis-at-a-time strategy/variant profiles. Unchanged baseline variants reuse the exact accepted canonical B35 outcomes with SHA-256 verification and exact outcome-economic parity checks; only true perturbations are recomputed. It does not refit the selector or rewrite B35 v1 and grants no promotion/PAPER/LIVE/provider/broker/master/future authority.
 
-Next Track-B sequence: (1) accept/merge PR #79 only after exact-head Windows+Ubuntu regression is green; (2) run `.\.venv\Scripts\python.exe scripts\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once; (3) review the 27 diagnostic variant profiles and record the final B35 research disposition without promotion or v1 rewrite; (4) freeze only justified condition-gated/calibrated successor hypotheses plus the eight-new-family/confluence contract under new fingerprints; (5) implement and test the successor library on permitted evidence; (6) later evaluate the genuinely new future blind only after required accrual and without refitting on it; and (7) never reuse the consumed master interval. Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence.md`.
+Next Track-B sequence: (1) run `.\.venv\Scripts\python.exe scripts\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once from current `main`; (2) review the 27 diagnostic profiles and record the final B35 research disposition without promotion or v1 rewrite; (3) freeze only justified B35 v2 challengers plus the 21-family successor/context/confluence contract under new fingerprints; (4) implement and test the successor library on permitted evidence; (5) later evaluate genuinely new prospective/future-blind evidence only under a separately frozen authority contract; and (6) never reuse the consumed master interval. Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence.md`.
 
 ### B36 — Literature-Anchored Reference Library
 
@@ -1151,11 +1151,11 @@ finished product.
 
 ## 19A. Practitioner strategy-library expansion, confluence, and calibration
 
-**Status: PLANNED SUCCESSOR WORK; B35 DEVELOPMENT REPLAY, CONDITION/SELECTOR, AND RETAINED-ARTIFACT ROBUSTNESS COMPLETE; EXACT TARGETED PERTURBATION PR #79 ACCEPTANCE ACTIVE.**
+**Status: PLANNED SUCCESSOR WORK; B35 DEVELOPMENT REPLAY, CONDITION/SELECTOR, AND RETAINED-ARTIFACT ROBUSTNESS COMPLETE; PR #79 MERGED; EXACT TARGETED PERTURBATION WORKSTATION RUN PENDING.**
 The completed four-strategy B35 DEVELOPMENT result is immutable historical evidence
 and must not be rewritten for rescue tuning. ATLAS already has **six accepted daily practitioner families** in the
 A33/B33 reference catalog plus **four frozen B34 intraday/opening families**. The next
-library package therefore targets **18 total families by adding eight new mechanisms**,
+library package therefore targets **21 total families by adding eleven new mechanisms**,
 not by cloning the existing Golden Cross, EMA, MACD, RSI, Donchian or Bollinger-squeeze
 work under new ids.
 
@@ -1186,7 +1186,7 @@ These accepted/frozen versions remain immutable historical hypotheses. Successor
 research may create explicitly versioned v2 candidates after diagnostic review, but
 must never silently rewrite v1.
 
-### 19A.2 Eight genuinely new families
+### 19A.2 Eleven genuinely new families
 
 Freeze under a new successor fingerprint before opening any new performance:
 
@@ -1209,6 +1209,10 @@ Freeze under a new successor fingerprint before opening any new performance:
 - `pract_triangle_breakout_v1` — deterministic repeated-pivot converging boundaries,
   ascending/descending/symmetrical classification and information-safe breakout.
 
+- `pract_adx_dmi_continuation_v1` — objective DMI directional state plus ADX trend-strength state under one frozen rule; ADX alone never chooses direction.
+- `pract_relative_strength_momentum_v1` — PIT ticker out/underperformance versus SPY over a small frozen horizon set; sector-relative strength remains unavailable until an accepted PIT sector map exists.
+- `pract_session_failed_break_reclaim_v1` — objective breach then bounded reclaim of previous-day high/low and premarket high/low with normalized breach depth, explicit confirmation, sweep-extreme invalidation and one coherent exit hierarchy; no hidden-liquidity claim.
+
 For every new family freeze before performance: exact timeframe/bar authority;
 indicator definition; lookback/minimum history; pivot algorithm; normalized geometry
 and tolerances; entry clock; duplicate-signal rule; stop/target/time exit; costs;
@@ -1216,7 +1220,15 @@ long/short authority; sample/coverage minimums; condition dimensions; robustness
 perturbations; and trial/fingerprint identity. Chart patterns use one deterministic
 shared pivot/geometry engine. Manual visual labeling is forbidden.
 
-### 19A.3 Confluence is evidence, not vote counting
+### 19A.3 Shared PIT context and confluence are separate from strategy definitions
+
+The successor run records a bounded shared context vector for incremental testing: broad-market alignment/volatility state; ticker relative strength/weakness versus SPY; one higher-timeframe trend representation; ATR-normalized trend maturity/extension; opening/premarket/same-time volume participation; overnight gap; price band; signal time; realized volatility; and liquidity/execution quality. Sector-relative strength waits for an accepted PIT sector map. Context is measured first and is not automatically a hard filter.
+
+Opening Range receives two high-priority successor policies inside the same economic family: `orb_stocks_in_play_5m_v1`, testing abnormal same-time opening participation plus a 5-minute range break, and a versioned 15-minute close + bounded retest/hold confirmation challenger. Their agreement is not independent confluence. The failed-break/reclaim family is distinct from pivot breakout because one tests rejection/reversal after a structural breach while the other tests continuation through structure.
+
+Portfolio loss limits, simultaneous-position capital competition, strategy exposure, concentration/correlation admission and account-level risk belong to the later account/PAPER simulation layer. Anchored VWAP, sector-relative strength, Level-2/order-book, options-flow/GEX and intraday fundamental conditioning wait for their own objective PIT/source contracts. Fixed arbitrary stop percentages/R:R, psychology rules, discretionary watchlists, Fibonacci/ICT/FVG/order-block terminology and generic indicator stacks are not added from practitioner anecdotes.
+
+### 19A.4 Confluence is evidence, not vote counting
 
 A strategy's fired/not-fired state remains immutable and independently testable.
 Confluence consumes those signals plus point-in-time context without rewriting the
@@ -1247,7 +1259,7 @@ standalone strategies in probability/expectancy, downside and/or capital efficie
 If extra confirmation only reduces sample size or arrives too late, retain the simpler
 strategy.
 
-### 19A.4 Post-result diagnosis and bounded refinement
+### 19A.5 Post-result diagnosis and bounded refinement
 
 Every v1 receives a structured post-result review whether positive or negative.
 Slice by regime, liquidity, price band, time, volatility, setup intensity, entry
@@ -1264,7 +1276,7 @@ cannot independently validate v2; promotion requires fresh walk-forward or other
 untouched evidence under a new trial/fingerprint. Consumed master evidence is never
 reused and blind windows are never reassigned after results are known.
 
-### 19A.5 Efficient shared implementation
+### 19A.6 Efficient shared implementation
 
 Use one point-in-time primitive/context layer for OHLCV, SMA/EMA, RSI, MACD,
 Bollinger statistics, ATR/ATRP, VWAP, relative volume/OBV, rolling highs/lows,
@@ -1275,15 +1287,15 @@ feature lakes and repeated expensive scans when exact-equivalent shared computat
 is possible. Golden-output/receipt equivalence remains mandatory whenever execution
 mechanics change.
 
-### 19A.6 Ordered successor work after B35
+### 19A.7 Ordered successor work after B35
 
 1. **COMPLETE (2026-09-11):** close and validate the B35 canonical replay; all
    482 groups / 59,768 units completed with zero protected/future/provider/broker
    leakage, immutable run fingerprint, and final 4,246.7-unit/hour production rate.
 2. **COMPLETE (2026-09-11):** produce the preregistered B35 strategy x condition evidence and selector profile; no strategy/selector promotion resulted.
-3. **CURRENT:** retained-artifact robustness is complete with fingerprint `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107`, 0/13 selected-cell BH-FDR rejections, Deflated-Sharpe probability 0 for all five profiles, and no promotion. Accept PR #79, then run its one-pass exact DEVELOPMENT minute perturbations; review the 27 diagnostic variant profiles and record final B35 research disposition without rewriting v1 or refitting the selector.
-4. Freeze the exact **eight-new-family** successor contract, justified B35 v2 candidates, and confluence feature schema; bind the six daily plus four B34 families as retained baseline lineage.
-5. Implement shared PIT indicators/pivots and the eight independent new evaluators; run source-only, semantic and exact-equivalence tests.
+3. **CURRENT:** retained-artifact robustness is complete with fingerprint `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107`, 0/13 selected-cell BH-FDR rejections, Deflated-Sharpe probability 0 for all five profiles, and no promotion. PR #79 is merged as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`; run its one-pass exact DEVELOPMENT minute perturbations on the workstation, then review the 27 diagnostic profiles and record final B35 disposition without rewriting v1 or refitting the selector.
+4. Freeze the exact **eleven-new-family / 21-family-total** successor contract, justified B35 v2 candidates, shared PIT context schema and confluence feature schema; bind the six daily plus four B34 families as retained baseline lineage.
+5. Implement shared PIT indicators/pivots/context and the eleven independent new evaluators; run source-only, semantic and exact-equivalence tests.
 6. Run expanded DEVELOPMENT evidence with standalone strategies first.
 7. Evaluate hard confirmation and confluence as separate hypotheses, including redundancy, conflict, costs and sample-size effects.
 8. Perform one bounded diagnostic/calibration cycle; preregister up to three justified v2 candidates per family and evaluate them only on untouched evidence.
@@ -1346,78 +1358,12 @@ Every closeout reports:
 
 ## 21. Immediate next action
 
-1. **COMPLETE — V1 historical database decommission.** The confirmed workstation
-   run deleted exactly **8 targets / 38,034 files / 147,206,406,678 bytes (137.10
-   GiB)** and retained
-   `data/checkpoints/alpaca_v2_migration/v1_decommission_receipt.json`. Source code,
-   Git history, `data/live`, `data/models`, and unrelated research state were outside
-   the deletion scope. ATLAS currently has no accepted historical market database.
-   The subsequent read-only inventory exposed residual V1 database layers that were
-   not in the first eight-target plan (`raw/day_aggs_v1`, legacy Alpaca payloads,
-   training/discovery/universe/regime/quality/reference outputs, and old manifests).
-   They are now in a separate exact hash-bound residual plan; its receipt is
-   plan-hash-specific so the original 137.10 GiB deletion receipt cannot be overwritten.
-2. **COMPLETE NATIVE CAPTURE / ACCEPTANCE PENDING — fresh native V2 acquisition.**
-   The single
-   `--build-v2` coordinator performs confirmed residual cleanup, freezes the last
-   completed XNYS session, captures fresh active/inactive Alpaca assets and
-   complete-quality corporate actions, freezes an exact-literal universe and plan,
-   then executes deterministic yearly `1Day`/100-symbol units before monthly
-   `1Min`/100-symbol units. Every provider page is durably checkpointed with exact
-   compressed response evidence, request semantics, checksums, normalized Parquet,
-   anomaly evidence, opaque next token, and restart state. Completed unit source and
-   canonical hashes are verified before a resume skip. Invalid provider literals are
-   globally quarantined without mapping or substitution. Unit compaction uses the
-   canonical market schema and exchange schedule; duplicates block that unit rather
-   than being silently collapsed. A 30 GiB reserve plus transient-work guard pauses
-   safely. No V1 persisted row is a V2 input. Synthetic daily/minute end-to-end,
-   page-token resume, corruption fail-closed, rejection quarantine, and cleanup-scope
-   package was accepted in PR #57. The operator run finished all **67,480 / 67,480
-   units**: **5,302 daily**, **62,178 minute**, **3,897,688,734 canonical rows**, and
-   **1,757,288 quarantined rows**. Its terminal status is `COMPLETE`, but this remains
-   isolated candidate capture: identity, quality, quarantine attribution, analytical
-   acceptance, and production promotion have not passed merely because acquisition
-   ended.
-3. **NEXT OPERATOR RUN — V2 daily post-build foundation.** After pulling the accepted
-   corrected package, run `scripts/run_alpaca_v2_postbuild.py`. It
-   hash-verifies source/plan/every unit, validates all daily rows, constructs
-   conservative identity/lifecycle evidence, acquires resumable provider-native
-   split-adjusted daily bars, reconciles them to raw, and writes the isolated
-   research-daily manifest. Stable content fingerprints make a clean rerun
-   idempotent. `--validate-only` makes no provider request; `--max-hours` checkpoints
-   adjusted-daily acquisition. Do not run this concurrently with native acquisition.
-4. **RECOMMENDED EXPLICIT CONTINUATION — DEVELOPMENT plus frozen walk-forward.** Run
-   `scripts/run_alpaca_v2_postbuild.py --through-walk-forward-replay
-   --authorize-master-holdout-consumption` as one command. It first completes the
-   frozen nine-policy and A34 account DEVELOPMENT replay through `2026-05-11`. Only
-   after that succeeds does it persist irreversible consumption evidence, create the
-   separate walk-forward view, and evaluate signals from `2026-05-12` through the
-   exact accepted source cutoff. The holdout remains consumed after any later failure.
-   Every superseded consumption state is preserved beneath
-   `manifests/master_holdout_consumption_history/` before the current receipt changes.
-   Retry attempts keep known protected-row counts; a completed replay is verified and
-   reused, while missing or damaged receipt/history/result evidence stops safely.
-   Historical replay is never relabeled as prospective PAPER; no strategy promotion,
-   broker write, PAPER submit, or LIVE authority is granted. Omitting both flags opens
-   no performance; `--through-reference-replay` remains the DEVELOPMENT-only option.
-5. Review the actual post-build exclusion, identity, coverage, split-factor, disk,
-   and replay reports. Record pass/fail honestly before any strategy revision. Daily
-   indicators are computed by the frozen engine on demand; do not first build a
-   redundant full feature lake. Continue A34.5 Product work in parallel regardless
-   of strategy profit.
-6. **COMPLETE — B34 intraday readiness and frozen opening/premarket pack.** Final workstation evidence is `ACCEPTED`; repository acceptance retains the enhanced evidence hash, earlier semantic evidence hash, and frozen strategy-pack fingerprint without opening outcomes or trading authority.
-7. **CURRENT Track-B gate — complete the resumed canonical B35 DEVELOPMENT replay using the accepted execution path.** PR #72 is merged as `4a2ec3fcfb33c375a7b883ae8b3473e82fa29f6f`. The fastest tested scientifically equivalent workstation configuration is **10 workers x 1 DuckDB thread** with process-local DuckDB/calendar reuse and `itertuples()` canonical-bar conversion while retaining full per-minute `CanonicalBar.model_validate()`. The final isolated real-data probe passed **10/10 exact JSONL SHA-256 comparisons** at **2,942.2 units/hour**, versus about **660.6 units/hour** on the measured serial restart, approximately **4.45x faster**. The canonical run has resumed from **82 validated groups / 10,168 units** under the unchanged authorization `562d7104d56151e6203a1bf85457f9d1a90bbf19e60cd4d9359a3f96bc0a7be5`, trial `b35.dev.20160104_20260430.eb3b7ff9f417.registration`, frozen `2016-01-04..2026-04-30` source, zero consumed-master/future-blind reads, and zero provider/broker/PAPER/LIVE or promotion authority. Final canonical runtime/throughput will be recorded on completion; after successful B35 completion, proceed to strategy x condition evidence and the preregistered selector, then freeze and implement the eight-new-family successor package that expands the retained ten-family base to 18 total families, plus the separate confluence/strength layer defined in Section 19A. The active B35 result must not be retroactively mixed with those new hypotheses.
-
-8. Keep focused tests, the full repository suite, retained scientific validators,
-   cross-platform exact-head CI, and same-commit updates to both living documents
-   mandatory for every package.
-
-The destination is concrete: open the GUI, see versioned strategies operating,
-watch candidates become or fail to become trades, see positions and P&L change,
-understand why ATLAS bought or sold, replay the same lifecycle historically, PAPER
-trade through the real product path, inspect every decision and outcome, learn which
-families retain credible conditional expectancy, and improve the library while LIVE
-capital remains strongly protected.
+1. Pull current `main`; PR #79 is merged and the targeted perturbation package is accepted.
+2. Run `.\.venv\Scripts\python.exe scripts\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once. The run is DEVELOPMENT-only, restartable, reuses exact accepted baseline outcomes, opens no consumed-master/future-blind data, and grants no promotion/PAPER/LIVE authority.
+3. Review `analysis_v1/robustness_v1/targeted_minute_perturbations_v1/summary.json`, update the Strategy Evidence Register, and select only bounded B35 v2 challengers justified by the perturbation plus existing diagnostic evidence.
+4. Freeze the successor **21-family** roster, exact new/challenger specifications, shared PIT context vector, multiplicity/trials accounting and separate confluence/ranking contract before opening successor performance.
+5. Implement and run the broad successor historical experiment on permitted evidence. Preserve standalone family results before confluence; measure win rate together with payoff ratio, net expectancy/R, drawdown/tail loss, cost decay, MFE/MAE, support, stability, concentration and abstention.
+6. Track A Product may continue independently where evidence boundaries permit. Operational/qualifying PAPER and LIVE remain governed by their separate authority gates.
 
 ## 22. Retained exact historical validator statements
 
@@ -1443,7 +1389,7 @@ closed historical state and do not restore the superseded product dependency:
   protected-return state, PAPER authority, or LIVE authority are changed.
 
 
-## 21. Living Strategy Evidence Register
+## 23. Living Strategy Evidence Register
 
 `docs/strategy_evidence_register.md` is the living scientific ledger for
 strategy/version evidence. It preserves observed baseline results, supported and
@@ -1452,35 +1398,14 @@ research disposition, successor hypotheses, unresolved limitations, and authorit
 It does not replace immutable receipts/artifacts or code behavior; it prevents future
 research chats from reconstructing strategy truth from conversational memory.
 
-B35 canonical replay and the first strategy x condition / selector profile are
-complete. The current Track-B gate is the remaining preregistered B35 robustness and
-final research-disposition package. Do not rerun the canonical minute replay and do
-not freeze condition-gated v2 rules until robustness is complete. The register's
+B35 canonical replay, strategy x condition/selector analysis, and retained-artifact robustness are complete. The current Track-B gate is the merged PR #79 targeted minute-perturbation workstation run and final B35 research disposition. Do not rerun the canonical minute replay and do not freeze condition-gated v2 rules until the targeted perturbation evidence is reviewed. The register's
 current dispositions are: Gap Continuation = condition-gate/calibrate candidate;
 Opening Range Breakout = condition-gate/calibrate plus execution audit; Premarket
 Rel-Vol = cost/execution-sensitive R&D candidate; Highest-Volume-Day style =
 redefine/insufficient evidence. None is promoted.
 
-After B35 robustness closes, freeze successor strategy versions and the broader
-18-family/confluence package under new fingerprints. The long-term router should
+After the targeted perturbation evidence closes B35, freeze successor strategy versions and the broader
+21-family/context/confluence package under new fingerprints. The long-term router should
 activate/deactivate strategy specialties using trailing point-in-time evidence and
 abstain when no specialty clears support, cost, robustness, risk, and authority
 gates. Continuous market coverage is desirable; forced continuous trading is not.
-
-### B36 — Successor 21-family Strategy Laboratory
-
-B36 begins only after the merged PR #79 B35 targeted minute-perturbation workstation run closes and its exact evidence is recorded. B36 does not rewrite B35 v1 or reuse the consumed master holdout to qualify a revision.
-
-**Core roster:** retain the ten accepted economic families as immutable baselines and add eleven materially distinct mechanisms: Bollinger mean reversion; ATR/range expansion; VWAP reclaim/reject; pivot support/resistance breakout; ADX/DMI continuation/filter; relative-strength momentum versus market/sector where data authority exists; objective head-and-shoulders/inverse; double-top/bottom; flag/pennant continuation; triangle breakout; and objective session-level failed-break/reclaim. Cup-and-handle remains lower priority. Similar indicators/parameterizations remain one family for trials/multiplicity accounting.
-
-**High-priority Opening Range challengers:** `orb_stocks_in_play_5m_v1` is a literature-anchored research policy testing whether abnormal same-time opening participation plus a 5-minute opening-range break produces a viable opening-momentum specialist under realistic costs. A separate versioned 15-minute ORB close/retest challenger isolates whether close-outside-range plus bounded retest/hold confirmation reduces false breaks and MAE enough to improve net expectancy after later entry and lower trade count. Both remain in the Opening Range economic family for multiplicity and confluence.
-
-**Objective failed-break/reclaim family:** begin with previous-day high/low and premarket high/low. Define normalized breach depth, maximum reclaim time, objective reclaim/confirmation, entry, sweep-extreme stop/invalidation and one coherent exit hierarchy before performance. Do not claim hidden institutional liquidity; the test is observable failed-break/reversal information.
-
-**Shared PIT context measured in the same successor run:** broad-market alignment; ticker relative strength/weakness versus SPY on a small preregistered set of horizons; one bounded higher-timeframe ticker trend representation; trend maturity/extension using ATR-normalized distance and move-already-traveled measures; volume/participation including opening RVOL, premarket RVOL, dollar volume and same-time historical participation; and the existing overnight-gap, signal-time, price-band, realized-volatility, liquidity and execution-quality dimensions. Sector-relative strength waits for an accepted PIT sector map.
-
-Context variables are not universal gates. B36 first measures their standalone/incremental explanatory value, then only economically coherent interactions, under rolling/walk-forward evidence and multiplicity control. Confluence is evaluated **after** standalone strategy results as a separate ranking/eligibility layer across materially distinct evidence families: price structure/setup, participation, broad-market state, ticker relative strength, higher-timeframe state, volatility/liquidity and later event/fundamental context where appropriate. Correlated indicators are not independent votes.
-
-**Deferred from B36 strategy evidence:** sector-relative strength until source mapping is PIT-valid; anchored VWAP until anchors are objectively defined; fundamentals for intraday ORB; Level-2/order-book, options-flow and dealer-gamma/GEX mechanisms until their own historical source contracts exist; portfolio daily-loss limits, capital competition, strategy exposure, concentration and correlation admission rules until account/PAPER replay. Fixed arbitrary stop percentages/targets, human psychology rules, discretionary small watchlists, Fibonacci/ICT/FVG/order-block terminology and generic indicator stacks are not added merely from practitioner discussion.
-
-**Evaluation objective:** improve economically viable condition coverage without sacrificing confidence. Report win rate together with payoff ratio, net expectancy/net-R, drawdown/tail loss, cost sensitivity, support, fold/year stability, concentration, MFE/MAE, holding time and abstention. A higher win rate with worse expectancy or tail risk is not an improvement. No dense optimization sweep is authorized; by default no more than three materially distinct successor candidates per family per research cycle.
