@@ -178,6 +178,10 @@ Candidate successor selector dimensions motivated by B35 diagnostics include **d
 
 ## 6. Next B35 scientific work
 
+**Implementation status (2026-09-11): retained-artifact robustness analyzer implemented in PR #78; repository acceptance and workstation result pending.** The analyzer validates the accepted analysis receipts and computes, on the same 2,079 complete XNYS test sessions, exact cost-grid profiles, deterministic 10,000-draw session bootstrap tail/drawdown uncertainty, loss-streak/concentration diagnostics, selected-cell/profile BH-FDR q=.05, Deflated Sharpe, and frozen 16-partition CSCV/PBO for the four standalone strategies plus frozen selector. The one-sided bootstrap p-value construction used for the post-result FDR diagnostic is itself descriptive and does not create promotion authority. Cash is the same-unit benchmark; the accepted A34 account replay is contextual only because it is not the same statistical/account unit.
+
+The compact fired-opportunity artifacts cannot exactly reconstruct counterfactual entry delays or changed setup definitions. PR #78 therefore marks entry delay, gap threshold, opening-range duration, premarket rel-volume threshold, and premarket consolidation-range perturbations as `REQUIRES_TARGETED_MINUTE_REPLAY` and uses no approximation. After PR #78 merges, run `.\.venv\Scripts\python.exe scripts\run_b35_robustness_analysis.py`; then implement the remaining perturbations together in one bounded exact minute pass rather than repeating the canonical replay separately per variant.
+
 Before freezing any condition-gated v2 rule, complete the remaining preregistered robustness package over the accepted B35 analysis artifacts:
 
 1. BH FDR q=.05 across the declared hypothesis family;
