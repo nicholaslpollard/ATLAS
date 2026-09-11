@@ -1,0 +1,46 @@
+name: Temporary final evidence register synchronization
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/tmp-final-evidence-register-sync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconcile evidence register current state
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('docs/strategy_evidence_register.md')
+          t = p.read_text(encoding='utf-8')
+
+          start = t.find('## 6. Next B35 scientific work')
+          end = t.find('## 7. Authority', start)
+          if start == -1 or end == -1:
+              raise SystemExit('evidence register B35 work anchors missing')
+          section = '''## 6. Next B35 scientific work\n\n**Current gate (2026-09-11): retained-artifact robustness COMPLETE; PR #79 MERGED; exact targeted perturbation workstation run PENDING.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; the accepted workstation robustness fingerprint is `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107`. BH-FDR, Deflated Sharpe, 16-partition PBO/CSCV, the deterministic 10,000-draw session bootstrap, losing-streak/concentration diagnostics and same-fold profile/cash comparisons are complete. Their 50-bps conclusion is negative and grants no promotion.\n\nPR #79 merged to `main` as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`. It implements the five frozen minute-path perturbation families together in one DEVELOPMENT-only pass: entry delay 0/1/2, gap threshold x0.9/1.0/1.1, ORB 14/15/16 minutes, premarket relative-volume threshold x0.9/1.0/1.1, and premarket consolidation width x0.9/1.0/1.1 for premarket-relvol/HVD. There are 27 one-axis-at-a-time strategy/variant profiles. Unchanged baseline variants are populated from the exact accepted canonical B35 outcome files with SHA-256 verification and exact outcome-economic parity; only true perturbations are recomputed. The pass is restartable and hash-receipted, does not refit the selector, does not rewrite canonical B35 v1, reads no consumed-master or future-blind outcomes, and grants no provider/broker/PAPER/LIVE or promotion authority.\n\nImmediate action: run `.\\.venv\\Scripts\\python.exe scripts\\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once from current `main`, review the resulting 27 profiles, and record the final B35 dispositions. Only then freeze any justified B35 v2 challengers and the successor **21-family / eleven-new-family** strategy, shared-PIT-context, and separate-confluence contracts under new fingerprints. The future blind remains untouched and cannot be opened to rescue or choose these hypotheses.\n\n'''
+          t = t[:start] + section + t[end:]
+
+          t = t.replace('## 7. Successor research hypotheses accepted for testing', '## 8. Successor research hypotheses accepted for testing', 1)
+          for old, new in [('### 7.1 ', '### 8.1 '), ('### 7.2 ', '### 8.2 '), ('### 7.3 ', '### 8.3 '), ('### 7.4 ', '### 8.4 '), ('### 7.5 ', '### 8.5 '), ('### 7.6 ', '### 8.6 ')]:
+              t = t.replace(old, new, 1)
+
+          p.write_text(t, encoding='utf-8')
+          PY
+      - name: Commit evidence register sync
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/strategy_evidence_register.md
+          git commit -m "Synchronize strategy evidence register with current gate"
+          git push origin HEAD:main
