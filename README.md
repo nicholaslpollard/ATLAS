@@ -2,9 +2,9 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-11 (UTC). This README and `docs/roadmap.md` are the only
-living project documents. Every continuation chat must read both in full before
-making recommendations or changes.**
+**Current as of 2026-09-11 (UTC). The root README, `docs/roadmap.md`, and
+`docs/strategy_evidence_register.md` are the three living project documents. Every
+continuation chat must read all three in full before making recommendations or changes.**
 
 ATLAS is the greenfield successor to Chart Monitor. Its purpose is to become a
 usable quantitative trading platform that can discover and compare opportunities,
@@ -19,19 +19,22 @@ controlled risk, prospective evidence, and reliable operation.
 ## Read this first
 
 1. Read this entire README for the current handoff.
-2. Read [`docs/roadmap.md`](docs/roadmap.md) for the complete mission, evidence,
-   practitioner-strategy catalog, testing design, gates, and ordered work.
-3. Inspect code, tests, immutable phase evidence, and Git history only as needed to
-   perform the active roadmap package. Those materials support the two living
+2. Read [`docs/roadmap.md`](docs/roadmap.md) for the complete mission, testing
+   design, gates, and ordered work.
+3. Read [`docs/strategy_evidence_register.md`](docs/strategy_evidence_register.md)
+   for strategy/version evidence, condition specialties, dispositions, robustness
+   state, and successor hypotheses.
+4. Inspect code, tests, immutable phase evidence, and Git history only as needed to
+   perform the active roadmap package. Those materials support the three living
    documents; they do not compete with them as current plans.
-4. If the two living documents conflict, stop and reconcile both in the same change
-   before proceeding.
-5. Every repository-changing implementation package must update this README and
-   `docs/roadmap.md` in the same commit before it is accepted or merged. The update
-   must state the package goal, capability change, result/test evidence, exact
-   authority or safety impact, unresolved limitations, and next work. A future chat
-   must be able to reconstruct the current product and research state from these two
-   living documents without depending on a prior conversation window.
+5. If the three living documents conflict, stop and reconcile them in the same
+   package before proceeding.
+6. Every repository-changing implementation package must update this README and
+   `docs/roadmap.md` before acceptance. Any package that opens, changes, interprets,
+   closes, calibrates, or promotes strategy evidence must update the Strategy
+   Evidence Register in the same package. A future chat must be able to reconstruct
+   current product state, research direction, and strategy evidence without a prior
+   conversation window.
 
 All earlier README/roadmap versions were archived verbatim under
 `docs/archive/2026-09-02-pre-product-rebaseline/`. The old `current_status`,
@@ -71,8 +74,9 @@ with a desired trade.
 ## Current repository truth
 
 - **B35 canonical DEVELOPMENT replay is CLOSED / ACCEPTED.** The frozen `2016-01-04..2026-04-30` trial completed exactly **482/482 groups, 59,768/59,768 source units, and 482 validated receipt ids**, producing **20,171,286** compact fired opportunity/context/outcome records. Run fingerprint = `8955a282453cb89a24d3bcdf819d80451bebfa3ec9752dc24c113efc668cffe6`; B35/source/split/authorization identities remained exactly frozen. Consumed-master rows read `0`; future-blind rows read `0`; provider calls `0`; broker reads/writes `0/0`; PAPER/LIVE authority `false/false`; strategy/selector promotion `false/false`; no permanent minute feature lake was created. The accepted continuation reused 82 validated groups and computed the remaining 400 groups / 49,600 units in **11:40:46 at 4,246.7 units/hour**, about **6.43x** the original serial restart and **44.3% faster** than the final isolated exact-equivalent benchmark.
-- **B35 strategy x condition / frozen walk-forward selector analyzer is IMPLEMENTED / ACCEPTANCE PENDING in PR #76.** It reads only the completed compact DEVELOPMENT artifacts, validates the authoritative summary plus every receipt/output SHA, normalizes the 20.17M records once to a restartable hash-receipted Parquet view, reports standalone and frozen condition/interactions evidence across the `0/10/25/50/100` bps grid, constructs complete-XNYS `504/63/63/1` walk-forward folds, applies the frozen `60 opportunities / 30 sessions / 20 instruments` cell support rule, and scores training cells with the deterministic **1,000-draw session-cluster bootstrap 5th-percentile net-R at 50 bps**. Broader fallback is allowed only when the more-specific cell lacks minimum support; a supported nonpositive cell abstains rather than being rescued by a broader average. Exact same-fold standalone baselines are retained for fair comparison. Expensive derived analysis stages are atomic, resumable, and self-hash/SHA receipted.
-- **This analyzer grants no promotion or trading authority.** It cannot read the consumed master or future blind, call providers/brokers, write orders, or enable PAPER/LIVE. Its first workstation result is a descriptive and out-of-sample selector **profile**, not a promotion decision. Frozen multiplicity/robustness diagnostics (BH FDR, Deflated Sharpe, PBO/CSCV where evaluable, tail/drawdown/loss-streak/concentration work), portfolio-level comparison, and the bounded post-result diagnostic/calibration decision remain subsequent B35 work. After PR #76 merges, run only `.\.venv\Scripts\python.exe scripts\run_b35_evidence_analysis.py`; **do not rerun the canonical minute replay.**
+- **B35 strategy x condition / frozen walk-forward selector analysis is COMPLETE / PROFILE-ONLY.** PR #76 merged as `cceccdc23569f6d48395a52322a83f59ba555b23`. Analysis fingerprint `8369790cc019e84091d9ff431e0ba82678e8b23ec09f65f010cdfaca35d3254f` normalized all 20,171,286 accepted compact opportunities and built 33 complete-XNYS 504/63/63/1 folds. The frozen selector evaluated 17,030,985 test opportunities, selected 3,747 (3,188 comparable), and abstained on 99.978%. Selected mean return was +0.2984% / +0.1984% / +0.0485% / -0.2015% / -0.7014% at 0/10/25/50/100 bps. No strategy or selector is promoted. The material research interpretation and per-strategy dispositions are maintained in `docs/strategy_evidence_register.md`.
+- **B35 remaining gate is robustness and final research disposition, not replay.** Complete BH FDR, Deflated Sharpe, PBO/CSCV where evaluable, deterministic 10,000-draw session-bootstrap tail/drawdown analysis, losing-streak/P&L-concentration diagnostics, perturbation diagnostics, and selector comparison versus same-fold standalone/reference/cash before freezing any condition-gated v2. The future blind remains untouched.
+
 - **B34 intraday source readiness and the opening/premarket pack are CLOSED / ACCEPTED.** The enhanced 2026-09-08 workstation audit returned `ACCEPTED` under contract `atlas-b34-intraday-source-readiness-v2-ohlcv-pack-frozen` with evidence SHA-256 `415c46c714b80f5cff4950320443088b8b89ed761c9f51d071fccf3e60baefd0`. It preserves the earlier semantic/source-readiness evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`, accepted all five deterministic OHLCV samples, represented premarket/regular/after-hours bars, opened zero partitions overlapping the consumed `2026-05-12..2026-08-11` master interval, and made zero provider calls, broker reads, or broker writes. The frozen RESEARCH-only pack fingerprint is `6f7239fcda11ac6c890d2635980d431ec49e346707d9cc549f111bd50daaa4bf` for `b34_gap_continuation_v1`, `b34_opening_range_breakout_15m_v1`, `b34_premarket_relvol_consolidation_v1`, and `b34_highest_volume_day_style_v1`. B34 opened no outcomes and grants no promotion, PAPER, LIVE, broker-mutation, or broad/full minute-materialization authority.
 - Accepted numbered foundation: **through Phase32**, merged on `main`.
 - Phases26–32 are scientifically valid `ACCEPTED_NEGATIVE` results.
@@ -940,9 +944,10 @@ pass.
 Documentation is part of acceptance, not cleanup. Every repository-changing
 package must update this README and `docs/roadmap.md` together before merge with the
 exact current capability, test/CI state when known, safety/authority effect,
-unresolved limitations, and next action. If implementation changes but the two
-living documents do not, the package is incomplete and must not be treated as the
-new handoff.
+unresolved limitations, and next action. Strategy-evidence-changing packages must
+also update `docs/strategy_evidence_register.md`. If implementation or strategy
+evidence changes but the applicable living documents do not, the package is
+incomplete and must not be treated as the new handoff.
 
 ## Historical evidence that remains binding
 
