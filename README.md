@@ -711,7 +711,7 @@ Daily indicators are calculated by the frozen reference engine from the promoted
 research view when a replay runs; a second giant feature lake is not created merely
 to duplicate them. News acquisition is not part of this database acceptance chain:
 it neither validates price history nor has a frozen provider/PIT contract, so it is
-deferred to its own finite research package. Native minute evidence, extended-hours semantics, and initial intraday strategy readiness are accepted by B34. Gap, opening-range, and premarket performance remain unopened until a separately frozen pre-outcome evaluation contract authorizes development outcome access.
+deferred to its own finite research package. Native minute evidence, extended-hours semantics, and initial intraday strategy readiness are accepted by B34. **B35 DEVELOPMENT replay CLOSED / ACCEPTED (2026-09-11).** The frozen `2016-01-04..2026-04-30` replay completed all **482/482 groups** and **59,768/59,768 source units**, with **482 validated receipt ids**, **20,171,286 fired opportunity/context/outcome records**, and run fingerprint `8955a282453cb89a24d3bcdf819d80451bebfa3ec9752dc24c113efc668cffe6`. The authoritative summary confirms consumed-master rows read `0`, future-blind rows read `0`, provider calls `0`, broker reads/writes `0/0`, PAPER/LIVE authority `false/false`, and strategy/selector promotion `false/false`. This closes the canonical B35 replay itself; the next Track-B work is the preregistered strategy x condition evidence and selector analysis, not another replay.
 
 ## Planned practitioner strategy library and confluence architecture
 
@@ -723,9 +723,10 @@ families**. Those ten existing families are retained; the successor package adds
 Do not duplicate an existing mechanism under a new name merely because a later chat
 rediscovers it.
 
-The active B35 experiment remains frozen around its four B34 strategies and **must
-not be modified while that replay is running**. The broader library is successor
-work under a new preregistered fingerprint.
+The completed B35 DEVELOPMENT experiment remains frozen around its four B34
+strategies and is now immutable historical evidence. It must not be rewritten or
+replayed to rescue a disappointing result. The broader library is successor work
+under a new preregistered fingerprint.
 
 ### Existing practitioner families to retain
 
@@ -913,7 +914,7 @@ The B35 replay established the default ATLAS pattern for expensive deterministic
 11. **Resume; do not restart.** Once the execution path is accepted, continue the canonical job from all validated receipts/checkpoints. Benchmark recomputes remain isolated and never advance or erase canonical progress.
 12. **Close the loop with real-run evidence.** After the canonical workload completes, record final elapsed time, sustained throughput, interruptions/restarts, resource shape, and any difference from benchmark projections. Use that case history to size and design future long-running ATLAS work.
 
-For B35 specifically, the measured path moved from about **660.6 units/hour** in the serial restart to a final isolated exact-equivalent benchmark of **2,942.2 units/hour** at 10 x 1, while preserving **10/10 byte-identical sampled outputs** and all scientific/authority boundaries. This is the reference case for the protocol; its final canonical real-run result will be added after completion.
+For B35 specifically, the measured path moved from about **660.6 units/hour** in the serial restart to a final isolated exact-equivalent benchmark of **2,942.2 units/hour** at 10 x 1, while preserving **10/10 byte-identical sampled outputs** and all scientific/authority boundaries. The accepted canonical continuation then reused 82 validated groups and computed the remaining **400 groups / 49,600 units in 11:40:46 at 4,246.7 units/hour**. That sustained real-run rate was about **6.43x the original serial rate** and **44.3% faster than the accepted isolated benchmark**, saving about **63.4 hours** versus serial processing for the remaining 49,600 units. At that sustained rate the equivalent full 59,768-unit workload is about **14.1 hours** instead of roughly **90.5 hours** serial. This completed case is the reference example for the reusable ATLAS efficiency protocol.
 
 **Mandatory long-running runtime observability.** Any ATLAS command expected to run materially longer than an interactive task must expose operator-visible progress without changing scientific authority. At minimum it reports a start timestamp and PID, frozen scope and execution profile, completed/total groups or units and percentage, elapsed time, restart-reused work, throughput, a timestamped heartbeat at least once every 60 seconds even while one work item is long, and an ETA once enough new work exists (otherwise explicitly unavailable). Completion, failure, and interruption report their timestamp and elapsed duration. Terminal output is flushed promptly, and an atomic machine-readable status artifact is maintained for second-terminal and future GUI inspection. Runtime progress/status is **NON_AUTHORITATIVE**: wall-clock fields, worker order, heartbeats, throughput, ETA, and the status artifact never enter scientific identities, source/group fingerprints, receipt hashes, trial identity, strategy decisions, or final result fingerprints. Validated receipts and final scientific summaries remain the completion authority.
 
