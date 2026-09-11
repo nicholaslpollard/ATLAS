@@ -9,23 +9,53 @@ from pathlib import Path
 
 _TRANSIENT_WINDOWS_ERRORS = {5, 32, 33}
 _TEMP_NAME_PREFIX_MAX = 24
+# Keep sibling temporary files comfortably below the legacy Windows MAX_PATH limit.
+# The final destination may be longer on long-path-enabled systems, but ATLAS must not
+# make an otherwise valid destination fail merely because its atomic temp filename adds
+# a PID/UUID suffix. 248 also leaves headroom for legacy directory/file APIs.
+_WINDOWS_LEGACY_SAFE_PATH_CHARS = 248
+_TEMP_TOKEN_MIN_CHARS = 12
 
 
 def unique_temp_path(final_path: Path) -> Path:
     """Return a unique temporary path beside *final_path*.
 
     Keeping the temporary file in the destination directory preserves same-volume
-    atomic rename semantics. The visible filename prefix is bounded so long
-    content-addressed destination names do not push Windows paths past the legacy
-    MAX_PATH boundary. A full UUID plus PID preserves collision resistance between
-    repeated writes and concurrent ATLAS processes.
+    atomic rename semantics. The visible filename prefix is bounded against the
+    *entire* sibling path so a deep but valid Windows destination does not cross the
+    legacy MAX_PATH boundary merely because ATLAS adds a PID/UUID temp suffix. A full
+    UUID is retained whenever it fits; only non-authoritative temp-name decoration is
+    shortened when required.
     """
 
     final_path = Path(final_path)
     final_path.parent.mkdir(parents=True, exist_ok=True)
     token = uuid.uuid4().hex
-    prefix = final_path.name[:_TEMP_NAME_PREFIX_MAX]
-    return final_path.with_name(f"{prefix}.{os.getpid()}.{token}.tmp")
+    pid = str(os.getpid())
+    parent_chars = len(os.fspath(final_path.parent))
+    name_budget = _WINDOWS_LEGACY_SAFE_PATH_CHARS - parent_chars - 1
+    fixed_after_prefix = len(pid) + 6  # .<pid>.<token>.tmp, excluding token itself.
+
+    prefix_budget = name_budget - fixed_after_prefix - len(token)
+    prefix_len = min(_TEMP_NAME_PREFIX_MAX, len(final_path.name), max(1, prefix_budget))
+    prefix = final_path.name[:prefix_len] or "t"
+    candidate = final_path.with_name(f"{prefix}.{pid}.{token}.tmp")
+    if len(os.fspath(candidate)) <= _WINDOWS_LEGACY_SAFE_PATH_CHARS:
+        return candidate
+
+    # Extremely deep parents may not leave room for the full UUID. Preserve at least
+    # 48 bits of random entropy when a legacy-safe sibling can still be represented.
+    token_budget = name_budget - fixed_after_prefix - 1
+    if token_budget >= _TEMP_TOKEN_MIN_CHARS:
+        short_token = token[: min(len(token), token_budget)]
+        return final_path.with_name(f"{final_path.name[:1] or 't'}.{pid}.{short_token}.tmp")
+
+    # If even the minimum unique sibling cannot fit under the legacy limit, return the
+    # shortest practical sibling. Such a destination already requires Windows long-path
+    # support; callers will receive the underlying filesystem error if it is unavailable.
+    return final_path.with_name(
+        f"{final_path.name[:1] or 't'}.{pid}.{token[:_TEMP_TOKEN_MIN_CHARS]}.tmp"
+    )
 
 
 def _is_transient_replace_error(exc: OSError) -> bool:
