@@ -1,43 +1,35 @@
 from pathlib import Path
 import re
 
-readme = Path('README.md')
-roadmap = Path('docs/roadmap.md')
-register = Path('docs/strategy_evidence_register.md')
+readme = Path("README.md")
+roadmap = Path("docs/roadmap.md")
+register = Path("docs/strategy_evidence_register.md")
 
-r = readme.read_text(encoding='utf-8')
-old = """- **B35 remaining gate is robustness and final research disposition, not replay.** Complete BH FDR, Deflated Sharpe, PBO/CSCV where evaluable, deterministic 10,000-draw session-bootstrap tail/drawdown analysis, losing-streak/P&L-concentration diagnostics, perturbation diagnostics, and selector comparison versus same-fold standalone/reference/cash before freezing any condition-gated v2. The future blind remains untouched."""
-new = """- **B35 retained-artifact robustness analyzer is IMPLEMENTED / ACCEPTANCE ACTIVE in PR #78.** It consumes only the accepted `analysis_v1` Parquet artifacts, aligns the four standalone B34 strategies plus the frozen selector on the same 2,079 complete XNYS test sessions, evaluates the exact 0/10/25/50/100-bps cost grid, deterministic 10,000-draw session bootstrap, loss streaks/concentration, selected-cell and profile BH-FDR q=.05, Deflated Sharpe, and frozen 16-partition CSCV/PBO. Cash is the same-unit abstention benchmark; the accepted A34 account replay is retained only as contextual evidence because its strategy set/account construction/date scope are not directly comparable. Entry-delay/setup-threshold/opening-range/premarket perturbations are explicitly `REQUIRES_TARGETED_MINUTE_REPLAY`; compact outputs are not used to approximate them. After accepted merge, run `.\\.venv\\Scripts\\python.exe scripts\\run_b35_robustness_analysis.py`. No strategy/selector promotion or PAPER/LIVE authority is granted; the future blind remains untouched."""
+r = readme.read_text(encoding="utf-8")
+old = "- **B35 remaining gate is robustness and final research disposition, not replay.** Complete BH FDR, Deflated Sharpe, PBO/CSCV where evaluable, deterministic 10,000-draw session-bootstrap tail/drawdown analysis, losing-streak/P&L-concentration diagnostics, perturbation diagnostics, and selector comparison versus same-fold standalone/reference/cash before freezing any condition-gated v2. The future blind remains untouched."
+new = "- **B35 retained-artifact robustness analyzer is IMPLEMENTED / ACCEPTANCE ACTIVE in PR #78.** It consumes only the accepted `analysis_v1` Parquet artifacts, aligns the four standalone B34 strategies plus the frozen selector on the same 2,079 complete XNYS test sessions, evaluates the exact 0/10/25/50/100-bps cost grid, deterministic 10,000-draw session bootstrap, loss streaks/concentration, selected-cell and profile BH-FDR q=.05, Deflated Sharpe, and frozen 16-partition CSCV/PBO. Cash is the same-unit abstention benchmark; the accepted A34 account replay is retained only as contextual evidence because its strategy set/account construction/date scope are not directly comparable. Entry-delay/setup-threshold/opening-range/premarket perturbations are explicitly `REQUIRES_TARGETED_MINUTE_REPLAY`; compact outputs are not used to approximate them. After accepted merge, run `.\\.venv\\Scripts\\python.exe scripts\\run_b35_robustness_analysis.py`. No strategy/selector promotion or PAPER/LIVE authority is granted; the future blind remains untouched."
 assert old in r
 r = r.replace(old, new, 1)
-readme.write_text(r, encoding='utf-8')
+readme.write_text(r, encoding="utf-8")
 
-d = roadmap.read_text(encoding='utf-8')
-old = """**B35 condition/selector analyzer status (2026-09-11): IMPLEMENTED / ACCEPTANCE PENDING in PR #76.** The analyzer consumes only the completed compact DEVELOPMENT group artifacts and first revalidates the final replay summary, exact receipt set and every group-output SHA. It normalizes the 20,171,286 compact records once into an atomic, hash-receipted Parquet view, computes standalone strategy and frozen condition/interaction evidence across the full `0/10/25/50/100` bps cost grid, and constructs walk-forward folds from the complete XNYS calendar rather than opportunity-bearing dates. Training-cell eligibility remains exactly `60` opportunities / `30` sessions / `20` instruments`; selector scoring remains the deterministic 5th percentile of `1,000` XNYS-session-cluster bootstrap mean net-R outcomes at `50` bps. The fallback hierarchy backs off only for insufficient support; a supported cell with nonpositive or undefined score abstains and cannot be rescued by a broader positive cell. Same-fold standalone baselines are recorded beside the out-of-sample selector profile. Derived analysis artifacts are atomic, restartable and self-hash/SHA receipted. This package opens no new outcomes and grants no strategy/selector promotion, PAPER/LIVE, provider, broker, consumed-master or future-blind authority. BH-FDR/Deflated-Sharpe/PBO-CSCV and tail/portfolio robustness remain required before any promotion decision.
-
-Next Track-B sequence: (1) accept/merge PR #76 only after exact-head Windows+Ubuntu regression is green; (2) run `.\\.venv\\Scripts\\python.exe scripts\\run_b35_evidence_analysis.py` once against the already-completed compact B35 artifacts—**do not rerun the minute replay**; (3) review standalone strategy, frozen condition-cell and out-of-sample selector results, including HVD's known sparse 58-opportunity coverage; (4) complete the preregistered multiplicity/robustness and portfolio-level diagnostics before any promotion claim; (5) perform the bounded diagnostic/calibration review while preserving every v1 result; (6) freeze the eight-new-family successor contract and confluence schema before opening their outcomes; (7) later evaluate the genuinely new future blind only after required accrual and without refitting on it; and (8) never reuse the consumed master interval. Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence.md`."""
-new = """**B35 condition/selector analyzer status (2026-09-11): COMPLETE / PROFILE-ONLY.** PR #76 merged as `cceccdc23569f6d48395a52322a83f59ba555b23`; the workstation analysis completed with fingerprint `8369790cc019e84091d9ff431e0ba82678e8b23ec09f65f010cdfaca35d3254f`. It normalized all 20,171,286 accepted compact opportunities and constructed 33 complete-XNYS 504/63/63/1 walk-forward folds. The frozen selector evaluated 17,030,985 test opportunities, selected 3,747 (3,188 comparable), and abstained on 99.978%. Selected mean return across the exact cost grid was +0.2984% / +0.1984% / +0.0485% / -0.2015% / -0.7014% at 0/10/25/50/100 bps. Strategy-level interpretation and current dispositions live in `docs/strategy_evidence_register.md`; no strategy or selector was promoted.
+d = roadmap.read_text(encoding="utf-8")
+pattern = re.compile(
+    r"\*\*B35 condition/selector analyzer status \(2026-09-11\): IMPLEMENTED / ACCEPTANCE PENDING in PR #76\.\*\*.*?Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence\.md`\.",
+    re.S,
+)
+replacement = """**B35 condition/selector analyzer status (2026-09-11): COMPLETE / PROFILE-ONLY.** PR #76 merged as `cceccdc23569f6d48395a52322a83f59ba555b23`; the workstation analysis completed with fingerprint `8369790cc019e84091d9ff431e0ba82678e8b23ec09f65f010cdfaca35d3254f`. It normalized all 20,171,286 accepted compact opportunities and constructed 33 complete-XNYS 504/63/63/1 walk-forward folds. The frozen selector evaluated 17,030,985 test opportunities, selected 3,747 (3,188 comparable), and abstained on 99.978%. Selected mean return across the exact cost grid was +0.2984% / +0.1984% / +0.0485% / -0.2015% / -0.7014% at 0/10/25/50/100 bps. Strategy-level interpretation and current dispositions live in `docs/strategy_evidence_register.md`; no strategy or selector was promoted.
 
 **B35 retained-artifact robustness package is IMPLEMENTED / ACCEPTANCE ACTIVE in PR #78.** It validates the complete accepted analysis/receipt chain, creates aligned complete-session research profiles for the four B34 strategies and frozen selector, and computes the exact retained-artifact gates: cost robustness, deterministic 10,000-draw session-bootstrap downside/drawdown uncertainty, loss streaks, session contribution concentration, selected-cell/profile BH-FDR q=.05, Deflated Sharpe, and 16-partition CSCV/PBO. Cash is a same-unit benchmark. The accepted A34 account replay is contextual only because its daily strategy set, portfolio construction, date scope and costs are not statistically identical to B35. The frozen minute-path perturbations for entry delay, gap threshold, opening-range duration, premarket rel-volume threshold, and consolidation range cannot be reconstructed exactly from fired-opportunity compact artifacts and therefore fail closed as `REQUIRES_TARGETED_MINUTE_REPLAY`; no approximation is allowed. After accepted merge run `.\\.venv\\Scripts\\python.exe scripts\\run_b35_robustness_analysis.py`. This package opens no new minute outcomes, consumed master or future blind and grants no promotion/PAPER/LIVE/provider/broker authority.
 
 Next Track-B sequence: (1) accept/merge PR #78 only after exact-head Windows+Ubuntu regression is green; (2) run the retained-artifact robustness command once; (3) review its BH-FDR, Deflated-Sharpe, PBO/CSCV, bootstrap-tail, loss-streak/concentration and cost results; (4) implement one exact targeted minute-path perturbation replay that evaluates the remaining preregistered perturbations together in one pass, without changing the canonical B35 v1 result; (5) record the final B35 research disposition without promotion; (6) freeze any justified condition-gated/calibrated successors plus the eight-new-family/confluence contract under new fingerprints; (7) later evaluate the genuinely new future blind only after required accrual and without refitting on it; and (8) never reuse the consumed master interval. Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence.md`."""
-assert old in d
-d = d.replace(old, new, 1)
+d, count = pattern.subn(lambda _m: replacement, d, count=1)
+assert count == 1
 
-old = """2. **NEXT:** produce the preregistered B35 strategy x condition evidence and selector result.
-3. Freeze the exact **eight-new-family** successor contract and confluence feature
-   schema; bind the six daily plus four B34 families as retained baseline lineage.
-4. Implement shared PIT indicators/pivots and the eight independent new evaluators;
-   run source-only, semantic and exact-equivalence tests.
-5. Run expanded DEVELOPMENT evidence with standalone strategies first.
-6. Evaluate hard confirmation and confluence as separate hypotheses, including
-   redundancy, conflict, costs and sample-size effects.
-7. Perform one bounded diagnostic/calibration cycle; preregister up to three justified
-   v2 candidates per family and evaluate them only on untouched evidence.
-8. Promote nothing automatically. Survivors become candidates for the next
-   prospective/PAPER evidence gate; failures stay in the ledger and guide the next
-   research family."""
-new = """2. **COMPLETE (2026-09-11):** produce the preregistered B35 strategy x condition evidence and selector profile; no strategy/selector promotion resulted.
+pattern = re.compile(
+    r"2\. \*\*NEXT:\*\* produce the preregistered B35 strategy x condition evidence and selector result\..*?research family\.",
+    re.S,
+)
+replacement = """2. **COMPLETE (2026-09-11):** produce the preregistered B35 strategy x condition evidence and selector profile; no strategy/selector promotion resulted.
 3. **CURRENT:** complete B35 robustness. Run the retained-artifact PR #78 analyzer first, then one exact targeted minute-path perturbation package for the preregistered perturbations that cannot be reconstructed from compact outcomes. Record final B35 research disposition without promotion.
 4. Freeze the exact **eight-new-family** successor contract, justified B35 v2 candidates, and confluence feature schema; bind the six daily plus four B34 families as retained baseline lineage.
 5. Implement shared PIT indicators/pivots and the eight independent new evaluators; run source-only, semantic and exact-equivalence tests.
@@ -45,8 +37,8 @@ new = """2. **COMPLETE (2026-09-11):** produce the preregistered B35 strategy x 
 7. Evaluate hard confirmation and confluence as separate hypotheses, including redundancy, conflict, costs and sample-size effects.
 8. Perform one bounded diagnostic/calibration cycle; preregister up to three justified v2 candidates per family and evaluate them only on untouched evidence.
 9. Promote nothing automatically. Survivors become candidates for the next prospective/PAPER evidence gate; failures stay in the ledger and guide the next research family."""
-assert old in d
-d = d.replace(old, new, 1)
+d, count = pattern.subn(lambda _m: replacement, d, count=1)
+assert count == 1
 
 d = d.replace(
     "PLAIN-ENGLISH END → UPDATE BOTH LIVING DOCS IN THE SAME COMMIT → MERGE →",
@@ -54,13 +46,14 @@ d = d.replace(
     1,
 )
 d = d.replace(
-    "Every repository-changing package must update both living documents before merge.\nDocumentation is part of the implementation package, not a later clerical task.\nEach update must leave an auditable handoff including the package goal, what code/\nproduct capability changed, test and CI result when known, empirical/scientific\nresult if any, exact authority gained or not gained, protected-read/write state,\nknown limitations, and the next highest-value package. If either living document is\nstale, the package is not complete.",
-    "Every repository-changing package must update README and roadmap before merge; any package that changes or interprets strategy evidence must also update the Strategy Evidence Register. Documentation is part of the implementation package, not a later clerical task. Each update must leave an auditable handoff including the package goal, what code/product capability changed, test and CI result when known, empirical/scientific result if any, exact authority gained or not gained, protected-read/write state, known limitations, and the next highest-value package. If any applicable living document is stale, the package is not complete.",
+    "Every repository-changing package must update both living documents before merge.",
+    "Every repository-changing package must update README and roadmap before merge; any package that changes or interprets strategy evidence must also update the Strategy Evidence Register.",
     1,
 )
-roadmap.write_text(d, encoding='utf-8')
+d = d.replace("If either living document is\nstale, the package is not complete.", "If any applicable living document is\nstale, the package is not complete.", 1)
+roadmap.write_text(d, encoding="utf-8")
 
-s = register.read_text(encoding='utf-8')
+s = register.read_text(encoding="utf-8")
 needle = """## 6. Next B35 scientific work
 
 Before freezing any condition-gated v2 rule, complete the remaining preregistered robustness package over the accepted B35 analysis artifacts:
@@ -75,4 +68,4 @@ Before freezing any condition-gated v2 rule, complete the remaining preregistere
 """
 assert needle in s
 s = s.replace(needle, replacement, 1)
-register.write_text(s, encoding='utf-8')
+register.write_text(s, encoding="utf-8")
