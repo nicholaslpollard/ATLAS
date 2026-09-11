@@ -89,7 +89,7 @@ Every strategy/version entry should maintain, where available:
 
 **Interpretation:** B35 has not established promotable alpha. The selector materially improves the unrestricted strategies and retains a low-cost positive signal, but the 50-bps economics, FDR and Deflated-Sharpe gates remain negative. That supports continued bounded specialist/condition research, not promotion or retroactive weakening of costs.
 
-**Final robustness component:** PR #79 implements the five frozen minute-path perturbation families in one DEVELOPMENT-only pass. There are 27 strategy/variant profiles because entry delay is applied to all four strategies and consolidation-range perturbation applies independently to premarket-relvol and HVD. Each axis changes alone. All baseline values must reproduce the canonical v1 fired/comparable/noncomparable counts in every group before a perturbed group can complete. Better variants are diagnostic successor hypotheses only; selector refit and canonical-v1 rewrite are forbidden.
+**Final robustness component:** PR #79 merged to `main` as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`; the workstation run remains pending. It implements the five frozen minute-path perturbation families in one DEVELOPMENT-only pass. There are 27 strategy/variant profiles because entry delay is applied to all four strategies and consolidation-range perturbation applies independently to premarket-relvol and HVD. Each axis changes alone. All baseline values must reproduce the canonical v1 fired/comparable/noncomparable counts in every group before a perturbed group can complete. Better variants are diagnostic successor hypotheses only; selector refit and canonical-v1 rewrite are forbidden.
 
 ## 4. Current B35 strategy dispositions
 
@@ -216,3 +216,46 @@ Only after that closeout should ATLAS freeze condition-gated/calibrated successo
 ## 7. Authority
 
 As of this update, historical supported modern alpha remains **zero**. No B35 strategy, selector, condition cell, successor hypothesis, or confluence mechanism is `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`, or `LIVE_ELIGIBLE`. B35 research reads no consumed-master or future-blind outcomes and grants no provider, broker, PAPER, LIVE, strategy-promotion, or selector-promotion authority.
+
+## 7. Successor research hypotheses accepted for testing
+
+These entries are **approved research hypotheses only**. They are not strategy validation, authority promotion, or permission to reinterpret B35 v1. Exact strategy specifications and fingerprints are frozen only in the successor package after B35 targeted perturbation evidence closes.
+
+### 7.1 `orb_stocks_in_play_5m_v1` — planned / high priority
+
+- Family: Opening Range / opening momentum; it is not independent confluence from other ORB variants.
+- Evidence source: `LITERATURE_ANCHORED` idea prior plus independent ATLAS motivation from weak unrestricted ORB and condition-sensitive B35 behavior.
+- Mechanism: abnormal same-time opening participation / relative volume + sufficient executable liquidity/volatility -> first-five-minute directional range -> objective breakout -> intraday continuation.
+- Must define before performance: universe/liquidity floor, same-time opening-volume baseline, finite activity-selection rule, 5-minute range, breakout confirmation, entry clock, stop/invalidation, exit/EOD flat rule, sizing and cost assumptions.
+- Primary question: does activity selection transform broad negative ORB into a viable opening-momentum specialist after realistic costs?
+
+### 7.2 15-minute ORB close + retest challenger — planned / high priority
+
+- Family: Opening Range; versioned challenger to `b34_opening_range_breakout_15m_v1`, not a new economic family.
+- Evidence source: `INTERNAL_CHALLENGER` / practitioner-motivated false-break hypothesis.
+- Freeze objective close-outside-range, retest distance, retest window, hold/rejection confirmation, entry, stop, exit and no-retest handling before performance.
+- Compare directly with v1 for trade-count reduction, MAE, MFE sacrificed by later entry, win rate, net expectancy/net-R, execution quality and condition stability.
+
+### 7.3 Objective session-level failed-break/reclaim — planned / medium-high priority
+
+- Family: Exhaustion reversal / structural failed break.
+- Evidence source: `PRACTITIONER_BASELINE` with mechanism support; do not use hidden-liquidity/ICT/SMC claims.
+- Initial PIT levels: previous-day high/low and premarket high/low. Opening-range levels may be a later version, not an open-ended target search.
+- Freeze normalized breach depth, maximum reclaim time, confirmation, entry, sweep-extreme stop/invalidation and one coherent exit hierarchy before performance.
+- Primary question: does breach-then-reclaim of universally observable session levels contain measurable reversal/continuation information after costs?
+
+### 7.4 Shared successor context / routing evidence
+
+Accepted for measurement in the next full historical run, not as automatic hard gates: broad-market directional alignment and volatility state; ticker relative strength/weakness versus SPY over a small preregistered horizon set; bounded higher-timeframe ticker trend; trend maturity/extension; opening/premarket/same-time volume participation and dollar-volume quality; overnight gap; price band; signal time; realized volatility; and execution/liquidity quality. Sector-relative strength waits for a PIT-valid sector map.
+
+Confluence remains a separate layer. Standalone strategy outcomes are preserved first; then incremental evidence is measured across independent families (price structure, participation, market state, relative strength, higher-timeframe state, volatility/liquidity, and later event/fundamental context). RSI/MACD/EMA variants are not counted as independent votes merely because they are numerically different transforms of price.
+
+### 7.5 Deferred/rejected near-term ideas
+
+Fundamentals are deferred for intraday ORB; future swing-conditioning research may ask whether technical setups vary by PIT fundamental/event quality without reopening closed SEC alpha hypotheses. Portfolio daily-loss limits, simultaneous-position competition, concentration, strategy exposure and capital allocation belong to account/PAPER simulation. Anchored VWAP waits for objective anchor semantics. Level-2/order-book, options-flow and GEX require separate historical source authority. Fixed arbitrary stop percentages/R:R, human psychology rules, small discretionary watchlists, Fibonacci and subjective ICT/FVG/order-block terminology are not adopted from the reviewed practitioner material.
+
+### 7.6 Successor laboratory target
+
+The next major Track-B experiment targets **19 economic strategy families**: the ten retained families plus nine distinct additions. Nearby policy variants, including the two ORB challengers, remain within their economic family for multiplicity and confluence accounting. B35 perturbation results determine which additional gap/premarket/HVD/ORB v2 challengers earn one of the bounded research slots before the successor contract is fingerprinted.
+
+The successor objective is **economically viable condition coverage**, not maximum win rate. Qualification evidence must consider win rate, payoff ratio, net expectancy/net-R, cost decay, drawdown/tail loss, sample/support, fold/year stability, concentration, MFE/MAE, holding time and abstention. No favorable post-result slice validates itself; a frozen successor still requires untouched/prospective evidence before promotion.
