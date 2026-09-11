@@ -888,14 +888,7 @@ recycled, and an existing blind window is never reassigned after results are kno
 
 ### Implementation order and efficiency
 
-B35 finishes first under its existing four-strategy fingerprint. After B35 closeout,
-run the frozen B35 strategy x condition evidence and preregistered selector exactly as
-planned. Then freeze the **eleven-new-family successor contract** plus the confluence
-feature schema before opening their outcomes. Reuse the six accepted daily families
-and four B34 intraday families rather than reimplementing them. Shared point-in-time
-feature extraction, canonical bars, indicator primitives, deterministic pivots and
-the validated parallel execution pattern should be reused where exact-equivalent,
-while every strategy evaluator remains independently testable and deterministic.
+B35 canonical replay, condition/selector analysis, and retained-artifact robustness are complete. PR #79 is merged; the current Track-B action is the single exact targeted minute-perturbation workstation run. After its 27 diagnostic profiles are reviewed and final B35 dispositions are recorded, freeze the **21-family / eleven-new-family successor contract**, only the B35 v2 challengers justified by the completed diagnostics, the bounded shared PIT context schema, and the separate confluence/ranking schema before opening successor performance. Reuse the six accepted daily families and four B34 intraday families rather than reimplementing them. Shared point-in-time feature extraction, canonical bars, indicator primitives, deterministic pivots, market/relative-strength context, and the validated parallel execution pattern should be reused where exact-equivalent, while every strategy evaluator remains independently testable and deterministic.
 
 The destination is not one universal strategy. It is a library of versioned
 mechanisms whose standalone evidence, condition profile, confluence value, costs and
