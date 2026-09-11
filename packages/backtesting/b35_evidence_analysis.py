@@ -110,6 +110,14 @@ def _reusable_artifact(
         "analysis_fingerprint": analysis_fingerprint,
         "artifact_path": str(path.resolve()),
     }
+    actual_receipt_id = str(receipt.get("receipt_id") or "")
+    expected_receipt_id = _stable_hash(
+        {key: value for key, value in receipt.items() if key != "receipt_id"}
+    )
+    if actual_receipt_id != expected_receipt_id:
+        path.unlink(missing_ok=True)
+        receipt_path.unlink(missing_ok=True)
+        return False
     if any(receipt.get(key) != value for key, value in required.items()):
         path.unlink(missing_ok=True)
         receipt_path.unlink(missing_ok=True)
@@ -710,9 +718,7 @@ def _selector_assignments_sql(opportunities_path: Path) -> str:
         if prior_support:
             condition = f"({prior_support}) AND ({condition})"
         support_cases.append(f"WHEN {condition} THEN {level}")
-        score_cases.append(
-            f"WHEN {condition} THEN s{level}.score_lcb_net_r_50"
-        )
+        score_cases.append(f"WHEN {condition} THEN s{level}.score_lcb_net_r_50")
     return f"""
         WITH assigned AS (
             SELECT
@@ -761,10 +767,13 @@ def _selector_summary(conn: duckdb.DuckDBPyConnection) -> dict[str, object]:
             count(*) AS test_opportunities,
             count(*) FILTER (WHERE selected) AS selected_opportunities,
             count(*) FILTER (WHERE selected AND comparable) AS selected_comparable,
+            count(*) FILTER (WHERE comparable) AS standalone_comparable,
             count(DISTINCT session_date) AS test_sessions,
             count(DISTINCT symbol) AS test_instruments,
             avg(CASE WHEN selected THEN 1.0 ELSE 0.0 END) AS selection_rate,
             avg(CASE WHEN NOT selected THEN 1.0 ELSE 0.0 END) AS abstention_rate,
+            avg(net_return_50) FILTER (WHERE comparable) AS standalone_mean_net_return_50,
+            avg(net_r_50) FILTER (WHERE comparable) AS standalone_mean_net_r_50,
             avg(net_return_0) FILTER (WHERE selected AND comparable) AS mean_net_return_0,
             avg(net_return_10) FILTER (WHERE selected AND comparable) AS mean_net_return_10,
             avg(net_return_25) FILTER (WHERE selected AND comparable) AS mean_net_return_25,
@@ -786,6 +795,9 @@ def _selector_summary(conn: duckdb.DuckDBPyConnection) -> dict[str, object]:
                count(*) AS test_opportunities,
                count(*) FILTER (WHERE selected) AS selected_opportunities,
                count(*) FILTER (WHERE selected AND comparable) AS selected_comparable,
+               count(*) FILTER (WHERE comparable) AS standalone_comparable,
+               avg(net_r_50) FILTER (WHERE comparable) AS standalone_mean_net_r_50,
+               avg(net_return_50) FILTER (WHERE comparable) AS standalone_mean_net_return_50,
                avg(net_r_50) FILTER (WHERE selected AND comparable) AS mean_net_r_50,
                avg(net_return_50) FILTER (WHERE selected AND comparable) AS mean_net_return_50
         FROM selector_assignments
