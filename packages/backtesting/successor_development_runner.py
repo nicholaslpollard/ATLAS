@@ -49,7 +49,7 @@ from packages.backtesting.successor_runner_contract import (
     successor_policy_routes,
 )
 from packages.core.atomic_io import atomic_write_text, replace_with_retry, unique_temp_path
-from packages.core.settings import Settings, load_settings
+from packages.core.settings import AtlasSettings, load_settings
 from packages.core.successor_execution_profile import (
     SuccessorResearchExecutionProfile,
     resolve_successor_research_execution_profile,
@@ -119,7 +119,7 @@ def _write_parquet_atomic(path: Path, frame: pd.DataFrame) -> str:
     temp = unique_temp_path(path)
     try:
         frame.to_parquet(temp, index=False)
-        with temp.open("rb") as handle:
+        with temp.open("rb+") as handle:
             os.fsync(handle.fileno())
         replace_with_retry(temp, path)
     finally:
@@ -301,7 +301,7 @@ def _deserialize_unit(project_root: Path, payload: dict[str, object]) -> B35Deve
 
 
 def prepare_successor_development_inputs(
-    settings: Settings,
+    settings: AtlasSettings,
     *,
     identity: SuccessorDevelopmentRunIdentity,
 ) -> PreparedSuccessorInputs:
@@ -654,7 +654,7 @@ def validate_standalone_artifacts(
 
 def _worker(
     *,
-    settings: Settings,
+    settings: AtlasSettings,
     inputs: PreparedSuccessorInputs,
     output_root: Path,
     profile: SuccessorResearchExecutionProfile,
@@ -671,7 +671,7 @@ def _worker(
 
 
 def run_successor_development_standalone(
-    settings: Settings,
+    settings: AtlasSettings,
     *,
     identity: SuccessorDevelopmentRunIdentity,
     inputs: PreparedSuccessorInputs,
@@ -761,7 +761,7 @@ def _profile_with_workers(
 
 
 def run_successor_development_benchmark(
-    settings: Settings,
+    settings: AtlasSettings,
     *,
     identity: SuccessorDevelopmentRunIdentity,
     inputs: PreparedSuccessorInputs,

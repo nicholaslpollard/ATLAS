@@ -8,7 +8,7 @@ from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
 
-from packages.backtesting.b35_development_context import DailySessionSummary
+from packages.backtesting.b35_development_context import build_condition_snapshot
 from packages.backtesting.b35_development_replay import (
     _SymbolHistory,
     _current_regular_open,
@@ -637,9 +637,21 @@ def evaluate_successor_minute_session(
                 "engine_contract": SUCCESSOR_STANDALONE_ENGINE_CONTRACT,
                 "route": route.as_dict(),
                 "signal": asdict(setup),
-                "context": {
-                    "legacy_b35_signal_time_et": str(_signal_time_override(setup, bars, session_date)),
-                },
+                "context": asdict(
+                    build_condition_snapshot(
+                        setup,
+                        bars,
+                        symbol=symbol,
+                        session_date=session_date,
+                        prior_daily=retained_history.daily,
+                        current_regular_open=current_open,
+                        current_split_factor=current_epoch,
+                        prior_market_regime="UNAVAILABLE",
+                        signal_time_et_override=_signal_time_override(
+                            setup, bars, session_date
+                        ),
+                    )
+                ),
                 "outcome": asdict(outcome),
             }
         )
