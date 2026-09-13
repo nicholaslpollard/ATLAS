@@ -272,3 +272,10 @@ On 2026-09-13 the first authorized 4x1/6x1/8x1 successor workstation benchmark s
 The successor SPY aggregation contract is versioned to use the last observed regular SPY bar from the same session at or before the scheduled final minute with a hard maximum staleness of 5 minutes. The repair records all fallback sessions and staleness, forbids cross-session forward fill and provider calls, and fails closed when same-session coverage exceeds the bound. Because this aggregation fingerprint is bound into the successor run identity and benchmark Parquet hash, all downstream evidence remains attributable to the repaired rule.
 
 Consumed-master rows read: 0. Future-blind rows read: 0. Provider calls: 0. Broker reads/writes: 0/0. PAPER/LIVE/promotion authority: false/false/false. The next scientific action remains the bounded workstation equivalence benchmark; broad 493-group DEVELOPMENT outcomes remain unopened.
+
+
+### 8.1 Second SPY preparation finding — minute-only close reconstruction retired
+
+A second authorized benchmark attempt on 2026-09-13 again stopped during input preparation, before any 4x1/6x1/8x1 profile executed. The accepted minute source shows `2019-08-12` ending at `19:31:00Z` / 15:31 ET for SPY, **28 minutes stale** versus the scheduled final regular minute. No successor performance was opened.
+
+ATLAS will not widen the minute tolerance to disguise this source gap. A new source-only audit is required instead. Minute data remains the primary benchmark source; only a minute session that is missing, invalid, or >5 minutes stale may be repaired from the exact same-session raw canonical V2 daily SPY close, and daily repair is hard-limited to years <=2025. The 2026 native-daily partition is forbidden so no consumed-master rows can be touched indirectly. The audit must resolve every DEVELOPMENT XNYS session, bind exact source/file hashes into a receipt, and preserve consumed-master/future/provider/broker reads at 0 with PAPER/LIVE/promotion false. Broad successor outcomes remain unopened.
