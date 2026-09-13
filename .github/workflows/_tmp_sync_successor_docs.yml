@@ -1,0 +1,36 @@
+name: One-time successor living-doc sync
+
+on:
+  push:
+    branches:
+      - review/b35-closeout-successor-freeze
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: ${{ !contains(github.event.head_commit.message, '[living-doc-sync]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: review/b35-closeout-successor-freeze
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Synchronize living documents
+        run: python scripts/_sync_successor_living_docs.py
+      - name: Commit synchronized documents
+        shell: bash
+        run: |
+          if git diff --quiet -- README.md docs/roadmap.md docs/strategy_evidence_register.md; then
+            echo "No living-document changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/roadmap.md docs/strategy_evidence_register.md
+          git commit -m "[living-doc-sync] Synchronize B35 closeout and successor freeze"
+          git push origin HEAD:review/b35-closeout-successor-freeze
