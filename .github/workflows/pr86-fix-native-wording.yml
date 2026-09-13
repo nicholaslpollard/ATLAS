@@ -1,0 +1,34 @@
+name: PR86 fix native daily wording
+
+on:
+  push:
+    branches:
+      - codex/successor-spy-daily-source-audit
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Fix native-daily SPY audit wording'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/successor-spy-daily-source-audit
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Apply asserted wording cleanup
+        run: python scripts/_pr86_fix_native_wording.py
+      - name: Syntax check
+        run: python -m py_compile packages/backtesting/successor_spy_benchmark_source.py
+      - name: Commit permanent package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 1
+          git commit -m "Fix native-daily SPY audit wording"
+          git push origin HEAD:codex/successor-spy-daily-source-audit
