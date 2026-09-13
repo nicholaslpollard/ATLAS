@@ -43,6 +43,11 @@ def test_runner_contract_freezes_routes_sources_grouping_and_authority() -> None
     assert sum(item["native_timeframe"] == "1m" for item in payload["policy_routes"]) == 10
     assert payload["sources"][DAILY_SOURCE_ID]["source_fingerprint"] == SHA_A
     assert payload["sources"][MINUTE_SOURCE_ID]["source_fingerprint"] == SHA_B
+    assert payload["source_binding_identity"] == {
+        "locator": "PROJECT_RELATIVE_POSIX_PATH",
+        "content_identity": "SHA256",
+        "absolute_local_paths_in_scientific_fingerprint": False,
+    }
     assert payload["grouping"]["daily"]["group_count"] == 64
     assert payload["artifact_order"] == list(ARTIFACT_ORDER)
     assert payload["outcomes"]["cost_grid_bps_all_in_round_trip"] == list(COST_GRID_BPS)
