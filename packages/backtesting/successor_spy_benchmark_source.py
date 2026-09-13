@@ -266,7 +266,7 @@ def _load_plan_records_for_fallback(
     years: set[int],
 ) -> tuple[list[dict[str, object]], dict[str, object]]:
     if any(year > SPY_DAILY_FALLBACK_LAST_YEAR for year in years):
-        raise SuccessorSpyBenchmarkSourceError("refusing 2026-or-later split-daily SPY fallback")
+        raise SuccessorSpyBenchmarkSourceError("refusing 2026-or-later native-daily SPY fallback")
     manifest_path = layout.manifests / "native_acquisition_plan.json"
     plan_path = layout.manifests / "native_acquisition_plan.jsonl.gz"
     manifest = _read_json(manifest_path, "native acquisition plan manifest")
@@ -306,7 +306,7 @@ def _load_plan_records_for_fallback(
     selected_years = [int(record["year"]) for record in selected]
     if sorted(selected_years) != sorted(years) or len(selected_years) != len(set(selected_years)):
         raise SuccessorSpyBenchmarkSourceError(
-            f"SPY split-daily fallback units do not map one-to-one to requested years: {sorted(years)}"
+            f"SPY native-daily fallback units do not map one-to-one to requested years: {sorted(years)}"
         )
     return selected, {
         "native_plan_sha256": str(manifest["plan_sha256"]),
