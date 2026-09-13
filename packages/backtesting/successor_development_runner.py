@@ -72,16 +72,21 @@ SUCCESSOR_DEVELOPMENT_BENCHMARK_CONTRACT = (
 BENCHMARK_DAILY_TOKENS = ("daily_00", "daily_32")
 BENCHMARK_MINUTE_GROUP_INDEXES = (0, 60, 120, 180, 240, 300, 360, 420)
 BENCHMARK_WORKER_SHAPES = (4, 6, 8)
+SPY_BENCHMARK_MAX_STALENESS_MINUTES = 5
 SPY_BENCHMARK_AGGREGATION_CONTRACT = (
-    "atlas-successor-spy-benchmark-v1-accepted-minute-exact-final-regular-bar"
+    "atlas-successor-spy-benchmark-v2-accepted-minute-bounded-last-regular-bar"
 )
 SPY_BENCHMARK_AGGREGATION_FINGERPRINT = canonical_sha256(
     {
         "contract": SPY_BENCHMARK_AGGREGATION_CONTRACT,
         "symbol": "SPY",
         "source": "ACCEPTED_B35_EXACT_NATIVE_MINUTE_SOURCE",
-        "session_value": "EXACT_REGULAR_CLOSE_MINUS_ONE_MINUTE_BAR_CLOSE",
-        "missing_or_duplicate_final_bar": "FAIL_CLOSED",
+        "session_value": (
+            "LAST_OBSERVED_SAME_SESSION_REGULAR_BAR_AT_OR_BEFORE_SCHEDULED_FINAL_MINUTE"
+        ),
+        "maximum_staleness_minutes": SPY_BENCHMARK_MAX_STALENESS_MINUTES,
+        "cross_session_fill": False,
+        "missing_duplicate_or_over_staleness": "FAIL_CLOSED",
         "source_start": DEVELOPMENT_START.isoformat(),
         "source_end": DEVELOPMENT_END.isoformat(),
         "provider_calls": 0,
@@ -378,30 +383,76 @@ def build_spy_benchmark_from_accepted_minute_source(
         expected_records.append(
             {
                 "session_date": session,
-                "timestamp_utc": pd.Timestamp(regular_close - timedelta(minutes=1)),
+                "scheduled_final_timestamp_utc": pd.Timestamp(
+                    regular_close - timedelta(minutes=1)
+                ),
             }
         )
     expected = pd.DataFrame(expected_records)
     if expected.empty:
         raise SuccessorDevelopmentRunnerError("SPY benchmark expected session calendar is empty")
+
+    candidates = bars.merge(
+        expected,
+        on="session_date",
+        how="inner",
+        validate="many_to_one",
+        sort=False,
+    )
+    candidates = candidates.loc[
+        candidates["timestamp_utc"] <= candidates["scheduled_final_timestamp_utc"]
+    ].copy()
+    candidates = candidates.sort_values(
+        ["session_date", "timestamp_utc"], kind="stable"
+    )
+    closing = candidates.groupby("session_date", sort=False, as_index=False).tail(1).copy()
+    closing["staleness_minutes"] = (
+        closing["scheduled_final_timestamp_utc"] - closing["timestamp_utc"]
+    ).dt.total_seconds() / 60.0
     closing = expected.merge(
-        bars,
-        on=["session_date", "timestamp_utc"],
+        closing[["session_date", "timestamp_utc", "close", "staleness_minutes"]],
+        on="session_date",
         how="left",
         validate="one_to_one",
         sort=False,
     )
     closing["close"] = pd.to_numeric(closing["close"], errors="coerce").astype("float64")
-    if closing["close"].isna().any() or (closing["close"] <= 0.0).any():
-        missing = closing.loc[closing["close"].isna(), "session_date"].astype(str).tolist()
+    invalid = (
+        closing["timestamp_utc"].isna()
+        | closing["close"].isna()
+        | (closing["close"] <= 0.0)
+        | closing["staleness_minutes"].isna()
+        | (closing["staleness_minutes"] < 0.0)
+        | (closing["staleness_minutes"] > float(SPY_BENCHMARK_MAX_STALENESS_MINUTES))
+    )
+    if invalid.any():
+        bad = closing.loc[
+            invalid,
+            ["session_date", "timestamp_utc", "staleness_minutes"],
+        ]
+        details = [
+            f"{row.session_date}(last={row.timestamp_utc},stale_min={row.staleness_minutes})"
+            for row in bad.itertuples(index=False)
+        ]
         raise SuccessorDevelopmentRunnerError(
-            "SPY benchmark is missing/invalid exact final regular minute for session(s): "
-            + ", ".join(missing[:10])
+            "SPY benchmark has no valid same-session regular close within "
+            f"{SPY_BENCHMARK_MAX_STALENESS_MINUTES} minute(s) of the scheduled final minute: "
+            + ", ".join(details[:10])
         )
+
     benchmark = closing[["session_date", "close"]].copy()
     if benchmark["session_date"].duplicated().any() or len(benchmark) != len(expected):
         raise SuccessorDevelopmentRunnerError("SPY benchmark session accounting drifted")
     benchmark = benchmark.sort_values("session_date", kind="stable").reset_index(drop=True)
+    fallback = closing.loc[closing["staleness_minutes"] > 0.0].copy()
+    fallback_records = [
+        {
+            "session_date": str(row.session_date),
+            "selected_timestamp_utc": pd.Timestamp(row.timestamp_utc).isoformat(),
+            "staleness_minutes": float(row.staleness_minutes),
+        }
+        for row in fallback.itertuples(index=False)
+    ]
     unit_bindings = [
         {"unit_id": unit.unit_id, "canonical_sha256": unit.canonical_sha256}
         for unit in spy_units
@@ -414,6 +465,11 @@ def build_spy_benchmark_from_accepted_minute_source(
         "unit_count": len(spy_units),
         "session_count": len(benchmark),
         "scope": [DEVELOPMENT_START.isoformat(), DEVELOPMENT_END.isoformat()],
+        "maximum_staleness_minutes_allowed": SPY_BENCHMARK_MAX_STALENESS_MINUTES,
+        "fallback_session_count": len(fallback_records),
+        "fallback_sessions": fallback_records,
+        "maximum_observed_staleness_minutes": float(closing["staleness_minutes"].max()),
+        "cross_session_fill": False,
         "provider_calls": 0,
         "protected_rows_read": 0,
         "future_blind_rows_read": 0,

@@ -83,16 +83,47 @@ def test_spy_benchmark_uses_exact_final_regular_minute() -> None:
     assert report["provider_calls"] == 0
     assert report["protected_rows_read"] == 0
     assert report["future_blind_rows_read"] == 0
+    assert report["fallback_session_count"] == 0
+    assert report["maximum_observed_staleness_minutes"] == 0.0
 
 
-def test_spy_benchmark_missing_final_minute_fails_closed() -> None:
-    sessions = (runner.DEVELOPMENT_START,)
+def test_spy_benchmark_uses_bounded_same_session_fallback_for_2019_08_12() -> None:
+    sessions = (date(2019, 8, 12),)
     frame = _spy_frame(sessions)
-    frame = frame.loc[frame["timestamp_utc"] != pd.Timestamp("2016-01-04T20:59:00Z")].copy()
+    frame = frame.loc[frame["timestamp_utc"] != pd.Timestamp("2019-08-12T20:59:00Z")].copy()
     source = _FakeMinuteSource(frame, sessions)
     plan = SimpleNamespace(units=(_FakeUnit(),), source_fingerprint="b" * 64)
 
-    with pytest.raises(runner.SuccessorDevelopmentRunnerError, match="missing/invalid exact final regular minute"):
+    benchmark, report = runner.build_spy_benchmark_from_accepted_minute_source(source, plan)
+
+    assert benchmark["session_date"].tolist() == list(sessions)
+    assert benchmark["close"].tolist() == [500.0]
+    assert report["fallback_session_count"] == 1
+    assert report["fallback_sessions"][0]["session_date"] == "2019-08-12"
+    assert report["fallback_sessions"][0]["staleness_minutes"] == 1.0
+    assert report["cross_session_fill"] is False
+
+
+def test_spy_benchmark_over_bounded_staleness_fails_closed() -> None:
+    sessions = (runner.DEVELOPMENT_START,)
+    frame = pd.DataFrame(
+        [
+            {
+                "symbol": "SPY",
+                "session_segment": "regular",
+                "session_date": runner.DEVELOPMENT_START,
+                "timestamp_utc": pd.Timestamp("2016-01-04T20:53:00Z"),
+                "close": 500.0,
+            }
+        ]
+    )
+    source = _FakeMinuteSource(frame, sessions)
+    plan = SimpleNamespace(units=(_FakeUnit(),), source_fingerprint="b" * 64)
+
+    with pytest.raises(
+        runner.SuccessorDevelopmentRunnerError,
+        match="no valid same-session regular close within 5 minute",
+    ):
         runner.build_spy_benchmark_from_accepted_minute_source(source, plan)
 
 
