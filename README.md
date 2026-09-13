@@ -318,9 +318,12 @@ Important limitations:
   sizing, costs, and authority.
 - A separate daily reference-feature overlay supplies the exact indicator
   transitions needed by those policies without changing the accepted 33-feature
-  core. B34 now supplies accepted minute/session semantics and the initial
-  opening/premarket evaluators; the broader successor shared-context and eleven-new-family
-  feature/evaluator layer remains the next implementation package.
+  core. B34 supplies accepted minute/session semantics and the initial
+  opening/premarket evaluators. The successor pre-outcome implementation now adds the
+  shared daily PIT overlay, objective confirmed-pivot/chart-pattern geometry, ADX/DMI
+  and SPY-relative-strength context, closed-minute VWAP/failed-break evaluators, and
+  exact implementations for all eleven new families plus the four bounded B35
+  challengers. No successor historical performance is opened by that implementation.
 - The existing router applies fixed regime compatibility; it does not yet learn
   conditional, walk-forward strategy performance or calibrated probability.
 - A provider-free independent-strategy runner, condition-sliced opportunity/outcome
@@ -891,7 +894,7 @@ recycled, and an existing blind window is never reassigned after results are kno
 
 ### Implementation order and efficiency
 
-B35 canonical replay, condition/selector analysis, retained-artifact robustness, and exact targeted minute perturbations are complete. The successor **21-family / eleven-new-family** PRE-OUTCOME contract is now frozen in `packages/strategies/successor_practitioner_lab.py` and `docs/successor_practitioner_lab_preoutcome.md`. Four bounded B35 mechanism-level challengers are admitted: one quality/condition long gap successor, Stocks-in-Play 5-minute ORB, 15-minute ORB close/retest, and a quality/liquidity premarket-relvol successor. HVD receives no simple width/delay challenger. The next package implements the missing family evaluators/shared PIT features and binds them to the restart-safe parallel runtime before successor performance is opened. Reuse the six accepted daily families and four B34 intraday families rather than reimplementing them. Shared point-in-time feature extraction, canonical bars, indicator primitives, deterministic pivots, market/relative-strength context, and the validated parallel execution pattern should be reused where exact-equivalent, while every strategy evaluator remains independently testable and deterministic.
+B35 canonical replay, condition/selector analysis, retained-artifact robustness, and exact targeted minute perturbations are complete. The successor **21-family / eleven-new-family** PRE-OUTCOME contract is now frozen in `packages/strategies/successor_practitioner_lab.py` and `docs/successor_practitioner_lab_preoutcome.md`. Four bounded B35 mechanism-level challengers are admitted: one quality/condition long gap successor, Stocks-in-Play 5-minute ORB, 15-minute ORB close/retest, and a quality/liquidity premarket-relvol successor. HVD receives no simple width/delay challenger. The family evaluators and shared PIT feature layer are now implemented under the frozen pre-outcome contract. The next package binds those exact evaluators to the restart-safe broad historical runner, freezes runner/source fingerprints, benchmarks scientifically equivalent execution shapes on the workstation, and only then opens permitted DEVELOPMENT performance. Reuse the six accepted daily families and four B34 intraday families rather than reimplementing them. Shared point-in-time feature extraction, canonical bars, indicator primitives, deterministic pivots, market/relative-strength context, and the validated parallel execution pattern should be reused where exact-equivalent, while every strategy evaluator remains independently testable and deterministic.
 
 The destination is not one universal strategy. It is a library of versioned
 mechanisms whose standalone evidence, condition profile, confluence value, costs and
