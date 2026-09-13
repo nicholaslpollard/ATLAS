@@ -103,6 +103,50 @@ def test_outcome_contract_preregisters_daily_and_intraday_mechanics() -> None:
     assert outcome["same_outcome_refit_or_search_permitted"] is False
 
 
+def test_source_binding_payload_is_root_independent(tmp_path: Path) -> None:
+    root_a = tmp_path / "root-a"
+    root_b = tmp_path / "root-b"
+    source_a = root_a / "data" / "source.parquet"
+    source_b = root_b / "data" / "source.parquet"
+    source_a.parent.mkdir(parents=True)
+    source_b.parent.mkdir(parents=True)
+    source_a.write_bytes(b"same-source-bytes")
+    source_b.write_bytes(b"same-source-bytes")
+    expected = hashlib.sha256(source_a.read_bytes()).hexdigest()
+
+    payload_a = build_source_binding_payload(
+        token="daily_source_2020",
+        source_id=DAILY_SOURCE_ID,
+        files=((source_a, expected),),
+        project_root=root_a,
+    )
+    payload_b = build_source_binding_payload(
+        token="daily_source_2020",
+        source_id=DAILY_SOURCE_ID,
+        files=((source_b, expected),),
+        project_root=root_b,
+    )
+
+    assert payload_a == payload_b
+    assert payload_a["files"][0]["relative_path"] == "data/source.parquet"
+    assert canonical_sha256(payload_a) == canonical_sha256(payload_b)
+
+
+def test_source_binding_payload_rejects_file_outside_project_root(tmp_path: Path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    source = tmp_path / "outside.parquet"
+    source.write_bytes(b"outside")
+    expected = hashlib.sha256(source.read_bytes()).hexdigest()
+    with pytest.raises(ValueError, match="escapes project root"):
+        build_source_binding_payload(
+            token="daily_source_2020",
+            source_id=DAILY_SOURCE_ID,
+            files=((source, expected),),
+            project_root=project_root,
+        )
+
+
 def test_source_binding_worker_hashes_bytes_without_opening_outcomes(tmp_path: Path) -> None:
     source = tmp_path / "source.parquet"
     source.write_bytes(b"not-a-real-parquet-needed-for-hash-only-preflight")
@@ -113,11 +157,16 @@ def test_source_binding_worker_hashes_bytes_without_opening_outcomes(tmp_path: P
         token="daily_source_2020",
         source_id=DAILY_SOURCE_ID,
         files=((source, expected),),
+        project_root=tmp_path,
     )
     path = input_root / "daily_source_2020.json"
     path.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")), encoding="utf-8")
     unit = ResearchWorkUnit(token="daily_source_2020", input_fingerprint=canonical_sha256(payload))
-    result = verify_source_binding_unit(unit, input_root=str(input_root))
+    result = verify_source_binding_unit(
+        unit,
+        input_root=str(input_root),
+        project_root=str(tmp_path),
+    )
     assert result["status"] == "SOURCE_BINDING_VERIFIED"
     assert result["files_verified"] == 1
     assert result["outcome_rows_opened"] == 0
@@ -134,6 +183,7 @@ def test_source_binding_worker_fails_closed_on_hash_drift(tmp_path: Path) -> Non
         token="minute_source_0000",
         source_id=MINUTE_SOURCE_ID,
         files=((source, expected),),
+        project_root=tmp_path,
     )
     (input_root / "minute_source_0000.json").write_text(
         json.dumps(payload, sort_keys=True, separators=(",", ":")), encoding="utf-8"
@@ -141,4 +191,8 @@ def test_source_binding_worker_fails_closed_on_hash_drift(tmp_path: Path) -> Non
     unit = ResearchWorkUnit(token="minute_source_0000", input_fingerprint=canonical_sha256(payload))
     source.write_bytes(b"changed")
     with pytest.raises(RuntimeError, match="SHA-256 drifted"):
-        verify_source_binding_unit(unit, input_root=str(input_root))
+        verify_source_binding_unit(
+            unit,
+            input_root=str(input_root),
+            project_root=str(tmp_path),
+        )
