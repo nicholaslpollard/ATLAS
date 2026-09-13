@@ -93,7 +93,30 @@ def test_source_audit_authority_never_promotes() -> None:
     assert authority["promotion_authority"] is False
 
 
-def test_contract_forbids_2026_split_daily_partition() -> None:
+def test_contract_forbids_2026_native_daily_partition() -> None:
     assert source.SPY_DAILY_FALLBACK_LAST_YEAR == 2025
     assert source.SPY_BENCHMARK_MAX_STALENESS_MINUTES == 5
     assert len(source.SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT_FINGERPRINT) == 64
+
+
+def test_parquet_io_uses_duckdb_without_pandas_optional_engines(tmp_path, monkeypatch) -> None:
+    def blocked(*args, **kwargs):
+        raise AssertionError("pandas optional Parquet engine must not be used")
+
+    monkeypatch.setattr(pd, "read_parquet", blocked)
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", blocked)
+    path = tmp_path / "spy.parquet"
+    frame = pd.DataFrame(
+        [{"session_date": date(2019, 8, 12), "close": 287.44}]
+    )
+
+    sha256 = source._write_parquet_atomic(path, frame)
+    loaded = source._read_parquet_frame(
+        path, columns=("session_date", "close")
+    )
+
+    assert len(sha256) == 64
+    assert pd.to_datetime(loaded["session_date"], errors="raise").dt.date.tolist() == [
+        date(2019, 8, 12)
+    ]
+    assert loaded["close"].tolist() == [287.44]

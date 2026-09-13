@@ -34,6 +34,8 @@ from packages.data.alpaca_v2_postbuild import (
     RESEARCH_DAILY_CONTRACT,
 )
 from packages.data.alpaca_v2_rebuild import V2Layout
+from packages.data.duckdb_connection import connect_utc
+from packages.data.sql import sql_string
 
 
 SPY_BENCHMARK_MAX_STALENESS_MINUTES = 5
@@ -136,13 +138,40 @@ def _audit_root(layout: V2Layout) -> Path:
     ).resolve()
 
 
+def _duckdb_projection(columns: tuple[str, ...] | None) -> str:
+    if columns is None:
+        return "*"
+    return ", ".join('"' + column.replace('"', '""') + '"' for column in columns)
+
+
+def _read_parquet_frame(
+    path: Path,
+    *,
+    columns: tuple[str, ...] | None = None,
+) -> pd.DataFrame:
+    con = connect_utc(":memory:")
+    try:
+        return con.execute(
+            f"SELECT {_duckdb_projection(columns)} "
+            f"FROM read_parquet({sql_string(path)}, hive_partitioning=false)"
+        ).fetchdf()
+    finally:
+        con.close()
+
+
 def _write_parquet_atomic(path: Path, frame: pd.DataFrame) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = unique_temp_path(path)
+    con = connect_utc(":memory:")
     try:
-        frame.to_parquet(temp, index=False)
+        con.register("spy_benchmark_frame", frame)
+        con.execute(
+            f"COPY (SELECT * FROM spy_benchmark_frame) TO {sql_string(temp)} "
+            "(FORMAT PARQUET, COMPRESSION ZSTD)"
+        )
         replace_with_retry(temp, path)
     finally:
+        con.close()
         temp.unlink(missing_ok=True)
     return _sha256_file(path)
 
@@ -469,9 +498,9 @@ def _daily_fallback_rows(
                 f"SPY was provider-rejected in native daily source: {year}"
             )
 
-        frame = pd.read_parquet(
+        frame = _read_parquet_frame(
             canonical_path,
-            columns=[
+            columns=(
                 "symbol",
                 "session_date",
                 "close",
@@ -481,7 +510,7 @@ def _daily_fallback_rows(
                 "session_segment",
                 "is_adjusted",
                 "source_id",
-            ],
+            ),
         )
         frame["session_date"] = pd.to_datetime(
             frame["session_date"], errors="raise"
@@ -745,7 +774,7 @@ def load_accepted_spy_benchmark_source(
     actual_sha = _sha256_file(benchmark_path)
     if actual_sha != expected_sha:
         raise SuccessorSpyBenchmarkSourceError("SPY benchmark source artifact SHA-256 drifted")
-    frame = pd.read_parquet(benchmark_path)
+    frame = _read_parquet_frame(benchmark_path)
     if list(frame.columns) != ["session_date", "close"]:
         raise SuccessorSpyBenchmarkSourceError("SPY benchmark source artifact schema drifted")
     frame["session_date"] = pd.to_datetime(frame["session_date"], errors="raise").dt.date
