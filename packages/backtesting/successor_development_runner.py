@@ -48,6 +48,11 @@ from packages.backtesting.successor_runner_contract import (
     minute_symbol_groups,
     successor_policy_routes,
 )
+from packages.backtesting.successor_spy_benchmark_source import (
+    SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT,
+    SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT_FINGERPRINT,
+    load_accepted_spy_benchmark_source,
+)
 from packages.core.atomic_io import atomic_write_text, replace_with_retry, unique_temp_path
 from packages.core.settings import AtlasSettings, load_settings
 from packages.core.successor_execution_profile import (
@@ -72,26 +77,6 @@ SUCCESSOR_DEVELOPMENT_BENCHMARK_CONTRACT = (
 BENCHMARK_DAILY_TOKENS = ("daily_00", "daily_32")
 BENCHMARK_MINUTE_GROUP_INDEXES = (0, 60, 120, 180, 240, 300, 360, 420)
 BENCHMARK_WORKER_SHAPES = (4, 6, 8)
-SPY_BENCHMARK_MAX_STALENESS_MINUTES = 5
-SPY_BENCHMARK_AGGREGATION_CONTRACT = (
-    "atlas-successor-spy-benchmark-v2-accepted-minute-bounded-last-regular-bar"
-)
-SPY_BENCHMARK_AGGREGATION_FINGERPRINT = canonical_sha256(
-    {
-        "contract": SPY_BENCHMARK_AGGREGATION_CONTRACT,
-        "symbol": "SPY",
-        "source": "ACCEPTED_B35_EXACT_NATIVE_MINUTE_SOURCE",
-        "session_value": (
-            "LAST_OBSERVED_SAME_SESSION_REGULAR_BAR_AT_OR_BEFORE_SCHEDULED_FINAL_MINUTE"
-        ),
-        "maximum_staleness_minutes": SPY_BENCHMARK_MAX_STALENESS_MINUTES,
-        "cross_session_fill": False,
-        "missing_duplicate_or_over_staleness": "FAIL_CLOSED",
-        "source_start": DEVELOPMENT_START.isoformat(),
-        "source_end": DEVELOPMENT_END.isoformat(),
-        "provider_calls": 0,
-    }
-)
 SOURCE_HISTORY_POLICY = {
     "accepted_source_start": DEVELOPMENT_START.isoformat(),
     "evaluation_start": DEVELOPMENT_START.isoformat(),
@@ -222,6 +207,7 @@ def development_outcome_authority() -> dict[str, object]:
 def build_successor_development_run_identity(project_root: Path) -> SuccessorDevelopmentRunIdentity:
     preflight = validate_accepted_successor_preflight(project_root)
     settings = load_settings(Path(project_root).resolve())
+    spy_source = load_accepted_spy_benchmark_source(settings, preflight=preflight)
     split_evidence = load_b35_split_evidence(B35DevelopmentMinuteSource(settings).layout)
     payload: dict[str, object] = {
         "contract": SUCCESSOR_DEVELOPMENT_RUNNER_CONTRACT,
@@ -247,9 +233,11 @@ def build_successor_development_run_identity(project_root: Path) -> SuccessorDev
             "minute_retained_baseline_universe_may_be_rewritten": False,
         },
         "spy_benchmark": {
-            "contract": SPY_BENCHMARK_AGGREGATION_CONTRACT,
-            "fingerprint": SPY_BENCHMARK_AGGREGATION_FINGERPRINT,
-            "source": "ACCEPTED_B35_EXACT_NATIVE_MINUTE_SOURCE",
+            "contract": SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT,
+            "contract_fingerprint": SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT_FINGERPRINT,
+            "source": "ACCEPTED_SPY_SOURCE_AUDIT_MINUTE_PRIMARY_PRE2026_DAILY_REPAIR",
+            "source_audit_scientific_fingerprint": spy_source.scientific_fingerprint,
+            "benchmark_sha256": spy_source.benchmark_sha256,
         },
         "artifact_order": [
             "run_contract.json",
@@ -338,145 +326,6 @@ def _deserialize_unit(project_root: Path, payload: dict[str, object]) -> B35Deve
     )
 
 
-def build_spy_benchmark_from_accepted_minute_source(
-    source: B35DevelopmentMinuteSource,
-    minute_plan,
-) -> tuple[pd.DataFrame, dict[str, object]]:
-    """Derive same-session SPY close only from already accepted minute units.
-
-    The common-stock research-daily generation intentionally excludes ETFs, so SPY
-    cannot be sourced from that view. The exact native minute generation was already
-    hash-verified by the accepted preflight and contains the acquisition universe.
-    """
-
-    spy_units = tuple(unit for unit in minute_plan.units if "SPY" in unit.symbols)
-    if not spy_units:
-        raise SuccessorDevelopmentRunnerError("accepted minute source contains no SPY units")
-    pieces: list[pd.DataFrame] = []
-    for binding in spy_units:
-        frame = source.load_unit(
-            binding,
-            start_session=DEVELOPMENT_START,
-            end_session=DEVELOPMENT_END,
-        )
-        if frame.empty:
-            continue
-        selected = frame.loc[
-            (frame["symbol"].astype(str) == "SPY")
-            & (frame["session_segment"].astype(str) == "regular"),
-            ["session_date", "timestamp_utc", "close"],
-        ].copy()
-        if not selected.empty:
-            pieces.append(selected)
-    if not pieces:
-        raise SuccessorDevelopmentRunnerError("accepted minute source emitted no SPY regular bars")
-
-    bars = pd.concat(pieces, ignore_index=True)
-    bars["session_date"] = pd.to_datetime(bars["session_date"], errors="raise").dt.date
-    bars["timestamp_utc"] = pd.to_datetime(bars["timestamp_utc"], utc=True, errors="raise")
-    if bars.duplicated(["session_date", "timestamp_utc"]).any():
-        raise SuccessorDevelopmentRunnerError("SPY benchmark source contains duplicate minute keys")
-
-    expected_records: list[dict[str, object]] = []
-    for session in source.calendar.sessions_in_range(DEVELOPMENT_START, DEVELOPMENT_END):
-        _regular_open, regular_close = source.calendar.regular_open_close(session)
-        expected_records.append(
-            {
-                "session_date": session,
-                "scheduled_final_timestamp_utc": pd.Timestamp(
-                    regular_close - timedelta(minutes=1)
-                ),
-            }
-        )
-    expected = pd.DataFrame(expected_records)
-    if expected.empty:
-        raise SuccessorDevelopmentRunnerError("SPY benchmark expected session calendar is empty")
-
-    candidates = bars.merge(
-        expected,
-        on="session_date",
-        how="inner",
-        validate="many_to_one",
-        sort=False,
-    )
-    candidates = candidates.loc[
-        candidates["timestamp_utc"] <= candidates["scheduled_final_timestamp_utc"]
-    ].copy()
-    candidates = candidates.sort_values(
-        ["session_date", "timestamp_utc"], kind="stable"
-    )
-    closing = candidates.groupby("session_date", sort=False, as_index=False).tail(1).copy()
-    closing["staleness_minutes"] = (
-        closing["scheduled_final_timestamp_utc"] - closing["timestamp_utc"]
-    ).dt.total_seconds() / 60.0
-    closing = expected.merge(
-        closing[["session_date", "timestamp_utc", "close", "staleness_minutes"]],
-        on="session_date",
-        how="left",
-        validate="one_to_one",
-        sort=False,
-    )
-    closing["close"] = pd.to_numeric(closing["close"], errors="coerce").astype("float64")
-    invalid = (
-        closing["timestamp_utc"].isna()
-        | closing["close"].isna()
-        | (closing["close"] <= 0.0)
-        | closing["staleness_minutes"].isna()
-        | (closing["staleness_minutes"] < 0.0)
-        | (closing["staleness_minutes"] > float(SPY_BENCHMARK_MAX_STALENESS_MINUTES))
-    )
-    if invalid.any():
-        bad = closing.loc[
-            invalid,
-            ["session_date", "timestamp_utc", "staleness_minutes"],
-        ]
-        details = [
-            f"{row.session_date}(last={row.timestamp_utc},stale_min={row.staleness_minutes})"
-            for row in bad.itertuples(index=False)
-        ]
-        raise SuccessorDevelopmentRunnerError(
-            "SPY benchmark has no valid same-session regular close within "
-            f"{SPY_BENCHMARK_MAX_STALENESS_MINUTES} minute(s) of the scheduled final minute: "
-            + ", ".join(details[:10])
-        )
-
-    benchmark = closing[["session_date", "close"]].copy()
-    if benchmark["session_date"].duplicated().any() or len(benchmark) != len(expected):
-        raise SuccessorDevelopmentRunnerError("SPY benchmark session accounting drifted")
-    benchmark = benchmark.sort_values("session_date", kind="stable").reset_index(drop=True)
-    fallback = closing.loc[closing["staleness_minutes"] > 0.0].copy()
-    fallback_records = [
-        {
-            "session_date": str(row.session_date),
-            "selected_timestamp_utc": pd.Timestamp(row.timestamp_utc).isoformat(),
-            "staleness_minutes": float(row.staleness_minutes),
-        }
-        for row in fallback.itertuples(index=False)
-    ]
-    unit_bindings = [
-        {"unit_id": unit.unit_id, "canonical_sha256": unit.canonical_sha256}
-        for unit in spy_units
-    ]
-    report = {
-        "contract": SPY_BENCHMARK_AGGREGATION_CONTRACT,
-        "contract_fingerprint": SPY_BENCHMARK_AGGREGATION_FINGERPRINT,
-        "source_fingerprint": minute_plan.source_fingerprint,
-        "unit_binding_fingerprint": canonical_sha256(unit_bindings),
-        "unit_count": len(spy_units),
-        "session_count": len(benchmark),
-        "scope": [DEVELOPMENT_START.isoformat(), DEVELOPMENT_END.isoformat()],
-        "maximum_staleness_minutes_allowed": SPY_BENCHMARK_MAX_STALENESS_MINUTES,
-        "fallback_session_count": len(fallback_records),
-        "fallback_sessions": fallback_records,
-        "maximum_observed_staleness_minutes": float(closing["staleness_minutes"].max()),
-        "cross_session_fill": False,
-        "provider_calls": 0,
-        "protected_rows_read": 0,
-        "future_blind_rows_read": 0,
-    }
-    return benchmark, report
-
-
 def prepare_successor_development_inputs(
     settings: AtlasSettings,
     *,
@@ -490,13 +339,22 @@ def prepare_successor_development_inputs(
     ).resolve()
     input_root.mkdir(parents=True, exist_ok=True)
 
+    spy_source = load_accepted_spy_benchmark_source(settings, preflight=identity.preflight)
+    identity_spy = identity.contract.get("spy_benchmark")
+    if not isinstance(identity_spy, dict):
+        raise SuccessorDevelopmentRunnerError("run identity has no SPY benchmark binding")
+    if (
+        identity_spy.get("source_audit_scientific_fingerprint")
+        != spy_source.scientific_fingerprint
+        or identity_spy.get("benchmark_sha256") != spy_source.benchmark_sha256
+    ):
+        raise SuccessorDevelopmentRunnerError("SPY benchmark source audit changed after run identity construction")
+    benchmark_path = spy_source.benchmark_path
+    benchmark_sha = spy_source.benchmark_sha256
+    spy_report = spy_source.scientific
+
     minute_source = B35DevelopmentMinuteSource(settings)
     minute_plan = minute_source.plan(DEVELOPMENT_START, DEVELOPMENT_END)
-    spy, spy_report = build_spy_benchmark_from_accepted_minute_source(
-        minute_source, minute_plan
-    )
-    benchmark_path = input_root / "benchmark_spy.parquet"
-    benchmark_sha = _write_parquet_atomic(benchmark_path, spy)
 
     daily_adapter = ReferenceV2DailyLakeAdapter(settings)
     daily_result = daily_adapter.load(DEVELOPMENT_START, DEVELOPMENT_END)
@@ -535,7 +393,7 @@ def prepare_successor_development_inputs(
                     "row_count": len(group),
                     "materialized_parquet_sha256": parquet_sha,
                     "benchmark_sha256": benchmark_sha,
-                    "benchmark_contract_fingerprint": SPY_BENCHMARK_AGGREGATION_FINGERPRINT,
+                    "benchmark_contract_fingerprint": SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT_FINGERPRINT,
                 },
                 operational={
                     "parquet_locator": _project_locator(project_root, path),
@@ -701,7 +559,7 @@ def run_successor_development_group(
             raise SuccessorDevelopmentRunnerError(
                 f"daily scientific/operational benchmark binding drifted: {unit.token}"
             )
-        if scientific.get("benchmark_contract_fingerprint") != SPY_BENCHMARK_AGGREGATION_FINGERPRINT:
+        if scientific.get("benchmark_contract_fingerprint") != SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT_FINGERPRINT:
             raise SuccessorDevelopmentRunnerError(
                 f"daily benchmark contract drifted: {unit.token}"
             )
