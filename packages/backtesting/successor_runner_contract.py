@@ -67,6 +67,18 @@ def _require_sha256(value: str, label: str) -> str:
     return value
 
 
+def _project_relative_locator(path: Path, *, project_root: Path) -> str:
+    root = Path(project_root).resolve()
+    resolved = Path(path).resolve()
+    try:
+        relative = resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"source file escapes project root: {resolved}") from exc
+    if not relative.parts:
+        raise ValueError("source file locator cannot be the project root itself")
+    return relative.as_posix()
+
+
 def daily_group_token(instrument_id: str) -> str:
     """Stable, runtime-profile-independent group for complete daily histories."""
     if not instrument_id:
@@ -279,11 +291,25 @@ def minute_symbol_groups(units: Iterable[object]) -> tuple[tuple[tuple[str, ...]
     )
 
 
-def build_source_binding_payload(*, token: str, source_id: str, files: Iterable[tuple[Path, str]]) -> dict[str, object]:
-    records = [
-        {"path": str(Path(path).absolute()), "sha256": _require_sha256(expected, "source file SHA-256")}
-        for path, expected in files
-    ]
+def build_source_binding_payload(
+    *,
+    token: str,
+    source_id: str,
+    files: Iterable[tuple[Path, str]],
+    project_root: Path,
+) -> dict[str, object]:
+    if source_id not in {DAILY_SOURCE_ID, MINUTE_SOURCE_ID}:
+        raise ValueError(f"unsupported successor source id: {source_id}")
+    records = sorted(
+        (
+            {
+                "relative_path": _project_relative_locator(path, project_root=project_root),
+                "sha256": _require_sha256(expected, "source file SHA-256"),
+            }
+            for path, expected in files
+        ),
+        key=lambda item: str(item["relative_path"]),
+    )
     if not records:
         raise ValueError("source-binding group requires at least one file")
     return {
