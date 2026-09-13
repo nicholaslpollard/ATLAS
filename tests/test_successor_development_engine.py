@@ -100,6 +100,14 @@ def test_daily_engine_routes_retained_and_new_signals(
             implementation = engine._IMPLEMENTATIONS[route.policy_id]
             for trigger in implementation.trigger_features:
                 base[trigger] = 0.0
+    base["history_sessions"] = 300.0
+    for route in engine._DAILY_ROUTES:
+        if route.evaluator_contract_id != "accepted_reference_daily_v1":
+            continue
+        spec = engine.REFERENCE_STRATEGY_CATALOG.get(route.policy_id)
+        for required in spec.signal.required_features:
+            if required not in base.columns:
+                base[required] = 1.0
     base.loc[0, "sma_cross_50_200_up"] = 1.0
     base.loc[0, "bollinger_mean_reversion_long"] = 1.0
 

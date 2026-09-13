@@ -633,6 +633,22 @@ def run_successor_development_group(
     if kind == "daily":
         parquet = _resolve_project_locator(project, str(operational["parquet_locator"]))
         benchmark = _resolve_project_locator(project, str(operational["benchmark_locator"]))
+        if str(operational.get("parquet_sha256") or "") != str(
+            scientific.get("materialized_parquet_sha256") or ""
+        ):
+            raise SuccessorDevelopmentRunnerError(
+                f"daily scientific/operational parquet binding drifted: {unit.token}"
+            )
+        if str(operational.get("benchmark_sha256") or "") != str(
+            scientific.get("benchmark_sha256") or ""
+        ):
+            raise SuccessorDevelopmentRunnerError(
+                f"daily scientific/operational benchmark binding drifted: {unit.token}"
+            )
+        if scientific.get("benchmark_contract_fingerprint") != SPY_BENCHMARK_AGGREGATION_FINGERPRINT:
+            raise SuccessorDevelopmentRunnerError(
+                f"daily benchmark contract drifted: {unit.token}"
+            )
         if _sha256_file(parquet) != str(operational["parquet_sha256"]):
             raise SuccessorDevelopmentRunnerError(f"daily operational input hash drifted: {unit.token}")
         if _sha256_file(benchmark) != str(operational["benchmark_sha256"]):
@@ -835,6 +851,24 @@ def run_successor_development_standalone(
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     _write_json(root / "run_contract.json", identity.contract)
+    source_input_manifest_path = inputs.input_root / "input_manifest.json"
+    if not source_input_manifest_path.is_file():
+        raise SuccessorDevelopmentRunnerError(
+            f"prepared input manifest is missing: {source_input_manifest_path}"
+        )
+    input_manifest = json.loads(source_input_manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(input_manifest, dict):
+        raise SuccessorDevelopmentRunnerError("prepared input manifest is not a JSON object")
+    declared_input_fingerprint = str(input_manifest.get("fingerprint") or "")
+    unsigned_input_manifest = dict(input_manifest)
+    unsigned_input_manifest.pop("fingerprint", None)
+    actual_input_fingerprint = canonical_sha256(unsigned_input_manifest)
+    if (
+        declared_input_fingerprint != inputs.input_manifest_fingerprint
+        or actual_input_fingerprint != inputs.input_manifest_fingerprint
+    ):
+        raise SuccessorDevelopmentRunnerError("prepared input manifest fingerprint drifted")
+    _write_json(root / "input_manifest.json", input_manifest)
     invalidated = invalidate_corrupt_standalone_reuse(
         root,
         selected,
