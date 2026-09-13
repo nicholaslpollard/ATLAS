@@ -1,9 +1,11 @@
 name: PR83 living-document reconciliation
 
 on:
-  push:
+  pull_request:
     branches:
-      - codex/successor-runner-contract
+      - main
+    types:
+      - synchronize
 
 permissions:
   contents: write
