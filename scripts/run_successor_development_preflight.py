@@ -48,7 +48,25 @@ def _write_json(path: Path, payload: object) -> None:
     atomic_write_text(path, _canonical_json(payload) + "\n")
 
 
-def verify_source_binding_unit(unit: ResearchWorkUnit, *, input_root: str) -> dict[str, object]:
+def _resolve_source_locator(project_root: Path, locator: str) -> Path:
+    relative = Path(locator)
+    if not locator or relative.is_absolute():
+        raise RuntimeError(f"successor source locator must be project-relative: {locator!r}")
+    root = project_root.resolve()
+    resolved = (root / relative).resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise RuntimeError(f"successor source locator escapes project root: {locator}") from exc
+    return resolved
+
+
+def verify_source_binding_unit(
+    unit: ResearchWorkUnit,
+    *,
+    input_root: str,
+    project_root: str,
+) -> dict[str, object]:
     """Hash source files only; never parse bars, signals, returns, or outcomes."""
     path = Path(input_root) / f"{unit.token}.json"
     if not path.is_file():
@@ -61,12 +79,13 @@ def verify_source_binding_unit(unit: ResearchWorkUnit, *, input_root: str) -> di
     records = payload.get("files")
     if not isinstance(records, list) or not records:
         raise RuntimeError(f"successor source-binding input has no files: {unit.token}")
+    source_root = Path(project_root).resolve()
     bytes_verified = 0
     hashes: list[str] = []
     for record in records:
         if not isinstance(record, dict):
             raise RuntimeError("successor source-binding file record malformed")
-        source_path = Path(str(record.get("path") or ""))
+        source_path = _resolve_source_locator(source_root, str(record.get("relative_path") or ""))
         expected = str(record.get("sha256") or "")
         if not source_path.is_file():
             raise FileNotFoundError(f"missing successor source file: {source_path}")
@@ -130,7 +149,12 @@ def _daily_bindings(adapter: ReferenceV2DailyLakeAdapter) -> tuple[str, list[tup
     return fingerprint, bindings, report
 
 
-def _prepare_inputs(output_root: Path, daily_bindings, minute_plan) -> tuple[list[ResearchWorkUnit], dict[str, object]]:
+def _prepare_inputs(
+    output_root: Path,
+    project_root: Path,
+    daily_bindings,
+    minute_plan,
+) -> tuple[list[ResearchWorkUnit], dict[str, object]]:
     input_root = output_root / "source_binding_inputs"
     input_root.mkdir(parents=True, exist_ok=True)
     work: list[ResearchWorkUnit] = []
@@ -139,6 +163,7 @@ def _prepare_inputs(output_root: Path, daily_bindings, minute_plan) -> tuple[lis
             token=token,
             source_id=DAILY_SOURCE_ID,
             files=((path, expected_hash),),
+            project_root=project_root,
         )
         _write_json(input_root / f"{token}.json", payload)
         work.append(ResearchWorkUnit(token=token, input_fingerprint=canonical_sha256(payload)))
@@ -150,6 +175,7 @@ def _prepare_inputs(output_root: Path, daily_bindings, minute_plan) -> tuple[lis
             token=token,
             source_id=MINUTE_SOURCE_ID,
             files=((item.canonical_path, item.canonical_sha256) for item in units),
+            project_root=project_root,
         )
         _write_json(input_root / f"{token}.json", payload)
         work.append(ResearchWorkUnit(token=token, input_fingerprint=canonical_sha256(payload)))
@@ -191,8 +217,9 @@ def main(argv: list[str] | None = None) -> int:
         minute_source_fingerprint=minute_plan.source_fingerprint,
     )
     contract_fingerprint = str(contract["fingerprint"])
+    project_root = settings.project_root.resolve()
     output_root = (
-        settings.project_root
+        project_root
         / "data"
         / "v2_build"
         / "alpaca_sip_v2"
@@ -203,7 +230,7 @@ def main(argv: list[str] | None = None) -> int:
     ).resolve()
     output_root.mkdir(parents=True, exist_ok=True)
 
-    work, binding_report = _prepare_inputs(output_root, daily_bindings, minute_plan)
+    work, binding_report = _prepare_inputs(output_root, project_root, daily_bindings, minute_plan)
     source_manifest = {
         "contract": SUCCESSOR_RUNNER_CONTRACT,
         "runner_contract_fingerprint": contract_fingerprint,
@@ -232,7 +259,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"output={output_root}")
 
     coordinator = SuccessorParallelCoordinator(execution_profile=profile)
-    worker = functools.partial(verify_source_binding_unit, input_root=str(output_root / "source_binding_inputs"))
+    worker = functools.partial(
+        verify_source_binding_unit,
+        input_root=str(output_root / "source_binding_inputs"),
+        project_root=str(project_root),
+    )
     run_summary = coordinator.run(
         work,
         worker=worker,
