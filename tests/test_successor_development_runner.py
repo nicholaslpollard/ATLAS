@@ -257,3 +257,37 @@ def test_benchmark_rejects_scientific_output_drift(
             identity=identity,
             inputs=inputs,
         )
+
+def test_runner_parquet_io_uses_duckdb_without_pandas_optional_engines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def blocked(*args, **kwargs):
+        raise AssertionError("pandas optional Parquet engine must not be used")
+
+    monkeypatch.setattr(pd, "read_parquet", blocked)
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", blocked)
+    path = tmp_path / "daily.parquet"
+    frame = pd.DataFrame(
+        [
+            {
+                "instrument_id": "B",
+                "session_date": date(2020, 1, 3),
+                "timestamp_utc": pd.Timestamp("2020-01-03T14:30:00Z"),
+                "value": 2.0,
+            },
+            {
+                "instrument_id": "A",
+                "session_date": date(2020, 1, 2),
+                "timestamp_utc": pd.Timestamp("2020-01-02T14:30:00Z"),
+                "value": 1.0,
+            },
+        ]
+    )
+
+    sha256 = runner._write_parquet_atomic(path, frame)
+    loaded = runner._read_parquet_frame(path)
+
+    assert len(sha256) == 64
+    assert loaded["instrument_id"].tolist() == ["A", "B"]
+    assert loaded["value"].tolist() == [1.0, 2.0]
+
