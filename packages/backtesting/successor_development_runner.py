@@ -8,7 +8,7 @@ import shutil
 import time as monotonic_time
 from collections import Counter
 from dataclasses import asdict, dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -72,6 +72,28 @@ SUCCESSOR_DEVELOPMENT_BENCHMARK_CONTRACT = (
 BENCHMARK_DAILY_TOKENS = ("daily_00", "daily_32")
 BENCHMARK_MINUTE_GROUP_INDEXES = (0, 60, 120, 180, 240, 300, 360, 420)
 BENCHMARK_WORKER_SHAPES = (4, 6, 8)
+SPY_BENCHMARK_AGGREGATION_CONTRACT = (
+    "atlas-successor-spy-benchmark-v1-accepted-minute-exact-final-regular-bar"
+)
+SPY_BENCHMARK_AGGREGATION_FINGERPRINT = canonical_sha256(
+    {
+        "contract": SPY_BENCHMARK_AGGREGATION_CONTRACT,
+        "symbol": "SPY",
+        "source": "ACCEPTED_B35_EXACT_NATIVE_MINUTE_SOURCE",
+        "session_value": "EXACT_REGULAR_CLOSE_MINUS_ONE_MINUTE_BAR_CLOSE",
+        "missing_or_duplicate_final_bar": "FAIL_CLOSED",
+        "source_start": DEVELOPMENT_START.isoformat(),
+        "source_end": DEVELOPMENT_END.isoformat(),
+        "provider_calls": 0,
+    }
+)
+SOURCE_HISTORY_POLICY = {
+    "accepted_source_start": DEVELOPMENT_START.isoformat(),
+    "evaluation_start": DEVELOPMENT_START.isoformat(),
+    "predevelopment_warmup_available": False,
+    "warmup_policy": "ACCUMULATE_INSIDE_DEVELOPMENT_NO_INVENTED_PREHISTORY",
+    "unready_features": "REMAIN_UNAVAILABLE_UNTIL_REQUIRED_HISTORY_EXISTS",
+}
 
 
 class SuccessorDevelopmentRunnerError(RuntimeError):
@@ -213,6 +235,17 @@ def build_successor_development_run_identity(project_root: Path) -> SuccessorDev
             "minute": "ACCEPTED_B35_EXACT_SORTED_NATIVE_PLAN_SYMBOL_TUPLE_GROUPS",
             "execution_profile_changes_membership": False,
         },
+        "source_history_policy": SOURCE_HISTORY_POLICY,
+        "universe_policy": {
+            "daily": "REFERENCE_COMMON_EXECUTABLE_UNIVERSE_ALL_18_ROUTES",
+            "minute": "INHERIT_ACCEPTED_B35_NATIVE_PLAN_UNIVERSE_ALL_10_ROUTES",
+            "minute_retained_baseline_universe_may_be_rewritten": False,
+        },
+        "spy_benchmark": {
+            "contract": SPY_BENCHMARK_AGGREGATION_CONTRACT,
+            "fingerprint": SPY_BENCHMARK_AGGREGATION_FINGERPRINT,
+            "source": "ACCEPTED_B35_EXACT_NATIVE_MINUTE_SOURCE",
+        },
         "artifact_order": [
             "run_contract.json",
             "input_manifest.json",
@@ -300,6 +333,94 @@ def _deserialize_unit(project_root: Path, payload: dict[str, object]) -> B35Deve
     )
 
 
+def build_spy_benchmark_from_accepted_minute_source(
+    source: B35DevelopmentMinuteSource,
+    minute_plan,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Derive same-session SPY close only from already accepted minute units.
+
+    The common-stock research-daily generation intentionally excludes ETFs, so SPY
+    cannot be sourced from that view. The exact native minute generation was already
+    hash-verified by the accepted preflight and contains the acquisition universe.
+    """
+
+    spy_units = tuple(unit for unit in minute_plan.units if "SPY" in unit.symbols)
+    if not spy_units:
+        raise SuccessorDevelopmentRunnerError("accepted minute source contains no SPY units")
+    pieces: list[pd.DataFrame] = []
+    for binding in spy_units:
+        frame = source.load_unit(
+            binding,
+            start_session=DEVELOPMENT_START,
+            end_session=DEVELOPMENT_END,
+        )
+        if frame.empty:
+            continue
+        selected = frame.loc[
+            (frame["symbol"].astype(str) == "SPY")
+            & (frame["session_segment"].astype(str) == "regular"),
+            ["session_date", "timestamp_utc", "close"],
+        ].copy()
+        if not selected.empty:
+            pieces.append(selected)
+    if not pieces:
+        raise SuccessorDevelopmentRunnerError("accepted minute source emitted no SPY regular bars")
+
+    bars = pd.concat(pieces, ignore_index=True)
+    bars["session_date"] = pd.to_datetime(bars["session_date"], errors="raise").dt.date
+    bars["timestamp_utc"] = pd.to_datetime(bars["timestamp_utc"], utc=True, errors="raise")
+    if bars.duplicated(["session_date", "timestamp_utc"]).any():
+        raise SuccessorDevelopmentRunnerError("SPY benchmark source contains duplicate minute keys")
+
+    expected_records: list[dict[str, object]] = []
+    for session in source.calendar.sessions_in_range(DEVELOPMENT_START, DEVELOPMENT_END):
+        _regular_open, regular_close = source.calendar.regular_open_close(session)
+        expected_records.append(
+            {
+                "session_date": session,
+                "timestamp_utc": pd.Timestamp(regular_close - timedelta(minutes=1)),
+            }
+        )
+    expected = pd.DataFrame(expected_records)
+    if expected.empty:
+        raise SuccessorDevelopmentRunnerError("SPY benchmark expected session calendar is empty")
+    closing = expected.merge(
+        bars,
+        on=["session_date", "timestamp_utc"],
+        how="left",
+        validate="one_to_one",
+        sort=False,
+    )
+    closing["close"] = pd.to_numeric(closing["close"], errors="coerce").astype("float64")
+    if closing["close"].isna().any() or (closing["close"] <= 0.0).any():
+        missing = closing.loc[closing["close"].isna(), "session_date"].astype(str).tolist()
+        raise SuccessorDevelopmentRunnerError(
+            "SPY benchmark is missing/invalid exact final regular minute for session(s): "
+            + ", ".join(missing[:10])
+        )
+    benchmark = closing[["session_date", "close"]].copy()
+    if benchmark["session_date"].duplicated().any() or len(benchmark) != len(expected):
+        raise SuccessorDevelopmentRunnerError("SPY benchmark session accounting drifted")
+    benchmark = benchmark.sort_values("session_date", kind="stable").reset_index(drop=True)
+    unit_bindings = [
+        {"unit_id": unit.unit_id, "canonical_sha256": unit.canonical_sha256}
+        for unit in spy_units
+    ]
+    report = {
+        "contract": SPY_BENCHMARK_AGGREGATION_CONTRACT,
+        "contract_fingerprint": SPY_BENCHMARK_AGGREGATION_FINGERPRINT,
+        "source_fingerprint": minute_plan.source_fingerprint,
+        "unit_binding_fingerprint": canonical_sha256(unit_bindings),
+        "unit_count": len(spy_units),
+        "session_count": len(benchmark),
+        "scope": [DEVELOPMENT_START.isoformat(), DEVELOPMENT_END.isoformat()],
+        "provider_calls": 0,
+        "protected_rows_read": 0,
+        "future_blind_rows_read": 0,
+    }
+    return benchmark, report
+
+
 def prepare_successor_development_inputs(
     settings: AtlasSettings,
     *,
@@ -313,6 +434,14 @@ def prepare_successor_development_inputs(
     ).resolve()
     input_root.mkdir(parents=True, exist_ok=True)
 
+    minute_source = B35DevelopmentMinuteSource(settings)
+    minute_plan = minute_source.plan(DEVELOPMENT_START, DEVELOPMENT_END)
+    spy, spy_report = build_spy_benchmark_from_accepted_minute_source(
+        minute_source, minute_plan
+    )
+    benchmark_path = input_root / "benchmark_spy.parquet"
+    benchmark_sha = _write_parquet_atomic(benchmark_path, spy)
+
     daily_adapter = ReferenceV2DailyLakeAdapter(settings)
     daily_result = daily_adapter.load(DEVELOPMENT_START, DEVELOPMENT_END)
     frame = daily_result.bars.sort_values(
@@ -320,12 +449,13 @@ def prepare_successor_development_inputs(
     ).reset_index(drop=True)
     if int(daily_result.report.get("protected_master_return_rows_read", -1)) != 0:
         raise SuccessorDevelopmentRunnerError("daily DEVELOPMENT preparation read protected master rows")
-    spy = frame.loc[frame["ticker"].astype(str) == "SPY", ["session_date", "close"]].copy()
-    spy = spy.sort_values("session_date", kind="stable").reset_index(drop=True)
-    if spy.empty or spy["session_date"].duplicated().any():
-        raise SuccessorDevelopmentRunnerError("daily DEVELOPMENT source does not provide unique SPY benchmark sessions")
-    benchmark_path = input_root / "benchmark_spy.parquet"
-    benchmark_sha = _write_parquet_atomic(benchmark_path, spy)
+    if frame.empty:
+        raise SuccessorDevelopmentRunnerError("daily DEVELOPMENT source is empty")
+    observed_start = min(pd.to_datetime(frame["session_date"], errors="raise").dt.date)
+    if observed_start != DEVELOPMENT_START:
+        raise SuccessorDevelopmentRunnerError(
+            f"accepted daily source start drifted: {observed_start} != {DEVELOPMENT_START}"
+        )
 
     instrument_ids = sorted(str(value) for value in frame["instrument_id"].unique())
     bucket_by_id = {instrument_id: daily_group_token(instrument_id) for instrument_id in instrument_ids}
@@ -347,6 +477,9 @@ def prepare_successor_development_inputs(
                     "scope": [DEVELOPMENT_START.isoformat(), DEVELOPMENT_END.isoformat()],
                     "instrument_ids": ids,
                     "row_count": len(group),
+                    "materialized_parquet_sha256": parquet_sha,
+                    "benchmark_sha256": benchmark_sha,
+                    "benchmark_contract_fingerprint": SPY_BENCHMARK_AGGREGATION_FINGERPRINT,
                 },
                 operational={
                     "parquet_locator": _project_locator(project_root, path),
@@ -360,8 +493,6 @@ def prepare_successor_development_inputs(
     if len(daily_units) != 64:
         raise SuccessorDevelopmentRunnerError(f"expected all 64 daily groups, got {len(daily_units)}")
 
-    minute_source = B35DevelopmentMinuteSource(settings)
-    minute_plan = minute_source.plan(DEVELOPMENT_START, DEVELOPMENT_END)
     minute_groups = minute_symbol_groups(minute_plan.units)
     minute_units: list[ResearchWorkUnit] = []
     for index, (symbols, units) in enumerate(minute_groups):
@@ -377,6 +508,12 @@ def prepare_successor_development_inputs(
                     "scope": [DEVELOPMENT_START.isoformat(), DEVELOPMENT_END.isoformat()],
                     "symbols": list(symbols),
                     "unit_ids": [unit.unit_id for unit in units],
+                    "unit_bindings_sha256": canonical_sha256(
+                        [
+                            {"unit_id": unit.unit_id, "canonical_sha256": unit.canonical_sha256}
+                            for unit in units
+                        ]
+                    ),
                     "source_fingerprint": minute_plan.source_fingerprint,
                 },
                 operational={
@@ -400,8 +537,10 @@ def prepare_successor_development_inputs(
         "daily_groups": len(daily_units),
         "minute_groups": len(minute_units),
         "minute_source_units": len(minute_plan.units),
+        "source_history_policy": SOURCE_HISTORY_POLICY,
         "benchmark_locator": _project_locator(project_root, benchmark_path),
         "benchmark_sha256": benchmark_sha,
+        "benchmark_report": spy_report,
         "work_units": [
             {"token": unit.token, "input_fingerprint": unit.input_fingerprint}
             for unit in all_units
@@ -525,6 +664,14 @@ def run_successor_development_group(
     units = tuple(_deserialize_unit(project, item) for item in raw_units)
     if [item.unit_id for item in units] != list(scientific["unit_ids"]):
         raise SuccessorDevelopmentRunnerError(f"minute unit ids drifted: {unit.token}")
+    unit_bindings_sha256 = canonical_sha256(
+        [
+            {"unit_id": item.unit_id, "canonical_sha256": item.canonical_sha256}
+            for item in units
+        ]
+    )
+    if unit_bindings_sha256 != scientific.get("unit_bindings_sha256"):
+        raise SuccessorDevelopmentRunnerError(f"minute source bindings drifted: {unit.token}")
     symbols = tuple(str(value) for value in scientific["symbols"])
     if any(item.symbols != symbols for item in units):
         raise SuccessorDevelopmentRunnerError(f"minute symbol group drifted: {unit.token}")

@@ -18,8 +18,10 @@ from packages.backtesting.b35_development_replay import (
     _split_epoch,
 )
 from packages.backtesting.b35_intraday_outcomes import simulate_intraday_outcome
-from packages.backtesting.reference_strategy_runner import _universe_decision
+from packages.backtesting.reference_strategy_runner import _universe_decision, reference_signal_mask
 from packages.backtesting.successor_development_outcomes import (
+    DEVELOPMENT_END,
+    DEVELOPMENT_START,
     SuccessorDevelopmentOutcomeError,
     evaluate_daily_diagnostic_outcome,
     simulate_successor_intraday_outcome,
@@ -290,17 +292,23 @@ def evaluate_successor_daily_standalone(
                     raise SuccessorDevelopmentOutcomeError(
                         f"daily trigger feature missing: {route.policy_id}:{trigger_feature}"
                     )
-                fired_positions = [
-                    position
-                    for position, value in enumerate(instrument[trigger_feature].tolist())
-                    if not pd.isna(value) and float(value) == 1.0
-                ]
+                if retain_reference_universe:
+                    fired = reference_signal_mask(instrument, specification)
+                    fired_positions = fired[fired].index.tolist()
+                else:
+                    fired_positions = [
+                        position
+                        for position, value in enumerate(instrument[trigger_feature].tolist())
+                        if not pd.isna(value) and float(value) == 1.0
+                    ]
                 for position in fired_positions:
                     row = instrument.iloc[position]
-                    universe_eligible = True
-                    universe_reasons: tuple[str, ...] = ("SOURCE_COMMON_STOCK_PIT_IDENTITY_ACCEPTED",)
-                    if retain_reference_universe:
-                        universe_eligible, universe_reasons = _universe_decision(row)
+                    signal_session = pd.Timestamp(row["session_date"]).date()
+                    if signal_session < DEVELOPMENT_START or signal_session > DEVELOPMENT_END:
+                        continue
+                    # All 18 daily routes share the accepted executable common-universe
+                    # decision. Strategy firing remains independent of this disposition.
+                    universe_eligible, universe_reasons = _universe_decision(row)
                     outcome = evaluate_daily_diagnostic_outcome(
                         policy_id=route.policy_id,
                         economic_family_id=route.economic_family_id,
