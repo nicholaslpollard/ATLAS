@@ -1411,3 +1411,11 @@ The successor 21-family/context/confluence package, exact rules/features, PR #83
 activate/deactivate strategy specialties using trailing point-in-time evidence and
 abstain when no specialty clears support, cost, robustness, risk, and authority
 gates. Continuous market coverage is desirable; forced continuous trading is not.
+
+## 20. Successor DEVELOPMENT benchmark preparation repair
+
+The first authorized successor 4x1/6x1/8x1 workstation benchmark attempt on 2026-09-13 stopped during deterministic input preparation, before any benchmark execution profile ran or any successor performance was reported. The accepted minute source has no exact scheduled final regular SPY minute for 2019-08-12, while the daily successor feature contract only requires a same-session SPY close available for a next-session-open decision.
+
+The repaired benchmark aggregation contract therefore uses the last observed regular SPY bar from the **same session** at or before the scheduled final minute only when it is no more than **5 minutes stale**. Every fallback session, selected timestamp, and staleness value is recorded. Cross-session fill, previous-day substitution, provider calls, protected/master reads, and future-blind reads remain forbidden. Missing SPY coverage beyond the 5-minute bound still fails closed. The aggregation contract/fingerprint is part of the successor run identity, so the failed preparation cannot be silently reused under the repaired contract.
+
+The next gate remains the bounded exact-equivalence workstation benchmark. The full 493-group standalone DEVELOPMENT run is still prohibited until that benchmark passes and the selected worker profile is accepted. This repair grants no PAPER, LIVE, broker, provider, or promotion authority.

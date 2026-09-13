@@ -262,3 +262,13 @@ All eleven new-family rules and the four admitted B35 same-family challengers ha
 The source-only gate is accepted: **493/493 groups and 59,768 minute units**, runner-contract fingerprint `d2fb4b36ce9aafa1d807c915c15e15f8b52aa2fb11f5b7db742e0d7ecfe6d81c`, source-verification fingerprint `a5662843dcce50a15bbdc1158c020ef58437592652654e4f6a00f73cf07c86c3`. It opened zero historical outcomes. PR #84 adds the separately gated outcome engine, restart-safe parallel runner, exact input/artifact binding, standalone-before-conditioning/confluence boundary and workstation benchmark harness. Repository tests validate mechanics but are not performance evidence.
 
 No broad successor opportunity count, return, win rate, expectancy, drawdown, Sharpe, selector result, confluence result or promotion claim exists yet. The accepted sequence is: exact-head PR #84 CI and merge; bounded workstation 4x1/6x1/8x1 benchmark under `--authorize-development-outcomes --mode benchmark`; exact scientific equivalence plus thermal/OS-headroom acceptance; and only then a separately authorized full standalone DEVELOPMENT run. Consumed master and future blind remain unavailable, provider/broker/PAPER/LIVE/promotion authority remains zero/false, and no favorable DEVELOPMENT result can self-qualify a DEVELOPMENT-inspired challenger.
+
+## 8. Successor DEVELOPMENT benchmark preparation incident
+
+**Status:** preparation-only source-coverage repair; no successor benchmark performance opened; no promotion.
+
+On 2026-09-13 the first authorized 4x1/6x1/8x1 successor workstation benchmark stopped before profile execution because SPY had no exact scheduled final regular minute in the accepted minute source for session `2019-08-12`. This does not reopen B35 and does not authorize substituting external or later data.
+
+The successor SPY aggregation contract is versioned to use the last observed regular SPY bar from the same session at or before the scheduled final minute with a hard maximum staleness of 5 minutes. The repair records all fallback sessions and staleness, forbids cross-session forward fill and provider calls, and fails closed when same-session coverage exceeds the bound. Because this aggregation fingerprint is bound into the successor run identity and benchmark Parquet hash, all downstream evidence remains attributable to the repaired rule.
+
+Consumed-master rows read: 0. Future-blind rows read: 0. Provider calls: 0. Broker reads/writes: 0/0. PAPER/LIVE/promotion authority: false/false/false. The next scientific action remains the bounded workstation equivalence benchmark; broad 493-group DEVELOPMENT outcomes remain unopened.
