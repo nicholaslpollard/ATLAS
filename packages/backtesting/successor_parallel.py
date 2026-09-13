@@ -4,17 +4,17 @@ import hashlib
 import json
 import os
 import time
-from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
+from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Iterator
 
 from packages.core.atomic_io import atomic_write_text
 from packages.core.successor_execution_profile import SuccessorResearchExecutionProfile
 
 
 SUCCESSOR_PARALLEL_RUNTIME_CONTRACT = (
-    "successor-parallel-runtime-v1-restart-safe-profile-independent-science"
+    "successor-parallel-runtime-v2-bounded-restart-safe-profile-independent-science"
 )
 
 
@@ -143,12 +143,21 @@ def scientific_run_fingerprint(
     return _sha256_bytes(_canonical_json(payload).encode("utf-8"))
 
 
+def _next_or_none(iterator: Iterator[ResearchWorkUnit]) -> ResearchWorkUnit | None:
+    try:
+        return next(iterator)
+    except StopIteration:
+        return None
+
+
 class SuccessorParallelCoordinator:
     """Run independent groups in parallel with validated checkpoint reuse.
 
     ``worker`` must be a top-level picklable callable accepting ``ResearchWorkUnit``
-    and returning a JSON-serializable dict. Execution profile choices are telemetry
-    only and never enter scientific hashes.
+    and returning a JSON-serializable dict. Only at most ``workers`` futures are
+    submitted at once, so pending work does not create an unbounded process-pool
+    queue and progress reports reflect genuinely in-flight groups. Execution profile
+    choices are telemetry only and never enter scientific hashes.
     """
 
     def __init__(
@@ -171,10 +180,19 @@ class SuccessorParallelCoordinator:
         completed: list[CompletedGroup],
         started_monotonic: float,
         active_tokens: list[str],
+        remaining_pending: int,
         last_error: str | None = None,
     ) -> None:
         new_count = sum(not group.reused for group in completed)
         reused_count = sum(group.reused for group in completed)
+        elapsed = max(0.0, time.monotonic() - started_monotonic)
+        new_rate = None
+        eta_seconds = None
+        if new_count and elapsed > 0:
+            new_rate = new_count * 3600.0 / elapsed
+            unfinished = max(0, total - len(completed))
+            if new_rate > 0:
+                eta_seconds = unfinished * 3600.0 / new_rate
         payload = {
             "contract": SUCCESSOR_PARALLEL_RUNTIME_CONTRACT,
             "state": state,
@@ -183,8 +201,11 @@ class SuccessorParallelCoordinator:
             "groups_completed": len(completed),
             "groups_reused": reused_count,
             "groups_new": new_count,
+            "groups_pending_not_submitted": remaining_pending,
             "active_group_tokens": sorted(active_tokens),
-            "elapsed_seconds": max(0.0, time.monotonic() - started_monotonic),
+            "elapsed_seconds": elapsed,
+            "new_groups_per_hour": new_rate,
+            "eta_seconds": eta_seconds,
             "execution_profile": self.profile.as_dict(),
             "last_error": last_error,
         }
@@ -219,6 +240,8 @@ class SuccessorParallelCoordinator:
             else:
                 completed.append(prior)
 
+        pending_iter = iter(pending)
+        remaining_pending = len(pending)
         self._write_progress(
             progress_path,
             state="RUNNING",
@@ -226,53 +249,86 @@ class SuccessorParallelCoordinator:
             completed=completed,
             started_monotonic=started,
             active_tokens=[],
+            remaining_pending=remaining_pending,
         )
         if pending:
-            with ProcessPoolExecutor(max_workers=self.profile.workers) as executor:
-                future_to_unit = {executor.submit(worker, unit): unit for unit in pending}
-                last_heartbeat = 0.0
-                try:
-                    while future_to_unit:
-                        done, _ = wait(
-                            tuple(future_to_unit),
-                            timeout=min(1.0, self.heartbeat_seconds),
-                            return_when=FIRST_COMPLETED,
-                        )
-                        for future in done:
-                            unit = future_to_unit.pop(future)
-                            result = future.result()
-                            if not isinstance(result, dict):
-                                raise TypeError("successor worker must return a dict")
-                            completed.append(
-                                publish_completed_group(
-                                    output_root,
-                                    unit,
-                                    result,
-                                    scientific_contract_fingerprint=scientific_contract_fingerprint,
-                                )
-                            )
-                        now = time.monotonic()
-                        if done or now - last_heartbeat >= self.heartbeat_seconds:
-                            self._write_progress(
-                                progress_path,
-                                state="RUNNING",
-                                total=len(ordered),
-                                completed=completed,
-                                started_monotonic=started,
-                                active_tokens=[unit.token for unit in future_to_unit.values()],
-                            )
-                            last_heartbeat = now
-                except BaseException as exc:
-                    self._write_progress(
-                        progress_path,
-                        state="FAILED",
-                        total=len(ordered),
-                        completed=completed,
-                        started_monotonic=started,
-                        active_tokens=[unit.token for unit in future_to_unit.values()],
-                        last_error=f"{type(exc).__name__}: {exc}",
+            executor = ProcessPoolExecutor(max_workers=self.profile.workers)
+            future_to_unit: dict[Future[dict[str, object]], ResearchWorkUnit] = {}
+            try:
+                for _ in range(min(self.profile.workers, remaining_pending)):
+                    unit = _next_or_none(pending_iter)
+                    if unit is None:
+                        break
+                    future_to_unit[executor.submit(worker, unit)] = unit
+                    remaining_pending -= 1
+                last_heartbeat = time.monotonic()
+                while future_to_unit:
+                    done, _ = wait(
+                        tuple(future_to_unit),
+                        timeout=min(1.0, self.heartbeat_seconds),
+                        return_when=FIRST_COMPLETED,
                     )
-                    raise
+                    for future in done:
+                        unit = future_to_unit.pop(future)
+                        result = future.result()
+                        if not isinstance(result, dict):
+                            raise TypeError("successor worker must return a dict")
+                        completed.append(
+                            publish_completed_group(
+                                output_root,
+                                unit,
+                                result,
+                                scientific_contract_fingerprint=scientific_contract_fingerprint,
+                            )
+                        )
+                        next_unit = _next_or_none(pending_iter)
+                        if next_unit is not None:
+                            future_to_unit[executor.submit(worker, next_unit)] = next_unit
+                            remaining_pending -= 1
+                    now = time.monotonic()
+                    if done or now - last_heartbeat >= self.heartbeat_seconds:
+                        self._write_progress(
+                            progress_path,
+                            state="RUNNING",
+                            total=len(ordered),
+                            completed=completed,
+                            started_monotonic=started,
+                            active_tokens=[unit.token for unit in future_to_unit.values()],
+                            remaining_pending=remaining_pending,
+                        )
+                        last_heartbeat = now
+            except KeyboardInterrupt:
+                for future in future_to_unit:
+                    future.cancel()
+                self._write_progress(
+                    progress_path,
+                    state="INTERRUPTED",
+                    total=len(ordered),
+                    completed=completed,
+                    started_monotonic=started,
+                    active_tokens=[unit.token for unit in future_to_unit.values()],
+                    remaining_pending=remaining_pending,
+                    last_error="KeyboardInterrupt",
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise
+            except BaseException as exc:
+                for future in future_to_unit:
+                    future.cancel()
+                self._write_progress(
+                    progress_path,
+                    state="FAILED",
+                    total=len(ordered),
+                    completed=completed,
+                    started_monotonic=started,
+                    active_tokens=[unit.token for unit in future_to_unit.values()],
+                    remaining_pending=remaining_pending,
+                    last_error=f"{type(exc).__name__}: {exc}",
+                )
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise
+            else:
+                executor.shutdown(wait=True)
 
         if len(completed) != len(ordered):
             raise RuntimeError("successor parallel run finished without all groups")
@@ -287,6 +343,7 @@ class SuccessorParallelCoordinator:
             completed=completed,
             started_monotonic=started,
             active_tokens=[],
+            remaining_pending=0,
         )
         return {
             "status": "COMPLETE",
