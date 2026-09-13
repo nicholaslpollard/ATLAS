@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import json
 import math
+import os
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -163,15 +164,27 @@ def _write_parquet_atomic(path: Path, frame: pd.DataFrame) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = unique_temp_path(path)
     con = connect_utc(":memory:")
+    registered = False
     try:
         con.register("spy_benchmark_frame", frame)
+        registered = True
         con.execute(
-            f"COPY (SELECT * FROM spy_benchmark_frame) TO {sql_string(temp)} "
-            "(FORMAT PARQUET, COMPRESSION ZSTD)"
+            f"COPY (SELECT CAST(session_date AS DATE) AS session_date, close::DOUBLE AS close "
+            "FROM spy_benchmark_frame ORDER BY session_date) "
+            f"TO {sql_string(temp)} (FORMAT PARQUET, COMPRESSION ZSTD)"
         )
+        con.unregister("spy_benchmark_frame")
+        registered = False
+        con.close()
+        con = None
+        with temp.open("rb+") as handle:
+            os.fsync(handle.fileno())
         replace_with_retry(temp, path)
     finally:
-        con.close()
+        if con is not None:
+            if registered:
+                con.unregister("spy_benchmark_frame")
+            con.close()
         temp.unlink(missing_ok=True)
     return _sha256_file(path)
 

@@ -59,6 +59,8 @@ from packages.core.successor_execution_profile import (
     SuccessorResearchExecutionProfile,
     resolve_successor_research_execution_profile,
 )
+from packages.data.duckdb_connection import connect_utc
+from packages.data.sql import sql_string
 from packages.strategies.successor_implementation_bundle import (
     SUCCESSOR_IMPLEMENTATION_BUNDLE_FINGERPRINT,
 )
@@ -126,15 +128,52 @@ def _write_json(path: Path, payload: object) -> None:
     atomic_write_text(path, _canonical_json(payload) + "\n")
 
 
+def _duckdb_projection(columns: tuple[str, ...] | None) -> str:
+    if columns is None:
+        return "*"
+    return ", ".join('"' + column.replace('"', '""') + '"' for column in columns)
+
+
+def _read_parquet_frame(
+    path: Path,
+    *,
+    columns: tuple[str, ...] | None = None,
+) -> pd.DataFrame:
+    con = connect_utc(":memory:")
+    try:
+        return con.execute(
+            f"SELECT {_duckdb_projection(columns)} "
+            f"FROM read_parquet({sql_string(path)}, hive_partitioning=false)"
+        ).fetchdf()
+    finally:
+        con.close()
+
+
 def _write_parquet_atomic(path: Path, frame: pd.DataFrame) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = unique_temp_path(path)
+    con = connect_utc(":memory:")
+    registered = False
     try:
-        frame.to_parquet(temp, index=False)
+        con.register("successor_input_frame", frame)
+        registered = True
+        con.execute(
+            f"COPY (SELECT * FROM successor_input_frame "
+            "ORDER BY instrument_id, session_date, timestamp_utc) "
+            f"TO {sql_string(temp)} (FORMAT PARQUET, COMPRESSION ZSTD)"
+        )
+        con.unregister("successor_input_frame")
+        registered = False
+        con.close()
+        con = None
         with temp.open("rb+") as handle:
             os.fsync(handle.fileno())
         replace_with_retry(temp, path)
     finally:
+        if con is not None:
+            if registered:
+                con.unregister("successor_input_frame")
+            con.close()
         temp.unlink(missing_ok=True)
     return _sha256_file(path)
 
@@ -567,8 +606,8 @@ def run_successor_development_group(
             raise SuccessorDevelopmentRunnerError(f"daily operational input hash drifted: {unit.token}")
         if _sha256_file(benchmark) != str(operational["benchmark_sha256"]):
             raise SuccessorDevelopmentRunnerError("SPY benchmark operational input hash drifted")
-        frame = pd.read_parquet(parquet)
-        benchmark_frame = pd.read_parquet(benchmark)
+        frame = _read_parquet_frame(parquet)
+        benchmark_frame = _read_parquet_frame(benchmark)
         ids = sorted(str(value) for value in frame["instrument_id"].unique())
         if ids != list(scientific["instrument_ids"]) or len(frame) != int(scientific["row_count"]):
             raise SuccessorDevelopmentRunnerError(f"daily operational input content drifted: {unit.token}")

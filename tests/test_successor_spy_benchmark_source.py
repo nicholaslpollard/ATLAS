@@ -107,7 +107,10 @@ def test_parquet_io_uses_duckdb_without_pandas_optional_engines(tmp_path, monkey
     monkeypatch.setattr(pd.DataFrame, "to_parquet", blocked)
     path = tmp_path / "spy.parquet"
     frame = pd.DataFrame(
-        [{"session_date": date(2019, 8, 12), "close": 287.44}]
+        [
+            {"session_date": date(2019, 8, 13), "close": 288.11},
+            {"session_date": date(2019, 8, 12), "close": 287.44},
+        ]
     )
 
     sha256 = source._write_parquet_atomic(path, frame)
@@ -117,6 +120,7 @@ def test_parquet_io_uses_duckdb_without_pandas_optional_engines(tmp_path, monkey
 
     assert len(sha256) == 64
     assert pd.to_datetime(loaded["session_date"], errors="raise").dt.date.tolist() == [
-        date(2019, 8, 12)
+        date(2019, 8, 12),
+        date(2019, 8, 13),
     ]
-    assert loaded["close"].tolist() == [287.44]
+    assert loaded["close"].tolist() == [287.44, 288.11]
