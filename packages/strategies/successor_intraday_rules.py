@@ -13,7 +13,7 @@ from packages.schemas.market import CanonicalBar
 
 
 SUCCESSOR_INTRADAY_RULE_CONTRACT = (
-    "successor-intraday-rules-v1-closed-bar-pit-objective-quality-and-retest"
+    "successor-intraday-rules-v2-frozen-quality-clocks-keyed-breakout-relvol"
 )
 MARKET_TZ = ZoneInfo("America/New_York")
 REGULAR_START = time(9, 30)
@@ -55,10 +55,10 @@ def successor_intraday_rule_fingerprint() -> str:
             "missing_bar_policy": "absence remains absence; required complete ranges fail closed",
             "vwap": "observed regular HLC3*volume cumulative VWAP",
             "failed_break_levels": "prior regular high/low plus observed premarket high/low",
-            "gap_quality": {"gap_min": 0.02, "price_min": 5.0, "prior_median_dollar_volume_20_min": 20_000_000.0, "natr_14_min": 0.01, "natr_14_max": 0.08, "premarket_relvol_20_min": 1.5},
-            "orb_5m": {"required_bars": 5, "same_time_relvol_min": 2.0, "prior_median_dollar_volume_20_min": 20_000_000.0, "price_min": 5.0, "cutoff": "11:30"},
+            "gap_quality": {"gap_min": 0.02, "price_min": 5.0, "price_clock": "09:30 bar close available 09:31", "prior_median_dollar_volume_20_min": 20_000_000.0, "natr_14_min": 0.01, "natr_14_max": 0.08, "premarket_relvol_20_min": 1.5},
+            "orb_5m": {"required_bars": 5, "same_time_relvol_min": 2.0, "prior_median_dollar_volume_20_min": 20_000_000.0, "price_min": 5.0, "price_clock": "09:34 close frozen when range becomes available 09:35", "cutoff": "11:30"},
             "orb_15m_retest": {"required_bars": 15, "retest_bars": 5, "retest_atr_fraction": 0.25, "confirmation_atr_fraction": 0.10, "breakout_cutoff": "11:00"},
-            "premarket_quality": {"premarket_relvol_min": 2.0, "consolidation_max_fraction": 0.03, "consolidation_min_bars": 5, "prior_median_dollar_volume_20_min": 20_000_000.0, "price_min": 5.0, "premarket_dollar_volume_min": 2_000_000.0, "breakout_same_time_relvol_min": 1.5, "cutoff": "11:30"},
+            "premarket_quality": {"premarket_relvol_min": 2.0, "consolidation_max_fraction": 0.03, "consolidation_min_bars": 5, "prior_median_dollar_volume_20_min": 20_000_000.0, "price_min": 5.0, "price_clock": "last observed 09:00..09:29 consolidation close", "premarket_dollar_volume_min": 2_000_000.0, "breakout_same_time_relvol_min": 1.5, "breakout_relvol_binding": "exact first closed breakout timestamp", "cutoff": "11:30"},
             "authority": "RESEARCH_ONLY_NO_OUTCOME_NO_PAPER_NO_LIVE",
         }
     )
@@ -194,48 +194,190 @@ def evaluate_session_failed_break_reclaim(
 
 
 def evaluate_gap_quality_condition_long(
-    *, session_date: date, decision_time_utc: datetime, prior_regular_close: float, current_regular_open: float,
-    current_price: float, prior_median_dollar_volume_20: float, natr_14: float, premarket_relvol_20: float, split_crossed: bool,
+    bars: Iterable[CanonicalBar],
+    *,
+    session_date: date,
+    decision_time_utc: datetime,
+    prior_regular_close: float,
+    prior_median_dollar_volume_20: float,
+    natr_14: float,
+    premarket_relvol_20: float,
+    split_crossed: bool,
 ) -> SuccessorIntradaySignal:
     decision = _aware_utc(decision_time_utc).astimezone(MARKET_TZ)
     earliest = datetime.combine(session_date, time(9, 31), tzinfo=MARKET_TZ)
     if decision < earliest:
-        return _signal(policy_id="gap_quality_condition_long_v2", session_date=session_date, ready=False, fired=False, direction=None, signal_bar=None, reasons=("INFORMATION_CLOCK_NOT_READY",), evidence={"earliest_decision_et": earliest.isoformat()})
+        return _signal(
+            policy_id="gap_quality_condition_long_v2",
+            session_date=session_date,
+            ready=False,
+            fired=False,
+            direction=None,
+            signal_bar=None,
+            reasons=("INFORMATION_CLOCK_NOT_READY",),
+            evidence={"earliest_decision_et": earliest.isoformat()},
+        )
     if split_crossed:
-        return _signal(policy_id="gap_quality_condition_long_v2", session_date=session_date, ready=False, fired=False, direction=None, signal_bar=None, reasons=("SPLIT_CROSSES_PRICE_COMPARISON",), evidence={})
-    values = (prior_regular_close, current_regular_open, current_price, prior_median_dollar_volume_20, natr_14, premarket_relvol_20)
+        return _signal(
+            policy_id="gap_quality_condition_long_v2",
+            session_date=session_date,
+            ready=False,
+            fired=False,
+            direction=None,
+            signal_bar=None,
+            reasons=("SPLIT_CROSSES_PRICE_COMPARISON",),
+            evidence={},
+        )
+    closed = _closed_session_bars(
+        bars,
+        session_date=session_date,
+        decision_time_utc=decision_time_utc,
+        segment=SessionSegment.REGULAR,
+    )
+    first_regular = [bar for bar in closed if _local_time(bar) == time(9, 30)]
+    if not first_regular:
+        return _signal(
+            policy_id="gap_quality_condition_long_v2",
+            session_date=session_date,
+            ready=False,
+            fired=False,
+            direction=None,
+            signal_bar=None,
+            reasons=("FIRST_REGULAR_BAR_NOT_CLOSED",),
+            evidence={},
+        )
+    opening_bar = first_regular[0]
+    current_regular_open = float(opening_bar.open)
+    quality_price = float(opening_bar.close)
+    values = (
+        prior_regular_close,
+        current_regular_open,
+        quality_price,
+        prior_median_dollar_volume_20,
+        natr_14,
+        premarket_relvol_20,
+    )
     if not all(math.isfinite(value) for value in values):
         raise ValueError("gap quality inputs must be finite")
-    if prior_regular_close <= 0.0 or current_regular_open <= 0.0 or current_price <= 0.0:
+    if prior_regular_close <= 0.0 or current_regular_open <= 0.0 or quality_price <= 0.0:
         raise ValueError("gap quality prices must be positive")
     gap = current_regular_open / prior_regular_close - 1.0
-    checks = {"gap_ge_2pct": gap >= 0.02, "price_ge_5": current_price >= 5.0, "prior_median_dollar_volume_20_ge_20m": prior_median_dollar_volume_20 >= 20_000_000.0, "natr_14_ge_1pct": natr_14 >= 0.01, "natr_14_le_8pct": natr_14 <= 0.08, "premarket_relvol_20_ge_1_5": premarket_relvol_20 >= 1.5}
+    checks = {
+        "gap_ge_2pct": gap >= 0.02,
+        "price_ge_5": quality_price >= 5.0,
+        "prior_median_dollar_volume_20_ge_20m": prior_median_dollar_volume_20 >= 20_000_000.0,
+        "natr_14_ge_1pct": natr_14 >= 0.01,
+        "natr_14_le_8pct": natr_14 <= 0.08,
+        "premarket_relvol_20_ge_1_5": premarket_relvol_20 >= 1.5,
+    }
     fired = all(checks.values())
-    return _signal(policy_id="gap_quality_condition_long_v2", session_date=session_date, ready=True, fired=fired, direction="LONG" if fired else None, signal_bar=None, reasons=(("QUALITY_GATE_PASS",) if fired else ("QUALITY_GATE_FAIL",)), evidence={"gap_fraction": gap, "checks": checks})
-
+    return _signal(
+        policy_id="gap_quality_condition_long_v2",
+        session_date=session_date,
+        ready=True,
+        fired=fired,
+        direction="LONG" if fired else None,
+        signal_bar=opening_bar,
+        reasons=(("QUALITY_GATE_PASS",) if fired else ("QUALITY_GATE_FAIL",)),
+        evidence={
+            "gap_fraction": gap,
+            "quality_price_0930_close": quality_price,
+            "checks": checks,
+        },
+    )
 
 def evaluate_orb_stocks_in_play_5m(
-    bars: Iterable[CanonicalBar], *, session_date: date, decision_time_utc: datetime,
-    same_time_opening_relvol: float, prior_median_dollar_volume_20: float, current_price: float,
+    bars: Iterable[CanonicalBar],
+    *,
+    session_date: date,
+    decision_time_utc: datetime,
+    same_time_opening_relvol: float,
+    prior_median_dollar_volume_20: float,
 ) -> SuccessorIntradaySignal:
-    if not all(math.isfinite(value) for value in (same_time_opening_relvol, prior_median_dollar_volume_20, current_price)):
+    if not all(
+        math.isfinite(value)
+        for value in (same_time_opening_relvol, prior_median_dollar_volume_20)
+    ):
         raise ValueError("ORB stocks-in-play scalar inputs must be finite")
-    closed = _closed_session_bars(bars, session_date=session_date, decision_time_utc=decision_time_utc, segment=SessionSegment.REGULAR)
+    closed = _closed_session_bars(
+        bars,
+        session_date=session_date,
+        decision_time_utc=decision_time_utc,
+        segment=SessionSegment.REGULAR,
+    )
     opening = [bar for bar in closed if time(9, 30) <= _local_time(bar) < time(9, 35)]
     if len(opening) < 5:
-        return _signal(policy_id="orb_stocks_in_play_5m_v1", session_date=session_date, ready=False, fired=False, direction=None, signal_bar=None, reasons=("INCOMPLETE_FIVE_MINUTE_OPENING_RANGE",), evidence={"observed_range_bars": len(opening)})
-    range_high, range_low = max(bar.high for bar in opening), min(bar.low for bar in opening)
-    quality = {"same_time_opening_relvol_ge_2": same_time_opening_relvol >= 2.0, "prior_median_dollar_volume_20_ge_20m": prior_median_dollar_volume_20 >= 20_000_000.0, "price_ge_5": current_price >= 5.0}
+        return _signal(
+            policy_id="orb_stocks_in_play_5m_v1",
+            session_date=session_date,
+            ready=False,
+            fired=False,
+            direction=None,
+            signal_bar=None,
+            reasons=("INCOMPLETE_FIVE_MINUTE_OPENING_RANGE",),
+            evidence={"observed_range_bars": len(opening)},
+        )
+    range_high = max(bar.high for bar in opening)
+    range_low = min(bar.low for bar in opening)
+    opening_quality_price = float(opening[-1].close)
+    quality = {
+        "same_time_opening_relvol_ge_2": same_time_opening_relvol >= 2.0,
+        "prior_median_dollar_volume_20_ge_20m": prior_median_dollar_volume_20 >= 20_000_000.0,
+        "price_ge_5": opening_quality_price >= 5.0,
+    }
+    evidence = {
+        "checks": quality,
+        "range_high": range_high,
+        "range_low": range_low,
+        "opening_quality_price_0934_close": opening_quality_price,
+    }
     if not all(quality.values()):
-        return _signal(policy_id="orb_stocks_in_play_5m_v1", session_date=session_date, ready=True, fired=False, direction=None, signal_bar=opening[-1], reasons=("STOCKS_IN_PLAY_GATE_FAIL",), evidence={"checks": quality, "range_high": range_high, "range_low": range_low})
-    breakout_bars = _regular_through(closed, start=time(9, 35), cutoff=ORB_ENTRY_CUTOFF)
+        return _signal(
+            policy_id="orb_stocks_in_play_5m_v1",
+            session_date=session_date,
+            ready=True,
+            fired=False,
+            direction=None,
+            signal_bar=opening[-1],
+            reasons=("STOCKS_IN_PLAY_GATE_FAIL",),
+            evidence=evidence,
+        )
+    breakout_bars = _regular_through(
+        closed, start=time(9, 35), cutoff=ORB_ENTRY_CUTOFF
+    )
     for bar in breakout_bars:
         if bar.close > range_high:
-            return _signal(policy_id="orb_stocks_in_play_5m_v1", session_date=session_date, ready=True, fired=True, direction="LONG", signal_bar=bar, reasons=("FIVE_MINUTE_ORB_BREAKOUT", "STOCKS_IN_PLAY_GATE_PASS"), evidence={"range_high": range_high, "range_low": range_low, "checks": quality})
+            return _signal(
+                policy_id="orb_stocks_in_play_5m_v1",
+                session_date=session_date,
+                ready=True,
+                fired=True,
+                direction="LONG",
+                signal_bar=bar,
+                reasons=("FIVE_MINUTE_ORB_BREAKOUT", "STOCKS_IN_PLAY_GATE_PASS"),
+                evidence=evidence,
+            )
         if bar.close < range_low:
-            return _signal(policy_id="orb_stocks_in_play_5m_v1", session_date=session_date, ready=True, fired=True, direction="SHORT", signal_bar=bar, reasons=("FIVE_MINUTE_ORB_BREAKDOWN", "STOCKS_IN_PLAY_GATE_PASS"), evidence={"range_high": range_high, "range_low": range_low, "checks": quality})
-    return _signal(policy_id="orb_stocks_in_play_5m_v1", session_date=session_date, ready=True, fired=False, direction=None, signal_bar=breakout_bars[-1] if breakout_bars else opening[-1], reasons=("NO_FIVE_MINUTE_RANGE_BREAK",), evidence={"range_high": range_high, "range_low": range_low, "checks": quality})
-
+            return _signal(
+                policy_id="orb_stocks_in_play_5m_v1",
+                session_date=session_date,
+                ready=True,
+                fired=True,
+                direction="SHORT",
+                signal_bar=bar,
+                reasons=("FIVE_MINUTE_ORB_BREAKDOWN", "STOCKS_IN_PLAY_GATE_PASS"),
+                evidence=evidence,
+            )
+    return _signal(
+        policy_id="orb_stocks_in_play_5m_v1",
+        session_date=session_date,
+        ready=True,
+        fired=False,
+        direction=None,
+        signal_bar=breakout_bars[-1] if breakout_bars else opening[-1],
+        reasons=("NO_FIVE_MINUTE_RANGE_BREAK",),
+        evidence=evidence,
+    )
 
 def evaluate_orb_15m_close_retest(
     bars: Iterable[CanonicalBar], *, session_date: date, decision_time_utc: datetime, atr_reference: float,
@@ -281,32 +423,160 @@ def evaluate_orb_15m_close_retest(
 
 
 def evaluate_premarket_relvol_quality(
-    bars: Iterable[CanonicalBar], *, session_date: date, decision_time_utc: datetime,
-    prior_premarket_median_volume_20: float, prior_median_dollar_volume_20: float, current_price: float, breakout_same_time_relvol: float,
+    bars: Iterable[CanonicalBar],
+    *,
+    session_date: date,
+    decision_time_utc: datetime,
+    prior_premarket_median_volume_20: float,
+    prior_median_dollar_volume_20: float,
+    breakout_same_time_relvol_by_timestamp: dict[datetime, float],
 ) -> SuccessorIntradaySignal:
-    scalar_values = (prior_premarket_median_volume_20, prior_median_dollar_volume_20, current_price, breakout_same_time_relvol)
+    scalar_values = (prior_premarket_median_volume_20, prior_median_dollar_volume_20)
     if not all(math.isfinite(value) for value in scalar_values):
         raise ValueError("premarket quality scalar inputs must be finite")
     if prior_premarket_median_volume_20 <= 0.0:
-        return _signal(policy_id="premarket_relvol_quality_v2", session_date=session_date, ready=False, fired=False, direction=None, signal_bar=None, reasons=("PRIOR_PREMARKET_MEDIAN_VOLUME_UNAVAILABLE",), evidence={})
-    closed = _closed_session_bars(bars, session_date=session_date, decision_time_utc=decision_time_utc)
-    premarket = [bar for bar in closed if bar.session_segment == SessionSegment.PREMARKET and PREMARKET_START <= _local_time(bar) < PREMARKET_END]
-    consolidation = [bar for bar in premarket if PREMARKET_CONSOLIDATION_START <= _local_time(bar) < PREMARKET_CONSOLIDATION_END]
+        return _signal(
+            policy_id="premarket_relvol_quality_v2",
+            session_date=session_date,
+            ready=False,
+            fired=False,
+            direction=None,
+            signal_bar=None,
+            reasons=("PRIOR_PREMARKET_MEDIAN_VOLUME_UNAVAILABLE",),
+            evidence={},
+        )
+    closed = _closed_session_bars(
+        bars, session_date=session_date, decision_time_utc=decision_time_utc
+    )
+    premarket = [
+        bar
+        for bar in closed
+        if bar.session_segment == SessionSegment.PREMARKET
+        and PREMARKET_START <= _local_time(bar) < PREMARKET_END
+    ]
+    consolidation = [
+        bar
+        for bar in premarket
+        if PREMARKET_CONSOLIDATION_START
+        <= _local_time(bar)
+        < PREMARKET_CONSOLIDATION_END
+    ]
     if len(consolidation) < 5:
-        return _signal(policy_id="premarket_relvol_quality_v2", session_date=session_date, ready=False, fired=False, direction=None, signal_bar=None, reasons=("INSUFFICIENT_PREMARKET_CONSOLIDATION_BARS",), evidence={"consolidation_bars": len(consolidation)})
+        return _signal(
+            policy_id="premarket_relvol_quality_v2",
+            session_date=session_date,
+            ready=False,
+            fired=False,
+            direction=None,
+            signal_bar=None,
+            reasons=("INSUFFICIENT_PREMARKET_CONSOLIDATION_BARS",),
+            evidence={"consolidation_bars": len(consolidation)},
+        )
     pm_volume = sum(bar.volume for bar in premarket)
-    pm_dollar_volume = sum(((bar.high + bar.low + bar.close) / 3.0) * bar.volume for bar in premarket)
+    pm_dollar_volume = sum(
+        ((bar.high + bar.low + bar.close) / 3.0) * bar.volume for bar in premarket
+    )
     relvol = pm_volume / prior_premarket_median_volume_20
-    consolidation_high, consolidation_low = max(bar.high for bar in consolidation), min(bar.low for bar in consolidation)
-    last_price = consolidation[-1].close
-    consolidation_range = (consolidation_high - consolidation_low) / last_price if last_price > 0.0 else math.inf
-    quality = {"premarket_relvol_ge_2": relvol >= 2.0, "consolidation_range_le_3pct": consolidation_range <= 0.03, "prior_median_dollar_volume_20_ge_20m": prior_median_dollar_volume_20 >= 20_000_000.0, "price_ge_5": current_price >= 5.0, "premarket_dollar_volume_ge_2m": pm_dollar_volume >= 2_000_000.0, "breakout_same_time_relvol_ge_1_5": breakout_same_time_relvol >= 1.5}
-    regular = [bar for bar in closed if bar.session_segment == SessionSegment.REGULAR and REGULAR_START <= _local_time(bar) <= ORB_ENTRY_CUTOFF]
-    if all(quality.values()):
-        for bar in regular:
-            if bar.close > consolidation_high:
-                return _signal(policy_id="premarket_relvol_quality_v2", session_date=session_date, ready=True, fired=True, direction="LONG", signal_bar=bar, reasons=("PREMARKET_QUALITY_PASS", "CONSOLIDATION_BREAKOUT"), evidence={"premarket_relvol": relvol, "premarket_dollar_volume": pm_dollar_volume, "consolidation_high": consolidation_high, "consolidation_low": consolidation_low, "consolidation_range_fraction": consolidation_range, "checks": quality})
-    return _signal(policy_id="premarket_relvol_quality_v2", session_date=session_date, ready=True, fired=False, direction=None, signal_bar=regular[-1] if regular else None, reasons=(("NO_PREMARKET_QUALITY_BREAKOUT",) if all(quality.values()) else ("PREMARKET_QUALITY_GATE_FAIL",)), evidence={"premarket_relvol": relvol, "premarket_dollar_volume": pm_dollar_volume, "consolidation_range_fraction": consolidation_range, "checks": quality})
-
+    consolidation_high = max(bar.high for bar in consolidation)
+    consolidation_low = min(bar.low for bar in consolidation)
+    quality_price = float(consolidation[-1].close)
+    consolidation_range = (
+        (consolidation_high - consolidation_low) / quality_price
+        if quality_price > 0.0
+        else math.inf
+    )
+    static_quality = {
+        "premarket_relvol_ge_2": relvol >= 2.0,
+        "consolidation_range_le_3pct": consolidation_range <= 0.03,
+        "prior_median_dollar_volume_20_ge_20m": prior_median_dollar_volume_20 >= 20_000_000.0,
+        "price_ge_5": quality_price >= 5.0,
+        "premarket_dollar_volume_ge_2m": pm_dollar_volume >= 2_000_000.0,
+    }
+    base_evidence = {
+        "premarket_relvol": relvol,
+        "premarket_dollar_volume": pm_dollar_volume,
+        "consolidation_high": consolidation_high,
+        "consolidation_low": consolidation_low,
+        "consolidation_range_fraction": consolidation_range,
+        "quality_price_last_consolidation_close": quality_price,
+        "checks": static_quality,
+    }
+    if not all(static_quality.values()):
+        return _signal(
+            policy_id="premarket_relvol_quality_v2",
+            session_date=session_date,
+            ready=True,
+            fired=False,
+            direction=None,
+            signal_bar=None,
+            reasons=("PREMARKET_QUALITY_GATE_FAIL",),
+            evidence=base_evidence,
+        )
+    regular = [
+        bar
+        for bar in closed
+        if bar.session_segment == SessionSegment.REGULAR
+        and REGULAR_START <= _local_time(bar) <= ORB_ENTRY_CUTOFF
+    ]
+    first_breakout = next(
+        (bar for bar in regular if bar.close > consolidation_high), None
+    )
+    if first_breakout is None:
+        return _signal(
+            policy_id="premarket_relvol_quality_v2",
+            session_date=session_date,
+            ready=True,
+            fired=False,
+            direction=None,
+            signal_bar=regular[-1] if regular else None,
+            reasons=("NO_PREMARKET_QUALITY_BREAKOUT",),
+            evidence=base_evidence,
+        )
+    breakout_relvol = breakout_same_time_relvol_by_timestamp.get(
+        first_breakout.timestamp_utc
+    )
+    if breakout_relvol is None or not math.isfinite(float(breakout_relvol)):
+        return _signal(
+            policy_id="premarket_relvol_quality_v2",
+            session_date=session_date,
+            ready=False,
+            fired=False,
+            direction=None,
+            signal_bar=first_breakout,
+            reasons=("BREAKOUT_SAME_TIME_RELVOL_UNAVAILABLE",),
+            evidence={
+                **base_evidence,
+                "first_breakout_stamp_utc": first_breakout.timestamp_utc.isoformat(),
+            },
+        )
+    breakout_relvol = float(breakout_relvol)
+    breakout_pass = breakout_relvol >= 1.5
+    evidence = {
+        **base_evidence,
+        "first_breakout_stamp_utc": first_breakout.timestamp_utc.isoformat(),
+        "first_breakout_same_time_relvol": breakout_relvol,
+        "breakout_same_time_relvol_ge_1_5": breakout_pass,
+    }
+    if not breakout_pass:
+        return _signal(
+            policy_id="premarket_relvol_quality_v2",
+            session_date=session_date,
+            ready=True,
+            fired=False,
+            direction=None,
+            signal_bar=first_breakout,
+            reasons=("FIRST_BREAKOUT_RELVOL_GATE_FAIL",),
+            evidence=evidence,
+        )
+    return _signal(
+        policy_id="premarket_relvol_quality_v2",
+        session_date=session_date,
+        ready=True,
+        fired=True,
+        direction="LONG",
+        signal_bar=first_breakout,
+        reasons=("PREMARKET_QUALITY_PASS", "CONSOLIDATION_BREAKOUT"),
+        evidence=evidence,
+    )
 
 SUCCESSOR_INTRADAY_RULE_FINGERPRINT = successor_intraday_rule_fingerprint()

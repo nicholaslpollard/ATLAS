@@ -227,19 +227,36 @@ def test_failed_break_reclaim_is_objective_and_ambiguous_bars_abstain() -> None:
 
 def test_gap_quality_challenger_is_not_a_neighbor_threshold_search() -> None:
     session = date(2026, 9, 10)
+    first_bar = _bar(session, 9, 30, open_=10.25, high=10.4, low=10.2, close=10.3)
     result = evaluate_gap_quality_condition_long(
-        session_date=session, decision_time_utc=_decision(session, 9, 31), prior_regular_close=10.0,
-        current_regular_open=10.25, current_price=10.3, prior_median_dollar_volume_20=25_000_000.0,
+        [first_bar], session_date=session, decision_time_utc=_decision(session, 9, 31),
+        prior_regular_close=10.0, prior_median_dollar_volume_20=25_000_000.0,
         natr_14=0.03, premarket_relvol_20=1.8, split_crossed=False,
     )
     assert result.fired is True
     assert result.direction == "LONG"
     failed = evaluate_gap_quality_condition_long(
-        session_date=session, decision_time_utc=_decision(session, 9, 31), prior_regular_close=10.0,
-        current_regular_open=10.25, current_price=10.3, prior_median_dollar_volume_20=5_000_000.0,
+        [first_bar], session_date=session, decision_time_utc=_decision(session, 9, 31),
+        prior_regular_close=10.0, prior_median_dollar_volume_20=5_000_000.0,
         natr_14=0.03, premarket_relvol_20=1.8, split_crossed=False,
     )
     assert failed.fired is False
+
+
+def test_gap_quality_price_gate_is_frozen_to_first_closed_regular_bar() -> None:
+    session = date(2026, 9, 10)
+    bars = [
+        _bar(session, 9, 30, open_=10.25, high=10.3, low=4.8, close=4.9),
+        _bar(session, 9, 31, open_=4.9, high=10.5, low=4.9, close=10.4),
+    ]
+    result = evaluate_gap_quality_condition_long(
+        bars, session_date=session, decision_time_utc=_decision(session, 9, 32),
+        prior_regular_close=10.0, prior_median_dollar_volume_20=25_000_000.0,
+        natr_14=0.03, premarket_relvol_20=1.8, split_crossed=False,
+    )
+    assert result.fired is False
+    assert result.evidence["quality_price_0930_close"] == 4.9
+    assert result.evidence["checks"]["price_ge_5"] is False
 
 
 def test_five_minute_orb_requires_stocks_in_play_quality_and_closed_breakout() -> None:
@@ -251,7 +268,7 @@ def test_five_minute_orb_requires_stocks_in_play_quality_and_closed_breakout() -
     bars.append(_bar(session, 9, 35, open_=10.1, high=10.8, low=10.0, close=10.7))
     result = evaluate_orb_stocks_in_play_5m(
         bars, session_date=session, decision_time_utc=_decision(session, 9, 36),
-        same_time_opening_relvol=2.2, prior_median_dollar_volume_20=30_000_000.0, current_price=10.7,
+        same_time_opening_relvol=2.2, prior_median_dollar_volume_20=30_000_000.0,
     )
     assert result.fired is True
     assert result.direction == "LONG"
@@ -286,7 +303,42 @@ def test_premarket_quality_requires_participation_and_breakout() -> None:
     result = evaluate_premarket_relvol_quality(
         premarket + regular, session_date=session, decision_time_utc=_decision(session, 9, 31),
         prior_premarket_median_volume_20=200_000.0, prior_median_dollar_volume_20=30_000_000.0,
-        current_price=10.2, breakout_same_time_relvol=1.8,
+        breakout_same_time_relvol_by_timestamp={regular[0].timestamp_utc: 1.8},
     )
     assert result.fired is True
     assert result.direction == "LONG"
+
+
+def test_premarket_quality_binds_relvol_to_first_breakout_bar() -> None:
+    session = date(2026, 9, 10)
+    premarket = [
+        _bar(session, 9, minute, open_=10.0, high=10.10, low=9.95, close=10.02, volume=100_000.0, segment=SessionSegment.PREMARKET)
+        for minute in range(5)
+    ]
+    first = _bar(session, 9, 30, open_=10.02, high=10.25, low=10.0, close=10.20, volume=200_000.0)
+    later = _bar(session, 9, 31, open_=10.20, high=10.35, low=10.15, close=10.30, volume=300_000.0)
+    result = evaluate_premarket_relvol_quality(
+        premarket + [first, later], session_date=session, decision_time_utc=_decision(session, 9, 32),
+        prior_premarket_median_volume_20=200_000.0, prior_median_dollar_volume_20=30_000_000.0,
+        breakout_same_time_relvol_by_timestamp={first.timestamp_utc: 1.2, later.timestamp_utc: 3.0},
+    )
+    assert result.fired is False
+    assert "FIRST_BREAKOUT_RELVOL_GATE_FAIL" in result.reason_codes
+    assert result.evidence["first_breakout_stamp_utc"] == first.timestamp_utc.isoformat()
+    assert result.evidence["first_breakout_same_time_relvol"] == 1.2
+
+
+def test_five_minute_orb_price_gate_uses_frozen_opening_range_close() -> None:
+    session = date(2026, 9, 10)
+    opening = [
+        _bar(session, 9, 30 + minute, open_=4.8, high=4.95, low=4.7, close=4.9)
+        for minute in range(5)
+    ]
+    later_breakout = _bar(session, 9, 35, open_=4.9, high=6.2, low=4.9, close=6.0)
+    result = evaluate_orb_stocks_in_play_5m(
+        opening + [later_breakout], session_date=session, decision_time_utc=_decision(session, 9, 36),
+        same_time_opening_relvol=2.5, prior_median_dollar_volume_20=30_000_000.0,
+    )
+    assert result.fired is False
+    assert result.evidence["opening_quality_price_0934_close"] == 4.9
+    assert result.evidence["checks"]["price_ge_5"] is False

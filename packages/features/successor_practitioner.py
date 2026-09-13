@@ -13,7 +13,7 @@ from packages.features.rolling import sma, wilder_average
 
 
 SUCCESSOR_PRACTITIONER_FEATURE_CONTRACT_VERSION = (
-    "successor-practitioner-features-v1-pit-confirmed-patterns-shared-compute"
+    "successor-practitioner-features-v2-pit-confirmed-patterns-exact-pivot-cross-shared-compute"
 )
 
 PIVOT_RADIUS = 2
@@ -117,6 +117,7 @@ def successor_practitioner_feature_fingerprint() -> str:
                 "daily_inputs": "finalized same-session daily close for next-session-open decisions",
                 "benchmark_join": "same-session SPY close only; no future benchmark rows",
                 "confirmed_pivot": "radius-2 center becomes usable only after both right-side bars have closed",
+                "pivot_breakout_cross": "prior and current close are evaluated against the same previously-known confirmed pivot level",
                 "pattern_breakout": "pattern geometry must have been known before the breakout bar",
             },
             "shared_compute": (
@@ -496,23 +497,22 @@ def _daily_overlay(group: pd.DataFrame) -> pd.DataFrame:
         expansion_valid,
     )
 
+    # The level itself must have been known before the signal session. Compare
+    # both sides of the crossover with that exact same frozen level; never mix
+    # the previously-known level with an older pivot snapshot.
     known_high = result["confirmed_pivot_high"].shift(1)
     known_low = result["confirmed_pivot_low"].shift(1)
-    prior_known_high = result["confirmed_pivot_high"].shift(2)
-    prior_known_low = result["confirmed_pivot_low"].shift(2)
     pivot_valid = group["relative_volume_20"].notna()
     result["pivot_sr_breakout_long"] = _binary(
         known_high.notna()
-        & prior_known_high.notna()
-        & (previous_close <= prior_known_high)
+        & (previous_close <= known_high)
         & (close > known_high)
         & (group["relative_volume_20"] >= PIVOT_BREAKOUT_RELATIVE_VOLUME_MIN),
         pivot_valid & known_high.notna() & previous_close.notna(),
     )
     result["pivot_sr_breakout_short"] = _binary(
         known_low.notna()
-        & prior_known_low.notna()
-        & (previous_close >= prior_known_low)
+        & (previous_close >= known_low)
         & (close < known_low)
         & (group["relative_volume_20"] >= PIVOT_BREAKOUT_RELATIVE_VOLUME_MIN),
         pivot_valid & known_low.notna() & previous_close.notna(),
