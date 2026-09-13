@@ -48,6 +48,18 @@ def _write_json(path: Path, payload: object) -> None:
     atomic_write_text(path, _canonical_json(payload) + "\n")
 
 
+def _relative_locator(project_root: Path, path: Path) -> str:
+    root = project_root.resolve()
+    resolved = Path(path).resolve()
+    try:
+        relative = resolved.relative_to(root)
+    except ValueError as exc:
+        raise RuntimeError(f"successor source path escapes project root: {resolved}") from exc
+    if not relative.parts:
+        raise RuntimeError("successor source locator cannot be the project root itself")
+    return relative.as_posix()
+
+
 def _resolve_source_locator(project_root: Path, locator: str) -> Path:
     relative = Path(locator)
     if not locator or relative.is_absolute():
@@ -106,7 +118,11 @@ def verify_source_binding_unit(
     }
 
 
-def _daily_bindings(adapter: ReferenceV2DailyLakeAdapter) -> tuple[str, list[tuple[str, Path, str]], dict[str, object]]:
+def _daily_bindings(
+    adapter: ReferenceV2DailyLakeAdapter,
+    *,
+    project_root: Path,
+) -> tuple[str, list[tuple[str, Path, str]], dict[str, object]]:
     manifest_path, manifest = adapter._manifest(None)
     adapter._scope(date.fromisoformat(DEVELOPMENT_START), date.fromisoformat(DEVELOPMENT_END), manifest)
     fingerprint = str(manifest["source_fingerprint"])
@@ -139,8 +155,8 @@ def _daily_bindings(adapter: ReferenceV2DailyLakeAdapter) -> tuple[str, list[tup
     if rows != int(manifest.get("research_rows", -1)):
         raise RuntimeError("successor daily partition row accounting drifted")
     report = {
-        "manifest_path": str(manifest_path),
-        "source_root": str(expected_root),
+        "manifest_id": _relative_locator(project_root, manifest_path),
+        "source_root_id": _relative_locator(project_root, expected_root),
         "source_fingerprint": fingerprint,
         "partition_count": len(bindings),
         "reported_rows": rows,
@@ -184,7 +200,7 @@ def _prepare_inputs(
         "daily_source_binding_groups": len(daily_bindings),
         "minute_source_binding_groups": len(minute_groups),
         "minute_source_units": len(minute_plan.units),
-        "source_binding_input_root": str(input_root),
+        "source_binding_input_root_id": _relative_locator(project_root, input_root),
     }
 
 
@@ -209,15 +225,18 @@ def main(argv: list[str] | None = None) -> int:
     minute_source = B35DevelopmentMinuteSource(settings, duckdb_threads=profile.duckdb_threads_per_worker)
     start = date.fromisoformat(DEVELOPMENT_START)
     end = date.fromisoformat(DEVELOPMENT_END)
+    project_root = settings.project_root.resolve()
 
-    daily_fingerprint, daily_bindings, daily_report = _daily_bindings(daily_adapter)
+    daily_fingerprint, daily_bindings, daily_report = _daily_bindings(
+        daily_adapter,
+        project_root=project_root,
+    )
     minute_plan = minute_source.plan(start, end)
     contract = build_successor_runner_contract(
         daily_source_fingerprint=daily_fingerprint,
         minute_source_fingerprint=minute_plan.source_fingerprint,
     )
     contract_fingerprint = str(contract["fingerprint"])
-    project_root = settings.project_root.resolve()
     output_root = (
         project_root
         / "data"
@@ -236,8 +255,11 @@ def main(argv: list[str] | None = None) -> int:
         "runner_contract_fingerprint": contract_fingerprint,
         "daily": daily_report,
         "minute": {
-            "source_root": str(minute_source.layout.canonical_minute),
-            "native_plan_path": str(minute_source.layout.manifests / "native_acquisition_plan.jsonl.gz"),
+            "source_root_id": _relative_locator(project_root, minute_source.layout.canonical_minute),
+            "native_plan_id": _relative_locator(
+                project_root,
+                minute_source.layout.manifests / "native_acquisition_plan.jsonl.gz",
+            ),
             "source_fingerprint": minute_plan.source_fingerprint,
             "native_plan_sha256": minute_plan.native_plan_sha256,
             "native_plan_file_sha256": minute_plan.native_plan_file_sha256,
@@ -276,6 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         "runner_contract_fingerprint": contract_fingerprint,
         "source_verification": run_summary,
         "source_manifest_fingerprint": canonical_sha256(source_manifest),
+        "source_manifest_uses_project_relative_locators": True,
         "historical_outcomes_opened": False,
         "authority": frozen_authority_contract(),
     }
