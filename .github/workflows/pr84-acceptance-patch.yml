@@ -1,0 +1,38 @@
+name: PR84 acceptance patch
+
+on:
+  push:
+    branches:
+      - codex/successor-development-outcome-runner
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[pr84-acceptance-patched]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+      - name: Apply asserted patch
+        run: python scripts/_pr84_acceptance_patch.py
+      - name: Validate syntax and diff
+        shell: bash
+        run: |
+          python -m py_compile packages/backtesting/successor_development_runner.py tests/test_successor_development_engine.py
+          git diff --check
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- packages/backtesting/successor_development_runner.py tests/test_successor_development_engine.py; then
+            echo "No acceptance patch changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/backtesting/successor_development_runner.py tests/test_successor_development_engine.py
+          git commit -m "Tighten successor runner acceptance bindings [pr84-acceptance-patched]"
+          git push origin HEAD:codex/successor-development-outcome-runner
