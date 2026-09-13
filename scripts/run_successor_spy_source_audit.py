@@ -67,8 +67,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "minute_primary_session_count": resolution["minute_primary_session_count"],
                 "daily_fallback_session_count": resolution["daily_fallback_session_count"],
                 "daily_fallback_sessions": resolution["daily_fallback_sessions"],
-                "split_daily_source_fingerprint": scientific["daily_fallback"].get(
-                    "split_daily_source_fingerprint"
+                "native_acceptance_fingerprint": scientific["daily_fallback"].get(
+                    "native_acceptance_fingerprint"
                 ),
                 "authority": scientific["authority"],
             },

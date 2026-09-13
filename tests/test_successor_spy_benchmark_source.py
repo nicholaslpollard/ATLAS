@@ -18,7 +18,7 @@ def _minute_rows(*, session: date, close: float, stale: float, valid: bool) -> d
     }
 
 
-def test_2019_08_12_uses_same_session_split_daily_repair() -> None:
+def test_2019_08_12_uses_same_session_native_daily_repair() -> None:
     session = date(2019, 8, 12)
     minute = pd.DataFrame([_minute_rows(session=session, close=288.50, stale=28.0, valid=False)])
     daily = pd.DataFrame([{"session_date": session, "close": 287.44}])
@@ -29,7 +29,7 @@ def test_2019_08_12_uses_same_session_split_daily_repair() -> None:
     assert report["daily_fallback_session_count"] == 1
     assert report["daily_fallback_sessions"][0]["session_date"] == "2019-08-12"
     assert report["daily_fallback_sessions"][0]["minute_staleness_minutes"] == 28.0
-    assert report["daily_fallback_sessions"][0]["replacement_source"] == "SPLIT_ADJUSTED_DAILY"
+    assert report["daily_fallback_sessions"][0]["replacement_source"] == "NATIVE_RAW_DAILY"
     assert report["unresolved_session_count"] == 0
 
 
@@ -45,7 +45,7 @@ def test_valid_minute_close_remains_primary() -> None:
     assert report["daily_fallback_session_count"] == 0
 
 
-def test_2026_over_stale_minute_cannot_open_split_daily_fallback() -> None:
+def test_2026_over_stale_minute_cannot_open_native_daily_fallback() -> None:
     session = date(2026, 4, 1)
     minute = pd.DataFrame([_minute_rows(session=session, close=500.0, stale=28.0, valid=False)])
     daily = pd.DataFrame([{"session_date": session, "close": 501.0}])
