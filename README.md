@@ -77,7 +77,7 @@ with a desired trade.
 - **B35 strategy x condition / frozen walk-forward selector analysis is COMPLETE / PROFILE-ONLY.** PR #76 merged as `cceccdc23569f6d48395a52322a83f59ba555b23`. Analysis fingerprint `8369790cc019e84091d9ff431e0ba82678e8b23ec09f65f010cdfaca35d3254f` normalized all 20,171,286 accepted compact opportunities and built 33 complete-XNYS 504/63/63/1 folds. The frozen selector evaluated 17,030,985 test opportunities, selected 3,747 (3,188 comparable), and abstained on 99.978%. Selected mean return was +0.2984% / +0.1984% / +0.0485% / -0.2015% / -0.7014% at 0/10/25/50/100 bps. No strategy or selector is promoted. The material research interpretation and per-strategy dispositions are maintained in `docs/strategy_evidence_register.md`.
 - **B35 retained-artifact robustness is COMPLETE / NO PROMOTION.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; workstation robustness fingerprint = `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107` across 2,079 complete XNYS test sessions. At 50 bps every declared standalone/selector profile has negative mean session return and Deflated-Sharpe probability `0.0`; 13 selected fold/cell hypotheses produced **0 BH-FDR q=.05 rejections**. The frozen selector remains positive at 0/10/25 bps but is negative at 50/100 bps; its 10,000-draw bootstrap assigns 24.21% probability to positive mean 50-bps session return. PBO/CSCV is 0.01%, retained only as a narrow ranking-stability diagnostic and not profitability evidence. No strategy/selector promotion occurred; consumed-master/future/provider/broker reads remain zero and PAPER/LIVE authority remains false.
 - **B35 exact targeted minute perturbations are COMPLETE / NO PROMOTION.** The frozen DEVELOPMENT-only pass completed **482/482 groups and 59,768/59,768 source units**, evaluated all **27 one-axis-at-a-time profiles**, and returned run fingerprint `dd3f6b94f9c669218512ed1eb014b33c0fd35e8ffe38484cc8967dc7a6e29f69`. Baseline equivalence is `PASS_EXACT_CANONICAL_OUTCOME_REUSE_ALL_GROUPS`; targeted fingerprint `078bdc84a18bd6e5ff401ca0a21d4feed61f7b21770a86610a42ee0fdd16374d`. Consumed-master/future-blind rows read `0/0`; provider calls `0`; broker reads/writes `0/0`; canonical replay rewrite and selector refit `false`; PAPER/LIVE/promotion authority `false/false/false`. No neighboring parameter variant rescued the four B34/B35 strategies after costs: gap delay/threshold variants remained deeply negative; ORB 14/15/16-minute and 0/1/2-minute delays were economically indistinguishable and negative; premarket rel-vol retained only a roughly 4.9-bps best gross mean that was already negative at 10 bps; HVD remained 55-59 signals and negative. B35 v1 is therefore scientifically closed; simple parameter rescue is closed as well.
-- **Successor practitioner laboratory PRE-OUTCOME freeze is implemented on the current package branch.** The machine-readable contract contains exactly **21 economic families = 10 retained + 11 new**, four bounded B35 mechanism-level challengers, shared PIT context, 504/63/63/1 walk-forward structure, 60/30/20 condition support, cost/abstention/multiplicity/confluence rules, permanent consumed-master/future-blind prohibitions, and no promotion/PAPER/LIVE authority. Long-run infrastructure is parallel-by-default, restart-safe, receipt-validated and execution-profile-independent scientifically. The B35 workstation performance experiment is retained as runtime evidence: 10x1 was faster but thermally throttled; 8x1 sustained about 1,702 units/hour without recorded thermal throttling and is the current reference for similar mixed Python/DuckDB work, not a universal hardcoded optimum.
+- **Successor practitioner laboratory PRE-OUTCOME rules/features are merged; PR #83 is the source/runner-contract and hash-only source-verification gate.** PR #82 merged as `26ddd08952454c9b1251df15fe5bfcc8ccdad16a`, implementing the frozen **21 economic families = 10 retained + 11 new**, four bounded B35 mechanism-level challengers, shared PIT context, deterministic daily/minute evaluators, and information-clock/no-lookahead tests without opening successor performance. PR #83 freezes `atlas-successor-development-runner-contract-v2-project-relative-source-binding-preoutcome-no-authority`: all **28 concrete policy routes = 18 daily + 10 minute**, accepted V2 DEVELOPMENT source identities, profile-independent grouping, standalone-before-conditioning/confluence artifact order, and the `0/10/25/50/100` bps outcome contract. Its restart-safe preflight hashes exact source bytes using project-relative locators plus SHA-256 and opens **zero bar rows, signals, returns, or historical outcomes**. Consumed-master/future-blind reads, provider calls, and broker reads/writes remain zero; PAPER/LIVE/promotion authority remains false. PR #83 does **not** implement or authorize the later outcome-opening broad historical runner. After PR #83 acceptance, the workstation hash-only preflight must bind the actual V2 source fingerprints; then the broad evaluator/output runner, golden-output/restart/authority acceptance, and exact-equivalent workstation benchmark remain separate gates before any successor DEVELOPMENT performance is opened. Long-run infrastructure remains parallel-by-default, restart-safe, receipt-validated and execution-profile-independent scientifically. The B35 workstation performance experiment remains runtime evidence: 10x1 was faster but thermally throttled; 8x1 sustained about 1,702 units/hour without recorded thermal throttling and is a reference for similar mixed Python/DuckDB work, not a universal hardcoded optimum.
 
 - **B34 intraday source readiness and the opening/premarket pack are CLOSED / ACCEPTED.** The enhanced 2026-09-08 workstation audit returned `ACCEPTED` under contract `atlas-b34-intraday-source-readiness-v2-ohlcv-pack-frozen` with evidence SHA-256 `415c46c714b80f5cff4950320443088b8b89ed761c9f51d071fccf3e60baefd0`. It preserves the earlier semantic/source-readiness evidence SHA-256 `aad355e57c089a7aaea84a3f941091dec69d89ce87235972f13472a308550237`, accepted all five deterministic OHLCV samples, represented premarket/regular/after-hours bars, opened zero partitions overlapping the consumed `2026-05-12..2026-08-11` master interval, and made zero provider calls, broker reads, or broker writes. The frozen RESEARCH-only pack fingerprint is `6f7239fcda11ac6c890d2635980d431ec49e346707d9cc549f111bd50daaa4bf` for `b34_gap_continuation_v1`, `b34_opening_range_breakout_15m_v1`, `b34_premarket_relvol_consolidation_v1`, and `b34_highest_volume_day_style_v1`. B34 opened no outcomes and grants no promotion, PAPER, LIVE, broker-mutation, or broad/full minute-materialization authority.
 - Accepted numbered foundation: **through Phase32**, merged on `main`.
@@ -470,8 +470,8 @@ and registers the frozen trial before calculating any strategy outcome. It can s
 after source validation or continue through the independent-strategy replay:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py --data-source v2 --source-only
-.\.venv\Scripts\python.exe scripts\run_a33_b33_reference_development.py --data-source v2
+.\.venv\Scripts\python.exe scripts\\run_a33_b33_reference_development.py --data-source v2 --source-only
+.\.venv\Scripts\python.exe scripts\\run_a33_b33_reference_development.py --data-source v2
 ```
 
 The full command writes its lake-adapter and regime-context reports, independent
@@ -528,7 +528,7 @@ submits: **0**; LIVE writes: **0**.
 The current operator entry point is the stacked Phase19 dashboard, not the older
 Phase16 shell. Start it from the repository root with
 `python scripts/run_phase19_control_plane.py` (or
-`.\.venv\Scripts\python.exe scripts\run_phase19_control_plane.py` on Windows), then
+`.\.venv\Scripts\python.exe scripts\\run_phase19_control_plane.py` on Windows), then
 open `http://127.0.0.1:8765`. Its A33/A34 Strategy Laboratory panel reads the
 catalog and latest replay through the two local GET endpoints; loading or refreshing
 the panel does not call a market-data provider or broker.
@@ -665,7 +665,7 @@ whose only purpose is to make evidence disappear.
 The current Alpaca V2 rebuild is started or resumed from PowerShell with:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\run_alpaca_v2_rebuild.py --build-v2
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_rebuild.py --build-v2
 ```
 
 The first invocation may display a small residual cleanup plan and require its exact
@@ -679,14 +679,14 @@ its generation. Pull the accepted post-build package and run one of these:
 
 ```powershell
 # Source validation, identity/lifecycle, split-adjusted daily acquisition, and V2 research view.
-.\.venv\Scripts\python.exe scripts\run_alpaca_v2_postbuild.py
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_postbuild.py
 
 # The same fail-closed chain, then the frozen DEVELOPMENT strategy/account replay.
-.\.venv\Scripts\python.exe scripts\run_alpaca_v2_postbuild.py --through-reference-replay
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_postbuild.py --through-reference-replay
 
 # Recommended authorized chain: DEVELOPMENT through May 11, then one-time
 # walk-forward from May 12 through the exact validated V2 cutoff.
-.\.venv\Scripts\python.exe scripts\run_alpaca_v2_postbuild.py --through-walk-forward-replay --authorize-master-holdout-consumption
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_postbuild.py --through-walk-forward-replay --authorize-master-holdout-consumption
 ```
 
 The post-build command is resumable at split-adjusted daily unit boundaries.
@@ -721,7 +721,7 @@ Daily indicators are calculated by the frozen reference engine from the promoted
 research view when a replay runs; a second giant feature lake is not created merely
 to duplicate them. News acquisition is not part of this database acceptance chain:
 it neither validates price history nor has a frozen provider/PIT contract, so it is
-deferred to its own finite research package. Native minute evidence, extended-hours semantics, and initial intraday strategy readiness are accepted by B34. **B35 DEVELOPMENT replay and all preregistered B35 robustness/targeted diagnostics are CLOSED / ACCEPTED-NO-PROMOTION (2026-09-13).** The frozen `2016-01-04..2026-04-30` replay completed all **482/482 groups** and **59,768/59,768 source units**, with **482 validated receipt ids**, **20,171,286 fired opportunity/context/outcome records**, and run fingerprint `8955a282453cb89a24d3bcdf819d80451bebfa3ec9752dc24c113efc668cffe6`. The authoritative summary confirms consumed-master rows read `0`, future-blind rows read `0`, provider calls `0`, broker reads/writes `0/0`, PAPER/LIVE authority `false/false`, and strategy/selector promotion `false/false`. The canonical replay, condition/selector analysis, retained-artifact robustness, and exact targeted perturbations are all complete. The next Track-B work is the frozen successor practitioner laboratory; B35 v1 will not be replayed or parameter-tuned again.
+deferred to its own finite research package. Native minute evidence, extended-hours semantics, and initial intraday strategy readiness are accepted by B34. **B35 DEVELOPMENT replay and all preregistered B35 robustness/targeted diagnostics are CLOSED / ACCEPTED-NO-PROMOTION (2026-09-13).** The frozen `2016-01-04..2026-04-30` replay completed all **482/482 groups** and **59,768/59,768 source units**, with **482 validated receipt ids**, **20,171,286 fired opportunity/context/outcome records**, and run fingerprint `8955a282453cb89a24d3bcdf819d80451bebfa3ec9752dc24c113efc668cffe6`. The authoritative summary confirms consumed-master rows read `0`, future-blind rows read `0`, provider calls `0`, broker reads/writes `0/0`, PAPER/LIVE authority `false/false`, and strategy/selector promotion `false/false`. The canonical replay, condition/selector analysis, retained-artifact robustness, and exact targeted perturbations are all complete. Track B has moved to the frozen successor practitioner laboratory: PR #82 merged the exact 21-family rule/feature implementation, and PR #83 is the source/runner-contract plus hash-only source-verification gate. B35 v1 will not be replayed or parameter-tuned again.
 
 ## Planned practitioner strategy library and confluence architecture
 
@@ -782,7 +782,7 @@ under a new preregistered fingerprint.
 
 ### Eleven new successor families
 
-The next package adds only mechanisms that materially broaden the library. Exact
+The successor package adds only mechanisms that materially broaden the library. Exact
 lookbacks, tolerances, bar authority, stops, targets and exits are frozen before any
 new performance is opened.
 
@@ -894,7 +894,7 @@ recycled, and an existing blind window is never reassigned after results are kno
 
 ### Implementation order and efficiency
 
-B35 canonical replay, condition/selector analysis, retained-artifact robustness, and exact targeted minute perturbations are complete. The successor **21-family / eleven-new-family** PRE-OUTCOME contract is now frozen in `packages/strategies/successor_practitioner_lab.py` and `docs/successor_practitioner_lab_preoutcome.md`. Four bounded B35 mechanism-level challengers are admitted: one quality/condition long gap successor, Stocks-in-Play 5-minute ORB, 15-minute ORB close/retest, and a quality/liquidity premarket-relvol successor. HVD receives no simple width/delay challenger. The family evaluators and shared PIT feature layer are now implemented under the frozen pre-outcome contract. The next package binds those exact evaluators to the restart-safe broad historical runner, freezes runner/source fingerprints, benchmarks scientifically equivalent execution shapes on the workstation, and only then opens permitted DEVELOPMENT performance. Reuse the six accepted daily families and four B34 intraday families rather than reimplementing them. Shared point-in-time feature extraction, canonical bars, indicator primitives, deterministic pivots, market/relative-strength context, and the validated parallel execution pattern should be reused where exact-equivalent, while every strategy evaluator remains independently testable and deterministic.
+B35 canonical replay, condition/selector analysis, retained-artifact robustness, and exact targeted minute perturbations are complete. The successor **21-family / eleven-new-family** PRE-OUTCOME contract is frozen in `packages/strategies/successor_practitioner_lab.py` and `docs/successor_practitioner_lab_preoutcome.md`; PR #82 merged the exact family/challenger evaluators and shared PIT feature layer without opening successor performance. PR #83 now freezes the portable source/runner contract and restart-safe hash-only source-verification gate under `atlas-successor-development-runner-contract-v2-project-relative-source-binding-preoutcome-no-authority`. It binds the 28 concrete routes to the accepted DEVELOPMENT sources, freezes profile-independent grouping and preregistered outcome/artifact semantics, and keeps project-root/runtime-profile details outside scientific identity. The preflight hashes exact source bytes and opens no bar rows, signals, returns, or outcomes. After PR #83 acceptance, run the workstation hash-only preflight to bind actual V2 source fingerprints; then implement the separate outcome-opening broad evaluator/output runner, prove golden-output/restart/authority behavior, benchmark exact-equivalent worker shapes, and only then open permitted DEVELOPMENT performance. Reuse the six accepted daily families and four B34 intraday families rather than reimplementing them. Shared point-in-time feature extraction, canonical bars, indicator primitives, deterministic pivots, market/relative-strength context, and the validated parallel execution pattern should be reused where exact-equivalent, while every strategy evaluator remains independently testable and deterministic.
 
 The destination is not one universal strategy. It is a library of versioned
 mechanisms whose standalone evidence, condition profile, confluence value, costs and
