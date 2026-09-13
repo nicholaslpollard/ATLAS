@@ -21,7 +21,7 @@ from packages.strategies.successor_practitioner_rules import ALL_SUCCESSOR_POLIC
 
 
 SUCCESSOR_RUNNER_CONTRACT: Final[str] = (
-    "atlas-successor-development-runner-contract-v1-preoutcome-no-authority"
+    "atlas-successor-development-runner-contract-v2-project-relative-source-binding-preoutcome-no-authority"
 )
 DAILY_SOURCE_ID: Final[str] = "alpaca_sip_v2_research_daily_development"
 MINUTE_SOURCE_ID: Final[str] = "alpaca_sip_v2_canonical_minute_b35_development"
@@ -256,6 +256,11 @@ def build_successor_runner_contract(*, daily_source_fingerprint: str, minute_sou
             daily_source_fingerprint=daily_source_fingerprint,
             minute_source_fingerprint=minute_source_fingerprint,
         ),
+        "source_binding_identity": {
+            "locator": "PROJECT_RELATIVE_POSIX_PATH",
+            "content_identity": "SHA256",
+            "absolute_local_paths_in_scientific_fingerprint": False,
+        },
         "policy_routes": [item.as_dict() for item in successor_policy_routes()],
         "grouping": frozen_grouping_contract(),
         "artifact_order": list(ARTIFACT_ORDER),
