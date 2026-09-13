@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
+import pytest
 
 from packages.core.enums import DataProvider, DatasetType, SessionSegment, Timeframe
 from packages.features.successor_practitioner import (
@@ -110,7 +111,9 @@ def _daily_fixture(rows: int = 320) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 def test_implementation_roster_matches_frozen_successor_lab() -> None:
     assert {item.policy_id for item in NEW_POLICY_IMPLEMENTATIONS} == {
-        item.policy_id for item in NEW_FAMILIES
+        policy_id
+        for family in NEW_FAMILIES
+        for policy_id in family.canonical_policy_ids
     }
     assert {item.policy_id for item in B35_CHALLENGER_IMPLEMENTATIONS} == {
         item.policy_id for item in B35_CHALLENGERS
@@ -172,6 +175,20 @@ def test_successor_daily_overlay_contains_all_shared_features_and_is_future_blin
         rtol=1e-12,
         atol=1e-12,
     )
+
+
+def test_duplicate_closed_minute_timestamp_fails_closed() -> None:
+    session = date(2026, 9, 10)
+    duplicated = [
+        _bar(session, 9, 30, open_=10.0, high=10.2, low=9.8, close=10.0),
+        _bar(session, 9, 30, open_=10.0, high=10.3, low=9.7, close=10.1),
+    ]
+    with pytest.raises(ValueError, match="duplicate closed one-minute timestamps"):
+        evaluate_vwap_reclaim_reject(
+            duplicated,
+            session_date=session,
+            decision_time_utc=_decision(session, 9, 31),
+        )
 
 
 def test_vwap_reclaim_uses_only_fully_closed_bars() -> None:

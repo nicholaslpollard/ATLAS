@@ -94,7 +94,11 @@ def _closed_session_bars(
         and _closed(bar, decision)
         and (segment is None or bar.session_segment == segment)
     ]
-    return sorted(selected, key=lambda item: item.timestamp_utc)
+    ordered = sorted(selected, key=lambda item: item.timestamp_utc)
+    stamps = [bar.timestamp_utc for bar in ordered]
+    if len(stamps) != len(set(stamps)):
+        raise ValueError("duplicate closed one-minute timestamps are not permitted")
+    return ordered
 
 
 def _signal(

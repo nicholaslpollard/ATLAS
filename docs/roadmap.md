@@ -1108,7 +1108,7 @@ The canonical continuation reused 82 validated groups and computed the remaining
 
 **B35 retained-artifact robustness and exact targeted minute perturbations are COMPLETE / NO PROMOTION.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; robustness fingerprint `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107` remains binding. PR #79 merged as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`; the repaired workstation run subsequently completed 482/482 groups and 59,768/59,768 units with all 27 frozen profiles, exact canonical baseline equivalence, targeted fingerprint `078bdc84a18bd6e5ff401ca0a21d4feed61f7b21770a86610a42ee0fdd16374d`, and run fingerprint `dd3f6b94f9c669218512ed1eb014b33c0fd35e8ffe38484cc8967dc7a6e29f69`. Master/future/provider/broker reads remained zero and no authority changed. No neighboring parameter variant became economically viable: gap remained deeply negative, ORB timing/range perturbations were essentially flat and negative, premarket-relvol's best gross mean remained below 10 bps, and HVD remained sparse/negative.
 
-Next Track-B sequence: (1) accept the successor PRE-OUTCOME freeze containing exactly 21 economic families, four bounded B35 mechanism-level challengers, shared PIT context and separate confluence rules; (2) implement and synthetically validate the missing family evaluators and shared features without opening successor performance; (3) benchmark the restart-safe parallel runner on the actual workstation and require golden-output equivalence before tuning execution shape; (4) run the broad DEVELOPMENT/walk-forward diagnostic on permitted evidence while preserving standalone outcomes before condition gates/confluence; (5) freeze a separate untouched/prospective authority contract for any candidate that survives; and (6) never reuse the consumed master interval or silently open the future blind. Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence.md`.
+Next Track-B sequence: (1) COMPLETE — the successor PRE-OUTCOME freeze contains exactly 21 economic families, four bounded B35 mechanism-level challengers, shared PIT context and separate confluence rules; (2) COMPLETE IN THIS PRE-OUTCOME IMPLEMENTATION PACKAGE — exact family/challenger rules, shared daily PIT features, closed-minute evaluators and synthetic no-lookahead tests are implemented without opening successor performance; (3) freeze the broad historical runner/source contract, bind it to the restart-safe parallel coordinator, and benchmark scientifically equivalent execution shapes on the actual workstation; (4) run the broad DEVELOPMENT/walk-forward diagnostic on permitted evidence while preserving standalone outcomes before condition gates/confluence; (5) freeze a separate untouched/prospective authority contract for any candidate that survives; and (6) never reuse the consumed master interval or silently open the future blind. Full mechanics and methodology anchors remain in `docs/b35_a36_preoutcome_conditional_evidence.md`.
 
 ### 19A status — Successor practitioner laboratory
 
@@ -1116,7 +1116,7 @@ Next Track-B sequence: (1) accept the successor PRE-OUTCOME freeze containing ex
 
 Runtime implementation is parallel-by-default and restart-safe. `packages/core/successor_execution_profile.py` supplies a bounded hardware-aware worker/DuckDB budget with separate successor environment overrides; `packages/backtesting/successor_parallel.py` supplies atomic group outputs, self-hash receipts, validated restart reuse, machine-readable progress, and scientific fingerprints that exclude execution profile/telemetry. The B35 targeted replay's 8x1 sustained workstation result is retained as a reference for similar workloads, but each materially different long successor workload must benchmark exact-equivalent execution shapes and choose the fastest stable non-throttling profile.
 
-The freeze itself opens no new successor outcomes. The next implementation package must complete deterministic family evaluators/shared PIT features and synthetic/golden-output tests before any broad successor performance run is authorized.
+The freeze itself opens no new successor outcomes. The deterministic family/challenger evaluator and shared PIT feature implementation is now complete at the pre-outcome layer: shared daily calculations are reused once per instrument, chart-pattern pivots are explicitly confirmation-lagged, minute evaluators consume only fully closed bars and reject duplicate minute stamps, and synthetic no-lookahead/quality-gate tests cover the new mechanisms. The next package must freeze and test the broad historical runner/source contract and benchmark exact-equivalent worker shapes before any successor performance run is authorized.
 
 ### B36 — Literature-Anchored Reference Library
 
@@ -1297,20 +1297,14 @@ mechanics change.
 
 ### 19A.7 Ordered successor work after B35
 
-1. **COMPLETE (2026-09-11):** close and validate the B35 canonical replay; all
-   482 groups / 59,768 units completed with zero protected/future/provider/broker
-   leakage, immutable run fingerprint, and final 4,246.7-unit/hour production rate.
-2. **COMPLETE (2026-09-11):** produce the preregistered B35 strategy x condition evidence and selector profile; no strategy/selector promotion resulted.
-3. **CURRENT:** retained-artifact robustness is complete with fingerprint `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107`, 0/13 selected-cell BH-FDR rejections, Deflated-Sharpe probability 0 for all five profiles, and no promotion. PR #79 is merged as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`; run its one-pass exact DEVELOPMENT minute perturbations on the workstation, then review the 27 diagnostic profiles and record final B35 disposition without rewriting v1 or refitting the selector.
-4. Freeze the exact **eleven-new-family / 21-family-total** successor contract, justified B35 v2 candidates, shared PIT context schema and confluence feature schema; bind the six daily plus four B34 families as retained baseline lineage.
-5. Implement shared PIT indicators/pivots/context and the eleven independent new evaluators; run source-only, semantic and exact-equivalence tests.
-6. Run expanded DEVELOPMENT evidence with standalone strategies first.
-7. Evaluate hard confirmation and confluence as separate hypotheses, including redundancy, conflict, costs and sample-size effects.
-8. Perform one bounded diagnostic/calibration cycle; preregister up to three justified v2 candidates per family and evaluate them only on untouched evidence.
-9. Promote nothing automatically. Survivors become candidates for the next prospective/PAPER evidence gate; failures stay in the ledger and guide the next research family.
-
-This Track-B expansion does not block Track A product completion. PAPER plumbing may
-advance independently under its own authority while strategy research continues.
+1. **COMPLETE:** B35 canonical replay, condition/selector analysis, retained-artifact robustness and exact targeted perturbations are closed with no promotion. Do not rerun or retune B35 v1.
+2. **COMPLETE:** freeze the exact 21-family successor contract, four bounded B35 same-family challengers, shared PIT context, support/cost/multiplicity rules and separate confluence semantics under new fingerprints.
+3. **COMPLETE AT PRE-OUTCOME IMPLEMENTATION LAYER:** implement shared daily PIT indicators/pivots/context, all eleven new family rules and the four challenger rules; keep the two genuinely intraday families/challengers on fully closed one-minute bars; reject ambiguous duplicate minute stamps; cover the information clock with synthetic tests. No successor historical outcomes are opened.
+4. **NEXT:** freeze the broad runner/source manifest and group partitioning, bind it to `SuccessorParallelCoordinator`, preserve standalone artifacts before conditioning/confluence, and add golden-output/restart/authority tests.
+5. Benchmark scientifically identical 4x1/6x1/8x1-style execution shapes on the actual workstation as applicable; select the fastest stable non-throttling shape without changing scientific fingerprints.
+6. Run the broad permitted DEVELOPMENT/walk-forward evidence once the runner package is accepted; evaluate standalone strategies first, then hard confirmation and confluence separately.
+7. Perform at most one bounded diagnostic/calibration cycle; any favorable B35-inspired or other post-result successor requires untouched/prospective evidence and a new authority contract before promotion.
+8. Promote nothing automatically; failures remain in the ledger, consumed master remains unavailable, and future blind remains unopened.
 
 ## 20. Phase/package cadence and progress reporting
 
@@ -1366,12 +1360,12 @@ Every closeout reports:
 
 ## 21. Immediate next action
 
-1. Pull current `main`; PR #79 is merged and the targeted perturbation package is accepted.
-2. Pull the Windows atomic-temp-path repair, then rerun `.\.venv\Scripts\python.exe scripts\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once. The first 2026-09-11 invocation failed before targeted authorization persistence or any perturbation evidence because its sibling temp filename exceeded legacy Windows MAX_PATH; the repaired atomic writer bounds the entire temp path and preserves same-directory atomic promotion. The run remains DEVELOPMENT-only, restartable, reuses exact accepted baseline outcomes, opens no consumed-master/future-blind data, and grants no promotion/PAPER/LIVE authority.
-3. Review `analysis_v1/robustness_v1/targeted_minute_perturbations_v1/summary.json`, update the Strategy Evidence Register, and select only bounded B35 v2 challengers justified by the perturbation plus existing diagnostic evidence.
-4. Freeze the successor **21-family** roster, exact new/challenger specifications, shared PIT context vector, multiplicity/trials accounting and separate confluence/ranking contract before opening successor performance.
-5. Implement and run the broad successor historical experiment on permitted evidence. Preserve standalone family results before confluence; measure win rate together with payoff ratio, net expectancy/R, drawdown/tail loss, cost decay, MFE/MAE, support, stability, concentration and abstention.
-6. Track A Product may continue independently where evidence boundaries permit. Operational/qualifying PAPER and LIVE remain governed by their separate authority gates.
+1. Merge the accepted successor pre-outcome evaluator/feature implementation after exact-head Windows and Ubuntu CI is green. This package opens no successor historical outcomes and grants no PAPER/LIVE/promotion authority.
+2. Freeze a machine-readable broad successor runner/source contract: exact source roots and date bounds, daily/intraday group partitioning, strategy-to-group routing, standalone-before-conditioning/confluence artifact order, cost/outcome semantics, authority zeros, and scientific fingerprint inputs.
+3. Implement the broad runner on `SuccessorParallelCoordinator` with atomic per-group outputs, self-hash receipts, validated restart reuse, bounded in-flight work, 60-second heartbeat/progress/ETA, and hard rejection of consumed-master/future-blind reads. Shared daily features are computed once per instrument/group and reused across policies.
+4. Run a bounded golden-output workstation benchmark across scientifically equivalent worker shapes; use the fastest stable non-throttling profile and keep execution telemetry outside the scientific fingerprint.
+5. Only after the runner contract/tests/benchmark are accepted, run the broad successor DEVELOPMENT/walk-forward diagnostic on permitted evidence. Preserve standalone family/challenger results before any condition gate or confluence analysis and report the frozen support/cost/risk/stability diagnostics.
+6. Track A Product may continue independently where evidence boundaries permit. Operational/qualifying PAPER and LIVE remain governed by separate authority gates.
 
 ## 22. Retained exact historical validator statements
 
@@ -1406,14 +1400,9 @@ research disposition, successor hypotheses, unresolved limitations, and authorit
 It does not replace immutable receipts/artifacts or code behavior; it prevents future
 research chats from reconstructing strategy truth from conversational memory.
 
-B35 canonical replay, strategy x condition/selector analysis, and retained-artifact robustness are complete. The current Track-B gate is the merged PR #79 targeted minute-perturbation workstation run and final B35 research disposition. Do not rerun the canonical minute replay and do not freeze condition-gated v2 rules until the targeted perturbation evidence is reviewed. The register's
-current dispositions are: Gap Continuation = condition-gate/calibrate candidate;
-Opening Range Breakout = condition-gate/calibrate plus execution audit; Premarket
-Rel-Vol = cost/execution-sensitive R&D candidate; Highest-Volume-Day style =
-redefine/insufficient evidence. None is promoted.
+B35 canonical replay, strategy x condition/selector analysis, retained-artifact robustness, exact targeted perturbations and final research disposition are complete. Do not rerun the canonical minute replay or reopen neighboring B35 parameter rescue. The register's current dispositions remain: Gap Continuation = condition-gate/calibrate candidate; Opening Range Breakout = condition-gate/calibrate plus execution audit; Premarket Rel-Vol = cost/execution-sensitive R&D candidate; Highest-Volume-Day style = redefine/insufficient evidence. None is promoted.
 
-After the targeted perturbation evidence closes B35, freeze successor strategy versions and the broader
-21-family/context/confluence package under new fingerprints. The long-term router should
+The successor 21-family/context/confluence PRE-OUTCOME package is frozen under new fingerprints, and its exact new-family/challenger evaluator plus shared PIT feature implementation is complete without opening historical successor outcomes. The current Track-B gate is the broad runner/source contract, restart-safe parallel integration and exact-equivalent workstation benchmark before the first successor DEVELOPMENT run. The long-term router should
 activate/deactivate strategy specialties using trailing point-in-time evidence and
 abstain when no specialty clears support, cost, robustness, risk, and authority
 gates. Continuous market coverage is desirable; forced continuous trading is not.

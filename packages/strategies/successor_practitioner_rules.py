@@ -192,7 +192,11 @@ ALL_SUCCESSOR_POLICY_IMPLEMENTATIONS = NEW_POLICY_IMPLEMENTATIONS + B35_CHALLENG
 
 
 def _validate() -> None:
-    new_expected = {item.policy_id for item in NEW_FAMILIES}
+    new_expected = {
+        policy_id
+        for family in NEW_FAMILIES
+        for policy_id in family.canonical_policy_ids
+    }
     new_actual = {item.policy_id for item in NEW_POLICY_IMPLEMENTATIONS}
     if new_actual != new_expected:
         raise RuntimeError(f"successor new-policy implementation drift: expected={sorted(new_expected)} actual={sorted(new_actual)}")
