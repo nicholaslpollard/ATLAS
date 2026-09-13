@@ -470,8 +470,8 @@ and registers the frozen trial before calculating any strategy outcome. It can s
 after source validation or continue through the independent-strategy replay:
 
 ```powershell
-.\\.venv\\Scripts\\python.exe scripts\\run_a33_b33_reference_development.py --data-source v2 --source-only
-.\\.venv\\Scripts\\python.exe scripts\\run_a33_b33_reference_development.py --data-source v2
+.\.venv\Scripts\python.exe scripts\\run_a33_b33_reference_development.py --data-source v2 --source-only
+.\.venv\Scripts\python.exe scripts\\run_a33_b33_reference_development.py --data-source v2
 ```
 
 The full command writes its lake-adapter and regime-context reports, independent
@@ -528,7 +528,7 @@ submits: **0**; LIVE writes: **0**.
 The current operator entry point is the stacked Phase19 dashboard, not the older
 Phase16 shell. Start it from the repository root with
 `python scripts/run_phase19_control_plane.py` (or
-`.\\.venv\\Scripts\\python.exe scripts\\run_phase19_control_plane.py` on Windows), then
+`.\.venv\Scripts\python.exe scripts\\run_phase19_control_plane.py` on Windows), then
 open `http://127.0.0.1:8765`. Its A33/A34 Strategy Laboratory panel reads the
 catalog and latest replay through the two local GET endpoints; loading or refreshing
 the panel does not call a market-data provider or broker.
@@ -665,7 +665,7 @@ whose only purpose is to make evidence disappear.
 The current Alpaca V2 rebuild is started or resumed from PowerShell with:
 
 ```powershell
-.\\.venv\\Scripts\\python.exe scripts\\run_alpaca_v2_rebuild.py --build-v2
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_rebuild.py --build-v2
 ```
 
 The first invocation may display a small residual cleanup plan and require its exact
@@ -679,14 +679,14 @@ its generation. Pull the accepted post-build package and run one of these:
 
 ```powershell
 # Source validation, identity/lifecycle, split-adjusted daily acquisition, and V2 research view.
-.\\.venv\\Scripts\\python.exe scripts\\run_alpaca_v2_postbuild.py
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_postbuild.py
 
 # The same fail-closed chain, then the frozen DEVELOPMENT strategy/account replay.
-.\\.venv\\Scripts\\python.exe scripts\\run_alpaca_v2_postbuild.py --through-reference-replay
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_postbuild.py --through-reference-replay
 
 # Recommended authorized chain: DEVELOPMENT through May 11, then one-time
 # walk-forward from May 12 through the exact validated V2 cutoff.
-.\\.venv\\Scripts\\python.exe scripts\\run_alpaca_v2_postbuild.py --through-walk-forward-replay --authorize-master-holdout-consumption
+.\.venv\Scripts\python.exe scripts\\run_alpaca_v2_postbuild.py --through-walk-forward-replay --authorize-master-holdout-consumption
 ```
 
 The post-build command is resumable at split-adjusted daily unit boundaries.
@@ -782,7 +782,7 @@ under a new preregistered fingerprint.
 
 ### Eleven new successor families
 
-The next package adds only mechanisms that materially broaden the library. Exact
+The successor package adds only mechanisms that materially broaden the library. Exact
 lookbacks, tolerances, bar authority, stops, targets and exits are frozen before any
 new performance is opened.
 
