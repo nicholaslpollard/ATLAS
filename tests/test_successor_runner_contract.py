@@ -24,7 +24,7 @@ from packages.backtesting.successor_runner_contract import (
     minute_symbol_groups,
     successor_policy_routes,
 )
-from scripts.run_successor_development_preflight import verify_source_binding_unit
+from scripts.run_successor_development_preflight import _relative_locator, verify_source_binding_unit
 
 
 SHA_A = "a" * 64
@@ -130,6 +130,20 @@ def test_source_binding_payload_is_root_independent(tmp_path: Path) -> None:
     assert payload_a == payload_b
     assert payload_a["files"][0]["relative_path"] == "data/source.parquet"
     assert canonical_sha256(payload_a) == canonical_sha256(payload_b)
+
+
+def test_source_manifest_locators_are_root_independent(tmp_path: Path) -> None:
+    root_a = tmp_path / "root-a"
+    root_b = tmp_path / "root-b"
+    source_a = root_a / "data" / "v2" / "manifest.json"
+    source_b = root_b / "data" / "v2" / "manifest.json"
+    source_a.parent.mkdir(parents=True)
+    source_b.parent.mkdir(parents=True)
+    source_a.write_text("{}", encoding="utf-8")
+    source_b.write_text("{}", encoding="utf-8")
+
+    assert _relative_locator(root_a, source_a) == "data/v2/manifest.json"
+    assert _relative_locator(root_b, source_b) == "data/v2/manifest.json"
 
 
 def test_source_binding_payload_rejects_file_outside_project_root(tmp_path: Path) -> None:
