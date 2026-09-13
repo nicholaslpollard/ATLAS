@@ -1,6 +1,6 @@
 # ATLAS Strategy Evidence Register
 
-**Current as of 2026-09-11 (UTC). This file is a living project document.**
+**Current as of 2026-09-13 (UTC). This file is a living project document.**
 
 This register is the durable scientific ledger for strategy-level evidence. It exists so a future ATLAS chat can determine, without reconstructing old conversations, what each strategy version was, what evidence it opened, where it worked or failed, what remains uncertain, and what research action is currently justified.
 
@@ -89,7 +89,7 @@ Every strategy/version entry should maintain, where available:
 
 **Interpretation:** B35 has not established promotable alpha. The selector materially improves the unrestricted strategies and retains a low-cost positive signal, but the 50-bps economics, FDR and Deflated-Sharpe gates remain negative. That supports continued bounded specialist/condition research, not promotion or retroactive weakening of costs.
 
-**Final robustness component:** PR #79 merged to `main` as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`; the workstation run remains pending. It implements the five frozen minute-path perturbation families in one DEVELOPMENT-only pass. There are 27 strategy/variant profiles because entry delay is applied to all four strategies and consolidation-range perturbation applies independently to premarket-relvol and HVD. Each axis changes alone. All baseline values must reproduce the canonical v1 fired/comparable/noncomparable counts in every group before a perturbed group can complete. Better variants are diagnostic successor hypotheses only; selector refit and canonical-v1 rewrite are forbidden.
+**Final robustness component: COMPLETE / NO PROMOTION.** PR #79 merged to `main` as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`; the workstation run completed 482/482 groups and 59,768/59,768 source units with 27 one-axis-at-a-time profiles, targeted fingerprint `078bdc84a18bd6e5ff401ca0a21d4feed61f7b21770a86610a42ee0fdd16374d`, run fingerprint `dd3f6b94f9c669218512ed1eb014b33c0fd35e8ffe38484cc8967dc7a6e29f69`, and `PASS_EXACT_CANONICAL_OUTCOME_REUSE_ALL_GROUPS`. Consumed-master/future-blind reads, provider calls and broker reads/writes remained zero; selector refit/canonical rewrite/promotion/PAPER/LIVE remained false. No neighboring parameter variant became economically viable. This closes B35 v1 robustness and simple parameter rescue.
 
 ## 4. Current B35 strategy dispositions
 
@@ -122,7 +122,7 @@ Diagnostic specialty that repeatedly earned positive training-cell selection in 
 
 Post-result diagnostic subdivisions inside the selected set suggest potential successor hypotheses, not validated rules: LONG materially outperformed SHORT; prior-trend UP outperformed other trend states; prices $20-$100 / >=$100, stronger premarket dollar participation, and 25-50% realized volatility were materially better than several alternatives. These must be frozen as new hypotheses and evaluated on untouched/walk-forward evidence before use.
 
-**Current disposition:** `CONDITION-GATE / CALIBRATE`. Preserve v1 as a negative unrestricted baseline. Candidate v2 work should prioritize economically coherent long-side/liquidity/volatility/premarket participation hypotheses and explicitly investigate the high noncomparable rate in low-liquidity names.
+**Current disposition:** `CONDITION-GATE / CALIBRATE`. Preserve v1 as a negative unrestricted baseline. Targeted perturbations confirm that +1/+2-minute delays and 0.9/1.0/1.1 gap-threshold multipliers improve or worsen only the degree of a still deeply negative result; none is a viable rescue. Admit one mechanism-level long-side quality/condition successor centered on preregistered liquidity, volatility, price and premarket participation, and explicitly investigate the high noncomparable rate in low-liquidity names.
 
 ### 4.2 `b34_opening_range_breakout_15m_v1`
 
@@ -146,7 +146,7 @@ Walk-forward selector evidence:
 
 The selector's later positive cells were concentrated in 2024 through early 2025 and centered on a large opening range, low reported 20-day median dollar volume, unavailable realized-volatility history, and the frozen setup intensity. Post-result diagnostics indicate much better outcomes for 09:45-10:00 signals than later signals and better behavior in selected price/gap buckets. The `<$1M ADV + volatility unavailable` signature may proxy for new/sparse/low-liquidity instruments and therefore requires an execution-quality audit rather than being accepted as a favorable trading rule.
 
-**Current disposition:** `CONDITION-GATE / CALIBRATE + EXECUTION AUDIT`. Candidate successor research should test signal-time, overnight-gap exhaustion, price/liquidity quality, and opening-range geometry under realistic execution assumptions. Do not hard-code the low-liquidity/unavailable-volatility cell as a permanent edge.
+**Current disposition:** `CONDITION-GATE / CALIBRATE + EXECUTION AUDIT`. Targeted 14/15/16-minute ranges and +0/+1/+2-minute entries are economically indistinguishable and negative, closing simple timing/range rescue. The bounded successors are Stocks-in-Play 5-minute ORB and an objective 15-minute close/retest confirmation policy. Continue to audit signal time, overnight-gap exhaustion, price/liquidity quality and opening-range geometry; do not hard-code the low-liquidity/unavailable-volatility cell as a permanent edge.
 
 ### 4.3 `b34_premarket_relvol_consolidation_v1`
 
@@ -164,7 +164,7 @@ Full DEVELOPMENT evidence:
 
 Supported condition cells often showed positive gross return but did not survive the conservative cost hurdle. A notable diagnostic example is large gap + elevated premarket relative volume, where gross and low-cost outcomes improve materially but 50-bps performance remains negative. This is evidence of a possibly real but thin execution-sensitive signal, not evidence that the cost assumption should be weakened.
 
-**Current disposition:** `KEEP FOR R&D / COST-EXECUTION CALIBRATION`. Candidate successors may investigate liquidity, entry timing, breakout confirmation, stop/exit efficiency, and whether higher-quality participation filters can increase gross edge enough to survive conservative executable costs.
+**Current disposition:** `KEEP FOR R&D / COST-EXECUTION CALIBRATION`. Targeted delay, rel-vol-threshold and consolidation-width perturbations retain only a thin gross signal; the best observed gross mean is about 4.92 bps and is already negative at 10 bps, while delayed entry worsens the profile. Admit one quality/liquidity/participation successor that attempts to increase gross edge and execution quality without weakening costs or simply choosing the best observed threshold.
 
 ### 4.4 `b34_highest_volume_day_style_v1`
 
@@ -180,7 +180,7 @@ Full DEVELOPMENT evidence:
 
 The frozen minimum is 60 opportunities / 30 sessions / 20 instruments. HVD fails the opportunity-count threshold before any supported condition-cell claim can be made; all HVD condition cells therefore remain unsupported. Small positive cells with one or two observations are explicitly non-evidence.
 
-**Current disposition:** `REDEFINE / INSUFFICIENT EVIDENCE`. Preserve v1 unchanged. A successor should reconsider the practitioner specification under a new fingerprint rather than lowering the evidence threshold after seeing only 58 signals.
+**Current disposition:** `REDEFINE / INSUFFICIENT EVIDENCE`. Preserve v1 unchanged. Targeted consolidation-width neighbors produced only 55/58/59 signals and remained negative; entry delays also worsened or failed to help. No simple HVD challenger is admitted this cycle. A future successor must genuinely redefine the abnormal-volume mechanism under a new fingerprint rather than lower the evidence threshold or tune width after seeing the result.
 
 ## 5. System-level interpretation from B35
 
@@ -194,17 +194,17 @@ A strategy should become active only when its current observable condition cell 
 
 Candidate successor selector dimensions motivated by B35 diagnostics include **direction** and **signal time** in addition to the existing strategy/regime/realized-volatility/liquidity/setup-intensity hierarchy. Price band, overnight gap, premarket participation, and execution-quality variables also merit controlled testing. These are hypotheses for a successor fingerprint, not retroactive additions to B35.
 
-## 6. Next B35 scientific work
+## 6. B35 closeout and successor handoff
 
-**Current gate (2026-09-11): retained-artifact robustness COMPLETE; PR #79 MERGED; exact targeted perturbation workstation run PENDING.** PR #78 merged as `83d09c424a02883f7d3529a39c62294dcbaf6bc2`; the accepted workstation robustness fingerprint is `c4489478e82a535ef890fd017e47c9594ad9d590d439c5f55089426bd8565107`. BH-FDR, Deflated Sharpe, 16-partition PBO/CSCV, the deterministic 10,000-draw session bootstrap, losing-streak/concentration diagnostics and same-fold profile/cash comparisons are complete. Their 50-bps conclusion is negative and grants no promotion.
+**B35 is CLOSED / NO PROMOTION as of 2026-09-13.** Canonical replay, condition/selector analysis, retained-artifact robustness and the final exact targeted minute perturbations are complete. No B35 v1 replay, selector refit, nearby parameter sweep or cost weakening is justified. The four final research dispositions are recorded above and B35 v1 remains immutable historical evidence.
 
-PR #79 merged to `main` as `b6133d2efe8bc331a80d71bb2c0bfa47707655db`. It implements the five frozen minute-path perturbation families together in one DEVELOPMENT-only pass: entry delay 0/1/2, gap threshold x0.9/1.0/1.1, ORB 14/15/16 minutes, premarket relative-volume threshold x0.9/1.0/1.1, and premarket consolidation width x0.9/1.0/1.1 for premarket-relvol/HVD. There are 27 one-axis-at-a-time strategy/variant profiles. Unchanged baseline variants are populated from the exact accepted canonical B35 outcome files with SHA-256 verification and exact outcome-economic parity; only true perturbations are recomputed. The pass is restartable and hash-receipted, does not refit the selector, does not rewrite canonical B35 v1, reads no consumed-master or future-blind outcomes, and grants no provider/broker/PAPER/LIVE or promotion authority.
+The successor PRE-OUTCOME contract is now implemented in `packages/strategies/successor_practitioner_lab.py` with human-readable specification `docs/successor_practitioner_lab_preoutcome.md`. It freezes exactly 21 economic families (10 retained + 11 new), four bounded B35 mechanism-level challengers, shared PIT context, walk-forward/support/cost rules, and confluence/multiplicity semantics. Because the admitted B35 challengers were inspired by DEVELOPMENT evidence, they cannot validate themselves on the same DEVELOPMENT data; untouched/prospective evidence remains mandatory before promotion.
 
-Immediate action: run `.\.venv\Scripts\python.exe scripts\run_b35_targeted_perturbations.py --authorize-targeted-perturbations` once from current `main`, review the resulting 27 profiles, and record the final B35 dispositions. Only then freeze any justified B35 v2 challengers and the successor **21-family / eleven-new-family** strategy, shared-PIT-context, and separate-confluence contracts under new fingerprints. The future blind remains untouched and cannot be opened to rescue or choose these hypotheses.
+The next scientific action is implementation/synthetic validation of the missing successor family evaluators and shared PIT features without opening broad successor performance. Long-run execution must use the new parallel/restart-safe runtime, benchmark exact-equivalent worker shapes on the actual host, and preserve scientific fingerprints independently from execution profile. Consumed master and future blind remain unavailable.
 
 ## 7. Authority
 
-As of this update, historical supported modern alpha remains **zero**. No B35 strategy, selector, condition cell, successor hypothesis, or confluence mechanism is `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`, or `LIVE_ELIGIBLE`. B35 research reads no consumed-master or future-blind outcomes and grants no provider, broker, PAPER, LIVE, strategy-promotion, or selector-promotion authority.
+As of this 2026-09-13 closeout, historical supported modern alpha remains **zero**. No B35 strategy, selector, condition cell, successor hypothesis, or confluence mechanism is `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`, or `LIVE_ELIGIBLE`. B35 research reads no consumed-master or future-blind outcomes and grants no provider, broker, PAPER, LIVE, strategy-promotion, or selector-promotion authority.
 
 ## 8. Successor research hypotheses accepted for testing
 
@@ -245,6 +245,6 @@ Fundamentals are deferred for intraday ORB; future swing-conditioning research m
 
 ### 8.6 Successor laboratory target
 
-The next major Track-B experiment targets **21 economic strategy families**: the ten retained families plus eleven distinct additions. Nearby policy variants, including the two ORB challengers, remain within their economic family for multiplicity and confluence accounting. B35 perturbation results determine which additional gap/premarket/HVD/ORB v2 challengers earn one of the bounded research slots before the successor contract is fingerprinted.
+The accepted successor PRE-OUTCOME laboratory targets **21 economic strategy families**: the ten retained families plus eleven distinct additions. Nearby policy variants, including the two ORB challengers, remain within their economic family for multiplicity and confluence accounting. B35 perturbation results determine which additional gap/premarket/HVD/ORB v2 challengers earn one of the bounded research slots before the successor contract is fingerprinted.
 
 The successor objective is **economically viable condition coverage**, not maximum win rate. Qualification evidence must consider win rate, payoff ratio, net expectancy/net-R, cost decay, drawdown/tail loss, sample/support, fold/year stability, concentration, MFE/MAE, holding time and abstention. No favorable post-result slice validates itself; a frozen successor still requires untouched/prospective evidence before promotion.
