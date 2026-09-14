@@ -259,3 +259,63 @@ def test_signal_bar_stop_uses_adverse_signal_extreme() -> None:
     assert engine._stop_for_successor_signal(
         short_signal, [signal_bar], prior_regular_close=None
     ) == pytest.approx(101.0)
+
+def test_flat_prior_regular_geometry_is_unready_not_fatal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prior_session = date(2026, 3, 31)
+    session = date(2026, 4, 1)
+    history = engine.SuccessorMinuteHistory(
+        daily=[
+            engine.RawMinuteDailySummary(
+                session_date=prior_session,
+                high=100.0,
+                low=100.0,
+                close=100.0,
+                dollar_volume=1_000_000.0,
+                split_epoch=1.0,
+            )
+        ]
+    )
+    bars = [
+        _minute_bar(session, 9, 30, high=100.5, low=99.5, close=100.0),
+        _minute_bar(session, 9, 31, high=100.6, low=99.6, close=100.1),
+    ]
+
+    def should_not_be_called(*args, **kwargs):
+        raise AssertionError("flat prior geometry must make failed-break route unavailable")
+
+    monkeypatch.setattr(engine, "evaluate_session_failed_break_reclaim", should_not_be_called)
+    signals = engine._new_successor_minute_signals(
+        bars,
+        session_date=session,
+        history=history,
+        current_epoch=1.0,
+    )
+
+    assert all(
+        signal.policy_id != "pract_session_failed_break_reclaim_v1"
+        for signal, _, _ in signals
+    )
+
+
+def test_prior_regular_geometry_helper_requires_real_positive_range() -> None:
+    good = engine.RawMinuteDailySummary(
+        session_date=date(2026, 3, 31),
+        high=101.0,
+        low=99.0,
+        close=100.0,
+        dollar_volume=1_000_000.0,
+        split_epoch=1.0,
+    )
+    flat = engine.RawMinuteDailySummary(
+        session_date=date(2026, 3, 31),
+        high=100.0,
+        low=100.0,
+        close=100.0,
+        dollar_volume=1_000_000.0,
+        split_epoch=1.0,
+    )
+    assert engine._valid_prior_regular_geometry(good) is True
+    assert engine._valid_prior_regular_geometry(flat) is False
+    assert engine._valid_prior_regular_geometry(None) is False

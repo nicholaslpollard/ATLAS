@@ -49,7 +49,7 @@ from packages.strategies.successor_practitioner_rules import (
 
 
 SUCCESSOR_STANDALONE_ENGINE_CONTRACT = (
-    "atlas-successor-standalone-engine-v1-shared-daily-single-minute-scan"
+    "atlas-successor-standalone-engine-v2-flat-prior-geometry-unready"
 )
 MARKET_TZ = __import__("zoneinfo").ZoneInfo("America/New_York")
 
@@ -485,6 +485,15 @@ def successor_minute_common_context(
     }
 
 
+def _valid_prior_regular_geometry(prior: RawMinuteDailySummary | None) -> bool:
+    return bool(
+        prior is not None
+        and math.isfinite(prior.high)
+        and math.isfinite(prior.low)
+        and prior.high > prior.low > 0.0
+    )
+
+
 def _new_successor_minute_signals(
     bars: Sequence[CanonicalBar],
     *,
@@ -516,7 +525,11 @@ def _new_successor_minute_signals(
     if vwap is not None:
         signals.append((vwap, opening_relvol, pm_relvol))
 
-    if prior is not None and not history.split_crossed_prior_close(current_epoch):
+    # The failed-break strategy requires an actual prior-session range. A valid
+    # canonical session can still be flat (for example sparse one-trade coverage),
+    # which is missing strategy context rather than a fatal source error. Fail closed
+    # for this route instead of fabricating geometry or aborting the whole group.
+    if _valid_prior_regular_geometry(prior) and not history.split_crossed_prior_close(current_epoch):
         premarket = [
             item
             for item in bars
