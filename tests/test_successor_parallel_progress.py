@@ -40,6 +40,24 @@ def test_console_progress_reports_counts_rate_and_eta(capsys) -> None:
     assert "eta=10h22m48s" in output
 
 
-def test_default_progress_heartbeat_is_thirty_seconds() -> None:
+def test_default_progress_heartbeat_is_thirty_seconds_and_console_is_five_minutes() -> None:
     coordinator = SuccessorParallelCoordinator(execution_profile=_profile())
     assert coordinator.heartbeat_seconds == 30.0
+    assert coordinator.console_heartbeat_seconds == 300.0
+
+
+def test_group_transition_messages_are_concise(capsys) -> None:
+    coordinator = SuccessorParallelCoordinator(execution_profile=_profile())
+    coordinator._print_group_started("minute_0042")
+    coordinator._print_group_completed(
+        "minute_0042",
+        completed=92,
+        total=546,
+        next_token="minute_0043",
+    )
+    output = capsys.readouterr().out
+    assert "successor group started token=minute_0042" in output
+    assert (
+        "successor group completed token=minute_0042 completed=92/546 next=minute_0043"
+        in output
+    )
