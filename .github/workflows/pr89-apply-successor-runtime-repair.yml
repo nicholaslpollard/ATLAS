@@ -1,0 +1,58 @@
+name: PR89 apply successor runtime repair
+
+on:
+  push:
+    branches:
+      - codex/successor-flat-geometry-progress-repair
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/successor-flat-geometry-progress-repair
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Apply repair
+        run: python scripts/_pr89_apply_successor_runtime_repair.py
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements.lock
+      - name: Compile touched Python
+        run: >-
+          python -m py_compile
+          packages/backtesting/successor_development_engine.py
+          packages/backtesting/successor_parallel.py
+          tests/test_successor_development_engine.py
+          tests/test_successor_parallel_progress.py
+      - name: Run focused successor regressions
+        run: >-
+          python -m pytest -q
+          tests/test_successor_development_engine.py
+          tests/test_successor_development_runner.py
+          tests/test_successor_development_cli.py
+          tests/test_successor_development_outcomes.py
+          tests/test_successor_spy_benchmark_source.py
+          tests/test_successor_parallel_progress.py
+      - name: Verify governance corrections
+        shell: bash
+        run: |
+          grep -q '546-work-group standalone DEVELOPMENT run' README.md
+          grep -q 'flat prior geometry repair' docs/roadmap.md
+          grep -q 'implementation readiness defect, not strategy evidence' docs/strategy_evidence_register.md
+      - name: Remove one-shot machinery and commit permanent repair
+        shell: bash
+        run: |
+          rm scripts/_pr89_apply_successor_runtime_repair.py
+          rm .github/workflows/pr89-apply-successor-runtime-repair.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Repair successor flat geometry readiness and progress telemetry'
+          git push origin HEAD:codex/successor-flat-geometry-progress-repair
