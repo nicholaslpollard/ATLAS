@@ -4,7 +4,7 @@ import math
 from datetime import UTC, date, time, timedelta
 from typing import Sequence
 
-from packages.core.enums import SessionSegment
+from packages.core.enums import SessionSegment, Timeframe
 from packages.schemas.market import CanonicalBar
 from packages.strategies.successor_intraday_rules import (
     MARKET_TZ,
@@ -34,7 +34,8 @@ def _regular_window(
         (
             bar
             for bar in bars
-            if bar.session_date == session_date
+            if bar.timeframe == Timeframe.MINUTE_1
+            and bar.session_date == session_date
             and bar.session_segment == SessionSegment.REGULAR
             and earliest <= _local_time(bar) <= latest
         ),
@@ -94,7 +95,7 @@ def first_vwap_reclaim_reject(
     previous: CanonicalBar | None = None
     previous_vwap: float | None = None
 
-    for current in regular:
+    for observed_regular_bars, current in enumerate(regular, start=1):
         if current.volume > 0.0:
             typical = (current.high + current.low + current.close) / 3.0
             weighted += typical * current.volume
@@ -124,7 +125,7 @@ def first_vwap_reclaim_reject(
                         "prior_cumulative_vwap": previous_vwap,
                         "current_close": current.close,
                         "current_cumulative_vwap": current_vwap,
-                        "observed_regular_bars": regular.index(current) + 1,
+                        "observed_regular_bars": observed_regular_bars,
                     },
                 )
 
