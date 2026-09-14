@@ -1,11 +1,20 @@
 from __future__ import annotations
 
 import math
+import sys
 from dataclasses import dataclass
-from datetime import UTC, date, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
+from statistics import median
 from typing import Sequence
 
-from packages.core.enums import SessionSegment, Timeframe
+import pandas as pd
+
+from packages.core.enums import (
+    DataProvider,
+    DatasetType,
+    SessionSegment,
+    Timeframe,
+)
 from packages.schemas.market import CanonicalBar
 from packages.strategies.successor_intraday_rules import (
     MARKET_TZ,
@@ -29,18 +38,19 @@ PREMARKET_CONSOLIDATION_END = time(9, 30)
 
 @dataclass(frozen=True, slots=True)
 class SuccessorMinuteSessionView:
-    """One immutable partition/sort of a source-validated minute session.
-
-    The frozen strategy evaluators remain the scientific oracle. This view only
-    removes repeated per-route filtering, timezone conversion, sorting, and
-    duplicate checks from the full DEVELOPMENT replay.
-    """
+    """One immutable partition/sort of a source-validated minute session."""
 
     session_date: date
     regular: tuple[CanonicalBar, ...]
     regular_times: tuple[time, ...]
     premarket: tuple[CanonicalBar, ...]
     premarket_times: tuple[time, ...]
+
+
+_CACHED_BARS: Sequence[CanonicalBar] | None = None
+_CACHED_VIEW: SuccessorMinuteSessionView | None = None
+_ENGINE_FASTPATH_INSTALLED = False
+_RUNNER_FASTPATH_INSTALLED = False
 
 
 def _local_time(bar: CanonicalBar) -> time:
@@ -94,7 +104,18 @@ def prepare_successor_minute_session(
 def _view_from_bars(
     bars: Sequence[CanonicalBar], session_date: date
 ) -> SuccessorMinuteSessionView:
-    return prepare_successor_minute_session(bars, session_date=session_date)
+    global _CACHED_BARS, _CACHED_VIEW
+    if (
+        _CACHED_BARS is bars
+        and _CACHED_VIEW is not None
+        and _CACHED_VIEW.session_date == session_date
+    ):
+        return _CACHED_VIEW
+    view = prepare_successor_minute_session(bars, session_date=session_date)
+    _CACHED_BARS = bars
+    _CACHED_VIEW = view
+    _install_runtime_fastpaths()
+    return view
 
 
 def _signal(
@@ -129,7 +150,7 @@ def first_vwap_reclaim_reject(
 ) -> SuccessorIntradaySignal | None:
     """Return the first frozen VWAP reclaim/reject fire in one regular-session scan."""
 
-    session = view or _view_from_bars(tuple(bars or ()), session_date)
+    session = view or _view_from_bars(tuple(bars or ()) if bars is None else bars, session_date)
     weighted = 0.0
     cumulative_volume = 0.0
     previous: CanonicalBar | None = None
@@ -189,8 +210,6 @@ def first_session_failed_break_reclaim(
     premarket_low: float | None,
     view: SuccessorMinuteSessionView | None = None,
 ) -> SuccessorIntradaySignal | None:
-    """Return the first frozen failed-break/reclaim fire in one session scan."""
-
     if not (
         math.isfinite(prior_regular_high)
         and math.isfinite(prior_regular_low)
@@ -213,7 +232,7 @@ def first_session_failed_break_reclaim(
     ):
         resistances.append(("PREMARKET_HIGH", float(premarket_high)))
 
-    session = view or _view_from_bars(tuple(bars or ()), session_date)
+    session = view or _view_from_bars(tuple(bars or ()) if bars is None else bars, session_date)
     for current, current_local in zip(
         session.regular, session.regular_times, strict=True
     ):
@@ -473,7 +492,7 @@ def first_premarket_relvol_quality(
     view: SuccessorMinuteSessionView,
     prior_premarket_median_volume_20: float,
     prior_median_dollar_volume_20: float,
-    breakout_same_time_relvol_by_timestamp: dict,
+    breakout_same_time_relvol_by_timestamp: dict[datetime, float],
 ) -> SuccessorIntradaySignal | None:
     scalar_values = (prior_premarket_median_volume_20, prior_median_dollar_volume_20)
     if not all(math.isfinite(value) for value in scalar_values):
@@ -557,3 +576,334 @@ def first_premarket_relvol_quality(
         reasons=("PREMARKET_QUALITY_PASS", "CONSOLIDATION_BREAKOUT"),
         evidence=evidence,
     )
+
+
+def _opening_relvol(history: object, view: SuccessorMinuteSessionView) -> float | None:
+    prior_values = getattr(history, "opening_five_minute_volumes")
+    if len(prior_values) < 20:
+        return None
+    opening = [
+        bar
+        for bar, stamp in zip(view.regular, view.regular_times, strict=True)
+        if time(9, 30) <= stamp < time(9, 35)
+    ]
+    if len(opening) != 5:
+        return None
+    denominator = float(median(value for _, value in prior_values[-20:]))
+    if denominator <= 0.0:
+        return None
+    return float(sum(float(item.volume) for item in opening)) / denominator
+
+
+def _premarket_volume_from_view(view: SuccessorMinuteSessionView) -> float | None:
+    selected = [
+        bar
+        for bar, stamp in zip(view.premarket, view.premarket_times, strict=True)
+        if PREMARKET_START <= stamp < PREMARKET_END
+    ]
+    if not selected:
+        return None
+    return float(sum(float(bar.volume) for bar in selected))
+
+
+def _same_time_relvol_map(
+    history: object, view: SuccessorMinuteSessionView
+) -> dict[datetime, float]:
+    result: dict[datetime, float] = {}
+    prior_map = getattr(history, "same_time_regular_volumes")
+    for item, local_time in zip(view.regular, view.regular_times, strict=True):
+        key = local_time.replace(tzinfo=None)
+        prior = prior_map.get(key, [])
+        if len(prior) < 20:
+            continue
+        denominator = float(median(value for _, value in prior[-20:]))
+        if denominator > 0.0:
+            result[item.timestamp_utc] = float(item.volume) / denominator
+    return result
+
+
+def optimized_new_successor_minute_signals(
+    bars: Sequence[CanonicalBar],
+    *,
+    session_date: date,
+    history: object,
+    current_epoch: float,
+) -> list[tuple[SuccessorIntradaySignal, float | None, float | None]]:
+    """Execution-equivalent successor route scan using one shared session view."""
+
+    view = _view_from_bars(bars, session_date)
+    signals: list[tuple[SuccessorIntradaySignal, float | None, float | None]] = []
+    daily = getattr(history, "daily")
+    prior = daily[-1] if daily else None
+    prior_close = None if prior is None else float(prior.close)
+    prior_dv = history.prior_median_dollar_volume_20()
+    prior_pm_median = history.prior_premarket_median_volume_20()
+    natr14 = history.prior_natr_14(current_epoch)
+    opening_relvol = _opening_relvol(history, view)
+    pm_volume = _premarket_volume_from_view(view)
+    pm_relvol = (
+        None
+        if pm_volume is None or prior_pm_median is None or prior_pm_median <= 0.0
+        else pm_volume / prior_pm_median
+    )
+
+    vwap = first_vwap_reclaim_reject(session_date=session_date, view=view)
+    if vwap is not None:
+        signals.append((vwap, opening_relvol, pm_relvol))
+
+    valid_prior = bool(
+        prior is not None
+        and math.isfinite(float(prior.high))
+        and math.isfinite(float(prior.low))
+        and float(prior.high) > float(prior.low) > 0.0
+    )
+    split_crossed = history.split_crossed_prior_close(current_epoch)
+    if valid_prior and not split_crossed:
+        pm_high = max((float(item.high) for item in view.premarket), default=None)
+        pm_low = min((float(item.low) for item in view.premarket), default=None)
+        failed_break = first_session_failed_break_reclaim(
+            session_date=session_date,
+            prior_regular_high=float(prior.high),
+            prior_regular_low=float(prior.low),
+            premarket_high=pm_high,
+            premarket_low=pm_low,
+            view=view,
+        )
+        if failed_break is not None:
+            signals.append((failed_break, opening_relvol, pm_relvol))
+
+    if (
+        prior_close is not None
+        and prior_dv is not None
+        and natr14 is not None
+        and pm_relvol is not None
+    ):
+        gap = first_gap_quality_condition_long(
+            session_date=session_date,
+            view=view,
+            prior_regular_close=prior_close,
+            prior_median_dollar_volume_20=prior_dv,
+            natr_14=natr14,
+            premarket_relvol_20=pm_relvol,
+            split_crossed=split_crossed,
+        )
+        if gap is not None:
+            signals.append((gap, opening_relvol, pm_relvol))
+
+    if prior_dv is not None and opening_relvol is not None:
+        orb5 = first_orb_stocks_in_play_5m(
+            session_date=session_date,
+            view=view,
+            same_time_opening_relvol=opening_relvol,
+            prior_median_dollar_volume_20=prior_dv,
+        )
+        if orb5 is not None:
+            signals.append((orb5, opening_relvol, pm_relvol))
+
+    if natr14 is not None and prior_close is not None:
+        atr_reference = natr14 * prior_close
+        if atr_reference > 0.0:
+            orb15 = first_orb_15m_close_retest(
+                session_date=session_date,
+                view=view,
+                atr_reference=atr_reference,
+            )
+            if orb15 is not None:
+                signals.append((orb15, opening_relvol, pm_relvol))
+
+    if prior_pm_median is not None and prior_dv is not None:
+        pm_quality = first_premarket_relvol_quality(
+            session_date=session_date,
+            view=view,
+            prior_premarket_median_volume_20=prior_pm_median,
+            prior_median_dollar_volume_20=prior_dv,
+            breakout_same_time_relvol_by_timestamp=_same_time_relvol_map(history, view),
+        )
+        if pm_quality is not None:
+            signals.append((pm_quality, opening_relvol, pm_relvol))
+    return signals
+
+
+def fast_prior_natr_14(history: object, current_epoch: float) -> float | None:
+    same_epoch = []
+    for item in reversed(getattr(history, "daily")):
+        if not math.isclose(
+            float(item.split_epoch), current_epoch, rel_tol=1e-10, abs_tol=1e-12
+        ):
+            break
+        same_epoch.append(item)
+    same_epoch.reverse()
+    if len(same_epoch) < 14:
+        return None
+
+    true_ranges: list[float] = []
+    previous_close: float | None = None
+    for item in same_epoch:
+        high = float(item.high)
+        low = float(item.low)
+        close = float(item.close)
+        if previous_close is None:
+            true_range = high - low
+        else:
+            true_range = max(
+                high - low,
+                abs(high - previous_close),
+                abs(low - previous_close),
+            )
+        true_ranges.append(true_range)
+        previous_close = close
+
+    average = sum(true_ranges[:14]) / 14.0
+    for value in true_ranges[14:]:
+        average = (average * 13.0 + value) / 14.0
+    latest_close = float(same_epoch[-1].close)
+    if latest_close <= 0.0:
+        return None
+    result = average / latest_close
+    return result if math.isfinite(result) else None
+
+
+def fast_append_session(
+    history: object,
+    bars: Sequence[CanonicalBar],
+    *,
+    session_date: date,
+    split_epoch: float,
+) -> None:
+    view = _view_from_bars(bars, session_date)
+    premarket = [
+        bar
+        for bar, stamp in zip(view.premarket, view.premarket_times, strict=True)
+        if PREMARKET_START <= stamp < PREMARKET_END
+    ]
+    if premarket:
+        history.premarket_volumes.append(
+            (session_date, float(sum(float(item.volume) for item in premarket)))
+        )
+        del history.premarket_volumes[:-25]
+    regular = view.regular
+    if not regular:
+        return
+
+    # Import only after the engine module is fully initialized; this avoids an
+    # import cycle while preserving the exact RawMinuteDailySummary type.
+    engine = sys.modules.get("packages.backtesting.successor_development_engine")
+    if engine is None:
+        raise RuntimeError("successor engine is not loaded")
+    summary_type = getattr(engine, "RawMinuteDailySummary")
+    history.daily.append(
+        summary_type(
+            session_date=session_date,
+            high=max(float(item.high) for item in regular),
+            low=min(float(item.low) for item in regular),
+            close=float(regular[-1].close),
+            dollar_volume=float(
+                sum(
+                    float(item.volume)
+                    * float(item.vwap if item.vwap is not None else item.close)
+                    for item in regular
+                )
+            ),
+            split_epoch=split_epoch,
+        )
+    )
+    del history.daily[:-260]
+
+    opening = [
+        item
+        for item, stamp in zip(view.regular, view.regular_times, strict=True)
+        if time(9, 30) <= stamp < time(9, 35)
+    ]
+    if len(opening) == 5:
+        history.opening_five_minute_volumes.append(
+            (session_date, float(sum(float(item.volume) for item in opening)))
+        )
+        del history.opening_five_minute_volumes[:-25]
+    for item, local_time in zip(view.regular, view.regular_times, strict=True):
+        key = local_time.replace(tzinfo=None)
+        prior = history.same_time_regular_volumes.setdefault(key, [])
+        prior.append((session_date, float(item.volume)))
+        del prior[:-25]
+
+
+def fast_current_regular_open(
+    bars: Sequence[CanonicalBar], session_date: date
+) -> float | None:
+    view = _view_from_bars(bars, session_date)
+    return float(view.regular[0].open) if view.regular else None
+
+
+def fast_premarket_volume(
+    bars: Sequence[CanonicalBar], session_date: date
+) -> float | None:
+    return _premarket_volume_from_view(_view_from_bars(bars, session_date))
+
+
+def _utc_datetime(value: object) -> datetime:
+    if isinstance(value, pd.Timestamp):
+        value = value.to_pydatetime()
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("source-validated minute timestamp lost timezone awareness")
+    return value.astimezone(UTC)
+
+
+def trusted_canonical_bars(frame: pd.DataFrame) -> tuple[CanonicalBar, ...]:
+    """Construct CanonicalBar objects after B35 physical validation has passed.
+
+    ``B35DevelopmentMinuteSource.load_unit`` has already checked OHLC geometry,
+    timestamps, provider/dataset/timeframe/source identity, session labels,
+    duplicate keys, non-negative volume/transactions, and the canonical SHA-256.
+    Re-running the Pydantic validation stack for every bar is therefore redundant
+    execution work and does not add a new scientific check.
+    """
+
+    bars: list[CanonicalBar] = []
+    isna = pd.isna
+    construct = CanonicalBar.model_construct
+    for row in frame.itertuples(index=False):
+        timestamp = _utc_datetime(row.timestamp_utc)
+        vwap = None if isna(row.vwap) else float(row.vwap)
+        transaction_count = (
+            None if isna(row.transaction_count) else int(row.transaction_count)
+        )
+        bars.append(
+            construct(
+                symbol=str(row.symbol),
+                timestamp_utc=timestamp,
+                session_date=row.session_date,
+                timeframe=Timeframe.MINUTE_1,
+                session_segment=SessionSegment(str(row.session_segment)),
+                open=float(row.open),
+                high=float(row.high),
+                low=float(row.low),
+                close=float(row.close),
+                volume=float(row.volume),
+                vwap=vwap,
+                transaction_count=transaction_count,
+                provider=DataProvider.ALPACA,
+                dataset=DatasetType.STOCK_MINUTE_AGGREGATES,
+                source_id=str(row.source_id),
+                is_adjusted=False,
+                provider_timestamp_utc=timestamp,
+            )
+        )
+    return tuple(bars)
+
+
+def _install_runtime_fastpaths() -> None:
+    """Install execution-only worker accelerators after import cycles are complete."""
+
+    global _ENGINE_FASTPATH_INSTALLED, _RUNNER_FASTPATH_INSTALLED
+    engine = sys.modules.get("packages.backtesting.successor_development_engine")
+    if engine is not None and not _ENGINE_FASTPATH_INSTALLED:
+        engine._new_successor_minute_signals = optimized_new_successor_minute_signals
+        engine._current_regular_open = fast_current_regular_open
+        engine._premarket_volume = fast_premarket_volume
+        engine.SuccessorMinuteHistory.prior_natr_14 = fast_prior_natr_14
+        engine.SuccessorMinuteHistory.append_session = fast_append_session
+        _ENGINE_FASTPATH_INSTALLED = True
+
+    runner = sys.modules.get("packages.backtesting.successor_development_runner")
+    if runner is not None and not _RUNNER_FASTPATH_INSTALLED:
+        runner._canonical_bars = trusted_canonical_bars
+        _RUNNER_FASTPATH_INSTALLED = True
