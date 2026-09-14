@@ -164,7 +164,7 @@ class SuccessorParallelCoordinator:
         self,
         *,
         execution_profile: SuccessorResearchExecutionProfile,
-        heartbeat_seconds: float = 60.0,
+        heartbeat_seconds: float = 30.0,
     ) -> None:
         if heartbeat_seconds <= 0:
             raise ValueError("heartbeat_seconds must be positive")
@@ -182,7 +182,7 @@ class SuccessorParallelCoordinator:
         active_tokens: list[str],
         remaining_pending: int,
         last_error: str | None = None,
-    ) -> None:
+    ) -> dict[str, object]:
         new_count = sum(not group.reused for group in completed)
         reused_count = sum(group.reused for group in completed)
         elapsed = max(0.0, time.monotonic() - started_monotonic)
@@ -210,6 +210,35 @@ class SuccessorParallelCoordinator:
             "last_error": last_error,
         }
         atomic_write_text(path, _canonical_json(payload) + "\n")
+        return payload
+
+    @staticmethod
+    def _format_duration(value: object) -> str:
+        if value is None:
+            return "n/a"
+        seconds = max(0, int(float(value)))
+        hours, remainder = divmod(seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        if hours:
+            return f"{hours:d}h{minutes:02d}m{seconds:02d}s"
+        return f"{minutes:d}m{seconds:02d}s"
+
+    def _print_progress(self, payload: dict[str, object]) -> None:
+        total = int(payload["groups_total"])
+        completed = int(payload["groups_completed"])
+        percent = 100.0 * completed / total if total else 100.0
+        rate = payload.get("new_groups_per_hour")
+        rate_text = "n/a" if rate is None else f"{float(rate):.2f}/h"
+        print(
+            "successor progress "
+            f"state={payload['state']} {completed}/{total} ({percent:.1f}%) "
+            f"reused={payload['groups_reused']} new={payload['groups_new']} "
+            f"active={len(payload['active_group_tokens'])} "
+            f"queued={payload['groups_pending_not_submitted']} "
+            f"elapsed={self._format_duration(payload['elapsed_seconds'])} "
+            f"rate={rate_text} eta={self._format_duration(payload.get('eta_seconds'))}",
+            flush=True,
+        )
 
     def run(
         self,
@@ -242,7 +271,7 @@ class SuccessorParallelCoordinator:
 
         pending_iter = iter(pending)
         remaining_pending = len(pending)
-        self._write_progress(
+        initial_progress = self._write_progress(
             progress_path,
             state="RUNNING",
             total=len(ordered),
@@ -251,6 +280,9 @@ class SuccessorParallelCoordinator:
             active_tokens=[],
             remaining_pending=remaining_pending,
         )
+        self._print_progress(initial_progress)
+        last_console_report = started
+        last_console_completed = len(completed)
         if pending:
             executor = ProcessPoolExecutor(max_workers=self.profile.workers)
             future_to_unit: dict[Future[dict[str, object]], ResearchWorkUnit] = {}
@@ -287,7 +319,7 @@ class SuccessorParallelCoordinator:
                             remaining_pending -= 1
                     now = time.monotonic()
                     if done or now - last_heartbeat >= self.heartbeat_seconds:
-                        self._write_progress(
+                        progress = self._write_progress(
                             progress_path,
                             state="RUNNING",
                             total=len(ordered),
@@ -296,11 +328,20 @@ class SuccessorParallelCoordinator:
                             active_tokens=[unit.token for unit in future_to_unit.values()],
                             remaining_pending=remaining_pending,
                         )
+                        should_print = (
+                            now - last_console_report >= self.heartbeat_seconds
+                            or len(completed) - last_console_completed >= 5
+                            or len(completed) == len(ordered)
+                        )
+                        if should_print:
+                            self._print_progress(progress)
+                            last_console_report = now
+                            last_console_completed = len(completed)
                         last_heartbeat = now
             except KeyboardInterrupt:
                 for future in future_to_unit:
                     future.cancel()
-                self._write_progress(
+                interrupted = self._write_progress(
                     progress_path,
                     state="INTERRUPTED",
                     total=len(ordered),
@@ -310,12 +351,13 @@ class SuccessorParallelCoordinator:
                     remaining_pending=remaining_pending,
                     last_error="KeyboardInterrupt",
                 )
+                self._print_progress(interrupted)
                 executor.shutdown(wait=False, cancel_futures=True)
                 raise
             except BaseException as exc:
                 for future in future_to_unit:
                     future.cancel()
-                self._write_progress(
+                failed = self._write_progress(
                     progress_path,
                     state="FAILED",
                     total=len(ordered),
@@ -325,6 +367,7 @@ class SuccessorParallelCoordinator:
                     remaining_pending=remaining_pending,
                     last_error=f"{type(exc).__name__}: {exc}",
                 )
+                self._print_progress(failed)
                 executor.shutdown(wait=False, cancel_futures=True)
                 raise
             else:
@@ -336,7 +379,7 @@ class SuccessorParallelCoordinator:
             scientific_contract_fingerprint=scientific_contract_fingerprint,
             completed_groups=completed,
         )
-        self._write_progress(
+        complete_progress = self._write_progress(
             progress_path,
             state="COMPLETE",
             total=len(ordered),
@@ -345,6 +388,7 @@ class SuccessorParallelCoordinator:
             active_tokens=[],
             remaining_pending=0,
         )
+        self._print_progress(complete_progress)
         return {
             "status": "COMPLETE",
             "group_count": len(completed),
