@@ -165,11 +165,15 @@ class SuccessorParallelCoordinator:
         *,
         execution_profile: SuccessorResearchExecutionProfile,
         heartbeat_seconds: float = 30.0,
+        console_heartbeat_seconds: float = 300.0,
     ) -> None:
         if heartbeat_seconds <= 0:
             raise ValueError("heartbeat_seconds must be positive")
+        if console_heartbeat_seconds <= 0:
+            raise ValueError("console_heartbeat_seconds must be positive")
         self.profile = execution_profile
         self.heartbeat_seconds = heartbeat_seconds
+        self.console_heartbeat_seconds = console_heartbeat_seconds
 
     def _write_progress(
         self,
@@ -240,6 +244,24 @@ class SuccessorParallelCoordinator:
             flush=True,
         )
 
+    @staticmethod
+    def _print_group_started(token: str) -> None:
+        print(f"successor group started token={token}", flush=True)
+
+    @staticmethod
+    def _print_group_completed(
+        token: str,
+        *,
+        completed: int,
+        total: int,
+        next_token: str | None,
+    ) -> None:
+        next_text = "none" if next_token is None else next_token
+        print(
+            f"successor group completed token={token} completed={completed}/{total} next={next_text}",
+            flush=True,
+        )
+
     def run(
         self,
         units: Iterable[ResearchWorkUnit],
@@ -282,7 +304,6 @@ class SuccessorParallelCoordinator:
         )
         self._print_progress(initial_progress)
         last_console_report = started
-        last_console_completed = len(completed)
         if pending:
             executor = ProcessPoolExecutor(max_workers=self.profile.workers)
             future_to_unit: dict[Future[dict[str, object]], ResearchWorkUnit] = {}
@@ -293,6 +314,7 @@ class SuccessorParallelCoordinator:
                         break
                     future_to_unit[executor.submit(worker, unit)] = unit
                     remaining_pending -= 1
+                    self._print_group_started(unit.token)
                 last_heartbeat = time.monotonic()
                 while future_to_unit:
                     done, _ = wait(
@@ -317,6 +339,12 @@ class SuccessorParallelCoordinator:
                         if next_unit is not None:
                             future_to_unit[executor.submit(worker, next_unit)] = next_unit
                             remaining_pending -= 1
+                        self._print_group_completed(
+                            unit.token,
+                            completed=len(completed),
+                            total=len(ordered),
+                            next_token=None if next_unit is None else next_unit.token,
+                        )
                     now = time.monotonic()
                     if done or now - last_heartbeat >= self.heartbeat_seconds:
                         progress = self._write_progress(
@@ -328,15 +356,9 @@ class SuccessorParallelCoordinator:
                             active_tokens=[unit.token for unit in future_to_unit.values()],
                             remaining_pending=remaining_pending,
                         )
-                        should_print = (
-                            now - last_console_report >= self.heartbeat_seconds
-                            or len(completed) - last_console_completed >= 5
-                            or len(completed) == len(ordered)
-                        )
-                        if should_print:
+                        if now - last_console_report >= self.console_heartbeat_seconds:
                             self._print_progress(progress)
                             last_console_report = now
-                            last_console_completed = len(completed)
                         last_heartbeat = now
             except KeyboardInterrupt:
                 for future in future_to_unit:
