@@ -26,6 +26,10 @@ from packages.backtesting.successor_development_outcomes import (
     evaluate_daily_diagnostic_outcome,
     simulate_successor_intraday_outcome,
 )
+from packages.backtesting.successor_minute_fastpath import (
+    first_session_failed_break_reclaim,
+    first_vwap_reclaim_reject,
+)
 from packages.backtesting.successor_runner_contract import successor_policy_routes
 from packages.features.successor_practitioner import (
     compute_successor_daily_features,
@@ -515,12 +519,9 @@ def _new_successor_minute_signals(
         else pm_volume / prior_pm_median
     )
 
-    vwap = _first_fired_successor(
-        evaluate_vwap_reclaim_reject,
+    vwap = first_vwap_reclaim_reject(
         bars,
         session_date=session_date,
-        earliest=time(9, 31),
-        latest=time(15, 30),
     )
     if vwap is not None:
         signals.append((vwap, opening_relvol, pm_relvol))
@@ -537,18 +538,13 @@ def _new_successor_minute_signals(
         ]
         pm_high = max((float(item.high) for item in premarket), default=None)
         pm_low = min((float(item.low) for item in premarket), default=None)
-        failed_break = _first_fired_successor(
-            evaluate_session_failed_break_reclaim,
+        failed_break = first_session_failed_break_reclaim(
             bars,
             session_date=session_date,
-            earliest=time(9, 30),
-            latest=time(15, 30),
-            kwargs={
-                "prior_regular_high": prior.high,
-                "prior_regular_low": prior.low,
-                "premarket_high": pm_high,
-                "premarket_low": pm_low,
-            },
+            prior_regular_high=prior.high,
+            prior_regular_low=prior.low,
+            premarket_high=pm_high,
+            premarket_low=pm_low,
         )
         if failed_break is not None:
             signals.append((failed_break, opening_relvol, pm_relvol))
