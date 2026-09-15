@@ -7,9 +7,11 @@ import duckdb
 import pandas as pd
 import pytest
 
+import packages.backtesting.successor_selected_daily_path_analysis as path_analysis
 from packages.backtesting.successor_selected_daily_path_analysis import (
     _copy_query_atomic,
     _path_query,
+    _prepare_path_relations,
     _threshold_query,
     selected_daily_path_root,
 )
@@ -66,6 +68,17 @@ def _selected() -> pd.DataFrame:
     )
 
 
+def _prepare(con: duckdb.DuckDBPyConnection, bars: pd.DataFrame | None = None) -> dict[str, int]:
+    con.register("daily_bars", _bars() if bars is None else bars)
+    con.register("selected", _selected())
+    original = path_analysis.EXPECTED_SELECTED_DAILY_COMPARABLE
+    path_analysis.EXPECTED_SELECTED_DAILY_COMPARABLE = 1
+    try:
+        return _prepare_path_relations(con, "daily_bars")
+    finally:
+        path_analysis.EXPECTED_SELECTED_DAILY_COMPARABLE = original
+
+
 def test_contract_is_descriptive_and_authority_closed() -> None:
     manifest = successor_selected_daily_path_manifest()
     assert PATH_HORIZON_SESSIONS == 5
@@ -85,9 +98,13 @@ def test_contract_is_descriptive_and_authority_closed() -> None:
 
 def test_long_five_session_path_and_first_touch(tmp_path: Path) -> None:
     con = duckdb.connect()
-    con.register("daily_bars", _bars())
-    con.register("selected", _selected())
     try:
+        prep = _prepare(con)
+        assert prep["selected_instruments"] == 1
+        assert prep["ordered_daily_rows"] == 6
+        assert prep["selected_positions"] == 1
+        assert prep["targeted_daily_rows"] == 6
+
         path = tmp_path / "path.parquet"
         assert _copy_query_atomic(con, _path_query(), path) == 1
         row = con.execute(f"SELECT * FROM read_parquet('{path.as_posix()}')").fetchdf().iloc[0]
@@ -120,9 +137,8 @@ def test_same_session_collision_is_not_ordered(tmp_path: Path) -> None:
     bars = _bars()
     bars.loc[bars["session_date"] == date(2026, 1, 6), "low"] = 97.5
     con = duckdb.connect()
-    con.register("daily_bars", bars)
-    con.register("selected", _selected())
     try:
+        _prepare(con, bars)
         path = tmp_path / "path.parquet"
         _copy_query_atomic(con, _path_query(), path)
         threshold = tmp_path / "threshold.parquet"
@@ -135,6 +151,27 @@ def test_same_session_collision_is_not_ordered(tmp_path: Path) -> None:
         assert two["first_touch_class"] == "SAME_SESSION_COLLISION_UNORDERED"
     finally:
         con.close()
+
+
+def test_projection_excludes_unselected_instruments() -> None:
+    bars = _bars()
+    other = _bars().copy()
+    other["instrument_id"] = "I2"
+    other["ticker"] = "OTHER"
+    bars = pd.concat([bars, other], ignore_index=True)
+    con = duckdb.connect()
+    try:
+        prep = _prepare(con, bars)
+        assert prep["selected_instruments"] == 1
+        assert prep["ordered_daily_rows"] == 6
+        assert prep["targeted_daily_rows"] == 6
+        instruments = con.execute(
+            "SELECT DISTINCT instrument_id FROM targeted_daily_bars"
+        ).fetchall()
+        assert instruments == [("I1",)]
+    finally:
+        con.close()
+
 
 def test_output_root_stays_windows_legacy_safe(tmp_path: Path) -> None:
     root = selected_daily_path_root(tmp_path)
