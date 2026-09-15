@@ -49,6 +49,54 @@ DAILY_STRESS_COST_BPS: Final[int] = 25
 INTRADAY_PRIMARY_COST_BPS: Final[int] = 50
 INTRADAY_STRESS_COST_BPS: Final[int] = 100
 
+# Numeric bucket boundaries are frozen before condition performance is opened.
+# They intentionally use broad practitioner-readable ranges rather than dense
+# parameter grids. Legacy B35 minute rows retain their already-frozen buckets.
+BUCKET_CONTRACT: Final[dict[str, object]] = {
+    "relative_strength_return_difference": {
+        "units": "decimal_return_difference_vs_spy",
+        "cuts": [-0.10, -0.03, 0.03, 0.10],
+        "labels": ["LE_M10PCT", "M10_TO_M3PCT", "M3_TO_P3PCT", "P3_TO_P10PCT", "GE_P10PCT"],
+    },
+    "atr_normalized_extension": {
+        "units": "ATR_FROM_EMA20_SIGNED",
+        "cuts": [-2.0, -1.0, 1.0, 2.0],
+        "labels": ["LE_M2ATR", "M2_TO_M1ATR", "M1_TO_P1ATR", "P1_TO_P2ATR", "GE_P2ATR"],
+    },
+    "participation_ratio": {
+        "units": "ratio",
+        "cuts": [1.0, 1.5, 2.0, 4.0],
+        "labels": ["LT_1", "1_TO_1_5", "1_5_TO_2", "2_TO_4", "GE_4"],
+    },
+    "prior_dollar_volume": {
+        "units": "USD",
+        "cuts": [1_000_000.0, 10_000_000.0, 50_000_000.0, 250_000_000.0],
+        "labels": ["LT_1M", "1M_TO_10M", "10M_TO_50M", "50M_TO_250M", "GE_250M"],
+    },
+    "overnight_gap_magnitude": {
+        "units": "absolute_decimal_return",
+        "cuts": [0.02, 0.05, 0.10],
+        "labels": ["LT_2PCT", "2_TO_5PCT", "5_TO_10PCT", "GE_10PCT"],
+    },
+    "realized_volatility": {
+        "units": "annualized_decimal",
+        "cuts": [0.25, 0.50, 1.00],
+        "labels": ["LT_25PCT", "25_TO_50PCT", "50_TO_100PCT", "GE_100PCT"],
+    },
+    "signal_time_et": {
+        "daily_label": "DAILY_CLOSE",
+        "intraday_labels": [
+            "0931_TO_0944",
+            "0945_TO_1000",
+            "1001_TO_1030",
+            "1031_TO_1131",
+            "1132_TO_1300",
+            "1301_TO_1500",
+            "1501_TO_CLOSE",
+        ],
+    },
+}
+
 # The first router is deliberately small and interpretable. Direction is explicit.
 # More-specific supported cells own their result even when negative; fallback is
 # permitted only when the more-specific cell lacks the frozen support minimum.
@@ -183,6 +231,7 @@ def successor_conditioning_manifest() -> dict[str, object]:
             "stress_is_reported_not_a_fallback_rescue": True,
         },
         "reporting_cost_grid_bps": list(REPORTING_COST_GRID_BPS),
+        "bucket_contract": BUCKET_CONTRACT,
         "condition_dimensions": list(CONDITION_DIMENSIONS),
         "primary_condition_interactions": [list(item) for item in PRIMARY_CONDITION_INTERACTIONS],
         "selector_fallback_hierarchy": [list(item) for item in SELECTOR_FALLBACK_HIERARCHY],
