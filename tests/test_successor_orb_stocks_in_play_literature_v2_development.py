@@ -99,7 +99,6 @@ def test_daily_features_shift_both_volume_and_atr_before_current_session() -> No
 
 def test_cross_section_rank_is_top20_and_doji_consumes_its_rank_slot(tmp_path) -> None:
     sessions = [date(2026, 3, 2) + timedelta(days=index) for index in range(15)]
-    current = sessions[-1]
     opening_rows = []
     daily_rows = []
     for ticker_index in range(21):
@@ -141,9 +140,13 @@ def test_cross_section_rank_is_top20_and_doji_consumes_its_rank_slot(tmp_path) -
     _write_parquet(daily_path, pd.DataFrame(daily_rows))
 
     selected_path, counts = _rank_selected_candidates([opening_path], daily_path, tmp_path)
-    selected = duckdb.connect(":memory:").execute(
-        f"SELECT * FROM read_parquet('{selected_path.as_posix()}') ORDER BY daily_relvol_rank"
-    ).fetchdf()
+    conn = duckdb.connect(":memory:")
+    try:
+        selected = conn.execute(
+            f"SELECT * FROM read_parquet('{selected_path.as_posix()}') ORDER BY daily_relvol_rank"
+        ).fetchdf()
+    finally:
+        conn.close()
     assert counts["selected_top20_rows"] == 20
     assert counts["doji_abstentions"] == 1
     assert len(selected) == 20
@@ -221,9 +224,9 @@ def test_comparable_case_excludes_entry_and_exit_extremes_but_includes_terminal_
     assert outcome["entry_price"] == pytest.approx(101.0)
     assert outcome["exit_price"] == pytest.approx(103.02)
     assert outcome["gross_return"] == pytest.approx(0.02)
-    assert outcome["path_mfe"] == pytest.approx(102.5 / 101.0 - 1.0)
+    assert outcome["path_mfe"] == pytest.approx(0.02)
     assert outcome["path_adverse"] == pytest.approx(1.0 - 100.95 / 101.0)
     assert outcome["net_return_50"] < outcome["gross_return"]
-    two_pct = next(row for row in thresholds if row["move_threshold"] == pytest.approx(0.02))
+    two_pct = next(row for row in thresholds if abs(float(row["move_threshold"]) - 0.02) < 1e-12)
     assert two_pct["first_favorable_minutes"] == pytest.approx(384.0)
     assert two_pct["first_touch_class"] == "FAVORABLE_ONLY"
