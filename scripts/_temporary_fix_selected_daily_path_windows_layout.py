@@ -21,7 +21,7 @@ t = t.replace(
 )
 addition = '''\n\ndef test_output_root_stays_windows_legacy_safe(tmp_path: Path) -> None:\n    root = selected_daily_path_root(tmp_path)\n    conditioning = conditioning_root(tmp_path)\n    assert root.parent.parent == conditioning\n    assert "optionworthiness_v1" not in root.parts\n\n    relative = root.relative_to(tmp_path.resolve())\n    representative = PureWindowsPath(\n        r"C:\\Users\\cyberdyne\\Desktop\\ATLAS",\n        *relative.parts,\n        "selected_daily_path_contract.json",\n    )\n    assert len(str(representative)) <= 248\n'''
 if 'test_output_root_stays_windows_legacy_safe' not in t:
-    t = t.rstrip() + addition + '\n'
+    t = t.rstrip() + addition.rstrip() + '\n'
 test.write_text(t, encoding='utf-8')
 
 Path('.github/workflows/_temporary_fix_selected_daily_path_windows_layout.yml').unlink(missing_ok=True)
