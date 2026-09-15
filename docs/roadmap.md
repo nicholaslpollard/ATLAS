@@ -1524,3 +1524,16 @@ Immediate Track B sequence:
 The options-oriented construction path remains: `strategy edge -> underlying move magnitude/speed/path distribution -> universal actionability gate -> operator trade-expression mode -> stock and/or option evaluation -> contract economics -> portfolio/risk/sizing -> trade or abstain`. Option evaluation must include delta, gamma, theta, vega/IV, skew/term structure, DTE, strike/moneyness, rates/dividends/early exercise where relevant, spread/liquidity/open interest, event risk, break-even/max loss and scenario expected P&L. A model-relative Black-Scholes value is evidence, not executable historical P&L. In modes permitting stock fallback, an underlying candidate may remain eligible when no option contract is economically acceptable.
 
 Track A should continue account simulator/control-plane work in parallel using clearly labeled baselines. Historical alpha qualification is still zero; consumed master remains permanently closed, future blind unopened, confluence closed, and PAPER/LIVE/promotion authority false.
+
+## Exact-minute ORB diagnosis and bounded literature-fidelity revision — 2026-09-15
+
+The 259-case selected `orb_15m_close_retest_v2` minute-path diagnostic completed under fingerprint `a58c06b19b499082190110c227ddd4617826bb33e733d07bd17d849d73b099d8` after exact SHA verification of 218 native units and 55,581 path bars. LONG was -0.71% gross / -1.20% primary / -1.70% stress; SHORT was -0.01% / -0.51% / -1.01%. Favorable-first frequency was below 50% at every 1/2/3/5% threshold in both directions and generally worsened with threshold size. The opening-range retest failure is therefore localized to directional/path ordering rather than insufficient move magnitude.
+
+The bounded next research action is `orb_stocks_in_play_5m_literature_v2`, preserved separately from `orb_stocks_in_play_5m_v1`. Its pre-outcome contract is frozen at `1be9081b60656affd09c683a28545894c66871e7a808e2b7e8f58bada67cf4cb` and follows the literature mechanism rather than a parameter sweep: five-minute range, PIT 14-session share-volume/ATR/opening-relative-volume inputs, RV >= 1.0, daily top-20 RV rank, opening-candle direction, directional stop entry, 0.10 x ATR14 stop, and EOD exit. Gap-through entries fill at the worse first post-09:35 bar open; same-minute entry/stop ordering will remain unresolved/noncomparable rather than be assigned favorably.
+
+Next implementation order:
+1. Build a DEVELOPMENT-only cross-sectional runner that computes all v2 eligibility/ranking facts at 09:35 ET from prior-only evidence and accepted native minute sources.
+2. Reconstruct exact direction-specific stop entries and exits with the frozen ambiguity rule and ATLAS 0/10/25/50/100-bps costs (50/100 primary/stress).
+3. Report signal quality plus minute path/option-worthiness diagnostics; do not claim historical option P&L without PIT option-chain evidence.
+4. Treat any DEVELOPMENT result as research diagnosis only. Do not reuse the consumed master, open the future blind, promote the strategy, or open confluence to rescue it.
+5. After this one bounded ORB revision, move on rather than continue iterative ORB parameter tuning; Track A simulator/control-plane work remains independent and should continue.
