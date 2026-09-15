@@ -25,16 +25,21 @@ _CONTRACT = {
     ),
     "minute_grouping": "EXACT_SORTED_NATIVE_PLAN_SYMBOL_TUPLE",
     "opening_snapshot": "EXACT_0930_THROUGH_0934_ET_REGULAR_MINUTE_BARS;REQUIRE_5_BARS",
-    "daily_raw_reconstruction": {
+    "daily_price_reconstruction": {
         "price_factor": "unadjusted_close / split_adjusted_close",
         "raw_ohlc": "split_adjusted_ohlc * price_factor",
-        "raw_share_volume": "split_adjusted_volume / price_factor",
         "factor_requirement": "FINITE_POSITIVE",
     },
-    "prior_average_daily_share_volume": "SIMPLE_MEAN_PRIOR_14_INSTRUMENT_SESSIONS_SHIFT_1",
-    "atr14": "ATLAS_WILDER_ATR14_ON_RECONSTRUCTED_RAW_DAILY_OHLC_SHIFT_1",
+    "prior_average_daily_share_volume": (
+        "PROVIDER_NATIVE_SPLIT_ADJUSTED_DAILY_VOLUME_AS_SUPPLIED;"
+        "SIMPLE_MEAN_PRIOR_14_INSTRUMENT_SESSIONS_SHIFT_1;"
+        "NO_INVERSE_PRICE_FACTOR_VOLUME_TRANSFORM"
+    ),
     "opening_relvol": (
         "CURRENT_EXACT_FIRST5_SHARE_VOLUME / SIMPLE_MEAN_PRIOR_14_EXACT_FIRST5_VOLUMES"
+    ),
+    "opening_relvol_history_requirement": (
+        "EXACT_PREVIOUS_14_XNYS_SESSIONS_EACH_REQUIRE_EXACT_FIRST5_BARS"
     ),
     "cross_sectional_rank": "ELIGIBLE_RV_DESC_THEN_TICKER_THEN_INSTRUMENT_ID;TOP_20",
     "entry_execution": {
@@ -91,7 +96,7 @@ def contract_fingerprint() -> str:
 
 
 ORB_STOCKS_IN_PLAY_LITERATURE_V2_DEVELOPMENT_FINGERPRINT: Final = (
-    "2a62b54a5413a1ce62e19ae1489df36095350ba53e4dad2d4784fb3b083fe542"
+    "3c4538098af3ca3c19f147547c50b92429ed9e8ec3ed284193c59dce3268a44e"
 )
 
 if contract_fingerprint() != ORB_STOCKS_IN_PLAY_LITERATURE_V2_DEVELOPMENT_FINGERPRINT:
