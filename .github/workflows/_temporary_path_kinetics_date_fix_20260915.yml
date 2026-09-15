@@ -1,0 +1,50 @@
+name: Temporary path-kinetics date-type repair
+
+on:
+  push:
+    branches:
+      - research/successor-path-kinetics-v1
+    paths:
+      - .github/workflows/_temporary_path_kinetics_date_fix_20260915.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Repair imported DEVELOPMENT date handling
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          contract = Path('packages/strategies/successor_path_kinetics_contract.py')
+          text = contract.read_text(encoding='utf-8')
+          text = text.replace('DEVELOPMENT_START.isoformat()', 'DEVELOPMENT_START')
+          text = text.replace('DEVELOPMENT_END.isoformat()', 'DEVELOPMENT_END')
+          contract.write_text(text, encoding='utf-8', newline='\n')
+
+          analysis = Path('packages/backtesting/successor_path_kinetics_analysis.py')
+          text = analysis.read_text(encoding='utf-8')
+          old = 'loaded = ReferenceV2DailyLakeAdapter(settings).load(DEVELOPMENT_START, DEVELOPMENT_END)'
+          new = 'loaded = ReferenceV2DailyLakeAdapter(settings).load(\n        date.fromisoformat(DEVELOPMENT_START), date.fromisoformat(DEVELOPMENT_END)\n    )'
+          if old not in text:
+              raise SystemExit('expected adapter load call not found')
+          text = text.replace(old, new)
+          analysis.write_text(text, encoding='utf-8', newline='\n')
+          PY
+          rm .github/workflows/_temporary_path_kinetics_date_fix_20260915.yml
+          python -m compileall -q packages/strategies/successor_path_kinetics_contract.py packages/backtesting/successor_path_kinetics_analysis.py scripts/run_successor_path_kinetics.py
+          python -m pytest -q tests/test_successor_path_kinetics_analysis.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/strategies/successor_path_kinetics_contract.py packages/backtesting/successor_path_kinetics_analysis.py .github/workflows/_temporary_path_kinetics_date_fix_20260915.yml
+          git diff --cached --check
+          git commit -m "Fix path-kinetics development date handling"
+          git push origin HEAD:research/successor-path-kinetics-v1
