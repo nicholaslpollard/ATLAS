@@ -1506,3 +1506,19 @@ Repository acceptance of this package does not itself open the additional diagno
 The first retained-artifact option-worthiness pass is complete (`analysis_fingerprint=6f82ac0e55be43b8cf95fc362c7f292cb592b41c15ff897b24665470e95410f3`). Its main design finding is that the retained daily MFE/MAE window runs through 20 sessions and is too permissive to answer whether a move is fast enough for the five-session strategy horizon or an options expression. Large eventual favorable excursions are common even among routes with negative five-session expectancy.
 
 Before any strategy revision, run the frozen selected-daily path diagnostic on the 35,995 already-selected comparable daily opportunities. Required outputs are five-session favorable/adverse excursion, first-touch session for 1%/2%/3%/5%, favorable-versus-adverse first-touch classification, five-session exit capture versus MFE, and peak give-back. Daily same-session collisions remain unordered. This gate is diagnostic only and may motivate bounded v2 hypotheses; it cannot retroactively validate a route. Keep confluence closed. The 259 selected intraday ORB opportunities require a separate minute-resolution path package after the daily result.
+## Successor selected-path closeout and exact-minute continuation — 2026-09-15
+
+The retained 20-session excursion diagnostic is closed as useful but insufficient for trade-expression timing. The separately frozen selected-daily five-session diagnostic completed under analysis fingerprint `e89d1d61b7fe6875353816a11727f7ad4a0797917eac0ef4b2d437812a053e20` across exactly 35,995 selected comparable daily DEVELOPMENT opportunities. It confirms that magnitude alone is not enough: many routes eventually reach 2-3% inside five sessions while favorable-before-adverse path quality is often only ~30-50%. Positive post-result specialist evidence remains concentrated in Bollinger mean-reversion LONG (broadest sample), Flag/Pennant SHORT (cleaner 2-3% path but small sample), Donchian SHORT, ADX/DMI LONG and RSI-recovery LONG. These findings are diagnostic and create no promotion.
+
+Immediate Track B sequence:
+
+1. complete the preregistered **259-case exact-minute ORB path diagnostic** using only accepted serialized native-unit bindings and selected symbol/session paths;
+2. preserve daily and minute path results as descriptive evidence; do not retrofit selector thresholds or open confluence to rescue them;
+3. diagnose each promising family by failure mode (adverse-first path, regime mismatch, entry timing, exit/give-back, cost sensitivity, support/concentration);
+4. perform targeted external research against that observed failure mechanism;
+5. freeze at most a small bounded set of materially different successor versions, preserving v1 permanently;
+6. require untouched/new/prospective evidence before any validation/promotion claim.
+
+The options-oriented construction path remains: `strategy edge -> underlying move magnitude/speed/path distribution -> universal actionability gate -> operator trade-expression mode -> stock and/or option evaluation -> contract economics -> portfolio/risk/sizing -> trade or abstain`. Option evaluation must include delta, gamma, theta, vega/IV, skew/term structure, DTE, strike/moneyness, rates/dividends/early exercise where relevant, spread/liquidity/open interest, event risk, break-even/max loss and scenario expected P&L. A model-relative Black-Scholes value is evidence, not executable historical P&L. In modes permitting stock fallback, an underlying candidate may remain eligible when no option contract is economically acceptable.
+
+Track A should continue account simulator/control-plane work in parallel using clearly labeled baselines. Historical alpha qualification is still zero; consumed master remains permanently closed, future blind unopened, confluence closed, and PAPER/LIVE/promotion authority false.
