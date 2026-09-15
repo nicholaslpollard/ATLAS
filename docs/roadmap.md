@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-13 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-15 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -1434,3 +1434,61 @@ The first authorized full successor standalone attempt opened only the frozen DE
 The attempt stopped before a complete standalone result when `pract_session_failed_break_reclaim_v1` received a prior regular session whose observed high equaled its low. The strategy evaluator correctly rejects such geometry, but the shared minute engine incorrectly treated the presence of a prior session as sufficient readiness and propagated the exception. The repair keeps the strict evaluator unchanged and instead makes finite, positive, non-flat prior regular geometry an engine readiness condition. Flat/invalid prior geometry means this route is unavailable for that session; it is not filled, widened, or replaced with an older session. The standalone engine contract is versioned so the failed run identity and any partial artifacts cannot be silently reused under the repaired semantics.
 
 Operationally, the coordinator already maintained an atomic `progress.json` heartbeat but did not expose it to the operator console. It now prints parent-process progress with completed/total, reused/new, active/queued, elapsed time, new-group throughput and ETA on startup, completion/failure, and at least every 30 seconds or five new group completions. These telemetry changes remain excluded from scientific identity. Consumed-master/future/provider/broker access remains forbidden and PAPER/LIVE/promotion authority remains false.
+
+
+## 24. Strategy Development Cycle, actionability, and stock/options trade expression — 2026-09-15 direction
+
+### 24.1 Broad-first, bounded-deep strategy development
+
+ATLAS should broaden the implemented strategy library before spending unlimited research cycles on any one family. Every genuinely implemented strategy receives a clean baseline under the current PIT/walk-forward methodology; older observed results remain binding evidence rather than being relabeled as unseen. Repository inventory must distinguish implemented strategies from partial implementations and zero-byte/name-only placeholders before claiming coverage.
+
+After each baseline, use the following controlled loop:
+
+`BASELINE -> DIAGNOSE -> TARGETED EXTERNAL RESEARCH -> <=3 MATERIAL REVISIONS -> RETEST -> SPECIALIZE OR PARK -> MOVE ON`
+
+Diagnosis asks why the mechanism underperformed or where it created opportunity: direction, market/volatility state, ticker trend and relative strength, extension, liquidity, price band, gap, participation, time of day, setup geometry, entry/confirmation delay, exit/holding logic, MFE/MAE, stop/target path, costs, unresolved/no-entry rate, concentration, fold/year stability, and underlying move magnitude/speed. Research then looks specifically for explanations and evidence-backed fixes in credible academic/replication work, original strategy/indicator sources, exchange/broker/quant research, books, respected practitioner material, and community experience. Do not ask generically for the historically best setting and then select it from the same outcomes.
+
+A useful revision may seek either **greater edge per qualified opportunity** or **more quality opportunities while preserving acceptable edge, costs, drawdown and stability**. Opportunity count alone is not success, and a large per-trade edge with negligible usable frequency may contribute little at account level. Preserve every v1; a parked family is not deleted and may be revisited with new evidence or new source capability. No more than three materially distinct candidate revisions per family per research cycle by default; no dense parameter grids or tiny threshold stepping. The evidence that motivates v2 is diagnostic/training evidence only. Qualification of v2 requires untouched/fresh walk-forward or prospective evidence under a new version/fingerprint.
+
+### 24.2 Universal economic actionability gate
+
+A strategy firing is not permission to trade. Before instrument selection, every candidate must clear an economic actionability gate using a point-in-time forecast of expected reward versus costs, uncertainty, downside, liquidity, capital use and portfolio risk. ATLAS should estimate an **underlying move/time distribution**, not merely direction: expected/median move, uncertainty/tails, expected holding window/time-to-target, probability of positive return, probabilities of crossing material move thresholds (at least 1%, 2%, 3%, 5% where meaningful), ATR-normalized move probabilities, MFE/MAE, and path/speed characteristics. Thresholds and models used for admission must be frozen before qualifying evaluation.
+
+This gate prevents technically correct but economically immaterial signals from consuming capital. It also supplies the bridge between strategy evidence and instrument construction: ATLAS first decides whether the underlying opportunity is worth expressing, then decides how to express it.
+
+### 24.3 Operator-selectable trade-expression modes
+
+The browser/control plane should ultimately expose four explicit modes:
+
+- `OPTIONS_ONLY`: consider only economically acceptable option constructions; if none clears the gate, abstain even when the underlying signal is attractive.
+- `STOCKS_ONLY`: ignore option constructions and admit only economically acceptable stock trades.
+- `OPTIONS_PREFERRED`: evaluate both; prefer an acceptable option when its expected risk-adjusted economics meet the frozen preference rule, otherwise stock may remain eligible.
+- `STOCKS_PREFERRED`: evaluate both; normally use stock, but permit an option when its expected risk-adjusted economics are materially superior under the frozen preference rule.
+
+These settings control permitted/preferred expression, never strategy authority and never a requirement to trade. Stock remains a valid trade, not merely an error fallback; options remain a major intended expression because ATLAS originated partly from an options-alert/trading objective.
+
+### 24.4 Option-worthiness and contract construction
+
+Before real historical option-chain qualification exists, strategy research must add an **option-worthiness scorecard** from the underlying path: frequency/probability of 1/2/3/5% moves, 1-ATR/2-ATR moves, MFE/MAE, speed/time-to-move, adverse excursion before the move, realized volatility during the intended hold, and distribution/tail behavior. Equal mean stock return can imply very different option value when one strategy produces larger/faster convex moves.
+
+For a current candidate that passes underlying actionability, option construction evaluates only point-in-time available contracts and must account for: strike, expiration/DTE and moneyness; premium and executable bid/ask; delta/gamma/theta/vega; implied volatility and plausible IV changes; volatility skew/smile and term structure when available; interest rates and dividends; American-style early-exercise considerations; volume/open interest and liquidity; known events such as earnings; expected option P&L and return distribution; probability of profit; material-loss probabilities; break-even; and expected value per dollar of capital/risk. Reprice candidate contracts across the underlying move/time distribution and plausible IV scenarios rather than at one deterministic target only.
+
+Black-Scholes-Merton and other option-pricing models are references for theoretical value, Greeks and scenario analysis. A market price below one model estimate is only **model-relative undervaluation evidence**, not proof of mispricing. Compare it with the observed IV surface, neighboring strikes/expirations and executable liquidity. Historical option P&L cannot be claimed until a separately accepted PIT historical option-chain/quote/IV source contract exists. If option economics fail while the underlying stock economics remain acceptable, stock remains a candidate in modes that allow it.
+
+### 24.5 Efficiency architecture
+
+Do not scan and fully price every contract in the market continuously. Use the funnel:
+
+`broad stock universe -> cheap strategy/regime scan -> qualified candidate -> underlying move/time forecast -> economic actionability -> option chain only when needed -> cheap liquidity/moneyness/DTE filters -> vectorized scenario pricing on a small contract set -> stock/option/abstain -> portfolio/risk`
+
+Cache reusable rate/dividend/IV-surface/context inputs where PIT-safe, batch/vectorize Greek/scenario calculations, and keep option analytics outside scientific strategy firing. The expected performance bottleneck is option-data breadth/history/entitlement rather than the per-candidate pricing math; no source or correctness gate may be weakened for speed.
+
+### 24.6 Current successor evidence and immediate research order
+
+The complete successor standalone DEVELOPMENT run is now accepted: **546/546 groups**, **54,618,427 records**, scientific contract `d962d72579996c26485a292469e6483132b413c484b90471aba74b209993cafb`, standalone run fingerprint `c22bcb45b1a13dde11854f7ad166ae0abe1810fc0d6ab7371dbdd1165c1006e6`, artifact-set fingerprint `4e5d66b8db1b37ac70dcff9e92fc4602bb729f90f18852db59f7e827de5a55d6`, with 424 fresh groups completed in 9:00:08 at 47.10 groups/hour after 122 validated reuses. Master/future/provider/broker reads remained zero and PAPER/LIVE/promotion remained false.
+
+The frozen successor conditioning v1 analysis is also complete across **33 folds** and **45,516,323 test-eligible opportunities**. It selected **36,259** opportunities (**36,254 comparable**), abstained on about **99.92%**, and the aggregate selected result remained negative at **-0.313660% primary / -0.466303% stress**. About **75.8%** of selections were from the most-specific selector level, so broad fallback is not the primary failure explanation. The selector had 11 positive and 22 negative folds, showing material temporal instability. **Confluence remains closed**; it must not be opened as a rescue layer for an unqualified selector.
+
+Route-level post-result diagnostics identify research candidates, not validated winners. `pract_bollinger_mean_reversion_v1` LONG is the strongest current specialty candidate with **5,516 comparable selections**, **+0.4536% primary / +0.3032% stress**, active in 21 folds with 15 positive / 6 negative and largest-fold share about 21.9%. Smaller positive diagnostics are Donchian SHORT (379), ADX/DMI LONG (204), flag/pennant SHORT (191), RSI-recovery LONG (189), and triangle LONG (57); triangle LONG is especially concentrated with about 80.7% in one fold. Only 261 minute selections occurred, all from the 15-minute ORB retest challenger, and both directions were negative; every other minute route selected zero under the frozen conservative hurdle.
+
+Next Track-B work is therefore: formally close conditioning v1 without promotion; add move-magnitude/speed/option-worthiness diagnostics from retained immutable artifacts where possible; inventory implemented/partial/placeholder strategy families; perform bounded failure-mode research for justified candidates while broadening baseline coverage; freeze any v2 rules before new performance; and require untouched/prospective evidence for qualification. The consumed master remains permanently unavailable and the future blind remains unopened.

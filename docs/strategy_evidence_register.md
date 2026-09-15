@@ -1,6 +1,6 @@
 # ATLAS Strategy Evidence Register
 
-**Current as of 2026-09-13 (UTC). This file is a living project document.**
+**Current as of 2026-09-15 (UTC). This file is a living project document.**
 
 This register is the durable scientific ledger for strategy-level evidence. It exists so a future ATLAS chat can determine, without reconstructing old conversations, what each strategy version was, what evidence it opened, where it worked or failed, what remains uncertain, and what research action is currently justified.
 
@@ -285,3 +285,79 @@ ATLAS did not widen the minute tolerance to disguise this source gap. The source
 The first explicitly authorized broad DEVELOPMENT standalone attempt used 8 workers x 1 DuckDB thread and run-contract fingerprint `22a2ace77c4c578c30964ba2a645b822738ef667617f0ef6bffb3192f75582ae`. It exposed the correct outcome-run denominator of **546 work groups = 64 daily + 482 minute**, distinct from the accepted 493-group source-verification accounting. The run did not reach a complete/validated standalone summary: a sparse prior regular session produced `high == low`, and the shared engine passed that non-range into the strict failed-break/reclaim evaluator, which correctly raised `prior regular high/low must be finite positive geometry`.
 
 Disposition: **implementation readiness defect, not strategy evidence**. The economic rule remains unchanged. A repaired engine treats finite, positive, strictly ordered prior regular high/low as a prerequisite for that route. If the immediately prior session does not supply valid geometry, the route is unavailable for that session; no older-session substitution or synthetic range is permitted. The engine contract is bumped so partial artifacts from the failed identity are not reused as repaired evidence. No completed broad performance conclusion, conditioning/confluence result, or promotion claim is admitted from the failed attempt. Parent-process console telemetry is also added for transparent long-run progress without entering scientific hashes.
+
+
+## 9. Successor standalone and conditioning v1 evidence — 2026-09-15
+
+### 9.1 Accepted standalone identity
+
+The successor practitioner laboratory completed its full DEVELOPMENT standalone run without opening conditioning or confluence during the run:
+
+- 546/546 validated groups = 64 daily + 482 minute groups;
+- 54,618,427 standalone opportunity/outcome records;
+- scientific run-contract fingerprint `d962d72579996c26485a292469e6483132b413c484b90471aba74b209993cafb`;
+- standalone run fingerprint `c22bcb45b1a13dde11854f7ad166ae0abe1810fc0d6ab7371dbdd1165c1006e6`;
+- standalone artifact-set fingerprint `4e5d66b8db1b37ac70dcff9e92fc4602bb729f90f18852db59f7e827de5a55d6`;
+- 122 validated groups reused and 424 fresh groups completed in 9:00:08 at 47.10 new groups/hour;
+- corrupt-reuse invalidations: 0;
+- consumed-master rows, future-blind rows, provider calls and broker reads/writes: 0;
+- PAPER/LIVE/promotion authority: false/false/false.
+
+This is immutable DEVELOPMENT diagnostic evidence. It does not validate any strategy for PAPER or LIVE.
+
+### 9.2 Frozen conditioning v1 result
+
+PR #94 merged the immutable-artifact conditioning analyzer as `6485a82afd724299a3ffa1a7fde16ef2259d8b5b`. It normalized the exact 54,618,427 standalone records without rereading raw market data and applied the preregistered 504-session training / 1-session embargo / 63-session test / 63-session step design over 33 complete folds. Minimum cell support remained 60 opportunities / 30 sessions / 20 instruments, with deterministic XNYS-session-cluster bootstrap scoring and no supported-negative-cell fallback rescue.
+
+Observed selector result:
+
+- test-eligible opportunities: 45,516,323;
+- research-selected: 36,259;
+- selected comparable: 36,254;
+- abstention among eligible: about 99.92%;
+- selected mean primary net return: **-0.313660%**;
+- selected mean stress net return: **-0.466303%**;
+- positive folds: 11/33; negative folds: 22/33;
+- about 75.8% of all selections came from fallback level 1, the most-specific frozen cell;
+- daily strategies supplied 35,998/36,259 selections (99.28%);
+- only 261 minute selections occurred, all from `orb_15m_close_retest_v2`, and both LONG/SHORT selected means were negative;
+- confluence opened: false; selector/strategy promotion: false.
+
+**Interpretation:** conditioning v1 failed as an aggregate research router. The evidence points primarily to lack of persistence/nonstationarity rather than an inability to form supported specific cells. This result does not authorize weakening costs, changing support thresholds after observation, refitting the same selector on the same test outcomes, or opening confluence as a rescue search.
+
+### 9.3 Route-level post-result diagnostics
+
+The following favorable route/direction slices are diagnostic hypotheses discovered after observing test outcomes; they cannot validate themselves on the same data:
+
+- `pract_bollinger_mean_reversion_v1` LONG: 5,516 comparable selections; +0.4536% primary / +0.3032% stress; 21 active folds, 15 positive / 6 negative; largest fold about 21.9% of selections. **Disposition: strongest specialist-development candidate; stability and move-distribution/option-worthiness audit justified.**
+- `donchian_breakout_20_volume_short_v1` SHORT: 379 selections; +0.6159% / +0.4664%; 15 active folds, 8 positive / 7 negative; largest-fold share about 29.6%. **Disposition: secondary bounded candidate.**
+- `pract_adx_dmi_continuation_v1` LONG: 204 selections; +0.5269% / +0.3764%; 7 active folds, 3 positive / 4 negative; largest-fold share about 38.7%. **Disposition: exploratory candidate.**
+- `pract_flag_pennant_v1` SHORT: 191 selections; +0.8811% / +0.7318%; 9 active folds, 7 positive / 2 negative; largest-fold share about 38.7%. **Disposition: exploratory candidate with encouraging sign consistency but limited sample.**
+- `rsi_recovery_14_trend_long_v1` LONG: 189 selections; +0.3706% / +0.2203%; 12 active folds, 6 positive / 6 negative; largest-fold share about 31.7%. **Disposition: exploratory candidate.**
+- `pract_triangle_breakout_v1` LONG: 57 selections; +0.3271% / +0.1768%; 5 active folds, 2 positive / 3 negative; about 80.7% of selections in one fold. **Disposition: insufficient/concentrated; no positive claim.**
+
+Several high-volume selected routes were materially negative, including EMA pullback LONG, MACD LONG/SHORT, relative-strength momentum LONG/SHORT, ATR-expansion LONG/SHORT, Bollinger mean-reversion SHORT, and multiple breakout/pattern directions. Preserve these outcomes rather than discarding or rewriting the v1 mechanism.
+
+The aggregate post-result set of six positive route/directions contains about 6,536 comparable selections (roughly 18% of all selected trades) and is diagnostically positive, but choosing those six after seeing outcomes is post-selection. It is not a valid historical portfolio or qualification result.
+
+### 9.4 Strategy Development Cycle rule
+
+ATLAS does **not** discard a strategy solely because v1 is weak. Preserve each version and use the result to determine what job, if any, that mechanism is suited for. The standard development cycle is:
+
+`BASELINE -> DIAGNOSE -> TARGETED EXTERNAL RESEARCH -> BOUNDED REVISION -> RETEST -> SPECIALIZE OR PARK -> MOVE ON`
+
+Diagnosis includes condition/regime behavior, direction, trend/relative strength, extension, volatility, liquidity, price band, gap, participation, signal time, setup geometry, entry/confirmation, exit/holding logic, MFE/MAE, stop/target path, costs, false signals, unresolved/no-entry rate, concentration, fold/year stability, and underlying move magnitude/speed. Targeted research should ask why the observed mechanism failed or succeeded and compare credible academic, original-source, broker/exchange/quant, book, practitioner, and community evidence. Popular configurations are candidate evidence, never proof.
+
+“Better” can mean **higher edge** or **more quality opportunities**, provided costs, downside, stability and account contribution remain acceptable. By default admit no more than three materially distinct revision candidates per family per research cycle. Do not densely sweep parameters or tune tiny thresholds on the observed test set. Freeze the revision before performance; the data that inspired it is diagnostic/training evidence only and cannot independently validate it. Parked strategies remain in the library and may be revisited later.
+
+### 9.5 Options-oriented research implication
+
+ATLAS strategy evidence must increasingly report whether a signal is capable of generating moves that are useful for options, not merely whether mean underlying return is positive. Add an option-worthiness profile: probabilities/frequencies of 1/2/3/5% and 1-ATR/2-ATR favorable moves, MFE/MAE, speed/time-to-move, adverse excursion before the favorable move, realized volatility during the expected hold, and return/path distribution tails. A +0.45% mean can hide either many slow small moves or a convex distribution of occasional fast 2-5% moves; these have very different option value.
+
+This is not historical option-P&L evidence. Actual option qualification requires separately accepted PIT historical option-chain/quote/IV data and contract-level replay. The future trade-expression layer should support `OPTIONS_ONLY`, `STOCKS_ONLY`, `OPTIONS_PREFERRED`, and `STOCKS_PREFERRED`, all behind a universal economic actionability gate. The underlying forecast supplies move magnitude/time/probability; option construction then evaluates delta/gamma/theta/vega, IV/skew/term structure, strike/DTE/moneyness, rates/dividends/early exercise, spread/liquidity/open interest, events, scenario P&L and probability of profit. If option economics fail but the underlying stock remains attractive, stock may remain eligible in modes that permit it. Black-Scholes-Merton is a reference/scenario model; “undervalued” means model-relative evidence only until confirmed against the observable option surface and executable market.
+
+### 9.6 Authority and next evidence action
+
+Historical supported modern alpha remains zero. No successor strategy, selector, post-result slice, option-worthiness metric, or future instrument preference is `HISTORICALLY_VALIDATED`, `PAPER_VALIDATED`, or `LIVE_ELIGIBLE`. The consumed master remains unavailable and the future blind remains unopened.
+
+Next research actions: close conditioning v1 without promotion; derive move-magnitude/speed/option-worthiness diagnostics from retained immutable artifacts where the existing data supports them; inventory implemented versus partial/placeholder strategy families; broaden baseline coverage; perform targeted external failure-mode research; freeze only a bounded set of materially different revisions; and reserve confluence for a later preregistered test after underlying strategy/router evidence justifies it.
