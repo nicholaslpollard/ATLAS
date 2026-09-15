@@ -8,7 +8,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
+from typing import Callable
 
 import duckdb
 
@@ -194,7 +194,7 @@ def _assert_zero_authority(summary: dict[str, object]) -> None:
 def validate_conditioning_inputs(
     project_root: Path,
     *,
-    progress_callback: callable | None = None,
+    progress_callback: Callable[[int, int], None] | None = None,
 ) -> dict[str, object]:
     root = conditioning_root(project_root)
     summary_path = root / "analysis_summary.json"
@@ -279,8 +279,6 @@ def validate_conditioning_inputs(
     if sum(int(item["row_count"]) for item in validated) != ACCEPTED_STANDALONE_RECORD_COUNT:
         raise SuccessorOptionworthinessError("conditioning normalized receipt rows do not reconcile")
     normalized_identity = canonical_sha256(validated)
-    if normalized_identity != canonical_sha256(validated):  # explicit deterministic guard
-        raise SuccessorOptionworthinessError("normalized input identity is unstable")
     return {
         "conditioning_root": str(root),
         "conditioning_summary_sha256": _sha256_file(summary_path),
@@ -588,6 +586,71 @@ def _artifact_identity(conn: duckdb.DuckDBPyConnection, name: str, path: Path) -
     }
 
 
+def selected_route_diagnostics(conn: duckdb.DuckDBPyConnection) -> list[dict[str, object]]:
+    """Return deterministic descriptive diagnostics for routes selected by conditioning v1."""
+
+    result = conn.execute(
+        """
+        SELECT
+            r.policy_id,
+            r.economic_family_id,
+            r.native_timeframe,
+            r.direction,
+            r.comparable_opportunities AS selected_comparable,
+            r.unique_sessions,
+            r.unique_instruments,
+            r.primary_win_rate,
+            r.mean_gross_return,
+            r.mean_primary_net_return,
+            r.mean_stress_net_return,
+            r.mean_mfe,
+            r.median_mfe,
+            r.p90_mfe,
+            r.p95_mfe,
+            r.mean_mae,
+            r.median_mae,
+            r.mean_holding_minutes,
+            r.median_holding_minutes,
+            r.mean_daily_h1_primary,
+            r.mean_daily_h20_primary,
+            s.active_folds,
+            s.positive_primary_folds,
+            s.negative_primary_folds,
+            s.largest_fold_share,
+            max(CASE WHEN m.move_threshold = 0.01 THEN m.favorable_excursion_hit_rate END) AS p_mfe_ge_1pct,
+            max(CASE WHEN m.move_threshold = 0.02 THEN m.favorable_excursion_hit_rate END) AS p_mfe_ge_2pct,
+            max(CASE WHEN m.move_threshold = 0.03 THEN m.favorable_excursion_hit_rate END) AS p_mfe_ge_3pct,
+            max(CASE WHEN m.move_threshold = 0.05 THEN m.favorable_excursion_hit_rate END) AS p_mfe_ge_5pct,
+            max(CASE WHEN m.move_threshold = 0.01 THEN m.adverse_excursion_breach_rate END) AS p_mae_le_m1pct,
+            max(CASE WHEN m.move_threshold = 0.02 THEN m.adverse_excursion_breach_rate END) AS p_mae_le_m2pct,
+            max(CASE WHEN m.move_threshold = 0.03 THEN m.adverse_excursion_breach_rate END) AS p_mae_le_m3pct,
+            max(CASE WHEN m.move_threshold = 0.05 THEN m.adverse_excursion_breach_rate END) AS p_mae_le_m5pct
+        FROM option_route_summary r
+        LEFT JOIN option_route_stability s
+          ON s.policy_id = r.policy_id AND s.direction = r.direction
+        LEFT JOIN option_move_threshold_curve m
+          ON m.policy_id = r.policy_id
+         AND m.direction = r.direction
+         AND m.subset = r.subset
+        WHERE r.subset = 'WALK_FORWARD_SELECTED_COMPARABLE'
+          AND r.comparable_opportunities > 0
+        GROUP BY ALL
+        ORDER BY r.policy_id, r.direction
+        """
+    )
+    columns = [item[0] for item in result.description]
+    rows: list[dict[str, object]] = []
+    for raw in result.fetchall():
+        row: dict[str, object] = {}
+        for key, value in zip(columns, raw, strict=True):
+            if isinstance(value, float) and not math.isfinite(value):
+                row[key] = None
+            else:
+                row[key] = value
+        rows.append(row)
+    return rows
+
+
 def run_successor_optionworthiness_analysis(project_root: Path) -> dict[str, object]:
     project = Path(project_root).resolve()
     output_root = optionworthiness_root(project)
@@ -667,13 +730,17 @@ def run_successor_optionworthiness_analysis(project_root: Path) -> dict[str, obj
         _copy_query_atomic(conn, route_stability_sql(), outputs["route_stability"])
         _copy_query_atomic(conn, strategy_inventory_sql(), outputs["strategy_inventory"])
 
-        route_count = int(conn.execute("SELECT count(*) FROM read_parquet(?)", [str(outputs["strategy_inventory"])]).fetchone()[0])
+        inventory_sql_path = _sql_path(outputs["strategy_inventory"])
+        route_count = int(
+            conn.execute(
+                f"SELECT count(*) FROM read_parquet('{inventory_sql_path}')"
+            ).fetchone()[0]
+        )
         if route_count != 28:
             raise SuccessorOptionworthinessError(f"strategy inventory expected 28 routes, got {route_count}")
         family_count = int(
             conn.execute(
-                "SELECT count(DISTINCT economic_family_id) FROM read_parquet(?)",
-                [str(outputs["strategy_inventory"])],
+                f"SELECT count(DISTINCT economic_family_id) FROM read_parquet('{inventory_sql_path}')"
             ).fetchone()[0]
         )
         if family_count != 21:
@@ -683,6 +750,19 @@ def run_successor_optionworthiness_analysis(project_root: Path) -> dict[str, obj
             _artifact_identity(conn, name, path) for name, path in sorted(outputs.items())
         ]
         output_artifact_set_fingerprint = canonical_sha256(output_identity)
+        conn.execute(
+            f"CREATE OR REPLACE TEMP VIEW option_route_summary AS "
+            f"SELECT * FROM read_parquet('{_sql_path(outputs['route_summary'])}')"
+        )
+        conn.execute(
+            f"CREATE OR REPLACE TEMP VIEW option_move_threshold_curve AS "
+            f"SELECT * FROM read_parquet('{_sql_path(outputs['move_threshold_curve'])}')"
+        )
+        conn.execute(
+            f"CREATE OR REPLACE TEMP VIEW option_route_stability AS "
+            f"SELECT * FROM read_parquet('{_sql_path(outputs['route_stability'])}')"
+        )
+        selected_diagnostics = selected_route_diagnostics(conn)
 
         capability = successor_optionworthiness_manifest()["explicitly_unavailable_from_retained_artifacts"]
         _write_json(
@@ -728,6 +808,8 @@ def run_successor_optionworthiness_analysis(project_root: Path) -> dict[str, obj
             },
             "outputs": output_identity,
             "output_artifact_set_fingerprint": output_artifact_set_fingerprint,
+            "selected_route_diagnostics": selected_diagnostics,
+            "selected_route_diagnostics_order": "POLICY_ID_DIRECTION_NO_POST_RESULT_RANKING_SCORE",
             "move_thresholds_fraction": list(MOVE_THRESHOLDS),
             "no_composite_optionworthiness_score": True,
             "raw_market_data_reread": False,

@@ -1038,3 +1038,9 @@ Efficiency remains a design constraint. Broad market/strategy discovery stays ch
 `broad discovery -> strategy/condition evidence -> underlying move/time distribution -> actionability -> permitted instrument modes -> option-chain filter/scenario economics -> stock/option/abstain -> portfolio risk`
 
 This direction does not grant historical, PAPER, LIVE, strategy, selector, or option-trading authority. It defines the product and research requirements that subsequent implementation must satisfy.
+
+### Successor option-worthiness diagnostic package — PRE-RUN
+
+ATLAS now has a separately authorized DEVELOPMENT-only diagnostic package that derives option-relevant **underlying** move evidence from the already accepted successor conditioning artifacts without rereading the raw market lake. It compares all comparable DEVELOPMENT opportunities, the walk-forward test population, and the frozen conditioning-v1 selected population; reports route/direction MFE/MAE distributions, 1/2/3/5% favorable/adverse excursion frequencies, daily 1/5/20-session behavior, intraday holding-time behavior, selected-fold stability, and an exact 28-route / 21-family implementation inventory. It creates no new selector, ranking score, confluence rule, or strategy authority.
+
+The retained artifacts do **not** preserve exact threshold-crossing timestamps, entry ATR magnitude, complete MFE/MAE path ordering, hold-period realized-volatility paths, or historical option chains. Therefore this package explicitly refuses to claim exact time-to-1/2/3/5% moves, 1ATR/2ATR hit frequencies, path ordering, historical option P&L, or contract-level Greeks/IV/skew/term-structure evidence. Those require separate future source/path packages. Repository acceptance opens no new empirical diagnostics; the workstation command remains separately gated.

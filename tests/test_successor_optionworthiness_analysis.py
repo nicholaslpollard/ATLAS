@@ -5,6 +5,7 @@ import duckdb
 from packages.backtesting.successor_optionworthiness_analysis import (
     _install_assigned_view,
     route_stability_sql,
+    selected_route_diagnostics,
     route_summary_sql,
     selected_fold_summary_sql,
     threshold_curve_sql,
@@ -153,3 +154,22 @@ def test_selected_fold_stability_is_descriptive_not_a_new_selector() -> None:
     assert int(minute.active_folds) == 1
     assert int(minute.positive_primary_folds) == 1
     assert int(minute.selected_comparable) == 1
+
+
+def test_selected_route_diagnostics_exposes_move_profile_without_ranking() -> None:
+    conn = duckdb.connect()
+    try:
+        _install_synthetic_tables(conn)
+        conn.execute("CREATE TEMP TABLE option_route_summary AS " + route_summary_sql())
+        conn.execute("CREATE TEMP TABLE option_move_threshold_curve AS " + threshold_curve_sql())
+        conn.execute("CREATE TEMP TABLE selected_fold_summary AS " + selected_fold_summary_sql())
+        conn.execute("CREATE TEMP TABLE option_route_stability AS " + route_stability_sql())
+        rows = selected_route_diagnostics(conn)
+    finally:
+        conn.close()
+    assert [row["policy_id"] for row in rows] == ["daily_policy", "minute_policy"]
+    daily = rows[0]
+    assert daily["selected_comparable"] == 1
+    assert abs(float(daily["p_mfe_ge_5pct"]) - 1.0) < 1e-12
+    assert abs(float(daily["p_mae_le_m3pct"]) - 0.0) < 1e-12
+    assert daily["active_folds"] == 1

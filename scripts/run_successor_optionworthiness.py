@@ -69,6 +69,24 @@ def main() -> int:
         f"{int(inventory['economic_families'])} economic families",
         flush=True,
     )
+    print("  selected route diagnostics (descriptive; policy-id order, not a ranking):", flush=True)
+    diagnostics = report.get("selected_route_diagnostics") or []
+    for row in diagnostics:
+        def pct(value: object) -> str:
+            return "n/a" if value is None else f"{float(value):.2%}"
+        folds = (
+            f"{int(row['positive_primary_folds'])}+/{int(row['negative_primary_folds'])}-"
+            if row.get("positive_primary_folds") is not None and row.get("negative_primary_folds") is not None
+            else "n/a"
+        )
+        print(
+            f"    {row['policy_id']} {row['direction']}: n={int(row['selected_comparable']):,} "
+            f"primary={pct(row.get('mean_primary_net_return'))} stress={pct(row.get('mean_stress_net_return'))} "
+            f"MFE>=1/2/3/5%={pct(row.get('p_mfe_ge_1pct'))}/{pct(row.get('p_mfe_ge_2pct'))}/"
+            f"{pct(row.get('p_mfe_ge_3pct'))}/{pct(row.get('p_mfe_ge_5pct'))} "
+            f"folds={folds} largest_fold={pct(row.get('largest_fold_share'))}",
+            flush=True,
+        )
     print("  exact time-to-threshold: unavailable from retained artifacts; not claimed", flush=True)
     print("  ATR-normalized threshold frequency: unavailable from retained artifacts; not claimed", flush=True)
     print("  historical option P&L: unavailable; not claimed", flush=True)
