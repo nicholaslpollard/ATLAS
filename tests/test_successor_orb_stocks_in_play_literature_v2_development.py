@@ -33,7 +33,7 @@ def _write_parquet(path, frame: pd.DataFrame) -> None:
 def test_development_contract_is_frozen_and_grants_no_authority() -> None:
     assert contract_fingerprint() == ORB_STOCKS_IN_PLAY_LITERATURE_V2_DEVELOPMENT_FINGERPRINT
     assert ORB_STOCKS_IN_PLAY_LITERATURE_V2_DEVELOPMENT_FINGERPRINT == (
-        "2a62b54a5413a1ce62e19ae1489df36095350ba53e4dad2d4784fb3b083fe542"
+        "87ee4ff703f8040d88c22147444aa992d196ab49be91dc749e3035e3c15e739b"
     )
     contract = ORB_STOCKS_IN_PLAY_LITERATURE_V2_DEVELOPMENT_CONTRACT
     assert contract["scope"] == "DEVELOPMENT_ONLY"
@@ -97,6 +97,14 @@ def test_daily_features_shift_both_volume_and_atr_before_current_session() -> No
     )
 
 
+def test_daily_volume_uses_provider_native_value_without_inverse_price_transform() -> None:
+    bars = _daily_rows()
+    bars["unadjusted_close"] = bars["close"] * 2.0
+    result = build_prior_daily_features(bars)
+    expected_volume = np.mean([1_500_000.0 + index * 10_000.0 for index in range(14)])
+    assert result.iloc[14]["prior_average_daily_share_volume_14"] == pytest.approx(expected_volume)
+
+
 def test_cross_section_rank_is_top20_and_doji_consumes_its_rank_slot(tmp_path) -> None:
     sessions = [date(2026, 3, 2) + timedelta(days=index) for index in range(15)]
     opening_rows = []
@@ -112,6 +120,7 @@ def test_cross_section_rank_is_top20_and_doji_consumes_its_rank_slot(tmp_path) -
                     "unit_id": f"unit-{ticker_index:02d}",
                     "ticker": ticker,
                     "session_date": session,
+                    "session_ordinal": session_index,
                     "opening_price": 10.0,
                     "opening_close": (
                         10.0 if ticker_index == 0 and session_index == 14 else 10.2

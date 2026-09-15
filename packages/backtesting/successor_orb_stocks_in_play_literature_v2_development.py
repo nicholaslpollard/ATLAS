@@ -250,13 +250,19 @@ def build_prior_daily_features(bars: pd.DataFrame) -> pd.DataFrame:
     source["raw_high"] = source["high"].astype("float64") * factor
     source["raw_low"] = source["low"].astype("float64") * factor
     source["raw_close"] = source["close"].astype("float64") * factor
-    source["raw_share_volume"] = source["volume"].astype("float64") / factor
+    # V2 deliberately preserves provider-native split-adjusted volume as supplied.
+    # The accepted source contract explicitly treats inverse-price-factor volume
+    # equivalence as audit-only, so do not manufacture a raw-volume estimate.
+    source["provider_native_share_volume"] = source["volume"].astype("float64")
 
     pieces: list[pd.DataFrame] = []
     for _, frame in source.groupby("instrument_id", sort=True, observed=True):
         frame = frame.sort_values("session_date", kind="stable").copy()
         prior_volume = (
-            frame["raw_share_volume"].rolling(window=14, min_periods=14).mean().shift(1)
+            frame["provider_native_share_volume"]
+            .rolling(window=14, min_periods=14)
+            .mean()
+            .shift(1)
         )
         prior_atr = atr_wilder(
             frame["raw_high"], frame["raw_low"], frame["raw_close"], 14
@@ -361,6 +367,12 @@ def _opening_group_worker(
         conn.execute("SET TimeZone='UTC'")
         conn.execute("PRAGMA threads=1")
         pieces: list[pd.DataFrame] = []
+        session_ordinals = {
+            session: ordinal
+            for ordinal, session in enumerate(
+                source.calendar.sessions_in_range(DEVELOPMENT_START, DEVELOPMENT_END)
+            )
+        }
         try:
             for unit in units:
                 source.verify_unit(unit)
@@ -405,12 +417,19 @@ def _opening_group_worker(
                 finally:
                     conn.unregister("orb_calendar")
                 if not query.empty:
+                    query["session_ordinal"] = query["session_date"].map(session_ordinals)
+                    if query["session_ordinal"].isna().any():
+                        raise OrbLiteratureV2DevelopmentError(
+                            "opening snapshot session is outside frozen XNYS DEVELOPMENT"
+                        )
+                    query["session_ordinal"] = query["session_ordinal"].astype("int64")
                     pieces.append(query)
             columns = [
                 "group_token",
                 "unit_id",
                 "ticker",
                 "session_date",
+                "session_ordinal",
                 "opening_price",
                 "opening_close",
                 "opening_range_high",
@@ -543,7 +562,10 @@ def _rank_selected_candidates(
                        avg(opening_five_minute_volume) OVER (
                            PARTITION BY ticker ORDER BY session_date
                            ROWS BETWEEN 14 PRECEDING AND 1 PRECEDING
-                       ) AS prior_average_opening_volume_14
+                       ) AS prior_average_opening_volume_14,
+                       lag(session_ordinal, 14) OVER (
+                           PARTITION BY ticker ORDER BY session_date
+                       ) AS prior_14th_session_ordinal
                 FROM {opening_sql} o
             ), joined AS (
                 SELECT h.*, d.instrument_id,
@@ -557,6 +579,7 @@ def _rank_selected_candidates(
                 SELECT *
                 FROM joined
                 WHERE prior_opening_count_14 = 14
+                  AND session_ordinal - prior_14th_session_ordinal = 14
                   AND isfinite(opening_price) AND opening_price > 5.0
                   AND isfinite(prior_average_daily_share_volume_14)
                   AND prior_average_daily_share_volume_14 >= 1000000.0
@@ -620,12 +643,17 @@ def _rank_selected_candidates(
                            ) AS prior_count,
                            avg(opening_five_minute_volume) OVER (
                                PARTITION BY ticker ORDER BY session_date ROWS BETWEEN 14 PRECEDING AND 1 PRECEDING
-                           ) AS prior_avg
+                           ) AS prior_avg,
+                           lag(session_ordinal, 14) OVER (
+                               PARTITION BY ticker ORDER BY session_date
+                           ) AS prior_14th_session_ordinal
                     FROM {opening_sql} o
                 )
                 SELECT count(*)
                 FROM opening_history h JOIN {daily_sql} d USING(ticker, session_date)
-                WHERE prior_count=14 AND opening_price>5.0
+                WHERE prior_count=14
+                  AND session_ordinal - prior_14th_session_ordinal = 14
+                  AND opening_price>5.0
                   AND d.prior_average_daily_share_volume_14>=1000000.0
                   AND d.prior_atr_14_dollars>0.50
                   AND h.opening_five_minute_volume / NULLIF(prior_avg,0.0) >= 1.0
@@ -708,6 +736,28 @@ def evaluate_selected_case(candidate: pd.Series, bars: pd.DataFrame) -> tuple[di
         "opening_close": float(candidate["opening_close"]),
         "opening_range_high": float(candidate["opening_range_high"]),
         "opening_range_low": float(candidate["opening_range_low"]),
+        "entry_stop_price": None,
+        "entry_price": None,
+        "entry_timestamp_utc": None,
+        "entry_fill_reason": None,
+        "stop_loss_price": None,
+        "exit_price": None,
+        "exit_timestamp_utc": None,
+        "exit_reason": None,
+        "holding_minutes": None,
+        "gross_return": None,
+        "net_return_0": None,
+        "net_return_10": None,
+        "net_return_25": None,
+        "net_return_50": None,
+        "net_return_100": None,
+        "primary_net_return": None,
+        "stress_net_return": None,
+        "path_mfe": None,
+        "path_adverse": None,
+        "entry_bar_extremes_excluded": True,
+        "exit_bar_extremes_excluded": True,
+        "terminal_exit_return_included": True,
     }
     if post.empty:
         return {**base, "status": "NO_ENTRY", "comparable": False}, []
@@ -1060,9 +1110,14 @@ def _run_path_groups(
     *,
     workers: int,
 ) -> list[dict[str, object]]:
-    candidates = duckdb.connect(":memory:").execute(
-        f"SELECT * FROM read_parquet('{_sql_path(selected_candidates)}') WHERE direction IN ('LONG','SHORT')"
-    ).fetchdf()
+    candidate_conn = duckdb.connect(":memory:")
+    try:
+        candidates = candidate_conn.execute(
+            f"SELECT * FROM read_parquet('{_sql_path(selected_candidates)}') "
+            "WHERE direction IN ('LONG','SHORT')"
+        ).fetchdf()
+    finally:
+        candidate_conn.close()
     if candidates.empty:
         return []
     candidates["session_date"] = pd.to_datetime(candidates["session_date"], errors="raise").dt.date
@@ -1178,7 +1233,9 @@ def _summary(
         thresholds: list[dict[str, object]] = []
         if threshold_artifacts:
             threshold_sql = f"read_parquet({_sql_paths(threshold_artifacts)}, hive_partitioning=false, union_by_name=true)"
-            threshold_result = conn.execute(
+            threshold_row_count = int(conn.execute(f"SELECT count(*) FROM {threshold_sql}").fetchone()[0])
+            if threshold_row_count:
+                threshold_result = conn.execute(
                 f"""
                 SELECT direction, move_threshold, count(*) AS comparable,
                        avg(CASE WHEN first_favorable_minutes IS NOT NULL THEN 1.0 ELSE 0.0 END) AS favorable_hit_rate,
@@ -1198,10 +1255,11 @@ def _summary(
                 ORDER BY direction, move_threshold
                 """
             )
-            threshold_columns = [item[0] for item in threshold_result.description]
-            thresholds = [
-                dict(zip(threshold_columns, row, strict=True)) for row in threshold_result.fetchall()
-            ]
+                threshold_columns = [item[0] for item in threshold_result.description]
+                thresholds = [
+                    dict(zip(threshold_columns, row, strict=True))
+                    for row in threshold_result.fetchall()
+                ]
     finally:
         conn.close()
     return totals, routes, years, thresholds
