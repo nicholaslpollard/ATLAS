@@ -23,24 +23,29 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
+          import subprocess
           import textwrap
 
-          source = Path('.github/workflows/_temporary_docs_direction_patch_20260915.yml')
-          text = source.read_text(encoding='utf-8')
+          source_text = subprocess.check_output(
+              [
+                  'git', 'show',
+                  'c70012d355501abbbb838dbc40c35530a20d772a:.github/workflows/_temporary_docs_direction_patch_20260915.yml',
+              ],
+              text=True,
+          )
           marker = '        run: |\n'
           end_marker = '      - name: Commit living-document update and remove temporary workflow\n'
-          if marker not in text or end_marker not in text:
-              raise SystemExit('staged patch block not found')
-          block = text.split(marker, 1)[1].split(end_marker, 1)[0]
+          if marker not in source_text or end_marker not in source_text:
+              raise SystemExit('staged patch block not found in historical helper')
+          block = source_text.split(marker, 1)[1].split(end_marker, 1)[0]
           code = textwrap.dedent(block)
-          exec(compile(code, str(source), 'exec'), {})
+          exec(compile(code, '<historical-doc-patch>', 'exec'), {})
           Path('.github/workflows/_temporary_docs_direction_patch_runner_20260915.yml').unlink(missing_ok=True)
           PY
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md docs/roadmap.md docs/strategy_evidence_register.md \
-            .github/workflows/_temporary_docs_direction_patch_20260915.yml \
             .github/workflows/_temporary_docs_direction_patch_runner_20260915.yml
           git diff --cached --check
           git commit -m "Record options-oriented strategy development direction"
