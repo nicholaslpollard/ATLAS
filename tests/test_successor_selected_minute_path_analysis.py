@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 
+import duckdb
 import pandas as pd
 import pytest
 
+import packages.backtesting.successor_selected_minute_path_analysis as minute_path
 from packages.backtesting.successor_selected_minute_path_analysis import _analyze_case_bars
 from packages.strategies.successor_selected_daily_path_contract import MOVE_THRESHOLDS
 from packages.strategies.successor_selected_minute_path_contract import (
@@ -151,3 +153,83 @@ def test_holding_minutes_must_match_retained_entry_exit_geometry() -> None:
     )
     with pytest.raises(Exception, match="holding minutes drifted"):
         _analyze_case_bars(case, bars)
+
+
+def test_selected_assignments_rejoins_compact_selector_to_normalized_path_fields(
+    tmp_path, monkeypatch
+) -> None:
+    assignments_path = tmp_path / "eligibility_assignments.parquet"
+    normalized_dir = tmp_path / "normalized"
+    normalized_dir.mkdir()
+    normalized_path = normalized_dir / "minute_0000.parquet"
+
+    rows = EXPECTED_SELECTED_MINUTE_COMPARABLE
+    session = date(2026, 1, 5)
+    entry = pd.Timestamp("2026-01-05T14:45:00Z")
+    assignments = pd.DataFrame(
+        {
+            "fold_id": list(range(1, rows + 1)),
+            "policy_id": [EXPECTED_POLICY_ID] * rows,
+            "economic_family_id": ["opening_range_breakout"] * rows,
+            "native_timeframe": ["1m"] * rows,
+            "instrument_key": [f"T{index:04d}" for index in range(rows)],
+            "ticker": [f"T{index:04d}" for index in range(rows)],
+            "session_date": [session] * rows,
+            "direction": ["LONG"] * rows,
+            "comparable": [True] * rows,
+            "primary_net_return": [0.01] * rows,
+            "stress_net_return": [0.005] * rows,
+            "research_eligible": [True] * rows,
+        }
+    )
+    normalized = pd.DataFrame(
+        {
+            "policy_id": [EXPECTED_POLICY_ID] * rows,
+            "economic_family_id": ["opening_range_breakout"] * rows,
+            "native_timeframe": ["1m"] * rows,
+            "instrument_key": [f"T{index:04d}" for index in range(rows)],
+            "ticker": [f"T{index:04d}" for index in range(rows)],
+            "session_date": [session] * rows,
+            "direction": ["LONG"] * rows,
+            "comparable": [True] * rows,
+            "gross_return": [0.015] * rows,
+            "primary_net_return": [0.01] * rows,
+            "stress_net_return": [0.005] * rows,
+            "mfe": [0.03] * rows,
+            "mae": [-0.02] * rows,
+            "entry_time_utc": [entry] * rows,
+            "exit_time_utc": [entry + pd.Timedelta(minutes=30)] * rows,
+            "holding_minutes": [30] * rows,
+        }
+    )
+    conn = duckdb.connect()
+    try:
+        conn.register("assignments_frame", assignments)
+        conn.execute(
+            f"COPY assignments_frame TO '{assignments_path.as_posix()}' (FORMAT PARQUET)"
+        )
+        conn.unregister("assignments_frame")
+        conn.register("normalized_frame", normalized)
+        conn.execute(
+            f"COPY normalized_frame TO '{normalized_path.as_posix()}' (FORMAT PARQUET)"
+        )
+        conn.unregister("normalized_frame")
+    finally:
+        conn.close()
+
+    monkeypatch.setattr(minute_path, "conditioning_root", lambda _project_root: tmp_path)
+    monkeypatch.setattr(
+        minute_path,
+        "validate_conditioning_inputs",
+        lambda _project_root: {"conditioning_analysis_fingerprint": "synthetic"},
+    )
+
+    selected, binding = minute_path._selected_assignments(tmp_path)
+    assert len(selected) == EXPECTED_SELECTED_MINUTE_COMPARABLE
+    assert binding["conditioning_analysis_fingerprint"] == "synthetic"
+    assert selected["gross_return"].eq(0.015).all()
+    assert selected["mfe"].eq(0.03).all()
+    assert selected["mae"].eq(-0.02).all()
+    assert selected["holding_minutes"].eq(30).all()
+    assert selected["entry_time_utc"].notna().all()
+    assert selected["exit_time_utc"].notna().all()

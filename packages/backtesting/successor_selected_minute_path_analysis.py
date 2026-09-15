@@ -152,30 +152,73 @@ def _validate_optionworthiness(project_root: Path) -> dict[str, object]:
 
 def _selected_assignments(project_root: Path) -> tuple[pd.DataFrame, dict[str, object]]:
     conditioning_binding = validate_conditioning_inputs(project_root)
-    assignment_path = conditioning_root(project_root) / "eligibility_assignments.parquet"
+    root = conditioning_root(project_root)
+    assignment_path = root / "eligibility_assignments.parquet"
+    normalized_glob = root / "normalized" / "*.parquet"
     conn = duckdb.connect()
     try:
         frame = conn.execute(
             f"""
-            SELECT fold_id, policy_id, economic_family_id, native_timeframe,
-                   instrument_key, ticker, session_date, direction,
-                   gross_return, primary_net_return, stress_net_return,
-                   mfe, mae, entry_time_utc, exit_time_utc, holding_minutes
-            FROM read_parquet('{_sql_path(assignment_path)}')
-            WHERE research_eligible AND comparable AND native_timeframe='1m'
-            ORDER BY policy_id, direction, instrument_key, session_date, fold_id
+            WITH selected AS (
+                SELECT fold_id, policy_id, economic_family_id, native_timeframe,
+                       instrument_key, ticker, session_date, direction,
+                       comparable, primary_net_return, stress_net_return
+                FROM read_parquet('{_sql_path(assignment_path)}')
+                WHERE research_eligible AND comparable AND native_timeframe='1m'
+            )
+            SELECT
+                a.fold_id, a.policy_id, a.economic_family_id, a.native_timeframe,
+                a.instrument_key, a.ticker, a.session_date, a.direction,
+                o.gross_return,
+                a.primary_net_return,
+                a.stress_net_return,
+                o.mfe,
+                o.mae,
+                o.entry_time_utc,
+                o.exit_time_utc,
+                o.holding_minutes,
+                o.comparable AS normalized_comparable,
+                (a.primary_net_return IS NOT DISTINCT FROM o.primary_net_return)
+                    AS primary_return_binding_matches,
+                (a.stress_net_return IS NOT DISTINCT FROM o.stress_net_return)
+                    AS stress_return_binding_matches
+            FROM selected a
+            JOIN read_parquet('{_sql_path(normalized_glob)}', union_by_name=true) o
+              ON o.policy_id = a.policy_id
+             AND o.native_timeframe = a.native_timeframe
+             AND o.instrument_key = a.instrument_key
+             AND o.session_date = a.session_date
+             AND o.direction = a.direction
+            ORDER BY a.policy_id, a.direction, a.instrument_key, a.session_date, a.fold_id
             """
         ).fetchdf()
     finally:
         conn.close()
     if len(frame) != EXPECTED_SELECTED_MINUTE_COMPARABLE:
         raise SuccessorSelectedMinutePathError(
-            f"selected minute population drifted: {len(frame)} != {EXPECTED_SELECTED_MINUTE_COMPARABLE}"
+            f"selected minute population/join drifted: {len(frame)} != {EXPECTED_SELECTED_MINUTE_COMPARABLE}"
         )
     policies = sorted(str(value) for value in frame["policy_id"].dropna().unique())
     if policies != [EXPECTED_POLICY_ID]:
         raise SuccessorSelectedMinutePathError(f"selected minute policy drifted: {policies}")
-    if frame[["entry_time_utc", "exit_time_utc", "gross_return"]].isna().any().any():
+    if not bool(frame["normalized_comparable"].all()):
+        raise SuccessorSelectedMinutePathError(
+            "selected minute comparability drifted from normalized opportunities"
+        )
+    if not bool(frame["primary_return_binding_matches"].all()) or not bool(
+        frame["stress_return_binding_matches"].all()
+    ):
+        raise SuccessorSelectedMinutePathError(
+            "selected minute retained return binding drifted from normalized opportunities"
+        )
+    frame = frame.drop(
+        columns=[
+            "normalized_comparable",
+            "primary_return_binding_matches",
+            "stress_return_binding_matches",
+        ]
+    )
+    if frame[["entry_time_utc", "exit_time_utc", "gross_return", "holding_minutes"]].isna().any().any():
         raise SuccessorSelectedMinutePathError("selected minute population has missing retained path fields")
     frame["session_date"] = pd.to_datetime(frame["session_date"], errors="raise").dt.date
     frame["entry_time_utc"] = pd.to_datetime(frame["entry_time_utc"], utc=True, errors="raise")
@@ -206,7 +249,6 @@ def _selected_assignments(project_root: Path) -> tuple[pd.DataFrame, dict[str, o
     if frame["case_id"].duplicated().any():
         raise SuccessorSelectedMinutePathError("selected minute case id collision")
     return frame, conditioning_binding
-
 
 def _input_root(project_root: Path) -> Path:
     return (
