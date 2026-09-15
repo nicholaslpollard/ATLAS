@@ -1500,3 +1500,22 @@ The next Track-B package after conditioning v1 is implemented as a descriptive r
 The package reports three populations separately: all comparable DEVELOPMENT opportunities, walk-forward test comparable opportunities, and conditioning-v1 selected comparable opportunities. Per route/direction it records return and MFE/MAE distributions, 1/2/3/5% favorable-excursion and adverse-breach frequencies, available daily horizon behavior, intraday holding-time behavior, and selected-fold persistence/concentration. Daily retained MFE/MAE is explicitly labeled `THROUGH_20_SESSIONS`; intraday excursion is `ENTRY_TO_ACTUAL_EXIT`. The daily primary return remains the separate five-session outcome, so 20-session MFE threshold frequencies are never described as five-session hit rates. The terminal/JSON handoff lists every selected route with descriptive move diagnostics in policy-id order; it deliberately creates no post-result ranking score. Exact time-to-threshold, ATR-normalized move-hit rates, full path ordering, hold-period realized volatility, and historical option P&L remain explicitly unavailable from retained artifacts.
 
 Repository acceptance of this package does not itself open the additional diagnostic aggregates. After merge, the next workstation action is the separately authorized retained-artifact command. Confluence remains closed. Results may motivate bounded versioned strategy research but cannot validate a strategy or option trade on the same DEVELOPMENT evidence.
+
+<!-- successor-path-kinetics-roadmap-20260915 -->
+### Successor move-path / option-translatability gate (2026-09-15)
+
+PR #96 established the first retained-artifact option-worthiness layer. The accepted workstation run is bound to option-worthiness fingerprint `caedb97b7031c70e0aeec1f7fbde6d949b2ab22cd39529876b82d1228fcf8b11` and analysis fingerprint `6f82ac0e55be43b8cf95fc362c7f292cb592b41c15ff897b24665470e95410f3`; counts reconcile at **34,273,432 / 28,825,473 / 36,254** comparable all / walk-forward test / selected, with **28 routes / 21 economic families**.
+
+The retained 20-session MFE diagnostic showed that eventual excursion magnitude does not separate good and bad 5-session signals well enough for an options-first system. The next gate is therefore a **selected-opportunity daily path-kinetics diagnostic**, not another strategy replay:
+
+- population: exactly **35,995** already-selected comparable daily opportunities; no re-selection or new router;
+- source: hash-bound Alpaca SIP V2 DEVELOPMENT daily view only; master/future/provider/broker access stays zero;
+- entry: frozen next-regular-session open after the signal session;
+- thresholds: **1%, 2%, 3%, 5%** favorable and symmetric adverse movement;
+- horizons: **1, 2, 3, 5, 10, 20** trading sessions;
+- measurements: close return, MFE/MAE, first favorable/adverse hit session, and first-hit ordering;
+- same-session daily-bar collisions remain explicitly ambiguous rather than guessed;
+- every reread path must reproduce the already-frozen 5-session 10-bps primary and 25-bps stress return before its timing evidence is accepted;
+- **259** selected comparable intraday opportunities are not reopened by this daily v1 and require a separately frozen minute-path package if warranted.
+
+After this diagnostic, use the resulting timing/path distributions to diagnose route mechanisms and option translatability. They may motivate bounded, externally researched successor revisions, but they cannot retroactively validate a route or create an options selector. Confluence stays closed during this attribution work.
