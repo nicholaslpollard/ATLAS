@@ -7,6 +7,7 @@ import duckdb
 import pandas as pd
 import pytest
 
+import packages.backtesting.successor_selected_daily_path_analysis as path_analysis
 from packages.backtesting.successor_selected_daily_path_analysis import (
     _copy_query_atomic,
     _path_query,
@@ -70,7 +71,12 @@ def _selected() -> pd.DataFrame:
 def _prepare(con: duckdb.DuckDBPyConnection, bars: pd.DataFrame | None = None) -> dict[str, int]:
     con.register("daily_bars", _bars() if bars is None else bars)
     con.register("selected", _selected())
-    return _prepare_path_relations(con, "daily_bars")
+    original = path_analysis.EXPECTED_SELECTED_DAILY_COMPARABLE
+    path_analysis.EXPECTED_SELECTED_DAILY_COMPARABLE = 1
+    try:
+        return _prepare_path_relations(con, "daily_bars")
+    finally:
+        path_analysis.EXPECTED_SELECTED_DAILY_COMPARABLE = original
 
 
 def test_contract_is_descriptive_and_authority_closed() -> None:
