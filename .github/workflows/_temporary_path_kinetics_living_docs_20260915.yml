@@ -1,0 +1,92 @@
+name: Temporary path-kinetics living-document handoff
+
+on:
+  push:
+    branches:
+      - research/successor-path-kinetics-v1
+    paths:
+      - .github/workflows/_temporary_path_kinetics_living_docs_20260915.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Append authoritative handoff sections
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          sections = {
+              "README.md": r'''
+          <!-- successor-path-kinetics-handoff-20260915 -->
+          ### Successor option-worthiness result and path-timing gate (2026-09-15)
+
+          The accepted retained-artifact option-worthiness diagnostic completed against all 546 accepted conditioning parts with option-worthiness fingerprint `caedb97b7031c70e0aeec1f7fbde6d949b2ab22cd39529876b82d1228fcf8b11` and analysis fingerprint `6f82ac0e55be43b8cf95fc362c7f292cb592b41c15ff897b24665470e95410f3`. It reconciled **34,273,432** comparable DEVELOPMENT opportunities, **28,825,473** comparable walk-forward test opportunities, and **36,254** selected comparable opportunities across the authoritative **28-route / 21-family** implemented successor library.
+
+          The principal finding is methodological: a 20-session favorable excursion is **not** enough to call a signal option-worthy. Many routes with negative 5-session expectancy still reached large favorable excursions sometime during the following 20 sessions. ATLAS therefore treats **move magnitude + time-to-move + adverse path** as required evidence before option construction. Historical option P&L remains unavailable until a separate PIT option-chain/quote/IV replay source is accepted.
+
+          The next frozen diagnostic is `successor-path-kinetics-v1`: exactly the **35,995 already-selected comparable daily** opportunities are reread against the hash-bound DEVELOPMENT daily view using the original next-session-open entry semantics. Before any result is opened, thresholds are fixed at **1/2/3/5%**, horizons at **1/2/3/5/10/20 sessions**, and outputs are fixed to horizon close return, MFE/MAE, first favorable/adverse threshold day, and favorable-vs-adverse first-hit ordering. If both thresholds first occur in the same daily bar, ordering is `SAME_SESSION_AMBIGUOUS`; ATLAS does not infer intraday order from OHLC. The **259** selected comparable intraday opportunities remain retained for a separate minute-path contract. This diagnostic grants no strategy/selector promotion, confluence, PAPER/LIVE, or option-trading authority.
+          ''',
+              "docs/roadmap.md": r'''
+          <!-- successor-path-kinetics-roadmap-20260915 -->
+          ### Successor move-path / option-translatability gate (2026-09-15)
+
+          PR #96 established the first retained-artifact option-worthiness layer. The accepted workstation run is bound to option-worthiness fingerprint `caedb97b7031c70e0aeec1f7fbde6d949b2ab22cd39529876b82d1228fcf8b11` and analysis fingerprint `6f82ac0e55be43b8cf95fc362c7f292cb592b41c15ff897b24665470e95410f3`; counts reconcile at **34,273,432 / 28,825,473 / 36,254** comparable all / walk-forward test / selected, with **28 routes / 21 economic families**.
+
+          The retained 20-session MFE diagnostic showed that eventual excursion magnitude does not separate good and bad 5-session signals well enough for an options-first system. The next gate is therefore a **selected-opportunity daily path-kinetics diagnostic**, not another strategy replay:
+
+          - population: exactly **35,995** already-selected comparable daily opportunities; no re-selection or new router;
+          - source: hash-bound Alpaca SIP V2 DEVELOPMENT daily view only; master/future/provider/broker access stays zero;
+          - entry: frozen next-regular-session open after the signal session;
+          - thresholds: **1%, 2%, 3%, 5%** favorable and symmetric adverse movement;
+          - horizons: **1, 2, 3, 5, 10, 20** trading sessions;
+          - measurements: close return, MFE/MAE, first favorable/adverse hit session, and first-hit ordering;
+          - same-session daily-bar collisions remain explicitly ambiguous rather than guessed;
+          - every reread path must reproduce the already-frozen 5-session 10-bps primary and 25-bps stress return before its timing evidence is accepted;
+          - **259** selected comparable intraday opportunities are not reopened by this daily v1 and require a separately frozen minute-path package if warranted.
+
+          After this diagnostic, use the resulting timing/path distributions to diagnose route mechanisms and option translatability. They may motivate bounded, externally researched successor revisions, but they cannot retroactively validate a route or create an options selector. Confluence stays closed during this attribution work.
+          ''',
+              "docs/strategy_evidence_register.md": r'''
+          <!-- successor-path-kinetics-evidence-20260915 -->
+          ### 8.9 Retained option-worthiness closeout and frozen daily path-kinetics follow-up — 2026-09-15
+
+          **Accepted diagnostic run.** The retained-artifact option-worthiness package completed with contract fingerprint `caedb97b7031c70e0aeec1f7fbde6d949b2ab22cd39529876b82d1228fcf8b11` and analysis fingerprint `6f82ac0e55be43b8cf95fc362c7f292cb592b41c15ff897b24665470e95410f3`. It validated all **546/546** accepted conditioning parts and reconciled **34,273,432** comparable DEVELOPMENT opportunities, **28,825,473** comparable walk-forward-test opportunities, and **36,254** selected comparable opportunities. The implementation inventory remains **28 registered/replayed routes across 21 economic families**; legacy zero-byte category files are scaffolding, not additional tested strategies.
+
+          **What the excursion evidence means.** Daily MFE/MAE in this package is explicitly `THROUGH_20_SESSIONS`, while the primary daily expectancy is the frozen 5-session return. Those windows must not be conflated. The diagnostic demonstrates why timing is now required: for example, `macd_shift_12_26_9_long_v1` remained negative at **-0.24% primary / -0.39% stress** while **68.49%** of its selected observations eventually reached a favorable 5% excursion within the retained 20-session window; `bollinger_squeeze_breakout_20_long_v1` was **-1.16% / -1.31%** while **62.30%** eventually reached +5%; the positive `pract_flag_pennant_v1 SHORT` was **+0.88% / +0.73%** with **66.49%** eventually reaching +5%. Therefore an eventual large move is not sufficient evidence that the move arrived soon enough, cleanly enough, or with acceptable adverse path for an option trade.
+
+          **Frozen follow-up before opening new path results.** `successor-path-kinetics-v1` is a post-result diagnostic over exactly the **35,995 already-selected comparable daily opportunities**. It does not refit or reselect them. The scientific contract freezes **1/2/3/5%** directional thresholds and **1/2/3/5/10/20-session** horizons; uses the original next-session-open entry; measures close return, horizon-specific MFE/MAE, first favorable threshold session, first adverse threshold session, and symmetric first-hit class; and labels same-daily-bar first hits `SAME_SESSION_AMBIGUOUS` because OHLC does not reveal intraday order. Each selected path must reproduce the frozen 5-session 10-bps and 25-bps returns before diagnostic output is accepted.
+
+          The **259** selected comparable intraday opportunities remain outside this daily v1 path pass and require a separately preregistered minute-path contract. No path result may be treated as historical option P&L, no composite option-worthiness score is introduced, confluence remains closed, and strategy/selector/PAPER/LIVE/option-trading authority remain false. Favorable path findings can only motivate bounded versioned research under the Strategy Development Cycle; they are not validation on the same DEVELOPMENT evidence.
+          ''',
+          }
+
+          for name, section in sections.items():
+              path = Path(name)
+              text = path.read_text(encoding="utf-8")
+              marker = section.strip().splitlines()[0]
+              if marker in text:
+                  continue
+              text = text.rstrip() + "\n\n" + section.strip() + "\n"
+              path.write_text(text, encoding="utf-8", newline="\n")
+          PY
+          rm .github/workflows/_temporary_path_kinetics_living_docs_20260915.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/roadmap.md docs/strategy_evidence_register.md .github/workflows/_temporary_path_kinetics_living_docs_20260915.yml
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Document option-worthiness result and path-kinetics gate"
+          git push origin HEAD:research/successor-path-kinetics-v1
