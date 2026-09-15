@@ -80,10 +80,16 @@ def main() -> int:
             f"    {key[0]} {key[1]}: n={int(route['selected_comparable']):,} "
             f"close5={_pct(route['mean_gross_return_5'])} MFE5={_pct(route['mean_mfe_5'])} "
             f"MAE5={_pct(route['mean_adverse_excursion_5'])} "
-            f"capture={_pct(route['mean_exit_capture_ratio'])} giveback={_pct(route['mean_peak_giveback'])}; "
+            f"capture_med={_pct(route['median_exit_capture_ratio'])} "
+            f"giveback={_pct(route['mean_peak_giveback'])}; "
             + " | ".join(chunks),
             flush=True,
         )
+    print(
+        "  capture note: median exit-capture is displayed; the arithmetic mean of return/MFE "
+        "is unstable when MFE is near zero and is not used for route comparison",
+        flush=True,
+    )
     print("  intraday routes: deferred to separate minute-path diagnostic", flush=True)
     print("  historical option P&L: not claimed", flush=True)
     print("  strategy promotion / option-trading authority: false / false", flush=True)
