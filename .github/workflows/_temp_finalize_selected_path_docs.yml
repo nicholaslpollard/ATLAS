@@ -6,6 +6,7 @@ on:
       - research/selected-path-closeout-and-minute-v1
     paths:
       - scripts/_temp_finalize_selected_path_docs.py
+      - .github/workflows/_temp_finalize_selected_path_docs.yml
 
 permissions:
   contents: write
