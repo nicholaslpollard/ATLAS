@@ -30,6 +30,9 @@ _CONTRACT = {
         "raw_ohlc": "split_adjusted_ohlc * price_factor",
         "factor_requirement": "FINITE_POSITIVE",
     },
+    # The accepted V2 daily source deliberately preserves provider-native adjusted
+    # volume. Its reconciliation audit does not authorize deriving volume from the
+    # price split factor, so this threshold consumes that field exactly as supplied.
     "prior_average_daily_share_volume": (
         "PROVIDER_NATIVE_SPLIT_ADJUSTED_DAILY_VOLUME_AS_SUPPLIED;"
         "SIMPLE_MEAN_PRIOR_14_INSTRUMENT_SESSIONS_SHIFT_1;"
