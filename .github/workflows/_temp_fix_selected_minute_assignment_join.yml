@@ -39,6 +39,21 @@ jobs:
       - name: Apply schema repair
         run: python scripts/_temp_fix_selected_minute_assignment_join.py
 
+      - name: Normalize generated file endings
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for name in (
+              'tests/test_successor_selected_minute_path_analysis.py',
+              'README.md',
+              'docs/roadmap.md',
+              'packages/backtesting/successor_selected_minute_path_analysis.py',
+          ):
+              path = Path(name)
+              path.write_text(path.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+          PY
+
       - name: Validate formatting
         run: git diff --check
 
