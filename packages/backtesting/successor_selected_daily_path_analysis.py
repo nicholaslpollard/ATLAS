@@ -79,8 +79,12 @@ def _copy_query_atomic(conn: duckdb.DuckDBPyConnection, query: str, target: Path
 
 
 def selected_daily_path_root(project_root: Path) -> Path:
+    # Keep derived path artifacts beside, rather than beneath, option-worthiness.
+    # The scientific binding to the accepted option-worthiness run is validated
+    # separately in _validate_optionworthiness(); nesting it here needlessly pushed
+    # Windows atomic destinations beyond legacy-safe path lengths.
     return (
-        optionworthiness_root(project_root)
+        conditioning_root(project_root)
         / "selected_daily_path_v1"
         / SUCCESSOR_SELECTED_DAILY_PATH_FINGERPRINT[:16]
     ).resolve()

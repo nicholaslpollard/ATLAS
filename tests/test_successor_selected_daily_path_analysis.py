@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 import duckdb
 import pandas as pd
@@ -11,7 +11,9 @@ from packages.backtesting.successor_selected_daily_path_analysis import (
     _copy_query_atomic,
     _path_query,
     _threshold_query,
+    selected_daily_path_root,
 )
+from packages.backtesting.successor_optionworthiness_analysis import conditioning_root
 from packages.strategies.successor_selected_daily_path_contract import (
     AUTHORITY,
     MOVE_THRESHOLDS,
@@ -133,3 +135,17 @@ def test_same_session_collision_is_not_ordered(tmp_path: Path) -> None:
         assert two["first_touch_class"] == "SAME_SESSION_COLLISION_UNORDERED"
     finally:
         con.close()
+
+def test_output_root_stays_windows_legacy_safe(tmp_path: Path) -> None:
+    root = selected_daily_path_root(tmp_path)
+    conditioning = conditioning_root(tmp_path)
+    assert root.parent.parent == conditioning
+    assert "optionworthiness_v1" not in root.parts
+
+    relative = root.relative_to(tmp_path.resolve())
+    representative = PureWindowsPath(
+        r"C:\Users\cyberdyne\Desktop\ATLAS",
+        *relative.parts,
+        "selected_daily_path_contract.json",
+    )
+    assert len(str(representative)) <= 248
