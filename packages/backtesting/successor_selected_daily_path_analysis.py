@@ -331,7 +331,7 @@ def run_successor_selected_daily_path_analysis(project_root: Path) -> dict[str, 
     loaded = adapter.load(DEVELOPMENT_START, DEVELOPMENT_END)
     bars = loaded.bars
     report = loaded.report
-    if int(report.get("protected_rows_read", -1)) != 0:
+    if int(report.get("protected_master_return_rows_read", -1)) != 0:
         raise SuccessorSelectedDailyPathError("daily source adapter read protected rows")
     print(
         f"validated DEVELOPMENT daily lake: {len(bars):,} rows / "
