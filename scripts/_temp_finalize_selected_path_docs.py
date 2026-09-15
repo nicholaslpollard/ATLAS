@@ -82,7 +82,8 @@ def append_once(path: Path, heading: str, section: str) -> None:
     text = path.read_text(encoding="utf-8")
     if heading in text:
         return
-    path.write_text(text.rstrip() + section + "\n", encoding="utf-8", newline="\n")
+    combined = text.rstrip() + "\n" + section.strip() + "\n"
+    path.write_text(combined, encoding="utf-8", newline="\n")
 
 
 def main() -> None:
