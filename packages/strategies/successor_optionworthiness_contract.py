@@ -59,6 +59,10 @@ def successor_optionworthiness_manifest() -> dict[str, object]:
         "supported_metrics": {
             "directional_mfe_percent_threshold_frequency": True,
             "directional_mae_percent_threshold_frequency": True,
+            "excursion_window_semantics": {
+                "daily": "THROUGH_20_SESSIONS",
+                "intraday": "ENTRY_TO_ACTUAL_EXIT",
+            },
             "mfe_mae_distribution_quantiles": True,
             "daily_5_session_gross_directional_return": True,
             "daily_1_and_20_session_primary_net_return": True,
@@ -70,6 +74,9 @@ def successor_optionworthiness_manifest() -> dict[str, object]:
         "explicitly_unavailable_from_retained_artifacts": {
             "exact_time_to_1_2_3_5_percent_favorable_move": (
                 "MFE_PERSISTS_MAGNITUDE_BUT_NOT_TIMESTAMP_OF_THRESHOLD_CROSSING"
+            ),
+            "daily_5_session_mfe_mae_threshold_frequency": (
+                "DAILY_RETAINED_MFE_MAE_COVERS_THE_20_SESSION_WINDOW_NOT_THE_PRIMARY_5_SESSION_WINDOW"
             ),
             "exact_mfe_before_mae_path_sequence": (
                 "EXTREMA_ARE_PERSISTED_WITHOUT_COMPLETE_PATH_ORDER"

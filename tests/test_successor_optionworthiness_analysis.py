@@ -109,6 +109,7 @@ def test_route_summary_separates_all_test_and_selected() -> None:
     assert int(all_row.comparable_opportunities) == 2
     assert int(test_row.comparable_opportunities) == 2
     assert int(selected.comparable_opportunities) == 1
+    assert selected.excursion_window == "THROUGH_20_SESSIONS"
     assert abs(float(selected.mean_mfe) - 0.06) < 1e-12
     assert abs(float(selected.mean_primary_net_return) - 0.029) < 1e-12
     assert abs(float(selected.mean_daily_h1_primary) - 0.009) < 1e-12
@@ -170,6 +171,8 @@ def test_selected_route_diagnostics_exposes_move_profile_without_ranking() -> No
     assert [row["policy_id"] for row in rows] == ["daily_policy", "minute_policy"]
     daily = rows[0]
     assert daily["selected_comparable"] == 1
+    assert daily["excursion_window"] == "THROUGH_20_SESSIONS"
+    assert rows[1]["excursion_window"] == "ENTRY_TO_ACTUAL_EXIT"
     assert abs(float(daily["p_mfe_ge_5pct"]) - 1.0) < 1e-12
     assert abs(float(daily["p_mae_le_m3pct"]) - 0.0) < 1e-12
     assert daily["active_folds"] == 1

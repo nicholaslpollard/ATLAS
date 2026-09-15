@@ -82,11 +82,13 @@ def main() -> int:
         print(
             f"    {row['policy_id']} {row['direction']}: n={int(row['selected_comparable']):,} "
             f"primary={pct(row.get('mean_primary_net_return'))} stress={pct(row.get('mean_stress_net_return'))} "
+            f"excursion_window={row.get('excursion_window')} "
             f"MFE>=1/2/3/5%={pct(row.get('p_mfe_ge_1pct'))}/{pct(row.get('p_mfe_ge_2pct'))}/"
             f"{pct(row.get('p_mfe_ge_3pct'))}/{pct(row.get('p_mfe_ge_5pct'))} "
             f"folds={folds} largest_fold={pct(row.get('largest_fold_share'))}",
             flush=True,
         )
+    print("  daily MFE/MAE threshold frequencies use the retained THROUGH_20_SESSIONS window; they are not 5-session hit rates", flush=True)
     print("  exact time-to-threshold: unavailable from retained artifacts; not claimed", flush=True)
     print("  ATR-normalized threshold frequency: unavailable from retained artifacts; not claimed", flush=True)
     print("  historical option P&L: unavailable; not claimed", flush=True)

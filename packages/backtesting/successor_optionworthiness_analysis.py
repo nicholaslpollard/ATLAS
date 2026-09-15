@@ -305,6 +305,8 @@ def _relation_metrics_sql(relation: str, *, subset: str, where: str) -> str:
             economic_family_id,
             native_timeframe,
             direction,
+            CASE WHEN native_timeframe = '1d' THEN 'THROUGH_20_SESSIONS'
+                 ELSE 'ENTRY_TO_ACTUAL_EXIT' END AS excursion_window,
             count(*) AS comparable_opportunities,
             count(DISTINCT session_date) AS unique_sessions,
             count(DISTINCT instrument_key) AS unique_instruments,
@@ -389,6 +391,8 @@ def threshold_curve_sql() -> str:
                 economic_family_id,
                 native_timeframe,
                 direction,
+                CASE WHEN native_timeframe = '1d' THEN 'THROUGH_20_SESSIONS'
+                     ELSE 'ENTRY_TO_ACTUAL_EXIT' END AS excursion_window,
                 threshold AS move_threshold,
                 count(mfe) AS mfe_observations,
                 avg(CASE WHEN mfe IS NOT NULL THEN CASE WHEN mfe >= threshold THEN 1.0 ELSE 0.0 END END)
@@ -419,6 +423,8 @@ def selected_fold_summary_sql() -> str:
             economic_family_id,
             native_timeframe,
             direction,
+            CASE WHEN native_timeframe = '1d' THEN 'THROUGH_20_SESSIONS'
+                 ELSE 'ENTRY_TO_ACTUAL_EXIT' END AS excursion_window,
             count(*) AS selected_comparable,
             count(DISTINCT session_date) AS unique_sessions,
             count(DISTINCT instrument_key) AS unique_instruments,
@@ -596,6 +602,7 @@ def selected_route_diagnostics(conn: duckdb.DuckDBPyConnection) -> list[dict[str
             r.economic_family_id,
             r.native_timeframe,
             r.direction,
+            r.excursion_window,
             r.comparable_opportunities AS selected_comparable,
             r.unique_sessions,
             r.unique_instruments,
