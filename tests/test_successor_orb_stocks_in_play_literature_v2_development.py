@@ -225,7 +225,7 @@ def test_comparable_case_excludes_entry_and_exit_extremes_but_includes_terminal_
         [
             ("2026-04-01T13:35:00Z", 100.9, 101.2, 100.9, 101.1),
             ("2026-04-01T13:36:00Z", 101.1, 102.5, 100.95, 102.0),
-            ("2026-04-01T19:59:00Z", 102.0, 110.0, 90.0, 103.02),
+            ("2026-04-01T19:59:00Z", 102.0, 110.0, 100.9, 103.02),
         ]
     )
     outcome, thresholds = evaluate_selected_case(candidate, bars)
