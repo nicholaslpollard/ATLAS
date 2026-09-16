@@ -9,6 +9,8 @@ OPTION_ECONOMICS_CONTRACT = {
     "scope": "PRODUCT_SIMULATION_DECISION_SUPPORT_ONLY",
     "input_forecast_contract": "atlas-underlying-move-time-forecast-v1",
     "input_option_evidence": "OptionCandidateEvidence",
+    "option_evidence_fingerprint_required": True,
+    "candidate_identifier_includes_option_evidence_fingerprint": True,
     "output_candidate_kind": "OPTION",
     "supported_structure": "LONG_SINGLE_LEG_CALL_OR_PUT_ONLY",
     "requires_available_directional_forecast": True,
@@ -119,5 +121,5 @@ def contract_fingerprint() -> str:
 
 
 OPTION_ECONOMICS_CONTRACT_FINGERPRINT = (
-    "b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33"
+    "798b05ab3867058865301c35a52491ee9a8cde82c6f1b019b8d27bae34e88178"
 )
