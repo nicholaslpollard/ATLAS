@@ -1,0 +1,30 @@
+name: Temporary Option Docs
+
+on:
+  push:
+    branches:
+      - feature/option-scenario-economics-foundation
+    paths:
+      - .github/workflows/_temporary_option_docs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/option-scenario-economics-foundation
+          fetch-depth: 0
+      - name: Reconcile living documents
+        run: python scripts/_temporary_reconcile_option_economics_docs.py
+      - name: Commit reconciliation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/_temporary_option_docs.yml scripts/_temporary_reconcile_option_economics_docs.py
+          git add README.md docs/roadmap.md
+          git commit -m "Reconcile option economics living documents"
+          git push origin HEAD:feature/option-scenario-economics-foundation
