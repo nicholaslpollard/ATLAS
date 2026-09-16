@@ -1,0 +1,101 @@
+from pathlib import Path
+
+README_MARKER = "## 2026-09-16 — Long-option capital/risk reservation terms"
+ROADMAP_MARKER = "## Track A long-option capital/risk reservation terms — 2026-09-16"
+
+README_SECTION = r'''
+
+## 2026-09-16 — Long-option capital/risk reservation terms
+
+Track A now has a separately versioned broker-neutral long-option reservation-terms
+contract under frozen fingerprint
+`26835cbab3e551f0f7514e8537d823cb23d5db1f440362d20b1ba7493ff6aa64`
+(`atlas-long-option-capital-risk-reservation-v1`). It binds an accepted selected
+OPTION decision to the exact simulation-decision fingerprint, exact accepted option
+economics result, exact full `OptionCandidateEvidence` fingerprint, exact underlying
+forecast fingerprint, and selected candidate fingerprint. Quote-only similarity is
+not enough: changing non-price evidence such as open interest invalidates the
+reservation lineage.
+
+V1 supports only long single-leg, direction-aligned calls and puts. Entry premium at
+risk is the accepted executable ask debit (`ask * multiplier * contracts`). Reserved
+capital is that debit plus an explicit nonnegative cash-fee reserve, max-loss cash is
+exactly the reserved capital, and the already-selected option economic capital must
+cover the entire reservation. Delta-equivalent underlying notional is recorded as a
+separate signed/absolute option exposure measure and never mutates or reinterprets
+the stock account state's gross-notional field.
+
+This package creates immutable reservation **terms only**. It does not mutate
+account state, reserve cash, create orders/fills, mark to market, realize P&L, read or
+write a provider/broker, or grant PAPER, LIVE, promotion, or confluence authority.
+The next Track A package is the separately versioned option-aware simulation
+account-state extension: deterministic admission/reservation/release and replayable
+ledger lineage using these exact terms while keeping stock gross exposure and option
+delta-equivalent exposure separate. Fill, mark-to-market, realized-P&L, and broker
+authority remain later packages. The Strategy Evidence Register is intentionally
+unchanged because this is product architecture, not strategy evidence.
+'''
+
+ROADMAP_SECTION = r'''
+
+## Track A long-option capital/risk reservation terms — 2026-09-16
+
+The option account-admission boundary is frozen under contract
+`26835cbab3e551f0f7514e8537d823cb23d5db1f440362d20b1ba7493ff6aa64`
+(`atlas-long-option-capital-risk-reservation-v1`). It consumes the accepted
+simulation decision record, accepted option scenario-economics result, and the exact
+option evidence snapshot, and emits immutable long-option reservation terms without
+mutating account state.
+
+Frozen v1 semantics:
+
+1. require an OPTION-selected simulation decision and exact selected-candidate
+   fingerprint lineage through both the decision record and option economics;
+2. require the accepted option-economics contract and exact underlying-forecast
+   fingerprint;
+3. require the economics result's `source_option_evidence_fingerprint` to equal the
+   full supplied `OptionCandidateEvidence` fingerprint, so quote-identical but
+   otherwise changed delta/IV/liquidity/eligibility/open-interest evidence fails
+   closed;
+4. support only upstream-eligible long single-leg calls for bullish forecasts and
+   puts for bearish forecasts, with complete correctly signed delta and complete
+   accepted option scenario economics;
+5. reserve premium at risk from the accepted executable ask debit and require
+   `reserved_capital = ask_debit + explicit_nonnegative_cash_fee_reserve`;
+6. set long-option max-loss cash equal to reserved capital and require the selected
+   option's economic capital denominator to cover that full amount;
+7. record signed and absolute delta-equivalent underlying notional from
+   `delta * underlying_reference_price * multiplier * contracts` as option-specific
+   exposure evidence only;
+8. never mutate or reinterpret the stock account-state gross exposure field; and
+9. grant no account-mutation, fill, realized-P&L, mark-to-market, broker/order,
+   PAPER, LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation after acceptance:
+
+1. extend the deterministic simulation account state with option-specific active
+   reservations keyed to the decision/reservation fingerprints;
+2. debit/release exact reserved cash deterministically while maintaining explicit
+   stock reserved capital, option reserved capital, stock gross notional, and option
+   signed/absolute delta-equivalent exposure as separate auditable quantities;
+3. add option admission rejection for insufficient unreserved cash without inventing
+   margin, collateral, or leverage semantics;
+4. extend ledger events and replay verification so reservation/release is
+   deterministic, idempotent, chronology-safe, and hash-lineage checked; and
+5. keep equity invariant until a later separately accepted fill/mark-to-market/P&L
+   package exists.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.
+'''
+
+
+def append_once(path: str, marker: str, section: str) -> None:
+    target = Path(path)
+    text = target.read_text(encoding="utf-8")
+    if marker not in text:
+        target.write_text(text.rstrip() + section + "\n", encoding="utf-8")
+
+
+append_once("README.md", README_MARKER, README_SECTION)
+append_once("docs/roadmap.md", ROADMAP_MARKER, ROADMAP_SECTION)
