@@ -1832,3 +1832,54 @@ Immediate Track A continuation:
 The Strategy Evidence Register is intentionally unchanged because this package adds
 product option-construction architecture, not new strategy evidence or a disposition
 change.
+
+## Track A long-option capital/risk reservation terms — 2026-09-16
+
+The option account-admission boundary is frozen under contract
+`26835cbab3e551f0f7514e8537d823cb23d5db1f440362d20b1ba7493ff6aa64`
+(`atlas-long-option-capital-risk-reservation-v1`). It consumes the accepted
+simulation decision record, accepted option scenario-economics result, and the exact
+option evidence snapshot, and emits immutable long-option reservation terms without
+mutating account state.
+
+Frozen v1 semantics:
+
+1. require an OPTION-selected simulation decision and exact selected-candidate
+   fingerprint lineage through both the decision record and option economics;
+2. require the accepted option-economics contract and exact underlying-forecast
+   fingerprint;
+3. require the economics result's `source_option_evidence_fingerprint` to equal the
+   full supplied `OptionCandidateEvidence` fingerprint, so quote-identical but
+   otherwise changed delta/IV/liquidity/eligibility/open-interest evidence fails
+   closed;
+4. support only upstream-eligible long single-leg calls for bullish forecasts and
+   puts for bearish forecasts, with complete correctly signed delta and complete
+   accepted option scenario economics;
+5. reserve premium at risk from the accepted executable ask debit and require
+   `reserved_capital = ask_debit + explicit_nonnegative_cash_fee_reserve`;
+6. set long-option max-loss cash equal to reserved capital and require the selected
+   option's economic capital denominator to cover that full amount;
+7. record signed and absolute delta-equivalent underlying notional from
+   `delta * underlying_reference_price * multiplier * contracts` as option-specific
+   exposure evidence only;
+8. never mutate or reinterpret the stock account-state gross exposure field; and
+9. grant no account-mutation, fill, realized-P&L, mark-to-market, broker/order,
+   PAPER, LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation after acceptance:
+
+1. extend the deterministic simulation account state with option-specific active
+   reservations keyed to the decision/reservation fingerprints;
+2. debit/release exact reserved cash deterministically while maintaining explicit
+   stock reserved capital, option reserved capital, stock gross notional, and option
+   signed/absolute delta-equivalent exposure as separate auditable quantities;
+3. add option admission rejection for insufficient unreserved cash without inventing
+   margin, collateral, or leverage semantics;
+4. extend ledger events and replay verification so reservation/release is
+   deterministic, idempotent, chronology-safe, and hash-lineage checked; and
+5. keep equity invariant until a later separately accepted fill/mark-to-market/P&L
+   package exists.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.
+

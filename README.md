@@ -1214,3 +1214,34 @@ reservation layer. It must define long-option debit/max-loss cash reservation an
 option-specific exposure/accounting without mapping stock gross-notional semantics
 onto options. Fill/mark-to-market/outcome authority remains a later package. The
 Strategy Evidence Register is intentionally unchanged by this product-only work.
+
+## 2026-09-16 — Long-option capital/risk reservation terms
+
+Track A now has a separately versioned broker-neutral long-option reservation-terms
+contract under frozen fingerprint
+`26835cbab3e551f0f7514e8537d823cb23d5db1f440362d20b1ba7493ff6aa64`
+(`atlas-long-option-capital-risk-reservation-v1`). It binds an accepted selected
+OPTION decision to the exact simulation-decision fingerprint, exact accepted option
+economics result, exact full `OptionCandidateEvidence` fingerprint, exact underlying
+forecast fingerprint, and selected candidate fingerprint. Quote-only similarity is
+not enough: changing non-price evidence such as open interest invalidates the
+reservation lineage.
+
+V1 supports only long single-leg, direction-aligned calls and puts. Entry premium at
+risk is the accepted executable ask debit (`ask * multiplier * contracts`). Reserved
+capital is that debit plus an explicit nonnegative cash-fee reserve, max-loss cash is
+exactly the reserved capital, and the already-selected option economic capital must
+cover the entire reservation. Delta-equivalent underlying notional is recorded as a
+separate signed/absolute option exposure measure and never mutates or reinterprets
+the stock account state's gross-notional field.
+
+This package creates immutable reservation **terms only**. It does not mutate
+account state, reserve cash, create orders/fills, mark to market, realize P&L, read or
+write a provider/broker, or grant PAPER, LIVE, promotion, or confluence authority.
+The next Track A package is the separately versioned option-aware simulation
+account-state extension: deterministic admission/reservation/release and replayable
+ledger lineage using these exact terms while keeping stock gross exposure and option
+delta-equivalent exposure separate. Fill, mark-to-market, realized-P&L, and broker
+authority remain later packages. The Strategy Evidence Register is intentionally
+unchanged because this is product architecture, not strategy evidence.
+
