@@ -1119,7 +1119,7 @@ Track A now composes the accepted product-side decision layers into one immutabl
 
 Decision time is an explicit timezone-aware input and cannot precede forecast creation. Option candidate input order is normalized before evaluation and fingerprinting, making replay independent of caller ordering. Ignored instruments are not erased: for example, `OPTIONS_ONLY` retains the stock economics but explicitly records that the stock gate was not evaluated by mode, while `STOCKS_ONLY` retains supplied option candidates with equivalent not-evaluated lineage. The final record fingerprint changes when evidence, stock assumptions, actionability policy, mode, option candidates or decision timestamp changes.
 
-This record is a simulation/control-plane artifact only. It performs no provider or broker access, creates no order, and grants no PAPER, LIVE, promotion or confluence authority. Option candidates may currently be supplied only as already-formed decision-support `EconomicCandidate` objects; the separately versioned option scenario-economics adapter remains future work and historical option P&L remains unclaimed.
+This record is a simulation/control-plane artifact only. It performs no provider or broker access, creates no order, and grants no PAPER, LIVE, promotion or confluence authority. Option candidates can now be produced by the separately versioned `atlas-option-scenario-economics-adapter-v1` and supplied to this unchanged decision-record contract. Historical option P&L remains unclaimed.
 
 ## 2026-09-16 — Deterministic simulation account-state foundation
 
@@ -1155,9 +1155,57 @@ all remain false. Phase 13 remains the separate broker-neutral risk/planning gat
 the A34 research account replay remains historical research evidence rather than the
 product simulation truth.
 
-The next Track A package is the separately versioned option scenario-economics
-adapter using the accepted underlying move/time distribution plus explicit
-strike/DTE, executable quote/spread, Greeks, IV scenario/surface context, liquidity,
-and event evidence. Option capital/risk semantics may enter the account simulator
-only after that economics contract is accepted. The Strategy Evidence Register is
-unchanged because this package creates no new strategy evidence or disposition.
+The separately versioned option scenario-economics adapter is now implemented
+under frozen contract `39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22` (`atlas-option-scenario-economics-adapter-v1`). It may
+produce option decision-support candidates, but option capital/risk semantics still
+fail closed in the account simulator. The next Track A package is therefore an
+explicit option capital/risk reservation contract; it must not reuse stock notional,
+margin, or collateral assumptions. The Strategy Evidence Register remains unchanged
+because this is product architecture rather than strategy evidence.
+
+
+## 2026-09-16 — Option scenario-economics adapter foundation
+
+Track A now has a separately versioned option scenario-economics adapter under
+frozen contract `39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22` (`atlas-option-scenario-economics-adapter-v1`). It consumes
+the accepted underlying move/time forecast plus `OptionCandidateEvidence` and emits
+the same `OPTION` `EconomicCandidate` consumed by the universal actionability and
+trade-expression layer. V1 is intentionally bounded to long, single-leg,
+direction-aligned calls for bullish forecasts and puts for bearish forecasts;
+unavailable/neutral forecasts and direction-mismatched contracts do not create a
+candidate.
+
+The adapter does not manufacture an option-return distribution from sparse Greeks.
+Expected, favorable, and adverse terminal option premiums plus model probability of
+profit are explicit outputs of a separately identified and SHA-256-fingerprinted
+scenario model, and that model must bind the exact underlying-forecast instance
+fingerprint. Scenario prices must satisfy `adverse <= expected <= favorable` and the
+holding period cannot exceed contract DTE. Current midpoint is the valuation
+reference; entry executes economically at the ask, so the entry half-spread is
+explicit. Exit slippage, commissions, and fees are explicit nonnegative costs.
+Expected gross P&L is `(expected_terminal_premium - current_mid) * multiplier *
+contracts`; all-in expression cost adds entry spread plus explicit exit/cash costs;
+net value and return on capital remain signed and are never clamped positive.
+
+Completeness is separately auditable across option contract evidence, delta/gamma/
+theta/vega, current IV plus percentile/skew/term context, quote/open-interest/volume
+liquidity, event context, and rates/dividends. Incomplete context can remain visible
+as an economic candidate but fails the existing universal option gate. Upstream
+option-screen rejection, unacceptable in-horizon event risk, executability failure,
+and risk-budget rejection also remain explicit. A supplied reference-model premium
+above the executable ask marks only `MODEL_RELATIVE_UNDERVALUE_EVIDENCE_ONLY`; it is
+not historical option-P&L truth or independent trading authority.
+
+The option `capital_required_dollars` value is only the economic denominator used to
+compare return on capital. This package deliberately grants **no simulator option
+reservation/collateral semantics**. It also performs zero provider/broker reads or
+writes, creates no order, claims no historical option P&L, and grants no PAPER,
+LIVE, promotion, or confluence authority. Historical option qualification still
+requires accepted point-in-time option-chain/quote/IV evidence rather than synthetic
+translation from stock returns.
+
+Immediate Track A continuation is the separately versioned option capital/risk
+reservation layer. It must define long-option debit/max-loss cash reservation and
+option-specific exposure/accounting without mapping stock gross-notional semantics
+onto options. Fill/mark-to-market/outcome authority remains a later package. The
+Strategy Evidence Register is intentionally unchanged by this product-only work.

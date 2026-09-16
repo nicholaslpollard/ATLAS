@@ -1741,12 +1741,12 @@ capital/risk semantics exist.
 
 Immediate Track A continuation after acceptance:
 
-1. implement a separately versioned option scenario-economics adapter from the same
-   underlying move/time forecast plus explicit strike/DTE, executable quote/spread,
-   Greeks, IV level/change/surface context, liquidity and event evidence;
-2. only after that contract is accepted, define option capital/risk reservation
-   semantics in the simulator; do not map stock notional/capital assumptions onto
-   options;
+1. define a separately versioned long-option capital/risk reservation contract tied
+   to accepted option-economics evidence, explicit debit/max-loss cash at risk, and
+   option-specific exposure fields; never substitute stock notional/margin rules;
+2. extend the deterministic account-state/ledger replay so accepted OPTION decisions
+   can reserve and release capital under that contract while preserving exact
+   decision and economics fingerprints;
 3. add later execution/fill and mark-to-market/outcome state as separate authority
    packages rather than relabeling reservations as positions/fills;
 4. expose decision fingerprints, reservation/ledger state, trade-expression mode,
@@ -1757,3 +1757,74 @@ Immediate Track A continuation after acceptance:
 The Strategy Evidence Register is intentionally unchanged by this package because it
 introduces product/account-simulation architecture rather than strategy research
 evidence or a strategy disposition change.
+
+
+## Track A option scenario economics — 2026-09-16
+
+The option construction boundary is now frozen under contract
+`39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22` (`atlas-option-scenario-economics-adapter-v1`). It consumes the accepted
+underlying move/time forecast and validated `OptionCandidateEvidence`, and it emits a
+normal `OPTION` `EconomicCandidate` for the already accepted universal actionability
+and four-mode trade-expression gate.
+
+V1 scientific/product semantics:
+
+1. support only long single-leg calls for bullish forecasts and puts for bearish
+   forecasts; unavailable/neutral forecasts or direction mismatch produce no option
+   candidate;
+2. bind every scenario model to the exact underlying-forecast fingerprint and require
+   an explicit model id plus SHA-256 fingerprint;
+3. require explicit expected/favorable/adverse terminal premiums and model
+   probability of profit; do not infer a historical option-return distribution from
+   stock returns or sparse Greeks;
+4. require ordered scenario premiums (`adverse <= expected <= favorable`) and a
+   holding period no longer than option DTE;
+5. use current quote midpoint as valuation reference and ask debit as entry
+   execution economics; derived entry half-spread plus explicit exit slippage,
+   commissions and fees form all-in expression cost;
+6. compute signed net value and return on explicit economic capital without clamping
+   negative economics; the capital input is **not** simulator reservation authority;
+7. preserve separate completeness state for contract, Greeks, IV surface/context,
+   liquidity, events and rates/dividends so the universal option gate can reject
+   incomplete evidence transparently;
+8. make upstream option-screen failure, event-risk rejection, executability and
+   risk-budget rejection auditable rather than dropping the candidate silently;
+9. permit an optional reference-model premium only as model-relative valuation
+   evidence; `model_reference_premium > ask` maps to
+   `MODEL_RELATIVE_UNDERVALUE_EVIDENCE_ONLY`, never to historical support;
+10. claim no historical option P&L and require a separately accepted PIT option
+    source before any historical option-return qualification.
+
+Deterministic economics use:
+
+- entry spread cost = `(ask - mid) * contract_multiplier * contracts`;
+- expected gross P&L = `(expected_terminal_premium - mid) * multiplier * contracts`;
+- all-in cost = entry spread + exit slippage + round-trip commissions + fees;
+- expected net value = expected gross P&L - all-in cost;
+- expected return on capital = expected net value / explicit economic capital;
+- favorable gain evidence = `max((favorable_terminal_premium - mid) * multiplier * contracts, 0)`;
+- adverse loss evidence = `max((mid - adverse_terminal_premium) * multiplier * contracts, 0)`.
+
+Provider reads/writes = 0, broker reads/writes = 0, order writes = 0, historical
+option-P&L claim = false, simulator option-reservation authority = false, PAPER =
+false, LIVE = false, promotion = false and confluence authority = false. The accepted
+simulation decision-record contract needs no mutation because it already accepts
+normalized option `EconomicCandidate` inputs; the new adapter supplies those inputs
+with explicit provenance.
+
+Immediate Track A continuation:
+
+1. freeze long-option account capital/risk semantics before any option reservation is
+   allowed; debit/max-loss cash-at-risk, fees and exposure measures must be explicit;
+2. extend the account-state ledger with option-specific reservation/release while
+   keeping stock gross notional and option exposure conceptually separate;
+3. only after reservation semantics are accepted, compose adapter-produced option
+   candidates through decision record -> account state in focused replay tests;
+4. defer fills, mark-to-market, realized P&L and broker mutation to separately
+   authorized packages;
+5. expose option scenario/economic/completeness/rejection lineage in the browser
+   control plane without creating a second trading truth.
+
+The Strategy Evidence Register is intentionally unchanged because this package adds
+product option-construction architecture, not new strategy evidence or a disposition
+change.
