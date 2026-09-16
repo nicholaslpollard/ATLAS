@@ -1,0 +1,145 @@
+name: Temporary ORB v2 closeout and trade-expression docs
+
+on:
+  push:
+    branches:
+      - feature/trade-expression-foundation-orb-v2-closeout
+    paths:
+      - .github/workflows/temporary_orb_v2_closeout_trade_expression_docs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile-living-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/trade-expression-foundation-orb-v2-closeout
+          fetch-depth: 0
+
+      - name: Append accepted handoff sections
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def append_once(path_text: str, marker: str, section: str) -> None:
+              path = Path(path_text)
+              text = path.read_text(encoding="utf-8")
+              if marker in text:
+                  return
+              if not text.endswith("\n"):
+                  text += "\n"
+              path.write_text(text + "\n" + section.rstrip() + "\n", encoding="utf-8")
+
+          readme = Path("README.md")
+          readme_text = readme.read_text(encoding="utf-8")
+          readme_text = readme_text.replace(
+              "Current as of 2026-09-15 (UTC)",
+              "Current as of 2026-09-16 (UTC)",
+              1,
+          )
+          readme.write_text(readme_text, encoding="utf-8")
+
+          append_once(
+              "README.md",
+              "## 2026-09-16 — ORB v2 DEVELOPMENT closeout and trade-expression foundation",
+              '''## 2026-09-16 — ORB v2 DEVELOPMENT closeout and trade-expression foundation
+
+The frozen `orb_stocks_in_play_5m_literature_v2` DEVELOPMENT diagnostic is complete under analysis fingerprint `cc6c34b18479aa76558e3c73cbc17ae75d85dd2c7b45d3806a8ac00d17b3a035`. It produced 4,957,662 five-minute opening snapshots, 62,516 eligible rank-pool rows, 40,606 top-20 selections, 40,345 directional candidates, 33,773 entries and 23,412 comparable outcomes. Aggregate comparable mean was **+0.12% gross, -0.38% at the frozen 50-bps primary cost and -0.88% at 100 bps**, with 1.27% mean MFE and 0.41% mean adverse excursion. LONG and SHORT were economically similar. The setup is therefore preserved as a cost-sensitive research reference but is **not promoted**. The exact immutable closeout is `docs/research/orb_stocks_in_play_literature_v2_development_closeout_20260916.md`.
+
+A material execution-path diagnostic is retained rather than optimized away: 10,361 entries, about 30.68% of entered cases, had entry and the frozen 0.10xATR14 stop touched in the same minute and remain unordered/noncomparable. Changing that stop, relative-volume gate, top-20 rank, range length, entry timing or exit after seeing this result would create a new version and would require a newly frozen hypothesis plus untouched/prospective evidence. Historical option P&L remains unclaimed; the 1/2/3/5% path statistics are underlying option-worthiness evidence only.
+
+Track A now has a pure product-side trade-expression foundation under contract `a9341b7c0e6399165403cfa3d2f33e9f3b2749194ce39d41044a260dbd5fef4c`. It implements `OPTIONS_ONLY`, `STOCKS_ONLY`, `OPTIONS_PREFERRED` and `STOCKS_PREFERRED` as permission/preference modes behind a universal economic actionability gate. There are deliberately no hidden production thresholds: expected value, return on capital, probability of profit, loss/gain, execution-cost burden, liquidity and material-superiority thresholds must be supplied explicitly by policy. Options additionally require complete contract, Greeks, IV, liquidity and event context. Model-relative undervaluation is evidence only and can never independently make an option actionable. Preferred modes may use a materially superior alternate expression; no mode can force an uneconomic trade. This layer creates no broker read/write, PAPER, LIVE or strategy-promotion authority.'''
+          )
+
+          append_once(
+              "docs/roadmap.md",
+              "## 26. ORB v2 closeout and product-side actionability/trade expression — 2026-09-16",
+              '''## 26. ORB v2 closeout and product-side actionability/trade expression — 2026-09-16
+
+### 26.1 ORB literature v2 DEVELOPMENT disposition
+
+`orb_stocks_in_play_5m_literature_v2` is closed as a completed DEVELOPMENT diagnostic under analysis fingerprint `cc6c34b18479aa76558e3c73cbc17ae75d85dd2c7b45d3806a8ac00d17b3a035`. The accepted population is 40,345 directional candidates / 33,773 entries / 23,412 comparable outcomes. Aggregate comparable return is +0.12% gross, -0.38% at 50 bps and -0.88% at 100 bps. LONG is +0.13% gross / -0.37% primary; SHORT is +0.11% / -0.39%. Both directions are already negative at 25 bps. Mean MFE/MAE is 1.27%/0.41% and the median comparable hold is 12 minutes in both directions.
+
+The result is cost-sensitive rather than economically actionable under the frozen ATLAS conservative assumptions. Preserve the version and do not sweep parameters on this evidence. The 10,361 same-minute entry/stop collisions (~30.68% of entries) diagnose a tight immediate stop relative to minute noise, but any stop redesign is a separately versioned future hypothesis. No promotion, confluence, PAPER, LIVE or option-trading authority is created. Consumed master and future blind remain closed.
+
+Underlying path timing remains useful for future option-worthiness research: LONG/SHORT favorable-hit rates are about 34%/35% at 1%, 18%/20% at 2%, 11%/12% at 3% and 4.7%/5.5% at 5%. These do not establish option profitability because no accepted PIT historical option-chain/quote/IV replay exists.
+
+### 26.2 Track A economic actionability foundation
+
+Implement the product decision sequence as:
+
+`strategy/forecast evidence -> underlying move/time distribution -> universal economic actionability -> trade-expression mode -> stock/option/abstain -> portfolio/risk -> execution planning`
+
+The first pure decision layer is frozen under contract fingerprint `a9341b7c0e6399165403cfa3d2f33e9f3b2749194ce39d41044a260dbd5fef4c`. It has no broker or execution authority and introduces no hidden economic thresholds. The caller must explicitly supply minimum expected net value, minimum return on capital, minimum probability of profit, maximum expected-loss/gain ratio, maximum execution-cost/gain ratio, minimum liquidity, and the material-superiority ratio used by preferred modes.
+
+Mode semantics:
+
+1. `OPTIONS_ONLY`: evaluate options only; if no option clears both the universal gate and complete option-context requirements, abstain.
+2. `STOCKS_ONLY`: evaluate stock only; options are ignored.
+3. `OPTIONS_PREFERRED`: evaluate both; use an acceptable option unless an acceptable stock is materially superior under the explicit preference score/policy. If no option passes, stock may be used only if it independently passes.
+4. `STOCKS_PREFERRED`: symmetric stock preference with an option override only when the option independently passes and is materially superior.
+
+All option candidates require complete contract/Greeks/IV/liquidity/event context in addition to the universal gate. A Black-Scholes or other model-relative undervaluation flag is nonblocking evidence only; it cannot rescue missing option evidence or failed economics.
+
+### 26.3 Immediate product sequence
+
+After repository acceptance of this foundation, continue Track A without waiting for another strategy to validate:
+
+1. define the versioned underlying move/time forecast schema that carries threshold probabilities, expected/median move, uncertainty, time-to-move, MFE/MAE and path evidence into actionability;
+2. connect the actionability/trade-expression decision to the deterministic case-file/account-simulator path without granting broker authority;
+3. implement stock economics first with explicit slippage/cost/capital/risk inputs;
+4. implement option scenario-economics interfaces next, but keep historical option-P&L unavailable until a PIT option source is separately contracted and accepted;
+5. expose the four trade-expression modes and abstention reasons through the browser/control plane;
+6. keep qualifying PAPER/LIVE gates unchanged. Product simulation may use clearly labeled baseline strategies while supported modern alpha remains zero.
+
+Track B proceeds independently with broad-first strategy inventory and bounded failure-specific research. The completed ORB v2 is parked rather than repeatedly tuned.'''
+          )
+
+          append_once(
+              "docs/strategy_evidence_register.md",
+              "## 11. Literature-fidelity 5-minute ORB v2 DEVELOPMENT closeout — 2026-09-16",
+              '''## 11. Literature-fidelity 5-minute ORB v2 DEVELOPMENT closeout — 2026-09-16
+
+Policy: `orb_stocks_in_play_5m_literature_v2`  
+Strategy contract: `1be9081b60656affd09c683a28545894c66871e7a808e2b7e8f58bada67cf4cb`  
+DEVELOPMENT contract: `87ee4ff703f8040d88c22147444aa992d196ab49be91dc749e3035e3c15e739b`  
+Completed analysis fingerprint: `cc6c34b18479aa76558e3c73cbc17ae75d85dd2c7b45d3806a8ac00d17b3a035`  
+Disposition: `COMPLETE_DEVELOPMENT_DIAGNOSTIC / NO_PROMOTION / PARKED_COST_SENSITIVE`
+
+### 11.1 Population and economics
+
+The frozen run completed 482/482 opening groups and 261/261 selected-path groups with 8 workers x 1 DuckDB thread. It produced 4,957,662 opening snapshots, 62,516 eligible rank-pool rows and 40,606 top-20 selections. After 261 doji abstentions there were 40,345 directional candidates; 33,773 entered, 23,412 were comparable, 6,572 never entered and 10,361 were same-minute entry/stop unordered.
+
+Aggregate comparable mean: **+0.12% gross / -0.38% primary 50 bps / -0.88% stress 100 bps**. LONG: n=11,778 comparable, +0.13% gross / +0.03% at 10 bps / -0.12% at 25 bps / -0.37% at 50 bps / -0.87% at 100 bps. SHORT: n=11,634, +0.11% / +0.01% / -0.14% / -0.39% / -0.89%. Mean MFE/MAE was 1.27%/0.41%; median comparable holding time was 12 minutes in both directions.
+
+### 11.2 Path and option-worthiness evidence
+
+Favorable underlying threshold-hit rates were LONG 34.31% / 18.22% / 11.00% / 4.71% and SHORT 34.64% / 20.17% / 12.49% / 5.51% at 1% / 2% / 3% / 5%. Median favorable time was 6/17/29/48 minutes LONG and 6/17/32/70 minutes SHORT. These are underlying path diagnostics only. Historical option P&L remains unavailable and unclaimed.
+
+### 11.3 Diagnosis
+
+- The strategy contains a small gross directional edge in DEVELOPMENT but is too cost-sensitive to clear the frozen ATLAS conservative actionability assumptions. Both directions are already negative by 25 bps.
+- LONG and SHORT are economically similar, so there is no evidence-supported post-result direction carve-out.
+- 10,361 same-minute entry/stop collisions are ~30.68% of entered cases. The frozen 0.10xATR14 stop is tight relative to immediate minute noise, but changing it now would define a new version rather than repair v2.
+- Selected names often make fast 1-3% moves, preserving option-worthiness research interest, but move magnitude alone does not establish executable stock or option expectancy.
+
+### 11.4 Disposition and authority
+
+Preserve v2 exactly and move on. Do not sweep opening-range length, relative-volume threshold, rank count, ATR stop, entry delay or exit on the same DEVELOPMENT evidence. A future materially distinct v3 requires targeted external research, preregistration and untouched/new/prospective evidence. Consumed-master reads = 0; future-blind reads = 0; provider reads = 0; broker reads/writes = 0. Promotion, confluence, PAPER, LIVE and option-trading authority remain false. The immutable detailed record is `docs/research/orb_stocks_in_play_literature_v2_development_closeout_20260916.md`.'''
+          )
+
+      - name: Commit living-document reconciliation
+        shell: bash
+        run: |
+          if git diff --quiet -- README.md docs/roadmap.md docs/strategy_evidence_register.md; then
+            echo "Living documents already reconciled."
+            exit 0
+          fi
+          git config user.name "atlas-docs-bot"
+          git config user.email "atlas-docs-bot@users.noreply.github.com"
+          git add README.md docs/roadmap.md docs/strategy_evidence_register.md
+          git commit -m "Close ORB v2 evidence and record trade-expression foundation"
+          git push origin HEAD:feature/trade-expression-foundation-orb-v2-closeout
