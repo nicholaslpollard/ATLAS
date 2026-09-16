@@ -1273,9 +1273,29 @@ reinterpreted as stock notional. No provider/broker reads or writes, order creat
 fill simulation, mark-to-market, realized P&L, PAPER, LIVE, promotion, or confluence
 authority is granted.
 
-The next bounded Track A package is deterministic broker-neutral simulated
-execution/fill semantics. It may consume accepted reservation state and explicit fill
-evidence, but mark-to-market, realized-P&L, and broker/PAPER/LIVE authority remain
-separate later gates. The Strategy Evidence Register is intentionally unchanged
+## 2026-09-16 — Broker-neutral simulated entry-fill evidence
+
+Track A now has a deterministic complete-entry fill-evidence boundary under contract
+fingerprint `e271ba5c66fe9bc41b7f81945a1ef8152a2eeae091b27f6efd4859bacd2d8668`
+(`atlas-simulated-entry-fill-evidence-v1`). It consumes an exact active account-state
+v2 reservation, the exact simulation decision record and explicit source-bound fill
+price/timestamp/fee evidence. The package records evidence only: it does not release a
+reservation, mutate the account, create an open position, mark to market, realize P&L,
+read/write a provider or broker, create an order, or grant PAPER/LIVE/promotion/
+confluence authority.
+
+Stock fills preserve the reservation's accepted economic gross notional and derive
+complete simulated share quantity from explicit fill price; fractional simulation
+quantity is allowed. Stock cash funding, margin, collateral, leverage and short-sale
+proceeds remain deliberately unresolved because accepted stock economic capital can
+differ from gross notional. Option fills require the exact accepted long-option
+reservation terms: contract count and multiplier remain frozen; premium debit cannot
+exceed the reserved ask debit; entry fees cannot exceed the separate fee reserve;
+total cash debit cannot exceed reserved capital; and any unspent reserve is explicit.
+
+The next bounded Track A package must freeze explicit funding/collateral semantics
+before converting fill evidence into open-position/account state. It must not infer
+stock leverage, margin or short-sale proceeds from the difference between economic
+capital and gross notional. The Strategy Evidence Register is intentionally unchanged
 because this package changes product simulation architecture only.
 
