@@ -30,7 +30,7 @@ class ForecastHorizonUnit(StrEnum):
 class MoveThresholdProbability(BaseModel):
     """Underlying-path threshold evidence relative to the forecast direction."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
     threshold_fraction: float = Field(gt=0.0)
     favorable_touch_probability: float = Field(ge=0.0, le=1.0)
@@ -38,7 +38,7 @@ class MoveThresholdProbability(BaseModel):
     favorable_before_adverse_probability: float = Field(ge=0.0, le=1.0)
     adverse_before_favorable_probability: float = Field(ge=0.0, le=1.0)
     same_interval_collision_probability: float = Field(ge=0.0, le=1.0)
-    median_favorable_time: float | None = Field(default=None, gt=0.0)
+    median_favorable_time: float | None = Field(default=None, ge=0.0)
 
     @model_validator(mode="after")
     def validate_path_probabilities(self) -> "MoveThresholdProbability":
@@ -73,7 +73,7 @@ class UnderlyingMoveTimeForecast(BaseModel):
     order, promote a strategy, or claim historical option P&L.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, allow_inf_nan=False)
 
     contract_version: str = MOVE_TIME_FORECAST_CONTRACT_VERSION
     contract_fingerprint: str = MOVE_TIME_FORECAST_CONTRACT_FINGERPRINT
@@ -87,7 +87,7 @@ class UnderlyingMoveTimeForecast(BaseModel):
     horizon_value: int = Field(ge=1)
     method_id: str = Field(min_length=1)
     source_label: str = Field(min_length=1)
-    source_fingerprint: str = Field(min_length=64, max_length=64)
+    source_fingerprint: str = Field(pattern=r"^[0-9a-f]{64}$")
     sample_size: int | None = Field(default=None, ge=1)
 
     reference_price: float | None = Field(default=None, gt=0.0)
