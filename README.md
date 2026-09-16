@@ -1120,3 +1120,44 @@ Track A now composes the accepted product-side decision layers into one immutabl
 Decision time is an explicit timezone-aware input and cannot precede forecast creation. Option candidate input order is normalized before evaluation and fingerprinting, making replay independent of caller ordering. Ignored instruments are not erased: for example, `OPTIONS_ONLY` retains the stock economics but explicitly records that the stock gate was not evaluated by mode, while `STOCKS_ONLY` retains supplied option candidates with equivalent not-evaluated lineage. The final record fingerprint changes when evidence, stock assumptions, actionability policy, mode, option candidates or decision timestamp changes.
 
 This record is a simulation/control-plane artifact only. It performs no provider or broker access, creates no order, and grants no PAPER, LIVE, promotion or confluence authority. Option candidates may currently be supplied only as already-formed decision-support `EconomicCandidate` objects; the separately versioned option scenario-economics adapter remains future work and historical option P&L remains unclaimed.
+
+## 2026-09-16 — Deterministic simulation account-state foundation
+
+Track A now has the first explicit product-side account state under frozen contract
+`2460956a47dfa3f73c157b5e2f60aa710b10dabb0c1a7115309056d06c1a588b`
+(`atlas-simulation-account-state-v1`). It consumes accepted
+`atlas-simulation-decision-record-v1` objects and models stock-only capital
+reservation and opportunity competition without pretending that a reservation is an
+execution fill.
+
+The v1 state tracks account equity, currently unreserved cash, reserved capital,
+gross stock exposure, and active stock reservations keyed to the originating
+decision-record fingerprint. A selected stock decision reserves the exact capital
+preserved by the accepted stock-economics adapter; its explicit stock position
+notional becomes gross exposure. Release returns that same capital and removes that
+same exposure. Because this layer has no fill, mark-to-market, or realized-P&L
+authority, equity is invariant in v1 and `cash + reserved_capital == equity` is a
+fail-closed accounting invariant.
+
+Every decision path remains auditable. ABSTAIN, insufficient-capital rejection, and
+a selected option whose account capital/risk semantics are not yet accepted all
+create deterministic ledger events without changing account amounts. Duplicate
+decision application and duplicate release are idempotent. Multiple decisions
+compete deterministically in decision-time order with the decision-record fingerprint
+as the stable tie-breaker. Every event binds before/after state fingerprints, and
+ledger replay must reproduce the exact final state or fail closed on altered lineage.
+
+This package deliberately does not infer margin, leverage, option collateral,
+position quantity, fills, P&L, mark-to-market, broker behavior, or account-level risk
+rules that are not already accepted upstream. Provider/broker reads and writes,
+order creation, fill simulation, PAPER, LIVE, promotion, and confluence authority
+all remain false. Phase 13 remains the separate broker-neutral risk/planning gate;
+the A34 research account replay remains historical research evidence rather than the
+product simulation truth.
+
+The next Track A package is the separately versioned option scenario-economics
+adapter using the accepted underlying move/time distribution plus explicit
+strike/DTE, executable quote/spread, Greeks, IV scenario/surface context, liquidity,
+and event evidence. Option capital/risk semantics may enter the account simulator
+only after that economics contract is accepted. The Strategy Evidence Register is
+unchanged because this package creates no new strategy evidence or disposition.
