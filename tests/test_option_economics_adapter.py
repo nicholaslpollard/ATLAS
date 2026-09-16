@@ -143,9 +143,10 @@ def _inputs(forecast: UnderlyingMoveTimeForecast, **overrides: object) -> Option
 def test_contract_fingerprint_and_authority_boundary_are_frozen() -> None:
     assert contract_fingerprint() == OPTION_ECONOMICS_CONTRACT_FINGERPRINT
     assert OPTION_ECONOMICS_CONTRACT_FINGERPRINT == (
-        "39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22"
+        "b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33"
     )
     assert OPTION_ECONOMICS_CONTRACT_VERSION == "atlas-option-scenario-economics-adapter-v1"
+    assert OPTION_ECONOMICS_CONTRACT["capital_required_floor"] == "entry_cash_debit"
     assert OPTION_ECONOMICS_CONTRACT["historical_option_pnl_claimed"] is False
     assert OPTION_ECONOMICS_CONTRACT["capital_required_is_simulator_reservation_authority"] is False
     assert OPTION_ECONOMICS_CONTRACT["provider_reads"] == 0
@@ -164,6 +165,7 @@ def test_bullish_call_builds_deterministic_scenario_economics() -> None:
         inputs=_inputs(forecast),
     )
     assert result.source_forecast_fingerprint == forecast_fingerprint(forecast)
+    assert result.entry_cash_debit_dollars == pytest.approx(1_040.0)
     assert result.entry_spread_cost_dollars == pytest.approx(40.0)
     assert result.expected_gross_pnl_dollars == pytest.approx(240.0)
     assert result.all_in_expression_cost_dollars == pytest.approx(51.0)
@@ -179,6 +181,7 @@ def test_bullish_call_builds_deterministic_scenario_economics() -> None:
     assert result.candidate.execution_cost_dollars == pytest.approx(51.0)
     assert result.candidate.model_relative_undervalued is True
     assert result.candidate.identifier.startswith("OPTION:O:XYZ261016C00100000:")
+    assert "CAPITAL_AT_LEAST_LONG_OPTION_ASK_DEBIT" in result.reason_codes
 
 
 def test_complete_option_candidate_interoperates_with_universal_gate() -> None:
@@ -283,6 +286,16 @@ def test_scenario_model_must_be_bound_to_exact_forecast_instance() -> None:
             forecast=forecast,
             option=_option(),
             inputs=_inputs(forecast, scenario_forecast_fingerprint="f" * 64),
+        )
+
+
+def test_long_option_capital_cannot_be_below_ask_debit() -> None:
+    forecast = _forecast()
+    with pytest.raises(OptionEconomicsError, match="below the long-option ask debit"):
+        build_option_economic_candidate(
+            forecast=forecast,
+            option=_option(),
+            inputs=_inputs(forecast, capital_required_dollars=1_039.99),
         )
 
 
