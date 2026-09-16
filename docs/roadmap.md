@@ -1883,3 +1883,48 @@ Immediate Track A continuation after acceptance:
 The Strategy Evidence Register remains unchanged because this package changes
 product/account-simulation architecture only.
 
+## Track A stock-option simulation account-state v2 — 2026-09-16
+
+The reservation-only mixed-instrument account boundary is frozen under contract
+`1e9da000571d02eb8fe4d317d770fdef25fb35a527ad177d1a87a6794c9592e5`
+(`atlas-simulation-account-state-v2-stock-option-reservations`). It extends the
+accepted account-state foundation without altering the historical v1 contract.
+
+Frozen v2 semantics:
+
+1. preserve the accepted v1 stock reservation arithmetic while strengthening chosen
+   stock candidate lineage with an exact economic-candidate fingerprint check;
+2. require exact accepted long-option reservation terms before any OPTION decision
+   can reserve account capital;
+3. use one unreserved-cash pool while tracking stock reserved capital, option reserved
+   capital, stock gross notional, option signed/absolute delta-equivalent notional,
+   option max-loss cash, and option premium-at-risk separately;
+4. require `cash + stock_reserved_capital + option_reserved_capital == equity` and
+   keep equity invariant throughout reservation-only state transitions;
+5. fail closed on missing option terms, insufficient unreserved cash, contract or
+   candidate lineage mismatch, backward chronology, or malformed state/ledger data;
+6. make repeated decision applications and repeated releases idempotent, with
+   deterministic competition ordering by decision timestamp then record fingerprint;
+7. release exactly the previously reserved stock or option cash/exposure amounts
+   without inventing fills, marks, or P&L;
+8. provide deterministic state, event, and ledger fingerprints plus replay checks for
+   chronology, before/after state lineage, and reservation/release integrity;
+9. never fold option delta-equivalent exposure into stock gross notional; and
+10. infer no margin, collateral, or leverage and grant no provider/broker, order,
+    fill, mark-to-market, realized-P&L, PAPER, LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation after acceptance:
+
+1. freeze explicit stock and option simulated-fill evidence contracts;
+2. consume only accepted reservation/decision lineage and caller-supplied execution
+   evidence, with no provider or broker lookup inside the fill engine;
+3. transition reserved capital into deterministic open-position/cost-basis state while
+   retaining instrument-specific stock versus option quantities and exposure lineage;
+4. make duplicate fill application idempotent and ledger replay/tamper checks exact;
+   and
+5. leave mark-to-market, realized P&L, closeout accounting, and PAPER/LIVE broker
+   authority to separately accepted packages.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.
+

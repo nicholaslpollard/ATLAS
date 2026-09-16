@@ -1245,3 +1245,37 @@ delta-equivalent exposure separate. Fill, mark-to-market, realized-P&L, and brok
 authority remain later packages. The Strategy Evidence Register is intentionally
 unchanged because this is product architecture, not strategy evidence.
 
+## 2026-09-16 — Stock-option simulation account-state v2
+
+Track A now has a broker-neutral reservation-only account model for both stock and
+accepted long-option expressions under frozen contract fingerprint
+`1e9da000571d02eb8fe4d317d770fdef25fb35a527ad177d1a87a6794c9592e5`
+(`atlas-simulation-account-state-v2-stock-option-reservations`). The accepted v1
+stock-accounting arithmetic is preserved, while v2 strengthens stock lineage by
+requiring the exact chosen-candidate fingerprint. Option admission additionally
+requires the separately accepted long-option reservation terms and their exact
+decision, candidate, forecast, economics, and option-evidence lineage.
+
+The state uses one unreserved-cash pool but never conflates instrument economics.
+Stock reserved capital and stock gross notional remain separate from option reserved
+capital, signed/absolute option delta-equivalent notional, option max-loss cash, and
+option premium at risk. Reservation-only equity remains invariant and every state
+must satisfy `cash + stock_reserved_capital + option_reserved_capital == equity`.
+Missing option terms and insufficient unreserved cash fail closed. Releasing a stock
+or option reservation restores exactly the reserved cash and exposure fields; it does
+not invent a fill, gain/loss, mark, margin, collateral, or leverage event.
+
+The mixed stock/option ledger is deterministic, chronological, idempotent,
+fingerprint-linked, and replayable. Reservation and release events preserve exact
+decision and, for options, reservation-terms/economics lineage. Stock gross notional
+never includes option exposure, and option delta-equivalent exposure is never
+reinterpreted as stock notional. No provider/broker reads or writes, order creation,
+fill simulation, mark-to-market, realized P&L, PAPER, LIVE, promotion, or confluence
+authority is granted.
+
+The next bounded Track A package is deterministic broker-neutral simulated
+execution/fill semantics. It may consume accepted reservation state and explicit fill
+evidence, but mark-to-market, realized-P&L, and broker/PAPER/LIVE authority remain
+separate later gates. The Strategy Evidence Register is intentionally unchanged
+because this package changes product simulation architecture only.
+
