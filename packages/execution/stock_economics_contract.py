@@ -64,5 +64,5 @@ def contract_fingerprint() -> str:
 
 
 STOCK_ECONOMICS_CONTRACT_FINGERPRINT = (
-    "8f42ac758e76c0b08635e0297904d0188a1e103585a9d2760a8af3dcbe04e9a7"
+    "68f4b7ca0e4f86f07bf20afa1c7e6e5aa9708c081db44cc3c18f8123e711f924"
 )
