@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-15 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-16 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -1698,3 +1698,62 @@ Immediate Track A continuation after acceptance:
 6. expose decision fingerprints, expression modes, economics and abstention/rejection reasons through the browser/control plane.
 
 The Strategy Evidence Register is intentionally unchanged by this package because it introduces product/simulation architecture rather than new strategy research evidence or a strategy disposition change.
+
+## Track A deterministic simulation account state — 2026-09-16
+
+The next product-side boundary is now frozen under contract
+`2460956a47dfa3f73c157b5e2f60aa710b10dabb0c1a7115309056d06c1a588b`
+(`atlas-simulation-account-state-v1`). It consumes accepted simulation decision
+records but remains a broker-neutral reservation ledger rather than a fill or P&L
+engine.
+
+V1 accounting semantics:
+
+1. initialize explicit equity and unreserved cash with zero reservation/exposure;
+2. a selected STOCK decision reserves exactly its accepted candidate capital and
+   records the stock-economics position notional as gross exposure;
+3. account equity remains unchanged because the package has no fill, mark-to-market
+   or realized-P&L authority; `cash + reserved_capital == equity` and active
+   reservation sums must reconcile exactly within deterministic numeric tolerance;
+4. stock reservations are keyed to simulation-decision-record fingerprints and
+   retain candidate/instrument/ticker/direction and reservation timestamp lineage;
+5. ABSTAIN, insufficient-capital rejection and unsupported OPTION selection are
+   explicitly ledgered without changing account amounts;
+6. duplicate decision application and duplicate release are idempotent;
+7. opportunity competition is deterministic by `decision_created_utc`, then
+   decision-record fingerprint; v1 does not invent a second selector or rank with
+   future outcomes;
+8. every event binds before/after state fingerprints; the ledger is replayable and
+   exact state-lineage mismatch fails closed.
+
+This contract does not infer stock margin/leverage, short collateral, option margin,
+buying-power multipliers, fill prices, realized/unrealized P&L, mark-to-market,
+position quantity, correlation/concentration limits, or broker semantics. Existing
+Phase 13 portfolio/risk planning remains separate; account-state v1 records the
+capital/exposure consequences of already-selected broker-neutral decision evidence
+and does not silently replace accepted risk contracts.
+
+Provider reads/writes = 0, broker reads/writes = 0, order creation = false, fill
+simulation = false, realized-P&L/mark-to-market authority = false, PAPER = false,
+LIVE = false, promotion = false and confluence authority = false. Option selection
+fails closed at the account layer until separately accepted option economics and
+capital/risk semantics exist.
+
+Immediate Track A continuation after acceptance:
+
+1. implement a separately versioned option scenario-economics adapter from the same
+   underlying move/time forecast plus explicit strike/DTE, executable quote/spread,
+   Greeks, IV level/change/surface context, liquidity and event evidence;
+2. only after that contract is accepted, define option capital/risk reservation
+   semantics in the simulator; do not map stock notional/capital assumptions onto
+   options;
+3. add later execution/fill and mark-to-market/outcome state as separate authority
+   packages rather than relabeling reservations as positions/fills;
+4. expose decision fingerprints, reservation/ledger state, trade-expression mode,
+   economics and rejection/abstention reasons through the existing browser/control
+   plane;
+5. preserve all qualifying PAPER/LIVE gates and existing broker authority boundaries.
+
+The Strategy Evidence Register is intentionally unchanged by this package because it
+introduces product/account-simulation architecture rather than strategy research
+evidence or a strategy disposition change.
