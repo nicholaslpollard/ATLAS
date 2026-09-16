@@ -1,0 +1,129 @@
+name: Temporary finalize simulated entry-fill living documents
+
+'on':
+  push:
+    branches:
+      - feature/simulated-entry-fill-evidence
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Reconcile README and roadmap
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          readme = Path('README.md')
+          roadmap = Path('docs/roadmap.md')
+
+          readme_text = readme.read_text(encoding='utf-8')
+          old_readme = '''The next bounded Track A package is deterministic broker-neutral simulated
+          execution/fill semantics. It may consume accepted reservation state and explicit fill
+          evidence, but mark-to-market, realized-P&L, and broker/PAPER/LIVE authority remain
+          separate later gates. The Strategy Evidence Register is intentionally unchanged
+          because this package changes product simulation architecture only.'''.replace('          ', '')
+          new_readme = '''## 2026-09-16 — Broker-neutral simulated entry-fill evidence
+
+          Track A now has a deterministic complete-entry fill-evidence boundary under contract
+          fingerprint `e271ba5c66fe9bc41b7f81945a1ef8152a2eeae091b27f6efd4859bacd2d8668`
+          (`atlas-simulated-entry-fill-evidence-v1`). It consumes an exact active account-state
+          v2 reservation, the exact simulation decision record and explicit source-bound fill
+          price/timestamp/fee evidence. The package records evidence only: it does not release a
+          reservation, mutate the account, create an open position, mark to market, realize P&L,
+          read/write a provider or broker, create an order, or grant PAPER/LIVE/promotion/
+          confluence authority.
+
+          Stock fills preserve the reservation's accepted economic gross notional and derive
+          complete simulated share quantity from explicit fill price; fractional simulation
+          quantity is allowed. Stock cash funding, margin, collateral, leverage and short-sale
+          proceeds remain deliberately unresolved because accepted stock economic capital can
+          differ from gross notional. Option fills require the exact accepted long-option
+          reservation terms: contract count and multiplier remain frozen; premium debit cannot
+          exceed the reserved ask debit; entry fees cannot exceed the separate fee reserve;
+          total cash debit cannot exceed reserved capital; and any unspent reserve is explicit.
+
+          The next bounded Track A package must freeze explicit funding/collateral semantics
+          before converting fill evidence into open-position/account state. It must not infer
+          stock leverage, margin or short-sale proceeds from the difference between economic
+          capital and gross notional. The Strategy Evidence Register is intentionally unchanged
+          because this package changes product simulation architecture only.'''.replace('          ', '')
+          if old_readme not in readme_text:
+              raise SystemExit('README #112 continuation anchor not found')
+          readme.write_text(readme_text.replace(old_readme, new_readme, 1), encoding='utf-8')
+
+          roadmap_text = roadmap.read_text(encoding='utf-8')
+          pattern = re.compile(
+              r'Immediate Track A continuation after acceptance:\n\n'
+              r'1\. freeze explicit stock and option simulated-fill evidence contracts;.*?'
+              r'The Strategy Evidence Register remains unchanged because this package changes\n'
+              r'product/account-simulation architecture only\.',
+              re.S,
+          )
+          replacement = '''## Track A broker-neutral simulated entry-fill evidence — 2026-09-16
+
+          The next execution boundary is frozen under contract
+          `e271ba5c66fe9bc41b7f81945a1ef8152a2eeae091b27f6efd4859bacd2d8668`
+          (`atlas-simulated-entry-fill-evidence-v1`). It consumes exact active reservation,
+          account-state, decision-record and selected-candidate lineage plus explicit
+          caller-supplied complete-fill evidence. Source id, source fingerprint, fill timestamp,
+          price and explicit fees are fingerprint material. Partial fills remain outside this
+          version.
+
+          Frozen fill semantics:
+
+          1. STOCK preserves the accepted reservation economic gross notional and derives
+             complete fractional simulation quantity as notional / explicit fill price;
+          2. STOCK does not resolve or infer cash funding, margin, collateral, leverage or
+             short-sale proceeds when accepted economic capital differs from gross notional;
+          3. OPTION requires exact accepted long-option reservation terms, contract count and
+             multiplier;
+          4. OPTION premium debit cannot exceed the reserved ask-premium debit, explicit entry
+             fees cannot exceed the separate fee reserve, total cash debit cannot exceed total
+             reserved capital, and unspent reserve is recorded explicitly;
+          5. every fill binds exact account-state, reservation, decision, candidate and external
+             fill-source lineage and receives a deterministic fingerprint; and
+          6. the package grants no reservation-release, account-mutation, open-position,
+             mark-to-market, realized-P&L, provider/broker, order, PAPER, LIVE, promotion or
+             confluence authority.
+
+          Immediate Track A continuation after acceptance:
+
+          1. freeze explicit stock/option funding and collateral terms between accepted fill
+             evidence and account mutation;
+          2. permit fully cash-funded stock longs only when the accepted funding evidence proves
+             the required cash semantics; fail closed on leveraged longs or shorts until their
+             collateral/proceeds model is explicitly versioned;
+          3. preserve option premium/fee debit and unspent-reservation lineage without
+             reinterpreting option delta exposure as stock notional;
+          4. only after funding semantics are accepted, convert reservations into deterministic
+             open-position/cost-basis account state with exact replay/idempotency checks; and
+          5. leave mark-to-market, realized P&L, closeout accounting and PAPER/LIVE broker
+             authority to separately accepted packages.
+
+          The Strategy Evidence Register remains unchanged because this package changes
+          product/account-simulation architecture only.'''.replace('          ', '')
+          roadmap_text, count = pattern.subn(replacement, roadmap_text, count=1)
+          if count != 1:
+              raise SystemExit(f'roadmap #112 continuation anchor replacement count={count}')
+          roadmap.write_text(roadmap_text, encoding='utf-8')
+      - name: Remove temporary reconciliation helper
+        shell: bash
+        run: rm .github/workflows/_temp_finalize_simulated_fill.yml
+      - name: Commit reconciled tree
+        shell: bash
+        run: |
+          git config user.name 'nicholaslpollard'
+          git config user.email 'nicholaslpollard@gmail.com'
+          git add README.md docs/roadmap.md .github/workflows/_temp_finalize_simulated_fill.yml
+          git diff --cached --check
+          git commit -m 'Document broker-neutral simulated entry-fill boundary'
+          git push
