@@ -23,7 +23,8 @@ SIMULATION_ACCOUNT_STATE_V2_CONTRACT = {
     "tracks_option_premium_at_risk": True,
     "cash_plus_stock_reserved_plus_option_reserved_equals_equity": True,
     "equity_invariant": True,
-    "stock_semantics_reuse_v1_exact": True,
+    "stock_accounting_arithmetic_reuses_v1": True,
+    "stock_candidate_fingerprint_lineage_required": True,
     "option_reservation_uses_accepted_terms_exact": True,
     "option_terms_require_exact_decision_lineage": True,
     "option_terms_require_exact_candidate_lineage": True,
@@ -71,5 +72,5 @@ def contract_fingerprint() -> str:
 
 
 SIMULATION_ACCOUNT_STATE_V2_CONTRACT_FINGERPRINT = (
-    "7fa699bde64aaed1bb3423f0c0ea59d45a72aabe0ce4301937b03d2fe2fc9be6"
+    "1e9da000571d02eb8fe4d317d770fdef25fb35a527ad177d1a87a6794c9592e5"
 )
