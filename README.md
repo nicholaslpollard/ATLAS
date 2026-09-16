@@ -1156,7 +1156,7 @@ the A34 research account replay remains historical research evidence rather than
 product simulation truth.
 
 The separately versioned option scenario-economics adapter is now implemented
-under frozen contract `39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22` (`atlas-option-scenario-economics-adapter-v1`). It may
+under frozen contract `b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33` (`atlas-option-scenario-economics-adapter-v1`). It may
 produce option decision-support candidates, but option capital/risk semantics still
 fail closed in the account simulator. The next Track A package is therefore an
 explicit option capital/risk reservation contract; it must not reuse stock notional,
@@ -1167,7 +1167,7 @@ because this is product architecture rather than strategy evidence.
 ## 2026-09-16 — Option scenario-economics adapter foundation
 
 Track A now has a separately versioned option scenario-economics adapter under
-frozen contract `39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22` (`atlas-option-scenario-economics-adapter-v1`). It consumes
+frozen contract `b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33` (`atlas-option-scenario-economics-adapter-v1`). It consumes
 the accepted underlying move/time forecast plus `OptionCandidateEvidence` and emits
 the same `OPTION` `EconomicCandidate` consumed by the universal actionability and
 trade-expression layer. V1 is intentionally bounded to long, single-leg,
@@ -1196,9 +1196,11 @@ and risk-budget rejection also remain explicit. A supplied reference-model premi
 above the executable ask marks only `MODEL_RELATIVE_UNDERVALUE_EVIDENCE_ONLY`; it is
 not historical option-P&L truth or independent trading authority.
 
-The option `capital_required_dollars` value is only the economic denominator used to
-compare return on capital. This package deliberately grants **no simulator option
-reservation/collateral semantics**. It also performs zero provider/broker reads or
+The option `capital_required_dollars` value is the economic denominator used to
+compare return on capital, but for a long option it may never be below the explicit
+ask-debit cash requirement (`ask * contract_multiplier * contracts`). This prevents
+artificial ROC inflation before account admission. The value still grants **no
+simulator option reservation/collateral semantics**. It also performs zero provider/broker reads or
 writes, creates no order, claims no historical option P&L, and grants no PAPER,
 LIVE, promotion, or confluence authority. Historical option qualification still
 requires accepted point-in-time option-chain/quote/IV evidence rather than synthetic

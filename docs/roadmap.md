@@ -1762,7 +1762,7 @@ evidence or a strategy disposition change.
 ## Track A option scenario economics — 2026-09-16
 
 The option construction boundary is now frozen under contract
-`39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22` (`atlas-option-scenario-economics-adapter-v1`). It consumes the accepted
+`b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33` (`atlas-option-scenario-economics-adapter-v1`). It consumes the accepted
 underlying move/time forecast and validated `OptionCandidateEvidence`, and it emits a
 normal `OPTION` `EconomicCandidate` for the already accepted universal actionability
 and four-mode trade-expression gate.
@@ -1783,7 +1783,9 @@ V1 scientific/product semantics:
    execution economics; derived entry half-spread plus explicit exit slippage,
    commissions and fees form all-in expression cost;
 6. compute signed net value and return on explicit economic capital without clamping
-   negative economics; the capital input is **not** simulator reservation authority;
+   negative economics; for long options the denominator cannot be below the
+   executable ask debit (`ask * multiplier * contracts`), preventing artificial ROC
+   inflation, while the capital input remains **not** simulator reservation authority;
 7. preserve separate completeness state for contract, Greeks, IV surface/context,
    liquidity, events and rates/dividends so the universal option gate can reject
    incomplete evidence transparently;
