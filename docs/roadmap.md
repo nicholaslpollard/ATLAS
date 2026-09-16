@@ -1537,3 +1537,28 @@ Next implementation order:
 3. Report signal quality plus minute path/option-worthiness diagnostics; do not claim historical option P&L without PIT option-chain evidence.
 4. Treat any DEVELOPMENT result as research diagnosis only. Do not reuse the consumed master, open the future blind, promote the strategy, or open confluence to rescue it.
 5. After this one bounded ORB revision, move on rather than continue iterative ORB parameter tuning; Track A simulator/control-plane work remains independent and should continue.
+
+## 25. Literature-fidelity ORB v2 DEVELOPMENT execution gate — 2026-09-15
+
+### 25.1 Why this revision exists
+
+The exact-minute closeout of `orb_15m_close_retest_v2` (`a58c06b19b499082190110c227ddd4617826bb33e733d07bd17d849d73b099d8`) localized the retained ORB failure to direction/path ordering rather than a lack of intraday movement. The bounded next hypothesis is therefore the separately versioned `orb_stocks_in_play_5m_literature_v2`, not another 15-minute retest parameter search. Base strategy fingerprint: `1be9081b60656affd09c683a28545894c66871e7a808e2b7e8f58bada67cf4cb`.
+
+### 25.2 Frozen DEVELOPMENT runner
+
+The pre-outcome DEVELOPMENT analysis contract is `87ee4ff703f8040d88c22147444aa992d196ab49be91dc749e3035e3c15e739b` over 2016-01-04 through 2026-04-30 only. Before any v2 outcome access, source review corrected the runner to preserve accepted V2 semantics: reconstruct raw daily OHLC only for Wilder ATR14; use provider-native split-adjusted daily share volume as supplied for the prior-14-session one-million-share gate; never derive volume from the price adjustment factor. Opening relative-volume history must contain the exact previous 14 XNYS sessions with a complete five-bar 09:30-09:34 ET opening snapshot.
+
+The runner is deliberately funnelled for efficiency:
+
+1. verify accepted successor preflight and exact native minute bindings;
+2. materialize PIT prior-14 daily volume and ATR once;
+3. across all 482 accepted minute groups, read only the first five regular-session minutes and publish restart-safe SHA-bound group artifacts;
+4. filter price > $5, prior provider-native daily volume >= 1,000,000 shares, prior ATR14 > $0.50, opening relative volume >= 1.0;
+5. rank the eligible cross-section deterministically by relative volume and retain the top 20; a doji occupies its rank slot but abstains;
+6. only then open full-session minute paths for directional candidates;
+7. apply direction-specific stop entry, adverse gap-through fills, 0.10xATR14 stop, EOD exit, same-minute entry/stop noncomparability, the 0/10/25/50/100-bps grid, and 1/2/3/5% path-timing diagnostics.
+
+### 25.3 Evidence and authority boundary
+
+Historical outcomes are still **UNOPENED** at this gate. Once the package passes exact-head acceptance, the next action is one explicit DEVELOPMENT-only workstation run. Its result is descriptive/research evidence and cannot validate itself, open confluence, or create promotion/PAPER/LIVE/option authority. The consumed master remains unavailable and the future blind remains unopened. If the v2 distribution is economically interesting, it becomes a candidate for untouched/prospective evidence and later option-worthiness/contract analysis; if it is not, freeze the result, preserve the version, and move on under the Strategy Development Cycle.
+
