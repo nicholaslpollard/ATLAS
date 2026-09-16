@@ -247,7 +247,7 @@ def _stock_record(*, created_utc: datetime = CREATED + timedelta(minutes=2)):
 def test_v2_contract_identity_and_authority_boundary_are_frozen() -> None:
     assert contract_fingerprint() == SIMULATION_ACCOUNT_STATE_V2_CONTRACT_FINGERPRINT
     assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT_FINGERPRINT == (
-        "7fa699bde64aaed1bb3423f0c0ea59d45a72aabe0ce4301937b03d2fe2fc9be6"
+        "1e9da000571d02eb8fe4d317d770fdef25fb35a527ad177d1a87a6794c9592e5"
     )
     assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT_VERSION == (
         "atlas-simulation-account-state-v2-stock-option-reservations"
@@ -255,6 +255,8 @@ def test_v2_contract_identity_and_authority_boundary_are_frozen() -> None:
     assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT["margin_inference"] is False
     assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT["collateral_inference"] is False
     assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT["leverage_inference"] is False
+    assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT["stock_accounting_arithmetic_reuses_v1"] is True
+    assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT["stock_candidate_fingerprint_lineage_required"] is True
     assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT["paper_authority"] is False
     assert SIMULATION_ACCOUNT_STATE_V2_CONTRACT["live_authority"] is False
 
