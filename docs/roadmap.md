@@ -1762,7 +1762,7 @@ evidence or a strategy disposition change.
 ## Track A option scenario economics — 2026-09-16
 
 The option construction boundary is now frozen under contract
-`b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33` (`atlas-option-scenario-economics-adapter-v1`). It consumes the accepted
+`798b05ab3867058865301c35a52491ee9a8cde82c6f1b019b8d27bae34e88178` (`atlas-option-scenario-economics-adapter-v1`). It consumes the accepted
 underlying move/time forecast and validated `OptionCandidateEvidence`, and it emits a
 normal `OPTION` `EconomicCandidate` for the already accepted universal actionability
 and four-mode trade-expression gate.
@@ -1773,7 +1773,9 @@ V1 scientific/product semantics:
    forecasts; unavailable/neutral forecasts or direction mismatch produce no option
    candidate;
 2. bind every scenario model to the exact underlying-forecast fingerprint and require
-   an explicit model id plus SHA-256 fingerprint;
+   an explicit model id plus SHA-256 fingerprint; independently fingerprint the full
+   `OptionCandidateEvidence` snapshot and include that lineage in both the economics
+   result and option candidate identity;
 3. require explicit expected/favorable/adverse terminal premiums and model
    probability of profit; do not infer a historical option-return distribution from
    stock returns or sparse Greeks;

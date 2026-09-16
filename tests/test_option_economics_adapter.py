@@ -9,6 +9,7 @@ from packages.execution.option_economics import (
     OptionEconomicsError,
     OptionEconomicsInputs,
     build_option_economic_candidate,
+    option_evidence_fingerprint,
 )
 from packages.execution.option_economics_contract import (
     OPTION_ECONOMICS_CONTRACT,
@@ -143,10 +144,12 @@ def _inputs(forecast: UnderlyingMoveTimeForecast, **overrides: object) -> Option
 def test_contract_fingerprint_and_authority_boundary_are_frozen() -> None:
     assert contract_fingerprint() == OPTION_ECONOMICS_CONTRACT_FINGERPRINT
     assert OPTION_ECONOMICS_CONTRACT_FINGERPRINT == (
-        "b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33"
+        "798b05ab3867058865301c35a52491ee9a8cde82c6f1b019b8d27bae34e88178"
     )
     assert OPTION_ECONOMICS_CONTRACT_VERSION == "atlas-option-scenario-economics-adapter-v1"
     assert OPTION_ECONOMICS_CONTRACT["capital_required_floor"] == "entry_cash_debit"
+    assert OPTION_ECONOMICS_CONTRACT["option_evidence_fingerprint_required"] is True
+    assert OPTION_ECONOMICS_CONTRACT["candidate_identifier_includes_option_evidence_fingerprint"] is True
     assert OPTION_ECONOMICS_CONTRACT["historical_option_pnl_claimed"] is False
     assert OPTION_ECONOMICS_CONTRACT["capital_required_is_simulator_reservation_authority"] is False
     assert OPTION_ECONOMICS_CONTRACT["provider_reads"] == 0
@@ -393,3 +396,22 @@ def test_input_and_holding_period_validation_fail_closed() -> None:
             option=_option(dte=3),
             inputs=_inputs(forecast, holding_period_calendar_days=5.0),
         )
+
+
+
+def test_exact_option_evidence_snapshot_is_fingerprinted_and_bound() -> None:
+    forecast = _forecast()
+    option = _option()
+    result = build_option_economic_candidate(
+        forecast=forecast,
+        option=option,
+        inputs=_inputs(forecast),
+    )
+    expected = option_evidence_fingerprint(option)
+    assert result.source_option_evidence_fingerprint == expected
+    assert expected[:16] in result.candidate.identifier
+
+    changed_delta = _option(delta=0.50)
+    changed_open_interest = _option(open_interest=999)
+    assert option_evidence_fingerprint(changed_delta) != expected
+    assert option_evidence_fingerprint(changed_open_interest) != expected

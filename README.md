@@ -1156,7 +1156,7 @@ the A34 research account replay remains historical research evidence rather than
 product simulation truth.
 
 The separately versioned option scenario-economics adapter is now implemented
-under frozen contract `b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33` (`atlas-option-scenario-economics-adapter-v1`). It may
+under frozen contract `798b05ab3867058865301c35a52491ee9a8cde82c6f1b019b8d27bae34e88178` (`atlas-option-scenario-economics-adapter-v1`). It may
 produce option decision-support candidates, but option capital/risk semantics still
 fail closed in the account simulator. The next Track A package is therefore an
 explicit option capital/risk reservation contract; it must not reuse stock notional,
@@ -1167,7 +1167,7 @@ because this is product architecture rather than strategy evidence.
 ## 2026-09-16 — Option scenario-economics adapter foundation
 
 Track A now has a separately versioned option scenario-economics adapter under
-frozen contract `b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33` (`atlas-option-scenario-economics-adapter-v1`). It consumes
+frozen contract `798b05ab3867058865301c35a52491ee9a8cde82c6f1b019b8d27bae34e88178` (`atlas-option-scenario-economics-adapter-v1`). It consumes
 the accepted underlying move/time forecast plus `OptionCandidateEvidence` and emits
 the same `OPTION` `EconomicCandidate` consumed by the universal actionability and
 trade-expression layer. V1 is intentionally bounded to long, single-leg,
@@ -1179,7 +1179,10 @@ The adapter does not manufacture an option-return distribution from sparse Greek
 Expected, favorable, and adverse terminal option premiums plus model probability of
 profit are explicit outputs of a separately identified and SHA-256-fingerprinted
 scenario model, and that model must bind the exact underlying-forecast instance
-fingerprint. Scenario prices must satisfy `adverse <= expected <= favorable` and the
+fingerprint. The full `OptionCandidateEvidence` snapshot is also SHA-256-fingerprinted
+and bound into the economics result and candidate identity, so changes to delta, IV,
+open interest, volume, eligibility or quote evidence cannot silently reuse an older
+candidate. Scenario prices must satisfy `adverse <= expected <= favorable` and the
 holding period cannot exceed contract DTE. Current midpoint is the valuation
 reference; entry executes economically at the ask, so the entry half-spread is
 explicit. Exit slippage, commissions, and fees are explicit nonnegative costs.
