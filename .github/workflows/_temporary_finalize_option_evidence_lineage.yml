@@ -1,0 +1,30 @@
+name: Temporary Finalize Option Evidence Lineage
+
+on:
+  push:
+    branches:
+      - feature/option-scenario-economics-foundation
+    paths:
+      - .github/workflows/_temporary_finalize_option_evidence_lineage.yml
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: feature/option-scenario-economics-foundation
+          fetch-depth: 0
+      - name: Finalize option evidence lineage
+        run: python scripts/_temporary_finalize_option_evidence_lineage.py
+      - name: Commit and remove temporary files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/_temporary_finalize_option_evidence_lineage.yml scripts/_temporary_finalize_option_evidence_lineage.py
+          git add README.md docs/roadmap.md tests/test_option_economics_adapter.py
+          git commit -m "Finalize exact option-evidence lineage"
+          git push origin HEAD:feature/option-scenario-economics-foundation
