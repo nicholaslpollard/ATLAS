@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Sequence
 
+from pydantic import BaseModel
+
 from packages.execution.stock_economics import (
     StockEconomicsInputs,
     StockEconomicsResult,
@@ -53,6 +55,8 @@ def _canonicalize(value: Any) -> Any:
         return value.value
     if isinstance(value, datetime):
         return value.isoformat()
+    if isinstance(value, BaseModel):
+        return _canonicalize(value.model_dump(mode="json"))
     if is_dataclass(value):
         return {
             field.name: _canonicalize(getattr(value, field.name))
