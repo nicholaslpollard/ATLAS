@@ -283,6 +283,9 @@ def build_long_option_reservation_terms(
 
     if option_economics.source_forecast_fingerprint != record.forecast_fingerprint:
         raise LongOptionReservationError("option economics forecast lineage mismatch")
+    current_option_evidence_fp = option_evidence_fingerprint(option)
+    if option_economics.source_option_evidence_fingerprint != current_option_evidence_fp:
+        raise LongOptionReservationError("option evidence fingerprint lineage mismatch")
     if option.contract_ticker != option_economics.option_contract_ticker:
         raise LongOptionReservationError("option contract ticker lineage mismatch")
     if option.contract_type not in {"call", "put"}:
@@ -344,6 +347,7 @@ def build_long_option_reservation_terms(
     reasons = (
         "SELECTED_OPTION_DECISION_BOUND",
         "OPTION_ECONOMICS_RESULT_BOUND",
+        "EXACT_OPTION_EVIDENCE_FINGERPRINT_BOUND",
         "OPTION_QUOTE_AND_DELTA_EVIDENCE_BOUND",
         "LONG_OPTION_ASK_DEBIT_RESERVED_AS_PREMIUM_AT_RISK",
         "EXPLICIT_CASH_FEE_RESERVE_INCLUDED",
@@ -362,7 +366,7 @@ def build_long_option_reservation_terms(
         ),
         chosen_candidate_identifier=chosen.identifier,
         chosen_candidate_fingerprint=chosen_candidate_fp,
-        option_evidence_fingerprint=option_evidence_fingerprint(option),
+        option_evidence_fingerprint=current_option_evidence_fp,
         source_forecast_fingerprint=record.forecast_fingerprint,
         instrument_id=record.forecast.instrument_id,
         ticker=record.forecast.ticker,

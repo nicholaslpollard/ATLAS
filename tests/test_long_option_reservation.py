@@ -371,11 +371,31 @@ def test_forecast_and_quote_lineage_fail_closed() -> None:
         )
 
     changed_quote = _option(ask=5.3, mid=5.1)
-    with pytest.raises(LongOptionReservationError, match="midpoint lineage|ask lineage"):
+    with pytest.raises(LongOptionReservationError, match="evidence fingerprint lineage"):
         build_long_option_reservation_terms(
             record=record,
             option_economics=economics,
             option=changed_quote,
+        )
+
+
+def test_full_option_evidence_fingerprint_lineage_fails_closed() -> None:
+    forecast = _forecast()
+    option = _option()
+    economics = _option_economics(forecast, option)
+    record = _option_record(forecast, economics)
+
+    changed_evidence = option.model_copy(update={"open_interest": 999})
+    assert changed_evidence.contract_ticker == option.contract_ticker
+    assert changed_evidence.ask == option.ask
+    assert changed_evidence.mid == option.mid
+    assert changed_evidence.delta == option.delta
+
+    with pytest.raises(LongOptionReservationError, match="evidence fingerprint lineage"):
+        build_long_option_reservation_terms(
+            record=record,
+            option_economics=economics,
+            option=changed_evidence,
         )
 
 
@@ -386,7 +406,7 @@ def test_missing_or_wrong_sign_delta_fails_closed() -> None:
     record = _option_record(forecast, economics)
 
     missing_delta = _option(delta=None)
-    with pytest.raises(LongOptionReservationError, match="delta is required"):
+    with pytest.raises(LongOptionReservationError, match="evidence fingerprint lineage"):
         build_long_option_reservation_terms(
             record=record,
             option_economics=economics,
@@ -394,7 +414,7 @@ def test_missing_or_wrong_sign_delta_fails_closed() -> None:
         )
 
     wrong_sign = _option(delta=-0.55)
-    with pytest.raises(LongOptionReservationError, match="long call delta must be positive"):
+    with pytest.raises(LongOptionReservationError, match="evidence fingerprint lineage"):
         build_long_option_reservation_terms(
             record=record,
             option_economics=economics,
