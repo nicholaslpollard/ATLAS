@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-15 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-16 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -1088,3 +1088,11 @@ Execution uses a two-stage efficiency funnel. Stage 1 SHA-verifies the accepted 
 
 **Outcome status remains UNOPENED at this repository state.** The next permitted evidence action is the explicitly gated DEVELOPMENT workstation run after this runner package is accepted. That run cannot self-validate or promote the revision because the hypothesis was motivated with DEVELOPMENT evidence and the external study overlaps the DEVELOPMENT era. Consumed master and future blind remain closed; provider/broker reads and writes, PAPER, LIVE, promotion, confluence, historical option-P&L, and option-trading authority all remain zero/false.
 
+
+## 2026-09-16 — ORB v2 DEVELOPMENT closeout and trade-expression foundation
+
+The frozen `orb_stocks_in_play_5m_literature_v2` DEVELOPMENT diagnostic is complete under analysis fingerprint `cc6c34b18479aa76558e3c73cbc17ae75d85dd2c7b45d3806a8ac00d17b3a035`. It produced 4,957,662 five-minute opening snapshots, 62,516 eligible rank-pool rows, 40,606 top-20 selections, 40,345 directional candidates, 33,773 entries and 23,412 comparable outcomes. Aggregate comparable mean was **+0.12% gross, -0.38% at the frozen 50-bps primary cost and -0.88% at 100 bps**, with 1.27% mean MFE and 0.41% mean adverse excursion. LONG and SHORT were economically similar. The setup is therefore preserved as a cost-sensitive research reference but is **not promoted**. The exact immutable closeout is `docs/research/orb_stocks_in_play_literature_v2_development_closeout_20260916.md`.
+
+A material execution-path diagnostic is retained rather than optimized away: 10,361 entries, about 30.68% of entered cases, had entry and the frozen 0.10xATR14 stop touched in the same minute and remain unordered/noncomparable. Changing that stop, relative-volume gate, top-20 rank, range length, entry timing or exit after seeing this result would create a new version and would require a newly frozen hypothesis plus untouched/prospective evidence. Historical option P&L remains unclaimed; the 1/2/3/5% path statistics are underlying option-worthiness evidence only.
+
+Track A now has a pure product-side trade-expression foundation under contract `a9341b7c0e6399165403cfa3d2f33e9f3b2749194ce39d41044a260dbd5fef4c`. It implements `OPTIONS_ONLY`, `STOCKS_ONLY`, `OPTIONS_PREFERRED` and `STOCKS_PREFERRED` as permission/preference modes behind a universal economic actionability gate. There are deliberately no hidden production thresholds: expected value, return on capital, probability of profit, loss/gain, execution-cost burden, liquidity and material-superiority thresholds must be supplied explicitly by policy. Options additionally require complete contract, Greeks, IV, liquidity and event context. Model-relative undervaluation is evidence only and can never independently make an option actionable. Preferred modes may use a materially superior alternate expression; no mode can force an uneconomic trade. This layer creates no broker read/write, PAPER, LIVE or strategy-promotion authority.

@@ -1562,3 +1562,43 @@ The runner is deliberately funnelled for efficiency:
 
 Historical outcomes are still **UNOPENED** at this gate. Once the package passes exact-head acceptance, the next action is one explicit DEVELOPMENT-only workstation run. Its result is descriptive/research evidence and cannot validate itself, open confluence, or create promotion/PAPER/LIVE/option authority. The consumed master remains unavailable and the future blind remains unopened. If the v2 distribution is economically interesting, it becomes a candidate for untouched/prospective evidence and later option-worthiness/contract analysis; if it is not, freeze the result, preserve the version, and move on under the Strategy Development Cycle.
 
+
+## 26. ORB v2 closeout and product-side actionability/trade expression — 2026-09-16
+
+### 26.1 ORB literature v2 DEVELOPMENT disposition
+
+`orb_stocks_in_play_5m_literature_v2` is closed as a completed DEVELOPMENT diagnostic under analysis fingerprint `cc6c34b18479aa76558e3c73cbc17ae75d85dd2c7b45d3806a8ac00d17b3a035`. The accepted population is 40,345 directional candidates / 33,773 entries / 23,412 comparable outcomes. Aggregate comparable return is +0.12% gross, -0.38% at 50 bps and -0.88% at 100 bps. LONG is +0.13% gross / -0.37% primary; SHORT is +0.11% / -0.39%. Both directions are already negative at 25 bps. Mean MFE/MAE is 1.27%/0.41% and the median comparable hold is 12 minutes in both directions.
+
+The result is cost-sensitive rather than economically actionable under the frozen ATLAS conservative assumptions. Preserve the version and do not sweep parameters on this evidence. The 10,361 same-minute entry/stop collisions (~30.68% of entries) diagnose a tight immediate stop relative to minute noise, but any stop redesign is a separately versioned future hypothesis. No promotion, confluence, PAPER, LIVE or option-trading authority is created. Consumed master and future blind remain closed.
+
+Underlying path timing remains useful for future option-worthiness research: LONG/SHORT favorable-hit rates are about 34%/35% at 1%, 18%/20% at 2%, 11%/12% at 3% and 4.7%/5.5% at 5%. These do not establish option profitability because no accepted PIT historical option-chain/quote/IV replay exists.
+
+### 26.2 Track A economic actionability foundation
+
+Implement the product decision sequence as:
+
+`strategy/forecast evidence -> underlying move/time distribution -> universal economic actionability -> trade-expression mode -> stock/option/abstain -> portfolio/risk -> execution planning`
+
+The first pure decision layer is frozen under contract fingerprint `a9341b7c0e6399165403cfa3d2f33e9f3b2749194ce39d41044a260dbd5fef4c`. It has no broker or execution authority and introduces no hidden economic thresholds. The caller must explicitly supply minimum expected net value, minimum return on capital, minimum probability of profit, maximum expected-loss/gain ratio, maximum execution-cost/gain ratio, minimum liquidity, and the material-superiority ratio used by preferred modes.
+
+Mode semantics:
+
+1. `OPTIONS_ONLY`: evaluate options only; if no option clears both the universal gate and complete option-context requirements, abstain.
+2. `STOCKS_ONLY`: evaluate stock only; options are ignored.
+3. `OPTIONS_PREFERRED`: evaluate both; use an acceptable option unless an acceptable stock is materially superior under the explicit preference score/policy. If no option passes, stock may be used only if it independently passes.
+4. `STOCKS_PREFERRED`: symmetric stock preference with an option override only when the option independently passes and is materially superior.
+
+All option candidates require complete contract/Greeks/IV/liquidity/event context in addition to the universal gate. A Black-Scholes or other model-relative undervaluation flag is nonblocking evidence only; it cannot rescue missing option evidence or failed economics.
+
+### 26.3 Immediate product sequence
+
+After repository acceptance of this foundation, continue Track A without waiting for another strategy to validate:
+
+1. define the versioned underlying move/time forecast schema that carries threshold probabilities, expected/median move, uncertainty, time-to-move, MFE/MAE and path evidence into actionability;
+2. connect the actionability/trade-expression decision to the deterministic case-file/account-simulator path without granting broker authority;
+3. implement stock economics first with explicit slippage/cost/capital/risk inputs;
+4. implement option scenario-economics interfaces next, but keep historical option-P&L unavailable until a PIT option source is separately contracted and accepted;
+5. expose the four trade-expression modes and abstention reasons through the browser/control plane;
+6. keep qualifying PAPER/LIVE gates unchanged. Product simulation may use clearly labeled baseline strategies while supported modern alpha remains zero.
+
+Track B proceeds independently with broad-first strategy inventory and bounded failure-specific research. The completed ORB v2 is parked rather than repeatedly tuned.

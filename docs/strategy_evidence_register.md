@@ -482,3 +482,32 @@ The implementation uses a broad-cheap/narrow-expensive funnel: only 09:30-09:34 
 
 **Historical v2 outcomes: UNOPENED.** No v2 performance number exists yet in the accepted evidence register. The next permitted action after code acceptance is the explicit gated DEVELOPMENT run. Because this hypothesis was motivated by post-result DEVELOPMENT evidence and external research overlapping the DEVELOPMENT period, the resulting DEVELOPMENT distribution cannot self-validate or promote the strategy. Consumed master/future/provider/broker/PAPER/LIVE/promotion/confluence/option-trading authority remain zero/false. Any encouraging result must advance to untouched/prospective evidence rather than reusing the consumed master.
 
+
+## 11. Literature-fidelity 5-minute ORB v2 DEVELOPMENT closeout — 2026-09-16
+
+Policy: `orb_stocks_in_play_5m_literature_v2`  
+Strategy contract: `1be9081b60656affd09c683a28545894c66871e7a808e2b7e8f58bada67cf4cb`  
+DEVELOPMENT contract: `87ee4ff703f8040d88c22147444aa992d196ab49be91dc749e3035e3c15e739b`  
+Completed analysis fingerprint: `cc6c34b18479aa76558e3c73cbc17ae75d85dd2c7b45d3806a8ac00d17b3a035`  
+Disposition: `COMPLETE_DEVELOPMENT_DIAGNOSTIC / NO_PROMOTION / PARKED_COST_SENSITIVE`
+
+### 11.1 Population and economics
+
+The frozen run completed 482/482 opening groups and 261/261 selected-path groups with 8 workers x 1 DuckDB thread. It produced 4,957,662 opening snapshots, 62,516 eligible rank-pool rows and 40,606 top-20 selections. After 261 doji abstentions there were 40,345 directional candidates; 33,773 entered, 23,412 were comparable, 6,572 never entered and 10,361 were same-minute entry/stop unordered.
+
+Aggregate comparable mean: **+0.12% gross / -0.38% primary 50 bps / -0.88% stress 100 bps**. LONG: n=11,778 comparable, +0.13% gross / +0.03% at 10 bps / -0.12% at 25 bps / -0.37% at 50 bps / -0.87% at 100 bps. SHORT: n=11,634, +0.11% / +0.01% / -0.14% / -0.39% / -0.89%. Mean MFE/MAE was 1.27%/0.41%; median comparable holding time was 12 minutes in both directions.
+
+### 11.2 Path and option-worthiness evidence
+
+Favorable underlying threshold-hit rates were LONG 34.31% / 18.22% / 11.00% / 4.71% and SHORT 34.64% / 20.17% / 12.49% / 5.51% at 1% / 2% / 3% / 5%. Median favorable time was 6/17/29/48 minutes LONG and 6/17/32/70 minutes SHORT. These are underlying path diagnostics only. Historical option P&L remains unavailable and unclaimed.
+
+### 11.3 Diagnosis
+
+- The strategy contains a small gross directional edge in DEVELOPMENT but is too cost-sensitive to clear the frozen ATLAS conservative actionability assumptions. Both directions are already negative by 25 bps.
+- LONG and SHORT are economically similar, so there is no evidence-supported post-result direction carve-out.
+- 10,361 same-minute entry/stop collisions are ~30.68% of entered cases. The frozen 0.10xATR14 stop is tight relative to immediate minute noise, but changing it now would define a new version rather than repair v2.
+- Selected names often make fast 1-3% moves, preserving option-worthiness research interest, but move magnitude alone does not establish executable stock or option expectancy.
+
+### 11.4 Disposition and authority
+
+Preserve v2 exactly and move on. Do not sweep opening-range length, relative-volume threshold, rank count, ATR stop, entry delay or exit on the same DEVELOPMENT evidence. A future materially distinct v3 requires targeted external research, preregistration and untouched/new/prospective evidence. Consumed-master reads = 0; future-blind reads = 0; provider reads = 0; broker reads/writes = 0. Promotion, confluence, PAPER, LIVE and option-trading authority remain false. The immutable detailed record is `docs/research/orb_stocks_in_play_literature_v2_development_closeout_20260916.md`.
