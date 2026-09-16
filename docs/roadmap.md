@@ -1913,16 +1913,45 @@ Frozen v2 semantics:
 10. infer no margin, collateral, or leverage and grant no provider/broker, order,
     fill, mark-to-market, realized-P&L, PAPER, LIVE, promotion, or confluence authority.
 
+## Track A broker-neutral simulated entry-fill evidence — 2026-09-16
+
+The next execution boundary is frozen under contract
+`e271ba5c66fe9bc41b7f81945a1ef8152a2eeae091b27f6efd4859bacd2d8668`
+(`atlas-simulated-entry-fill-evidence-v1`). It consumes exact active reservation,
+account-state, decision-record and selected-candidate lineage plus explicit
+caller-supplied complete-fill evidence. Source id, source fingerprint, fill timestamp,
+price and explicit fees are fingerprint material. Partial fills remain outside this
+version.
+
+Frozen fill semantics:
+
+1. STOCK preserves the accepted reservation economic gross notional and derives
+   complete fractional simulation quantity as notional / explicit fill price;
+2. STOCK does not resolve or infer cash funding, margin, collateral, leverage or
+   short-sale proceeds when accepted economic capital differs from gross notional;
+3. OPTION requires exact accepted long-option reservation terms, contract count and
+   multiplier;
+4. OPTION premium debit cannot exceed the reserved ask-premium debit, explicit entry
+   fees cannot exceed the separate fee reserve, total cash debit cannot exceed total
+   reserved capital, and unspent reserve is recorded explicitly;
+5. every fill binds exact account-state, reservation, decision, candidate and external
+   fill-source lineage and receives a deterministic fingerprint; and
+6. the package grants no reservation-release, account-mutation, open-position,
+   mark-to-market, realized-P&L, provider/broker, order, PAPER, LIVE, promotion or
+   confluence authority.
+
 Immediate Track A continuation after acceptance:
 
-1. freeze explicit stock and option simulated-fill evidence contracts;
-2. consume only accepted reservation/decision lineage and caller-supplied execution
-   evidence, with no provider or broker lookup inside the fill engine;
-3. transition reserved capital into deterministic open-position/cost-basis state while
-   retaining instrument-specific stock versus option quantities and exposure lineage;
-4. make duplicate fill application idempotent and ledger replay/tamper checks exact;
-   and
-5. leave mark-to-market, realized P&L, closeout accounting, and PAPER/LIVE broker
+1. freeze explicit stock/option funding and collateral terms between accepted fill
+   evidence and account mutation;
+2. permit fully cash-funded stock longs only when the accepted funding evidence proves
+   the required cash semantics; fail closed on leveraged longs or shorts until their
+   collateral/proceeds model is explicitly versioned;
+3. preserve option premium/fee debit and unspent-reservation lineage without
+   reinterpreting option delta exposure as stock notional;
+4. only after funding semantics are accepted, convert reservations into deterministic
+   open-position/cost-basis account state with exact replay/idempotency checks; and
+5. leave mark-to-market, realized P&L, closeout accounting and PAPER/LIVE broker
    authority to separately accepted packages.
 
 The Strategy Evidence Register remains unchanged because this package changes
