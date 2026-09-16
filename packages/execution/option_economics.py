@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import re
 from dataclasses import dataclass
@@ -24,6 +26,16 @@ _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
 class OptionEconomicsError(ValueError):
     pass
+
+
+def option_evidence_fingerprint(option: OptionCandidateEvidence) -> str:
+    raw = json.dumps(
+        option.model_dump(mode="json"),
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -178,6 +190,7 @@ class OptionEconomicsResult:
     contract_version: str
     contract_fingerprint: str
     source_forecast_fingerprint: str
+    source_option_evidence_fingerprint: str
     option_contract_ticker: str
     direction: DiscoveryDirection
     candidate: EconomicCandidate | None
@@ -222,6 +235,7 @@ def _empty_result(
         contract_version=OPTION_ECONOMICS_CONTRACT_VERSION,
         contract_fingerprint=OPTION_ECONOMICS_CONTRACT_FINGERPRINT,
         source_forecast_fingerprint=forecast_fingerprint(forecast),
+        source_option_evidence_fingerprint=option_evidence_fingerprint(option),
         option_contract_ticker=option.contract_ticker,
         direction=forecast.direction,
         candidate=None,
@@ -261,13 +275,14 @@ def build_option_economic_candidate(
 ) -> OptionEconomicsResult:
     """Translate explicit option scenario outputs into one EconomicCandidate.
 
-    The adapter binds model outputs to the exact underlying forecast and current
-    contract evidence. It performs deterministic economics only. It does not read
+    The adapter binds model outputs to the exact underlying forecast and exact option
+    evidence snapshot. It performs deterministic economics only. It does not read
     providers/brokers, create orders, claim historical option P&L, reserve option
     capital in the simulator, or grant PAPER/LIVE/promotion authority.
     """
 
     source_forecast_fingerprint = forecast_fingerprint(forecast)
+    source_option_evidence_fingerprint = option_evidence_fingerprint(option)
     if inputs.scenario_forecast_fingerprint != source_forecast_fingerprint:
         raise OptionEconomicsError(
             "scenario forecast fingerprint does not match the supplied underlying forecast"
@@ -370,6 +385,7 @@ def build_option_economic_candidate(
     reasons: list[str] = [
         "AVAILABLE_DIRECTIONAL_FORECAST",
         "OPTION_DIRECTION_ALIGNED",
+        "EXACT_OPTION_EVIDENCE_FINGERPRINT_BOUND",
         "EXPLICIT_SCENARIO_MODEL_OUTPUTS",
         "SCENARIO_FORECAST_FINGERPRINT_MATCHED",
         "ENTRY_AT_ASK_WITH_MID_REFERENCE",
@@ -412,6 +428,7 @@ def build_option_economic_candidate(
         identifier=(
             f"OPTION:{option.contract_ticker}:"
             f"{source_forecast_fingerprint[:16]}:"
+            f"{source_option_evidence_fingerprint[:16]}:"
             f"{inputs.scenario_model_fingerprint[:16]}"
         ),
         kind=InstrumentKind.OPTION,
@@ -439,6 +456,7 @@ def build_option_economic_candidate(
         contract_version=OPTION_ECONOMICS_CONTRACT_VERSION,
         contract_fingerprint=OPTION_ECONOMICS_CONTRACT_FINGERPRINT,
         source_forecast_fingerprint=source_forecast_fingerprint,
+        source_option_evidence_fingerprint=source_option_evidence_fingerprint,
         option_contract_ticker=option.contract_ticker,
         direction=forecast.direction,
         candidate=candidate,
