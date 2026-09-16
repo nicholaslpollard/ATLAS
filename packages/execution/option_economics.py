@@ -187,6 +187,7 @@ class OptionEconomicsResult:
     capital_required_dollars: float
     entry_mid_per_share: float
     entry_ask_per_share: float
+    entry_cash_debit_dollars: float
     entry_spread_cost_dollars: float | None
     expected_terminal_premium_per_share: float
     favorable_terminal_premium_per_share: float
@@ -216,6 +217,7 @@ def _empty_result(
     inputs: OptionEconomicsInputs,
     reason: str,
 ) -> OptionEconomicsResult:
+    quantity_multiplier = inputs.contract_multiplier * float(inputs.contracts)
     return OptionEconomicsResult(
         contract_version=OPTION_ECONOMICS_CONTRACT_VERSION,
         contract_fingerprint=OPTION_ECONOMICS_CONTRACT_FINGERPRINT,
@@ -228,6 +230,7 @@ def _empty_result(
         capital_required_dollars=inputs.capital_required_dollars,
         entry_mid_per_share=option.mid,
         entry_ask_per_share=option.ask,
+        entry_cash_debit_dollars=option.ask * quantity_multiplier,
         entry_spread_cost_dollars=None,
         expected_terminal_premium_per_share=inputs.expected_terminal_premium_per_share,
         favorable_terminal_premium_per_share=inputs.favorable_terminal_premium_per_share,
@@ -296,6 +299,13 @@ def build_option_economic_candidate(
             reason="OPTION_DIRECTION_MISMATCH",
         )
 
+    quantity_multiplier = inputs.contract_multiplier * float(inputs.contracts)
+    entry_cash_debit = option.ask * quantity_multiplier
+    if inputs.capital_required_dollars + 1e-9 < entry_cash_debit:
+        raise OptionEconomicsError(
+            "capital required cannot be below the long-option ask debit"
+        )
+
     option_contract_complete = True
     greeks_complete = (
         option.delta is not None
@@ -326,7 +336,6 @@ def build_option_economic_candidate(
         )
     )
 
-    quantity_multiplier = inputs.contract_multiplier * float(inputs.contracts)
     entry_spread_cost = max(0.0, option.ask - option.mid) * quantity_multiplier
     expected_gross_pnl = (
         inputs.expected_terminal_premium_per_share - option.mid
@@ -364,6 +373,7 @@ def build_option_economic_candidate(
         "EXPLICIT_SCENARIO_MODEL_OUTPUTS",
         "SCENARIO_FORECAST_FINGERPRINT_MATCHED",
         "ENTRY_AT_ASK_WITH_MID_REFERENCE",
+        "CAPITAL_AT_LEAST_LONG_OPTION_ASK_DEBIT",
         "EXPLICIT_OPTION_ECONOMIC_CAPITAL_DENOMINATOR",
     ]
     if not option.eligible:
@@ -437,6 +447,7 @@ def build_option_economic_candidate(
         capital_required_dollars=inputs.capital_required_dollars,
         entry_mid_per_share=option.mid,
         entry_ask_per_share=option.ask,
+        entry_cash_debit_dollars=entry_cash_debit,
         entry_spread_cost_dollars=entry_spread_cost,
         expected_terminal_premium_per_share=inputs.expected_terminal_premium_per_share,
         favorable_terminal_premium_per_share=inputs.favorable_terminal_premium_per_share,
