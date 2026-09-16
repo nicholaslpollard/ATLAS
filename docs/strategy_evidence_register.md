@@ -447,3 +447,38 @@ Frozen rules:
 This v2 is intentionally a bounded mechanistic revision, not a sweep of opening-range lengths, relative-volume cutoffs, ATR stops, or exits. The internal motivation is post-result DEVELOPMENT evidence, while the external paper itself studies 2016-2023 and therefore overlaps ATLAS DEVELOPMENT. A positive DEVELOPMENT result can support specialization/research continuation but **cannot independently validate or promote the strategy**. Untouched/prospective evidence is required later.
 
 Consumed-master reads = 0; future-blind reads = 0; provider reads = 0; broker reads/writes = 0. Strategy/selector promotion, confluence, PAPER, LIVE, and option-trading authority all remain false.
+
+## 10. ORB exact-minute diagnosis and literature-fidelity v2 preregistration — 2026-09-15
+
+### 10.1 Retained 15-minute ORB path closeout
+
+`orb_15m_close_retest_v2` selected-minute path analysis fingerprint: `a58c06b19b499082190110c227ddd4617826bb33e733d07bd17d849d73b099d8`.
+
+- 259 selected/comparable opportunities; 208 symbols; 218 verified native units; 55,581 minute bars.
+- LONG: n=157, gross -0.71%, primary 50-bps -1.20%, stress 100-bps -1.70%, mean MFE 8.82%, mean MAE 7.78%.
+- SHORT: n=102, gross -0.01%, primary -0.51%, stress -1.01%, mean MFE 3.85%, mean MAE 3.88%.
+- favorable-before-adverse frequency was below 50% at all 1/2/3/5% thresholds for both directions.
+- historical option P&L was not claimed.
+
+Disposition: this is evidence of a path-ordering/direction problem, not evidence that the underlying names fail to move. Do not rescue the retained route with leverage or an unrestricted parameter sweep.
+
+### 10.2 Separate literature-fidelity v2 hypothesis
+
+Policy: `orb_stocks_in_play_5m_literature_v2`.
+
+Base strategy contract fingerprint: `1be9081b60656affd09c683a28545894c66871e7a808e2b7e8f58bada67cf4cb`.
+
+Frozen mechanism: five-minute opening range; opening price > $5; prior-14-session average daily volume >= 1,000,000 shares; prior ATR14 > $0.50; exact first-five-minute relative volume >= 1.0 versus the prior 14 sessions; deterministic top-20 daily relative-volume rank; opening-candle direction with doji abstention; range-boundary stop entry; adverse gap-through fill; 0.10xATR14 stop; end-of-day exit; 0/10/25/50/100-bps cost grid with 50/100 bps primary/stress.
+
+### 10.3 DEVELOPMENT runner preregistration
+
+DEVELOPMENT analysis contract fingerprint: `87ee4ff703f8040d88c22147444aa992d196ab49be91dc749e3035e3c15e739b`.
+
+A pre-outcome source-semantics review corrected the runner before any historical v2 result was observed. The accepted V2 daily generation preserves provider-native split-adjusted volume and does not authorize reconstructing raw volume from the inverse price factor. Accordingly, the frozen runner reconstructs raw daily OHLC only for ATR14 and uses provider-native daily volume exactly as supplied for the liquidity gate. Opening relative-volume history requires the exact previous 14 XNYS sessions to each provide a complete five-minute opening snapshot; older observations cannot bridge a missing session.
+
+The implementation uses a broad-cheap/narrow-expensive funnel: only 09:30-09:34 ET data are read broadly, the cross-sectional filter/rank is applied, and full-session minute paths are opened only for selected directional candidates. Group artifacts and receipts are SHA-bound and restart-safe; runtime worker count is excluded from the scientific identity.
+
+### 10.4 Current evidence status
+
+**Historical v2 outcomes: UNOPENED.** No v2 performance number exists yet in the accepted evidence register. The next permitted action after code acceptance is the explicit gated DEVELOPMENT run. Because this hypothesis was motivated by post-result DEVELOPMENT evidence and external research overlapping the DEVELOPMENT period, the resulting DEVELOPMENT distribution cannot self-validate or promote the strategy. Consumed master/future/provider/broker/PAPER/LIVE/promotion/confluence/option-trading authority remain zero/false. Any encouraging result must advance to untouched/prospective evidence rather than reusing the consumed master.
+
