@@ -20,6 +20,7 @@ OPTION_ECONOMICS_CONTRACT = {
     },
     "entry_reference": "CURRENT_QUOTE_MID",
     "entry_execution": "ASK_DEBIT",
+    "entry_cash_debit_source": "ask*contract_multiplier*contracts",
     "entry_spread_cost_source": "(ask-mid)*contract_multiplier*contracts",
     "scenario_outputs_are_explicit": True,
     "scenario_output_fields": [
@@ -85,6 +86,7 @@ OPTION_ECONOMICS_CONTRACT = {
     "probability_profit_source": "explicit_model_probability_profit_input",
     "preference_score_source": "expected_return_on_capital",
     "capital_required_is_economic_denominator_only": True,
+    "capital_required_floor": "entry_cash_debit",
     "capital_required_is_simulator_reservation_authority": False,
     "model_reference_premium_optional": True,
     "model_relative_undervalued_rule": "model_reference_premium_per_share>ask",
@@ -117,5 +119,5 @@ def contract_fingerprint() -> str:
 
 
 OPTION_ECONOMICS_CONTRACT_FINGERPRINT = (
-    "39ab7ed68ce001b0bd663a6085c71bb62220416324eba8216db71366ecb73c22"
+    "b18b7e1388cd58518a5261143fdffa2f81b46d2366162a6074f113a31ea2ca33"
 )
