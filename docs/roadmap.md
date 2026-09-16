@@ -1602,3 +1602,37 @@ After repository acceptance of this foundation, continue Track A without waiting
 6. keep qualifying PAPER/LIVE gates unchanged. Product simulation may use clearly labeled baseline strategies while supported modern alpha remains zero.
 
 Track B proceeds independently with broad-first strategy inventory and bounded failure-specific research. The completed ORB v2 is parked rather than repeatedly tuned.
+
+## 27. Underlying move/time forecast foundation — 2026-09-16
+
+### 27.1 Contract boundary
+
+The broker-neutral product forecast contract is `93525886fb2f0e8af3821caba8c87854ab1d732d5619dc02838df0ef98d931e1` (`atlas-underlying-move-time-forecast-v1`). It converts supported strategy/model/empirical evidence into a common underlying-price-path distribution **before** stock or option construction.
+
+An available forecast carries:
+
+- identity, direction, forecast creation time and PIT evidence cutoff;
+- horizon in minutes or sessions;
+- method/source labels, SHA-256 source lineage and sample size;
+- reference price;
+- mean, median, p10, p25, p75 and p90 signed underlying return;
+- probability of a positive underlying return;
+- direction-normalized mean MFE and MAE;
+- optional uncertainty score;
+- for directional forecasts, unique direction-relative move thresholds with favorable/adverse touch probabilities, favorable-first/adverse-first/same-interval ordering probabilities and median favorable time.
+
+The schema sorts thresholds deterministically and rejects probability curves that become larger at a more difficult move threshold. It also rejects unordered quantiles, non-finite values, future evidence, timing beyond the horizon and internally inconsistent path-order probabilities. A neutral available forecast carries a return distribution but no directional threshold table. An unavailable forecast carries identity/method/source/reasons only and cannot smuggle partial numeric evidence downstream.
+
+### 27.2 Authority and compatibility
+
+The forecast is underlying-only and cannot claim historical option P&L or grant instrument-selection, broker, PAPER, LIVE or promotion authority. It does not modify `Phase13CaseFile`, whose v1 primary instrument remains equity, and does not modify the Phase 15 order builder. This preserves the accepted execution path while Track A builds a separately versioned simulator/control-plane path.
+
+### 27.3 Next implementation sequence
+
+1. add a deterministic adapter that turns an available move/time forecast plus explicit stock economics into a stock `EconomicCandidate` for the universal actionability gate;
+2. define an option-scenario input/output interface using the same underlying distribution, with executable quote/spread, Greeks, IV scenario, theta, liquidity and event completeness required before an option `EconomicCandidate` can exist;
+3. create a versioned simulator decision case joining forecast + actionability policy + trade-expression decision + broker-neutral portfolio sizing, with abstention as a normal outcome;
+4. expose those read-only decision objects and reason codes through the browser/control-plane surface;
+5. leave live/paper order creation on the existing authority-gated path until a later explicitly accepted integration package.
+
+The immediate goal is a usable account simulator driven by deterministic, inspectable evidence even while no strategy is historically promoted.
