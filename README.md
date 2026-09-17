@@ -480,11 +480,43 @@ A stale observation is retained for audit but is explicitly
 `valuation_eligible = false`; it cannot create or carry forward P&L. The 60-second
 limit is a versioned simulation policy rather than a permanent provider constant.
 
-This package computes no position value and grants no mark-to-market, unrealized or
-realized P&L, exit/closeout, account mutation, provider/broker, order, PAPER, LIVE,
-promotion or confluence authority. The next bounded Track A package consumes only
-fresh valuation-eligible marks to create deterministic marked position/account state
-and unrealized P&L. The Strategy Evidence Register remains unchanged because this is
+The market-mark package itself remains evidence-only and grants no account mutation,
+realized P&L, exit/closeout, provider/broker, order, PAPER, LIVE, promotion or
+confluence authority. The deterministic marked-account layer described below now
+consumes those fresh marks for simulation valuation and unrealized P&L. The Strategy
+Evidence Register remains unchanged because these packages change
+product/account-simulation architecture only.
+
+## 2026-09-16 — Deterministic marked account and unrealized P&L
+
+Track A now adds `atlas-simulation-marked-account-state-v1` under contract
+`f09a1ead48e86ae82442785f281c0e57d242db3773537a3ba64a44bb2519c082`. It consumes the exact accepted open-position account snapshot plus
+one exact fresh, valuation-eligible market-mark record for **every** active position at
+one common valuation timestamp. Missing, stale, duplicate, mismatched, or extra marks
+fail closed; ATLAS does not publish an authoritative account-level marked-equity value
+for an incomplete valuation snapshot.
+
+For each active position, marked value is `quantity * selected bid mark * multiplier`.
+Unrealized P&L is marked value minus immutable entry book value, and unrealized return
+uses entry book value as its denominator. Account unrealized P&L is the sum of the
+position values, while marked equity is `entry_book_equity + aggregate_unrealized_P&L`
+and independently reconciles to `cash + remaining reservations + marked open-position
+value`. Entry fees were already expensed when the position opened and are therefore
+never subtracted a second time in unrealized P&L.
+
+A long option with a valid fresh zero bid may mark to zero and therefore to a full loss
+of its entry book value. Option delta-equivalent exposure remains the immutable
+**entry reference** only; this package does not infer a current Greek from price marks.
+All marked positions share the requested valuation timestamp, and a mark whose market
+timestamp predates the position open is rejected. Empty accounts produce a complete
+zero-position valuation deterministically.
+
+This is deterministic simulation valuation only. It does not mutate the open-position
+state and grants no realized-P&L, exit/closeout, provider/broker, order, PAPER, LIVE,
+promotion or confluence authority. The next bounded Track A work is broker-neutral
+simulated exit-fill evidence followed by deterministic closeout/realized-P&L accounting
+with lifetime trade-P&L and account-equity semantics kept explicit so entry fees cannot
+be double counted. The Strategy Evidence Register remains unchanged because this is
 product/account-simulation architecture only.
 
 ## A33/B33 reference foundation
