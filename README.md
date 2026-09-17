@@ -454,12 +454,38 @@ book value/premium at risk; the reservation's signed/absolute delta-equivalent e
 is retained only as an **entry reference**, not a current Greek or mark. Stock shorts
 remain unsupported because no accepted collateral/proceeds model exists.
 
-This package deliberately stops before market valuation. It has no mark-to-market,
-unrealized-P&L, realized-P&L, exit/closeout, provider/broker, order, PAPER, LIVE,
-promotion or confluence authority. The next bounded Track A work is source-bound market
-mark evidence and deterministic mark-to-market/unrealized-P&L state, followed by
-exit/closeout and realized-P&L accounting. The Strategy Evidence Register remains
-unchanged because this is product/account-simulation architecture only.
+The open-position package deliberately stops before market valuation. The source-bound
+market-mark evidence layer described below now supplies exact valuation provenance, but
+mark-to-market, unrealized/realized P&L, exits/closeout, broker mutation and PAPER/LIVE
+authority remain separate gates. The Strategy Evidence Register remains unchanged
+because these packages change product/account-simulation architecture only.
+
+## 2026-09-16 — Source-bound market-mark evidence
+
+Track A now freezes `atlas-simulation-market-mark-evidence-v1` under contract
+`1219f600e447f90718213ce0f974314f6480e90e13f46487770785e45c87c154`. The package binds one immutable mark record to one exact accepted
+open-position fingerprint and requires explicit source id/SHA-256, provider, feed,
+transport, feed-quality, market timestamp, receive timestamp, and valuation timestamp.
+It is evidence-only: the accounting layer still performs no provider or broker read.
+
+For the currently supported long stock and long-option positions, v1 selects the
+**executable bid** as the conservative valuation candidate. Midpoint and last may be
+retained descriptively but are never treated as liquidation truth. Stock requires a
+positive bid; a long option may legitimately carry a zero bid, preserving a possible
+zero liquidation value rather than inventing one. Crossed quotes fail closed.
+
+Freshness is frozen at a maximum **60 seconds** from market timestamp to valuation
+time. `market_timestamp <= received_timestamp <= valuation_timestamp` is mandatory.
+A stale observation is retained for audit but is explicitly
+`valuation_eligible = false`; it cannot create or carry forward P&L. The 60-second
+limit is a versioned simulation policy rather than a permanent provider constant.
+
+This package computes no position value and grants no mark-to-market, unrealized or
+realized P&L, exit/closeout, account mutation, provider/broker, order, PAPER, LIVE,
+promotion or confluence authority. The next bounded Track A package consumes only
+fresh valuation-eligible marks to create deterministic marked position/account state
+and unrealized P&L. The Strategy Evidence Register remains unchanged because this is
+product/account-simulation architecture only.
 
 ## A33/B33 reference foundation
 
