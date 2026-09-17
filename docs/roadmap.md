@@ -1945,6 +1945,40 @@ Immediate Track A continuation after acceptance:
 The Strategy Evidence Register remains unchanged because this package changes
 product/account-simulation architecture only.
 
+## Track A open-position entry-book account state — 2026-09-16
+
+Track A now adds `atlas-simulation-open-position-account-state-v1` under contract
+`c15c03400d61bf9e025f836118bf431178caadbdfc7c9a62826ec03796a0ee37`. It consumes one immutable accepted reservation-account snapshot plus
+exact simulated entry-fill and funding/collateral evidence, then converts reservations
+into deterministic **entry-book-value open positions**. The source reservation batch is
+never rewritten: every fill and funding record remains bound to the exact account-state
+fingerprint against which it was created, while the position layer tracks which source
+reservations remain unconverted.
+
+Each transition releases exactly one matching reservation and updates cash as
+`current cash + released reservation - accepted required cash`. Cash is rechecked at
+the moment of transition, so multiple fills that were individually affordable against
+the same original unreserved-cash pool cannot spend those dollars twice. Same-fill
+reapplication is idempotent; a different fill for an already-open decision fails
+closed. Batch application is deterministic by `(filled_utc, fill_fingerprint)`, and
+state/event/ledger fingerprints support exact replay verification and tamper detection.
+
+Entry fees are expenses immediately: `entry book equity = initial equity - cumulative
+entry fees`, while `cash + remaining reservations + open entry book value` must equal
+that entry-book equity. Stock gross exposure transfers exactly from the reservation to
+the cash-funded bullish stock position. Long-option premium paid becomes option entry
+book value/premium at risk; the reservation's signed/absolute delta-equivalent exposure
+is retained only as an **entry reference**, not a current Greek or mark. Stock shorts
+remain unsupported because no accepted collateral/proceeds model exists.
+
+This package deliberately stops before market valuation. It has no mark-to-market,
+unrealized-P&L, realized-P&L, exit/closeout, provider/broker, order, PAPER, LIVE,
+promotion or confluence authority. The next bounded Track A work is source-bound market
+mark evidence and deterministic mark-to-market/unrealized-P&L state, followed by
+exit/closeout and realized-P&L accounting. The Strategy Evidence Register remains
+unchanged because this is product/account-simulation architecture only.
+
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
@@ -2036,16 +2070,16 @@ Frozen fill semantics:
 
 Immediate Track A continuation after acceptance:
 
-1. consume exact reservation + fill + funding/collateral fingerprints in one
-   deterministic open-position transition;
-2. release only the exact reservation being converted, debit the exact accepted cash
-   requirement, retain any explicit unspent reserve, and preserve instrument-specific
-   quantity/cost-basis/exposure lineage;
-3. make duplicate fill application idempotent and ledger replay/tamper checks exact;
-4. continue to reject stock shorts until a separately versioned collateral/proceeds
-   model exists; and
-5. leave mark-to-market, unrealized/realized P&L, exits/closeout and PAPER/LIVE broker
-   authority to separately accepted packages.
+1. freeze source-bound stock/option market-mark evidence with explicit provider/feed,
+   market timestamp, receive timestamp, freshness and transport provenance;
+2. apply deterministic mark-to-market and unrealized-P&L accounting to the accepted
+   open-position state without treating stale/unknown marks as valuation truth;
+3. preserve entry cost basis, paid fees and entry-reference option delta separately
+   from current market marks/Greeks;
+4. only after valuation semantics are accepted, add deterministic exits/closeout and
+   realized-P&L accounting with replay/idempotency checks; and
+5. keep provider/broker mutation, orders, PAPER/LIVE, promotion and confluence under
+   their separate authority gates.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/account-simulation architecture only.
