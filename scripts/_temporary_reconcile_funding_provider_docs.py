@@ -183,14 +183,15 @@ if "### Live/current market-data transport policy — 2026-09-16" not in text:
         1,
     )
     text = text.replace(marker, detailed + "\n" + marker, 1)
-progress_marker = "## How progress is reported"
-if progress_marker not in text:
-    raise SystemExit("roadmap funding insertion marker not found")
+funding_marker = '''The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.'''
+if funding_marker not in text:
+    raise SystemExit("roadmap funding insertion anchor not found")
 if "## Track A funding/collateral terms — 2026-09-16" not in text:
     detailed_funding = funding_section.replace(
         "## 2026-09-16 — Explicit simulation funding/collateral terms",
         "## Track A funding/collateral terms — 2026-09-16",
         1,
     )
-    text = text.replace(progress_marker, detailed_funding + "\n" + progress_marker, 1)
+    text = text.replace(funding_marker, funding_marker + "\n\n" + detailed_funding, 1)
 roadmap.write_text(text, encoding="utf-8")
