@@ -345,6 +345,90 @@ current data path. The fresh V2 candidate base is Alpaca SIP throughout its froz
 acquisition interval. No V1 row, derived indicator, regime, or identity product may
 be silently reused as V2 input. Earlier source limitations do not authorize invented intraday history; V2 minute semantics are now accepted by B34, and missing minute history remains preserved as absence rather than synthesized.
 
+## 2026-09-16 — Live market-data provider and transport policy
+
+ATLAS now separates its durable analytical lake from its live market interface. The
+canonical Parquet/DuckDB V2 lake remains the broad historical/research source used for
+large-universe discovery and replay. **Alpaca is the primary live/current market-data
+provider; Webull is the secondary live/current fallback where its API entitlement and
+feed quality are sufficient.** Execution remains a separate concern: Webull is the
+planned primary PAPER/LIVE execution broker and Alpaca remains the explicitly selected
+manual execution fallback. Automatic broker failover remains prohibited.
+
+Massive is no longer a required forward runtime dependency. Any retained Massive free
+access is diagnostic/research-only and carries no trading authority; historical Massive
+source provenance and reproducibility paths remain immutable evidence and are not
+rewritten. Tradier and unofficial Yahoo/yfinance feeds are not part of the supported
+operating-provider chain.
+
+Live transport is intentionally selective rather than market-wide. Broad discovery
+runs locally first; REST/API snapshots refresh the narrowed candidate set and obtain
+option-chain/contract evidence; WebSocket subscriptions are then allocated where
+seconds matter economically: final candidate validation before entry, pending orders,
+open positions, and exits. REST remains the normal overflow and recovery path when a
+candidate does not receive a streaming slot or a stream is degraded. One provider
+connection may multiplex many symbol/contract subscriptions; subscription capacity,
+not one-connection-per-candidate, is the managed resource.
+
+Streaming priority is: **open positions and pending orders first; entry-ready finalists
+second; strong near-finalists third; lower-ranked candidates by REST; broad discovery
+from the local lake.** A central market-data coordinator must own the stream/REST budget,
+share one underlying subscription across related option candidates, apply hysteresis or
+minimum residency so nearly tied candidates do not thrash subscriptions, and dynamically
+promote/demote candidates as ranking changes. A WebSocket failure degrades first to a
+fresh same-provider REST snapshot, then to the accepted secondary provider when
+available, and finally to `DATA_UNAVAILABLE`/abstention rather than invented market
+state.
+
+Every live observation must retain provider, feed, transport, market timestamp,
+receive timestamp, freshness/age, and quality/provenance. Current Alpaca Basic limits
+verified on 2026-09-16 are **30 equity WebSocket symbols** on the real-time IEX stock
+feed and **200 option quote subscriptions** on the indicative option feed, with REST
+rate capacity treated as a separate budget. These are operational entitlements, not
+scientific constants: the coordinator must configure/discover current provider limits
+rather than hard-code them permanently. The then-current paid Alpaca plan raises stock
+streaming to unlimited symbols and option quote streaming to 1,000 with consolidated
+U.S. equities/OPRA-quality access; ATLAS does not require that paid plan until the
+system's economics justify supporting its own data subscription.
+
+For options, the intended sequence is `underlying shortlist -> REST option-chain
+snapshot/Greeks/liquidity -> small contract finalist set -> underlying + finalist
+WebSockets -> entry -> held-contract/underlying streams through exit`. If finalists
+exceed streaming capacity, the coordinator streams the highest-priority subset and
+keeps the remainder current through rate-aware REST polling. Provider transport choice
+must not alter strategy authority, economics, portfolio-risk gates, or execution truth.
+
+## 2026-09-16 — Explicit simulation funding/collateral terms
+
+Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
+(`atlas-simulation-funding-collateral-terms-v1`). It consumes only the exact accepted
+simulation account-state v2 snapshot and exact broker-neutral entry-fill evidence. The
+terms object is descriptive evidence only: it does not mutate the account, release a
+reservation, create a position, borrow funds, create an order, mark to market, realize
+P&L, read/write a broker/provider, or grant PAPER/LIVE/promotion/confluence authority.
+
+V1 permits a **fully cash-funded bullish stock long only**. Required cash is exact
+filled gross notional plus explicit entry fees. The existing stock reservation is
+credited toward that requirement and any remaining amount must be proven available in
+the account's currently unreserved cash pool. Insufficient supplemental cash fails
+closed. Borrowing, margin, leverage, collateral and short-sale proceeds remain exactly
+zero and are never inferred from the accepted economic-capital/gross-notional gap.
+Bearish stock/short position conversion therefore remains unsupported until a separate
+versioned short-collateral/proceeds model is accepted.
+
+Long options reuse the already-resolved debit from accepted fill evidence. Required
+cash equals the exact filled premium debit plus accepted entry fees, supplemental cash
+is zero, and any unspent option reservation remains explicit for the later atomic
+position transition. Option delta-equivalent exposure remains separate from stock
+gross notional and is not reinterpreted as funding or collateral.
+
+The next bounded Track A package may now atomically convert an accepted reservation +
+accepted fill + exact funding terms into deterministic open-position/cost-basis state,
+with idempotent duplicate application and replay/tamper checks. Mark-to-market,
+unrealized/realized P&L, exits/closeout, broker mutation and PAPER/LIVE authority remain
+later gates. The Strategy Evidence Register is intentionally unchanged because this
+package changes product simulation architecture only.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
@@ -1293,9 +1377,12 @@ reservation terms: contract count and multiplier remain frozen; premium debit ca
 exceed the reserved ask debit; entry fees cannot exceed the separate fee reserve;
 total cash debit cannot exceed reserved capital; and any unspent reserve is explicit.
 
-The next bounded Track A package must freeze explicit funding/collateral semantics
-before converting fill evidence into open-position/account state. It must not infer
-stock leverage, margin or short-sale proceeds from the difference between economic
-capital and gross notional. The Strategy Evidence Register is intentionally unchanged
-because this package changes product simulation architecture only.
+Explicit funding/collateral semantics are now frozen under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
+before any fill may become an open position. Fully cash-funded bullish stock longs may
+use their existing reservation plus proven unreserved cash; stock shorts remain
+unsupported until a separate short-collateral/proceeds model is accepted. Long-option
+debit funding reuses the exact accepted fill evidence. The next bounded Track A package
+is deterministic reservation/fill/funding -> open-position and cost-basis account
+state. The Strategy Evidence Register is intentionally unchanged because this package
+changes product simulation architecture only.
 
