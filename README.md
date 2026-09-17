@@ -422,12 +422,44 @@ is zero, and any unspent option reservation remains explicit for the later atomi
 position transition. Option delta-equivalent exposure remains separate from stock
 gross notional and is not reinterpreted as funding or collateral.
 
-The next bounded Track A package may now atomically convert an accepted reservation +
-accepted fill + exact funding terms into deterministic open-position/cost-basis state,
-with idempotent duplicate application and replay/tamper checks. Mark-to-market,
-unrealized/realized P&L, exits/closeout, broker mutation and PAPER/LIVE authority remain
-later gates. The Strategy Evidence Register is intentionally unchanged because this
-package changes product simulation architecture only.
+That funding boundary is now consumed by the deterministic open-position entry-book
+account state described below. Mark-to-market, unrealized/realized P&L, exits/closeout,
+broker mutation and PAPER/LIVE authority remain later gates. The Strategy Evidence
+Register is intentionally unchanged because these packages change product simulation
+architecture only.
+
+## 2026-09-16 — Deterministic open-position entry-book account state
+
+Track A now adds `atlas-simulation-open-position-account-state-v1` under contract
+`c15c03400d61bf9e025f836118bf431178caadbdfc7c9a62826ec03796a0ee37`. It consumes one immutable accepted reservation-account snapshot plus
+exact simulated entry-fill and funding/collateral evidence, then converts reservations
+into deterministic **entry-book-value open positions**. The source reservation batch is
+never rewritten: every fill and funding record remains bound to the exact account-state
+fingerprint against which it was created, while the position layer tracks which source
+reservations remain unconverted.
+
+Each transition releases exactly one matching reservation and updates cash as
+`current cash + released reservation - accepted required cash`. Cash is rechecked at
+the moment of transition, so multiple fills that were individually affordable against
+the same original unreserved-cash pool cannot spend those dollars twice. Same-fill
+reapplication is idempotent; a different fill for an already-open decision fails
+closed. Batch application is deterministic by `(filled_utc, fill_fingerprint)`, and
+state/event/ledger fingerprints support exact replay verification and tamper detection.
+
+Entry fees are expenses immediately: `entry book equity = initial equity - cumulative
+entry fees`, while `cash + remaining reservations + open entry book value` must equal
+that entry-book equity. Stock gross exposure transfers exactly from the reservation to
+the cash-funded bullish stock position. Long-option premium paid becomes option entry
+book value/premium at risk; the reservation's signed/absolute delta-equivalent exposure
+is retained only as an **entry reference**, not a current Greek or mark. Stock shorts
+remain unsupported because no accepted collateral/proceeds model exists.
+
+This package deliberately stops before market valuation. It has no mark-to-market,
+unrealized-P&L, realized-P&L, exit/closeout, provider/broker, order, PAPER, LIVE,
+promotion or confluence authority. The next bounded Track A work is source-bound market
+mark evidence and deterministic mark-to-market/unrealized-P&L state, followed by
+exit/closeout and realized-P&L accounting. The Strategy Evidence Register remains
+unchanged because this is product/account-simulation architecture only.
 
 ## A33/B33 reference foundation
 
