@@ -88,8 +88,8 @@ new_block = '''Immediate Track A continuation after acceptance:
 if old_block not in text:
     raise SystemExit("roadmap immediate open-position continuation block not found")
 text = text.replace(old_block, new_block, 1)
-anchor = '''The Strategy Evidence Register is intentionally unchanged because this package changes
-product simulation architecture only.'''
+anchor = '''The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.'''
 if anchor not in text:
     raise SystemExit("roadmap funding-section anchor not found")
 roadmap_section = section.replace(
