@@ -131,6 +131,21 @@ from packages.simulation.recurrent_close_position_contract import (
 from packages.simulation.recurrent_coordinator_contract import (
     RECURRENT_LIFECYCLE_COORDINATOR_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.recurrent_cycle import (
+    RecurrentCycleOrchestrationError,
+    RecurrentCycleStage,
+    RecurrentCycleStatus,
+    apply_recurrent_cycle_close_stage,
+    apply_recurrent_cycle_entry_stage,
+    apply_recurrent_cycle_mark_stage,
+    apply_recurrent_cycle_reserve_stage,
+    begin_recurrent_cycle,
+    complete_recurrent_cycle,
+    read_recurrent_cycle_receipt,
+)
+from packages.simulation.recurrent_cycle_contract import (
+    RECURRENT_CYCLE_RECEIPT_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.recurrent_engine import (
     RecurrentLifecycleCoordinatorV1,
 )
@@ -4937,3 +4952,306 @@ def test_recurrent_genesis_result_grants_no_external_or_trading_authority(
     assert result.live_authority is False
     assert result.promotion_authority is False
     assert result.confluence_authority is False
+
+
+def _genesis_cycle_runtime(tmp_path):
+    checkpoint = tmp_path / "current.json"
+    runtime, _result = bootstrap_recurrent_genesis_v1(
+        checkpoint_path=checkpoint,
+        initial_equity=100_000.0,
+        as_of_utc=datetime(2026, 9, 18, 20, 0, tzinfo=UTC),
+    )
+    return checkpoint, runtime
+
+
+def test_recurrent_cycle_receipt_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_CYCLE_RECEIPT_CONTRACT_FINGERPRINT
+        == "93cd6d908a601d070f4acbf61916dfe1fd8f299be9ed2ddb653cb0bd0d1f9490"
+    )
+
+
+def test_recurrent_cycle_runs_close_reserve_entry_mark_complete(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    cycle_id = "2026-09-18T20:00:00Z"
+    path, receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id=cycle_id,
+        now_utc=datetime(2026, 9, 18, 20, 0, tzinfo=UTC),
+    )
+    assert receipt.status == RecurrentCycleStatus.OPEN
+    assert receipt.stages == ()
+
+    receipt = apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+        now_utc=datetime(2026, 9, 18, 20, 0, 1, tzinfo=UTC),
+    )
+    assert tuple(x.stage for x in receipt.stages) == (
+        RecurrentCycleStage.CLOSE,
+    )
+
+    record = _stock_record(
+        created_utc=datetime(2026, 9, 18, 20, 1, tzinfo=UTC),
+        capital=5_000.0,
+    )
+    receipt = apply_recurrent_cycle_reserve_stage(
+        path=path,
+        runtime=runtime,
+        decisions=((record, None),),
+        now_utc=datetime(2026, 9, 18, 20, 1, 1, tzinfo=UTC),
+    )
+    assert len(runtime.current_account().state.stock_reservations) == 1
+
+    reserved = runtime.current_account()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="cycle-stock-entry",
+            fill_source_fingerprint=_fp("1"),
+            filled_utc=datetime(2026, 9, 18, 20, 2, tzinfo=UTC),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+    receipt = apply_recurrent_cycle_entry_stage(
+        path=path,
+        runtime=runtime,
+        entries=((fill, funding),),
+        now_utc=datetime(2026, 9, 18, 20, 2, 1, tzinfo=UTC),
+    )
+    assert len(runtime.current_account().state.open_positions) == 1
+
+    account = runtime.current_account()
+    valuation = datetime(2026, 9, 18, 20, 3, tzinfo=UTC)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=101.0,
+            ask=101.1,
+            source_char="2",
+        )
+        for position in account.state.open_positions
+    )
+    receipt = apply_recurrent_cycle_mark_stage(
+        path=path,
+        runtime=runtime,
+        marks=marks,
+        valuation_utc=valuation,
+        now_utc=datetime(2026, 9, 18, 20, 3, 1, tzinfo=UTC),
+    )
+    assert runtime.current_marked_state() is not None
+    assert tuple(x.stage for x in receipt.stages) == (
+        RecurrentCycleStage.CLOSE,
+        RecurrentCycleStage.RESERVE,
+        RecurrentCycleStage.ENTRY,
+        RecurrentCycleStage.MARK,
+    )
+
+    completed = complete_recurrent_cycle(
+        path=path,
+        runtime=runtime,
+        now_utc=datetime(2026, 9, 18, 20, 4, tzinfo=UTC),
+    )
+    assert completed.status == RecurrentCycleStatus.COMPLETE
+    assert completed.completed_at_utc == datetime(
+        2026, 9, 18, 20, 4, tzinfo=UTC
+    )
+    assert completed.current_checkpoint_sha256 == (
+        runtime.status().checkpoint_sha256
+    )
+    assert completed.current_snapshot_fingerprint == (
+        runtime.status().snapshot_fingerprint
+    )
+    assert read_recurrent_cycle_receipt(path) == completed
+
+
+def test_recurrent_cycle_rejects_out_of_order_stage(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, _receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="out-of-order",
+    )
+    record = _stock_record(
+        created_utc=runtime.current_account().state.as_of_utc
+        + timedelta(minutes=1)
+    )
+    with pytest.raises(
+        RecurrentCycleOrchestrationError,
+        match="out of order",
+    ):
+        apply_recurrent_cycle_reserve_stage(
+            path=path,
+            runtime=runtime,
+            decisions=((record, None),),
+        )
+
+
+def test_recurrent_cycle_exact_recorded_stage_reuse_is_idempotent(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, _receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="idempotent-stage",
+    )
+    first = apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+    )
+    status = runtime.status()
+    second = apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+    )
+    assert second == first
+    assert runtime.status() == status
+
+
+def test_recurrent_cycle_reconciles_runtime_commit_before_receipt_update(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="receipt-lag-recovery",
+    )
+    receipt = apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+    )
+    receipt_checkpoint = receipt.current_checkpoint_sha256
+
+    record = _stock_record(
+        created_utc=runtime.current_account().state.as_of_utc
+        + timedelta(minutes=1)
+    )
+    _transition, mutation = runtime.apply_reservation(record=record)
+    assert mutation.new_ledger_event_count == 1
+    assert runtime.status().checkpoint_sha256 != receipt_checkpoint
+
+    recovered = apply_recurrent_cycle_reserve_stage(
+        path=path,
+        runtime=runtime,
+        decisions=((record, None),),
+    )
+    assert len(recovered.stages) == 2
+    assert recovered.stages[-1].stage == RecurrentCycleStage.RESERVE
+    assert recovered.stages[-1].source_checkpoint_sha256 == receipt_checkpoint
+    assert recovered.current_checkpoint_sha256 == (
+        runtime.status().checkpoint_sha256
+    )
+    assert len(runtime.current_account().state.stock_reservations) == 1
+
+
+def test_recurrent_cycle_rejects_unexplained_runtime_advance(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, _receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="foreign-advance",
+    )
+    apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+    )
+
+    foreign = _stock_record(
+        created_utc=runtime.current_account().state.as_of_utc
+        + timedelta(minutes=1)
+    )
+    runtime.apply_reservation(record=foreign)
+
+    expected = _stock_record(
+        created_utc=foreign.decision_created_utc + timedelta(minutes=1)
+    )
+    with pytest.raises(
+        RecurrentCycleOrchestrationError,
+        match="advanced outside the current cycle stage",
+    ):
+        apply_recurrent_cycle_reserve_stage(
+            path=path,
+            runtime=runtime,
+            decisions=((expected, None),),
+        )
+
+
+def test_recurrent_cycle_conflicting_recorded_stage_fails_closed(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, _receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="conflicting-stage",
+    )
+    apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+    )
+    record = _stock_record(
+        created_utc=runtime.current_account().state.as_of_utc
+        + timedelta(minutes=1)
+    )
+    apply_recurrent_cycle_reserve_stage(
+        path=path,
+        runtime=runtime,
+        decisions=((record, None),),
+    )
+
+    other = _stock_record(
+        created_utc=record.decision_created_utc + timedelta(minutes=1)
+    )
+    with pytest.raises(
+        RecurrentCycleOrchestrationError,
+        match="already recorded with different evidence",
+    ):
+        apply_recurrent_cycle_reserve_stage(
+            path=path,
+            runtime=runtime,
+            decisions=((other, None),),
+        )
+
+
+def test_recurrent_cycle_receipt_tamper_fails_closed(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, _receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="tamper-cycle",
+    )
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["current_revision"] += 1
+    path.write_text(
+        json.dumps(raw, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        RecurrentCycleOrchestrationError,
+        match="self-hash mismatch",
+    ):
+        read_recurrent_cycle_receipt(path)
