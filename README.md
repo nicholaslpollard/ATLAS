@@ -1386,6 +1386,35 @@ fill and option-quote semantics rather than inferring them from stock minute dat
 Real-machine quote/provider acceptance remains required before this adapter can produce
 non-empty production marks on the current deployment.
 
+## 2026-09-18 — Current Webull L1 quote bundle and stock-mark adapter
+
+Track A now adds a product-grade read-only quote path for the current deployment.
+`atlas-execution-current-webull-stock-quote-bundle-v1` is frozen under contract
+`a0da5b0db29ae074e64cc933c995bff99d388aa7357c3928d840a59fd0d613ea`.
+
+The capture command `scripts/capture_current_webull_quotes.py` accepts an explicit
+comma-separated stock list, performs exactly one Webull **sandbox** L1 market-data read
+per exact-case symbol, and persists nothing unless every requested symbol returns a
+valid, positive, uncrossed, regular-session quote inside the accepted execution age
+cap. The resulting bundle is sorted, complete, self-fingerprinted, atomically written
+with fsync, and carries explicit provider-read counts. Capture performs no account read,
+provider write, broker write, order creation, PAPER, or LIVE action.
+
+The paired `atlas-simulation-current-webull-stock-mark-adapter-v1` contract is frozen
+at `c862121c97cfedba968a9dad05d979ce2bc46bc6fdf8c9bf6dac53ca6e40b4d8`.
+It consumes the already-captured bundle and exact recurrent stock positions with zero
+network calls, requires exact-case complete quote coverage, preserves the stricter
+30-second execution quote age cap, and converts each quote through the existing accepted
+market-mark evidence contract. Option positions fail closed rather than borrowing an
+underlying stock price, and mark construction grants no trading authority.
+
+This closes the current-deployment stock MARK source gap without upgrading Massive or
+fabricating quote data from delayed minute bars. The remaining production evidence
+boundaries are RESERVE decision production plus execution-quality ENTRY/CLOSE evidence
+with explicit fill/fee semantics. A real market-hours Webull sandbox capture on the
+target workstation is still required before non-empty recurrent MARK acceptance. The
+Strategy Evidence Register remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
