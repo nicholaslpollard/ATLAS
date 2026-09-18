@@ -398,6 +398,7 @@ def _apply_close(
     account: RecurrentLifecycleAccountV1,
     *,
     evidence_source_state_fingerprint: str,
+    require_current_source_state: bool,
     fill: RecurrentExitFillEvidenceV1,
 ) -> RecurrentClosePositionTransitionV1:
     _validate_account(account)
@@ -434,6 +435,13 @@ def _apply_close(
     ):
         raise RecurrentClosePositionError(
             "conflicting recurrent close for position already in closed history"
+        )
+    if require_current_source_state and (
+        fill.source_recurrent_state_fingerprint
+        != account.state.state_fingerprint
+    ):
+        raise RecurrentClosePositionError(
+            "exit fill must bind the recurrent evidence source state"
         )
     if fill.exited_utc < account.state.as_of_utc:
         raise RecurrentClosePositionError(
@@ -565,6 +573,7 @@ def apply_recurrent_close_position_v1(
     return _apply_close(
         account,
         evidence_source_state_fingerprint=account.state.state_fingerprint,
+        require_current_source_state=True,
         fill=fill,
     )
 
@@ -595,6 +604,7 @@ def apply_recurrent_close_position_batch_v1(
         transition = _apply_close(
             current,
             evidence_source_state_fingerprint=source_state_fingerprint,
+            require_current_source_state=False,
             fill=fill,
         )
         transitions.append(transition)
