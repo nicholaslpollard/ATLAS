@@ -1351,6 +1351,36 @@ stage-admission runner and browser rendering of this health payload, followed by
 end-to-end workstation restart/resume validation before any qualifying PAPER program.
 The Strategy Evidence Register remains unchanged.
 
+## 2026-09-18 — Immutable current-market snapshot source
+
+Track A now adds `atlas-simulation-current-market-snapshot-source-v1` under frozen
+contract `5a5f6bc707868056e47b758667c8a127c9a16af8676f3eaa323b6066a9d26eba`.
+It does not connect to Massive, Alpaca, a broker, or any network source. Instead it
+reads the already persisted provisional `LiveStateSnapshot` current file, validates
+the full schema, computes both the exact raw-file SHA-256 and a canonical semantic
+snapshot fingerprint, and archives the exact UTF-8 bytes under the recurrent runtime's
+content-addressed `evidence/market_state/<raw_sha256>.json` tree.
+
+Archive reuse is allowed only when the exact bytes still match the content-addressed
+identity. Archive tampering, hash mismatch, invalid UTF-8, invalid schema, missing
+source state, and oversized input all fail closed. Feed mode, connection state,
+session state, per-symbol freshness classifications, minute bars, and quotes are
+preserved exactly as source facts. This layer does not reclassify freshness and does
+not synthesize quotes, spreads, bars, or trading evidence from incomplete data.
+
+The archived raw SHA is the evidence-source fingerprint supplied to later recurrent
+cycle stage admission. The separate semantic fingerprint allows two differently
+formatted JSON files to be recognized as equivalent market-state content without
+pretending their raw provenance is identical. Provider acquisition remains owned by
+the existing live-market service, outside this source layer; provider/broker/order/
+PAPER/LIVE/promotion/confluence authority remains false.
+
+Immediate Track A continuation is a fail-closed MARK evidence adapter from this
+immutable snapshot into the accepted market-mark evidence contract. It may use only
+actual quote evidence satisfying the accepted executable bid/ask and freshness rules;
+it must not manufacture bid/ask from a minute-bar close when quote evidence is absent.
+The Strategy Evidence Register remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
