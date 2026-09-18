@@ -1021,10 +1021,75 @@ open-position value. Cash, reservations, entry/exit fees, realized P&L, lifetime
 net P&L, book equity, and the recurrent ledger remain unchanged.
 
 This projection grants no account mutation, new realized-P&L, exit/closeout,
-provider/broker/order, PAPER/LIVE, promotion, or confluence authority. The next
-recurrent package is source-bound full-close exit evidence followed by a
-`CLOSE_POSITION` mutation that appends directly to the same recurrent account/ledger
-and canonical closed-trade history. The Strategy Evidence Register remains unchanged.
+provider/broker/order, PAPER/LIVE, promotion, or confluence authority. The recurrent
+full-close exit evidence described below now supplies exact current-position exit
+provenance. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle exit-fill evidence
+
+Track A now adds `atlas-simulation-recurrent-exit-fill-evidence-v1` under contract
+`61135bbede1416c852d7c84fa2914876c056508be9fdad1a87b834cb71f659ad`.
+
+The evidence binds the exact current recurrent-state fingerprint and the active
+position's immutable entry-source account-state fingerprint separately. It requires one
+exact active position, explicit source id/SHA-256, timezone-aware exit time,
+nonnegative exit price, and explicit nonnegative fees. Quantity, multiplier, all
+decision/candidate/reservation/entry/funding lineage, and option identity are inherited
+from the position. V1 is full-close only; zero-price complete losses remain valid.
+
+This object is descriptive only: it creates no realized P&L or account/ledger mutation
+and grants no provider/broker/order/PAPER/LIVE authority. The recurrent
+`CLOSE_POSITION` transition below now consumes it.
+
+## 2026-09-18 — Recurrent lifecycle close-position transitions
+
+Track A now adds `atlas-simulation-recurrent-close-position-transition-v1` under
+contract
+`9f2f32d8905c19bfb377184abd1fa3f9842eb979829ce5ca03c3a44068e17e39`.
+
+The operation consumes and returns `RecurrentLifecycleAccountV1`. Each close requires
+exact recurrent exit evidence and a currently open matched position. Only that position
+is removed; active reservations and unrelated positions remain unchanged. Net proceeds
+return to cash and one fingerprint-chained `CLOSE_POSITION` event is appended.
+
+New closes append canonical `RecurrentClosedTradeV1` records with native
+`RECURRENT_ACCOUNT_V1` provenance. Account realized P&L is net proceeds minus entry
+book value; lifetime trade net P&L additionally subtracts the entry fee already
+expensed at open. Entry fees therefore are not double counted. Duplicate exit-fill
+reuse is idempotent, conflicts fail closed, common-source batches are deterministic,
+and exact replay is required.
+
+This completes the stable recurrent simulation loop on one account contract:
+**reserve → entry evidence/funding → open → mark → exit evidence → close → reserve
+again**. The recurrent coordinator described below now becomes the atomic runtime owner.
+The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle coordinator
+
+Track A now adds `atlas-simulation-recurrent-lifecycle-coordinator-v1` under contract
+`0cadfd2c89c09c26731b8895ca70893dde3855c3eded4773c4455bce94b8e882`.
+It is a new runtime owner rather than a mutation of the earlier single-cycle
+coordinator, which remains intact for compatibility.
+
+`RecurrentLifecycleCoordinatorV1` owns one accepted
+`RecurrentLifecycleAccountV1` behind a single `RLock` and delegates only to the
+accepted recurrent reservation, entry, mark, and close operations. It performs no
+provider, broker, order, filesystem, or network I/O. The initial logical revision is
+the current recurrent ledger-event count; every newly appended ledger event advances
+the revision, including zero-money abstention/rejection events. Each unique mark
+publication advances revision once but does not alter the recurrent ledger.
+
+Any real account mutation invalidates the previously published marked state because its
+source-state fingerprint is no longer current. Exact idempotent reservation/entry/close
+reuse does not change account state, does not advance revision, and does not destroy a
+still-current valuation. Republishing an identical complete mark snapshot is likewise
+idempotent. `current_dashboard_pair()` returns an atomic recurrent account + marked
+state only when their fingerprints match exactly.
+
+The next bounded Track A package is recurrent lifecycle observability: adapt this
+atomic recurrent pair into the existing loopback/browser payload, retaining one
+engine-owned source of truth and zero browser/provider/broker/order mutation authority.
+The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
