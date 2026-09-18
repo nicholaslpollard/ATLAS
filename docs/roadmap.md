@@ -2158,14 +2158,51 @@ Frozen boundaries:
 7. the synthetic preview uses the same payload shape but is labeled synthetic and
    carries no trading authority.
 
-Immediate Track A continuation is the production simulation lifecycle coordinator.
-It must become the single deterministic owner of current account state across
-reservation, entry, marking, exit, closeout, and subsequent decision cycles; expose
-an atomic engine-owned dashboard source; preserve idempotent/replayable sequencing;
-and close re-entry/current-state gaps before any later broker/PAPER authority.
+The single-cycle coordinator described below now supplies the atomic engine-owned
+source. Post-close re-entry remains a separate next lifecycle boundary.
+
+## Track A atomic single-cycle simulation lifecycle coordinator — 2026-09-17
+
+Track A now freezes `atlas-simulation-lifecycle-coordinator-v1` under contract
+`696254240971db5a9a7ae2a0307c2c847b376d360d5cfe1f8b5f30ec80a93a9b`.
+
+The coordinator occupies the previously empty simulation-engine seam and owns one
+accepted lifecycle cycle from an immutable `OpenPositionAccountStateV1` through
+marking and deterministic closeout.
+
+Frozen semantics:
+
+1. initialize one exact accepted open-position snapshot into the accepted closeout
+   account deterministically;
+2. own the current immutable closeout account and optional current lifecycle marked
+   state behind one `RLock`;
+3. advance logical revision by actual new closeout ledger events and new unique
+   valuation publications, making sequential and batch replay converge;
+4. invalidate the prior marked state after every real account mutation;
+5. preserve a current valuation across identical idempotent duplicate exit reuse;
+6. accept only complete/fresh mark sets under the existing lifecycle valuation
+   contract and treat identical republishing as idempotent;
+7. expose one atomic current book+mark pair to the lifecycle dashboard adapter, or no
+   pair when valuation is absent/stale;
+8. perform no filesystem reconstruction, provider/broker reads or writes, or order
+   creation; and
+9. remain explicitly single-cycle: no new reservation, new entry, or re-entry after
+   the immutable source snapshot.
+
+`create_phase19_status_server` can now receive the coordinator directly and constructs
+the read-only lifecycle dashboard source from the coordinator's atomic pair. Supplying
+both a coordinator and an explicit dashboard service is rejected as ambiguous.
+
+Immediate Track A continuation is a unified post-close re-entry/current-account model.
+It must allow later accepted reservation and entry evidence to be applied against
+current realized account state without erasing closed-trade/fee history, weakening
+capital/exposure constraints, or creating a second account truth. The extension must
+retain deterministic replay, idempotency, atomic snapshots, and the coordinator as the
+single lifecycle owner before any later broker/PAPER authority package.
 
 The Strategy Evidence Register remains unchanged because this package changes
-product/control-plane architecture only.
+product/simulation/control-plane architecture only.
+
 
 
 
