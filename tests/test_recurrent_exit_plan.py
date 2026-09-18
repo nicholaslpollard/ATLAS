@@ -4,6 +4,8 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+from packages.core.settings import load_settings
+from packages.data.paths import MarketDataPaths
 from packages.schemas.case_file import (
     EvidenceAvailability,
     GeometryStatus,
@@ -21,8 +23,14 @@ from packages.simulation.open_position_state import SimulatedOpenPositionV1
 from packages.simulation.recurrent_exit_plan import (
     RECURRENT_STOCK_EXIT_PLAN_CONTRACT_FINGERPRINT,
     RecurrentStockExitPlanError,
+    build_recurrent_stock_exit_plan_bundle_v1,
     build_recurrent_stock_exit_plan_v1,
     phase13_case_fingerprint,
+    read_recurrent_stock_exit_plan_bundle_v1,
+    write_recurrent_stock_exit_plan_bundle_v1,
+)
+from packages.simulation.recurrent_genesis import (
+    bootstrap_recurrent_genesis_v1,
 )
 
 
@@ -192,3 +200,42 @@ def test_exit_plan_rejects_identity_mismatch() -> None:
             phase13_case=case,
             plan_created_utc=OPENED,
         )
+
+
+def _settings(tmp_path):
+    settings = load_settings()
+    paths = settings.data.paths.model_copy(
+        update={"live": tmp_path / "live"}
+    )
+    data = settings.data.model_copy(update={"paths": paths})
+    return settings.model_copy(update={"data": data})
+
+
+def test_empty_exit_plan_bundle_roundtrips_at_genesis(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    checkpoint = MarketDataPaths(
+        settings
+    ).recurrent_lifecycle_checkpoint_file()
+    runtime, _result = bootstrap_recurrent_genesis_v1(
+        checkpoint_path=checkpoint,
+        initial_equity=100_000.0,
+        as_of_utc=OPENED,
+    )
+    bundle = build_recurrent_stock_exit_plan_bundle_v1(
+        source_state=runtime.current_account().state,
+        phase13_cases_by_position={},
+        built_at_utc=OPENED,
+    )
+    assert bundle.plans == ()
+    assert bundle.provider_reads == 0
+    assert bundle.broker_writes == 0
+    assert bundle.close_trigger_authority is False
+    path = write_recurrent_stock_exit_plan_bundle_v1(
+        settings,
+        bundle,
+    )
+    restored = read_recurrent_stock_exit_plan_bundle_v1(
+        settings,
+        path=path,
+    )
+    assert restored == bundle
