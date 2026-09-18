@@ -704,6 +704,15 @@ def apply_recurrent_entry_v1(
     funding: RecurrentFundingTermsV1,
 ) -> RecurrentPositionTransitionV1:
     _validate_account(account)
+    if (
+        fill.recurrent_state_fingerprint
+        != account.state.state_fingerprint
+        or funding.recurrent_state_fingerprint
+        != account.state.state_fingerprint
+    ):
+        raise RecurrentPositionTransitionError(
+            "fill/funding must bind the recurrent evidence source state"
+        )
     return _apply_entry(
         account,
         evidence_source_state_fingerprint=account.state.state_fingerprint,
