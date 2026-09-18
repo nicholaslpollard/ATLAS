@@ -1295,6 +1295,36 @@ orchestrator, feed the immutable inputs into these stages, expose cycle health/r
 and prove workstation restart/resume behavior before any qualifying PAPER program. The
 Strategy Evidence Register remains unchanged.
 
+## 2026-09-18 — Deterministic recurrent cycle runner admission
+
+Track A now adds `atlas-simulation-recurrent-cycle-runner-v1` under frozen contract
+`2de1540cddf58f0c724efbbd25378800143de586c7d0f159fefa2e4af0ac5e0d`.
+It derives each cycle id deterministically from an explicit schedule id plus an
+explicit timezone-aware scheduled slot normalized to UTC; it does not decide when a
+scheduler should fire.
+
+Before any CLOSE, RESERVE, ENTRY, or MARK mutation reaches the durable cycle
+orchestrator, the runner persists a self-hash-verified, fsync-backed stage-admission
+record. That admission binds the cycle/stage, exact pre-stage durable checkpoint and
+runtime snapshot, explicit evidence-source id/SHA-256, normalized evidence
+fingerprint/count, and stage context. Exact admission reuse is idempotent; a different
+source, evidence set, checkpoint lineage, or context for an already admitted stage
+fails closed.
+
+The runner restores only the authoritative recurrent checkpoint and delegates actual
+mutation/restart reconciliation to the accepted recurrent cycle orchestrator. Evidence
+is admitted stage by stage because later entry/mark evidence depends on state produced
+by earlier stages; ATLAS does not precompute later-stage evidence against stale account
+state. Provider/broker acquisition and scheduler triggering remain outside this layer,
+and provider/broker/order/PAPER/LIVE/promotion/confluence authority remains false.
+
+The next bounded Track A work is the current-evidence acquisition adapter plus
+read-only cycle-health projection. Those surfaces must bind real provisional/current
+market evidence into these admissions without allowing provider reads or browser
+actions to bypass the runner. Workstation restart/resume and market-hours validation
+remain required before any qualifying PAPER program. The Strategy Evidence Register
+remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
