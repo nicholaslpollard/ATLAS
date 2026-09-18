@@ -340,9 +340,14 @@ class LifecycleReservationAccountStateV1:
                     raise LifecycleReservationAccountError(
                         "one decision cannot be active in multiple lifecycle buckets"
                     )
-        if set(open_ids).intersection(closed_ids):
+        closed_set = set(closed_ids)
+        if (
+            set(stock_ids).intersection(closed_set)
+            or set(option_ids).intersection(closed_set)
+            or set(open_ids).intersection(closed_set)
+        ):
             raise LifecycleReservationAccountError(
-                "one decision cannot be both open and closed"
+                "one decision cannot be both active and closed"
             )
 
         if any(x.reserved_utc > self.as_of_utc for x in stocks + options):
