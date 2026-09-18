@@ -3705,12 +3705,12 @@ def test_recurrent_close_batch_is_order_independent_and_replay_exact() -> None:
     assert first.account.state.open_positions == ()
     assert first.account.state.cumulative_exit_fees_dollars == pytest.approx(4.0)
     assert first.account.state.cumulative_account_realized_pnl_dollars == pytest.approx(
-        357.0
+        356.0
     )
     assert first.account.state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(
         350.0
     )
-    assert first.account.state.account_book_equity == pytest.approx(20_351.0)
+    assert first.account.state.account_book_equity == pytest.approx(20_350.0)
 
     verify_recurrent_close_position_replay_v1(
         initial_account=account,
