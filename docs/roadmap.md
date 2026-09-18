@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-17 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-18 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -2300,18 +2300,114 @@ Frozen semantics:
 9. grant no new-reservation, exit/closeout, mark-to-market, provider/broker/order,
    PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is lifecycle-native post-re-entry valuation and
-exit/closeout. Individual marks and exits must bind the new positions without reverting
-to pre-re-entry account snapshots; closeout must preserve the new cost basis and fee
-history; and then the lifecycle coordinator can be upgraded from single-cycle ownership
-to repeated reservation → entry → mark → exit → closeout cycles with atomic dashboard
-state.
+The accepted post-reentry valuation, exit-evidence, and deterministic closeout layers
+described below now complete the bounded one-generation lifecycle bridge.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account architecture only.
 
+## Track A lifecycle post-reentry marked-account state — 2026-09-18
 
+Track A freezes `atlas-simulation-lifecycle-position-marked-account-v1` under
+contract
+`ba944922450d570ac15b6b28794cfe0cb2c7894cba0e62d09e0957df35c92863`.
 
+Frozen semantics:
+
+1. consume one exact accepted lifecycle position-account state;
+2. reuse position-bound market-mark evidence for inherited and newly re-entered open
+   positions;
+3. require exactly one fresh, valuation-eligible mark for every current open position
+   at one common valuation timestamp;
+4. reject missing, duplicate, stale, closed-position, or other extra marks;
+5. carry cash, reservations, entry/exit fees, realized P&L, lifetime trade net P&L,
+   closed history, and book equity forward unchanged;
+6. compute unrealized P&L only from current open positions;
+7. define marked equity as `account_book_equity + aggregate_unrealized_pnl` and
+   independently reconcile it to cash + reservations + marked open-position value; and
+8. grant no account mutation, new realized-P&L, exit/closeout, provider/broker/order,
+   PAPER/LIVE, promotion, or confluence authority.
+
+## Track A lifecycle-native post-reentry exit-fill evidence — 2026-09-18
+
+Track A freezes `atlas-simulation-lifecycle-exit-fill-evidence-v1` under contract
+`f3a952f971d693dbc0ca098d9eb5ff912d54443b9dcf2580409bb5558285df74`.
+
+Frozen semantics:
+
+1. bind one exact lifecycle position-account state fingerprint and exact current active
+   position fingerprint;
+2. inherit exact position quantity/unit, multiplier, instrument/option identity, and
+   entry-fill/funding/reservation lineage;
+3. require an explicit source id/SHA-256, timezone-aware exit timestamp, nonnegative
+   exit price, and explicit nonnegative exit fees;
+4. require exit time to be at or after both lifecycle position state and position open;
+5. compute gross proceeds as `quantity * exit_price * multiplier` and net proceeds as
+   gross less exit fees;
+6. permit zero-price complete-loss exits while preventing fees from exceeding gross
+   proceeds;
+7. remain full-close only; and
+8. grant no position/account mutation, realized P&L, provider/broker/order, PAPER/LIVE,
+   promotion, or confluence authority.
+
+## Track A lifecycle-native post-reentry deterministic closeout — 2026-09-18
+
+Track A freezes `atlas-simulation-lifecycle-closeout-account-v1` under contract
+`9588c3ac326a78103803371071655f0133608beaf0fb10ee7932b3cf0cbace1b`.
+
+Frozen semantics:
+
+1. initialize from one exact lifecycle position-account state + ledger fingerprint;
+2. require each exit to bind that immutable source state and one exact current open
+   position with complete entry/funding/reservation lineage;
+3. remove only the matched position, preserve reservations and unrelated positions, and
+   return exact net exit proceeds to cash;
+4. preserve pre-reentry `ClosedTradeV1` history exactly and append separate
+   `LifecycleClosedTradeV1` records with lifecycle-native source provenance;
+5. add new exit fees and realized P&L once while never re-expensing entry fees;
+6. preserve account realized-P&L delta as
+   `net_exit_proceeds - entry_book_value` and lifetime trade net P&L as that delta
+   minus the already-expensed entry fee;
+7. reconcile book equity both from fee/realized history and from cash + reservations +
+   remaining open entry-book value;
+8. make identical exit-fill reuse idempotent, reject conflicting second closes, order
+   batches by exit timestamp/fingerprint, and require exact deterministic replay; and
+9. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+## Track A stable recurrent lifecycle account foundation — 2026-09-18
+
+Track A now consolidates the accepted one-generation bridge into
+`atlas-simulation-recurrent-lifecycle-account-v1` under contract
+`9a22ebdb75a85c7d602851f48ae19a4262b0ab5a28441fc80f26b22a96781299`.
+
+This is the stable multi-cycle account contract rather than another numbered
+reservation/position/closeout copy.
+
+Frozen foundation semantics:
+
+1. bootstrap from one exact accepted lifecycle-closeout state + ledger;
+2. preserve current cash, active reservations, open positions, fee history, realized
+   P&L, lifetime trade net P&L, and account book equity exactly;
+3. canonicalize both original `ClosedTradeV1` and lifecycle
+   `LifecycleClosedTradeV1` history into one recurrent closed-trade collection while
+   retaining each record's original source-contract fingerprint, source-state
+   fingerprint, and source-record fingerprint;
+4. keep historical economics and fee/P&L values independently verifiable after
+   canonicalization;
+5. freeze one append-only recurrent ledger schema broad enough for reservation, entry,
+   and closeout transitions against this same account contract;
+6. start the recurrent ledger at the exact bootstrap recurrent-state fingerprint;
+7. keep market valuation as a read-only projection rather than a ledger mutation; and
+8. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is to implement recurrent-native reservation, entry,
+valuation, exit, and closeout transitions against this **same** account contract and
+append-only ledger, then move the lifecycle coordinator and browser projection to that
+stable recurrent source. This replaces future reservation-v2/position-v2/closeout-v2
+proliferation.
+
+The Strategy Evidence Register remains unchanged because this package consolidates
+product/simulation account architecture without changing strategy evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
