@@ -703,11 +703,51 @@ cannot exist simultaneously in an active reservation/open bucket and the closed
 history. No mark, closeout, provider/broker/order, PAPER/LIVE, promotion, or
 confluence authority is created.
 
-The next bounded Track A package is lifecycle-native entry/funding consumption:
-consume one exact active lifecycle reservation plus accepted broker-neutral entry-fill
-and funding/collateral evidence, remove only that reservation, create the new open
-position, expense the new entry fee exactly once, and preserve all prior open/closed
-history and realized accounting. The Strategy Evidence Register remains unchanged.
+The lifecycle-native fill/funding evidence layer described below is required first
+because the earlier accepted evidence contracts are explicitly bound to the legacy
+reservation-only account contract. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Lifecycle-native re-entry fill and funding evidence
+
+Track A now adds two descriptive lifecycle-native evidence contracts required before a
+post-close reservation can become a new open position:
+
+- `atlas-simulation-lifecycle-entry-fill-evidence-v1`
+  (`a2bcaddbfba19370af070217cd2c4b911b121797abb76348747e575e17aa3b3c`);
+- `atlas-simulation-lifecycle-funding-terms-v1`
+  (`26266be782240511baadeb73d11aef393aaa6a52f12883b30cd3aab025f54870`).
+
+This versioning is necessary rather than cosmetic. The earlier accepted
+`atlas-simulated-entry-fill-evidence-v1` and
+`atlas-simulation-funding-collateral-terms-v1` explicitly require
+`atlas-simulation-account-state-v2-stock-option-reservations` as their account input.
+After deterministic closeout, the authoritative reservation account is instead
+`atlas-simulation-lifecycle-reservation-account-v1`, whose fingerprint also carries
+open/closed history and realized accounting. Reusing the old evidence contracts would
+therefore misstate provenance.
+
+The lifecycle-native fill evidence binds one exact current lifecycle reservation-state
+fingerprint, decision fingerprint, active reservation fingerprint, economic candidate,
+explicit fill source id/SHA-256, timestamp, price, and entry fees. Stock quantity is
+derived from the exact reserved economic notional and executable fill price; stock
+funding remains unresolved at the fill-evidence layer. Long-option fills reuse the exact
+accepted reservation terms, require the reserved contract count/multiplier, cap premium
+debit and fees at the accepted reservation buckets, and record exact unspent reserve.
+
+The lifecycle funding object then proves funding against the same current lifecycle
+reservation state. Bullish stock longs remain cash-only: reserved capital is credited
+first and any remaining required cash must come from **current unreserved lifecycle
+cash**. Long options reuse the exact resolved reserved debit and may not require
+supplemental cash. Prior realized P&L and prior fee history are not recomputed. Both
+objects remain descriptive only and create no reservation release, account mutation,
+position, provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+The next bounded Track A package is the lifecycle-native atomic reservation-to-position
+transition: consume one exact lifecycle reservation + lifecycle entry-fill + lifecycle
+funding terms, remove only that reservation, create the new open position, expense the
+new entry fee exactly once, preserve all prior open/closed history and realized P&L,
+invalidate stale valuation, and remain deterministic/idempotent. The Strategy Evidence
+Register remains unchanged.
 
 ## A33/B33 reference foundation
 
