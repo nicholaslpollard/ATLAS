@@ -1416,6 +1416,34 @@ with explicit fill/fee semantics. A real market-hours Webull sandbox capture on 
 target workstation is still required before non-empty recurrent MARK acceptance. The
 Strategy Evidence Register remains unchanged.
 
+## 2026-09-18 — Webull stock ENTRY/CLOSE evidence adapters
+
+Track A now adds `atlas-simulation-current-webull-stock-fill-adapter-v1` under
+contract `8fde1fd17b9eceabb9ef57271948995088ed049eb22b46ab15bc0f734a3a021c`.
+
+The adapter consumes only an already accepted current Webull stock L1 bundle and the
+exact current recurrent account snapshot. For stock ENTRY it requires an explicit
+fee input bound to the decision-record fingerprint, uses the current quote **ask** as
+the simulated fill price, builds the accepted recurrent entry-fill evidence, and then
+derives accepted cash-only stock funding terms against the same pre-batch account
+snapshot. For CLOSE it requires an explicit fee input bound to the active position
+fingerprint and uses the current quote **bid** for a complete recurrent exit-fill
+record.
+
+Fee amounts have no hidden production default in this adapter. A caller must provide
+each requested entry/exit fee value explicitly, including an explicit `0.0` when that
+is the intended simulation assumption. The adapter preserves exact-case symbol
+identity, the 30-second execution-quote age cap, quote-after-decision/position
+chronology, bundle fingerprint lineage, and common-source-snapshot batch semantics.
+It makes no provider or broker call and claims no broker fill, order, PAPER, LIVE,
+promotion, or confluence authority.
+
+With the current Webull bundle, Track A now has execution-quality stock evidence
+adapters for ENTRY, MARK, and CLOSE. The remaining major product input boundary is
+RESERVE decision production from accepted current strategy/forecast/economics evidence,
+plus target-workstation market-hours acceptance of the Webull sandbox quote capture.
+The Strategy Evidence Register remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
