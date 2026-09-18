@@ -1046,9 +1046,47 @@ proceeds. V1 is full-close only.
 This package remains descriptive broker-neutral evidence. It does not remove the
 position, alter cash, compute realized P&L, append a recurrent ledger event, read/write
 providers or brokers, create an order, or grant PAPER/LIVE/promotion/confluence
-authority. The next bounded package is the recurrent `CLOSE_POSITION` mutation against
-the same stable account and append-only ledger. The Strategy Evidence Register remains
-unchanged.
+authority. The recurrent `CLOSE_POSITION` transition described below now consumes
+this evidence on the same stable account and append-only ledger. The Strategy Evidence
+Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle close-position transitions
+
+Track A now adds `atlas-simulation-recurrent-close-position-transition-v1` under
+contract
+`9f2f32d8905c19bfb377184abd1fa3f9842eb979829ce5ca03c3a44068e17e39`.
+
+The operation consumes and returns `RecurrentLifecycleAccountV1`. Each close requires
+exact recurrent exit evidence and the matched position must still be open. Only that
+position is removed; active reservations and unrelated positions remain unchanged.
+Exact net proceeds return to cash and one fingerprint-chained `CLOSE_POSITION` event
+is appended to the recurrent ledger.
+
+New closes append `RecurrentClosedTradeV1` records directly to the existing canonical
+closed history using native origin `RECURRENT_ACCOUNT_V1`. The source-state contract
+and recurrent-state fingerprint are preserved, while the exact recurrent exit-fill
+fingerprint is retained as the native source record. Decision/candidate,
+reservation, entry-fill, funding, and option lineage remain attached to the canonical
+trade.
+
+Account realized-P&L delta is `net_exit_proceeds - entry_book_value`. Lifetime trade
+net P&L subtracts the entry fee that was already expensed when the position opened.
+Cumulative entry fees therefore do not change at close, exit fees are added once, and
+book equity continues to reconcile from both fee/realized history and cash +
+reservations + remaining open entry-book value.
+
+Single-close application requires evidence from the exact current state. Batches may
+use multiple exits materialized against one common starting snapshot and apply them in
+exit-time/fingerprint order. Identical exit-fill reuse is idempotent; a different
+second close for the same position fails closed. No provider/broker/order/PAPER/LIVE,
+promotion, or confluence authority is granted.
+
+This completes the recurrent simulation loop on one stable account contract:
+**reserve → entry evidence/funding → open → mark → exit evidence → close → reserve
+again**. The next bounded Track A package is coordinator migration: make the runtime
+coordinator own this recurrent account atomically and publish its current marked state
+to the browser projection, replacing the earlier single-cycle bridge. The Strategy
+Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
