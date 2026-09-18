@@ -10,6 +10,13 @@ from packages.control_plane.recurrent_lifecycle_dashboard import (
     RecurrentLifecycleDashboardService,
     source_provider_from_recurrent_coordinator,
 )
+from packages.control_plane.recurrent_runtime_startup import (
+    restore_recurrent_runtime_for_phase19,
+)
+from packages.control_plane.recurrent_runtime_startup_contract import (
+    RECURRENT_RUNTIME_STARTUP_CONTRACT_FINGERPRINT,
+)
+from packages.core.settings import load_settings
 from packages.execution.option_economics import (
     OptionEconomicsInputs,
     build_option_economic_candidate,
@@ -4502,3 +4509,142 @@ def test_persistent_recurrent_runtime_marks_are_transient_only(tmp_path) -> None
     assert restored is not None
     assert restored.current_account() == account
     assert restored.current_marked_state() is None
+
+
+def _recurrent_runtime_settings(tmp_path):
+    settings = load_settings()
+    paths = settings.data.paths.model_copy(
+        update={"derived": tmp_path}
+    )
+    data = settings.data.model_copy(update={"paths": paths})
+    return settings.model_copy(update={"data": data})
+
+
+def test_recurrent_runtime_startup_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_RUNTIME_STARTUP_CONTRACT_FINGERPRINT
+        == "e4952a0f004b3b5a3618f05f218412c087a93aee97ca64df249b492ce877419a"
+    )
+
+
+def test_recurrent_runtime_startup_missing_store_is_explicit_not_connected(
+    tmp_path,
+) -> None:
+    settings = _recurrent_runtime_settings(tmp_path)
+    startup = restore_recurrent_runtime_for_phase19(settings)
+
+    assert startup.account_restored is False
+    assert startup.runtime is None
+    assert startup.restored_state_fingerprint is None
+    assert startup.restored_ledger_fingerprint is None
+    payload = startup.dashboard_service.snapshot()
+    assert payload["status"] == "NOT_CONNECTED"
+    assert payload["read_only"] is True
+    assert payload["provider_reads"] == 0
+    assert payload["broker_reads"] == 0
+    assert payload["authority"]["paper_authority"] is False
+    assert payload["authority"]["live_authority"] is False
+
+
+def test_recurrent_runtime_startup_restores_account_without_stale_marks(
+    tmp_path,
+) -> None:
+    settings = _recurrent_runtime_settings(tmp_path)
+    store = RecurrentRuntimeAccountStoreV1.from_settings(
+        settings,
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    account = _recurrent_positioned_account()
+    PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+
+    startup = restore_recurrent_runtime_for_phase19(settings)
+
+    assert startup.account_restored is True
+    assert startup.runtime is not None
+    assert startup.runtime.current_account() == account
+    assert startup.runtime.current_marked_state() is None
+    assert startup.restored_state_fingerprint == account.state.state_fingerprint
+    assert startup.restored_ledger_fingerprint == account.ledger.ledger_fingerprint
+    assert startup.dashboard_service.snapshot()["status"] == "NOT_CONNECTED"
+
+
+def test_recurrent_runtime_startup_dashboard_becomes_available_after_fresh_marks(
+    tmp_path,
+) -> None:
+    settings = _recurrent_runtime_settings(tmp_path)
+    store = RecurrentRuntimeAccountStoreV1.from_settings(
+        settings,
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    account = _recurrent_positioned_account()
+    PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+    startup = restore_recurrent_runtime_for_phase19(settings)
+    assert startup.runtime is not None
+
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "9"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "a"
+            ),
+        )
+        for position in account.state.open_positions
+    )
+    startup.runtime.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+
+    payload = startup.dashboard_service.snapshot()
+    assert payload["status"] == "AVAILABLE"
+    assert payload["source"]["source_kind"] == "RECURRENT_LIFECYCLE_ACCOUNT"
+    assert payload["source"]["account_state_fingerprint"] == (
+        account.state.state_fingerprint
+    )
+    assert payload["provider_reads"] == 0
+    assert payload["broker_reads"] == 0
+
+
+def test_recurrent_runtime_startup_corrupt_store_fails_closed(tmp_path) -> None:
+    settings = _recurrent_runtime_settings(tmp_path)
+    store = RecurrentRuntimeAccountStoreV1.from_settings(
+        settings,
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    account = _recurrent_account()
+    PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+    document = json.loads(store.snapshot_path.read_text(encoding="utf-8"))
+    document["snapshot"]["ledger_event_count"] += 1
+    store.snapshot_path.write_text(
+        json.dumps(document, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RecurrentRuntimeStoreError,
+        match="envelope fingerprint mismatch",
+    ):
+        restore_recurrent_runtime_for_phase19(settings)
