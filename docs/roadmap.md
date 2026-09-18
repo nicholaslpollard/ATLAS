@@ -2905,15 +2905,16 @@ before non-empty production MARK cycles.
 Track A freezes two current-deployment contracts:
 
 - `atlas-execution-current-webull-stock-quote-bundle-v1`:
-  `a0da5b0db29ae074e64cc933c995bff99d388aa7357c3928d840a59fd0d613ea`;
+  `5c2df876e2d9814434d6823f04c2cd0e6bfcdbe9b071cf291213abb634f2d26d`;
 - `atlas-simulation-current-webull-stock-mark-adapter-v1`:
-  `c862121c97cfedba968a9dad05d979ce2bc46bc6fdf8c9bf6dac53ca6e40b4d8`.
+  `586b58a791e14cc21a3bb02f8d556a35785deae335a4153cee5bd37d30f33148`.
 
 Frozen semantics:
 
 1. require an explicit, sorted, unique exact-case stock symbol set;
-2. capture exactly one Webull sandbox L1 read per requested symbol and persist no
-   partial bundle when any requested symbol fails;
+2. invalidate the prior current bundle when a new capture begins, then capture exactly
+   one Webull sandbox L1 read per requested symbol and persist no partial bundle when any
+   requested symbol fails;
 3. require positive uncrossed bid/ask, provider timestamp, zero-delay realtime
    semantics, regular-session classification, and the accepted execution age cap;
 4. retain quote/source timestamps, sizes, read count, exact requested coverage and a
