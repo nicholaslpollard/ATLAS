@@ -2833,6 +2833,44 @@ market-hours validation before any qualifying PAPER program.
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime admission and orchestration only.
 
+## Track A current live evidence adapter and cycle health — 2026-09-18
+
+Track A freezes `atlas-simulation-current-live-evidence-v1` under contract
+`6502f8b9a4644705ec819bf7ecfcc3ee8b65742f4016454e497b0da8aca5deb0`
+and adds a GET-only recurrent-cycle health projection.
+
+Frozen semantics:
+
+1. read only the persisted `data/live/market_state/current.json` artifact; perform zero
+   provider or broker network calls as part of evidence capture;
+2. hash the exact raw source bytes and validate the accepted `LiveStateSnapshot`
+   schema before exposing current evidence;
+3. reject a future-dated snapshot, duplicate exact-case symbols, or minute/quote
+   feed-mode, expected-delay, or symbol lineage that disagrees with the enclosing
+   snapshot;
+4. preserve explicit feed mode, delay, connection/session state, freshness counts,
+   source SHA-256 and normalized evidence fingerprint;
+5. forbid minute-bar-to-bid/ask fabrication: valid delayed `AM.*` evidence may have
+   zero quote coverage and must remain unsuitable for executable mark construction;
+6. restore the authoritative recurrent checkpoint read-only for cycle health;
+7. validate recent durable cycle receipts and runner admission records and report
+   current stage, next action, runtime revision, reservations and open-position counts;
+8. report corrupt receipts/admissions as degraded health and missing checkpoint/current
+   evidence explicitly rather than reconstructing hidden state;
+9. expose the projection at `GET /api/v1/ops/recurrent-cycle-health`; and
+10. grant no browser mutation, provider/broker/order, scheduler-trigger, PAPER/LIVE,
+    promotion, or confluence authority.
+
+Immediate Track A continuation is stage-specific production evidence construction.
+RESERVE decisions must come from the accepted forecast/economics/selection path, while
+CLOSE/ENTRY/MARK evidence must use real execution-quality current sources. The current
+Massive Starter delayed minute feed is not reinterpreted as executable quote evidence;
+broker/finalist quote integration and workstation market-hours validation remain
+required before qualifying PAPER.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime evidence admission and read-only operations visibility only.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
