@@ -178,7 +178,11 @@ class RecurrentCycleHealthService:
         completed_stages = [record.stage.value for record in receipt.stages]
         next_stage = None
         if receipt.status == RecurrentCycleStatus.OPEN:
-            next_stage = _STAGE_ORDER[len(receipt.stages)].value
+            next_stage = (
+                "COMPLETE"
+                if len(receipt.stages) == len(_STAGE_ORDER)
+                else _STAGE_ORDER[len(receipt.stages)].value
+            )
         return (
             {
                 "cycle_id": receipt.cycle_id,
