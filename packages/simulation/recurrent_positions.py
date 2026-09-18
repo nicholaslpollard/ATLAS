@@ -497,6 +497,7 @@ def _apply_entry(
     *,
     evidence_source_state_fingerprint: str,
     evidence_source_cash: float,
+    require_current_source_state: bool,
     fill: RecurrentEntryFillEvidenceV1,
     funding: RecurrentFundingTermsV1,
 ) -> RecurrentPositionTransitionV1:
@@ -539,6 +540,16 @@ def _apply_entry(
     ):
         raise RecurrentPositionTransitionError(
             "recurrent decision is already present in closed history"
+        )
+
+    if require_current_source_state and (
+        fill.recurrent_state_fingerprint
+        != account.state.state_fingerprint
+        or funding.recurrent_state_fingerprint
+        != account.state.state_fingerprint
+    ):
+        raise RecurrentPositionTransitionError(
+            "fill/funding must bind the recurrent evidence source state"
         )
 
     if fill.filled_utc < account.state.as_of_utc:
@@ -704,19 +715,11 @@ def apply_recurrent_entry_v1(
     funding: RecurrentFundingTermsV1,
 ) -> RecurrentPositionTransitionV1:
     _validate_account(account)
-    if (
-        fill.recurrent_state_fingerprint
-        != account.state.state_fingerprint
-        or funding.recurrent_state_fingerprint
-        != account.state.state_fingerprint
-    ):
-        raise RecurrentPositionTransitionError(
-            "fill/funding must bind the recurrent evidence source state"
-        )
     return _apply_entry(
         account,
         evidence_source_state_fingerprint=account.state.state_fingerprint,
         evidence_source_cash=account.state.cash,
+        require_current_source_state=True,
         fill=fill,
         funding=funding,
     )
@@ -757,6 +760,7 @@ def apply_recurrent_entry_batch_v1(
             current,
             evidence_source_state_fingerprint=source_state_fingerprint,
             evidence_source_cash=source_cash,
+            require_current_source_state=False,
             fill=fill,
             funding=funding,
         )
