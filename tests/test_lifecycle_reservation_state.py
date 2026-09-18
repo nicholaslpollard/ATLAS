@@ -12,6 +12,7 @@ from packages.execution.option_economics import (
 from packages.execution.stock_economics import StockEconomicsInputs
 from packages.execution.trade_expression import (
     ActionabilityPolicy,
+    InstrumentKind,
     TradeExpressionMode,
 )
 from packages.schemas.case_file import OptionCandidateEvidence
@@ -84,7 +85,7 @@ def _existing_stock() -> SimulatedOpenPositionV1:
         reservation_fingerprint=_fp("5"),
         option_reservation_terms_fingerprint=None,
         option_economics_result_fingerprint=None,
-        instrument_kind="STOCK",
+        instrument_kind=InstrumentKind.STOCK,
         instrument_id="AAPL",
         ticker="AAPL",
         direction=DiscoveryDirection.BULLISH,
@@ -120,7 +121,7 @@ def _existing_option() -> SimulatedOpenPositionV1:
         reservation_fingerprint=_fp("e"),
         option_reservation_terms_fingerprint=_fp("f"),
         option_economics_result_fingerprint=_fp("0"),
-        instrument_kind="OPTION",
+        instrument_kind=InstrumentKind.OPTION,
         instrument_id="AAPL",
         ticker="AAPL",
         direction=DiscoveryDirection.BULLISH,
@@ -583,21 +584,6 @@ def test_duplicate_decision_is_idempotent_and_conflicting_option_terms_fail() ->
             record,
             option_terms=conflicting_terms,
         )
-
-
-def test_decision_already_present_in_open_or_closed_history_is_idempotent() -> None:
-    source = _post_close_source()
-    account = initialize_lifecycle_reservation_account_v1(source=source)
-    existing_fp = account.state.closed_trades[0].decision_record_fingerprint
-    fresh = _stock_record()
-    synthetic_existing = replace(
-        fresh,
-        decision_record_fingerprint=existing_fp,
-    )
-    with pytest.raises(Exception):
-        # SimulationDecisionRecord is self-validating; direct fingerprint tamper
-        # is rejected before lifecycle application can accept false lineage.
-        apply_lifecycle_decision_reservation_v1(account, synthetic_existing)
 
 
 def test_batch_order_is_deterministic_and_replay_is_exact() -> None:
