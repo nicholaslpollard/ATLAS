@@ -152,6 +152,14 @@ from packages.simulation.recurrent_exit_fill import (
 from packages.simulation.recurrent_exit_fill_contract import (
     RECURRENT_EXIT_FILL_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.recurrent_genesis import (
+    RecurrentGenesisBootstrapError,
+    bootstrap_recurrent_genesis_v1,
+    build_empty_recurrent_genesis_account_v1,
+)
+from packages.simulation.recurrent_genesis_contract import (
+    RECURRENT_GENESIS_BOOTSTRAP_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.recurrent_lifecycle_contract import (
     RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT,
 )
@@ -4771,3 +4779,161 @@ def test_recurrent_durable_runtime_persists_mark_only_revision(
         restored.current_marked_state().state_fingerprint
         == publication.marked_state.state_fingerprint
     )
+
+
+def test_recurrent_genesis_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_GENESIS_BOOTSTRAP_CONTRACT_FINGERPRINT
+        == "2784da99747760b50ff5cab35ae6f761d9ec8a77378ce767e603960571130b2a"
+    )
+
+
+def test_recurrent_genesis_builds_exact_empty_account_chain() -> None:
+    as_of = datetime(2026, 9, 18, 20, 0, tzinfo=UTC)
+    first, first_lineage = build_empty_recurrent_genesis_account_v1(
+        initial_equity=100_000.0,
+        as_of_utc=as_of,
+    )
+    second, second_lineage = build_empty_recurrent_genesis_account_v1(
+        initial_equity=100_000.0,
+        as_of_utc=as_of,
+    )
+
+    assert first == second
+    assert first_lineage == second_lineage
+    assert first.state.initial_equity == pytest.approx(100_000.0)
+    assert first.state.cash == pytest.approx(100_000.0)
+    assert first.state.account_book_equity == pytest.approx(100_000.0)
+    assert first.state.stock_reservations == ()
+    assert first.state.option_reservations == ()
+    assert first.state.open_positions == ()
+    assert first.state.closed_trades == ()
+    assert first.ledger.events == ()
+    assert first.state.cumulative_entry_fees_dollars == 0.0
+    assert first.state.cumulative_exit_fees_dollars == 0.0
+    assert first.state.cumulative_account_realized_pnl_dollars == 0.0
+    assert first.state.cumulative_lifetime_trade_net_pnl_dollars == 0.0
+    assert first.state.stock_reserved_capital == 0.0
+    assert first.state.option_reserved_capital == 0.0
+    assert first.state.open_entry_book_value_dollars == 0.0
+    assert len(first_lineage) == 8
+    assert all(len(value) == 64 for value in first_lineage.values())
+
+
+def test_recurrent_genesis_bootstrap_creates_first_durable_checkpoint(
+    tmp_path,
+) -> None:
+    path = tmp_path / "current.json"
+    as_of = datetime(2026, 9, 18, 20, 0, tzinfo=UTC)
+
+    runtime, result = bootstrap_recurrent_genesis_v1(
+        checkpoint_path=path,
+        initial_equity=50_000.0,
+        as_of_utc=as_of,
+    )
+
+    assert path.is_file()
+    assert result.initial_equity == pytest.approx(50_000.0)
+    assert result.as_of_utc == as_of
+    assert result.checkpoint_path == str(path)
+    assert result.checkpoint_sha256 == runtime.status().checkpoint_sha256
+    assert runtime.revision == 0
+    assert runtime.current_marked_state() is None
+    assert runtime.current_dashboard_pair() is None
+    assert runtime.current_account().state.cash == pytest.approx(50_000.0)
+    assert runtime.current_account().state.open_positions == ()
+    assert runtime.current_account().state.closed_trades == ()
+
+    checkpoint = read_recurrent_lifecycle_checkpoint(path)
+    assert checkpoint.snapshot.revision == 0
+    assert checkpoint.snapshot.marked_state is None
+    assert (
+        checkpoint.snapshot.account.state.state_fingerprint
+        == result.recurrent_state_fingerprint
+    )
+    restored = restore_durable_recurrent_lifecycle_runtime(path)
+    assert restored.snapshot() == runtime.snapshot()
+
+
+def test_recurrent_genesis_refuses_existing_checkpoint(
+    tmp_path,
+) -> None:
+    path = tmp_path / "current.json"
+    as_of = datetime(2026, 9, 18, 20, 0, tzinfo=UTC)
+    bootstrap_recurrent_genesis_v1(
+        checkpoint_path=path,
+        initial_equity=25_000.0,
+        as_of_utc=as_of,
+    )
+
+    with pytest.raises(
+        RecurrentGenesisBootstrapError,
+        match="refuses to overwrite an existing checkpoint",
+    ):
+        bootstrap_recurrent_genesis_v1(
+            checkpoint_path=path,
+            initial_equity=25_000.0,
+            as_of_utc=as_of,
+        )
+
+
+def test_recurrent_genesis_refuses_orphaned_checkpoint_history(
+    tmp_path,
+) -> None:
+    path = tmp_path / "current.json"
+    history = path.parent / "history"
+    history.mkdir(parents=True)
+    (history / f"{'a' * 64}.json").write_text("{}\n", encoding="utf-8")
+
+    with pytest.raises(
+        RecurrentGenesisBootstrapError,
+        match="checkpoint history exists",
+    ):
+        bootstrap_recurrent_genesis_v1(
+            checkpoint_path=path,
+            initial_equity=25_000.0,
+            as_of_utc=datetime(2026, 9, 18, 20, 0, tzinfo=UTC),
+        )
+
+
+@pytest.mark.parametrize("equity", [0.0, -1.0])
+def test_recurrent_genesis_rejects_nonpositive_equity(equity: float) -> None:
+    with pytest.raises(
+        RecurrentGenesisBootstrapError,
+        match="initial equity must be positive",
+    ):
+        build_empty_recurrent_genesis_account_v1(
+            initial_equity=equity,
+            as_of_utc=datetime(2026, 9, 18, 20, 0, tzinfo=UTC),
+        )
+
+
+def test_recurrent_genesis_rejects_naive_timestamp() -> None:
+    with pytest.raises(
+        RecurrentGenesisBootstrapError,
+        match="timestamp must be timezone-aware",
+    ):
+        build_empty_recurrent_genesis_account_v1(
+            initial_equity=25_000.0,
+            as_of_utc=datetime(2026, 9, 18, 20, 0),
+        )
+
+
+def test_recurrent_genesis_result_grants_no_external_or_trading_authority(
+    tmp_path,
+) -> None:
+    _runtime, result = bootstrap_recurrent_genesis_v1(
+        checkpoint_path=tmp_path / "current.json",
+        initial_equity=25_000.0,
+        as_of_utc=datetime(2026, 9, 18, 20, 0, tzinfo=UTC),
+    )
+
+    assert result.provider_read_authority is False
+    assert result.provider_write_authority is False
+    assert result.broker_read_authority is False
+    assert result.broker_write_authority is False
+    assert result.order_creation_authority is False
+    assert result.paper_authority is False
+    assert result.live_authority is False
+    assert result.promotion_authority is False
+    assert result.confluence_authority is False

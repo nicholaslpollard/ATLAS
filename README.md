@@ -1210,12 +1210,47 @@ engine owner that is tied to one verified durable checkpoint. Runtime status exp
 the checkpoint SHA, logical revision, snapshot fingerprint, and uncertainty flag but
 grants no provider/broker/order/PAPER/LIVE/promotion/confluence authority.
 
-This closes the mutation↔checkpoint atomicity boundary for a single process. The next
-bounded Track A work is production orchestration around this durable runtime: define
-the scheduled simulation cycle and explicit evidence-acquisition boundaries, bootstrap
-the first authoritative recurrent checkpoint through a one-time controlled path, and
-prove restart/resume behavior before any qualifying PAPER program. The Strategy
-Evidence Register remains unchanged.
+This closes the mutation↔checkpoint atomicity boundary for a single process. The
+controlled one-time genesis package described below now creates the first authoritative
+recurrent checkpoint without inventing a hidden account source. The Strategy Evidence
+Register remains unchanged.
+
+## 2026-09-18 — One-time recurrent genesis bootstrap
+
+Track A now adds `atlas-simulation-recurrent-genesis-bootstrap-v1` under contract
+`2784da99747760b50ff5cab35ae6f761d9ec8a77378ce767e603960571130b2a`.
+
+The bootstrap creates the **first** authoritative recurrent simulation account without
+reading a broker account, provider, research result, or legacy runtime artifact. It
+requires an explicit positive starting simulation equity and a timezone-aware bootstrap
+timestamp, then deterministically walks the accepted empty account contracts in order:
+simulation account v2 → open-position account → closeout account → lifecycle
+reservation account → lifecycle position account → lifecycle closeout account →
+recurrent lifecycle account.
+
+Every intermediate ledger must be empty and every reservation/open-position/closed-
+trade collection must be empty. The resulting recurrent account must have cash and book
+equity exactly equal to the explicit starting equity, with zero fees, realized P&L,
+reservations, exposure, open positions, and closed history. Every intermediate state
+fingerprint is retained in the bootstrap result for audit.
+
+The bootstrap is one-time and fail closed. It refuses to overwrite an existing
+`data/live/simulation/recurrent_lifecycle/current.json` and also refuses to run if
+content-addressed checkpoint history exists without the current projection. Successful
+bootstrap immediately creates the first checkpoint through
+`DurableRecurrentLifecycleRuntimeV1.bootstrap()`; it never writes an unprotected
+standalone current account first.
+
+The operator CLI is `scripts/bootstrap_recurrent_lifecycle.py`. It requires
+`--initial-equity` and optionally accepts `--as-of-utc`; no default dollar balance
+is embedded in ATLAS. The command performs zero provider/broker reads or writes and
+grants no order/PAPER/LIVE/promotion/confluence authority.
+
+The next bounded Track A package is production recurrent-cycle orchestration around the
+durable runtime: explicit evidence acquisition/admission, deterministic scheduled cycle
+ordering, restart/resume/no-double-application semantics, and an operator-visible cycle
+receipt before any qualifying PAPER authority. The Strategy Evidence Register remains
+unchanged.
 
 ## A33/B33 reference foundation
 

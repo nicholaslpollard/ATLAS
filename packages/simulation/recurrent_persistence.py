@@ -238,7 +238,11 @@ def _decode_value(expected_type: Any, value: Any) -> Any:
             raise RecurrentLifecyclePersistenceError(
                 "snapshot float field type mismatch"
             )
-        return float(value)
+        # Preserve the exact JSON numeric representation. Some accepted
+        # fingerprinted states contain integer-valued numbers in fields that are
+        # annotated as float. Coercing 0 -> 0.0 changes canonical JSON and therefore
+        # the deterministic state fingerprint during checkpoint readback.
+        return value
     if expected_type is str:
         if not isinstance(value, str):
             raise RecurrentLifecyclePersistenceError(
