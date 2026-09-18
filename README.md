@@ -537,12 +537,44 @@ complete-loss case remains representable; exit fees may not exceed gross proceed
 This object is descriptive broker-neutral fill evidence only. It does not remove the
 position, mutate account cash, compute realized P&L, read/write a provider or broker,
 create an order, assert a broker fill, or grant PAPER/LIVE/promotion/confluence
-authority. The next bounded Track A package is deterministic closeout/realized-P&L
-accounting: consume the exact open-position + exit-fill lineage, remove only that
-matched position, return exact net exit proceeds to cash, and keep account-state
-realized P&L distinct from lifetime trade net P&L so already-expensed entry fees are
-not double counted. The Strategy Evidence Register remains unchanged because this
-package changes product/account-simulation architecture only.
+authority. The deterministic closeout layer described below now consumes this
+evidence. The Strategy Evidence Register remains unchanged because this package
+changes product/account-simulation architecture only.
+
+## 2026-09-17 — Deterministic closeout and realized-P&L accounting
+
+Track A now adds `atlas-simulation-closeout-account-state-v1` under contract
+`d8363e6a0dba68ad8894691a308eff6231770e59ccea909a38fd95af317aa599`.
+It consumes the exact accepted open-position account snapshot plus exact accepted
+broker-neutral exit-fill evidence. Only the matched active position is removed;
+unrelated positions and all remaining reservations are preserved exactly, while exact
+net exit proceeds are returned to simulation cash.
+
+The accounting boundary deliberately distinguishes two realized-P&L meanings. The
+**account-state realized-P&L delta** is `net_exit_proceeds - entry_book_value`
+because entry fees were already expensed when the position opened. The **lifetime
+trade net P&L** is `gross_exit_proceeds - entry_book_value - entry_fees - exit_fees`.
+For every closed trade, lifetime net P&L therefore equals account realized-P&L delta
+less the already-expensed entry fee. Account book equity is
+`initial_equity - cumulative_entry_fees + cumulative_account_realized_pnl` and
+independently reconciles to cash plus remaining reserved capital plus remaining open
+entry-book value.
+
+Closeout transitions are chronological, fingerprint chained, and deterministic.
+Reapplying the identical exit-fill fingerprint is idempotent; a different second
+exit against an already closed position fails closed. Batch application is ordered by
+exit timestamp/fingerprint and the full state/ledger can be reconstructed and
+fingerprint-verified by deterministic replay. Closed-trade evidence retains entry and
+exit economics, both fee layers, holding duration, instrument/strategy lineage, and
+the two P&L views.
+
+This remains simulation-only lifecycle accounting. It grants no provider/broker
+read/write, order, PAPER, LIVE, promotion, or confluence authority. The next bounded
+Track A work is to expose these authoritative decision/position/mark/closeout records
+through the existing operator-observability/control-plane architecture and then close
+the remaining lifecycle integration gaps before any later broker/PAPER authority
+package. The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.
 
 ## A33/B33 reference foundation
 
