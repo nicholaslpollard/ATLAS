@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 
+import json
 import pytest
 
 from packages.control_plane.recurrent_lifecycle_dashboard import (
@@ -158,6 +159,15 @@ from packages.simulation.recurrent_marked_contract import (
 from packages.simulation.recurrent_marked_state import (
     RecurrentMarkedAccountError,
     build_recurrent_marked_account_state,
+)
+from packages.simulation.recurrent_persistence import (
+    RecurrentLifecyclePersistenceError,
+    read_recurrent_lifecycle_checkpoint,
+    restore_recurrent_lifecycle_coordinator,
+    write_recurrent_lifecycle_checkpoint,
+)
+from packages.simulation.recurrent_persistence_contract import (
+    RECURRENT_LIFECYCLE_CHECKPOINT_CONTRACT_FINGERPRINT,
 )
 from packages.simulation.recurrent_position_contract import (
     RECURRENT_POSITION_TRANSITION_CONTRACT_FINGERPRINT,
