@@ -32,6 +32,16 @@ from packages.simulation.closeout_account_state import (
     initialize_closeout_account_v1,
 )
 from packages.simulation.decision_record import build_simulation_decision_record
+from packages.simulation.lifecycle_entry_evidence import (
+    LifecycleEntryEvidenceError,
+    LifecycleFundingModel,
+    build_lifecycle_entry_fill_evidence,
+    build_lifecycle_funding_terms,
+)
+from packages.simulation.lifecycle_entry_evidence_contract import (
+    LIFECYCLE_ENTRY_FILL_CONTRACT_FINGERPRINT,
+    LIFECYCLE_FUNDING_TERMS_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.lifecycle_reservation_contract import (
     LIFECYCLE_RESERVATION_ACCOUNT_CONTRACT_FINGERPRINT,
 )
@@ -59,6 +69,11 @@ from packages.simulation.option_reservation import (
 from packages.simulation.simulated_exit_fill import (
     SimulatedExitFillInputs,
     build_simulated_exit_fill_evidence,
+)
+from packages.simulation.simulated_fill import (
+    SimulatedEntryFillError,
+    SimulatedEntryFillInputs,
+    build_simulated_entry_fill_evidence,
 )
 
 
@@ -637,3 +652,243 @@ def test_reservation_state_grants_no_fill_position_exit_mark_or_trading_authorit
         replace(state, entry_fill_authority=True)
     with pytest.raises(LifecycleReservationAccountError, match="cannot grant"):
         replace(state, broker_write_authority=True)
+
+
+def test_lifecycle_entry_and_funding_contract_fingerprints_are_frozen() -> None:
+    assert (
+        LIFECYCLE_ENTRY_FILL_CONTRACT_FINGERPRINT
+        == "a2bcaddbfba19370af070217cd2c4b911b121797abb76348747e575e17aa3b3c"
+    )
+    assert (
+        LIFECYCLE_FUNDING_TERMS_CONTRACT_FINGERPRINT
+        == "26266be782240511baadeb73d11aef393aaa6a52f12883b30cd3aab025f54870"
+    )
+
+
+def test_lifecycle_stock_fill_and_funding_bind_exact_reentry_reservation() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record = _stock_record()
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+    ).account
+
+    fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="lifecycle-stock-fill",
+            fill_source_fingerprint=_fp("9"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+
+    assert fill.lifecycle_reservation_state_fingerprint == reserved.state.state_fingerprint
+    assert fill.instrument_kind == InstrumentKind.STOCK
+    assert fill.quantity == pytest.approx(100.0)
+    assert fill.gross_fill_notional_dollars == pytest.approx(10_000.0)
+    assert fill.reserved_capital_dollars == pytest.approx(5_000.0)
+    assert fill.funding_semantics_resolved is False
+    assert fill.account_mutation_authority is False
+    assert fill.open_position_authority is False
+
+    assert funding.funding_model == LifecycleFundingModel.CASH_ONLY_STOCK_LONG
+    assert funding.required_cash_dollars == pytest.approx(10_002.0)
+    assert funding.reserved_capital_dollars == pytest.approx(5_000.0)
+    assert (
+        funding.supplemental_unreserved_cash_required_dollars
+        == pytest.approx(5_002.0)
+    )
+    assert funding.unspent_reserved_capital_dollars == 0.0
+    assert (
+        funding.projected_unreserved_cash_after_entry_dollars
+        == pytest.approx(9_805.0)
+    )
+    assert reserved.state.cumulative_account_realized_pnl_dollars == pytest.approx(9.0)
+    assert reserved.state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(8.0)
+
+
+def test_lifecycle_option_fill_reuses_reserved_debit_and_unspent_cash() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record, terms = _option_case()
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+        option_terms=terms,
+    ).account
+
+    fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        option_terms=terms,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="lifecycle-option-fill",
+            fill_source_fingerprint=_fp("8"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=5.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+
+    assert fill.instrument_kind == InstrumentKind.OPTION
+    assert fill.quantity == pytest.approx(2.0)
+    assert fill.contract_multiplier == pytest.approx(100.0)
+    assert fill.gross_fill_notional_dollars == pytest.approx(1_000.0)
+    assert fill.cash_debit_dollars == pytest.approx(1_002.0)
+    assert fill.unspent_reserved_capital_dollars == pytest.approx(41.0)
+    assert fill.funding_semantics_resolved is True
+
+    assert (
+        funding.funding_model
+        == LifecycleFundingModel.RESERVED_LONG_OPTION_DEBIT
+    )
+    assert funding.required_cash_dollars == pytest.approx(1_002.0)
+    assert funding.supplemental_unreserved_cash_required_dollars == 0.0
+    assert funding.unspent_reserved_capital_dollars == pytest.approx(41.0)
+    assert (
+        funding.projected_unreserved_cash_after_entry_dollars
+        == pytest.approx(18_805.0)
+    )
+
+
+def test_legacy_entry_fill_builder_rejects_lifecycle_reservation_state() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record = _stock_record()
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+    ).account
+
+    with pytest.raises(
+        SimulatedEntryFillError,
+        match="simulation account-state v2 fingerprint mismatch",
+    ):
+        build_simulated_entry_fill_evidence(
+            account=reserved,  # type: ignore[arg-type]
+            record=record,
+            inputs=SimulatedEntryFillInputs(
+                fill_source_id="must-not-use-legacy-builder",
+                fill_source_fingerprint=_fp("7"),
+                filled_utc=record.decision_created_utc + timedelta(minutes=1),
+                fill_price_per_unit=100.0,
+                explicit_entry_fees_dollars=0.0,
+            ),
+        )
+
+
+def test_lifecycle_fill_and_funding_fail_on_state_or_reservation_drift() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record = _stock_record()
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+    ).account
+    fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="lifecycle-stock-fill",
+            fill_source_fingerprint=_fp("6"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+
+    with pytest.raises(
+        LifecycleEntryEvidenceError,
+        match="does not bind the current lifecycle reservation state",
+    ):
+        build_lifecycle_funding_terms(
+            account=base,
+            fill=fill,
+        )
+
+    tampered = replace(
+        fill,
+        active_reservation_fingerprint=_fp("0"),
+    )
+    with pytest.raises(
+        LifecycleEntryEvidenceError,
+        match="active reservation fingerprint mismatch",
+    ):
+        build_lifecycle_funding_terms(
+            account=reserved,
+            fill=tampered,
+        )
+
+
+def test_option_fill_cannot_spend_beyond_reserved_fee_bucket() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record, terms = _option_case(fee_reserve=3.0)
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+        option_terms=terms,
+    ).account
+
+    with pytest.raises(
+        LifecycleEntryEvidenceError,
+        match="entry fees exceed explicit fee reserve",
+    ):
+        build_lifecycle_entry_fill_evidence(
+            account=reserved,
+            record=record,
+            option_terms=terms,
+            inputs=SimulatedEntryFillInputs(
+                fill_source_id="bad-option-fee",
+                fill_source_fingerprint=_fp("5"),
+                filled_utc=record.decision_created_utc + timedelta(minutes=1),
+                fill_price_per_unit=5.0,
+                explicit_entry_fees_dollars=4.0,
+            ),
+        )
+
+
+def test_lifecycle_entry_evidence_grants_no_mutation_or_trading_authority() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record = _stock_record()
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+    ).account
+    fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="authority-test",
+            fill_source_fingerprint=_fp("4"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+
+    with pytest.raises(LifecycleEntryEvidenceError, match="cannot grant"):
+        replace(fill, account_mutation_authority=True)
+    with pytest.raises(LifecycleEntryEvidenceError, match="cannot grant"):
+        replace(fill, broker_fill_authority=True)
+    with pytest.raises(LifecycleEntryEvidenceError, match="cannot grant"):
+        replace(funding, open_position_authority=True)
+    with pytest.raises(LifecycleEntryEvidenceError, match="cannot grant"):
+        replace(funding, paper_authority=True)
