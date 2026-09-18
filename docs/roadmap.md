@@ -3007,6 +3007,39 @@ produce CLOSE trigger evidence.
 The Strategy Evidence Register remains unchanged because this package advances product
 simulation execution evidence rather than research findings.
 
+## Track A recurrent stock exit-plan bridge — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-stock-exit-plan-v1` under contract
+`9d2f921c4821b2cb73274db314f3a7716ea02338f191f5863abf805f13073e0b`.
+
+Frozen semantics:
+
+1. consume exact recurrent bullish stock positions plus complete validated Phase 13
+   cases;
+2. require Phase 13 review readiness, available reference-only geometry, exact
+   instrument/ticker/direction identity, and a case date no later than position open;
+3. retain and canonically fingerprint the full Phase 13 case plus current Phase 13
+   policy identity;
+4. keep Phase 13 absolute reference entry/stop/target prices non-executable;
+5. transfer only the accepted risk/reward fractions onto the actual simulated entry
+   fill;
+6. calculate actual stop as `entry × (1-risk)` and target as
+   `entry × (1+reward)` and require strict bullish geometry;
+7. preserve the Phase 13 session horizon but keep time-exit triggering disabled in v1;
+8. require complete exit-plan coverage of every open stock position and fail closed on
+   open option positions;
+9. persist one deterministic self-fingerprinted bundle atomically with fsync at
+   `data/live/simulation/recurrent_exit_plan/current.json`; and
+10. grant no price-trigger, CLOSE-fill, provider/broker/order/PAPER/LIVE, promotion or
+    confluence authority.
+
+Immediate continuation is a fresh Webull stock L1 trigger/CLOSE-evidence adapter using
+the actual-fill stop/target plan and explicit exit-fee evidence. Time-based exit remains
+a later separately frozen clock-policy boundary.
+
+The Strategy Evidence Register remains unchanged because this is product simulation
+lifecycle architecture rather than new strategy evidence.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
