@@ -2688,6 +2688,34 @@ accepted persisted recurrent state at startup.
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime durability only.
 
+## Track A persistent recurrent lifecycle runtime — 2026-09-18
+
+Track A stages `atlas-simulation-persistent-recurrent-runtime-v1` under contract
+`68a2413ead3f45585445dcf9e60de9123476a177c08f370edd2938f2e9bf1d4f`.
+
+Frozen semantics:
+
+1. bootstrap only from an explicitly supplied valid recurrent account or restore only
+   from the accepted recurrent runtime store;
+2. infer no starting equity/account/trade state and use no legacy-artifact fallback;
+3. wrap the recurrent coordinator and durable store under one runtime lock;
+4. persist every newly ledgered account mutation by exact prior-state
+   compare-and-swap before returning mutation success;
+5. if persistence fails, roll in-memory account state back to the prior durable account,
+   invalidate transient valuation, and return failure;
+6. do not rewrite the store for exact zero-event/idempotent mutation reuse;
+7. keep mark publications transient and verify that mark publication does not alter the
+   durable account snapshot;
+8. restore the recurrent book exactly but require new fresh marks after process restart;
+   and
+9. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is Phase 19 production startup/restore wiring using the
+configured recurrent runtime store and recurrent read-only dashboard.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime transaction durability only.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
