@@ -114,7 +114,7 @@ def _bundle(*quotes: CurrentWebullStockQuoteV1):
 def test_current_webull_stock_mark_contract_fingerprint_is_frozen() -> None:
     assert (
         CURRENT_WEBULL_STOCK_MARK_ADAPTER_CONTRACT_FINGERPRINT
-        == "c862121c97cfedba968a9dad05d979ce2bc46bc6fdf8c9bf6dac53ca6e40b4d8"
+        == "586b58a791e14cc21a3bb02f8d556a35785deae335a4153cee5bd37d30f33148"
     )
 
 
