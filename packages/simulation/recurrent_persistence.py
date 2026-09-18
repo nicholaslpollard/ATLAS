@@ -201,12 +201,6 @@ def _decode_value(expected_type: Any, value: Any) -> Any:
         hints = get_type_hints(expected_type)
         field_names = {field.name for field in fields(expected_type)}
         extra = set(value) - field_names
-        missing = {
-            field.name
-            for field in fields(expected_type)
-            if field.name not in value
-            and field.default is field.default_factory  # type: ignore[comparison-overlap]
-        }
         if extra:
             raise RecurrentLifecyclePersistenceError(
                 f"snapshot {expected_type.__name__} has unexpected fields: "
