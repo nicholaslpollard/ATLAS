@@ -488,6 +488,26 @@ class LifecycleCloseoutAccountStateV1:
             raise LifecycleCloseoutAccountError(
                 "one decision cannot be both active and closed"
             )
+        if any(x.reserved_utc > self.as_of_utc for x in stocks + options):
+            raise LifecycleCloseoutAccountError(
+                "active reservation cannot postdate lifecycle closeout state"
+            )
+        if any(x.opened_utc > self.as_of_utc for x in positions):
+            raise LifecycleCloseoutAccountError(
+                "open position cannot postdate lifecycle closeout state"
+            )
+        if any(x.exited_utc > self.as_of_utc for x in prior + lifecycle):
+            raise LifecycleCloseoutAccountError(
+                "closed trade cannot postdate lifecycle closeout state"
+            )
+        if any(
+            x.source_lifecycle_position_state_fingerprint
+            != self.source_position_state_fingerprint
+            for x in lifecycle
+        ):
+            raise LifecycleCloseoutAccountError(
+                "new lifecycle closed trades must bind the immutable source position state"
+            )
 
         checks = (
             (
