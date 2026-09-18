@@ -598,11 +598,41 @@ immutable entry reference only; current Greeks are not inferred from price marks
 
 This layer performs simulation valuation only. It grants no account mutation, new
 realized P&L, exit/closeout, provider/broker read/write, order, PAPER, LIVE, promotion,
-or confluence authority. With current post-close marked equity now representable
-without reverting to the pre-close snapshot, the next bounded Track A work may project
-the authoritative lifecycle state into the existing operator/control-plane browser
-surface without creating a second trading truth. The Strategy Evidence Register
-remains unchanged because this is product/account-simulation architecture only.
+or confluence authority. The read-only operator projection described below now
+consumes this current post-close truth. The Strategy Evidence Register remains
+unchanged because this is product/account-simulation architecture only.
+
+## 2026-09-17 — Engine-owned simulation lifecycle observability
+
+Track A now adds a read-only lifecycle projection to the existing loopback
+control-plane/browser surface. `SimulationLifecycleDashboardService` accepts only an
+injected pair of accepted engine objects: the deterministic closeout account and the
+post-close lifecycle marked-account state. It independently revalidates closeout
+state/ledger fingerprints, the marked-state fingerprint, exact source-state binding,
+carried accounting fields, and current open-position/mark lineage before exposing any
+payload.
+
+The new local endpoint is `/api/v1/ops/simulation-lifecycle`. It never initializes a
+provider, broker, order adapter, or legacy execution-artifact fallback. With no
+injected engine source it returns explicit `NOT_CONNECTED`; an invalid injected
+source returns `INVALID`. Only a fingerprint-valid engine-owned source is rendered
+as `AVAILABLE`.
+
+The browser adds a Track A simulation-lifecycle panel showing current marked/book
+equity, cash, realized and unrealized P&L, fee layers, currently open marked
+positions, deterministic closed trades, and source fingerprints. It uses the existing
+`atlas:observability-refreshed` event, adds no independent timer, performs GET only,
+and carries zero browser/provider/broker/order mutation authority. The synthetic
+preview server exposes the same response shape for UI development while remaining
+explicitly synthetic and read-only.
+
+This closes the projection/UI seam but **does not create a production lifecycle source
+by itself**. The next bounded Track A package is the engine lifecycle coordinator:
+one deterministic owner of reservations, entries, marks, exits, closeouts, and
+current valuation that can supply the injected dashboard source without reconstructing
+state from old artifacts. The coordinator must close ongoing/re-entry sequencing,
+idempotency, replay, and atomic-current-snapshot semantics before any later
+broker/PAPER authority package. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
