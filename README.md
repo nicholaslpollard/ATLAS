@@ -1175,6 +1175,35 @@ success, roll back in-memory state on storage failure, restore only from this ac
 store, and keep provider/broker/order authority at zero. The Strategy Evidence Register
 remains unchanged.
 
+## 2026-09-18 — Persistent recurrent lifecycle runtime
+
+Track A now stages `atlas-simulation-persistent-recurrent-runtime-v1` under contract
+`68a2413ead3f45585445dcf9e60de9123476a177c08f370edd2938f2e9bf1d4f`.
+
+The runtime wraps the accepted recurrent coordinator and durable account store under
+one process lock. First bootstrap requires an explicit already-valid
+`RecurrentLifecycleAccountV1`; restore accepts only the exact persisted runtime-store
+snapshot. No initial equity, positions, reservations, or history are inferred and no
+legacy artifact is silently promoted to current account truth.
+
+For each real recurrent account mutation, the coordinator first produces the accepted
+deterministic transition. Before that mutation is returned as successful, the exact
+resulting account must pass compare-and-swap persistence and post-write reread. If
+storage fails, the runtime recreates its coordinator from the pre-mutation durable
+account and deliberately discards transient marks. The caller receives failure rather
+than an in-memory state that outruns disk truth.
+
+Exact zero-event/idempotent mutation reuse does not rewrite the store. Market marks
+remain transient: publishing a mark may advance the coordinator's in-process logical
+revision but may not change the durable account snapshot. A restored process therefore
+starts with the exact recurrent book and no current valuation until fresh marks arrive.
+
+The next bounded Track A package is production startup/restore wiring for Phase 19:
+load this runtime from the configured derived-data store, project its atomic account
+and current marks through the recurrent read-only dashboard, return recurrent
+`NOT_CONNECTED` when the store is genuinely uninitialized, and fail startup on corrupt
+persisted state. The Strategy Evidence Register remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
