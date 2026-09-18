@@ -1386,6 +1386,36 @@ fill and option-quote semantics rather than inferring them from stock minute dat
 Real-machine quote/provider acceptance remains required before this adapter can produce
 non-empty production marks on the current deployment.
 
+## 2026-09-18 — Current Webull L1 quote bundle and stock-mark adapter
+
+Track A now adds a product-grade read-only quote path for the current deployment.
+`atlas-execution-current-webull-stock-quote-bundle-v1` is frozen under contract
+`5c2df876e2d9814434d6823f04c2cd0e6bfcdbe9b071cf291213abb634f2d26d`.
+
+The capture command `scripts/capture_current_webull_quotes.py` accepts an explicit
+comma-separated stock list, performs exactly one Webull **sandbox** L1 market-data read
+per exact-case symbol. Starting a capture invalidates the prior current bundle first,
+so a failed attempt cannot leave a previous still-fresh artifact masquerading as the
+new capture. Nothing new is persisted unless every requested symbol returns a valid,
+positive, uncrossed, regular-session quote inside the accepted execution age cap. The resulting bundle is sorted, complete, self-fingerprinted, atomically written
+with fsync, and carries explicit provider-read counts. Capture performs no account read,
+provider write, broker write, order creation, PAPER, or LIVE action.
+
+The paired `atlas-simulation-current-webull-stock-mark-adapter-v1` contract is frozen
+at `586b58a791e14cc21a3bb02f8d556a35785deae335a4153cee5bd37d30f33148`.
+It consumes the already-captured bundle and exact recurrent stock positions with zero
+network calls, requires exact-case complete quote coverage, preserves the stricter
+30-second execution quote age cap, and converts each quote through the existing accepted
+market-mark evidence contract. Option positions fail closed rather than borrowing an
+underlying stock price, and mark construction grants no trading authority.
+
+This closes the current-deployment stock MARK source gap without upgrading Massive or
+fabricating quote data from delayed minute bars. The remaining production evidence
+boundaries are RESERVE decision production plus execution-quality ENTRY/CLOSE evidence
+with explicit fill/fee semantics. A real market-hours Webull sandbox capture on the
+target workstation is still required before non-empty recurrent MARK acceptance. The
+Strategy Evidence Register remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
