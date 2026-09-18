@@ -969,11 +969,36 @@ options reuse the exact reserved debit and require zero supplemental cash. Neith
 evidence object changes cash, releases a reservation, creates a position, recomputes
 historical fees/P&L, or grants provider/broker/order/PAPER/LIVE authority.
 
-The next bounded recurrent package is the atomic reservation→position transition on
-`RecurrentLifecycleAccountV1`: consume one still-active reservation plus exact
-recurrent fill/funding evidence, expense the entry fee once, create one open position,
-preserve canonical closed history, and append one `OPEN_POSITION` event to the
-existing recurrent ledger. The Strategy Evidence Register remains unchanged.
+The recurrent reservation→position transition described below now consumes that
+evidence on the same stable account and append-only ledger. The Strategy Evidence
+Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle reservation-to-position transitions
+
+Track A now adds `atlas-simulation-recurrent-position-transition-v1` under contract
+`998b3c505aaabd429b5009cb1c9cfebe864810f2d6e871d60450f4ccc2d7e084`.
+This operation consumes and returns `RecurrentLifecycleAccountV1`; it does not create
+a new position-account generation.
+
+A transition requires recurrent entry-fill and funding evidence from one accepted
+recurrent source snapshot and the exact reservation must still be active when the
+mutation is applied. Only that reservation is consumed. The new
+`SimulatedOpenPositionV1` preserves decision/candidate/reservation/fill/funding and
+option lineage, the new entry fee is expensed once, canonical closed history remains
+unchanged, and one fingerprint-chained `OPEN_POSITION` event is appended.
+
+Single-entry application requires evidence to bind the exact current state. Batches may
+pre-materialize several fills/funding objects against one common source snapshot, but
+application is deterministic by fill time/fingerprint and each transition rechecks the
+current remaining cash and reservation. Thus separately valid evidence cannot spend the
+same supplemental cash twice. Exact duplicate fill/funding reuse is idempotent and a
+conflicting second fill for an already-applied decision fails closed.
+
+The operation grants no exit/closeout, mark-to-market, provider/broker/order,
+PAPER/LIVE, promotion, or confluence authority. The next recurrent package is the
+read-only marked-account projection against the recurrent state, followed by
+recurrent-native exit evidence and `CLOSE_POSITION` mutation on this same account and
+ledger. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 

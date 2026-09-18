@@ -125,6 +125,15 @@ from packages.simulation.recurrent_entry_evidence_contract import (
 from packages.simulation.recurrent_lifecycle_contract import (
     RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.recurrent_position_contract import (
+    RECURRENT_POSITION_TRANSITION_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.recurrent_positions import (
+    RecurrentPositionTransitionError,
+    apply_recurrent_entry_batch_v1,
+    apply_recurrent_entry_v1,
+    verify_recurrent_entry_replay_v1,
+)
 from packages.simulation.recurrent_lifecycle_state import (
     RecurrentClosedTradeOrigin,
     RecurrentLifecycleAccountError,
@@ -2628,3 +2637,345 @@ def test_recurrent_entry_and_funding_evidence_grant_no_mutation_authority() -> N
         replace(funding, open_position_authority=True)
     with pytest.raises(RecurrentEntryEvidenceError, match="cannot grant"):
         replace(funding, paper_authority=True)
+
+
+def _recurrent_stock_entry_case():
+    reserved, record = _recurrent_stock_reservation_case()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-position-stock",
+            fill_source_fingerprint=_fp("4"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+    return reserved, record, fill, funding
+
+
+def _recurrent_option_entry_case():
+    reserved, record, terms = _recurrent_option_reservation_case()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        option_terms=terms,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-position-option",
+            fill_source_fingerprint=_fp("5"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=5.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+    return reserved, record, terms, fill, funding
+
+
+def test_recurrent_position_transition_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_POSITION_TRANSITION_CONTRACT_FINGERPRINT
+        == "998b3c505aaabd429b5009cb1c9cfebe864810f2d6e871d60450f4ccc2d7e084"
+    )
+
+
+def test_recurrent_stock_entry_mutates_same_account_and_expenses_fee_once() -> None:
+    reserved, record, fill, funding = _recurrent_stock_entry_case()
+    before_closed = reserved.state.closed_trades
+    before_open = reserved.state.open_positions
+
+    transition = apply_recurrent_entry_v1(
+        reserved,
+        fill=fill,
+        funding=funding,
+    )
+    state = transition.account.state
+
+    assert state.contract_fingerprint == reserved.state.contract_fingerprint
+    assert transition.idempotent_reuse is False
+    assert transition.event is not None
+    assert transition.event.kind == RecurrentLifecycleEventKind.OPEN_POSITION
+    assert transition.event.decision_record_fingerprint == record.record_fingerprint
+    assert transition.event.fill_fingerprint == fill.fill_fingerprint
+    assert transition.event.funding_terms_fingerprint == funding.terms_fingerprint
+    assert state.cash == pytest.approx(10_002.0)
+    assert state.stock_reserved_capital == 0.0
+    assert state.open_entry_book_value_dollars == pytest.approx(10_200.0)
+    assert state.open_stock_gross_entry_exposure_dollars == pytest.approx(10_000.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(6.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(2.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(208.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(205.0)
+    assert state.account_book_equity == pytest.approx(20_202.0)
+    assert state.closed_trades == before_closed
+    assert len(state.open_positions) == len(before_open) + 1
+    assert transition.position is not None
+    assert transition.position.entry_fees_dollars == pytest.approx(2.0)
+    assert transition.position.all_in_cash_cost_basis_dollars == pytest.approx(
+        10_002.0
+    )
+    assert (
+        state.cash
+        + state.stock_reserved_capital
+        + state.option_reserved_capital
+        + state.open_entry_book_value_dollars
+        == pytest.approx(state.account_book_equity)
+    )
+
+
+def test_recurrent_option_entry_returns_unspent_reserve_on_same_account() -> None:
+    reserved, _record, _terms, fill, funding = _recurrent_option_entry_case()
+    transition = apply_recurrent_entry_v1(
+        reserved,
+        fill=fill,
+        funding=funding,
+    )
+    state = transition.account.state
+
+    assert state.contract_fingerprint == reserved.state.contract_fingerprint
+    assert state.cash == pytest.approx(19_002.0)
+    assert state.option_reserved_capital == 0.0
+    assert state.open_entry_book_value_dollars == pytest.approx(1_200.0)
+    assert state.open_option_entry_book_value_dollars == pytest.approx(1_200.0)
+    assert (
+        state.open_option_signed_delta_equivalent_entry_reference_dollars
+        == pytest.approx(11_120.0)
+    )
+    assert (
+        state.open_option_abs_delta_equivalent_entry_reference_dollars
+        == pytest.approx(11_120.0)
+    )
+    assert state.open_option_premium_at_risk_dollars == pytest.approx(1_200.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(6.0)
+    assert state.account_book_equity == pytest.approx(20_202.0)
+    assert len(state.closed_trades) == 2
+    assert transition.event is not None
+    assert transition.event.option_reserved_capital_delta_dollars == pytest.approx(
+        -1_043.0
+    )
+    assert transition.event.cash_delta_dollars == pytest.approx(41.0)
+
+
+def test_recurrent_entry_duplicate_is_idempotent_and_conflict_fails_closed() -> None:
+    reserved, record, fill, funding = _recurrent_stock_entry_case()
+    first = apply_recurrent_entry_v1(
+        reserved,
+        fill=fill,
+        funding=funding,
+    )
+    duplicate = apply_recurrent_entry_v1(
+        first.account,
+        fill=fill,
+        funding=funding,
+    )
+    assert duplicate.idempotent_reuse is True
+    assert duplicate.event is None
+    assert duplicate.account == first.account
+    assert duplicate.position_fingerprint == first.position_fingerprint
+
+    conflicting_fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-position-conflict",
+            fill_source_fingerprint=_fp("6"),
+            filled_utc=fill.filled_utc + timedelta(seconds=1),
+            fill_price_per_unit=101.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    conflicting_funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=conflicting_fill,
+    )
+    with pytest.raises(
+        RecurrentPositionTransitionError,
+        match="conflicting recurrent fill",
+    ):
+        apply_recurrent_entry_v1(
+            first.account,
+            fill=conflicting_fill,
+            funding=conflicting_funding,
+        )
+
+
+def test_recurrent_single_entry_rejects_evidence_after_unrelated_state_change() -> None:
+    reserved, _record, fill, funding = _recurrent_stock_entry_case()
+    option_record, option_terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=4)
+    )
+    changed = apply_recurrent_decision_reservation_v1(
+        reserved,
+        option_record,
+        option_terms=option_terms,
+    ).account
+
+    with pytest.raises(
+        RecurrentPositionTransitionError,
+        match="fill/funding must bind the recurrent evidence source state",
+    ):
+        apply_recurrent_entry_v1(
+            changed,
+            fill=fill,
+            funding=funding,
+        )
+
+
+def test_recurrent_mixed_entry_batch_uses_common_snapshot_and_replays_exactly() -> None:
+    account = _recurrent_account()
+    stock_record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1)
+    )
+    option_record, option_terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2)
+    )
+    reserved = apply_recurrent_reservation_batch_v1(
+        account,
+        ((option_record, option_terms), (stock_record, None)),
+    ).account
+
+    stock_fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=stock_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-batch-stock",
+            fill_source_fingerprint=_fp("7"),
+            filled_utc=option_record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    option_fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=option_record,
+        option_terms=option_terms,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-batch-option",
+            fill_source_fingerprint=_fp("8"),
+            filled_utc=option_record.decision_created_utc + timedelta(minutes=1, seconds=1),
+            fill_price_per_unit=5.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    stock_funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=stock_fill,
+    )
+    option_funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=option_fill,
+    )
+    entries = (
+        (option_fill, option_funding),
+        (stock_fill, stock_funding),
+    )
+
+    first = apply_recurrent_entry_batch_v1(
+        reserved,
+        entries,
+    )
+    second = apply_recurrent_entry_batch_v1(
+        reserved,
+        tuple(reversed(entries)),
+    )
+
+    assert first.source_state_fingerprint == reserved.state.state_fingerprint
+    assert first.ordered_fill_fingerprints == (
+        stock_fill.fill_fingerprint,
+        option_fill.fill_fingerprint,
+    )
+    assert first.account.state == second.account.state
+    assert first.account.ledger == second.account.ledger
+    assert first.account.state.cash == pytest.approx(9_000.0)
+    assert first.account.state.stock_reserved_capital == 0.0
+    assert first.account.state.option_reserved_capital == 0.0
+    assert first.account.state.open_entry_book_value_dollars == pytest.approx(
+        11_200.0
+    )
+    assert first.account.state.cumulative_entry_fees_dollars == pytest.approx(
+        8.0
+    )
+    assert first.account.state.account_book_equity == pytest.approx(20_200.0)
+    assert len(first.account.state.open_positions) == 3
+    assert len(first.account.state.closed_trades) == 2
+    assert [event.kind for event in first.account.ledger.events[-2:]] == [
+        RecurrentLifecycleEventKind.OPEN_POSITION,
+        RecurrentLifecycleEventKind.OPEN_POSITION,
+    ]
+
+    verify_recurrent_entry_replay_v1(
+        initial_account=reserved,
+        expected_account=first.account,
+        entries=entries,
+    )
+
+
+def test_recurrent_entry_batch_rechecks_current_cash_competition() -> None:
+    account = _recurrent_account()
+    records = tuple(
+        _stock_record(
+            created_utc=DECISION_BASE + timedelta(hours=1, minutes=index * 2)
+        )
+        for index in range(3)
+    )
+    reserved = apply_recurrent_reservation_batch_v1(
+        account,
+        tuple((record, None) for record in records),
+    ).account
+    assert reserved.state.cash == pytest.approx(5_004.0)
+    assert reserved.state.stock_reserved_capital == pytest.approx(15_000.0)
+
+    entries = []
+    for index, record in enumerate(records):
+        fill = build_recurrent_entry_fill_evidence(
+            account=reserved,
+            record=record,
+            inputs=SimulatedEntryFillInputs(
+                fill_source_id=f"recurrent-competition-{index}",
+                fill_source_fingerprint=_fp(str(index + 1)),
+                filled_utc=records[-1].decision_created_utc
+                + timedelta(minutes=index + 1),
+                fill_price_per_unit=100.0,
+                explicit_entry_fees_dollars=2.0,
+            ),
+        )
+        funding = build_recurrent_funding_terms(
+            account=reserved,
+            fill=fill,
+        )
+        entries.append((fill, funding))
+
+    with pytest.raises(
+        RecurrentPositionTransitionError,
+        match="insufficient current recurrent cash after competing entries",
+    ):
+        apply_recurrent_entry_batch_v1(
+            reserved,
+            tuple(entries),
+        )
+
+
+def test_recurrent_position_transition_keeps_external_authority_false() -> None:
+    reserved, _record, fill, funding = _recurrent_stock_entry_case()
+    transition = apply_recurrent_entry_v1(
+        reserved,
+        fill=fill,
+        funding=funding,
+    )
+    state = transition.account.state
+
+    assert state.provider_read_authority is False
+    assert state.provider_write_authority is False
+    assert state.broker_read_authority is False
+    assert state.broker_write_authority is False
+    assert state.order_creation_authority is False
+    assert state.paper_authority is False
+    assert state.live_authority is False
