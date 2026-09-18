@@ -1450,6 +1450,50 @@ quotes/fills with explicit fee semantics, followed by a full workstation cycle
 restart/resume proof using real market-hours Webull sandbox L1 evidence. The Strategy
 Evidence Register remains unchanged.
 
+## 2026-09-18 — Current Webull stock ENTRY evidence
+
+Track A now freezes `atlas-simulation-current-webull-stock-entry-evidence-bundle-v1`
+under contract `2a5635ce3cffff6eadeda16a2857a6b71acfb6daa267f786caa9e2aa803d070d`.
+
+The adapter consumes the accepted post-RESERVE recurrent account, the exact durable
+RESERVE evidence bundle, one accepted current Webull sandbox L1 quote bundle, and an
+explicit fee source with a fee amount for every active stock decision. It performs no
+network call itself. Stock entry uses the exact current **ask** as the complete simulated
+fill price; quantity remains derived from the already-reserved economic gross notional,
+not from a new sizing decision.
+
+V1 preserves fail-closed lifecycle semantics:
+
+1. abstentions and explicit insufficient-capital RESERVE rejections create no ENTRY;
+2. every active recurrent reservation must be represented by the current RESERVE
+   evidence bundle;
+3. active option reservations fail closed because the current Webull bundle is stock-L1
+   only;
+4. exact-case quote coverage is required for each active stock decision;
+5. the quote must be regular-session, received after the post-RESERVE recurrent state,
+   and inside the accepted 30-second execution age cap;
+6. entry fees must be explicitly supplied from one named/fingerprinted source with exact
+   coverage—no silent zero-fee assumption;
+7. the accepted recurrent fill builder binds the active reservation and uses ask price
+   plus explicit fees;
+8. the accepted recurrent funding builder proves cash-only long-stock funding; and
+9. the entire proposed entry batch is dry-run through the accepted recurrent batch
+   transition before the evidence bundle is accepted, so competing supplemental fees
+   cannot overdraw remaining cash.
+
+The complete fill/funding pairs are deterministically ordered, self-fingerprinted and
+persisted atomically with fsync at
+`data/live/simulation/recurrent_entry/current.json`, with a direct runner ENTRY
+admission helper. The artifact grants no provider/broker/fill/order/PAPER/LIVE,
+promotion or confluence authority.
+
+Immediate continuation is an explicit recurrent exit-plan/trigger contract. Phase 13
+already carries reference-only risk/reward geometry; a new bridge must deliberately
+translate those accepted fractions onto the actual simulated entry fill before any
+stop/target can become a CLOSE trigger. Reference Phase 13 prices will not be treated as
+executable levels merely because they exist. The Strategy Evidence Register remains
+unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
