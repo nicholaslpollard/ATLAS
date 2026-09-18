@@ -1246,11 +1246,52 @@ The operator CLI is `scripts/bootstrap_recurrent_lifecycle.py`. It requires
 is embedded in ATLAS. The command performs zero provider/broker reads or writes and
 grants no order/PAPER/LIVE/promotion/confluence authority.
 
-The next bounded Track A package is production recurrent-cycle orchestration around the
-durable runtime: explicit evidence acquisition/admission, deterministic scheduled cycle
-ordering, restart/resume/no-double-application semantics, and an operator-visible cycle
-receipt before any qualifying PAPER authority. The Strategy Evidence Register remains
-unchanged.
+The durable recurrent simulation-cycle orchestrator described below now provides the
+stage ordering and restart-safe receipt boundary. The Strategy Evidence Register
+remains unchanged.
+
+## 2026-09-18 — Durable recurrent simulation-cycle orchestration
+
+Track A now adds `atlas-simulation-recurrent-cycle-receipt-v1`. The orchestrator
+does not acquire provider or broker evidence itself; it consumes already accepted,
+fingerprint-bound evidence and sequences it through the durable recurrent runtime in
+one frozen order:
+
+`CLOSE → RESERVE → ENTRY → MARK → COMPLETE`.
+
+Every cycle has an explicit operator/system cycle id, deterministic cycle fingerprint,
+source checkpoint SHA-256, source runtime-snapshot fingerprint, current checkpoint and
+snapshot fingerprints, logical revision, and one content-addressed receipt under the
+recurrent checkpoint's sibling `cycles/` directory. Each stage records the exact
+sorted action fingerprints consumed plus before/after checkpoint and snapshot
+fingerprints. Receipt writes use the existing atomic write + fsync path and are
+self-hash verified on readback.
+
+The stage contract is restart-safe. Repeating an exactly recorded stage is idempotent;
+attempting to reuse a stage with different evidence fails closed. If the durable runtime
+commit succeeded but execution stopped before the matching cycle receipt was written,
+the orchestrator can prove that the exact actions are already present in the recurrent
+ledger/marked state and record the missing receipt without applying them twice. An
+unexplained checkpoint advance, broken stage order, tampered receipt, or uncertain
+durable runtime fails closed.
+
+Empty stages are explicit and still receive receipt records so a completed cycle proves
+that each stage was evaluated. The mark stage binds the exact valuation timestamp in
+addition to mark fingerprints. Completion is allowed only after all four stages and
+only if runtime checkpoint/snapshot state still equals the recorded MARK result.
+
+The cycle layer grants no provider/broker/order/PAPER/LIVE/promotion/confluence
+authority. A deliberately narrow operator smoke CLI,
+`scripts/run_recurrent_empty_cycle.py`, is included for the first post-genesis
+workstation validation. It refuses any account with active reservations or open
+positions and runs only a zero-evidence CLOSE/RESERVE/ENTRY/MARK cycle, proving durable
+checkpoint + receipt + empty marked-state behavior without provider/broker reads.
+
+The next product boundary is the production cycle runner/evidence-admission surface:
+schedule and identify cycles, acquire current accepted evidence outside this
+orchestrator, feed the immutable inputs into these stages, expose cycle health/receipts,
+and prove workstation restart/resume behavior before any qualifying PAPER program. The
+Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 

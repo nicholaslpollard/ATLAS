@@ -2745,13 +2745,50 @@ Frozen semantics:
    bootstrap path; and
 10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is production recurrent-cycle orchestration: explicit
-evidence-acquisition inputs, deterministic cycle ordering, durable per-cycle receipts,
-restart/resume and no-double-application proof, and operator-visible health before any
-qualifying PAPER program.
+The durable recurrent cycle orchestrator described below now freezes the stage ordering
+and restart-safe receipt semantics.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime bootstrap only.
+
+## Track A durable recurrent simulation-cycle orchestration — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-cycle-receipt-v1`.
+
+Frozen semantics:
+
+1. consume accepted evidence only; provider and broker evidence acquisition remains
+   outside the orchestrator;
+2. execute exactly `CLOSE → RESERVE → ENTRY → MARK → COMPLETE`;
+3. bind one cycle id/fingerprint to its source durable checkpoint SHA-256 and recurrent
+   runtime snapshot fingerprint;
+4. persist one atomic, fsync-backed, self-hash-verified cycle receipt and one ordered
+   stage record for every stage, including explicitly empty stages;
+5. fingerprint exact CLOSE exit fills, RESERVE decisions, ENTRY fill+funding pairs, and
+   MARK evidence plus the valuation timestamp;
+6. make exact stage reuse idempotent and reject reuse with conflicting evidence;
+7. reconcile an interrupted post-runtime/pre-receipt stage by proving the exact action
+   fingerprints already exist in recurrent ledger/marked state before recording the
+   missing receipt, preventing double application;
+8. fail closed on stage-order violations, unexplained runtime checkpoint advancement,
+   receipt tampering, broken checkpoint/snapshot chains, or durable runtime uncertainty;
+9. complete a cycle only after all four stage records exist and current durable runtime
+   state still equals the MARK-stage result; and
+10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+A bounded post-genesis smoke CLI, `scripts/run_recurrent_empty_cycle.py`, may run only
+when the recurrent account has no active reservations or open positions. It executes an
+empty four-stage cycle and publishes an empty marked state to prove checkpoint/receipt
+restart behavior with zero provider/broker reads.
+
+Immediate Track A continuation is the production cycle runner and evidence-admission
+surface: deterministic cycle ids/schedule, explicit current-evidence acquisition
+outside the orchestrator, operator-visible cycle health/receipts, and workstation
+restart/resume proof before any qualifying PAPER program.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime orchestration only.
+
 
 
 
