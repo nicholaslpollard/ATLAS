@@ -1174,12 +1174,48 @@ contract, self-hash, history-chain, state/ledger, marked-state, or lineage valid
 startup fails closed rather than reconstructing current trading truth from research or
 legacy artifacts.
 
-This package adds persistence/restore only. It does not make simulation mutations
-durable as one transaction yet and grants no provider/broker/order, PAPER/LIVE,
-promotion, or confluence authority. The next bounded Track A package is a durable
-runtime wrapper that couples each accepted recurrent mutation/mark publication with
-checkpoint commit/rollback semantics before scheduled autonomous simulation work is
-allowed. The Strategy Evidence Register remains unchanged.
+The durable runtime transaction layer described below now binds every accepted
+recurrent mutation/mark publication to checkpoint commit or explicit fail-closed
+recovery. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Durable recurrent runtime transaction boundary
+
+Track A now adds `atlas-simulation-recurrent-durable-runtime-v1` under contract
+`2959ba43c8279fd28cedeeca6df24f6f56edb6714a72cfc47999ea7e2bb3f891`.
+
+`DurableRecurrentLifecycleRuntimeV1` wraps the accepted recurrent coordinator without
+moving filesystem I/O into the deterministic engine. Every reservation, entry,
+close-position, or unique mark-publication operation executes behind one runtime
+`RLock`, captures the exact pre-operation coordinator snapshot, and then commits the
+exact post-operation snapshot through the recurrent checkpoint contract using the
+expected previous checkpoint SHA.
+
+An idempotent operation whose coordinator snapshot does not change performs no
+checkpoint write and therefore creates no history noise. For a real state change, the
+operation is not considered durably resolved until the checkpoint can be classified.
+
+Persistence failure has three explicit outcomes:
+
+1. if durable readback is still the exact pre-operation snapshot, the in-memory
+   coordinator is restored to that snapshot and the operation fails as rolled back;
+2. if durable readback is the exact post-operation snapshot, the commit is accepted
+   even if the writer surfaced an error after the atomic replace; and
+3. if durable state cannot be read or matches neither pre nor post state, the runtime
+   enters `UNCERTAIN` and blocks account, mark, dashboard, and mutation access until
+   an explicit verified checkpoint reload succeeds.
+
+Production Phase 19 startup now restores this durable wrapper rather than a naked
+recurrent coordinator. The browser therefore sees recurrent state only through an
+engine owner that is tied to one verified durable checkpoint. Runtime status exposes
+the checkpoint SHA, logical revision, snapshot fingerprint, and uncertainty flag but
+grants no provider/broker/order/PAPER/LIVE/promotion/confluence authority.
+
+This closes the mutation↔checkpoint atomicity boundary for a single process. The next
+bounded Track A work is production orchestration around this durable runtime: define
+the scheduled simulation cycle and explicit evidence-acquisition boundaries, bootstrap
+the first authoritative recurrent checkpoint through a one-time controlled path, and
+prove restart/resume behavior before any qualifying PAPER program. The Strategy
+Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
