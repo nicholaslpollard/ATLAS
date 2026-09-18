@@ -1086,10 +1086,40 @@ still-current valuation. Republishing an identical complete mark snapshot is lik
 idempotent. `current_dashboard_pair()` returns an atomic recurrent account + marked
 state only when their fingerprints match exactly.
 
-The next bounded Track A package is recurrent lifecycle observability: adapt this
-atomic recurrent pair into the existing loopback/browser payload, retaining one
-engine-owned source of truth and zero browser/provider/broker/order mutation authority.
-The Strategy Evidence Register remains unchanged.
+The recurrent lifecycle observability layer described below now adapts this atomic pair
+into the existing loopback/browser surface while retaining one engine-owned source of
+truth. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle observability
+
+Track A now projects the recurrent coordinator through the existing
+`GET /api/v1/ops/simulation-lifecycle` browser surface without adding a second
+polling loop or browser mutation path.
+
+`RecurrentLifecycleDashboardService` accepts only an injected atomic
+`RecurrentLifecycleAccountV1 + RecurrentMarkedAccountStateV1` pair. It independently
+revalidates account/ledger fingerprints, the marked-state fingerprint, exact
+source-state binding, carried accounting values, and complete open-position mark
+lineage. With no current marked pair it returns explicit `NOT_CONNECTED`; invalid
+lineage returns `INVALID`.
+
+The payload preserves the existing operator metrics while naming provenance correctly:
+`account_state_fingerprint`, `account_ledger_fingerprint`, and
+`source_kind=RECURRENT_LIFECYCLE_ACCOUNT`. Canonical closed trades additionally expose
+their provenance origin/source fingerprints. The browser accepts both these recurrent
+fields and the older closeout fields so the migration remains backward compatible.
+
+`create_phase19_status_server` can receive an explicit lifecycle dashboard service,
+the earlier single-cycle coordinator, or the recurrent coordinator—but never more than
+one source. Recurrent injection performs no provider/broker initialization. The
+browser still uses the existing `atlas:observability-refreshed` event, GET only, with
+zero provider/broker/order/browser mutation authority.
+
+This closes the recurrent engine→operator-view seam. The next Track A work is runtime
+startup/orchestration: instantiate the recurrent coordinator from the accepted current
+simulation account, feed it accepted decision/fill/mark/exit evidence on schedule, and
+then remove the single-cycle bridge from the default runtime path without deleting its
+historical compatibility contracts. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
