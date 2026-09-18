@@ -4179,3 +4179,306 @@ def test_recurrent_dashboard_becomes_not_connected_after_account_mutation() -> N
     assert payload["health"]["reason"] == (
         "RECURRENT_LIFECYCLE_SOURCE_NOT_AVAILABLE"
     )
+
+
+def _recurrent_persistence_coordinator():
+    coordinator = RecurrentLifecycleCoordinatorV1(
+        account=_recurrent_positioned_account()
+    )
+    account = coordinator.current_account()
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "7"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "8"
+            ),
+        )
+        for position in account.state.open_positions
+    )
+    coordinator.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    return coordinator, valuation
+
+
+def test_recurrent_lifecycle_checkpoint_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_LIFECYCLE_CHECKPOINT_CONTRACT_FINGERPRINT
+        == "53d34c03bf23157bb447cdf4ddb8902cd56ac008403efb8dd8145e596c45c2fa"
+    )
+
+
+def test_recurrent_checkpoint_round_trip_restores_exact_coordinator(
+    tmp_path,
+) -> None:
+    coordinator, _valuation = _recurrent_persistence_coordinator()
+    snapshot = coordinator.snapshot()
+    path = tmp_path / "current.json"
+
+    written = write_recurrent_lifecycle_checkpoint(
+        path,
+        snapshot,
+        persisted_at_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+    )
+    loaded = read_recurrent_lifecycle_checkpoint(path)
+    restored = restore_recurrent_lifecycle_coordinator(path)
+
+    assert written == loaded
+    assert loaded.snapshot == snapshot
+    assert loaded.snapshot_fingerprint == snapshot.snapshot_fingerprint
+    assert loaded.snapshot.revision == snapshot.revision
+    assert (
+        loaded.snapshot.account.state.state_fingerprint
+        == snapshot.account.state.state_fingerprint
+    )
+    assert (
+        loaded.snapshot.account.ledger.ledger_fingerprint
+        == snapshot.account.ledger.ledger_fingerprint
+    )
+    assert loaded.snapshot.marked_state is not None
+    assert (
+        loaded.snapshot.marked_state.state_fingerprint
+        == snapshot.marked_state.state_fingerprint
+    )
+    assert restored.snapshot() == snapshot
+    assert restored.current_dashboard_pair() is not None
+
+
+def test_recurrent_checkpoint_preserves_mark_only_revision_and_history(
+    tmp_path,
+) -> None:
+    account = _recurrent_positioned_account()
+    coordinator = RecurrentLifecycleCoordinatorV1(account=account)
+    path = tmp_path / "current.json"
+
+    first = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+        persisted_at_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+    )
+    ledger_length = len(account.ledger.events)
+    assert first.snapshot.revision == ledger_length
+    assert first.snapshot.marked_state is None
+
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "9"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "a"
+            ),
+        )
+        for position in account.state.open_positions
+    )
+    coordinator.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    second = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+        expected_previous_checkpoint_sha256=first.checkpoint_sha256,
+        persisted_at_utc=datetime(2026, 9, 18, 15, 1, tzinfo=UTC),
+    )
+
+    assert second.snapshot.revision == ledger_length + 1
+    assert len(second.snapshot.account.ledger.events) == ledger_length
+    assert second.snapshot.marked_state is not None
+    assert second.checkpoint_history == (first.checkpoint_sha256,)
+    history_path = (
+        path.parent
+        / "history"
+        / f"{first.checkpoint_sha256}.json"
+    )
+    assert history_path.is_file()
+
+    restored = restore_recurrent_lifecycle_coordinator(path)
+    assert restored.revision == ledger_length + 1
+    assert restored.current_marked_state() is not None
+    assert (
+        restored.snapshot().snapshot_fingerprint
+        == second.snapshot.snapshot_fingerprint
+    )
+
+
+def test_recurrent_checkpoint_records_account_mutation_after_mark(
+    tmp_path,
+) -> None:
+    coordinator, valuation = _recurrent_persistence_coordinator()
+    path = tmp_path / "current.json"
+    first = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+        persisted_at_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+    )
+
+    record = _stock_record(
+        created_utc=valuation + timedelta(minutes=1),
+        capital=25_000.0,
+    )
+    transition, mutation = coordinator.apply_reservation(record=record)
+    assert transition.event is not None
+    assert transition.event.kind == (
+        RecurrentLifecycleEventKind.REJECT_INSUFFICIENT_CAPITAL
+    )
+    assert mutation.new_ledger_event_count == 1
+    assert mutation.valuation_invalidated is True
+    assert coordinator.current_marked_state() is None
+
+    second = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+        expected_previous_checkpoint_sha256=first.checkpoint_sha256,
+        persisted_at_utc=datetime(2026, 9, 18, 15, 2, tzinfo=UTC),
+    )
+
+    assert second.snapshot.revision == first.snapshot.revision + 1
+    assert (
+        len(second.snapshot.account.ledger.events)
+        == len(first.snapshot.account.ledger.events) + 1
+    )
+    assert second.snapshot.marked_state is None
+    assert second.checkpoint_history == (first.checkpoint_sha256,)
+    restored = restore_recurrent_lifecycle_coordinator(path)
+    assert restored.snapshot() == second.snapshot
+
+
+def test_recurrent_checkpoint_rejects_stale_writer(
+    tmp_path,
+) -> None:
+    coordinator = RecurrentLifecycleCoordinatorV1(
+        account=_recurrent_account()
+    )
+    path = tmp_path / "current.json"
+    first = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+    )
+
+    record = _stock_record(
+        created_utc=coordinator.current_account().state.as_of_utc
+        + timedelta(minutes=1)
+    )
+    coordinator.apply_reservation(record=record)
+    second = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+        expected_previous_checkpoint_sha256=first.checkpoint_sha256,
+    )
+    assert second.checkpoint_sha256 != first.checkpoint_sha256
+
+    with pytest.raises(
+        RecurrentLifecyclePersistenceError,
+        match="changed since caller read it",
+    ):
+        write_recurrent_lifecycle_checkpoint(
+            path,
+            coordinator.snapshot(),
+            expected_previous_checkpoint_sha256=first.checkpoint_sha256,
+        )
+
+
+def test_recurrent_checkpoint_tamper_fails_closed(
+    tmp_path,
+) -> None:
+    coordinator, _valuation = _recurrent_persistence_coordinator()
+    path = tmp_path / "current.json"
+    write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+    )
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["snapshot"]["account"]["state"]["cash"] += 1.0
+    path.write_text(
+        json.dumps(raw, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RecurrentLifecyclePersistenceError,
+        match="self-hash mismatch",
+    ):
+        read_recurrent_lifecycle_checkpoint(path)
+
+
+def test_recurrent_checkpoint_missing_current_with_history_fails_closed(
+    tmp_path,
+) -> None:
+    coordinator, valuation = _recurrent_persistence_coordinator()
+    path = tmp_path / "current.json"
+    first = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+    )
+    coordinator.apply_reservation(
+        record=_stock_record(
+            created_utc=valuation + timedelta(minutes=1),
+            capital=25_000.0,
+        )
+    )
+    second_snapshot = coordinator.snapshot()
+    write_recurrent_lifecycle_checkpoint(
+        path,
+        second_snapshot,
+        expected_previous_checkpoint_sha256=first.checkpoint_sha256,
+    )
+    assert any((path.parent / "history").glob("*.json"))
+    path.unlink()
+
+    with pytest.raises(
+        RecurrentLifecyclePersistenceError,
+        match="missing while preserved history exists",
+    ):
+        write_recurrent_lifecycle_checkpoint(
+            path,
+            second_snapshot,
+        )
+
+
+def test_recurrent_checkpoint_idempotent_same_snapshot_does_not_grow_history(
+    tmp_path,
+) -> None:
+    coordinator, _valuation = _recurrent_persistence_coordinator()
+    path = tmp_path / "current.json"
+    first = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+    )
+    second = write_recurrent_lifecycle_checkpoint(
+        path,
+        coordinator.snapshot(),
+        expected_previous_checkpoint_sha256=first.checkpoint_sha256,
+    )
+
+    assert second == first
+    assert second.checkpoint_history == ()
+    assert not (path.parent / "history").exists()
