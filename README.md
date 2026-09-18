@@ -667,11 +667,47 @@ accepted independently before the account model is extended across subsequent
 decision/entry cycles. No provider/broker/order/PAPER/LIVE/promotion/confluence
 authority is created.
 
-The next bounded Track A package is therefore unified post-close re-entry/current
-account state: admit new accepted reservation/entry evidence against current realized
-equity while preserving prior closed-trade/fee history, deterministic exposure
-accounting, replay, and the coordinator's one-owner semantics. The Strategy Evidence
-Register remains unchanged.
+The lifecycle-native reservation layer described below now begins that post-close
+re-entry path without conflating reservation with a filled position. The Strategy
+Evidence Register remains unchanged.
+
+## 2026-09-17 — Lifecycle-native post-close re-entry reservations
+
+Track A now adds `atlas-simulation-lifecycle-reservation-account-v1` under contract
+`b4b825cca77a59f2d65064c9644d513714968f4ae7b8cea03f0738411d3459bb`.
+This is the first re-entry/account-continuation layer that operates against a
+**current lifecycle book** rather than restarting the old reservation-only account
+model after positions or realized P&L already exist.
+
+The state is initialized from one exact accepted `CloseoutAccountV1` and carries
+forward, unchanged, the closeout state/ledger fingerprints, current open positions,
+closed trades, cumulative entry/exit fees, account-realized P&L, lifetime trade net
+P&L, cash, book equity, and any still-active reservations. New decision records may
+then reserve stock capital or long-option capital from **current unreserved cash**.
+Reservations reduce cash and increase their dedicated reserved-capital/exposure
+buckets while account book equity remains unchanged and continues to reconcile as
+`cash + stock reservations + option reservations + open entry-book value`.
+
+Reserved stock gross notional remains separate from existing open-stock exposure.
+Reserved option signed/absolute delta-equivalent notional, max-loss cash, and premium
+at risk remain separate from the immutable entry-reference exposure of already-open
+options. Long-option reserved max loss remains equal to reserved option capital.
+Abstentions, missing option terms, and insufficient-current-cash decisions are
+fingerprint-chained ledger events with zero capital mutation. Duplicate decisions are
+idempotent; conflicting option terms fail closed; chronological batch replay
+reconstructs exact state and ledger fingerprints.
+
+This package intentionally creates **no entry fill or new position**. Existing open
+and closed histories are immutable across reservation transitions, and one decision
+cannot exist simultaneously in an active reservation/open bucket and the closed
+history. No mark, closeout, provider/broker/order, PAPER/LIVE, promotion, or
+confluence authority is created.
+
+The next bounded Track A package is lifecycle-native entry/funding consumption:
+consume one exact active lifecycle reservation plus accepted broker-neutral entry-fill
+and funding/collateral evidence, remove only that reservation, create the new open
+position, expense the new entry fee exactly once, and preserve all prior open/closed
+history and realized accounting. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
