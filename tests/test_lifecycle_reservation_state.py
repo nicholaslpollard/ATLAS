@@ -45,6 +45,13 @@ from packages.simulation.lifecycle_entry_evidence_contract import (
 from packages.simulation.lifecycle_position_contract import (
     LIFECYCLE_POSITION_ACCOUNT_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.lifecycle_position_marked_contract import (
+    LIFECYCLE_POSITION_MARKED_ACCOUNT_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.lifecycle_position_marked_state import (
+    LifecyclePositionMarkedAccountError,
+    build_lifecycle_position_marked_account_state,
+)
 from packages.simulation.lifecycle_position_state import (
     LifecyclePositionAccountError,
     apply_lifecycle_entry_batch_v1,
@@ -69,6 +76,11 @@ from packages.simulation.open_position_state import (
     OPEN_POSITION_ACCOUNT_STATE_CONTRACT_VERSION,
     OpenPositionAccountStateV1,
     SimulatedOpenPositionV1,
+)
+from packages.simulation.market_mark_evidence import (
+    MarketMarkInputs,
+    MarketMarkTransport,
+    build_simulated_market_mark_evidence,
 )
 from packages.simulation.open_position_state_contract import (
     OPEN_POSITION_ACCOUNT_STATE_CONTRACT_FINGERPRINT,
@@ -1266,3 +1278,249 @@ def test_lifecycle_position_state_grants_no_reservation_exit_mark_or_trading_aut
         replace(state, exit_closeout_authority=True)
     with pytest.raises(LifecyclePositionAccountError, match="cannot grant"):
         replace(state, paper_authority=True)
+
+
+def _market_mark(
+    position: SimulatedOpenPositionV1,
+    *,
+    valuation_utc: datetime,
+    bid: float,
+    ask: float,
+    source_char: str,
+    age_seconds: float = 5.0,
+):
+    market_utc = valuation_utc - timedelta(seconds=age_seconds)
+    return build_simulated_market_mark_evidence(
+        position=position,
+        inputs=MarketMarkInputs(
+            source_id=f"lifecycle-mark-{position.decision_record_fingerprint[:6]}",
+            source_fingerprint=_fp(source_char),
+            provider="ALPACA",
+            feed=(
+                "IEX"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "INDICATIVE_OPTIONS"
+            ),
+            transport=MarketMarkTransport.STREAM,
+            feed_quality="REALTIME",
+            market_timestamp_utc=market_utc,
+            received_utc=market_utc + timedelta(seconds=1),
+            valuation_utc=valuation_utc,
+            bid_price_per_unit=bid,
+            ask_price_per_unit=ask,
+            last_price_per_unit=(bid + ask) / 2.0,
+        ),
+    )
+
+
+def _post_reentry_stock_position_account():
+    reserved, _record, fill, funding = _reserved_stock_entry_case()
+    transition = apply_lifecycle_entry_v1(
+        initialize_lifecycle_position_account_v1(source=reserved),
+        fill=fill,
+        funding=funding,
+    )
+    return transition.account
+
+
+def test_lifecycle_post_reentry_marked_contract_fingerprint_is_frozen() -> None:
+    assert (
+        LIFECYCLE_POSITION_MARKED_ACCOUNT_CONTRACT_FINGERPRINT
+        == "ba944922450d570ac15b6b28794cfe0cb2c7894cba0e62d09e0957df35c92863"
+    )
+
+
+def test_post_reentry_marks_include_new_and_preexisting_open_positions() -> None:
+    account = _post_reentry_stock_position_account()
+    existing_option = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.OPTION
+    )
+    new_stock = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    state = build_lifecycle_position_marked_account_state(
+        source_state=account.state,
+        marks=(
+            _market_mark(
+                existing_option,
+                valuation_utc=valuation,
+                bid=1.5,
+                ask=1.6,
+                source_char="e",
+            ),
+            _market_mark(
+                new_stock,
+                valuation_utc=valuation,
+                bid=101.0,
+                ask=101.1,
+                source_char="f",
+            ),
+        ),
+        valuation_utc=valuation,
+    )
+
+    assert len(state.marked_positions) == 2
+    assert state.open_entry_book_value_dollars == pytest.approx(10_200.0)
+    assert state.marked_open_position_value_dollars == pytest.approx(10_250.0)
+    assert state.aggregate_unrealized_pnl_dollars == pytest.approx(50.0)
+    assert state.account_book_equity == pytest.approx(20_005.0)
+    assert state.marked_equity == pytest.approx(20_055.0)
+    assert (
+        state.cash
+        + state.stock_reserved_capital
+        + state.option_reserved_capital
+        + state.marked_open_position_value_dollars
+        == pytest.approx(state.marked_equity)
+    )
+    assert state.cumulative_entry_fees_dollars == pytest.approx(4.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(1.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(9.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(8.0)
+    assert state.closed_trade_count == 1
+
+
+def test_post_reentry_mark_coverage_rejects_missing_or_extra_positions() -> None:
+    account = _post_reentry_stock_position_account()
+    option = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.OPTION
+    )
+    stock = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    option_mark = _market_mark(
+        option,
+        valuation_utc=valuation,
+        bid=1.5,
+        ask=1.6,
+        source_char="e",
+    )
+    stock_mark = _market_mark(
+        stock,
+        valuation_utc=valuation,
+        bid=101.0,
+        ask=101.1,
+        source_char="f",
+    )
+
+    with pytest.raises(
+        LifecyclePositionMarkedAccountError,
+        match="complete lifecycle open-position mark coverage",
+    ):
+        build_lifecycle_position_marked_account_state(
+            source_state=account.state,
+            marks=(option_mark,),
+            valuation_utc=valuation,
+        )
+
+    with pytest.raises(
+        LifecyclePositionMarkedAccountError,
+        match="multiple marks",
+    ):
+        build_lifecycle_position_marked_account_state(
+            source_state=account.state,
+            marks=(option_mark, stock_mark, stock_mark),
+            valuation_utc=valuation,
+        )
+
+
+def test_post_reentry_stale_mark_fails_closed() -> None:
+    account = _post_reentry_stock_position_account()
+    option = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.OPTION
+    )
+    stock = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    valuation = account.state.as_of_utc + timedelta(minutes=2)
+    stale_stock = _market_mark(
+        stock,
+        valuation_utc=valuation,
+        bid=101.0,
+        ask=101.1,
+        source_char="f",
+        age_seconds=61.0,
+    )
+    option_mark = _market_mark(
+        option,
+        valuation_utc=valuation,
+        bid=1.5,
+        ask=1.6,
+        source_char="e",
+    )
+    with pytest.raises(
+        LifecyclePositionMarkedAccountError,
+        match="stale or ineligible",
+    ):
+        build_lifecycle_position_marked_account_state(
+            source_state=account.state,
+            marks=(option_mark, stale_stock),
+            valuation_utc=valuation,
+        )
+
+
+def test_post_reentry_valuation_is_order_independent_and_read_only() -> None:
+    account = _post_reentry_stock_position_account()
+    positions = tuple(account.state.open_positions)
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "f"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "e"
+            ),
+        )
+        for position in positions
+    )
+    first = build_lifecycle_position_marked_account_state(
+        source_state=account.state,
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    second = build_lifecycle_position_marked_account_state(
+        source_state=account.state,
+        marks=tuple(reversed(marks)),
+        valuation_utc=valuation,
+    )
+
+    assert first == second
+    assert first.state_fingerprint == second.state_fingerprint
+    assert first.account_mutation_authority is False
+    assert first.new_realized_pnl_authority is False
+    assert first.exit_closeout_authority is False
+    assert first.provider_read_authority is False
+    assert first.broker_write_authority is False
+    assert first.paper_authority is False
+    assert first.live_authority is False
+
+    with pytest.raises(
+        LifecyclePositionMarkedAccountError,
+        match="cannot grant",
+    ):
+        replace(first, account_mutation_authority=True)
