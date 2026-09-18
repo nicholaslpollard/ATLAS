@@ -698,11 +698,18 @@ class RecurrentLifecycleLedgerEventV1:
     kind: RecurrentLifecycleEventKind
     decision_record_fingerprint: str | None
     reservation_fingerprint: str | None
+    reservation_terms_fingerprint: str | None
+    option_economics_result_fingerprint: str | None
     fill_fingerprint: str | None
     funding_terms_fingerprint: str | None
     position_fingerprint: str | None
     exit_fill_fingerprint: str | None
     closed_trade_fingerprint: str | None
+    candidate_identifier: str | None
+    option_contract_ticker: str | None
+    instrument_id: str | None
+    ticker: str | None
+    direction: str | None
 
     cash_delta_dollars: float
     stock_reserved_capital_delta_dollars: float
@@ -740,6 +747,8 @@ class RecurrentLifecycleLedgerEventV1:
         for label, value in (
             ("decision record", self.decision_record_fingerprint),
             ("reservation", self.reservation_fingerprint),
+            ("reservation terms", self.reservation_terms_fingerprint),
+            ("option economics", self.option_economics_result_fingerprint),
             ("fill", self.fill_fingerprint),
             ("funding terms", self.funding_terms_fingerprint),
             ("position", self.position_fingerprint),
@@ -748,6 +757,17 @@ class RecurrentLifecycleLedgerEventV1:
         ):
             if value is not None:
                 _require_fingerprint(value, label=f"{label} fingerprint")
+        for label, value in (
+            ("candidate identifier", self.candidate_identifier),
+            ("option contract ticker", self.option_contract_ticker),
+            ("instrument id", self.instrument_id),
+            ("ticker", self.ticker),
+            ("direction", self.direction),
+        ):
+            if value is not None and not value.strip():
+                raise RecurrentLifecycleAccountError(
+                    f"{label} cannot be blank when supplied"
+                )
         deltas = (
             self.cash_delta_dollars,
             self.stock_reserved_capital_delta_dollars,
