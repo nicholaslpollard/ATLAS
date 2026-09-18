@@ -28,6 +28,7 @@ _PREVIEW_JS_BUNDLE = (
     "observability.js",
     "observability_controls.js",
     "paper_dashboard.js",
+    "simulation_lifecycle_dashboard.js",
     "phase19_preview.js",
 )
 
@@ -553,6 +554,149 @@ def _paper_dashboard_payload(now: datetime) -> dict[str, Any]:
     }
 
 
+def _simulation_lifecycle_payload(now: datetime) -> dict[str, Any]:
+    opened = now - timedelta(hours=2)
+    valuation = now - timedelta(seconds=2)
+    closed_opened = now - timedelta(days=2)
+    closed_at = now - timedelta(hours=3)
+    closeout_fp = "c" * 64
+    ledger_fp = "d" * 64
+    marked_fp = "e" * 64
+    position_fp = "1" * 64
+    decision_fp = "2" * 64
+    return {
+        "contract_version": (
+            "track-a-simulation-lifecycle-dashboard-v1-engine-owned-readonly"
+        ),
+        "preview_synthetic": True,
+        "generated_at_utc": _iso(now),
+        "status": "AVAILABLE",
+        "read_only": True,
+        "provider_reads": 0,
+        "provider_writes": 0,
+        "broker_reads": 0,
+        "broker_writes": 0,
+        "order_writes": 0,
+        "source": {
+            "closeout_state_fingerprint": closeout_fp,
+            "closeout_ledger_fingerprint": ledger_fp,
+            "marked_state_fingerprint": marked_fp,
+            "book_as_of_utc": _iso(now - timedelta(minutes=5)),
+            "valuation_utc": _iso(valuation),
+            "complete_mark_coverage": True,
+        },
+        "account": {
+            "initial_equity": 100000.0,
+            "cash": 77000.0,
+            "account_book_equity": 100250.0,
+            "marked_equity": 100325.44,
+            "cumulative_entry_fees_dollars": 12.50,
+            "cumulative_exit_fees_dollars": 8.25,
+            "cumulative_account_realized_pnl_dollars": 262.50,
+            "cumulative_lifetime_trade_net_pnl_dollars": 250.00,
+            "aggregate_unrealized_pnl_dollars": 75.44,
+            "remaining_stock_reserved_capital": 0.0,
+            "remaining_option_reserved_capital": 0.0,
+            "open_entry_book_value_dollars": 23250.0,
+            "marked_open_position_value_dollars": 23325.44,
+            "snapshot_kind": "ENGINE_OWNED_SIMULATION_LIFECYCLE_CURRENT",
+        },
+        "open_positions": [
+            {
+                "position_fingerprint": position_fp,
+                "mark_fingerprint": "3" * 64,
+                "decision_record_fingerprint": decision_fp,
+                "candidate_fingerprint": "4" * 64,
+                "candidate_identifier": "stock-aapl-long-preview",
+                "instrument_kind": "STOCK",
+                "instrument_id": "AAPL",
+                "ticker": "AAPL",
+                "direction": "bullish",
+                "option_contract_ticker": None,
+                "option_contract_type": None,
+                "opened_utc": _iso(opened),
+                "valuation_utc": _iso(valuation),
+                "quantity": 100.0,
+                "quantity_unit": "SHARES",
+                "entry_price_per_unit": 232.50,
+                "entry_book_value_dollars": 23250.0,
+                "entry_fees_dollars": 1.25,
+                "contract_multiplier": 1.0,
+                "selected_mark_price_per_unit": 233.2544,
+                "marked_value_dollars": 23325.44,
+                "unrealized_pnl_dollars": 75.44,
+                "unrealized_return": 75.44 / 23250.0,
+                "option_signed_delta_equivalent_entry_reference_dollars": 0.0,
+                "option_abs_delta_equivalent_entry_reference_dollars": 0.0,
+                "position_state": "OPEN_SIMULATION_MARKED",
+            }
+        ],
+        "closed_trades": [
+            {
+                "closed_trade_fingerprint": "5" * 64,
+                "position_fingerprint": "6" * 64,
+                "exit_fill_fingerprint": "7" * 64,
+                "decision_record_fingerprint": "8" * 64,
+                "instrument_kind": "STOCK",
+                "instrument_id": "NVDA",
+                "ticker": "NVDA",
+                "direction": "bullish",
+                "candidate_identifier": "stock-nvda-long-preview",
+                "option_contract_ticker": None,
+                "option_contract_type": None,
+                "opened_utc": _iso(closed_opened),
+                "exited_utc": _iso(closed_at),
+                "hold_seconds": (
+                    closed_at - closed_opened
+                ).total_seconds(),
+                "quantity": 15.0,
+                "quantity_unit": "SHARES",
+                "entry_price_per_unit": 180.20,
+                "exit_price_per_unit": 184.45,
+                "entry_book_value_dollars": 2703.0,
+                "entry_fees_dollars": 1.50,
+                "gross_exit_proceeds_dollars": 2766.75,
+                "exit_fees_dollars": 1.25,
+                "net_exit_proceeds_dollars": 2765.50,
+                "account_realized_pnl_delta_dollars": 62.50,
+                "lifetime_trade_net_pnl_dollars": 61.00,
+            }
+        ],
+        "statistics": {
+            "open_position_count": 1,
+            "closed_trade_count": 1,
+            "account_realized_pnl": 262.50,
+            "lifetime_trade_net_pnl": 250.00,
+            "aggregate_unrealized_pnl": 75.44,
+            "winning_closed_trade_count": 1,
+            "losing_closed_trade_count": 0,
+            "flat_closed_trade_count": 0,
+        },
+        "authority": {
+            "source": "ENGINE_OWNED_INJECTED_STATE",
+            "browser_mutation_authority": False,
+            "provider_read_authority": False,
+            "provider_write_authority": False,
+            "broker_read_authority": False,
+            "broker_write_authority": False,
+            "order_creation_authority": False,
+            "paper_authority": False,
+            "live_authority": False,
+            "promotion_authority": False,
+            "confluence_authority": False,
+        },
+        "health": {
+            "engine_source_connected": True,
+            "source_valid": True,
+            "complete_mark_coverage": True,
+            "automatic_provider_refresh": False,
+            "automatic_broker_refresh": False,
+            "browser_mutation_authority": False,
+            "live_execution_promoted": False,
+        },
+    }
+
+
 def preview_payload(path: str, *, now_utc: datetime | None = None) -> dict[str, Any] | None:
     now = (now_utc or datetime.now(UTC)).astimezone(UTC)
     if path == "/healthz":
@@ -576,6 +720,8 @@ def preview_payload(path: str, *, now_utc: datetime | None = None) -> dict[str, 
         return _observability_payload(now)
     if path == "/api/v1/ops/paper-dashboard":
         return _paper_dashboard_payload(now)
+    if path == "/api/v1/ops/simulation-lifecycle":
+        return _simulation_lifecycle_payload(now)
     if path == "/api/v1/session":
         return {
             "preview_synthetic": True,
