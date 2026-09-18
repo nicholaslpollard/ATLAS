@@ -42,6 +42,14 @@ from packages.simulation.lifecycle_entry_evidence_contract import (
     LIFECYCLE_ENTRY_FILL_CONTRACT_FINGERPRINT,
     LIFECYCLE_FUNDING_TERMS_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.lifecycle_exit_fill import (
+    LifecycleExitFillError,
+    LifecycleExitFillInputsV1,
+    build_lifecycle_exit_fill_evidence,
+)
+from packages.simulation.lifecycle_exit_fill_contract import (
+    LIFECYCLE_EXIT_FILL_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.lifecycle_position_contract import (
     LIFECYCLE_POSITION_ACCOUNT_CONTRACT_FINGERPRINT,
 )
@@ -1524,3 +1532,206 @@ def test_post_reentry_valuation_is_order_independent_and_read_only() -> None:
         match="cannot grant",
     ):
         replace(first, account_mutation_authority=True)
+
+
+def test_lifecycle_exit_fill_contract_fingerprint_is_frozen() -> None:
+    assert (
+        LIFECYCLE_EXIT_FILL_CONTRACT_FINGERPRINT
+        == "f3a952f971d693dbc0ca098d9eb5ff912d54443b9dcf2580409bb5558285df74"
+    )
+
+
+def test_lifecycle_exit_fill_binds_new_reentry_stock_exactly() -> None:
+    account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    exited = account.state.as_of_utc + timedelta(minutes=5)
+    fill = build_lifecycle_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=stock.position_fingerprint,
+        inputs=LifecycleExitFillInputsV1(
+            fill_source_id="lifecycle-reentry-stock-exit",
+            fill_source_fingerprint=_fp("1"),
+            exited_utc=exited,
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+
+    assert fill.source_position_state_fingerprint == account.state.state_fingerprint
+    assert fill.position_fingerprint == stock.position_fingerprint
+    assert fill.entry_fill_fingerprint == stock.fill_fingerprint
+    assert fill.funding_terms_fingerprint == stock.funding_terms_fingerprint
+    assert fill.quantity == pytest.approx(stock.quantity)
+    assert fill.gross_exit_proceeds_dollars == pytest.approx(10_200.0)
+    assert fill.net_exit_proceeds_dollars == pytest.approx(10_199.0)
+    assert fill.full_close is True
+    assert fill.realized_pnl_authority is False
+    assert fill.account_mutation_authority is False
+
+
+def test_lifecycle_exit_fill_can_close_inherited_option_at_zero() -> None:
+    account = _post_reentry_stock_position_account()
+    option = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.OPTION
+    )
+    fill = build_lifecycle_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=option.position_fingerprint,
+        inputs=LifecycleExitFillInputsV1(
+            fill_source_id="inherited-option-zero-exit",
+            fill_source_fingerprint=_fp("2"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+            exit_price_per_unit=0.0,
+            explicit_exit_fees_dollars=0.0,
+        ),
+    )
+
+    assert fill.instrument_kind == InstrumentKind.OPTION
+    assert fill.quantity == pytest.approx(1.0)
+    assert fill.contract_multiplier == pytest.approx(100.0)
+    assert fill.gross_exit_proceeds_dollars == 0.0
+    assert fill.net_exit_proceeds_dollars == 0.0
+    assert fill.option_contract_ticker == option.option_contract_ticker
+
+
+def test_lifecycle_exit_fill_rejects_unknown_position_and_backward_time() -> None:
+    account = _post_reentry_stock_position_account()
+
+    with pytest.raises(
+        LifecycleExitFillError,
+        match="exact active lifecycle open position",
+    ):
+        build_lifecycle_exit_fill_evidence(
+            source_state=account.state,
+            position_fingerprint=_fp("0"),
+            inputs=LifecycleExitFillInputsV1(
+                fill_source_id="unknown",
+                fill_source_fingerprint=_fp("3"),
+                exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+                exit_price_per_unit=1.0,
+            ),
+        )
+
+    stock = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    with pytest.raises(
+        LifecycleExitFillError,
+        match="cannot precede lifecycle position state",
+    ):
+        build_lifecycle_exit_fill_evidence(
+            source_state=account.state,
+            position_fingerprint=stock.position_fingerprint,
+            inputs=LifecycleExitFillInputsV1(
+                fill_source_id="too-early",
+                fill_source_fingerprint=_fp("4"),
+                exited_utc=account.state.as_of_utc - timedelta(seconds=1),
+                exit_price_per_unit=102.0,
+            ),
+        )
+
+
+def test_lifecycle_exit_fees_cannot_exceed_gross_proceeds() -> None:
+    account = _post_reentry_stock_position_account()
+    option = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.OPTION
+    )
+    with pytest.raises(
+        LifecycleExitFillError,
+        match="exit fees cannot exceed gross exit proceeds",
+    ):
+        build_lifecycle_exit_fill_evidence(
+            source_state=account.state,
+            position_fingerprint=option.position_fingerprint,
+            inputs=LifecycleExitFillInputsV1(
+                fill_source_id="bad-fees",
+                fill_source_fingerprint=_fp("5"),
+                exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+                exit_price_per_unit=0.01,
+                explicit_exit_fees_dollars=2.0,
+            ),
+        )
+
+
+def test_lifecycle_exit_fill_fingerprint_is_deterministic_and_source_bound() -> None:
+    account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    kwargs = dict(
+        source_state=account.state,
+        position_fingerprint=stock.position_fingerprint,
+    )
+    first = build_lifecycle_exit_fill_evidence(
+        **kwargs,
+        inputs=LifecycleExitFillInputsV1(
+            fill_source_id="deterministic-exit",
+            fill_source_fingerprint=_fp("6"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+    second = build_lifecycle_exit_fill_evidence(
+        **kwargs,
+        inputs=LifecycleExitFillInputsV1(
+            fill_source_id="deterministic-exit",
+            fill_source_fingerprint=_fp("6"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+    changed_source = build_lifecycle_exit_fill_evidence(
+        **kwargs,
+        inputs=LifecycleExitFillInputsV1(
+            fill_source_id="deterministic-exit",
+            fill_source_fingerprint=_fp("7"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+
+    assert first == second
+    assert first.exit_fill_fingerprint == second.exit_fill_fingerprint
+    assert first.exit_fill_fingerprint != changed_source.exit_fill_fingerprint
+
+
+def test_lifecycle_exit_fill_authority_escalation_fails_closed() -> None:
+    account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = build_lifecycle_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=stock.position_fingerprint,
+        inputs=LifecycleExitFillInputsV1(
+            fill_source_id="authority-exit",
+            fill_source_fingerprint=_fp("8"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+
+    with pytest.raises(LifecycleExitFillError, match="cannot grant"):
+        replace(fill, realized_pnl_authority=True)
+    with pytest.raises(LifecycleExitFillError, match="cannot grant"):
+        replace(fill, broker_fill_authority=True)
+    with pytest.raises(LifecycleExitFillError, match="cannot grant"):
+        replace(fill, paper_authority=True)
