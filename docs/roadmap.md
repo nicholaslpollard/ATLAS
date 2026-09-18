@@ -2193,18 +2193,52 @@ Frozen semantics:
 the read-only lifecycle dashboard source from the coordinator's atomic pair. Supplying
 both a coordinator and an explicit dashboard service is rejected as ambiguous.
 
-Immediate Track A continuation is a unified post-close re-entry/current-account model.
-It must allow later accepted reservation and entry evidence to be applied against
-current realized account state without erasing closed-trade/fee history, weakening
-capital/exposure constraints, or creating a second account truth. The extension must
-retain deterministic replay, idempotency, atomic snapshots, and the coordinator as the
-single lifecycle owner before any later broker/PAPER authority package.
+The lifecycle-native reservation layer described below now begins that re-entry path
+without conflating reserved capital with a filled position.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation/control-plane architecture only.
 
+## Track A lifecycle-native post-close re-entry reservations — 2026-09-17
 
+Track A now freezes `atlas-simulation-lifecycle-reservation-account-v1` under
+contract
+`b4b825cca77a59f2d65064c9644d513714968f4ae7b8cea03f0738411d3459bb`.
 
+This package replaces the unsafe idea of restarting the old reservation-only account
+after closeout. The legacy reservation state assumes cash + reservations equals the
+entire account equity; once open positions and realized P&L exist, that identity is no
+longer sufficient. The lifecycle-native reservation state therefore carries the
+accepted closeout book forward.
+
+Frozen semantics:
+
+1. initialize from one exact accepted closeout state + closeout ledger fingerprint;
+2. carry current open positions, closed trades, entry/exit fee history, account
+   realized P&L, lifetime trade net P&L, cash, book equity, and active reservations
+   forward unchanged;
+3. reserve new stock or long-option capital only from current unreserved cash;
+4. keep account book equity unchanged by reservation and reconcile it to
+   cash + stock reserved capital + option reserved capital + open entry-book value;
+5. keep new stock reserved gross notional separate from existing open-stock exposure;
+6. keep new option reserved delta/max-loss/premium risk separate from immutable
+   open-option entry references;
+7. ledger abstention, missing-option-terms, and insufficient-current-cash decisions
+   without capital mutation;
+8. make duplicate decisions idempotent, conflicting option terms fail closed, and
+   deterministic batch replay reconstruct exact state/ledger fingerprints; and
+9. prohibit entry fills, new-position creation, closeout, mark-to-market,
+   provider/broker/order access, PAPER/LIVE, promotion, and confluence authority.
+
+Immediate Track A continuation is lifecycle-native entry/funding consumption. It must
+consume one exact active reservation and accepted fill/funding evidence, remove only
+that reservation, create the corresponding new open position, expense the entry fee
+once, preserve prior open/closed history and realized accounting, and remain
+deterministically replayable before the coordinator is extended across repeated
+entry/exit cycles.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation account architecture only.
 
 
 ## Track A funding/collateral terms — 2026-09-16
