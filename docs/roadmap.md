@@ -2553,12 +2553,50 @@ Frozen semantics:
 8. grant no account/position mutation, realized P&L, recurrent-ledger mutation,
    provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is recurrent `CLOSE_POSITION` mutation against this
-same stable recurrent account and append-only ledger, creating canonical recurrent
-closed history directly.
+The recurrent `CLOSE_POSITION` transition described below now consumes this evidence
+on the same stable recurrent account and append-only ledger.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation exit evidence only.
+
+## Track A recurrent lifecycle close-position transitions — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-close-position-transition-v1` under
+contract
+`9f2f32d8905c19bfb377184abd1fa3f9842eb979829ce5ca03c3a44068e17e39`.
+
+Frozen semantics:
+
+1. consume and return the same recurrent lifecycle account/ledger contract;
+2. require exact recurrent exit evidence and one currently open matched position;
+3. remove only the matched position while leaving active reservations and unrelated
+   open positions unchanged;
+4. return exact net exit proceeds to cash and append one fingerprint-chained
+   `CLOSE_POSITION` ledger event;
+5. append a canonical `RecurrentClosedTradeV1` with native
+   `RECURRENT_ACCOUNT_V1` origin, exact recurrent source-state provenance, exact exit
+   evidence fingerprint, and complete decision/candidate/reservation/entry/funding
+   lineage;
+6. compute account realized P&L as net proceeds minus entry-book value while lifetime
+   trade net P&L additionally includes the already-expensed entry fee exactly once;
+7. leave cumulative entry fees unchanged, add exit fees once, and maintain both book
+   equity reconciliation formulas;
+8. require exact-current-state evidence for a single close and support deterministic
+   common-source-snapshot batches ordered by exit time then fingerprint;
+9. make identical duplicate exit-fill application idempotent and reject conflicting
+   second closes; and
+10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+The stable recurrent simulation loop is now complete on one account contract:
+reserve → entry evidence/funding → open → mark → exit evidence → close → reserve again.
+
+Immediate Track A continuation is coordinator migration and recurrent browser
+projection so runtime ownership and observability use this stable account directly
+instead of the earlier single-cycle bridge.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation account transitions only.
+
 
 
 
