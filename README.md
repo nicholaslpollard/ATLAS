@@ -569,12 +569,40 @@ exit economics, both fee layers, holding duration, instrument/strategy lineage, 
 the two P&L views.
 
 This remains simulation-only lifecycle accounting. It grants no provider/broker
-read/write, order, PAPER, LIVE, promotion, or confluence authority. The next bounded
-Track A work is to expose these authoritative decision/position/mark/closeout records
-through the existing operator-observability/control-plane architecture and then close
-the remaining lifecycle integration gaps before any later broker/PAPER authority
-package. The Strategy Evidence Register remains unchanged because this package changes
-product/account-simulation architecture only.
+read/write, order, PAPER, LIVE, promotion, or confluence authority. The post-close
+valuation layer described below closes the remaining current-marked-equity gap before
+browser integration. The Strategy Evidence Register remains unchanged because this
+package changes product/account-simulation architecture only.
+
+## 2026-09-17 — Post-close lifecycle marked-account state
+
+Track A now adds `atlas-simulation-lifecycle-marked-account-state-v1` under contract
+`4cc4fb35c5a95cb48603f581a48127fe188c844c44e445394ad3d662e07a5346`.
+This closes the valuation gap that appears after one or more positions have been
+deterministically closed: the closeout account remains the current book/realized-P&L
+truth, while fresh mark evidence remains bound to each surviving immutable position.
+
+The lifecycle valuation consumes the exact closeout-account fingerprint plus exactly
+one fresh, valuation-eligible mark for every **currently open** position at one common
+valuation timestamp. Missing, duplicate, stale, closed-position, or other extra marks
+fail closed. Closed trades are never revalued. Current marked position value and
+unrealized P&L are computed only for surviving positions, while cumulative entry fees,
+exit fees, account-realized P&L, and lifetime trade net P&L are carried forward
+unchanged from the accepted closeout state.
+
+Marked equity is `account_book_equity + aggregate_unrealized_pnl` and independently
+reconciles to cash + remaining reserved capital + current marked open-position value.
+An account with no surviving positions has complete zero-mark coverage and marked
+equity equal to closeout book equity. Option delta-equivalent exposure remains an
+immutable entry reference only; current Greeks are not inferred from price marks.
+
+This layer performs simulation valuation only. It grants no account mutation, new
+realized P&L, exit/closeout, provider/broker read/write, order, PAPER, LIVE, promotion,
+or confluence authority. With current post-close marked equity now representable
+without reverting to the pre-close snapshot, the next bounded Track A work may project
+the authoritative lifecycle state into the existing operator/control-plane browser
+surface without creating a second trading truth. The Strategy Evidence Register
+remains unchanged because this is product/account-simulation architecture only.
 
 ## A33/B33 reference foundation
 
