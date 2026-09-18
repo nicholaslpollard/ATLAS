@@ -742,12 +742,49 @@ supplemental cash. Prior realized P&L and prior fee history are not recomputed. 
 objects remain descriptive only and create no reservation release, account mutation,
 position, provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-The next bounded Track A package is the lifecycle-native atomic reservation-to-position
-transition: consume one exact lifecycle reservation + lifecycle entry-fill + lifecycle
-funding terms, remove only that reservation, create the new open position, expense the
-new entry fee exactly once, preserve all prior open/closed history and realized P&L,
-invalidate stale valuation, and remain deterministic/idempotent. The Strategy Evidence
-Register remains unchanged.
+The atomic reservation-to-position layer described below now consumes this evidence.
+The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Lifecycle-native reservation-to-position account state
+
+Track A now adds `atlas-simulation-lifecycle-position-account-v1` under contract
+`7c5f2a82a8583b9f7b2e90f994f7d6ca4c682888448b97ad287e79e6dad82f29`.
+It consumes one exact accepted lifecycle reservation snapshot plus lifecycle-native
+entry-fill and funding evidence and performs the first post-close **re-entry position
+mutation**.
+
+Initialization carries the exact lifecycle reservation state/ledger fingerprints,
+current cash, active reservations, pre-existing open positions, closed trades, fee
+history, account-realized P&L, lifetime trade net P&L, and book equity forward. Each
+entry must bind the immutable source reservation snapshot and an exact reservation
+that is still active in the current mutation state. Only that matched reservation is
+removed and one exact new `SimulatedOpenPositionV1` is created.
+
+Entry accounting remains explicit. Stock cash becomes current cash minus supplemental
+cash plus any unspent reserve; long-option cash adds only the exact unspent reserved
+debit. The new entry fee is added to cumulative entry fees **once**, while prior
+realized P&L and exit fees remain unchanged. Account book equity remains
+`initial_equity - cumulative_entry_fees + cumulative_account_realized_pnl` and must
+also reconcile to current cash + remaining stock reservations + remaining option
+reservations + total open entry-book value.
+
+A critical competition rule is enforced at mutation time. Multiple fill/funding
+objects may each have been individually fundable against the same immutable source
+reservation snapshot, but deterministic application is ordered by fill timestamp then
+fill fingerprint and each new entry must still have enough **current remaining cash**.
+Thus stale per-fill source projections cannot overspend the account. Identical duplicate
+fill/funding application is idempotent; a different second fill for an already-open
+decision fails closed; state and ledger replay are exact.
+
+This v1 creates positions only. It does not create new reservations after the source
+snapshot, close positions, mark to market, read/write providers or brokers, create
+orders, or grant PAPER/LIVE/promotion/confluence authority.
+
+The next bounded Track A work is lifecycle-native post-re-entry valuation and
+exit/closeout: current marks and exit evidence must bind the new lifecycle position
+account, closed trades must preserve the newly added entry-fee/cost basis, and the
+coordinator must then be extended to own reservation → entry → mark → exit → closeout
+cycles atomically. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
