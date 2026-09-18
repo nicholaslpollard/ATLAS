@@ -2230,15 +2230,56 @@ Frozen semantics:
 9. prohibit entry fills, new-position creation, closeout, mark-to-market,
    provider/broker/order access, PAPER/LIVE, promotion, and confluence authority.
 
-Immediate Track A continuation is lifecycle-native entry/funding consumption. It must
-consume one exact active reservation and accepted fill/funding evidence, remove only
-that reservation, create the corresponding new open position, expense the entry fee
-once, preserve prior open/closed history and realized accounting, and remain
-deterministically replayable before the coordinator is extended across repeated
+The lifecycle-native fill/funding evidence layer described below is required before
+the reservation-to-position mutation because the earlier accepted evidence contracts
+are explicitly bound to the legacy reservation-only account contract.
+
+## Track A lifecycle-native re-entry fill/funding evidence — 2026-09-18
+
+Track A now freezes two post-close descriptive evidence contracts:
+
+- `atlas-simulation-lifecycle-entry-fill-evidence-v1` —
+  `a2bcaddbfba19370af070217cd2c4b911b121797abb76348747e575e17aa3b3c`;
+- `atlas-simulation-lifecycle-funding-terms-v1` —
+  `26266be782240511baadeb73d11aef393aaa6a52f12883b30cd3aab025f54870`.
+
+A separate lifecycle version is required because the earlier entry-fill and funding
+contracts explicitly bind the legacy reservation-only account-state v2 contract. The
+post-close authoritative account now carries realized P&L, fee history, open positions,
+closed trades, and current reservations under the lifecycle reservation contract.
+Changing only a fingerprint field on the old evidence would violate the frozen input
+contract.
+
+Frozen semantics:
+
+1. bind fill evidence to one exact current lifecycle reservation-state fingerprint,
+   one exact active reservation, decision/candidate lineage, and explicit source
+   id/SHA-256;
+2. stock fills materialize the complete reserved economic notional and derive quantity
+   from the explicit fill price, while leaving stock funding unresolved;
+3. long-option fills reuse exact accepted reservation terms/contract count/multiplier,
+   cap premium debit and entry fees at the reserved buckets, and record unspent reserve;
+4. lifecycle stock funding is fully cash-funded and may use only the existing
+   reservation plus current unreserved lifecycle cash;
+5. lifecycle option funding reuses the exact reserved debit, requires zero supplemental
+   cash, and preserves unspent reservation;
+6. fill and funding fingerprints must bind the same current lifecycle reservation state
+   and exact active reservation;
+7. prior open/closed history, realized P&L, and fee history are inputs only and are not
+   recomputed or mutated; and
+8. no reservation release, new position, provider/broker/order, PAPER/LIVE, promotion,
+   or confluence authority is granted.
+
+Immediate Track A continuation is the atomic lifecycle reservation-to-position
+transition. It must remove only the consumed reservation, create the exact new open
+position/cost basis, expense its entry fee once, preserve prior lifecycle history and
+realized accounting, invalidate stale current valuation, and support exact replay and
+idempotent duplicate application before the coordinator is extended across repeated
 entry/exit cycles.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account architecture only.
+
 
 
 ## Track A funding/collateral terms — 2026-09-16
