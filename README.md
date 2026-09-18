@@ -912,11 +912,38 @@ contract again. Current marks remain a read-only projection and are not ledger
 mutations.
 
 The recurrent state grants no provider/broker/order/PAPER/LIVE/promotion/confluence
-authority. The next bounded work is to add recurrent-native reservation transitions,
-then recurrent entry/exit evidence and mutations, all against this same account
-contract. Once those transitions pass replay/idempotency acceptance, the lifecycle
-coordinator can move from the one-cycle bridge to the recurrent account and the
-browser can consume one stable source of truth. The Strategy Evidence Register remains
+authority. The recurrent reservation transitions described below now begin mutating
+this stable account directly. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle reservation transitions
+
+Track A now extends the stable recurrent account with
+`atlas-simulation-recurrent-reservation-transitions-v1` under contract
+`8e7cb6b4cf3d64bcafc8f0af9443bde8022df92c5b200aec67f4611fbedae796`.
+Unlike the bounded bridge, these transitions mutate
+`RecurrentLifecycleAccountV1` directly and append to its existing recurrent ledger;
+no new reservation-account contract is created for each cycle.
+
+Every decision is evaluated against current recurrent unreserved cash while existing
+open positions and canonical closed history remain unchanged. Bullish stock
+reservations retain separate reserved capital and economic gross notional. Long-option
+reservations require the exact accepted reservation terms and maintain reserved
+capital, max-loss, premium-at-risk, signed delta-equivalent, and absolute
+delta-equivalent exposure separately from already-open option exposure.
+
+The recurrent ledger now retains decision, reservation, reservation-terms, option
+economics, candidate, option-contract, instrument, ticker, direction, state-chain, and
+monetary/exposure deltas. Abstentions and rejected decisions advance deterministic
+account time through zero-money ledger events. Duplicate decisions are idempotent;
+supplying conflicting option reservation terms for an already-applied option decision
+fails closed. Batch competition is ordered by decision timestamp then decision-record
+fingerprint.
+
+This package still creates reservations only. It grants no entry-fill, new-position,
+exit/closeout, provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+The next recurrent package adds entry-fill/funding evidence bound directly to the
+current recurrent account fingerprint, followed by an atomic reservation-to-position
+transition on the same state/ledger contract. The Strategy Evidence Register remains
 unchanged.
 
 ## A33/B33 reference foundation
