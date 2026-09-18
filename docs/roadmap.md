@@ -2938,6 +2938,40 @@ cycles.
 The Strategy Evidence Register remains unchanged because this package adds product
 current-evidence plumbing and simulation marks without changing research evidence.
 
+## Track A durable recurrent RESERVE evidence — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-reserve-evidence-bundle-v1` under contract
+`e410ab31187b4b35cd5c036ba02073f63de41dd35269f33af4b9ff10357de875`.
+
+Frozen semantics:
+
+1. bind every bundle to one deterministic recurrent cycle id/fingerprint and schedule;
+2. consume only accepted `SimulationDecisionRecord` objects plus optional accepted
+   `LongOptionReservationTerms`;
+3. preserve explicit abstentions as RESERVE-stage evidence instead of dropping them;
+4. forbid option terms on stock/abstain decisions and require exact terms for every
+   selected option;
+5. validate exact decision, chosen-candidate, forecast, underlying and direction lineage
+   for option terms;
+6. deterministically order decisions by decision timestamp then record fingerprint and
+   reject duplicates or decisions later than bundle construction time;
+7. persist the complete typed evidence atomically with fsync at
+   `data/live/simulation/recurrent_reserve/current.json`;
+8. reconstruct every stored decision through the accepted deterministic decision
+   builder and require the rebuilt complete record to equal the stored payload before
+   admission;
+9. expose the bundle fingerprint/source id directly to the recurrent runner's RESERVE
+   admission boundary; and
+10. perform zero provider/broker calls and grant no order/PAPER/LIVE, promotion, or
+    confluence authority.
+
+Immediate continuation is durable ENTRY/CLOSE evidence production with exact
+execution-quality quote/fill/fee lineage, then target-workstation restart/resume and
+market-hours cycle acceptance.
+
+The Strategy Evidence Register remains unchanged because this package adds product
+simulation evidence persistence and admission without changing research evidence.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
