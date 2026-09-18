@@ -2618,12 +2618,41 @@ Frozen semantics:
 9. perform no provider/broker/order/filesystem/network I/O and grant no PAPER/LIVE,
    promotion, or confluence authority.
 
-Immediate Track A continuation is recurrent lifecycle observability through the
-existing loopback/browser surface, replacing the single-cycle source adapter while
-preserving read-only browser semantics.
+The recurrent lifecycle observability layer described below now projects the atomic
+runtime pair through the existing loopback/browser surface.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation runtime architecture only.
+
+## Track A recurrent lifecycle observability — 2026-09-18
+
+Track A now projects recurrent runtime truth through the existing
+`GET /api/v1/ops/simulation-lifecycle` endpoint.
+
+Frozen semantics:
+
+1. accept only an injected atomic recurrent account + recurrent marked-state pair;
+2. revalidate recurrent account state/ledger fingerprints, marked-state fingerprint,
+   exact source binding, carried accounting, and complete current mark coverage;
+3. return `NOT_CONNECTED` when no current marked pair exists and `INVALID` for failed
+   provenance validation rather than reconstructing state elsewhere;
+4. expose recurrent account/ledger fingerprints and canonical closed-trade provenance
+   while preserving the browser's existing account/position/P&L payload;
+5. retain browser compatibility with older closeout provenance fields during migration;
+6. allow Phase 19 injection of one explicit dashboard service, one legacy coordinator,
+   or one recurrent coordinator and fail closed on ambiguous multiple sources;
+7. perform no provider/broker initialization or refresh as part of lifecycle GET; and
+8. reuse the existing observability refresh event with GET-only, zero browser/order
+   mutation authority.
+
+Immediate Track A continuation is runtime startup/orchestration around the recurrent
+coordinator, followed by making recurrent ownership the default simulation runtime
+source while retaining the bounded single-cycle contracts only for compatibility and
+historical replay.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/control-plane architecture only.
+
 
 
 
