@@ -2938,6 +2938,34 @@ cycles.
 The Strategy Evidence Register remains unchanged because this package adds product
 current-evidence plumbing and simulation marks without changing research evidence.
 
+## Track A Webull stock ENTRY/CLOSE evidence adapters — 2026-09-18
+
+Track A freezes `atlas-simulation-current-webull-stock-fill-adapter-v1` under contract
+`8fde1fd17b9eceabb9ef57271948995088ed049eb22b46ab15bc0f734a3a021c`.
+
+Frozen semantics:
+
+1. consume only the accepted current Webull L1 bundle and exact recurrent account
+   snapshot; perform zero additional provider/broker calls;
+2. support bullish cash-funded stock ENTRY and stock CLOSE only in v1;
+3. require an explicit entry-fee input bound to each requested decision fingerprint;
+4. use exact current **ask** as simulated stock entry price and build accepted recurrent
+   entry-fill plus funding evidence against one common pre-batch state;
+5. require an explicit exit-fee input bound to each requested active position
+   fingerprint;
+6. use exact current **bid** as full simulated stock exit price;
+7. require exact-case quote coverage, quote-after-decision/position chronology and the
+   accepted 30-second execution quote age cap;
+8. retain the exact quote-bundle fingerprint as fill-source lineage;
+9. provide no hidden fee default: zero is accepted only when explicitly supplied; and
+10. grant no broker-fill, provider/broker/order/PAPER/LIVE, promotion, or confluence
+    authority.
+
+Immediate continuation is RESERVE decision production from accepted current
+strategy/forecast/economics evidence and target-machine market-hours acceptance of the
+Webull sandbox quote bundle. Option execution evidence remains a separate future
+contract.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
