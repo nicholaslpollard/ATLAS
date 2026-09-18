@@ -377,8 +377,19 @@ def read_current_webull_stock_quote_bundle_v1(
         return bundle
 
     now = to_utc(now_utc or datetime.now(UTC))
+    if (bundle.captured_at_utc - now).total_seconds() > 5.0:
+        raise CurrentWebullStockQuoteBundleError(
+            "current Webull bundle capture timestamp is ahead of the local clock"
+        )
     calendar = get_market_calendar(settings.data.calendar.exchange)
     for quote in bundle.quotes:
+        expected_session_date = quote.provider_timestamp_utc.astimezone(
+            calendar.market_tz
+        ).date()
+        if quote.session_date != expected_session_date:
+            raise CurrentWebullStockQuoteBundleError(
+                "current Webull quote session date is inconsistent"
+            )
         provider_age = (
             now - quote.provider_timestamp_utc
         ).total_seconds()
