@@ -17,6 +17,7 @@ from packages.simulation.lifecycle_marked_account_state import (
 from packages.simulation.lifecycle_marked_account_state_contract import (
     LIFECYCLE_MARKED_ACCOUNT_STATE_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.engine import SimulationLifecycleCoordinatorV1
 
 
 SIMULATION_LIFECYCLE_DASHBOARD_CONTRACT_VERSION = (
@@ -34,6 +35,24 @@ class SimulationLifecycleDashboardError(RuntimeError):
 class SimulationLifecycleDashboardSource:
     closeout_account: CloseoutAccountV1
     marked_state: LifecycleMarkedAccountStateV1
+
+
+def source_provider_from_coordinator(
+    coordinator: SimulationLifecycleCoordinatorV1,
+) -> Callable[[], SimulationLifecycleDashboardSource | None]:
+    """Adapt one atomic coordinator pair into the read-only dashboard source."""
+
+    def provider() -> SimulationLifecycleDashboardSource | None:
+        pair = coordinator.current_dashboard_pair()
+        if pair is None:
+            return None
+        closeout_account, marked_state = pair
+        return SimulationLifecycleDashboardSource(
+            closeout_account=closeout_account,
+            marked_state=marked_state,
+        )
+
+    return provider
 
 
 def _same(left: float, right: float) -> bool:
