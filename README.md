@@ -1204,6 +1204,36 @@ and current marks through the recurrent read-only dashboard, return recurrent
 `NOT_CONNECTED` when the store is genuinely uninitialized, and fail startup on corrupt
 persisted state. The Strategy Evidence Register remains unchanged.
 
+## 2026-09-18 — Phase 19 recurrent runtime restore/startup
+
+Track A now stages `atlas-control-plane-recurrent-runtime-startup-v1` under contract
+`e4952a0f004b3b5a3618f05f218412c087a93aee97ca64df249b492ce877419a`.
+
+Production Phase 19 startup now resolves the configured derived-data recurrent runtime
+store before starting the lifecycle projection. A valid persisted account is restored
+through the persistent recurrent runtime; because market marks are intentionally
+transient, the restored browser lifecycle remains `NOT_CONNECTED` until fresh marks
+are published for that exact restored account.
+
+If no runtime snapshot exists, startup creates no account and invents no starting
+equity. Instead it injects the recurrent dashboard service in explicit uninitialized
+`NOT_CONNECTED` state. If persisted JSON, snapshot hash, contract, state/ledger
+fingerprints, or typed account reconstruction is invalid, startup fails rather than
+falling back to the older single-cycle coordinator or reconstructing truth from local
+research artifacts.
+
+The normal Phase 19 launcher now injects this explicit recurrent dashboard service.
+Restore itself performs zero provider reads/writes, broker reads/writes, or order
+writes. The older single-cycle coordinator/dashboard contracts remain in the
+repository for compatibility and historical replay but are no longer the production
+launcher’s default lifecycle source.
+
+No fresh-account bootstrap policy is introduced here. The next step requiring an
+operator decision is establishing a legitimate initial recurrent simulation account;
+ATLAS still has no configured starting simulation equity and current accepted Phase 22
+lineage contains zero executable cases. The Strategy Evidence Register remains
+unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
