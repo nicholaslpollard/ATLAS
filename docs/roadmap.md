@@ -2658,6 +2658,36 @@ product/control-plane architecture only.
 
 
 
+## Track A durable recurrent runtime account store — 2026-09-18
+
+Track A stages `atlas-simulation-recurrent-runtime-store-v1` under contract
+`225b2c8c7ff59751dfde37f0fad95c345ea90d73b7dc4b217fa82b5982073587`.
+
+Frozen semantics:
+
+1. persist one exact current `RecurrentLifecycleAccountV1` snapshot rather than
+   duplicating the already-complete append-only account/ledger at every event;
+2. bind the snapshot to the recurrent account contract, exact state fingerprint, exact
+   ledger fingerprint, ledger-event count, and a SHA-256 of the full typed payload;
+3. write with exclusive-writer locking, same-volume atomic replace, fsync, exact
+   prior-state compare-and-swap, and post-write reread validation;
+4. forbid ledger-event-count and account-time regression and make exact same-state
+   persistence idempotent;
+5. restore the full typed dataclass/enum/datetime graph and rerun recurrent account
+   invariants before exposing it as current truth;
+6. treat a missing snapshot as explicit uninitialized state and corruption/contract
+   drift/fingerprint mismatch as a hard failure;
+7. never reconstruct current account truth from older research/control-plane artifacts;
+8. keep marked state transient so restart requires fresh valuation evidence; and
+9. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is a persistent recurrent runtime wrapper that couples
+atomic account mutations to this store before reporting success and restores only
+accepted persisted recurrent state at startup.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime durability only.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
