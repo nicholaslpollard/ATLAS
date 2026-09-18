@@ -6,6 +6,9 @@ from datetime import UTC, datetime
 from typing import Callable
 
 from packages.simulation.recurrent_engine import RecurrentLifecycleCoordinatorV1
+from packages.simulation.recurrent_persistent_runtime import (
+    PersistentRecurrentLifecycleRuntimeV1,
+)
 from packages.simulation.recurrent_lifecycle_state import (
     RecurrentLifecycleAccountV1,
     recurrent_lifecycle_account_state_fingerprint,
@@ -42,6 +45,22 @@ def source_provider_from_recurrent_coordinator(
 ) -> Callable[[], RecurrentLifecycleDashboardSource | None]:
     def provider() -> RecurrentLifecycleDashboardSource | None:
         pair = coordinator.current_dashboard_pair()
+        if pair is None:
+            return None
+        account, marked_state = pair
+        return RecurrentLifecycleDashboardSource(
+            account=account,
+            marked_state=marked_state,
+        )
+
+    return provider
+
+
+def source_provider_from_persistent_recurrent_runtime(
+    runtime: PersistentRecurrentLifecycleRuntimeV1,
+) -> Callable[[], RecurrentLifecycleDashboardSource | None]:
+    def provider() -> RecurrentLifecycleDashboardSource | None:
+        pair = runtime.current_dashboard_pair()
         if pair is None:
             return None
         account, marked_state = pair
@@ -542,5 +561,6 @@ __all__ = [
     "RecurrentLifecycleDashboardError",
     "RecurrentLifecycleDashboardService",
     "RecurrentLifecycleDashboardSource",
+    "source_provider_from_persistent_recurrent_runtime",
     "source_provider_from_recurrent_coordinator",
 ]
