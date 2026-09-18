@@ -2900,6 +2900,43 @@ evidence construction, including explicit fee/fill semantics and the accepted
 broker/finalist quote source. Real-machine market-hours acceptance remains required
 before non-empty production MARK cycles.
 
+## Track A current Webull L1 quote bundle and stock marks — 2026-09-18
+
+Track A freezes two current-deployment contracts:
+
+- `atlas-execution-current-webull-stock-quote-bundle-v1`:
+  `a0da5b0db29ae074e64cc933c995bff99d388aa7357c3928d840a59fd0d613ea`;
+- `atlas-simulation-current-webull-stock-mark-adapter-v1`:
+  `c862121c97cfedba968a9dad05d979ce2bc46bc6fdf8c9bf6dac53ca6e40b4d8`.
+
+Frozen semantics:
+
+1. require an explicit, sorted, unique exact-case stock symbol set;
+2. capture exactly one Webull sandbox L1 read per requested symbol and persist no
+   partial bundle when any requested symbol fails;
+3. require positive uncrossed bid/ask, provider timestamp, zero-delay realtime
+   semantics, regular-session classification, and the accepted execution age cap;
+4. retain quote/source timestamps, sizes, read count, exact requested coverage and a
+   self-fingerprint in one fsync-backed atomic local artifact;
+5. perform no account read, provider write, broker write, order creation, PAPER or LIVE
+   mutation during capture;
+6. construct marks later from the local bundle with zero additional network calls;
+7. require exact recurrent stock-position identity and complete exact-case quote
+   coverage;
+8. reject option positions rather than substituting underlying stock quotes;
+9. preserve the stricter 30-second execution quote freshness cap while reusing the
+   accepted generic market-mark contract; and
+10. grant no provider/broker/order/PAPER/LIVE, promotion, or confluence authority merely
+    because quote evidence or marks exist.
+
+Immediate continuation is RESERVE decision production and execution-quality ENTRY/CLOSE
+evidence construction with explicit fee/fill semantics. Target-machine market-hours
+Webull sandbox capture remains an acceptance gate before non-empty recurrent MARK
+cycles.
+
+The Strategy Evidence Register remains unchanged because this package adds product
+current-evidence plumbing and simulation marks without changing research evidence.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
