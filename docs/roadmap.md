@@ -2527,12 +2527,39 @@ Frozen semantics:
 8. grant no account mutation, new realized-P&L, exit/closeout,
    provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is recurrent full-close exit evidence followed by
-`CLOSE_POSITION` mutation against this same stable recurrent account and append-only
-ledger.
+The recurrent full-close exit-evidence layer described below now binds exact current
+position and source-state provenance without mutating the recurrent account.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation valuation architecture only.
+
+## Track A recurrent lifecycle exit-fill evidence — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-exit-fill-evidence-v1` under contract
+`61135bbede1416c852d7c84fa2914876c056508be9fdad1a87b834cb71f659ad`.
+
+Frozen semantics:
+
+1. bind one exact current recurrent-state fingerprint and exact active position;
+2. preserve the separate immutable entry-source account-state fingerprint carried by
+   the position;
+3. inherit exact decision/candidate/reservation/entry-fill/funding and option lineage;
+4. require explicit source id/SHA-256, timezone-aware exit time, nonnegative price, and
+   explicit nonnegative fees;
+5. require a complete full-position close with exact quantity and multiplier;
+6. compute gross proceeds as quantity × exit price × multiplier and net proceeds as
+   gross less exit fees;
+7. permit zero-price complete losses while rejecting fees above gross proceeds; and
+8. grant no account/position mutation, realized P&L, recurrent-ledger mutation,
+   provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is recurrent `CLOSE_POSITION` mutation against this
+same stable recurrent account and append-only ledger, creating canonical recurrent
+closed history directly.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation exit evidence only.
+
 
 
 ## Track A funding/collateral terms — 2026-09-16
