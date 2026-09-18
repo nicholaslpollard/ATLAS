@@ -2432,12 +2432,43 @@ Frozen semantics:
 9. grant no entry-fill, open-position, exit/closeout, provider/broker/order,
    PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is recurrent-native entry-fill/funding evidence bound to
-the current recurrent account fingerprint, followed by reservation-to-position mutation
-against this same account and ledger contract.
+The recurrent entry/funding evidence layer described below now binds complete
+broker-neutral entry evidence to the same current recurrent snapshot.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account transitions only.
+
+## Track A recurrent lifecycle entry-fill/funding evidence — 2026-09-18
+
+Track A freezes two descriptive operation contracts:
+
+- `atlas-simulation-recurrent-entry-fill-evidence-v1` —
+  `6802682c78dac10921afd49a023bab774dded6d5c8415e53f17ac92f852bf15a`;
+- `atlas-simulation-recurrent-funding-terms-v1` —
+  `4340cbe3d39b1026663db416094093814dab691ef611e7fca8a8a93e5023b6fc`.
+
+Frozen semantics:
+
+1. bind fill and funding evidence to one exact current recurrent-state fingerprint and
+   one exact still-active reservation fingerprint;
+2. preserve exact decision/candidate lineage and explicit fill-source id/SHA-256;
+3. stock fills materialize the reserved economic notional and derive complete quantity
+   from explicit fill price without inferring stock funding;
+4. long-option fills reuse exact accepted reservation terms, contract count/multiplier,
+   and premium/fee buckets while recording unspent reserve;
+5. bullish stock funding uses only reserved capital plus current recurrent unreserved
+   cash, with no borrowing, margin, or short-sale proceeds inference;
+6. long-option funding reuses the exact reserved debit with zero supplemental cash;
+7. historical closed-trade/fee/realized-P&L state is input-only and is not recomputed;
+   and
+8. no reservation release, position creation, provider/broker/order, PAPER/LIVE,
+   promotion, or confluence authority is granted.
+
+Immediate Track A continuation is the recurrent atomic reservation→position mutation
+against the same recurrent account/ledger contract.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation account evidence only.
 
 ## Track A funding/collateral terms — 2026-09-16
 
