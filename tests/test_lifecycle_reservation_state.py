@@ -359,7 +359,10 @@ def _stock_record(
     return build_simulation_decision_record(
         decision_created_utc=created_utc + timedelta(minutes=1),
         forecast=forecast,
-        stock_inputs=_stock_inputs(capital=capital),
+        stock_inputs=_stock_inputs(
+            capital=capital,
+            notional=max(10_000.0, capital * 2.0),
+        ),
         actionability_policy=_policy(),
         trade_expression_mode=TradeExpressionMode.STOCKS_ONLY,
         option_candidates=(),
