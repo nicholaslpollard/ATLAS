@@ -2058,21 +2058,51 @@ The exit-fill record remains descriptive evidence only. It grants no position/ac
 mutation, realized-P&L, closeout, provider/broker read/write, broker-fill, order,
 PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation after acceptance:
+The deterministic closeout layer described below now consumes this evidence. The
+Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.
 
-1. consume exact open-position state + exact exit-fill lineage in a deterministic
-   closeout transition that removes only the matched active position;
-2. return exact net exit proceeds to cash and release the corresponding entry-book
-   exposure without reconstructing or changing unrelated positions/reservations;
-3. distinguish account-state realized P&L from lifetime trade net P&L so entry fees
-   already expensed at open are never charged twice;
-4. add idempotent duplicate-close handling, deterministic replay, tamper detection,
-   and closed-trade ledger evidence;
-5. only after lifecycle accounting is accepted, integrate these authoritative
-   records into browser observability and later broker/PAPER authority gates.
+## Track A deterministic closeout and realized-P&L accounting — 2026-09-17
+
+Track A now freezes `atlas-simulation-closeout-account-state-v1` under contract
+`d8363e6a0dba68ad8894691a308eff6231770e59ccea909a38fd95af317aa599`.
+It consumes the exact accepted open-position account state plus exact accepted
+`atlas-simulated-exit-fill-evidence-v1` lineage and performs the first deterministic
+simulation closeout mutation.
+
+Frozen semantics:
+
+1. only the exact matched active position is removed; unrelated positions and all
+   remaining reservations are unchanged;
+2. exact net exit proceeds are returned to simulation cash;
+3. account-state realized-P&L delta is
+   `net_exit_proceeds - entry_book_value`, excluding the entry fee because that fee
+   was already expensed at open;
+4. lifetime trade net P&L is
+   `gross_exit_proceeds - entry_book_value - entry_fees - exit_fees`, so each fee is
+   counted exactly once over the complete trade lifecycle;
+5. account book equity is
+   `initial_equity - cumulative_entry_fees + cumulative_account_realized_pnl` and
+   must independently equal cash + remaining reservations + remaining open book value;
+6. closed-trade records retain exact position/decision/fill lineage, entry/exit
+   economics, fees, holding duration, account-realized delta, and lifetime trade net
+   P&L;
+7. identical duplicate exit-fill application is idempotent, conflicting second closes
+   fail closed, transitions are chronological/fingerprint chained, and deterministic
+   batch replay must reproduce both state and ledger fingerprints.
+
+This is simulation lifecycle accounting only. It grants no provider/broker read/write,
+order, PAPER, LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation after acceptance is to integrate the authoritative
+decision, open-position, market-mark, marked-account, exit-fill, closed-trade, and
+account-P&L records into the existing browser/operator observability and control-plane
+surface without creating a second trading truth; then close any remaining lifecycle
+or orchestration gaps before later broker/PAPER authority work.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/account-simulation architecture only.
+
 
 ## Track A funding/collateral terms — 2026-09-16
 
