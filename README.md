@@ -1021,10 +1021,48 @@ open-position value. Cash, reservations, entry/exit fees, realized P&L, lifetime
 net P&L, book equity, and the recurrent ledger remain unchanged.
 
 This projection grants no account mutation, new realized-P&L, exit/closeout,
-provider/broker/order, PAPER/LIVE, promotion, or confluence authority. The next
-recurrent package is source-bound full-close exit evidence followed by a
-`CLOSE_POSITION` mutation that appends directly to the same recurrent account/ledger
-and canonical closed-trade history. The Strategy Evidence Register remains unchanged.
+provider/broker/order, PAPER/LIVE, promotion, or confluence authority. The recurrent
+full-close exit evidence described below now supplies exact current-position exit
+provenance. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle exit-fill evidence
+
+Track A now adds `atlas-simulation-recurrent-exit-fill-evidence-v1` under contract
+`61135bbede1416c852d7c84fa2914876c056508be9fdad1a87b834cb71f659ad`.
+
+The evidence binds the exact current recurrent-state fingerprint and the active
+position's immutable entry-source account-state fingerprint separately. It requires one
+exact active position, explicit source id/SHA-256, timezone-aware exit time,
+nonnegative exit price, and explicit nonnegative fees. Quantity, multiplier, all
+decision/candidate/reservation/entry/funding lineage, and option identity are inherited
+from the position. V1 is full-close only; zero-price complete losses remain valid.
+
+This object is descriptive only: it creates no realized P&L or account/ledger mutation
+and grants no provider/broker/order/PAPER/LIVE authority. The recurrent
+`CLOSE_POSITION` transition below now consumes it.
+
+## 2026-09-18 — Recurrent lifecycle close-position transitions
+
+Track A now adds `atlas-simulation-recurrent-close-position-transition-v1` under
+contract
+`9f2f32d8905c19bfb377184abd1fa3f9842eb979829ce5ca03c3a44068e17e39`.
+
+The operation consumes and returns `RecurrentLifecycleAccountV1`. Each close requires
+exact recurrent exit evidence and a currently open matched position. Only that position
+is removed; active reservations and unrelated positions remain unchanged. Net proceeds
+return to cash and one fingerprint-chained `CLOSE_POSITION` event is appended.
+
+New closes append canonical `RecurrentClosedTradeV1` records with native
+`RECURRENT_ACCOUNT_V1` provenance. Account realized P&L is net proceeds minus entry
+book value; lifetime trade net P&L additionally subtracts the entry fee already
+expensed at open. Entry fees therefore are not double counted. Duplicate exit-fill
+reuse is idempotent, conflicts fail closed, common-source batches are deterministic,
+and exact replay is required.
+
+This completes the stable recurrent simulation loop on one account contract:
+**reserve → entry evidence/funding → open → mark → exit evidence → close → reserve
+again**. The next bounded package is the recurrent coordinator/runtime owner. The
+Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
