@@ -809,12 +809,43 @@ marked open-position value. This package performs valuation only and grants no a
 mutation, new realized P&L, exit/closeout, provider/broker/order, PAPER/LIVE,
 promotion, or confluence authority.
 
-The next bounded Track A package is lifecycle-native exit-fill evidence and closeout
-for `LifecyclePositionAccountV1`. That boundary must close newly re-entered positions
-without reverting to the original open-position/closeout contracts, preserve all fee
-and realized history, and produce a new current lifecycle account that can again be
-marked and later returned to reservation/re-entry orchestration. The Strategy Evidence
-Register remains unchanged.
+The lifecycle-native exit-evidence layer described below now supplies the exact
+post-reentry exit provenance. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Lifecycle-native post-reentry exit-fill evidence
+
+Track A now adds `atlas-simulation-lifecycle-exit-fill-evidence-v1` under contract
+`f3a952f971d693dbc0ca098d9eb5ff912d54443b9dcf2580409bb5558285df74`.
+This is the descriptive exit boundary for positions held by
+`LifecyclePositionAccountStateV1`.
+
+A new exit-evidence version is required because the earlier accepted
+`atlas-simulated-exit-fill-evidence-v1` explicitly consumes the pre-reentry
+`atlas-simulation-open-position-account-state-v1` snapshot. Newly re-entered
+positions and their current account history now live under the lifecycle position
+contract, so reusing the old account-level source fingerprint would lose provenance.
+
+The builder requires one exact lifecycle position-account state fingerprint and one
+exact active position fingerprint. Quantity, quantity unit, instrument/option identity,
+entry-fill/funding/reservation lineage, and contract multiplier are inherited from
+that position. Exit evidence binds an explicit source id/SHA-256, timezone-aware exit
+timestamp, nonnegative exit price, and explicit nonnegative exit fees. Gross proceeds
+are `quantity * exit_price * multiplier`; net proceeds are gross less exit fees.
+Zero-price complete-loss exits remain representable, while fees may never exceed gross
+proceeds. V1 is full-close only.
+
+This object remains descriptive broker-neutral evidence. It does not remove the
+position, mutate account cash, compute realized P&L, read/write providers or brokers,
+assert a broker fill, create an order, or grant PAPER/LIVE/promotion/confluence
+authority.
+
+The next bounded Track A package is lifecycle-native deterministic closeout from the
+lifecycle position account + this exact exit-fill evidence. It must remove only the
+matched current position, return exact net proceeds to cash, preserve remaining
+reservations and unrelated positions, carry all prior closed trades/fees/realized P&L
+forward, append the new closed trade, and maintain the distinction between account
+realized-P&L delta and lifetime trade net P&L. The Strategy Evidence Register remains
+unchanged.
 
 ## A33/B33 reference foundation
 
