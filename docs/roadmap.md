@@ -2645,13 +2645,49 @@ Frozen semantics:
 8. reuse the existing observability refresh event with GET-only, zero browser/order
    mutation authority.
 
-Immediate Track A continuation is runtime startup/orchestration around the recurrent
-coordinator, followed by making recurrent ownership the default simulation runtime
-source while retaining the bounded single-cycle contracts only for compatibility and
-historical replay.
+The durable recurrent checkpoint/restore layer described below now closes the
+restart boundary while keeping recurrent ownership as the only current simulation
+truth.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/control-plane architecture only.
+
+## Track A durable recurrent lifecycle checkpoint/restore — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-lifecycle-checkpoint-v1` under contract
+`53d34c03bf23157bb447cdf4ddb8902cd56ac008403efb8dd8145e596c45c2fa`.
+
+Frozen semantics:
+
+1. persist one exact recurrent coordinator snapshot, including logical revision,
+   recurrent account state/ledger fingerprints, optional marked-state fingerprint, and
+   the complete validated snapshot payload;
+2. self-hash every checkpoint and preserve every superseded current checkpoint in
+   content-addressed history before replacing the current projection;
+3. use same-directory atomic temp/replace writes with `fsync=True`;
+4. require monotonic revision, identical snapshot at equal revision, immutable
+   recurrent ledger prefix, and unchanged recurrent bootstrap lineage;
+5. allow exact duplicate persistence as idempotent reuse without growing history;
+6. support expected-previous-checkpoint SHA binding so stale writers fail closed;
+7. reconstruct the exact dataclass graph on restore and re-run all recurrent
+   coordinator/account/ledger/marked-state invariants and fingerprints;
+8. preserve mark-only coordinator revisions across restart even when revision exceeds
+   recurrent ledger-event count;
+9. restore Phase 19 from
+   `data/live/simulation/recurrent_lifecycle/current.json` only; missing state remains
+   `NOT_CONNECTED`, while invalid/corrupt authoritative state aborts startup instead
+   of falling back to research or legacy artifacts; and
+10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is a durable recurrent runtime transaction boundary:
+accepted reservation/entry/close mutations and mark publications must not become
+externally current unless the matching checkpoint commit succeeds; persistence failure
+must leave or restore one unambiguous authoritative state before scheduled simulation
+or later PAPER work.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime durability only.
+
 
 
 
