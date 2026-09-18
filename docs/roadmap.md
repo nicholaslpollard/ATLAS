@@ -2972,6 +2972,41 @@ market-hours cycle acceptance.
 The Strategy Evidence Register remains unchanged because this package adds product
 simulation evidence persistence and admission without changing research evidence.
 
+## Track A current Webull stock ENTRY evidence — 2026-09-18
+
+Track A freezes `atlas-simulation-current-webull-stock-entry-evidence-bundle-v1` under
+contract `2a5635ce3cffff6eadeda16a2857a6b71acfb6daa267f786caa9e2aa803d070d`.
+
+Frozen semantics:
+
+1. consume one accepted post-RESERVE recurrent account, one exact durable RESERVE
+   evidence bundle, one accepted Webull stock L1 quote bundle and one explicit
+   fingerprinted fee source;
+2. perform zero provider/broker calls inside ENTRY evidence construction;
+3. preserve abstentions and explicit insufficient-capital RESERVE rejections as no-entry
+   outcomes;
+4. require every active recurrent reservation to be represented by current RESERVE
+   decision evidence and fail closed on orphan reservations;
+5. support active stock reservations only in v1; active option reservations fail closed;
+6. require exact-case regular-session quote coverage received after the post-RESERVE
+   recurrent state and within the accepted 30-second execution age cap;
+7. use the Webull ask as the stock simulated complete entry price while preserving the
+   already-reserved gross notional as the quantity source;
+8. require explicit nonnegative entry fees with exact active-stock decision coverage—no
+   implicit zero-fee default;
+9. build accepted recurrent fill and funding records, then dry-run the whole recurrent
+   entry batch so competing supplemental cash needs are validated before admission; and
+10. persist deterministic fill/funding pairs atomically with fsync and grant no
+    provider/broker/fill/order/PAPER/LIVE, promotion or confluence authority.
+
+Immediate continuation is a versioned recurrent exit-plan bridge. Phase 13
+`TradeGeometry` remains reference-only; accepted risk/reward fractions must be
+explicitly translated to actual simulated fill geometry before fresh L1 quotes can
+produce CLOSE trigger evidence.
+
+The Strategy Evidence Register remains unchanged because this package advances product
+simulation execution evidence rather than research findings.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
