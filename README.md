@@ -1494,6 +1494,43 @@ stop/target can become a CLOSE trigger. Reference Phase 13 prices will not be tr
 executable levels merely because they exist. The Strategy Evidence Register remains
 unchanged.
 
+## 2026-09-18 — Recurrent stock exit-plan bridge
+
+Track A now freezes `atlas-simulation-recurrent-stock-exit-plan-v1` under contract
+`9d2f921c4821b2cb73274db314f3a7716ea02338f191f5863abf805f13073e0b`.
+
+This package deliberately separates **planning geometry** from **CLOSE authority**.
+V1 consumes the exact recurrent bullish stock position plus one fully validated Phase 13
+case. The case must be review-ready, identity/direction matched to the position, use
+available reference-only geometry, and not postdate the position open. The complete
+Phase 13 case is retained and canonically fingerprinted together with the current Phase
+13 policy fingerprint.
+
+The absolute Phase 13 reference entry/stop/target prices remain audit-only and are never
+used as executable levels. Instead, ATLAS transfers only the accepted empirical
+`risk_fraction` and `reward_fraction` onto the position's **actual simulated entry
+fill**:
+
+- actual stop = actual entry × (1 − risk fraction)
+- actual target = actual entry × (1 + reward fraction)
+
+The Phase 13 session horizon is preserved for audit, but v1 explicitly keeps time-exit
+triggering disabled. The exit plan itself also has no price-trigger, CLOSE-fill,
+provider/broker, order, PAPER or LIVE authority. A complete bundle requires exact
+coverage of every open stock position and fails closed if an open option position is
+present. The bundle is self-fingerprinted and persisted atomically with fsync at
+`data/live/simulation/recurrent_exit_plan/current.json`.
+
+Immediate continuation is a fresh Webull L1 stock exit-trigger/CLOSE-evidence adapter.
+That adapter may compare a current executable bid to the accepted actual-fill stop and
+target, but it must preserve explicit no-trigger outcomes and explicit exit fees. A
+separate clock rule is still required before the stored session horizon can trigger a
+time exit.
+
+The Strategy Evidence Register remains unchanged because this package translates
+already accepted product planning geometry into simulation lifecycle state without
+changing strategy research evidence.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
