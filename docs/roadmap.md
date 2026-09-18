@@ -2270,15 +2270,46 @@ Frozen semantics:
 8. no reservation release, new position, provider/broker/order, PAPER/LIVE, promotion,
    or confluence authority is granted.
 
-Immediate Track A continuation is the atomic lifecycle reservation-to-position
-transition. It must remove only the consumed reservation, create the exact new open
-position/cost basis, expense its entry fee once, preserve prior lifecycle history and
-realized accounting, invalidate stale current valuation, and support exact replay and
-idempotent duplicate application before the coordinator is extended across repeated
-entry/exit cycles.
+The atomic reservation-to-position layer described below now consumes this evidence.
+
+## Track A lifecycle-native reservation-to-position state — 2026-09-18
+
+Track A now freezes `atlas-simulation-lifecycle-position-account-v1` under contract
+`7c5f2a82a8583b9f7b2e90f994f7d6ca4c682888448b97ad287e79e6dad82f29`.
+
+Frozen semantics:
+
+1. initialize from one exact accepted lifecycle reservation state + reservation ledger
+   fingerprint and carry all prior open/closed history, fees, realized P&L and book
+   equity forward;
+2. require lifecycle entry-fill and funding evidence to bind that immutable source
+   reservation-state fingerprint;
+3. require the exact matched reservation to remain active at mutation time, remove it
+   once, and create one exact new open position/cost basis;
+4. expense the new entry fee once while leaving prior realized P&L and exit-fee history
+   unchanged;
+5. reconcile book equity both as
+   `initial_equity - cumulative_entry_fees + cumulative_account_realized_pnl` and as
+   current cash + remaining reservations + open entry-book value;
+6. enforce current-cash competition during deterministic multi-entry application even
+   when each fill/funding object was independently fundable against the common source
+   snapshot;
+7. order competing entries by fill timestamp then fill fingerprint;
+8. make identical duplicate entry application idempotent, reject conflicting second
+   fills, and provide fingerprint-chained deterministic replay; and
+9. grant no new-reservation, exit/closeout, mark-to-market, provider/broker/order,
+   PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is lifecycle-native post-re-entry valuation and
+exit/closeout. Individual marks and exits must bind the new positions without reverting
+to pre-re-entry account snapshots; closeout must preserve the new cost basis and fee
+history; and then the lifecycle coordinator can be upgraded from single-cycle ownership
+to repeated reservation → entry → mark → exit → closeout cycles with atomic dashboard
+state.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account architecture only.
+
 
 
 
