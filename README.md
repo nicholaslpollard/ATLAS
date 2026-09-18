@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-17 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-18 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -1324,6 +1324,32 @@ market evidence into these admissions without allowing provider reads or browser
 actions to bypass the runner. Workstation restart/resume and market-hours validation
 remain required before any qualifying PAPER program. The Strategy Evidence Register
 remains unchanged.
+
+## 2026-09-18 — Read-only recurrent cycle health projection
+
+Track A now adds `atlas-control-plane-recurrent-cycle-health-v1` under frozen contract
+`6f46af10c4925a2f73a7d6ba08a49b0ae2a2285c66380029e98ef740b0a90e80`.
+The service reads only the authoritative recurrent checkpoint plus durable cycle
+receipts and stage admissions. It validates the full checkpoint history, every cycle
+receipt and receipt filename binding, every stage-admission self hash/path/source
+binding, and rejects orphan or future-stage admissions.
+
+The projection distinguishes normal `READY_NO_CYCLE`, `OPEN`, and `COMPLETE`
+states from older pre-runner `COMPLETE_LEGACY_UNADMITTED` cycles, fail-closed
+`INVALID` integrity states, and the legitimate `RECOVERY_REQUIRED` crash boundary
+where the next stage was admitted and the durable checkpoint advanced before its cycle
+stage receipt was recorded. That recovery state does not authorize repair itself; the
+accepted cycle runner must resume with the exact admitted evidence and prove the state.
+
+Phase 19 now exposes this projection through GET-only
+`/api/v1/ops/simulation-cycle`. The endpoint does not refresh providers, contact a
+broker, create an order, schedule a cycle, or mutate the runtime. Provider/broker/order/
+PAPER/LIVE authority remains false.
+
+Immediate Track A continuation is current-evidence acquisition/adaptation into the
+stage-admission runner and browser rendering of this health payload, followed by an
+end-to-end workstation restart/resume validation before any qualifying PAPER program.
+The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
