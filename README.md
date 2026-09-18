@@ -875,11 +875,48 @@ closed, batch order is exit timestamp then exit-fill fingerprint, and exact stat
 ledger replay is required. No provider/broker/order/PAPER/LIVE/promotion/confluence
 authority is created.
 
-The next bounded Track A package is lifecycle continuation/unification: expose a single
-current account view over inherited and lifecycle closed history, allow a lifecycle
-closeout result to become the source for the next reservation cycle without resetting
-account history, and upgrade the coordinator to own repeated reservation → entry →
-mark → exit → closeout cycles atomically. The Strategy Evidence Register remains
+The stable recurrent-account foundation described below now performs that
+consolidation without erasing source provenance. The Strategy Evidence Register
+remains unchanged.
+
+## 2026-09-18 — Stable recurrent lifecycle account foundation
+
+Track A now introduces the consolidation target
+`atlas-simulation-recurrent-lifecycle-account-v1` under contract
+`9a22ebdb75a85c7d602851f48ae19a4262b0ab5a28441fc80f26b22a96781299`.
+This is intentionally a **stable multi-cycle account contract**, not another numbered
+copy of the reservation → position → closeout bridge.
+
+The bootstrap consumes one exact accepted lifecycle-closeout state/ledger pair and
+carries forward current cash, active reservations, open positions, fee totals,
+realized P&L, lifetime trade net P&L, and book equity. Historical closed trades are
+canonicalized into `RecurrentClosedTradeV1` records without erasing provenance.
+Each canonical record retains:
+
+- whether it originated from the original closeout path or the lifecycle closeout path;
+- the exact source-state contract fingerprint;
+- the exact source-state fingerprint;
+- the exact original closed-trade record fingerprint; and
+- the full immutable trade economics/fee/P&L lineage.
+
+This removes the need to pretend that a lifecycle-native closed trade came from the
+original open-position contract merely to combine histories. The recurrent state then
+uses one chronological closed-trade collection for accounting while the source record
+remains independently verifiable.
+
+The recurrent account also freezes one append-only event-ledger schema broad enough
+for reservation, entry, and closeout state transitions. The bootstrap ledger begins
+empty at the exact recurrent initial-state fingerprint; later accepted mutation
+packages will append fingerprint-chained events rather than replace the account
+contract again. Current marks remain a read-only projection and are not ledger
+mutations.
+
+The recurrent state grants no provider/broker/order/PAPER/LIVE/promotion/confluence
+authority. The next bounded work is to add recurrent-native reservation transitions,
+then recurrent entry/exit evidence and mutations, all against this same account
+contract. Once those transitions pass replay/idempotency acceptance, the lifecycle
+coordinator can move from the one-cycle bridge to the recurrent account and the
+browser can consume one stable source of truth. The Strategy Evidence Register remains
 unchanged.
 
 ## A33/B33 reference foundation

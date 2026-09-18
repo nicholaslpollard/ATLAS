@@ -112,6 +112,14 @@ from packages.simulation.simulated_exit_fill import (
     SimulatedExitFillInputs,
     build_simulated_exit_fill_evidence,
 )
+from packages.simulation.recurrent_lifecycle_contract import (
+    RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.recurrent_lifecycle_state import (
+    RecurrentClosedTradeOrigin,
+    RecurrentLifecycleAccountError,
+    initialize_recurrent_lifecycle_account_v1,
+)
 from packages.simulation.simulated_fill import (
     SimulatedEntryFillError,
     SimulatedEntryFillInputs,
@@ -2064,3 +2072,174 @@ def test_lifecycle_closeout_preserves_unrelated_pending_reservation() -> None:
         closed.option_reserved_abs_delta_equivalent_notional
         == pytest.approx(pending.abs_delta_equivalent_notional)
     )
+
+
+def _recurrent_bootstrap_source():
+    position_account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in position_account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = _lifecycle_exit(
+        position_account,
+        stock,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="b",
+    )
+    return apply_lifecycle_closeout_v1(
+        initialize_lifecycle_closeout_account_v1(
+            source=position_account
+        ),
+        fill=fill,
+    ).account
+
+
+def test_recurrent_lifecycle_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
+        == "9a22ebdb75a85c7d602851f48ae19a4262b0ab5a28441fc80f26b22a96781299"
+    )
+
+
+def test_recurrent_bootstrap_canonicalizes_both_closed_trade_generations() -> None:
+    source = _recurrent_bootstrap_source()
+    account = initialize_recurrent_lifecycle_account_v1(source=source)
+    state = account.state
+
+    assert state.stable_repeated_cycle_contract is True
+    assert state.bootstrap_state_fingerprint == source.state.state_fingerprint
+    assert state.bootstrap_ledger_fingerprint == source.ledger.ledger_fingerprint
+    assert len(state.closed_trades) == 2
+    assert tuple(x.origin for x in state.closed_trades) == (
+        RecurrentClosedTradeOrigin.ORIGINAL_CLOSEOUT_V1,
+        RecurrentClosedTradeOrigin.LIFECYCLE_CLOSEOUT_V1,
+    )
+    assert all(
+        len(x.source_record_fingerprint) == 64
+        for x in state.closed_trades
+    )
+    assert len(state.open_positions) == 1
+    assert state.open_positions[0].instrument_kind == InstrumentKind.OPTION
+    assert state.cash == pytest.approx(20_004.0)
+    assert state.open_entry_book_value_dollars == pytest.approx(200.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(4.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(2.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(208.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(205.0)
+    assert state.account_book_equity == pytest.approx(20_204.0)
+    assert (
+        state.cash
+        + state.stock_reserved_capital
+        + state.option_reserved_capital
+        + state.open_entry_book_value_dollars
+        == pytest.approx(state.account_book_equity)
+    )
+    assert account.ledger.events == ()
+    assert account.ledger.initial_state_fingerprint == state.state_fingerprint
+
+
+def test_recurrent_bootstrap_preserves_pending_reservations_and_open_positions() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    stock_record = _stock_record()
+    option_record, terms = _option_case()
+    after_stock = apply_lifecycle_decision_reservation_v1(
+        base,
+        stock_record,
+    ).account
+    reserved = apply_lifecycle_decision_reservation_v1(
+        after_stock,
+        option_record,
+        option_terms=terms,
+    ).account
+    stock_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=stock_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-pending-entry",
+            fill_source_fingerprint=_fp("c"),
+            filled_utc=option_record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    stock_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=stock_fill,
+    )
+    position_account = apply_lifecycle_entry_v1(
+        initialize_lifecycle_position_account_v1(source=reserved),
+        fill=stock_fill,
+        funding=stock_funding,
+    ).account
+    stock_position = next(
+        x
+        for x in position_account.state.open_positions
+        if x.decision_record_fingerprint == stock_record.record_fingerprint
+    )
+    close_fill = _lifecycle_exit(
+        position_account,
+        stock_position,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="d",
+    )
+    lifecycle_closeout = apply_lifecycle_closeout_v1(
+        initialize_lifecycle_closeout_account_v1(
+            source=position_account
+        ),
+        fill=close_fill,
+    ).account
+    recurrent = initialize_recurrent_lifecycle_account_v1(
+        source=lifecycle_closeout
+    ).state
+
+    assert recurrent.option_reservations == lifecycle_closeout.state.option_reservations
+    assert recurrent.option_reserved_capital == pytest.approx(
+        lifecycle_closeout.state.option_reserved_capital
+    )
+    assert recurrent.open_positions == lifecycle_closeout.state.open_positions
+    assert recurrent.closed_trades[-1].origin == (
+        RecurrentClosedTradeOrigin.LIFECYCLE_CLOSEOUT_V1
+    )
+
+
+def test_recurrent_canonical_history_preserves_economic_totals_exactly() -> None:
+    source = _recurrent_bootstrap_source()
+    state = initialize_recurrent_lifecycle_account_v1(source=source).state
+
+    assert sum(x.entry_fees_dollars for x in state.closed_trades) + sum(
+        x.entry_fees_dollars for x in state.open_positions
+    ) == pytest.approx(state.cumulative_entry_fees_dollars)
+    assert sum(
+        x.exit_fees_dollars for x in state.closed_trades
+    ) == pytest.approx(state.cumulative_exit_fees_dollars)
+    assert sum(
+        x.account_realized_pnl_delta_dollars for x in state.closed_trades
+    ) == pytest.approx(state.cumulative_account_realized_pnl_dollars)
+    assert sum(
+        x.lifetime_trade_net_pnl_dollars for x in state.closed_trades
+    ) == pytest.approx(state.cumulative_lifetime_trade_net_pnl_dollars)
+
+
+def test_recurrent_account_grants_no_external_or_trading_authority() -> None:
+    state = initialize_recurrent_lifecycle_account_v1(
+        source=_recurrent_bootstrap_source()
+    ).state
+
+    assert state.provider_read_authority is False
+    assert state.provider_write_authority is False
+    assert state.broker_read_authority is False
+    assert state.broker_write_authority is False
+    assert state.order_creation_authority is False
+    assert state.paper_authority is False
+    assert state.live_authority is False
+
+    with pytest.raises(RecurrentLifecycleAccountError, match="cannot grant"):
+        replace(state, broker_write_authority=True)
+    with pytest.raises(RecurrentLifecycleAccountError, match="cannot grant"):
+        replace(state, paper_authority=True)
