@@ -2527,12 +2527,46 @@ Frozen semantics:
 8. grant no account mutation, new realized-P&L, exit/closeout,
    provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is recurrent full-close exit evidence followed by
-`CLOSE_POSITION` mutation against this same stable recurrent account and append-only
-ledger.
+The recurrent full-close exit-evidence and close-position layers described below now
+complete the stable same-account trade loop.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation valuation architecture only.
+
+## Track A recurrent lifecycle exit-fill evidence — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-exit-fill-evidence-v1` under contract
+`61135bbede1416c852d7c84fa2914876c056508be9fdad1a87b834cb71f659ad`.
+
+Frozen semantics: exact current recurrent state + active position, explicit source
+id/SHA-256/time/price/fees, full-close quantity/multiplier, inherited complete lineage,
+zero-price loss support, deterministic fingerprinting, and zero mutation/P&L/
+provider/broker/order/PAPER/LIVE authority.
+
+## Track A recurrent lifecycle close-position transitions — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-close-position-transition-v1` under
+contract
+`9f2f32d8905c19bfb377184abd1fa3f9842eb979829ce5ca03c3a44068e17e39`.
+
+Frozen semantics:
+
+1. consume and return the same recurrent account/ledger;
+2. require exact recurrent exit evidence and one current open matched position;
+3. preserve unrelated positions and reservations;
+4. return net proceeds and append one `CLOSE_POSITION` event;
+5. append canonical native `RECURRENT_ACCOUNT_V1` closed history with exact lineage;
+6. add account-realized and lifetime-net P&L once without re-expensing entry fees;
+7. preserve both book-equity reconciliations;
+8. support exact-current single closes and deterministic common-source batches;
+9. make duplicate reuse idempotent and conflicts fail closed; and
+10. grant no provider/broker/order/PAPER/LIVE/promotion/confluence authority.
+
+The recurrent simulation loop is now complete on one stable account contract.
+Immediate continuation is recurrent coordinator ownership and browser projection.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation account transitions only.
 
 
 ## Track A funding/collateral terms — 2026-09-16
