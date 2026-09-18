@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-16 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-17 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -2038,6 +2038,41 @@ with lifetime trade-P&L and account-equity semantics kept explicit so entry fees
 be double counted. The Strategy Evidence Register remains unchanged because this is
 product/account-simulation architecture only.
 
+
+## Track A broker-neutral simulated exit-fill evidence — 2026-09-17
+
+Track A now freezes `atlas-simulated-exit-fill-evidence-v1` under contract
+`d823bdf481f6ae6266be0a7e87d36702e1687d5a84f97da105e64cfc7e8f77c0`.
+It consumes the exact accepted open-position account state and one exact active
+open-position fingerprint plus explicit source id/SHA-256, timezone-aware exit
+timestamp, executable simulation exit price, and explicit exit fees.
+
+The v1 exit boundary is full-close only. Exact quantity, quantity unit, multiplier,
+instrument identity, and entry lineage are inherited from the active position; no
+partial-exit or silent quantity mutation is permitted. Gross proceeds equal
+`quantity * exit_price * multiplier`; net proceeds equal gross proceeds less exit
+fees. A zero exit price is valid so complete-loss outcomes remain representable, while
+exit fees may not exceed gross proceeds.
+
+The exit-fill record remains descriptive evidence only. It grants no position/account
+mutation, realized-P&L, closeout, provider/broker read/write, broker-fill, order,
+PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation after acceptance:
+
+1. consume exact open-position state + exact exit-fill lineage in a deterministic
+   closeout transition that removes only the matched active position;
+2. return exact net exit proceeds to cash and release the corresponding entry-book
+   exposure without reconstructing or changing unrelated positions/reservations;
+3. distinguish account-state realized P&L from lifetime trade net P&L so entry fees
+   already expensed at open are never charged twice;
+4. add idempotent duplicate-close handling, deterministic replay, tamper detection,
+   and closed-trade ledger evidence;
+5. only after lifecycle accounting is accepted, integrate these authoritative
+   records into browser observability and later broker/PAPER authority gates.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.
 
 ## Track A funding/collateral terms — 2026-09-16
 
