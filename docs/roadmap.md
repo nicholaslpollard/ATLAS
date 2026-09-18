@@ -2866,6 +2866,41 @@ and market-hours validation before any qualifying PAPER program.
 The Strategy Evidence Register remains unchanged because this package changes
 read-only product/control-plane observability only.
 
+## Track A immutable current-market snapshot source — 2026-09-18
+
+Track A freezes `atlas-simulation-current-market-snapshot-source-v1` under contract
+`5a5f6bc707868056e47b758667c8a127c9a16af8676f3eaa323b6066a9d26eba`.
+
+Frozen semantics:
+
+1. perform zero provider, broker, or network acquisition inside this layer;
+2. read only an already persisted provisional `LiveStateSnapshot` current file and
+   require full schema validation before it can become cycle evidence;
+3. compute and retain the exact raw-file SHA-256 plus a separate canonical semantic
+   snapshot fingerprint;
+4. archive the exact source bytes content-addressed by raw SHA-256 under the recurrent
+   runtime evidence tree using atomic, fsync-backed promotion;
+5. allow archive reuse only when the exact archived bytes still match the raw source
+   identity and fail closed on tamper, collision, hash mismatch, missing/invalid source,
+   invalid UTF-8, or oversized input;
+6. preserve feed mode, connection state, exchange-session state, source timestamps,
+   symbol membership, minute/quote evidence, and existing freshness classifications;
+7. do not reclassify freshness and do not synthesize quote, spread, bar, decision,
+   fill, or mark evidence;
+8. expose the raw archive SHA as the downstream stage-admission evidence-source
+   fingerprint while retaining semantic identity separately;
+9. leave provider acquisition with the existing live-market service, outside this
+   source boundary; and
+10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is a fail-closed MARK evidence adapter from the
+immutable archived snapshot into the accepted market-mark evidence contract. Only
+actual source quote evidence may satisfy executable bid/ask requirements; a minute bar
+must never be converted into a fabricated quote.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime evidence provenance only.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
