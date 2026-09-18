@@ -1390,18 +1390,19 @@ non-empty production marks on the current deployment.
 
 Track A now adds a product-grade read-only quote path for the current deployment.
 `atlas-execution-current-webull-stock-quote-bundle-v1` is frozen under contract
-`a0da5b0db29ae074e64cc933c995bff99d388aa7357c3928d840a59fd0d613ea`.
+`5c2df876e2d9814434d6823f04c2cd0e6bfcdbe9b071cf291213abb634f2d26d`.
 
 The capture command `scripts/capture_current_webull_quotes.py` accepts an explicit
 comma-separated stock list, performs exactly one Webull **sandbox** L1 market-data read
-per exact-case symbol, and persists nothing unless every requested symbol returns a
-valid, positive, uncrossed, regular-session quote inside the accepted execution age
-cap. The resulting bundle is sorted, complete, self-fingerprinted, atomically written
+per exact-case symbol. Starting a capture invalidates the prior current bundle first,
+so a failed attempt cannot leave a previous still-fresh artifact masquerading as the
+new capture. Nothing new is persisted unless every requested symbol returns a valid,
+positive, uncrossed, regular-session quote inside the accepted execution age cap. The resulting bundle is sorted, complete, self-fingerprinted, atomically written
 with fsync, and carries explicit provider-read counts. Capture performs no account read,
 provider write, broker write, order creation, PAPER, or LIVE action.
 
 The paired `atlas-simulation-current-webull-stock-mark-adapter-v1` contract is frozen
-at `c862121c97cfedba968a9dad05d979ce2bc46bc6fdf8c9bf6dac53ca6e40b4d8`.
+at `586b58a791e14cc21a3bb02f8d556a35785deae335a4153cee5bd37d30f33148`.
 It consumes the already-captured bundle and exact recurrent stock positions with zero
 network calls, requires exact-case complete quote coverage, preserves the stricter
 30-second execution quote age cap, and converts each quote through the existing accepted
