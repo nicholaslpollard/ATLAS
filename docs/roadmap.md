@@ -2716,6 +2716,36 @@ configured recurrent runtime store and recurrent read-only dashboard.
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime transaction durability only.
 
+## Track A Phase 19 recurrent runtime restore/startup — 2026-09-18
+
+Track A stages `atlas-control-plane-recurrent-runtime-startup-v1` under contract
+`e4952a0f004b3b5a3618f05f218412c087a93aee97ca64df249b492ce877419a`.
+
+Frozen semantics:
+
+1. resolve the recurrent runtime store from the configured derived-data path;
+2. restore only a fully validated persistent recurrent runtime snapshot;
+3. inject the recurrent read-only lifecycle dashboard explicitly into production
+   Phase 19 startup;
+4. treat a missing store as uninitialized recurrent `NOT_CONNECTED`, creating no
+   account and inferring no equity;
+5. restore account state without marks and require fresh valuation evidence before the
+   dashboard becomes `AVAILABLE`;
+6. fail startup on corrupt or contract/fingerprint-invalid persisted state rather than
+   falling back to older lifecycle artifacts;
+7. leave legacy single-cycle contracts available only for compatibility/historical
+   replay rather than as the production launcher's default lifecycle source; and
+8. perform zero provider/broker/order I/O and grant no PAPER/LIVE, promotion, or
+   confluence authority during restore.
+
+The next unresolved boundary is explicit initial recurrent-account bootstrap policy.
+No starting simulation equity is currently configured, and current accepted execution
+lineage contains zero executable cases. That initial economic state must be chosen
+explicitly rather than inferred from test fixtures or broker balances.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/control-plane startup architecture only.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
