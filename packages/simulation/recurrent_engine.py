@@ -160,6 +160,10 @@ class RecurrentLifecycleCoordinatorSnapshotV1:
                 "recurrent coordinator revision cannot be negative"
             )
         _validate_account(self.account)
+        if self.revision < len(self.account.ledger.events):
+            raise RecurrentLifecycleCoordinatorError(
+                "recurrent coordinator revision cannot trail ledger length"
+            )
         if self.marked_state is not None:
             if (
                 self.marked_state.state_fingerprint
@@ -243,6 +247,38 @@ class RecurrentLifecycleCoordinatorV1:
         self._account = account
         self._marked_state: RecurrentMarkedAccountStateV1 | None = None
         self._revision = len(account.ledger.events)
+
+    @classmethod
+    def from_snapshot(
+        cls,
+        snapshot: RecurrentLifecycleCoordinatorSnapshotV1,
+    ) -> "RecurrentLifecycleCoordinatorV1":
+        """Restore one already-validated recurrent coordinator snapshot exactly."""
+        if not isinstance(
+            snapshot,
+            RecurrentLifecycleCoordinatorSnapshotV1,
+        ):
+            raise RecurrentLifecycleCoordinatorError(
+                "restore requires a recurrent coordinator snapshot"
+            )
+        # Re-run the snapshot dataclass invariants through its fingerprint before
+        # accepting persisted state into a live coordinator.
+        if (
+            snapshot.snapshot_fingerprint
+            != recurrent_lifecycle_coordinator_snapshot_fingerprint(snapshot)
+        ):
+            raise RecurrentLifecycleCoordinatorError(
+                "recurrent coordinator restore snapshot fingerprint mismatch"
+            )
+        coordinator = cls(account=snapshot.account)
+        with coordinator._lock:
+            coordinator._marked_state = snapshot.marked_state
+            coordinator._revision = snapshot.revision
+        if coordinator.snapshot().snapshot_fingerprint != snapshot.snapshot_fingerprint:
+            raise RecurrentLifecycleCoordinatorError(
+                "recurrent coordinator restore round-trip mismatch"
+            )
+        return coordinator
 
     @property
     def revision(self) -> int:
