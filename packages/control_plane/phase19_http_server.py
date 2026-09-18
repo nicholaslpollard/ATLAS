@@ -27,6 +27,7 @@ from packages.simulation.recurrent_runtime import (
     DurableRecurrentLifecycleRuntimeV1,
 )
 
+from .recurrent_cycle_health import RecurrentCycleHealthService
 from .recurrent_lifecycle_dashboard import (
     RecurrentLifecycleDashboardService,
     source_provider_from_recurrent_coordinator,
@@ -36,6 +37,7 @@ from .simulation_lifecycle_dashboard import (
     source_provider_from_coordinator,
 )
 from .status import Phase16StatusService
+from packages.data.paths import MarketDataPaths
 
 
 PHASE19_HTTP_CONTRACT_VERSION = (
@@ -183,6 +185,25 @@ class Phase19ControlPlaneRequestHandler(AtlasControlPlaneRequestHandler):
                 return
             self._send_json(HTTPStatus.OK, payload)
             return
+        if path == "/api/v1/ops/simulation-cycle":
+            try:
+                payload = self.atlas_server.recurrent_cycle_health_service.snapshot()  # type: ignore[attr-defined]
+            except Exception:
+                self._send_json(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {
+                        "error": "SIMULATION_CYCLE_HEALTH_READ_FAILED",
+                        "read_only": True,
+                        "provider_reads": 0,
+                        "provider_writes": 0,
+                        "broker_reads": 0,
+                        "broker_writes": 0,
+                        "order_writes": 0,
+                    },
+                )
+                return
+            self._send_json(HTTPStatus.OK, payload)
+            return
         super()._dispatch_get()
 
 
@@ -202,6 +223,7 @@ def create_phase19_status_server(
         | DurableRecurrentLifecycleRuntimeV1
         | None
     ) = None,
+    recurrent_cycle_health_service: RecurrentCycleHealthService | None = None,
     host: str = PHASE16_DEFAULT_BIND_HOST,
     port: int = DEFAULT_CONTROL_PLANE_PORT,
     session_guard: ControlPlaneSessionGuard | None = None,
@@ -262,5 +284,13 @@ def create_phase19_status_server(
         lifecycle_dashboard_service = SimulationLifecycleDashboardService()
     server.simulation_lifecycle_dashboard_service = (  # type: ignore[attr-defined]
         lifecycle_dashboard_service
+    )
+    server.recurrent_cycle_health_service = (  # type: ignore[attr-defined]
+        recurrent_cycle_health_service
+        or RecurrentCycleHealthService(
+            MarketDataPaths(
+                service.settings
+            ).recurrent_lifecycle_checkpoint_file()
+        )
     )
     return server
