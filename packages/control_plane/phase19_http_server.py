@@ -22,7 +22,12 @@ from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .phase19_observability import Phase19ObservabilityService
 from .session import ControlPlaneSessionGuard
 from packages.simulation.engine import SimulationLifecycleCoordinatorV1
+from packages.simulation.recurrent_engine import RecurrentLifecycleCoordinatorV1
 
+from .recurrent_lifecycle_dashboard import (
+    RecurrentLifecycleDashboardService,
+    source_provider_from_recurrent_coordinator,
+)
 from .simulation_lifecycle_dashboard import (
     SimulationLifecycleDashboardService,
     source_provider_from_coordinator,
@@ -183,8 +188,13 @@ def create_phase19_status_server(
     service: Phase16StatusService,
     observability_service: Phase19ObservabilityService | None = None,
     paper_dashboard_service: PaperDashboardService | None = None,
-    simulation_lifecycle_dashboard_service: SimulationLifecycleDashboardService | None = None,
+    simulation_lifecycle_dashboard_service: (
+        SimulationLifecycleDashboardService
+        | RecurrentLifecycleDashboardService
+        | None
+    ) = None,
     simulation_lifecycle_coordinator: SimulationLifecycleCoordinatorV1 | None = None,
+    recurrent_lifecycle_coordinator: RecurrentLifecycleCoordinatorV1 | None = None,
     host: str = PHASE16_DEFAULT_BIND_HOST,
     port: int = DEFAULT_CONTROL_PLANE_PORT,
     session_guard: ControlPlaneSessionGuard | None = None,
@@ -215,15 +225,26 @@ def create_phase19_status_server(
     server.paper_dashboard_service = paper_dashboard_service or PaperDashboardService(  # type: ignore[attr-defined]
         service.settings,
     )
-    if (
-        simulation_lifecycle_dashboard_service is not None
-        and simulation_lifecycle_coordinator is not None
-    ):
+    lifecycle_sources = sum(
+        item is not None
+        for item in (
+            simulation_lifecycle_dashboard_service,
+            simulation_lifecycle_coordinator,
+            recurrent_lifecycle_coordinator,
+        )
+    )
+    if lifecycle_sources > 1:
         raise ValueError(
-            "provide either simulation lifecycle dashboard service or coordinator, not both"
+            "provide exactly one lifecycle dashboard service or coordinator source"
         )
     if simulation_lifecycle_dashboard_service is not None:
         lifecycle_dashboard_service = simulation_lifecycle_dashboard_service
+    elif recurrent_lifecycle_coordinator is not None:
+        lifecycle_dashboard_service = RecurrentLifecycleDashboardService(
+            source_provider=source_provider_from_recurrent_coordinator(
+                recurrent_lifecycle_coordinator
+            )
+        )
     elif simulation_lifecycle_coordinator is not None:
         lifecycle_dashboard_service = SimulationLifecycleDashboardService(
             source_provider=source_provider_from_coordinator(
