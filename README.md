@@ -839,12 +839,47 @@ position, mutate account cash, compute realized P&L, read/write providers or bro
 assert a broker fill, create an order, or grant PAPER/LIVE/promotion/confluence
 authority.
 
-The next bounded Track A package is lifecycle-native deterministic closeout from the
-lifecycle position account + this exact exit-fill evidence. It must remove only the
-matched current position, return exact net proceeds to cash, preserve remaining
-reservations and unrelated positions, carry all prior closed trades/fees/realized P&L
-forward, append the new closed trade, and maintain the distinction between account
-realized-P&L delta and lifetime trade net P&L. The Strategy Evidence Register remains
+The deterministic lifecycle closeout layer described below now consumes this evidence.
+The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Lifecycle-native post-reentry deterministic closeout
+
+Track A now adds `atlas-simulation-lifecycle-closeout-account-v1` under contract
+`9588c3ac326a78103803371071655f0133608beaf0fb10ee7932b3cf0cbace1b`.
+It consumes one exact lifecycle position-account state plus exact lifecycle exit-fill
+evidence and performs deterministic realized-P&L closeout after re-entry.
+
+The source lifecycle position state/ledger fingerprints are frozen at initialization.
+Each accepted exit must still match one currently open position exactly and reproduce
+its decision, reservation, entry-fill, funding, instrument, quantity, multiplier, and
+option lineage. Only the matched position is removed; remaining reservations and
+unrelated positions are unchanged. Exact net exit proceeds return to cash.
+
+The closeout keeps two historical record classes deliberately separate. Closed trades
+that predate lifecycle re-entry remain immutable `ClosedTradeV1` records with their
+original open-position source semantics. New post-reentry exits append
+`LifecycleClosedTradeV1` records whose source fingerprint explicitly names the
+lifecycle position-account snapshot. This avoids relabeling old provenance merely to
+make the collections uniform.
+
+For every new lifecycle closed trade, account realized-P&L delta remains
+`net_exit_proceeds - entry_book_value`; lifetime trade net P&L remains that delta
+minus the already-expensed entry fee. Cumulative entry fees never change at closeout,
+while cumulative exit fees, account realized P&L, and lifetime trade net P&L add only
+the new closeout contribution. Book equity remains
+`initial_equity - cumulative_entry_fees + cumulative_account_realized_pnl` and must
+also equal cash + remaining reservations + remaining open entry-book value.
+
+Identical exit-fill reapplication is idempotent, conflicting second closes fail
+closed, batch order is exit timestamp then exit-fill fingerprint, and exact state and
+ledger replay is required. No provider/broker/order/PAPER/LIVE/promotion/confluence
+authority is created.
+
+The next bounded Track A package is lifecycle continuation/unification: expose a single
+current account view over inherited and lifecycle closed history, allow a lifecycle
+closeout result to become the source for the next reservation cycle without resetting
+account history, and upgrade the coordinator to own repeated reservation → entry →
+mark → exit → closeout cycles atomically. The Strategy Evidence Register remains
 unchanged.
 
 ## A33/B33 reference foundation

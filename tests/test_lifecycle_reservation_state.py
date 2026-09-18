@@ -32,6 +32,17 @@ from packages.simulation.closeout_account_state import (
     initialize_closeout_account_v1,
 )
 from packages.simulation.decision_record import build_simulation_decision_record
+from packages.simulation.lifecycle_closeout_contract import (
+    LIFECYCLE_CLOSEOUT_ACCOUNT_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.lifecycle_closeout_state import (
+    LifecycleCloseoutAccountError,
+    apply_lifecycle_closeout_batch_v1,
+    apply_lifecycle_closeout_v1,
+    initialize_lifecycle_closeout_account_v1,
+    replay_lifecycle_closeout_account_v1,
+    verify_lifecycle_closeout_account_replay_v1,
+)
 from packages.simulation.lifecycle_entry_evidence import (
     LifecycleEntryEvidenceError,
     LifecycleFundingModel,
@@ -1735,3 +1746,321 @@ def test_lifecycle_exit_fill_authority_escalation_fails_closed() -> None:
         replace(fill, broker_fill_authority=True)
     with pytest.raises(LifecycleExitFillError, match="cannot grant"):
         replace(fill, paper_authority=True)
+
+
+def _lifecycle_exit(
+    account,
+    position,
+    *,
+    exited_utc: datetime,
+    price: float,
+    fees: float,
+    source_char: str,
+):
+    return build_lifecycle_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=position.position_fingerprint,
+        inputs=LifecycleExitFillInputsV1(
+            fill_source_id=f"lifecycle-close-{source_char}",
+            fill_source_fingerprint=_fp(source_char),
+            exited_utc=exited_utc,
+            exit_price_per_unit=price,
+            explicit_exit_fees_dollars=fees,
+        ),
+    )
+
+
+def test_lifecycle_closeout_contract_fingerprint_is_frozen() -> None:
+    assert (
+        LIFECYCLE_CLOSEOUT_ACCOUNT_CONTRACT_FINGERPRINT
+        == "9588c3ac326a78103803371071655f0133608beaf0fb10ee7932b3cf0cbace1b"
+    )
+
+
+def test_lifecycle_closeout_preserves_prior_closed_history_and_fee_semantics() -> None:
+    position_account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in position_account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = _lifecycle_exit(
+        position_account,
+        stock,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="1",
+    )
+    transition = apply_lifecycle_closeout_v1(
+        initialize_lifecycle_closeout_account_v1(source=position_account),
+        fill=fill,
+    )
+    state = transition.account.state
+    trade = transition.closed_trade
+
+    assert len(state.prior_closed_trades) == 1
+    assert len(state.lifecycle_closed_trades) == 1
+    assert len(state.open_positions) == 1
+    assert state.open_positions[0].instrument_kind == InstrumentKind.OPTION
+    assert state.cash == pytest.approx(20_004.0)
+    assert state.open_entry_book_value_dollars == pytest.approx(200.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(4.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(2.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(208.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(205.0)
+    assert state.account_book_equity == pytest.approx(20_204.0)
+    assert trade.account_realized_pnl_delta_dollars == pytest.approx(199.0)
+    assert trade.lifetime_trade_net_pnl_dollars == pytest.approx(197.0)
+    assert trade.entry_fees_dollars == pytest.approx(2.0)
+    assert trade.exit_fees_dollars == pytest.approx(1.0)
+    assert (
+        state.cash
+        + state.stock_reserved_capital
+        + state.option_reserved_capital
+        + state.open_entry_book_value_dollars
+        == pytest.approx(state.account_book_equity)
+    )
+
+
+def test_lifecycle_closeout_can_finish_inherited_option_without_rewriting_prior_trade() -> None:
+    position_account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in position_account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    option = next(
+        x
+        for x in position_account.state.open_positions
+        if x.instrument_kind == InstrumentKind.OPTION
+    )
+    stock_fill = _lifecycle_exit(
+        position_account,
+        stock,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="1",
+    )
+    option_fill = _lifecycle_exit(
+        position_account,
+        option,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=6),
+        price=0.0,
+        fees=0.0,
+        source_char="2",
+    )
+
+    result = apply_lifecycle_closeout_batch_v1(
+        initialize_lifecycle_closeout_account_v1(source=position_account),
+        (option_fill, stock_fill),
+    )
+    state = result.account.state
+
+    assert result.ordered_exit_fill_fingerprints == (
+        stock_fill.exit_fill_fingerprint,
+        option_fill.exit_fill_fingerprint,
+    )
+    assert state.open_positions == ()
+    assert state.open_entry_book_value_dollars == 0.0
+    assert len(state.prior_closed_trades) == 1
+    assert len(state.lifecycle_closed_trades) == 2
+    assert state.cash == pytest.approx(20_004.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(4.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(2.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(8.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(4.0)
+    assert state.account_book_equity == pytest.approx(20_004.0)
+    assert state.account_book_equity == pytest.approx(state.cash)
+
+
+def test_lifecycle_closeout_duplicate_is_idempotent_and_conflict_fails_closed() -> None:
+    position_account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in position_account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    first_fill = _lifecycle_exit(
+        position_account,
+        stock,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="3",
+    )
+    account = initialize_lifecycle_closeout_account_v1(
+        source=position_account
+    )
+    first = apply_lifecycle_closeout_v1(account, fill=first_fill)
+    duplicate = apply_lifecycle_closeout_v1(
+        first.account,
+        fill=first_fill,
+    )
+    assert duplicate.idempotent_reuse is True
+    assert duplicate.event is None
+    assert duplicate.account == first.account
+
+    conflicting_fill = _lifecycle_exit(
+        position_account,
+        stock,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=6),
+        price=103.0,
+        fees=1.0,
+        source_char="4",
+    )
+    with pytest.raises(
+        LifecycleCloseoutAccountError,
+        match="conflicting second lifecycle close",
+    ):
+        apply_lifecycle_closeout_v1(
+            first.account,
+            fill=conflicting_fill,
+        )
+
+
+def test_lifecycle_closeout_batch_is_order_independent_and_replay_exact() -> None:
+    position_account = _post_reentry_stock_position_account()
+    stock = next(
+        x
+        for x in position_account.state.open_positions
+        if x.instrument_kind == InstrumentKind.STOCK
+    )
+    option = next(
+        x
+        for x in position_account.state.open_positions
+        if x.instrument_kind == InstrumentKind.OPTION
+    )
+    stock_fill = _lifecycle_exit(
+        position_account,
+        stock,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="5",
+    )
+    option_fill = _lifecycle_exit(
+        position_account,
+        option,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=6),
+        price=1.5,
+        fees=1.0,
+        source_char="6",
+    )
+
+    first = replay_lifecycle_closeout_account_v1(
+        source=position_account,
+        fills=(option_fill, stock_fill),
+    )
+    second = replay_lifecycle_closeout_account_v1(
+        source=position_account,
+        fills=(stock_fill, option_fill),
+    )
+    assert first.account.state == second.account.state
+    assert first.account.ledger == second.account.ledger
+    assert first.account.state.state_fingerprint == second.account.state.state_fingerprint
+    assert first.account.ledger.ledger_fingerprint == second.account.ledger.ledger_fingerprint
+
+    verify_lifecycle_closeout_account_replay_v1(
+        account=first.account,
+        source=position_account,
+        fills=(stock_fill, option_fill),
+    )
+
+
+def test_lifecycle_closeout_state_grants_no_external_or_trading_authority() -> None:
+    position_account = _post_reentry_stock_position_account()
+    state = initialize_lifecycle_closeout_account_v1(
+        source=position_account
+    ).state
+
+    assert state.provider_read_authority is False
+    assert state.provider_write_authority is False
+    assert state.broker_read_authority is False
+    assert state.broker_write_authority is False
+    assert state.order_creation_authority is False
+    assert state.paper_authority is False
+    assert state.live_authority is False
+
+    with pytest.raises(LifecycleCloseoutAccountError, match="cannot grant"):
+        replace(state, broker_write_authority=True)
+    with pytest.raises(LifecycleCloseoutAccountError, match="cannot grant"):
+        replace(state, paper_authority=True)
+
+
+def test_lifecycle_closeout_preserves_unrelated_pending_reservation() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    stock_record = _stock_record()
+    option_record, terms = _option_case()
+    after_stock_reserve = apply_lifecycle_decision_reservation_v1(
+        base,
+        stock_record,
+    ).account
+    reserved = apply_lifecycle_decision_reservation_v1(
+        after_stock_reserve,
+        option_record,
+        option_terms=terms,
+    ).account
+
+    stock_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=stock_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="preserve-reservation-entry",
+            fill_source_fingerprint=_fp("9"),
+            filled_utc=option_record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    stock_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=stock_fill,
+    )
+    position_account = apply_lifecycle_entry_v1(
+        initialize_lifecycle_position_account_v1(source=reserved),
+        fill=stock_fill,
+        funding=stock_funding,
+    ).account
+    assert len(position_account.state.option_reservations) == 1
+    pending = position_account.state.option_reservations[0]
+    pending_fp = pending.decision_record_fingerprint
+
+    stock_position = next(
+        x
+        for x in position_account.state.open_positions
+        if x.decision_record_fingerprint == stock_record.record_fingerprint
+    )
+    exit_fill = _lifecycle_exit(
+        position_account,
+        stock_position,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="a",
+    )
+    closed = apply_lifecycle_closeout_v1(
+        initialize_lifecycle_closeout_account_v1(
+            source=position_account
+        ),
+        fill=exit_fill,
+    ).account.state
+
+    assert len(closed.option_reservations) == 1
+    assert closed.option_reservations[0] == pending
+    assert (
+        closed.option_reservations[0].decision_record_fingerprint
+        == pending_fp
+    )
+    assert closed.option_reserved_capital == pytest.approx(
+        pending.reserved_capital
+    )
+    assert closed.option_reserved_max_loss_cash == pytest.approx(
+        pending.max_loss_cash
+    )
+    assert (
+        closed.option_reserved_abs_delta_equivalent_notional
+        == pytest.approx(pending.abs_delta_equivalent_notional)
+    )
