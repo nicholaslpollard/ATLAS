@@ -122,6 +122,14 @@ from packages.simulation.recurrent_entry_evidence_contract import (
     RECURRENT_ENTRY_FILL_CONTRACT_FINGERPRINT,
     RECURRENT_FUNDING_TERMS_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.recurrent_exit_fill import (
+    RecurrentExitFillError,
+    RecurrentExitFillInputsV1,
+    build_recurrent_exit_fill_evidence,
+)
+from packages.simulation.recurrent_exit_fill_contract import (
+    RECURRENT_EXIT_FILL_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.recurrent_lifecycle_contract import (
     RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT,
 )
@@ -3196,3 +3204,214 @@ def test_recurrent_marked_account_is_order_independent_and_read_only() -> None:
 
     with pytest.raises(RecurrentMarkedAccountError, match="cannot grant"):
         replace(first, account_mutation_authority=True)
+
+
+def test_recurrent_exit_fill_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_EXIT_FILL_CONTRACT_FINGERPRINT
+        == "61135bbede1416c852d7c84fa2914876c056508be9fdad1a87b834cb71f659ad"
+    )
+
+
+def test_recurrent_exit_fill_binds_current_stock_position_and_source_state() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = build_recurrent_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=stock.position_fingerprint,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id="recurrent-stock-exit",
+            fill_source_fingerprint=_fp("3"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+
+    assert fill.source_recurrent_state_fingerprint == account.state.state_fingerprint
+    assert (
+        fill.source_account_contract_fingerprint
+        == RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
+    )
+    assert fill.position_fingerprint == stock.position_fingerprint
+    assert (
+        fill.position_source_account_state_fingerprint
+        == stock.source_account_state_fingerprint
+    )
+    assert fill.entry_fill_fingerprint == stock.fill_fingerprint
+    assert fill.funding_terms_fingerprint == stock.funding_terms_fingerprint
+    assert fill.reservation_fingerprint == stock.reservation_fingerprint
+    assert fill.quantity == pytest.approx(100.0)
+    assert fill.gross_exit_proceeds_dollars == pytest.approx(10_200.0)
+    assert fill.net_exit_proceeds_dollars == pytest.approx(10_199.0)
+    assert fill.full_close is True
+    assert fill.realized_pnl_authority is False
+    assert fill.account_mutation_authority is False
+
+
+def test_recurrent_exit_fill_supports_zero_price_complete_option_loss() -> None:
+    account = _recurrent_positioned_account()
+    option = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.OPTION
+    )
+    fill = build_recurrent_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=option.position_fingerprint,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id="recurrent-option-zero-exit",
+            fill_source_fingerprint=_fp("4"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+            exit_price_per_unit=0.0,
+            explicit_exit_fees_dollars=0.0,
+        ),
+    )
+
+    assert fill.instrument_kind == InstrumentKind.OPTION
+    assert fill.gross_exit_proceeds_dollars == 0.0
+    assert fill.net_exit_proceeds_dollars == 0.0
+    assert fill.option_contract_ticker == option.option_contract_ticker
+    assert fill.option_reservation_terms_fingerprint is not None
+    assert fill.option_economics_result_fingerprint is not None
+
+
+def test_recurrent_exit_fill_rejects_unknown_position_or_backward_time() -> None:
+    account = _recurrent_positioned_account()
+
+    with pytest.raises(
+        RecurrentExitFillError,
+        match="exact active recurrent open position",
+    ):
+        build_recurrent_exit_fill_evidence(
+            source_state=account.state,
+            position_fingerprint=_fp("0"),
+            inputs=RecurrentExitFillInputsV1(
+                fill_source_id="unknown-recurrent-exit",
+                fill_source_fingerprint=_fp("5"),
+                exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+                exit_price_per_unit=1.0,
+            ),
+        )
+
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    with pytest.raises(
+        RecurrentExitFillError,
+        match="cannot precede recurrent lifecycle account state",
+    ):
+        build_recurrent_exit_fill_evidence(
+            source_state=account.state,
+            position_fingerprint=stock.position_fingerprint,
+            inputs=RecurrentExitFillInputsV1(
+                fill_source_id="backward-recurrent-exit",
+                fill_source_fingerprint=_fp("6"),
+                exited_utc=account.state.as_of_utc - timedelta(seconds=1),
+                exit_price_per_unit=102.0,
+            ),
+        )
+
+
+def test_recurrent_exit_fill_rejects_fees_above_gross_proceeds() -> None:
+    account = _recurrent_positioned_account()
+    option = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.OPTION
+    )
+    with pytest.raises(
+        RecurrentExitFillError,
+        match="exit fees cannot exceed gross exit proceeds",
+    ):
+        build_recurrent_exit_fill_evidence(
+            source_state=account.state,
+            position_fingerprint=option.position_fingerprint,
+            inputs=RecurrentExitFillInputsV1(
+                fill_source_id="bad-recurrent-exit-fees",
+                fill_source_fingerprint=_fp("7"),
+                exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+                exit_price_per_unit=0.01,
+                explicit_exit_fees_dollars=2.0,
+            ),
+        )
+
+
+def test_recurrent_exit_fill_is_deterministic_and_source_bound() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    kwargs = dict(
+        source_state=account.state,
+        position_fingerprint=stock.position_fingerprint,
+    )
+    first = build_recurrent_exit_fill_evidence(
+        **kwargs,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id="deterministic-recurrent-exit",
+            fill_source_fingerprint=_fp("8"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+    second = build_recurrent_exit_fill_evidence(
+        **kwargs,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id="deterministic-recurrent-exit",
+            fill_source_fingerprint=_fp("8"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+    changed = build_recurrent_exit_fill_evidence(
+        **kwargs,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id="deterministic-recurrent-exit",
+            fill_source_fingerprint=_fp("9"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+
+    assert first == second
+    assert first.exit_fill_fingerprint == second.exit_fill_fingerprint
+    assert first.exit_fill_fingerprint != changed.exit_fill_fingerprint
+
+
+def test_recurrent_exit_fill_authority_escalation_fails_closed() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = build_recurrent_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=stock.position_fingerprint,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id="recurrent-exit-authority",
+            fill_source_fingerprint=_fp("a"),
+            exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+
+    with pytest.raises(RecurrentExitFillError, match="cannot grant"):
+        replace(fill, realized_pnl_authority=True)
+    with pytest.raises(RecurrentExitFillError, match="cannot grant"):
+        replace(fill, broker_fill_authority=True)
+    with pytest.raises(RecurrentExitFillError, match="cannot grant"):
+        replace(fill, paper_authority=True)
