@@ -59,7 +59,7 @@ def _payload(symbol: str, *, quote_time: datetime = REGULAR):
 def test_current_webull_quote_bundle_contract_fingerprint_is_frozen() -> None:
     assert (
         CURRENT_WEBULL_STOCK_QUOTE_BUNDLE_CONTRACT_FINGERPRINT
-        == "a0da5b0db29ae074e64cc933c995bff99d388aa7357c3928d840a59fd0d613ea"
+        == "5c2df876e2d9814434d6823f04c2cd0e6bfcdbe9b071cf291213abb634f2d26d"
     )
 
 
@@ -184,6 +184,31 @@ def test_bundle_file_tamper_fails_self_fingerprint(tmp_path: Path) -> None:
     with pytest.raises(
         CurrentWebullStockQuoteBundleError,
         match="invalid",
+    ):
+        read_current_webull_stock_quote_bundle_v1(
+            settings,
+            path=path,
+            now_utc=REGULAR + timedelta(seconds=2),
+        )
+
+
+def test_read_bundle_rejects_inconsistent_session_date(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    bad = _quote("AAPL").model_copy(
+        update={"session_date": (REGULAR - timedelta(days=1)).date()}
+    )
+    bundle = build_current_webull_stock_quote_bundle_v1(
+        requested_symbols=("AAPL",),
+        quotes=(bad,),
+        captured_at_utc=REGULAR + timedelta(seconds=1),
+    )
+    path = write_current_webull_stock_quote_bundle_v1(
+        settings,
+        bundle,
+    )
+    with pytest.raises(
+        CurrentWebullStockQuoteBundleError,
+        match="session date is inconsistent",
     ):
         read_current_webull_stock_quote_bundle_v1(
             settings,
