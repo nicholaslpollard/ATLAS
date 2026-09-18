@@ -171,6 +171,48 @@ def build_empty_recurrent_genesis_account_v1(
         source=lifecycle_closeout
     )
 
+    intermediate_ledgers = (
+        simulation.ledger.events,
+        open_position.ledger.events,
+        closeout.ledger.events,
+        lifecycle_reservation.ledger.events,
+        lifecycle_position.ledger.events,
+        lifecycle_closeout.ledger.events,
+        recurrent.ledger.events,
+    )
+    if any(intermediate_ledgers):
+        raise RecurrentGenesisBootstrapError(
+            "accepted empty-state chain produced a nonempty transition ledger"
+        )
+
+    if (
+        simulation.state.stock_reservations
+        or simulation.state.option_reservations
+        or open_position.state.remaining_stock_reservations
+        or open_position.state.remaining_option_reservations
+        or open_position.state.open_positions
+        or closeout.state.remaining_stock_reservations
+        or closeout.state.remaining_option_reservations
+        or closeout.state.open_positions
+        or closeout.state.closed_trades
+        or lifecycle_reservation.state.stock_reservations
+        or lifecycle_reservation.state.option_reservations
+        or lifecycle_reservation.state.open_positions
+        or lifecycle_reservation.state.closed_trades
+        or lifecycle_position.state.stock_reservations
+        or lifecycle_position.state.option_reservations
+        or lifecycle_position.state.open_positions
+        or lifecycle_position.state.closed_trades
+        or lifecycle_closeout.state.stock_reservations
+        or lifecycle_closeout.state.option_reservations
+        or lifecycle_closeout.state.open_positions
+        or lifecycle_closeout.state.prior_closed_trades
+        or lifecycle_closeout.state.lifecycle_closed_trades
+    ):
+        raise RecurrentGenesisBootstrapError(
+            "accepted empty-state chain produced active or closed trade records"
+        )
+
     state = recurrent.state
     if (
         state.cash != float(initial_equity)
