@@ -20,6 +20,7 @@ from .http_server import (
 from .paper_dashboard import PaperDashboardService
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .phase19_observability import Phase19ObservabilityService
+from .recurrent_cycle_health import RecurrentCycleHealthService
 from .session import ControlPlaneSessionGuard
 from packages.simulation.engine import SimulationLifecycleCoordinatorV1
 from packages.simulation.recurrent_engine import RecurrentLifecycleCoordinatorV1
@@ -183,6 +184,25 @@ class Phase19ControlPlaneRequestHandler(AtlasControlPlaneRequestHandler):
                 return
             self._send_json(HTTPStatus.OK, payload)
             return
+        if path == "/api/v1/ops/recurrent-cycle-health":
+            try:
+                payload = self.atlas_server.recurrent_cycle_health_service.snapshot()  # type: ignore[attr-defined]
+            except Exception:
+                self._send_json(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {
+                        "error": "RECURRENT_CYCLE_HEALTH_READ_FAILED",
+                        "read_only": True,
+                        "provider_reads": 0,
+                        "provider_writes": 0,
+                        "broker_reads": 0,
+                        "broker_writes": 0,
+                        "order_writes": 0,
+                    },
+                )
+                return
+            self._send_json(HTTPStatus.OK, payload)
+            return
         super()._dispatch_get()
 
 
@@ -191,6 +211,7 @@ def create_phase19_status_server(
     service: Phase16StatusService,
     observability_service: Phase19ObservabilityService | None = None,
     paper_dashboard_service: PaperDashboardService | None = None,
+    recurrent_cycle_health_service: RecurrentCycleHealthService | None = None,
     simulation_lifecycle_dashboard_service: (
         SimulationLifecycleDashboardService
         | RecurrentLifecycleDashboardService
@@ -231,6 +252,10 @@ def create_phase19_status_server(
     )
     server.paper_dashboard_service = paper_dashboard_service or PaperDashboardService(  # type: ignore[attr-defined]
         service.settings,
+    )
+    server.recurrent_cycle_health_service = (  # type: ignore[attr-defined]
+        recurrent_cycle_health_service
+        or RecurrentCycleHealthService(service.settings)
     )
     lifecycle_sources = sum(
         item is not None
