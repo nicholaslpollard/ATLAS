@@ -160,6 +160,13 @@ from packages.simulation.recurrent_marked_state import (
     RecurrentMarkedAccountError,
     build_recurrent_marked_account_state,
 )
+from packages.simulation.recurrent_persistent_runtime import (
+    PersistentRecurrentLifecycleRuntimeV1,
+    PersistentRecurrentRuntimeError,
+)
+from packages.simulation.recurrent_persistent_runtime_contract import (
+    PERSISTENT_RECURRENT_RUNTIME_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.recurrent_position_contract import (
     RECURRENT_POSITION_TRANSITION_CONTRACT_FINGERPRINT,
 )
@@ -4325,3 +4332,173 @@ def test_recurrent_runtime_store_existing_writer_lock_fails_closed(tmp_path) -> 
             expected_prior_state_fingerprint=None,
         )
     assert store.lock_path.exists()
+
+
+def test_persistent_recurrent_runtime_contract_fingerprint_is_frozen() -> None:
+    assert (
+        PERSISTENT_RECURRENT_RUNTIME_CONTRACT_FINGERPRINT
+        == "68a2413ead3f45585445dcf9e60de9123476a177c08f370edd2938f2e9bf1d4f"
+    )
+
+
+def test_persistent_recurrent_runtime_bootstrap_and_restore_exact_account(
+    tmp_path,
+) -> None:
+    account = _recurrent_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "persistent-runtime",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    runtime = PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+
+    status = runtime.status()
+    assert status.durable is True
+    assert status.account_state_fingerprint == account.state.state_fingerprint
+    assert status.account_ledger_fingerprint == account.ledger.ledger_fingerprint
+    assert status.marks_current is False
+
+    restored = PersistentRecurrentLifecycleRuntimeV1.restore(store=store)
+    assert restored is not None
+    assert restored.current_account() == account
+    assert restored.current_marked_state() is None
+    assert restored.current_dashboard_pair() is None
+
+
+def test_persistent_recurrent_runtime_persists_mutation_before_return(
+    tmp_path,
+) -> None:
+    account = _recurrent_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "persistent-runtime",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    runtime = PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+    record = _stock_record(
+        created_utc=account.state.as_of_utc + timedelta(minutes=1)
+    )
+
+    transition, mutation = runtime.apply_reservation(record=record)
+    durable = store.load()
+
+    assert transition.event is not None
+    assert mutation.new_ledger_event_count == 1
+    assert durable is not None
+    assert durable.account == runtime.current_account()
+    assert durable.state_fingerprint == mutation.account.state.state_fingerprint
+    assert durable.ledger_event_count == len(mutation.account.ledger.events)
+
+
+def test_persistent_recurrent_runtime_idempotent_mutation_does_not_rewrite_store(
+    tmp_path,
+) -> None:
+    account = _recurrent_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "persistent-runtime",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    runtime = PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+    record = _stock_record(
+        created_utc=account.state.as_of_utc + timedelta(minutes=1)
+    )
+    runtime.apply_reservation(record=record)
+    before = store.load()
+    assert before is not None
+
+    duplicate, mutation = runtime.apply_reservation(record=record)
+    after = store.load()
+
+    assert duplicate.idempotent_reuse is True
+    assert mutation.idempotent_reuse is True
+    assert mutation.new_ledger_event_count == 0
+    assert after == before
+
+
+def test_persistent_recurrent_runtime_store_failure_rolls_back_memory(
+    tmp_path,
+) -> None:
+    account = _recurrent_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "persistent-runtime",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    runtime = PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+    record = _stock_record(
+        created_utc=account.state.as_of_utc + timedelta(minutes=1)
+    )
+
+    store.lock_path.write_text("simulated competing writer\n", encoding="utf-8")
+    with pytest.raises(
+        PersistentRecurrentRuntimeError,
+        match="persistence failed; in-memory account rolled back",
+    ):
+        runtime.apply_reservation(record=record)
+
+    durable = store.load()
+    assert durable is not None
+    assert durable.account == account
+    assert runtime.current_account() == account
+    assert runtime.current_marked_state() is None
+
+
+def test_persistent_recurrent_runtime_marks_are_transient_only(tmp_path) -> None:
+    account = _recurrent_positioned_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "persistent-runtime",
+        clock=lambda: account.state.as_of_utc + timedelta(hours=1),
+    )
+    runtime = PersistentRecurrentLifecycleRuntimeV1.bootstrap(
+        store=store,
+        account=account,
+    )
+    before = store.load()
+    assert before is not None
+
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "7"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "8"
+            ),
+        )
+        for position in account.state.open_positions
+    )
+    publication = runtime.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    after = store.load()
+
+    assert publication.idempotent_reuse is False
+    assert runtime.current_marked_state() is not None
+    assert after == before
+
+    restored = PersistentRecurrentLifecycleRuntimeV1.restore(store=store)
+    assert restored is not None
+    assert restored.current_account() == account
+    assert restored.current_marked_state() is None
