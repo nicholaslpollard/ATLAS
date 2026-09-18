@@ -780,11 +780,41 @@ This v1 creates positions only. It does not create new reservations after the so
 snapshot, close positions, mark to market, read/write providers or brokers, create
 orders, or grant PAPER/LIVE/promotion/confluence authority.
 
-The next bounded Track A work is lifecycle-native post-re-entry valuation and
-exit/closeout: current marks and exit evidence must bind the new lifecycle position
-account, closed trades must preserve the newly added entry-fee/cost basis, and the
-coordinator must then be extended to own reservation → entry → mark → exit → closeout
-cycles atomically. The Strategy Evidence Register remains unchanged.
+The lifecycle post-reentry valuation layer described below now binds current marks to
+this position state. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Lifecycle post-reentry marked-account state
+
+Track A now adds `atlas-simulation-lifecycle-position-marked-account-v1` under
+contract
+`ba944922450d570ac15b6b28794cfe0cb2c7894cba0e62d09e0957df35c92863`.
+It provides the account-level current valuation required after lifecycle-native
+re-entry creates new positions.
+
+Individual `SimulatedMarketMarkEvidence` objects remain reusable because they are
+bound to immutable position fingerprints rather than to the older account contract.
+The account-level valuation is versioned, however, because the accepted source is now
+`LifecyclePositionAccountStateV1`, not the pre-reentry closeout snapshot.
+
+The builder requires exactly one fresh, valuation-eligible mark for every currently
+open lifecycle position at one common valuation timestamp. Missing, duplicate, stale,
+or extra marks fail closed. Closed trades are never revalued. Current marked value and
+unrealized P&L are computed for all surviving pre-existing and newly re-entered
+positions while cumulative entry/exit fees, realized P&L, lifetime trade net P&L,
+cash, remaining reservations, and book equity are carried forward unchanged.
+
+Marked equity remains `account_book_equity + aggregate_unrealized_pnl` and must
+independently reconcile to current cash + stock reservations + option reservations +
+marked open-position value. This package performs valuation only and grants no account
+mutation, new realized P&L, exit/closeout, provider/broker/order, PAPER/LIVE,
+promotion, or confluence authority.
+
+The next bounded Track A package is lifecycle-native exit-fill evidence and closeout
+for `LifecyclePositionAccountV1`. That boundary must close newly re-entered positions
+without reverting to the original open-position/closeout contracts, preserve all fee
+and realized history, and produce a new current lifecycle account that can again be
+marked and later returned to reservation/re-entry orchestration. The Strategy Evidence
+Register remains unchanged.
 
 ## A33/B33 reference foundation
 
