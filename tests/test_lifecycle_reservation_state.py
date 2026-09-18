@@ -6,6 +6,8 @@ from datetime import UTC, date, datetime, timedelta
 import json
 import pytest
 
+import packages.simulation.recurrent_runtime as recurrent_runtime_module
+
 from packages.control_plane.recurrent_lifecycle_dashboard import (
     RecurrentLifecycleDashboardService,
     source_provider_from_recurrent_coordinator,
@@ -186,6 +188,15 @@ from packages.simulation.recurrent_lifecycle_state import (
 )
 from packages.simulation.recurrent_reservation_contract import (
     RECURRENT_RESERVATION_TRANSITION_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.recurrent_runtime import (
+    DurableRecurrentLifecycleRuntimeV1,
+    RecurrentDurableRuntimeCommitError,
+    RecurrentDurableRuntimeUncertainError,
+    restore_durable_recurrent_lifecycle_runtime,
+)
+from packages.simulation.recurrent_runtime_contract import (
+    RECURRENT_DURABLE_RUNTIME_CONTRACT_FINGERPRINT,
 )
 from packages.simulation.recurrent_reservations import (
     RecurrentReservationError,
@@ -4482,3 +4493,281 @@ def test_recurrent_checkpoint_idempotent_same_snapshot_does_not_grow_history(
     assert second == first
     assert second.checkpoint_history == ()
     assert not (path.parent / "history").exists()
+
+
+def test_recurrent_durable_runtime_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_DURABLE_RUNTIME_CONTRACT_FINGERPRINT
+        == "2959ba43c8279fd28cedeeca6df24f6f56edb6714a72cfc47999ea7e2bb3f891"
+    )
+
+
+def test_recurrent_durable_runtime_bootstrap_and_restore_exact(
+    tmp_path,
+) -> None:
+    path = tmp_path / "current.json"
+    coordinator, _valuation = _recurrent_persistence_coordinator()
+    runtime = DurableRecurrentLifecycleRuntimeV1.bootstrap(
+        checkpoint_path=path,
+        coordinator=coordinator,
+    )
+    before = runtime.snapshot()
+    status = runtime.status()
+
+    assert status.uncertain is False
+    assert status.revision == before.revision
+    assert status.snapshot_fingerprint == before.snapshot_fingerprint
+    assert path.is_file()
+
+    restored = restore_durable_recurrent_lifecycle_runtime(path)
+    assert restored.snapshot() == before
+    assert restored.status().checkpoint_sha256 == status.checkpoint_sha256
+    assert restored.current_dashboard_pair() is not None
+
+
+def test_recurrent_durable_runtime_commits_account_mutation(
+    tmp_path,
+) -> None:
+    path = tmp_path / "current.json"
+    runtime = DurableRecurrentLifecycleRuntimeV1.bootstrap(
+        checkpoint_path=path,
+        coordinator=RecurrentLifecycleCoordinatorV1(
+            account=_recurrent_account()
+        ),
+    )
+    before_status = runtime.status()
+    record = _stock_record(
+        created_utc=runtime.current_account().state.as_of_utc
+        + timedelta(minutes=1)
+    )
+
+    transition, mutation = runtime.apply_reservation(record=record)
+
+    assert transition.event is not None
+    assert mutation.new_ledger_event_count == 1
+    after_status = runtime.status()
+    assert after_status.revision == before_status.revision + 1
+    assert after_status.checkpoint_sha256 != before_status.checkpoint_sha256
+    persisted = read_recurrent_lifecycle_checkpoint(path)
+    assert persisted.snapshot == runtime.snapshot()
+    assert persisted.checkpoint_history == (
+        before_status.checkpoint_sha256,
+    )
+
+
+def test_recurrent_durable_runtime_idempotent_mutation_skips_checkpoint_growth(
+    tmp_path,
+) -> None:
+    path = tmp_path / "current.json"
+    runtime = DurableRecurrentLifecycleRuntimeV1.bootstrap(
+        checkpoint_path=path,
+        coordinator=RecurrentLifecycleCoordinatorV1(
+            account=_recurrent_account()
+        ),
+    )
+    record = _stock_record(
+        created_utc=runtime.current_account().state.as_of_utc
+        + timedelta(minutes=1)
+    )
+    runtime.apply_reservation(record=record)
+    first_status = runtime.status()
+    first_checkpoint = read_recurrent_lifecycle_checkpoint(path)
+
+    transition, mutation = runtime.apply_reservation(record=record)
+
+    assert transition.idempotent_reuse is True
+    assert mutation.idempotent_reuse is True
+    assert runtime.status().checkpoint_sha256 == first_status.checkpoint_sha256
+    assert (
+        read_recurrent_lifecycle_checkpoint(path).checkpoint_history
+        == first_checkpoint.checkpoint_history
+    )
+
+
+def test_recurrent_durable_runtime_rolls_back_when_commit_never_reaches_disk(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    path = tmp_path / "current.json"
+    runtime = DurableRecurrentLifecycleRuntimeV1.bootstrap(
+        checkpoint_path=path,
+        coordinator=RecurrentLifecycleCoordinatorV1(
+            account=_recurrent_account()
+        ),
+    )
+    before = runtime.snapshot()
+    before_checkpoint = runtime.status().checkpoint_sha256
+
+    def fail_before_write(*args, **kwargs):
+        raise RecurrentLifecyclePersistenceError(
+            "synthetic pre-write failure"
+        )
+
+    monkeypatch.setattr(
+        recurrent_runtime_module,
+        "write_recurrent_lifecycle_checkpoint",
+        fail_before_write,
+    )
+    record = _stock_record(
+        created_utc=before.account.state.as_of_utc
+        + timedelta(minutes=1)
+    )
+
+    with pytest.raises(
+        RecurrentDurableRuntimeCommitError,
+        match="rolled back to durable pre-state",
+    ):
+        runtime.apply_reservation(record=record)
+
+    assert runtime.snapshot() == before
+    assert runtime.status().uncertain is False
+    assert runtime.status().checkpoint_sha256 == before_checkpoint
+    assert read_recurrent_lifecycle_checkpoint(path).snapshot == before
+
+
+def test_recurrent_durable_runtime_accepts_commit_when_write_landed_before_error(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    path = tmp_path / "current.json"
+    runtime = DurableRecurrentLifecycleRuntimeV1.bootstrap(
+        checkpoint_path=path,
+        coordinator=RecurrentLifecycleCoordinatorV1(
+            account=_recurrent_account()
+        ),
+    )
+    original_write = (
+        recurrent_runtime_module.write_recurrent_lifecycle_checkpoint
+    )
+
+    def write_then_raise(*args, **kwargs):
+        original_write(*args, **kwargs)
+        raise RecurrentLifecyclePersistenceError(
+            "synthetic error after durable replace"
+        )
+
+    monkeypatch.setattr(
+        recurrent_runtime_module,
+        "write_recurrent_lifecycle_checkpoint",
+        write_then_raise,
+    )
+    before = runtime.snapshot()
+    record = _stock_record(
+        created_utc=before.account.state.as_of_utc
+        + timedelta(minutes=1)
+    )
+
+    transition, mutation = runtime.apply_reservation(record=record)
+
+    assert transition.event is not None
+    assert mutation.new_ledger_event_count == 1
+    assert runtime.snapshot().snapshot_fingerprint != before.snapshot_fingerprint
+    assert (
+        read_recurrent_lifecycle_checkpoint(path).snapshot
+        == runtime.snapshot()
+    )
+    assert runtime.status().uncertain is False
+
+
+def test_recurrent_durable_runtime_uncertain_state_blocks_operations(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    path = tmp_path / "current.json"
+    runtime = DurableRecurrentLifecycleRuntimeV1.bootstrap(
+        checkpoint_path=path,
+        coordinator=RecurrentLifecycleCoordinatorV1(
+            account=_recurrent_account()
+        ),
+    )
+    original_bytes = path.read_bytes()
+    before = runtime.snapshot()
+
+    def corrupt_then_raise(*args, **kwargs):
+        path.write_text("{}\n", encoding="utf-8")
+        raise RecurrentLifecyclePersistenceError(
+            "synthetic uncertain write"
+        )
+
+    monkeypatch.setattr(
+        recurrent_runtime_module,
+        "write_recurrent_lifecycle_checkpoint",
+        corrupt_then_raise,
+    )
+    record = _stock_record(
+        created_utc=before.account.state.as_of_utc
+        + timedelta(minutes=1)
+    )
+
+    with pytest.raises(
+        RecurrentDurableRuntimeUncertainError,
+        match="cannot be classified",
+    ):
+        runtime.apply_reservation(record=record)
+
+    assert runtime.status().uncertain is True
+    with pytest.raises(
+        RecurrentDurableRuntimeUncertainError,
+        match="explicit checkpoint reload required",
+    ):
+        runtime.snapshot()
+
+    path.write_bytes(original_bytes)
+    recovered = runtime.reload_from_checkpoint()
+    assert runtime.status().uncertain is False
+    assert recovered.snapshot == before
+    assert runtime.snapshot() == before
+
+
+def test_recurrent_durable_runtime_persists_mark_only_revision(
+    tmp_path,
+) -> None:
+    path = tmp_path / "current.json"
+    account = _recurrent_positioned_account()
+    runtime = DurableRecurrentLifecycleRuntimeV1.bootstrap(
+        checkpoint_path=path,
+        coordinator=RecurrentLifecycleCoordinatorV1(account=account),
+    )
+    before_ledger_length = len(account.ledger.events)
+    before_revision = runtime.revision
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "b"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "c"
+            ),
+        )
+        for position in account.state.open_positions
+    )
+
+    publication = runtime.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+
+    assert publication.revision == before_revision + 1
+    assert (
+        len(runtime.current_account().ledger.events)
+        == before_ledger_length
+    )
+    restored = restore_durable_recurrent_lifecycle_runtime(path)
+    assert restored.revision == publication.revision
+    assert restored.current_marked_state() is not None
+    assert (
+        restored.current_marked_state().state_fingerprint
+        == publication.marked_state.state_fingerprint
+    )
