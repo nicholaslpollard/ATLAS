@@ -41,6 +41,26 @@ def _write_phase15_acceptance(tmp_path) -> None:
     (root / "phase15_final_acceptance.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
+class _CycleHealthStub:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def snapshot(self):
+        self.calls += 1
+        return {
+            "contract_version": "cycle-health-test",
+            "status": "IDLE",
+            "authority": {
+                "read_only": True,
+                "provider_reads": 0,
+                "provider_writes": 0,
+                "broker_reads": 0,
+                "broker_writes": 0,
+                "order_writes": 0,
+            },
+        }
+
+
 class _ObservabilityStub:
     def __init__(self) -> None:
         self.calls = 0
@@ -63,9 +83,11 @@ def test_phase19_observability_endpoint_is_get_only_provider_inert(tmp_path) -> 
     status = Phase16StatusService(settings, env={})
     ledger = ControlPlaneActionLedger(settings)
     observability = _ObservabilityStub()
+    cycle_health = _CycleHealthStub()
     server = create_phase19_status_server(
         service=status,
         observability_service=observability,
+        recurrent_cycle_health_service=cycle_health,
         action_ledger=ledger,
         host="127.0.0.1",
         port=0,
@@ -83,6 +105,18 @@ def test_phase19_observability_endpoint_is_get_only_provider_inert(tmp_path) -> 
         assert payload["authority"]["provider_writes"] == 0
         assert payload["authority"]["live_execution_promoted"] is False
         assert observability.calls == 1
+        assert ledger.verify()["event_count"] == 0
+
+        with opener.open(
+            f"{base}/api/v1/ops/recurrent-cycle-health",
+            timeout=5,
+        ) as response:
+            cycle_payload = json.loads(response.read().decode("utf-8"))
+        assert cycle_payload["status"] == "IDLE"
+        assert cycle_payload["authority"]["read_only"] is True
+        assert cycle_payload["authority"]["provider_reads"] == 0
+        assert cycle_payload["authority"]["broker_writes"] == 0
+        assert cycle_health.calls == 1
         assert ledger.verify()["event_count"] == 0
 
         with opener.open(f"{base}/api/v1/strategies/reference", timeout=5) as response:
@@ -118,6 +152,7 @@ def test_phase19_observability_endpoint_is_get_only_provider_inert(tmp_path) -> 
         else:
             raise AssertionError("observability POST must be rejected")
         assert observability.calls == 1
+        assert cycle_health.calls == 1
         assert ledger.verify()["event_count"] == 0
     finally:
         server.shutdown()

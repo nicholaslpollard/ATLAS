@@ -1325,6 +1325,40 @@ actions to bypass the runner. Workstation restart/resume and market-hours valida
 remain required before any qualifying PAPER program. The Strategy Evidence Register
 remains unchanged.
 
+## 2026-09-18 — Current live evidence adapter and recurrent cycle health
+
+Track A now freezes `atlas-simulation-current-live-evidence-v1` under contract
+`6502f8b9a4644705ec819bf7ecfcc3ee8b65742f4016454e497b0da8aca5deb0`
+and adds a read-only recurrent cycle-health projection.
+
+The current-evidence adapter reads only the already-persisted
+`data/live/market_state/current.json` artifact. It performs zero provider or broker
+network calls, hashes the exact raw bytes, validates the accepted
+`LiveStateSnapshot` schema, rejects future-dated snapshots, duplicate exact-case
+symbols, and per-event feed/delay/symbol lineage mismatches, then exposes a normalized
+evidence fingerprint and feed/session/freshness counts. Minute aggregates remain minute
+aggregates: **ATLAS does not fabricate bid/ask quotes from OHLC bars.** A delayed
+`AM.*` snapshot can therefore be valid current evidence while still having zero quote
+coverage.
+
+The cycle-health service restores the authoritative recurrent checkpoint read-only,
+validates recent durable cycle receipts and stage-admission records, reports current
+runtime revision/reservation/open-position counts, identifies the next lifecycle action
+(including the post-MARK `COMPLETE` action), and includes the locally captured current
+evidence summary. Corrupt receipts/admissions degrade health explicitly; missing
+checkpoint/evidence remains explicit instead of being synthesized. Phase 19 exposes
+this through `GET /api/v1/ops/recurrent-cycle-health` with zero browser mutation,
+provider refresh, broker, order, PAPER, or LIVE authority.
+
+The next bounded Track A work is stage-specific production evidence construction:
+derive accepted RESERVE decisions from the frozen product forecast/economics path and
+build CLOSE/ENTRY/MARK evidence from real current execution-quality sources without
+bypassing the runner. Because the current Massive Starter path supplies delayed minute
+aggregates rather than executable quotes, real mark/entry/exit evidence must continue to
+fail closed until the accepted broker/finalist quote source is connected. Workstation
+restart/resume and market-hours validation remain required before any qualifying PAPER
+program. The Strategy Evidence Register remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
