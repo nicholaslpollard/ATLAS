@@ -2464,11 +2464,48 @@ Frozen semantics:
 8. no reservation release, position creation, provider/broker/order, PAPER/LIVE,
    promotion, or confluence authority is granted.
 
-Immediate Track A continuation is the recurrent atomic reservation→position mutation
-against the same recurrent account/ledger contract.
+The recurrent reservation→position transition described below now consumes this
+evidence against the same recurrent account/ledger contract.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account evidence only.
+
+
+## Track A recurrent lifecycle reservation-to-position transitions — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-position-transition-v1` under contract
+`998b3c505aaabd429b5009cb1c9cfebe864810f2d6e871d60450f4ccc2d7e084`.
+
+Frozen semantics:
+
+1. consume and return the same `RecurrentLifecycleAccountV1` contract rather than
+   creating another position-account generation;
+2. require recurrent fill and funding evidence to bind one exact accepted recurrent
+   source snapshot and one exact still-active reservation;
+3. consume only the matched reservation, create one exact
+   `SimulatedOpenPositionV1`, and append one fingerprint-chained `OPEN_POSITION`
+   event to the existing recurrent ledger;
+4. expense the new entry fee exactly once while preserving canonical closed history,
+   prior exit fees, account-realized P&L, and lifetime trade net P&L;
+5. transfer stock or option reservation exposure into the corresponding open-position
+   entry-book/exposure fields without conflating stock gross notional and option
+   delta-equivalent reference exposure;
+6. require single-entry evidence to bind the exact current state; permit deterministic
+   batches only when every fill/funding pair binds one common source snapshot;
+7. order batch entries by fill timestamp then fill fingerprint and recheck current cash
+   and reservation availability at each mutation so multiple fills cannot spend the
+   same supplemental cash twice;
+8. make exact duplicate fill/funding reuse idempotent, reject conflicting second fills,
+   and require exact state/ledger replay; and
+9. grant no exit/closeout, mark-to-market, provider/broker/order, PAPER/LIVE,
+   promotion, or confluence authority.
+
+Immediate Track A continuation is recurrent read-only marked-account valuation against
+the same stable account, followed by recurrent-native exit evidence and
+`CLOSE_POSITION` mutation on the same append-only ledger.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation account transitions only.
 
 ## Track A funding/collateral terms — 2026-09-16
 
