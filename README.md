@@ -1416,6 +1416,40 @@ with explicit fill/fee semantics. A real market-hours Webull sandbox capture on 
 target workstation is still required before non-empty recurrent MARK acceptance. The
 Strategy Evidence Register remains unchanged.
 
+## 2026-09-18 — Durable recurrent RESERVE evidence bundle
+
+Track A now freezes `atlas-simulation-recurrent-reserve-evidence-bundle-v1` under
+contract `e410ab31187b4b35cd5c036ba02073f63de41dd35269f33af4b9ff10357de875`.
+
+This package closes the missing restart-safe RESERVE input boundary. One bundle is bound
+to one deterministic recurrent cycle id/fingerprint and contains the exact accepted
+`SimulationDecisionRecord` objects plus option reservation terms only where the
+decision actually selected an option. Stock and abstain records explicitly forbid
+option terms; selected options require exact decision, chosen-candidate, forecast,
+underlying, direction and reservation-term lineage.
+
+The artifact is deterministically ordered by decision time then record fingerprint,
+rejects duplicate/future decisions, self-fingerprints its complete typed payload, and is
+written atomically with fsync at
+`data/live/simulation/recurrent_reserve/current.json`. On restore, ATLAS does not trust
+stored derived selection fields: it reconstructs the decision from the persisted
+forecast, explicit stock-economics inputs, actionability policy, expression mode and
+option candidates through the accepted deterministic decision builder, then requires
+the rebuilt full record to equal the stored payload. This prevents a modified selection
+or reason/economics lineage from becoming accepted merely by recomputing the outer
+bundle hash.
+
+The bundle exposes a direct recurrent-runner admission helper using its fixed source id
+and bundle fingerprint. It performs no provider/broker calls and grants no order,
+PAPER/LIVE, promotion or confluence authority. The recurrent account engine remains the
+only authority that can actually record abstention, reject insufficient capital, or
+create a stock/option reservation after stage admission.
+
+Immediate continuation is durable ENTRY/CLOSE evidence production from execution-quality
+quotes/fills with explicit fee semantics, followed by a full workstation cycle
+restart/resume proof using real market-hours Webull sandbox L1 evidence. The Strategy
+Evidence Register remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
