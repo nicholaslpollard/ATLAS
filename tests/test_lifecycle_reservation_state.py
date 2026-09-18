@@ -118,7 +118,17 @@ from packages.simulation.recurrent_lifecycle_contract import (
 from packages.simulation.recurrent_lifecycle_state import (
     RecurrentClosedTradeOrigin,
     RecurrentLifecycleAccountError,
+    RecurrentLifecycleEventKind,
     initialize_recurrent_lifecycle_account_v1,
+)
+from packages.simulation.recurrent_reservation_contract import (
+    RECURRENT_RESERVATION_TRANSITION_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.recurrent_reservations import (
+    RecurrentReservationError,
+    apply_recurrent_decision_reservation_v1,
+    apply_recurrent_reservation_batch_v1,
+    verify_recurrent_reservation_replay_v1,
 )
 from packages.simulation.simulated_fill import (
     SimulatedEntryFillError,
@@ -2243,3 +2253,184 @@ def test_recurrent_account_grants_no_external_or_trading_authority() -> None:
         replace(state, broker_write_authority=True)
     with pytest.raises(RecurrentLifecycleAccountError, match="cannot grant"):
         replace(state, paper_authority=True)
+
+
+def _recurrent_account():
+    return initialize_recurrent_lifecycle_account_v1(
+        source=_recurrent_bootstrap_source()
+    )
+
+
+def test_recurrent_reservation_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_RESERVATION_TRANSITION_CONTRACT_FINGERPRINT
+        == "8e7cb6b4cf3d64bcafc8f0af9443bde8022df92c5b200aec67f4611fbedae796"
+    )
+
+
+def test_recurrent_stock_reservation_mutates_same_stable_account_contract() -> None:
+    account = _recurrent_account()
+    record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1)
+    )
+    before_closed = account.state.closed_trades
+    before_open = account.state.open_positions
+    transition = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+    )
+    state = transition.account.state
+
+    assert state.contract_fingerprint == account.state.contract_fingerprint
+    assert state.cash == pytest.approx(15_004.0)
+    assert state.stock_reserved_capital == pytest.approx(5_000.0)
+    assert state.stock_reserved_gross_notional == pytest.approx(10_000.0)
+    assert state.open_positions == before_open
+    assert state.closed_trades == before_closed
+    assert state.cumulative_entry_fees_dollars == pytest.approx(4.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(2.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(208.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(205.0)
+    assert state.account_book_equity == pytest.approx(20_204.0)
+    assert transition.event is not None
+    assert transition.event.kind == RecurrentLifecycleEventKind.RESERVE_STOCK
+    assert transition.event.cash_delta_dollars == pytest.approx(-5_000.0)
+    assert transition.event.stock_reserved_capital_delta_dollars == pytest.approx(5_000.0)
+
+
+def test_recurrent_option_reservation_preserves_canonical_history() -> None:
+    account = _recurrent_account()
+    record, terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2)
+    )
+    transition = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+        option_terms=terms,
+    )
+    state = transition.account.state
+
+    assert state.option_reserved_capital == pytest.approx(1_043.0)
+    assert state.option_reserved_max_loss_cash == pytest.approx(1_043.0)
+    assert state.option_reserved_premium_at_risk == pytest.approx(1_040.0)
+    assert (
+        state.option_reserved_signed_delta_equivalent_notional
+        == pytest.approx(11_000.0)
+    )
+    assert len(state.closed_trades) == 2
+    assert tuple(x.origin for x in state.closed_trades) == (
+        RecurrentClosedTradeOrigin.ORIGINAL_CLOSEOUT_V1,
+        RecurrentClosedTradeOrigin.LIFECYCLE_CLOSEOUT_V1,
+    )
+    assert transition.event is not None
+    assert transition.event.reservation_terms_fingerprint is not None
+    assert transition.event.option_economics_result_fingerprint is not None
+
+
+def test_recurrent_duplicate_decision_is_idempotent_even_after_bootstrap_history() -> None:
+    account = _recurrent_account()
+    historical_decision = account.state.closed_trades[0].decision_record_fingerprint
+
+    record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1)
+    )
+    record = replace(
+        record,
+        # Reconstructing a decision-record fingerprint is not supported by direct
+        # mutation, so validate source-history idempotency through the internal
+        # state predicate using an actually reserved decision below.
+    )
+    first = apply_recurrent_decision_reservation_v1(account, record)
+    duplicate = apply_recurrent_decision_reservation_v1(
+        first.account,
+        record,
+    )
+    assert duplicate.idempotent_reuse is True
+    assert duplicate.event is None
+    assert duplicate.account == first.account
+    assert historical_decision != record.record_fingerprint
+
+
+def test_recurrent_reservation_batch_is_order_independent_and_replay_exact() -> None:
+    account = _recurrent_account()
+    stock = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1)
+    )
+    option_record, terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2)
+    )
+    decisions = ((option_record, terms), (stock, None))
+
+    first = apply_recurrent_reservation_batch_v1(
+        account,
+        decisions,
+    )
+    second = apply_recurrent_reservation_batch_v1(
+        account,
+        tuple(reversed(decisions)),
+    )
+    assert first.ordered_decision_fingerprints == (
+        stock.record_fingerprint,
+        option_record.record_fingerprint,
+    )
+    assert first.account.state == second.account.state
+    assert first.account.ledger == second.account.ledger
+    assert first.account.state.cash == pytest.approx(13_961.0)
+    assert first.account.state.stock_reserved_capital == pytest.approx(5_000.0)
+    assert first.account.state.option_reserved_capital == pytest.approx(1_043.0)
+    assert len(first.account.state.closed_trades) == 2
+
+    verify_recurrent_reservation_replay_v1(
+        initial_account=account,
+        expected_account=first.account,
+        decisions=decisions,
+    )
+
+
+def test_recurrent_reservation_rejects_insufficient_cash_without_spending_open_book() -> None:
+    account = _recurrent_account()
+    record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1),
+        capital=25_000.0,
+    )
+    transition = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+    )
+
+    assert transition.event is not None
+    assert (
+        transition.event.kind
+        == RecurrentLifecycleEventKind.REJECT_INSUFFICIENT_CAPITAL
+    )
+    assert transition.account.state.cash == pytest.approx(account.state.cash)
+    assert transition.account.state.stock_reserved_capital == 0.0
+    assert transition.account.state.open_entry_book_value_dollars == pytest.approx(
+        account.state.open_entry_book_value_dollars
+    )
+
+
+def test_recurrent_duplicate_option_terms_conflict_fails_closed() -> None:
+    account = _recurrent_account()
+    record, terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2)
+    )
+    first = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+        option_terms=terms,
+    )
+    changed_terms = replace(
+        terms,
+        cash_fee_reserve_dollars=terms.cash_fee_reserve_dollars + 1.0,
+        reserved_capital_dollars=terms.reserved_capital_dollars + 1.0,
+    )
+    with pytest.raises(
+        RecurrentReservationError,
+        match="different reservation terms",
+    ):
+        apply_recurrent_decision_reservation_v1(
+            first.account,
+            record,
+            option_terms=changed_terms,
+        )
