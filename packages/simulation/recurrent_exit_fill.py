@@ -125,10 +125,10 @@ class RecurrentExitFillEvidenceV1:
     contract_version: str
     contract_fingerprint: str
     source_account_contract_fingerprint: str
-    source_account_state_fingerprint: str
+    source_recurrent_state_fingerprint: str
     position_fingerprint: str
 
-    source_account_state_fingerprint: str
+    position_source_account_state_fingerprint: str
     decision_record_fingerprint: str
     candidate_fingerprint: str
     entry_fill_fingerprint: str
@@ -193,12 +193,12 @@ class RecurrentExitFillEvidenceV1:
             != RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
         ):
             raise RecurrentExitFillError(
-                "source recurrent position contract fingerprint mismatch"
+                "source lifecycle position contract fingerprint mismatch"
             )
         for label, value in (
-            ("source position state", self.source_account_state_fingerprint),
+            ("source recurrent state", self.source_recurrent_state_fingerprint),
             ("position", self.position_fingerprint),
-            ("source account state", self.source_account_state_fingerprint),
+            ("position source account state", self.position_source_account_state_fingerprint),
             ("decision record", self.decision_record_fingerprint),
             ("candidate", self.candidate_fingerprint),
             ("entry fill", self.entry_fill_fingerprint),
@@ -378,7 +378,7 @@ def _active_position(
 ) -> SimulatedOpenPositionV1:
     _require_fingerprint(
         position_fingerprint,
-        label="requested recurrent position fingerprint",
+        label="requested lifecycle position fingerprint",
     )
     matches = tuple(
         position
@@ -403,18 +403,18 @@ def build_recurrent_exit_fill_evidence(
         != RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
     ):
         raise RecurrentExitFillError(
-            "source recurrent position account contract fingerprint mismatch"
+            "source recurrent lifecycle account contract fingerprint mismatch"
         )
     if (
         source_state.state_fingerprint
         != recurrent_lifecycle_account_state_fingerprint(source_state)
     ):
         raise RecurrentExitFillError(
-            "source recurrent position state fingerprint mismatch"
+            "source recurrent lifecycle account state fingerprint mismatch"
         )
     if inputs.exited_utc < source_state.as_of_utc:
         raise RecurrentExitFillError(
-            "exit-fill timestamp cannot precede recurrent position state"
+            "exit-fill timestamp cannot precede recurrent lifecycle account state"
         )
 
     position = _active_position(source_state, position_fingerprint)
@@ -439,9 +439,9 @@ def build_recurrent_exit_fill_evidence(
         source_account_contract_fingerprint=(
             RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
         ),
-        source_account_state_fingerprint=source_state.state_fingerprint,
+        source_recurrent_state_fingerprint=source_state.state_fingerprint,
         position_fingerprint=position.position_fingerprint,
-        source_account_state_fingerprint=(
+        position_source_account_state_fingerprint=(
             position.source_account_state_fingerprint
         ),
         decision_record_fingerprint=position.decision_record_fingerprint,
