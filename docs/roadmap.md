@@ -2584,12 +2584,40 @@ Frozen semantics:
 The stable recurrent simulation loop is now complete on one account contract:
 reserve → entry evidence/funding → open → mark → exit evidence → close → reserve again.
 
-Immediate Track A continuation is coordinator migration and recurrent browser
-projection so runtime ownership and observability use this stable account directly
-instead of the earlier single-cycle bridge.
+The recurrent coordinator described below now owns that loop atomically.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account transitions only.
+
+## Track A recurrent lifecycle coordinator — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-lifecycle-coordinator-v1` under contract
+`0cadfd2c89c09c26731b8895ca70893dde3855c3eded4773c4455bce94b8e882`.
+
+Frozen semantics:
+
+1. own one accepted recurrent lifecycle account behind one `RLock`;
+2. delegate reservation, entry, valuation, and close work only to accepted recurrent
+   transition/projection contracts;
+3. initialize logical revision from the existing recurrent ledger-event count;
+4. advance revision for every newly appended ledger event, including zero-money
+   abstention/rejection events;
+5. advance revision for each unique complete mark publication without mutating the
+   account ledger;
+6. invalidate current valuation after any real account-state mutation;
+7. preserve a current valuation across exact idempotent mutation reuse and preserve
+   revision across identical mark republication;
+8. expose an atomic current account+marked-state pair only when exact source-state
+   fingerprints match; and
+9. perform no provider/broker/order/filesystem/network I/O and grant no PAPER/LIVE,
+   promotion, or confluence authority.
+
+Immediate Track A continuation is recurrent lifecycle observability through the
+existing loopback/browser surface, replacing the single-cycle source adapter while
+preserving read-only browser semantics.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation runtime architecture only.
 
 ## Track A funding/collateral terms — 2026-09-16
 
