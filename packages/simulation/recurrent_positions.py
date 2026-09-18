@@ -552,11 +552,6 @@ def _apply_entry(
             "fill/funding must bind the recurrent evidence source state"
         )
 
-    if fill.filled_utc < account.state.as_of_utc:
-        raise RecurrentPositionTransitionError(
-            "fill timestamp cannot precede current recurrent account state"
-        )
-
     reservation = _validate_evidence(
         evidence_source_state_fingerprint=evidence_source_state_fingerprint,
         evidence_source_cash=evidence_source_cash,
@@ -564,6 +559,11 @@ def _apply_entry(
         fill=fill,
         funding=funding,
     )
+
+    if fill.filled_utc < account.state.as_of_utc:
+        raise RecurrentPositionTransitionError(
+            "fill timestamp cannot precede current recurrent account state"
+        )
 
     supplemental = funding.supplemental_unreserved_cash_required_dollars
     unspent = funding.unspent_reserved_capital_dollars
