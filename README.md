@@ -1083,10 +1083,35 @@ promotion, or confluence authority is granted.
 
 This completes the recurrent simulation loop on one stable account contract:
 **reserve → entry evidence/funding → open → mark → exit evidence → close → reserve
-again**. The next bounded Track A package is coordinator migration: make the runtime
-coordinator own this recurrent account atomically and publish its current marked state
-to the browser projection, replacing the earlier single-cycle bridge. The Strategy
-Evidence Register remains unchanged.
+again**. The recurrent coordinator described below now becomes the atomic runtime owner.
+The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle coordinator
+
+Track A now adds `atlas-simulation-recurrent-lifecycle-coordinator-v1` under contract
+`0cadfd2c89c09c26731b8895ca70893dde3855c3eded4773c4455bce94b8e882`.
+It is a new runtime owner rather than a mutation of the earlier single-cycle
+coordinator, which remains intact for compatibility.
+
+`RecurrentLifecycleCoordinatorV1` owns one accepted
+`RecurrentLifecycleAccountV1` behind a single `RLock` and delegates only to the
+accepted recurrent reservation, entry, mark, and close operations. It performs no
+provider, broker, order, filesystem, or network I/O. The initial logical revision is
+the current recurrent ledger-event count; every newly appended ledger event advances
+the revision, including zero-money abstention/rejection events. Each unique mark
+publication advances revision once but does not alter the recurrent ledger.
+
+Any real account mutation invalidates the previously published marked state because its
+source-state fingerprint is no longer current. Exact idempotent reservation/entry/close
+reuse does not change account state, does not advance revision, and does not destroy a
+still-current valuation. Republishing an identical complete mark snapshot is likewise
+idempotent. `current_dashboard_pair()` returns an atomic recurrent account + marked
+state only when their fingerprints match exactly.
+
+The next bounded Track A package is recurrent lifecycle observability: adapt this
+atomic recurrent pair into the existing loopback/browser payload, retaining one
+engine-owned source of truth and zero browser/provider/broker/order mutation authority.
+The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
