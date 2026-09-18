@@ -36,6 +36,7 @@ from packages.simulation.recurrent_lifecycle_contract import (
 from packages.simulation.recurrent_lifecycle_state import (
     RecurrentLifecycleAccountV1,
     recurrent_lifecycle_account_state_fingerprint,
+    recurrent_lifecycle_ledger_fingerprint,
 )
 from packages.simulation.simulated_fill import (
     SimulatedEntryFillInputs,
@@ -126,6 +127,22 @@ def _validate_account(account: RecurrentLifecycleAccountV1) -> None:
     ):
         raise RecurrentEntryEvidenceError(
             "recurrent lifecycle account state fingerprint mismatch"
+        )
+    if (
+        account.ledger.ledger_fingerprint
+        != recurrent_lifecycle_ledger_fingerprint(account.ledger)
+    ):
+        raise RecurrentEntryEvidenceError(
+            "recurrent lifecycle ledger fingerprint mismatch"
+        )
+    expected = (
+        account.ledger.events[-1].after_state_fingerprint
+        if account.ledger.events
+        else account.ledger.initial_state_fingerprint
+    )
+    if expected != account.state.state_fingerprint:
+        raise RecurrentEntryEvidenceError(
+            "recurrent lifecycle ledger does not terminate at current state"
         )
 
 
@@ -582,6 +599,10 @@ def build_recurrent_entry_fill_evidence(
             )
         candidate = _candidate(record, InstrumentKind.STOCK)
         stock_candidate = record.stock_economics.candidate
+        if stock_candidate is None:
+            raise RecurrentEntryEvidenceError(
+                "stock economics candidate is missing"
+            )
         candidate_fp = economic_candidate_fingerprint(candidate)
         if (
             candidate.identifier != stock_candidate.identifier
