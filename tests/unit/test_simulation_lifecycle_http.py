@@ -143,6 +143,8 @@ def test_simulation_lifecycle_browser_uses_existing_refresh_timer_only() -> None
     assert "/api/v1/operations/" not in lifecycle_js
     assert "refresh=1" not in lifecycle_js
     assert "atlas:observability-refreshed" in lifecycle_js
+    assert "account_state_fingerprint" in lifecycle_js
+    assert "account_ledger_fingerprint" in lifecycle_js
     assert controls_js.count("window.setInterval") == 1
     assert "atlas:observability-refreshed" in controls_js
 
@@ -163,6 +165,10 @@ def test_preview_exposes_synthetic_lifecycle_without_authority() -> None:
     assert payload["authority"]["live_authority"] is False
     assert len(payload["open_positions"]) == 1
     assert len(payload["closed_trades"]) == 1
+    assert payload["source"]["source_kind"] == "RECURRENT_LIFECYCLE_ACCOUNT"
+    assert "account_state_fingerprint" in payload["source"]
+    assert "account_ledger_fingerprint" in payload["source"]
+    assert payload["closed_trades"][0]["origin"] == "RECURRENT_ACCOUNT_V1"
 
 
 class _FakeLifecycleCoordinator:
@@ -242,6 +248,92 @@ def test_phase19_rejects_ambiguous_lifecycle_service_and_coordinator(
             web_root=settings.project_root / "apps" / "web",
         )
     except ValueError as exc:
-        assert "either simulation lifecycle dashboard service or coordinator" in str(exc)
+        assert "exactly one lifecycle dashboard service or coordinator source" in str(exc)
     else:
         raise AssertionError("ambiguous lifecycle injection must fail closed")
+
+
+class _FakeRecurrentLifecycleCoordinator:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def current_dashboard_pair(self):
+        self.calls += 1
+        return None
+
+
+def test_phase19_can_inject_recurrent_coordinator_without_external_reads(
+    tmp_path,
+) -> None:
+    settings = _settings_with_derived(tmp_path)
+
+    def forbidden_broker_factory(_broker):
+        raise AssertionError(
+            "recurrent coordinator lifecycle GET must not initialize a broker"
+        )
+
+    status_service = Phase16StatusService(
+        settings,
+        env={},
+        broker_factory=forbidden_broker_factory,
+    )
+    coordinator = _FakeRecurrentLifecycleCoordinator()
+    server = create_phase19_status_server(
+        service=status_service,
+        observability_service=_FakeObservabilityService(),
+        paper_dashboard_service=_FakePaperDashboardService(),
+        recurrent_lifecycle_coordinator=coordinator,
+        host="127.0.0.1",
+        port=0,
+        web_root=settings.project_root / "apps" / "web",
+    )
+    thread = threading.Thread(
+        target=server.serve_forever,
+        kwargs={"poll_interval": 0.01},
+        daemon=True,
+    )
+    thread.start()
+    try:
+        host, port = server.server_address[:2]
+        with urlopen(
+            f"http://{host}:{port}/api/v1/ops/simulation-lifecycle",
+            timeout=2,
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        assert payload["status"] == "NOT_CONNECTED"
+        assert payload["read_only"] is True
+        assert payload["provider_reads"] == 0
+        assert payload["broker_reads"] == 0
+        assert payload["provider_writes"] == 0
+        assert payload["broker_writes"] == 0
+        assert payload["order_writes"] == 0
+        assert payload["health"]["reason"] == (
+            "RECURRENT_LIFECYCLE_SOURCE_NOT_AVAILABLE"
+        )
+        assert coordinator.calls == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_phase19_rejects_old_and_recurrent_coordinator_together(
+    tmp_path,
+) -> None:
+    settings = _settings_with_derived(tmp_path)
+    status_service = Phase16StatusService(settings, env={})
+    try:
+        create_phase19_status_server(
+            service=status_service,
+            observability_service=_FakeObservabilityService(),
+            paper_dashboard_service=_FakePaperDashboardService(),
+            simulation_lifecycle_coordinator=_FakeLifecycleCoordinator(),
+            recurrent_lifecycle_coordinator=_FakeRecurrentLifecycleCoordinator(),
+            host="127.0.0.1",
+            port=0,
+            web_root=settings.project_root / "apps" / "web",
+        )
+    except ValueError as exc:
+        assert "exactly one lifecycle dashboard service or coordinator source" in str(exc)
+    else:
+        raise AssertionError("dual lifecycle coordinators must fail closed")

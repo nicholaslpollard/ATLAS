@@ -5,6 +5,10 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
+from packages.control_plane.recurrent_lifecycle_dashboard import (
+    RecurrentLifecycleDashboardService,
+    source_provider_from_recurrent_coordinator,
+)
 from packages.execution.option_economics import (
     OptionEconomicsInputs,
     build_option_economic_candidate,
@@ -4045,4 +4049,123 @@ def test_recurrent_coordinator_identical_mark_republication_is_idempotent() -> N
     assert (
         second.marked_state.state_fingerprint
         == first.marked_state.state_fingerprint
+    )
+
+
+def test_recurrent_dashboard_projects_atomic_coordinator_pair() -> None:
+    coordinator = RecurrentLifecycleCoordinatorV1(
+        account=_recurrent_positioned_account()
+    )
+    account = coordinator.current_account()
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "e"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "f"
+            ),
+        )
+        for position in account.state.open_positions
+    )
+    coordinator.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    service = RecurrentLifecycleDashboardService(
+        source_provider=source_provider_from_recurrent_coordinator(
+            coordinator
+        ),
+        now_utc=lambda: valuation + timedelta(seconds=1),
+    )
+
+    payload = service.snapshot()
+
+    assert payload["status"] == "AVAILABLE"
+    assert payload["read_only"] is True
+    assert payload["provider_reads"] == 0
+    assert payload["broker_reads"] == 0
+    assert payload["provider_writes"] == 0
+    assert payload["broker_writes"] == 0
+    assert payload["order_writes"] == 0
+    assert payload["source"]["source_kind"] == "RECURRENT_LIFECYCLE_ACCOUNT"
+    assert (
+        payload["source"]["account_state_fingerprint"]
+        == coordinator.current_account().state.state_fingerprint
+    )
+    assert (
+        payload["source"]["account_ledger_fingerprint"]
+        == coordinator.current_account().ledger.ledger_fingerprint
+    )
+    assert payload["account"]["snapshot_kind"] == (
+        "ENGINE_OWNED_RECURRENT_SIMULATION_LIFECYCLE_CURRENT"
+    )
+    assert payload["account"]["cash"] == pytest.approx(10_002.0)
+    assert payload["account"]["account_book_equity"] == pytest.approx(20_202.0)
+    assert payload["account"]["marked_equity"] == pytest.approx(20_252.0)
+    assert payload["statistics"]["open_position_count"] == 2
+    assert payload["statistics"]["closed_trade_count"] == 2
+    assert len(payload["open_positions"]) == 2
+    assert len(payload["closed_trades"]) == 2
+    assert {
+        row["origin"] for row in payload["closed_trades"]
+    } == {
+        "ORIGINAL_CLOSEOUT_V1",
+        "LIFECYCLE_CLOSEOUT_V1",
+    }
+    assert payload["authority"]["browser_mutation_authority"] is False
+    assert payload["authority"]["paper_authority"] is False
+    assert payload["authority"]["live_authority"] is False
+
+
+def test_recurrent_dashboard_becomes_not_connected_after_account_mutation() -> None:
+    coordinator = RecurrentLifecycleCoordinatorV1(
+        account=_recurrent_account()
+    )
+    account = coordinator.current_account()
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=1.5,
+            ask=1.6,
+            source_char="1",
+        )
+        for position in account.state.open_positions
+    )
+    coordinator.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    service = RecurrentLifecycleDashboardService(
+        source_provider=source_provider_from_recurrent_coordinator(
+            coordinator
+        ),
+        now_utc=lambda: valuation + timedelta(seconds=1),
+    )
+    assert service.snapshot()["status"] == "AVAILABLE"
+
+    record = _stock_record(
+        created_utc=valuation + timedelta(minutes=1)
+    )
+    coordinator.apply_reservation(record=record)
+
+    payload = service.snapshot()
+    assert payload["status"] == "NOT_CONNECTED"
+    assert payload["health"]["engine_source_connected"] is False
+    assert payload["health"]["reason"] == (
+        "RECURRENT_LIFECYCLE_SOURCE_NOT_AVAILABLE"
     )

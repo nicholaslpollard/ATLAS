@@ -444,15 +444,26 @@ function renderSimulationLifecycleHealth(payload) {
     root.appendChild(item);
   });
 
-  if (source.closeout_state_fingerprint) {
+  const accountStateFingerprint =
+    source.account_state_fingerprint || source.closeout_state_fingerprint;
+  const accountLedgerFingerprint =
+    source.account_ledger_fingerprint || source.closeout_ledger_fingerprint;
+  if (accountStateFingerprint) {
     const provenance = document.createElement("div");
     provenance.className = "readiness-check readiness-authority-reminder";
     const icon = document.createElement("span");
     icon.className = "readiness-check-icon";
     icon.textContent = "i";
     const label = document.createElement("span");
+    const sourceLabel =
+      source.source_kind === "RECURRENT_LIFECYCLE_ACCOUNT"
+        ? "recurrent account"
+        : "closeout";
+    const ledgerText = accountLedgerFingerprint
+      ? ` · ledger ${String(accountLedgerFingerprint).slice(0, 12)}…`
+      : "";
     label.textContent =
-      `Book ${lifecycleTime(source.book_as_of_utc)} · valuation ${lifecycleTime(source.valuation_utc)} · closeout ${String(source.closeout_state_fingerprint).slice(0, 12)}… · marked ${String(source.marked_state_fingerprint || "").slice(0, 12)}…`;
+      `Book ${lifecycleTime(source.book_as_of_utc)} · valuation ${lifecycleTime(source.valuation_utc)} · ${sourceLabel} ${String(accountStateFingerprint).slice(0, 12)}…${ledgerText} · marked ${String(source.marked_state_fingerprint || "").slice(0, 12)}…`;
     provenance.append(icon, label);
     root.appendChild(provenance);
   }
