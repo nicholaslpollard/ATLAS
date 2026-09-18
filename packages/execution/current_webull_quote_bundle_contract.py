@@ -24,6 +24,7 @@ CURRENT_WEBULL_STOCK_QUOTE_BUNDLE_CONTRACT = {
     "atomic_fsync_persistence_required": True,
     "bundle_self_fingerprint_required": True,
     "partial_bundle_persistence_forbidden": True,
+    "capture_attempt_invalidates_prior_current_artifact": True,
     "capture_provider_reads_allowed": True,
     "artifact_provider_read_authority": False,
     "provider_write_authority": False,
