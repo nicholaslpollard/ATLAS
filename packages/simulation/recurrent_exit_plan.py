@@ -708,7 +708,9 @@ def write_recurrent_stock_exit_plan_bundle_v1(
     return path
 
 
-def _plan_from_payload(payload: dict[str, object]) -> RecurrentStockExitPlanV1:
+def recurrent_stock_exit_plan_from_payload(
+    payload: dict[str, object],
+) -> RecurrentStockExitPlanV1:
     values = dict(payload)
     values["phase13_case"] = Phase13CaseFile.model_validate(
         values["phase13_case"]
@@ -764,7 +766,7 @@ def read_recurrent_stock_exit_plan_bundle_v1(
         ) from exc
     try:
         plans = tuple(
-            _plan_from_payload(dict(item))
+            recurrent_stock_exit_plan_from_payload(dict(item))
             for item in payload["plans"]
         )
         return RecurrentStockExitPlanBundleV1(
@@ -817,6 +819,7 @@ __all__ = [
     "build_recurrent_stock_exit_plan_bundle_v1",
     "build_recurrent_stock_exit_plan_v1",
     "phase13_case_fingerprint",
+    "recurrent_stock_exit_plan_from_payload",
     "read_recurrent_stock_exit_plan_bundle_v1",
     "recurrent_stock_exit_plan_path",
     "write_recurrent_stock_exit_plan_bundle_v1",
