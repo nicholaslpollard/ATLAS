@@ -9,6 +9,11 @@ from packages.control_plane.phase19_observability import Phase19ObservabilitySer
 from packages.control_plane.phase19_policy import phase19_policy_fingerprint
 from packages.control_plane.status import Phase16StatusService
 from packages.core.settings import load_settings
+from packages.data.paths import MarketDataPaths
+from packages.simulation.recurrent_persistence import (
+    RecurrentLifecyclePersistenceError,
+    restore_recurrent_lifecycle_coordinator,
+)
 
 
 def main() -> None:
@@ -22,9 +27,26 @@ def main() -> None:
     settings = load_settings()
     status_service = Phase16StatusService(settings)
     observability = Phase19ObservabilityService(settings, status_service=status_service)
+
+    checkpoint_path = MarketDataPaths(
+        settings
+    ).recurrent_lifecycle_checkpoint_file()
+    recurrent_coordinator = None
+    if checkpoint_path.exists():
+        try:
+            recurrent_coordinator = restore_recurrent_lifecycle_coordinator(
+                checkpoint_path
+            )
+        except RecurrentLifecyclePersistenceError as exc:
+            raise SystemExit(
+                "Refusing to start with an invalid recurrent lifecycle "
+                f"checkpoint at {checkpoint_path}: {exc}"
+            ) from exc
+
     server = create_phase19_status_server(
         service=status_service,
         observability_service=observability,
+        recurrent_lifecycle_coordinator=recurrent_coordinator,
         host=args.host,
         port=args.port,
     )
@@ -38,9 +60,27 @@ def main() -> None:
     print("  provider reads from Phase 19 observability: 0")
     print("  provider writes from Phase 19 observability: 0")
     print("  existing Phase 16 broker refresh remains explicit/read-only")
+    if recurrent_coordinator is None:
+        print("  recurrent lifecycle checkpoint: not present")
+        print("  recurrent lifecycle dashboard: NOT_CONNECTED")
+    else:
+        restored = recurrent_coordinator.snapshot()
+        print(f"  recurrent lifecycle checkpoint: restored from {checkpoint_path}")
+        print(f"  recurrent lifecycle revision: {restored.revision}")
+        print(
+            "  recurrent account state: "
+            f"{restored.account.state.state_fingerprint}"
+        )
+        print(
+            "  recurrent marked state: "
+            + (
+                "not current"
+                if restored.marked_state is None
+                else restored.marked_state.state_fingerprint
+            )
+        )
     print("  live execution promotion: disabled")
     print("  automatic cross-broker failover: disabled")
-    print("  stacked PR merge: blocked until Phase 18 is accepted/merged")
     try:
         server.serve_forever(poll_interval=0.25)
     except KeyboardInterrupt:
