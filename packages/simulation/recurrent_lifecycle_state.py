@@ -136,6 +136,12 @@ class RecurrentClosedTradeV1:
     position_fingerprint: str
     exit_fill_fingerprint: str
     decision_record_fingerprint: str
+    candidate_fingerprint: str | None
+    entry_fill_fingerprint: str | None
+    funding_terms_fingerprint: str | None
+    reservation_fingerprint: str | None
+    option_reservation_terms_fingerprint: str | None
+    option_economics_result_fingerprint: str | None
     instrument_kind: InstrumentKind
     instrument_id: str
     ticker: str
@@ -170,6 +176,16 @@ class RecurrentClosedTradeV1:
             ("decision record", self.decision_record_fingerprint),
         ):
             _require_fingerprint(value, label=f"{label} fingerprint")
+        for label, value in (
+            ("candidate", self.candidate_fingerprint),
+            ("entry fill", self.entry_fill_fingerprint),
+            ("funding terms", self.funding_terms_fingerprint),
+            ("reservation", self.reservation_fingerprint),
+            ("option reservation terms", self.option_reservation_terms_fingerprint),
+            ("option economics", self.option_economics_result_fingerprint),
+        ):
+            if value is not None:
+                _require_fingerprint(value, label=f"{label} fingerprint")
         if self.origin == RecurrentClosedTradeOrigin.ORIGINAL_CLOSEOUT_V1:
             if (
                 self.source_state_contract_fingerprint
@@ -877,6 +893,12 @@ def _from_original_trade(trade: ClosedTradeV1) -> RecurrentClosedTradeV1:
         position_fingerprint=trade.position_fingerprint,
         exit_fill_fingerprint=trade.exit_fill_fingerprint,
         decision_record_fingerprint=trade.decision_record_fingerprint,
+        candidate_fingerprint=None,
+        entry_fill_fingerprint=None,
+        funding_terms_fingerprint=None,
+        reservation_fingerprint=None,
+        option_reservation_terms_fingerprint=None,
+        option_economics_result_fingerprint=None,
         instrument_kind=trade.instrument_kind,
         instrument_id=trade.instrument_id,
         ticker=trade.ticker,
@@ -925,6 +947,16 @@ def _from_lifecycle_trade(
         position_fingerprint=trade.position_fingerprint,
         exit_fill_fingerprint=trade.exit_fill_fingerprint,
         decision_record_fingerprint=trade.decision_record_fingerprint,
+        candidate_fingerprint=trade.candidate_fingerprint,
+        entry_fill_fingerprint=trade.entry_fill_fingerprint,
+        funding_terms_fingerprint=trade.funding_terms_fingerprint,
+        reservation_fingerprint=trade.reservation_fingerprint,
+        option_reservation_terms_fingerprint=(
+            trade.option_reservation_terms_fingerprint
+        ),
+        option_economics_result_fingerprint=(
+            trade.option_economics_result_fingerprint
+        ),
         instrument_kind=trade.instrument_kind,
         instrument_id=trade.instrument_id,
         ticker=trade.ticker,
