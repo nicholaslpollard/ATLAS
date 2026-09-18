@@ -1143,6 +1143,38 @@ simulation account, feed it accepted decision/fill/mark/exit evidence on schedul
 then remove the single-cycle bridge from the default runtime path without deleting its
 historical compatibility contracts. The Strategy Evidence Register remains unchanged.
 
+## 2026-09-18 — Durable recurrent runtime account store
+
+Track A now stages `atlas-simulation-recurrent-runtime-store-v1` under contract
+`225b2c8c7ff59751dfde37f0fad95c345ea90d73b7dc4b217fa82b5982073587`.
+The store persists exactly one current `RecurrentLifecycleAccountV1` snapshot under
+the configured derived-data root. The account already contains its full append-only
+recurrent ledger and canonical closed-trade history, so the store deliberately avoids
+writing another full account copy for every transition.
+
+The snapshot envelope records and revalidates the recurrent account contract,
+state fingerprint, ledger fingerprint, ledger-event count, write timestamp, and a
+SHA-256 fingerprint of the complete typed snapshot. Writes use same-volume atomic
+replacement with fsync, an exclusive writer lock, exact prior-state
+compare-and-swap semantics, and a full post-write reread. Ledger-event count and
+account time may never regress. A same-state rewrite is idempotent.
+
+Restore reconstructs the typed dataclass/enum/datetime graph and then reruns the normal
+recurrent state and ledger invariants. Missing state is explicit uninitialized state;
+malformed JSON, altered envelope hashes, contract drift, broken fingerprints, or
+missing terminal ledger lineage fail closed. There is no fallback that reconstructs
+current account truth from older artifacts.
+
+Marked state is intentionally not persisted because it is time-sensitive valuation
+evidence. After restart the recurrent account may be restored exactly, but fresh marks
+must be published again before a current dashboard pair exists.
+
+The next bounded Track A package is a persistent recurrent runtime wrapper: coordinate
+account transitions with compare-and-swap persistence before returning mutation
+success, roll back in-memory state on storage failure, restore only from this accepted
+store, and keep provider/broker/order authority at zero. The Strategy Evidence Register
+remains unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
