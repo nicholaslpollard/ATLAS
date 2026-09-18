@@ -2494,12 +2494,39 @@ Frozen semantics:
 10. grant no exit/closeout, mark-to-market, provider/broker/order, PAPER/LIVE,
     promotion, or confluence authority.
 
-Immediate Track A continuation is recurrent marked-account valuation followed by
-recurrent exit evidence and `CLOSE_POSITION` mutation against this same stable state
-and append-only ledger.
+The recurrent marked-account projection described below now supplies current valuation
+without changing the stable recurrent state or ledger.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account transitions only.
+
+## Track A recurrent lifecycle marked-account projection — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-marked-account-v1` under contract
+`6f473d2480167efa77e7826c994661d12141621122e99b644cb58cc39bbf5532`.
+
+Frozen semantics:
+
+1. consume one exact accepted recurrent lifecycle account state;
+2. require exactly one fresh, valuation-eligible position-bound mark for every current
+   open position at one common valuation timestamp;
+3. reject missing, duplicate, stale, closed-position, or other extra marks;
+4. value inherited and newly recurrent-opened positions through their immutable
+   position fingerprints;
+5. compute aggregate unrealized P&L from current open positions only;
+6. define marked equity as `account_book_equity + aggregate_unrealized_pnl` and
+   independently reconcile it to cash + reservations + marked open-position value;
+7. carry cash, reservations, fee/realized-P&L history, book equity, canonical closed
+   history, and the recurrent ledger forward unchanged; and
+8. grant no account mutation, new realized-P&L, exit/closeout,
+   provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is recurrent full-close exit evidence followed by
+`CLOSE_POSITION` mutation against this same stable recurrent account and append-only
+ledger.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation valuation architecture only.
 
 ## Track A funding/collateral terms — 2026-09-16
 
