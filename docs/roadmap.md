@@ -2464,11 +2464,42 @@ Frozen semantics:
 8. no reservation release, position creation, provider/broker/order, PAPER/LIVE,
    promotion, or confluence authority is granted.
 
-Immediate Track A continuation is the recurrent atomic reservation→position mutation
-against the same recurrent account/ledger contract.
+The recurrent reservation→position transition described below now consumes this
+evidence without changing the recurrent account contract.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/simulation account evidence only.
+
+## Track A recurrent lifecycle reservation-to-position transitions — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-position-transition-v1` under contract
+`998b3c505aaabd429b5009cb1c9cfebe864810f2d6e871d60450f4ccc2d7e084`.
+
+Frozen semantics:
+
+1. consume and return the same recurrent lifecycle account/ledger contract;
+2. require exact recurrent entry-fill + funding evidence and the exact reservation to
+   remain active at mutation time;
+3. consume only that reservation and create one exact open position with complete
+   decision/candidate/reservation/fill/funding/option lineage;
+4. expense the entry fee once while preserving canonical closed history and all prior
+   realized accounting;
+5. append one fingerprint-chained `OPEN_POSITION` recurrent ledger event;
+6. require exact-current-state binding for a single transition;
+7. support deterministic batches whose evidence shares one common source snapshot,
+   while rechecking current cash/reservations before every mutation;
+8. prevent parallel evidence from spending supplemental cash twice;
+9. make identical duplicate fill/funding reuse idempotent and reject conflicting second
+   fills; and
+10. grant no exit/closeout, mark-to-market, provider/broker/order, PAPER/LIVE,
+    promotion, or confluence authority.
+
+Immediate Track A continuation is recurrent marked-account valuation followed by
+recurrent exit evidence and `CLOSE_POSITION` mutation against this same stable state
+and append-only ledger.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation account transitions only.
 
 ## Track A funding/collateral terms — 2026-09-16
 
