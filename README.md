@@ -995,10 +995,36 @@ same supplemental cash twice. Exact duplicate fill/funding reuse is idempotent a
 conflicting second fill for an already-applied decision fails closed.
 
 The operation grants no exit/closeout, mark-to-market, provider/broker/order,
-PAPER/LIVE, promotion, or confluence authority. The next recurrent package is the
-read-only marked-account projection against the recurrent state, followed by
-recurrent-native exit evidence and `CLOSE_POSITION` mutation on this same account and
-ledger. The Strategy Evidence Register remains unchanged.
+PAPER/LIVE, promotion, or confluence authority. The read-only recurrent marked-account
+projection described below now supplies current valuation without mutating the
+recurrent ledger. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle marked-account projection
+
+Track A now adds `atlas-simulation-recurrent-marked-account-v1` under contract
+`6f473d2480167efa77e7826c994661d12141621122e99b644cb58cc39bbf5532`.
+It consumes one exact recurrent account state plus accepted position-bound market-mark
+evidence and produces current unrealized-P&L/equity state without appending a recurrent
+ledger event.
+
+Exactly one fresh, valuation-eligible mark is required for every current open
+position at one common valuation timestamp. Missing, duplicate, stale, or extra marks
+fail closed. Both inherited positions and newly recurrent-opened positions are valued
+through their immutable position fingerprints; canonical closed history is never
+revalued.
+
+Marked position value is quantity × selected mark × multiplier. Aggregate unrealized
+P&L is the sum of marked value less entry-book value for current open positions.
+Marked equity is `account_book_equity + aggregate_unrealized_pnl` and must
+independently reconcile to cash + stock reservations + option reservations + marked
+open-position value. Cash, reservations, entry/exit fees, realized P&L, lifetime trade
+net P&L, book equity, and the recurrent ledger remain unchanged.
+
+This projection grants no account mutation, new realized-P&L, exit/closeout,
+provider/broker/order, PAPER/LIVE, promotion, or confluence authority. The next
+recurrent package is source-bound full-close exit evidence followed by a
+`CLOSE_POSITION` mutation that appends directly to the same recurrent account/ledger
+and canonical closed-trade history. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
