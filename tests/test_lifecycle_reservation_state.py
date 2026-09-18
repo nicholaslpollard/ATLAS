@@ -140,6 +140,13 @@ from packages.simulation.recurrent_lifecycle_state import (
     RecurrentLifecycleEventKind,
     initialize_recurrent_lifecycle_account_v1,
 )
+from packages.simulation.recurrent_marked_contract import (
+    RECURRENT_MARKED_ACCOUNT_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.recurrent_marked_state import (
+    RecurrentMarkedAccountError,
+    build_recurrent_marked_account_state,
+)
 from packages.simulation.recurrent_reservation_contract import (
     RECURRENT_RESERVATION_TRANSITION_CONTRACT_FINGERPRINT,
 )
@@ -2979,3 +2986,213 @@ def test_recurrent_position_transition_keeps_external_authority_false() -> None:
     assert state.order_creation_authority is False
     assert state.paper_authority is False
     assert state.live_authority is False
+
+
+def _recurrent_positioned_account():
+    reserved, _record, fill, funding = _recurrent_stock_entry_case()
+    return apply_recurrent_entry_v1(
+        reserved,
+        fill=fill,
+        funding=funding,
+    ).account
+
+
+def test_recurrent_marked_account_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_MARKED_ACCOUNT_CONTRACT_FINGERPRINT
+        == "6f473d2480167efa77e7826c994661d12141621122e99b644cb58cc39bbf5532"
+    )
+
+
+def test_recurrent_marked_account_values_inherited_and_new_positions() -> None:
+    account = _recurrent_positioned_account()
+    option = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.OPTION
+    )
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    option_mark = _market_mark(
+        option,
+        valuation_utc=valuation,
+        bid=1.5,
+        ask=1.6,
+        source_char="a",
+    )
+    stock_mark = _market_mark(
+        stock,
+        valuation_utc=valuation,
+        bid=101.0,
+        ask=101.1,
+        source_char="b",
+    )
+
+    marked = build_recurrent_marked_account_state(
+        source_state=account.state,
+        marks=(stock_mark, option_mark),
+        valuation_utc=valuation,
+    )
+
+    assert marked.source_account_state_fingerprint == account.state.state_fingerprint
+    assert len(marked.marked_positions) == 2
+    assert marked.open_entry_book_value_dollars == pytest.approx(10_200.0)
+    assert marked.marked_open_position_value_dollars == pytest.approx(10_250.0)
+    assert marked.aggregate_unrealized_pnl_dollars == pytest.approx(50.0)
+    assert marked.account_book_equity == pytest.approx(20_202.0)
+    assert marked.marked_equity == pytest.approx(20_252.0)
+    assert marked.cash == pytest.approx(10_002.0)
+    assert marked.cumulative_entry_fees_dollars == pytest.approx(6.0)
+    assert marked.cumulative_exit_fees_dollars == pytest.approx(2.0)
+    assert marked.cumulative_account_realized_pnl_dollars == pytest.approx(208.0)
+    assert marked.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(205.0)
+    assert marked.closed_trade_count == 2
+    assert marked.recurrent_ledger_mutation is False
+    assert (
+        marked.cash
+        + marked.stock_reserved_capital
+        + marked.option_reserved_capital
+        + marked.marked_open_position_value_dollars
+        == pytest.approx(marked.marked_equity)
+    )
+
+
+def test_recurrent_marked_account_requires_complete_current_coverage() -> None:
+    account = _recurrent_positioned_account()
+    option = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.OPTION
+    )
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    option_mark = _market_mark(
+        option,
+        valuation_utc=valuation,
+        bid=1.5,
+        ask=1.6,
+        source_char="c",
+    )
+
+    with pytest.raises(
+        RecurrentMarkedAccountError,
+        match="complete recurrent open-position mark coverage",
+    ):
+        build_recurrent_marked_account_state(
+            source_state=account.state,
+            marks=(option_mark,),
+            valuation_utc=valuation,
+        )
+
+
+def test_recurrent_marked_account_rejects_duplicate_and_stale_marks() -> None:
+    account = _recurrent_positioned_account()
+    option = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.OPTION
+    )
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    valuation = account.state.as_of_utc + timedelta(minutes=2)
+    option_mark = _market_mark(
+        option,
+        valuation_utc=valuation,
+        bid=1.5,
+        ask=1.6,
+        source_char="d",
+    )
+    stock_mark = _market_mark(
+        stock,
+        valuation_utc=valuation,
+        bid=101.0,
+        ask=101.1,
+        source_char="e",
+    )
+    stale_stock = _market_mark(
+        stock,
+        valuation_utc=valuation,
+        bid=101.0,
+        ask=101.1,
+        source_char="f",
+        age_seconds=61.0,
+    )
+
+    with pytest.raises(
+        RecurrentMarkedAccountError,
+        match="multiple marks",
+    ):
+        build_recurrent_marked_account_state(
+            source_state=account.state,
+            marks=(option_mark, stock_mark, stock_mark),
+            valuation_utc=valuation,
+        )
+
+    with pytest.raises(
+        RecurrentMarkedAccountError,
+        match="stale or ineligible",
+    ):
+        build_recurrent_marked_account_state(
+            source_state=account.state,
+            marks=(option_mark, stale_stock),
+            valuation_utc=valuation,
+        )
+
+
+def test_recurrent_marked_account_is_order_independent_and_read_only() -> None:
+    account = _recurrent_positioned_account()
+    valuation = account.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            item,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if item.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if item.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "1"
+                if item.instrument_kind == InstrumentKind.STOCK
+                else "2"
+            ),
+        )
+        for item in account.state.open_positions
+    )
+    ledger_before = account.ledger
+
+    first = build_recurrent_marked_account_state(
+        source_state=account.state,
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    second = build_recurrent_marked_account_state(
+        source_state=account.state,
+        marks=tuple(reversed(marks)),
+        valuation_utc=valuation,
+    )
+
+    assert first == second
+    assert first.state_fingerprint == second.state_fingerprint
+    assert account.ledger == ledger_before
+    assert first.account_mutation_authority is False
+    assert first.new_realized_pnl_authority is False
+    assert first.exit_closeout_authority is False
+    assert first.provider_read_authority is False
+    assert first.broker_write_authority is False
+    assert first.paper_authority is False
+    assert first.live_authority is False
+
+    with pytest.raises(RecurrentMarkedAccountError, match="cannot grant"):
+        replace(first, account_mutation_authority=True)
