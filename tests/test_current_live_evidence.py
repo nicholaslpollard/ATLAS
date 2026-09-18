@@ -200,3 +200,31 @@ def test_event_feed_lineage_mismatch_fails_closed(tmp_path) -> None:
                 2026, 9, 18, 20, 15, 5, tzinfo=UTC
             ),
         )
+
+
+def test_same_source_snapshot_has_stable_evidence_fingerprint_across_capture_times(
+    tmp_path,
+) -> None:
+    settings = _settings(tmp_path)
+    _write_snapshot(
+        settings,
+        _snapshot_payload(
+            generated="2026-09-18T20:15:02+00:00",
+            quote=False,
+        ),
+    )
+    first = capture_current_live_evidence_v1(
+        settings,
+        captured_at_utc=datetime(
+            2026, 9, 18, 20, 15, 5, tzinfo=UTC
+        ),
+    )
+    second = capture_current_live_evidence_v1(
+        settings,
+        captured_at_utc=datetime(
+            2026, 9, 18, 20, 15, 10, tzinfo=UTC
+        ),
+    )
+    assert first.source_sha256 == second.source_sha256
+    assert first.evidence_fingerprint == second.evidence_fingerprint
+    assert first.snapshot_age_seconds != second.snapshot_age_seconds
