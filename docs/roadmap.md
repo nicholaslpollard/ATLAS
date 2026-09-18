@@ -2799,6 +2799,40 @@ product/runtime orchestration only.
 
 
 
+## Track A deterministic recurrent cycle runner admission — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-cycle-runner-v1` under contract
+`2de1540cddf58f0c724efbbd25378800143de586c7d0f159fefa2e4af0ac5e0d`.
+
+Frozen semantics:
+
+1. derive the cycle id deterministically from an explicit safe schedule id plus an
+   explicit timezone-aware scheduled slot normalized to UTC;
+2. grant no scheduler-trigger authority merely because deterministic slot identity
+   exists;
+3. restore only the authoritative durable recurrent checkpoint;
+4. before each CLOSE, RESERVE, ENTRY, or MARK mutation, persist one atomic/fsync,
+   self-hash-verified stage-admission record;
+5. bind each admission to cycle/stage identity, the exact expected pre-stage checkpoint
+   and runtime snapshot, evidence-source id/SHA-256, evidence fingerprint/count, and
+   stage context;
+6. admit evidence stage by stage so later entry/mark evidence is built against state
+   produced by prior accepted stages rather than stale pre-cycle state;
+7. make exact admission reuse idempotent and reject conflicting admission reuse before
+   mutation;
+8. delegate mutation idempotency and post-runtime/pre-receipt crash reconciliation to
+   the accepted recurrent-cycle orchestrator;
+9. keep provider/broker acquisition and current-evidence construction outside the
+   runner; and
+10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is the current-evidence acquisition adapter and
+read-only cycle-health projection, followed by workstation restart/resume and
+market-hours validation before any qualifying PAPER program.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime admission and orchestration only.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
