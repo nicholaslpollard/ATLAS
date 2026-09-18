@@ -2679,14 +2679,48 @@ Frozen semantics:
    of falling back to research or legacy artifacts; and
 10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is a durable recurrent runtime transaction boundary:
-accepted reservation/entry/close mutations and mark publications must not become
-externally current unless the matching checkpoint commit succeeds; persistence failure
-must leave or restore one unambiguous authoritative state before scheduled simulation
-or later PAPER work.
+The durable recurrent runtime transaction layer described below now closes this
+mutation↔checkpoint boundary.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime durability only.
+
+## Track A durable recurrent runtime transaction boundary — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-durable-runtime-v1` under contract
+`2959ba43c8279fd28cedeeca6df24f6f56edb6714a72cfc47999ea7e2bb3f891`.
+
+Frozen semantics:
+
+1. wrap one accepted recurrent coordinator plus one verified recurrent checkpoint
+   behind a single runtime lock;
+2. capture the exact pre-operation snapshot before reservation, entry, close-position,
+   or mark-publication work;
+3. require every changed post-operation snapshot to commit using the exact expected
+   previous checkpoint SHA;
+4. skip persistence entirely for exact idempotent operations whose coordinator snapshot
+   does not change;
+5. after a checkpoint exception, read durable state back and classify it against the
+   exact pre/post snapshots;
+6. if durable state is the pre-state, restore the in-memory coordinator to that
+   snapshot and fail the operation as rolled back;
+7. if durable state is the post-state, accept the commit even when an exception was
+   surfaced after the atomic replace;
+8. if durable state is unreadable or matches neither pre nor post state, enter
+   `UNCERTAIN` and block current-state/dashboard/mutation access until explicit
+   verified checkpoint reload;
+9. restore Phase 19 production startup into the durable wrapper, not a naked recurrent
+   coordinator; and
+10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is production recurrent orchestration: create a
+controlled bootstrap for the first authoritative recurrent checkpoint, define the
+scheduled evidence→reservation→entry→mark→exit→close cycle around the durable runtime,
+and prove restart/resume and no-double-application behavior before qualifying PAPER.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime durability and orchestration boundaries only.
+
 
 
 
