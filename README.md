@@ -626,13 +626,52 @@ and carries zero browser/provider/broker/order mutation authority. The synthetic
 preview server exposes the same response shape for UI development while remaining
 explicitly synthetic and read-only.
 
-This closes the projection/UI seam but **does not create a production lifecycle source
-by itself**. The next bounded Track A package is the engine lifecycle coordinator:
-one deterministic owner of reservations, entries, marks, exits, closeouts, and
-current valuation that can supply the injected dashboard source without reconstructing
-state from old artifacts. The coordinator must close ongoing/re-entry sequencing,
-idempotency, replay, and atomic-current-snapshot semantics before any later
-broker/PAPER authority package. The Strategy Evidence Register remains unchanged.
+This closes the projection/UI seam. The single-cycle coordinator described below now
+supplies the accepted atomic engine-owned source, while post-close re-entry remains a
+separate next lifecycle boundary. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-17 — Atomic single-cycle simulation lifecycle coordinator
+
+Track A now implements the first production-facing lifecycle owner in the previously
+empty `packages/simulation/engine.py` seam under contract
+`atlas-simulation-lifecycle-coordinator-v1`
+(`696254240971db5a9a7ae2a0307c2c847b376d360d5cfe1f8b5f30ec80a93a9b`).
+
+`SimulationLifecycleCoordinatorV1` starts from one exact accepted
+`OpenPositionAccountStateV1`, deterministically initializes the accepted closeout
+account, and then owns that cycle's current closeout book state plus an optional
+post-close marked state. It performs no provider, broker, order, or filesystem I/O;
+exit fills and market marks must already exist as accepted evidence before they are
+supplied.
+
+The coordinator uses one re-entrant lock and immutable state replacement so readers
+can obtain an atomic book+valuation pair. A real closeout event advances the logical
+revision and invalidates any prior marked state. Reapplying an identical idempotent
+exit does not mutate state, advance the revision, or destroy a still-current
+valuation. Mark publication requires the accepted complete/fresh current-position
+coverage contract; an identical mark snapshot is idempotent. Revision advancement is
+defined by actual new closeout ledger events plus new valuation publications, so
+sequential and batch application converge to the same logical revision and replay
+fingerprint.
+
+The control-plane adapter now converts only `current_dashboard_pair()` into the
+read-only lifecycle projection. Until current marks exist—or immediately after a
+closeout invalidates them—the browser remains `NOT_CONNECTED` rather than displaying
+stale valuation. `create_phase19_status_server` may accept either an explicitly built
+lifecycle dashboard service or a lifecycle coordinator, never both.
+
+This is deliberately a **single-cycle** coordinator. It does not create new
+reservations, accept new entries after the immutable source snapshot, or support
+re-entry. Those capabilities remain outside v1 so current-state ownership can be
+accepted independently before the account model is extended across subsequent
+decision/entry cycles. No provider/broker/order/PAPER/LIVE/promotion/confluence
+authority is created.
+
+The next bounded Track A package is therefore unified post-close re-entry/current
+account state: admit new accepted reservation/entry evidence against current realized
+equity while preserving prior closed-trade/fee history, deterministic exposure
+accounting, replay, and the coordinator's one-owner semantics. The Strategy Evidence
+Register remains unchanged.
 
 ## A33/B33 reference foundation
 
