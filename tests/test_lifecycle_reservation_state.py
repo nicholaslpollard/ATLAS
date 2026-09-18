@@ -183,6 +183,14 @@ from packages.simulation.recurrent_reservations import (
     apply_recurrent_reservation_batch_v1,
     verify_recurrent_reservation_replay_v1,
 )
+from packages.simulation.recurrent_runtime_store import (
+    RecurrentRuntimeAccountStoreV1,
+    RecurrentRuntimeStoreConflict,
+    RecurrentRuntimeStoreError,
+)
+from packages.simulation.recurrent_runtime_store_contract import (
+    RECURRENT_RUNTIME_STORE_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.simulated_fill import (
     SimulatedEntryFillError,
     SimulatedEntryFillInputs,
@@ -4169,3 +4177,150 @@ def test_recurrent_dashboard_becomes_not_connected_after_account_mutation() -> N
     assert payload["health"]["reason"] == (
         "RECURRENT_LIFECYCLE_SOURCE_NOT_AVAILABLE"
     )
+
+
+def test_recurrent_runtime_store_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_RUNTIME_STORE_CONTRACT_FINGERPRINT
+        == "225b2c8c7ff59751dfde37f0fad95c345ea90d73b7dc4b217fa82b5982073587"
+    )
+
+
+def test_recurrent_runtime_store_round_trips_exact_account(tmp_path) -> None:
+    account = _recurrent_positioned_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "runtime-store",
+        clock=lambda: account.state.as_of_utc + timedelta(minutes=1),
+    )
+
+    assert store.load() is None
+    written = store.persist(
+        account,
+        expected_prior_state_fingerprint=None,
+    )
+    loaded = store.load()
+
+    assert loaded is not None
+    assert loaded == written
+    assert loaded.account == account
+    assert loaded.state_fingerprint == account.state.state_fingerprint
+    assert loaded.ledger_fingerprint == account.ledger.ledger_fingerprint
+    assert loaded.ledger_event_count == len(account.ledger.events)
+    assert len(loaded.snapshot_fingerprint) == 64
+    assert store.snapshot_path.is_file()
+    assert not store.lock_path.exists()
+
+
+def test_recurrent_runtime_store_compare_and_swap_and_idempotent_rewrite(
+    tmp_path,
+) -> None:
+    account = _recurrent_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "runtime-store",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    first = store.persist(
+        account,
+        expected_prior_state_fingerprint=None,
+    )
+    same = store.persist(
+        account,
+        expected_prior_state_fingerprint=first.state_fingerprint,
+    )
+    assert same == first
+
+    record = _stock_record(
+        created_utc=account.state.as_of_utc + timedelta(minutes=1)
+    )
+    updated = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+    ).account
+    second = store.persist(
+        updated,
+        expected_prior_state_fingerprint=first.state_fingerprint,
+    )
+    assert second.state_fingerprint == updated.state.state_fingerprint
+    assert second.ledger_event_count == first.ledger_event_count + 1
+
+    with pytest.raises(
+        RecurrentRuntimeStoreConflict,
+        match="prior-state fingerprint changed",
+    ):
+        store.persist(
+            account,
+            expected_prior_state_fingerprint=first.state_fingerprint,
+        )
+
+
+def test_recurrent_runtime_store_rejects_ledger_regression(tmp_path) -> None:
+    account = _recurrent_account()
+    record = _stock_record(
+        created_utc=account.state.as_of_utc + timedelta(minutes=1)
+    )
+    updated = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+    ).account
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "runtime-store",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    current = store.persist(
+        updated,
+        expected_prior_state_fingerprint=None,
+    )
+
+    with pytest.raises(
+        RecurrentRuntimeStoreError,
+        match="ledger-event count cannot regress",
+    ):
+        store.persist(
+            account,
+            expected_prior_state_fingerprint=current.state_fingerprint,
+        )
+
+
+def test_recurrent_runtime_store_corruption_fails_closed(tmp_path) -> None:
+    account = _recurrent_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "runtime-store",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    store.persist(
+        account,
+        expected_prior_state_fingerprint=None,
+    )
+
+    document = json.loads(store.snapshot_path.read_text(encoding="utf-8"))
+    document["snapshot"]["state_fingerprint"] = _fp("0")
+    store.snapshot_path.write_text(
+        json.dumps(document, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        RecurrentRuntimeStoreError,
+        match="envelope fingerprint mismatch",
+    ):
+        store.load()
+
+
+def test_recurrent_runtime_store_existing_writer_lock_fails_closed(tmp_path) -> None:
+    account = _recurrent_account()
+    store = RecurrentRuntimeAccountStoreV1(
+        tmp_path / "runtime-store",
+        clock=lambda: DECISION_BASE + timedelta(days=1),
+    )
+    store.root.mkdir(parents=True, exist_ok=True)
+    store.lock_path.write_text("simulated active writer\n", encoding="utf-8")
+
+    with pytest.raises(
+        RecurrentRuntimeStoreConflict,
+        match="active/stale writer lock",
+    ):
+        store.persist(
+            account,
+            expected_prior_state_fingerprint=None,
+        )
+    assert store.lock_path.exists()
