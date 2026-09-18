@@ -2400,14 +2400,44 @@ Frozen foundation semantics:
 7. keep market valuation as a read-only projection rather than a ledger mutation; and
 8. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is to implement recurrent-native reservation, entry,
-valuation, exit, and closeout transitions against this **same** account contract and
-append-only ledger, then move the lifecycle coordinator and browser projection to that
-stable recurrent source. This replaces future reservation-v2/position-v2/closeout-v2
-proliferation.
+The recurrent reservation transition layer described below now begins mutating this
+same stable account and append-only ledger.
 
 The Strategy Evidence Register remains unchanged because this package consolidates
 product/simulation account architecture without changing strategy evidence.
+
+## Track A recurrent lifecycle reservation transitions — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-reservation-transitions-v1` under
+contract
+`8e7cb6b4cf3d64bcafc8f0af9443bde8022df92c5b200aec67f4611fbedae796`.
+
+Frozen semantics:
+
+1. consume and return the same `RecurrentLifecycleAccountV1` contract;
+2. append reservation/abstention/rejection events to the existing recurrent ledger
+   rather than creating a new reservation-account generation;
+3. evaluate stock and option reservation admission against current unreserved recurrent
+   cash while preserving current open positions and canonical closed history;
+4. preserve stock reserved capital/gross notional separately from long-option reserved
+   capital, max-loss, premium-at-risk, and signed/absolute delta-equivalent exposure;
+5. require exact accepted long-option reservation terms for OPTION decisions;
+6. retain exact decision, reservation, option-terms/economics, candidate, contract,
+   instrument, ticker, direction, state-chain, and monetary/exposure delta lineage in
+   the recurrent event;
+7. ledger abstentions and insufficient-capital/missing-terms rejections without money
+   mutation so account time still advances deterministically;
+8. make duplicate decisions idempotent, reject conflicting duplicate option terms, and
+   order batches by decision timestamp then decision fingerprint; and
+9. grant no entry-fill, open-position, exit/closeout, provider/broker/order,
+   PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is recurrent-native entry-fill/funding evidence bound to
+the current recurrent account fingerprint, followed by reservation-to-position mutation
+against this same account and ledger contract.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/simulation account transitions only.
 
 ## Track A funding/collateral terms — 2026-09-16
 
