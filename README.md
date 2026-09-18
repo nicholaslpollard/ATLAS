@@ -941,10 +941,39 @@ fingerprint.
 
 This package still creates reservations only. It grants no entry-fill, new-position,
 exit/closeout, provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
-The next recurrent package adds entry-fill/funding evidence bound directly to the
-current recurrent account fingerprint, followed by an atomic reservation-to-position
-transition on the same state/ledger contract. The Strategy Evidence Register remains
-unchanged.
+The recurrent entry/funding evidence layer described below now binds fills directly to
+the same stable recurrent state. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle entry-fill and funding evidence
+
+Track A now adds two descriptive operation contracts against the stable recurrent
+account:
+
+- `atlas-simulation-recurrent-entry-fill-evidence-v1` —
+  `6802682c78dac10921afd49a023bab774dded6d5c8415e53f17ac92f852bf15a`;
+- `atlas-simulation-recurrent-funding-terms-v1` —
+  `4340cbe3d39b1026663db416094093814dab691ef611e7fca8a8a93e5023b6fc`.
+
+Both objects bind one exact **current recurrent-state fingerprint** and one exact active
+reservation fingerprint. They therefore cannot be reused after unrelated recurrent
+state mutation. Stock fill evidence preserves the reserved economic gross notional and
+derives complete share quantity from the explicit fill price while leaving funding
+semantics unresolved. Long-option fill evidence reuses the exact accepted option
+reservation terms, contract count/multiplier, premium/fee reserve, and records any
+unspent reserved capital.
+
+Funding evidence then proves the same fill against the same recurrent snapshot.
+Bullish stock longs remain cash-only: existing reserved capital is credited and any
+remaining requirement must be available in current recurrent unreserved cash. Long
+options reuse the exact reserved debit and require zero supplemental cash. Neither
+evidence object changes cash, releases a reservation, creates a position, recomputes
+historical fees/P&L, or grants provider/broker/order/PAPER/LIVE authority.
+
+The next bounded recurrent package is the atomic reservation→position transition on
+`RecurrentLifecycleAccountV1`: consume one still-active reservation plus exact
+recurrent fill/funding evidence, expense the entry fee once, create one open position,
+preserve canonical closed history, and append one `OPEN_POSITION` event to the
+existing recurrent ledger. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
