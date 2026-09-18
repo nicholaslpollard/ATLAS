@@ -12,7 +12,10 @@ from packages.core.settings import load_settings
 from packages.data.paths import MarketDataPaths
 from packages.simulation.recurrent_persistence import (
     RecurrentLifecyclePersistenceError,
-    restore_recurrent_lifecycle_coordinator,
+)
+from packages.simulation.recurrent_runtime import (
+    RecurrentDurableRuntimeError,
+    restore_durable_recurrent_lifecycle_runtime,
 )
 
 
@@ -34,10 +37,13 @@ def main() -> None:
     recurrent_coordinator = None
     if checkpoint_path.exists():
         try:
-            recurrent_coordinator = restore_recurrent_lifecycle_coordinator(
+            recurrent_coordinator = restore_durable_recurrent_lifecycle_runtime(
                 checkpoint_path
             )
-        except RecurrentLifecyclePersistenceError as exc:
+        except (
+            RecurrentLifecyclePersistenceError,
+            RecurrentDurableRuntimeError,
+        ) as exc:
             raise SystemExit(
                 "Refusing to start with an invalid recurrent lifecycle "
                 f"checkpoint at {checkpoint_path}: {exc}"
@@ -65,7 +71,9 @@ def main() -> None:
         print("  recurrent lifecycle dashboard: NOT_CONNECTED")
     else:
         restored = recurrent_coordinator.snapshot()
+        runtime_status = recurrent_coordinator.status()
         print(f"  recurrent lifecycle checkpoint: restored from {checkpoint_path}")
+        print(f"  recurrent checkpoint SHA-256: {runtime_status.checkpoint_sha256}")
         print(f"  recurrent lifecycle revision: {restored.revision}")
         print(
             "  recurrent account state: "
