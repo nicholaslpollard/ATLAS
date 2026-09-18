@@ -116,6 +116,12 @@ class LifecycleClosedTradeV1:
     position_fingerprint: str
     exit_fill_fingerprint: str
     decision_record_fingerprint: str
+    candidate_fingerprint: str
+    entry_fill_fingerprint: str
+    funding_terms_fingerprint: str
+    reservation_fingerprint: str
+    option_reservation_terms_fingerprint: str | None
+    option_economics_result_fingerprint: str | None
     instrument_kind: InstrumentKind
     instrument_id: str
     ticker: str
@@ -149,8 +155,18 @@ class LifecycleClosedTradeV1:
             ("position", self.position_fingerprint),
             ("exit fill", self.exit_fill_fingerprint),
             ("decision record", self.decision_record_fingerprint),
+            ("candidate", self.candidate_fingerprint),
+            ("entry fill", self.entry_fill_fingerprint),
+            ("funding terms", self.funding_terms_fingerprint),
+            ("reservation", self.reservation_fingerprint),
         ):
             _require_fingerprint(value, label=f"{label} fingerprint")
+        for label, value in (
+            ("option reservation terms", self.option_reservation_terms_fingerprint),
+            ("option economics", self.option_economics_result_fingerprint),
+        ):
+            if value is not None:
+                _require_fingerprint(value, label=f"{label} fingerprint")
         _require_aware(self.opened_utc, label="opened timestamp")
         _require_aware(self.exited_utc, label="exited timestamp")
         if self.exited_utc < self.opened_utc:
@@ -1168,6 +1184,16 @@ def _closed_trade(
         position_fingerprint=position.position_fingerprint,
         exit_fill_fingerprint=fill.exit_fill_fingerprint,
         decision_record_fingerprint=position.decision_record_fingerprint,
+        candidate_fingerprint=position.candidate_fingerprint,
+        entry_fill_fingerprint=position.fill_fingerprint,
+        funding_terms_fingerprint=position.funding_terms_fingerprint,
+        reservation_fingerprint=position.reservation_fingerprint,
+        option_reservation_terms_fingerprint=(
+            position.option_reservation_terms_fingerprint
+        ),
+        option_economics_result_fingerprint=(
+            position.option_economics_result_fingerprint
+        ),
         instrument_kind=position.instrument_kind,
         instrument_id=position.instrument_id,
         ticker=position.ticker,
