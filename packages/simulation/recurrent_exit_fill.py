@@ -193,7 +193,7 @@ class RecurrentExitFillEvidenceV1:
             != RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
         ):
             raise RecurrentExitFillError(
-                "source lifecycle position contract fingerprint mismatch"
+                "source recurrent account contract fingerprint mismatch"
             )
         for label, value in (
             ("source recurrent state", self.source_recurrent_state_fingerprint),
@@ -475,10 +475,10 @@ def build_recurrent_exit_fill_evidence(
         fill_source_fingerprint=inputs.fill_source_fingerprint,
         full_close=True,
         reason_codes=(
-            "EXACT_ACTIVE_LIFECYCLE_POSITION_BOUND",
+            "EXACT_ACTIVE_RECURRENT_POSITION_BOUND",
             "EXACT_FULL_POSITION_QUANTITY_AND_MULTIPLIER_BOUND",
-            "EXPLICIT_LIFECYCLE_EXIT_SOURCE_BOUND",
-            "BROKER_NEUTRAL_COMPLETE_LIFECYCLE_EXIT_MATERIALIZED",
+            "EXPLICIT_RECURRENT_EXIT_SOURCE_BOUND",
+            "BROKER_NEUTRAL_COMPLETE_RECURRENT_EXIT_MATERIALIZED",
             "NO_POSITION_ACCOUNT_OR_REALIZED_PNL_AUTHORITY_GRANTED",
         ),
     )
