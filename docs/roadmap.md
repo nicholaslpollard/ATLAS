@@ -2833,6 +2833,39 @@ market-hours validation before any qualifying PAPER program.
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime admission and orchestration only.
 
+## Track A read-only recurrent cycle health projection — 2026-09-18
+
+Track A freezes `atlas-control-plane-recurrent-cycle-health-v1` under contract
+`6f46af10c4925a2f73a7d6ba08a49b0ae2a2285c66380029e98ef740b0a90e80`.
+
+Frozen semantics:
+
+1. read only the authoritative recurrent checkpoint, complete checkpoint history,
+   durable cycle receipts, and durable stage admissions;
+2. validate every cycle receipt self hash plus filename/fingerprint binding and reject
+   duplicate durable cycle identities;
+3. validate every stage-admission self hash, path binding, cycle identity, source
+   checkpoint/snapshot lineage, recorded-stage action count/context, and reject orphan
+   or future-stage admissions;
+4. allow older pre-runner recorded stages without admissions only as explicit degraded
+   legacy state rather than rewriting history;
+5. allow an admission for exactly the next unrecorded stage and surface checkpoint
+   advancement after that admission as `RECOVERY_REQUIRED` rather than falsely
+   classifying the known post-commit/pre-receipt crash window as corruption;
+6. treat unexplained checkpoint divergence, tampering, orphan artifacts, or invalid
+   lineage as `INVALID`;
+7. select the latest validated cycle deterministically by creation time then cycle id;
+8. expose the projection through GET-only `/api/v1/ops/simulation-cycle`;
+9. perform zero provider or broker refresh and zero runtime/order mutation; and
+10. grant no scheduler, provider/broker/order, PAPER, or LIVE authority.
+
+Immediate Track A continuation is current-evidence acquisition/adaptation into the
+stage-admission runner plus browser rendering, followed by workstation restart/resume
+and market-hours validation before any qualifying PAPER program.
+
+The Strategy Evidence Register remains unchanged because this package changes
+read-only product/control-plane observability only.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
