@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-16 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-17 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -518,6 +518,31 @@ simulated exit-fill evidence followed by deterministic closeout/realized-P&L acc
 with lifetime trade-P&L and account-equity semantics kept explicit so entry fees cannot
 be double counted. The Strategy Evidence Register remains unchanged because this is
 product/account-simulation architecture only.
+
+## 2026-09-17 — Broker-neutral simulated exit-fill evidence
+
+Track A now adds `atlas-simulated-exit-fill-evidence-v1` under contract
+`d823bdf481f6ae6266be0a7e87d36702e1687d5a84f97da105e64cfc7e8f77c0`.
+It consumes the exact accepted open-position account state, requires one exact active
+open-position fingerprint, and binds a complete exit fill to an explicit source id,
+source SHA-256, timezone-aware exit timestamp, exit price, and explicit exit fees.
+
+V1 is deliberately **full-close only**. Quantity, quantity unit, instrument identity,
+position lineage, and contract multiplier are inherited exactly from the active open
+position; callers cannot silently resize or partially close a position. Gross exit
+proceeds are `quantity * exit_price * multiplier`, and net exit proceeds are gross
+proceeds less explicit exit fees. Exit price may be zero so a long stock/option
+complete-loss case remains representable; exit fees may not exceed gross proceeds.
+
+This object is descriptive broker-neutral fill evidence only. It does not remove the
+position, mutate account cash, compute realized P&L, read/write a provider or broker,
+create an order, assert a broker fill, or grant PAPER/LIVE/promotion/confluence
+authority. The next bounded Track A package is deterministic closeout/realized-P&L
+accounting: consume the exact open-position + exit-fill lineage, remove only that
+matched position, return exact net exit proceeds to cash, and keep account-state
+realized P&L distinct from lifetime trade net P&L so already-expensed entry fees are
+not double counted. The Strategy Evidence Register remains unchanged because this
+package changes product/account-simulation architecture only.
 
 ## A33/B33 reference foundation
 
