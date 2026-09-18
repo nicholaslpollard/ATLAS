@@ -2132,14 +2132,41 @@ This remains read-only simulation valuation and grants no account mutation, new
 realized-P&L, exit/closeout, provider/broker read/write, order, PAPER/LIVE, promotion,
 or confluence authority.
 
-Immediate Track A continuation after acceptance is a read-only lifecycle
-observability projection into the existing loopback control-plane/browser surface,
-using the accepted decision/position/mark/exit/closed-trade/account records directly
-and preserving one engine-owned source of truth. Any remaining orchestration/re-entry
-lifecycle gaps must be closed before later broker/PAPER authority.
+The read-only lifecycle observability layer described below now consumes this
+post-close truth. The Strategy Evidence Register remains unchanged because this package
+changes product/account-simulation architecture only.
+
+## Track A engine-owned simulation lifecycle observability — 2026-09-17
+
+Track A now projects the accepted lifecycle state into the existing loopback
+control-plane/browser without creating a second trading truth.
+
+Frozen boundaries:
+
+1. `SimulationLifecycleDashboardService` accepts an injected
+   `CloseoutAccountV1` + `LifecycleMarkedAccountStateV1` pair only;
+2. it revalidates state, ledger, marked-state, source-binding, accounting carry-forward,
+   and current position/mark lineage before projection;
+3. no source injection yields explicit `NOT_CONNECTED`; invalid source yields
+   `INVALID`; there is no fallback to Phase15, broker state, or provider refresh;
+4. `GET /api/v1/ops/simulation-lifecycle` is loopback/read-only and reports zero
+   provider, broker, order, PAPER, and LIVE mutation authority;
+5. the browser panel displays marked/book equity, realized/unrealized P&L, fees, open
+   marked positions, deterministic closed trades, and fingerprint provenance;
+6. it reuses the existing `atlas:observability-refreshed` event and adds no new
+   polling timer or mutation route; and
+7. the synthetic preview uses the same payload shape but is labeled synthetic and
+   carries no trading authority.
+
+Immediate Track A continuation is the production simulation lifecycle coordinator.
+It must become the single deterministic owner of current account state across
+reservation, entry, marking, exit, closeout, and subsequent decision cycles; expose
+an atomic engine-owned dashboard source; preserve idempotent/replayable sequencing;
+and close re-entry/current-state gaps before any later broker/PAPER authority.
 
 The Strategy Evidence Register remains unchanged because this package changes
-product/account-simulation architecture only.
+product/control-plane architecture only.
+
 
 
 
