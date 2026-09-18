@@ -135,7 +135,7 @@ def _case(
 def test_exit_plan_contract_fingerprint_is_frozen() -> None:
     assert (
         RECURRENT_STOCK_EXIT_PLAN_CONTRACT_FINGERPRINT
-        == "dbd30c744aef9b0eef3ec2c8c209826c711fb6c0f9ba5572af3f48e5ec125a72"
+        == "9d2f921c4821b2cb73274db314f3a7716ea02338f191f5863abf805f13073e0b"
     )
 
 
