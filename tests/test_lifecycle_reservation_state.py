@@ -42,6 +42,17 @@ from packages.simulation.lifecycle_entry_evidence_contract import (
     LIFECYCLE_ENTRY_FILL_CONTRACT_FINGERPRINT,
     LIFECYCLE_FUNDING_TERMS_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.lifecycle_position_contract import (
+    LIFECYCLE_POSITION_ACCOUNT_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.lifecycle_position_state import (
+    LifecyclePositionAccountError,
+    apply_lifecycle_entry_batch_v1,
+    apply_lifecycle_entry_v1,
+    initialize_lifecycle_position_account_v1,
+    replay_lifecycle_position_account_v1,
+    verify_lifecycle_position_account_replay_v1,
+)
 from packages.simulation.lifecycle_reservation_contract import (
     LIFECYCLE_RESERVATION_ACCOUNT_CONTRACT_FINGERPRINT,
 )
@@ -892,3 +903,366 @@ def test_lifecycle_entry_evidence_grants_no_mutation_or_trading_authority() -> N
         replace(funding, open_position_authority=True)
     with pytest.raises(LifecycleEntryEvidenceError, match="cannot grant"):
         replace(funding, paper_authority=True)
+
+
+def _reserved_stock_entry_case(
+    *,
+    created_utc: datetime = DECISION_BASE,
+    source_char: str = "3",
+):
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record = _stock_record(created_utc=created_utc)
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+    ).account
+    fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id=f"position-stock-{source_char}",
+            fill_source_fingerprint=_fp(source_char),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+    return reserved, record, fill, funding
+
+
+def test_lifecycle_position_contract_fingerprint_is_frozen() -> None:
+    assert (
+        LIFECYCLE_POSITION_ACCOUNT_CONTRACT_FINGERPRINT
+        == "7c5f2a82a8583b9f7b2e90f994f7d6ca4c682888448b97ad287e79e6dad82f29"
+    )
+
+
+def test_lifecycle_stock_entry_consumes_only_reservation_and_expenses_fee_once() -> None:
+    reserved, _record, fill, funding = _reserved_stock_entry_case()
+    before_open = reserved.state.open_positions
+    before_closed = reserved.state.closed_trades
+
+    transition = apply_lifecycle_entry_v1(
+        initialize_lifecycle_position_account_v1(source=reserved),
+        fill=fill,
+        funding=funding,
+    )
+    state = transition.account.state
+
+    assert transition.idempotent_reuse is False
+    assert state.cash == pytest.approx(9_805.0)
+    assert state.stock_reserved_capital == 0.0
+    assert state.option_reserved_capital == 0.0
+    assert state.open_entry_book_value_dollars == pytest.approx(10_200.0)
+    assert state.open_stock_gross_entry_exposure_dollars == pytest.approx(10_000.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(4.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(1.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(9.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(8.0)
+    assert state.account_book_equity == pytest.approx(20_005.0)
+    assert (
+        state.cash
+        + state.stock_reserved_capital
+        + state.option_reserved_capital
+        + state.open_entry_book_value_dollars
+        == pytest.approx(state.account_book_equity)
+    )
+    assert len(state.open_positions) == len(before_open) + 1
+    assert state.closed_trades == before_closed
+    assert transition.position.entry_fees_dollars == pytest.approx(2.0)
+    assert transition.position.all_in_cash_cost_basis_dollars == pytest.approx(
+        10_002.0
+    )
+    assert transition.event is not None
+    assert transition.event.entry_fee_delta_dollars == pytest.approx(2.0)
+    assert transition.event.cash_delta_dollars == pytest.approx(-5_002.0)
+
+
+def test_lifecycle_option_entry_returns_unspent_reserve_and_preserves_history() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    record, terms = _option_case()
+    reserved = apply_lifecycle_decision_reservation_v1(
+        base,
+        record,
+        option_terms=terms,
+    ).account
+    fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        option_terms=terms,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="position-option",
+            fill_source_fingerprint=_fp("2"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=5.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+    transition = apply_lifecycle_entry_v1(
+        initialize_lifecycle_position_account_v1(source=reserved),
+        fill=fill,
+        funding=funding,
+    )
+    state = transition.account.state
+
+    assert state.cash == pytest.approx(18_805.0)
+    assert state.option_reserved_capital == 0.0
+    assert state.open_entry_book_value_dollars == pytest.approx(1_200.0)
+    assert state.open_option_entry_book_value_dollars == pytest.approx(1_200.0)
+    assert (
+        state.open_option_signed_delta_equivalent_entry_reference_dollars
+        == pytest.approx(11_120.0)
+    )
+    assert (
+        state.open_option_abs_delta_equivalent_entry_reference_dollars
+        == pytest.approx(11_120.0)
+    )
+    assert state.open_option_premium_at_risk_dollars == pytest.approx(1_200.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(4.0)
+    assert state.account_book_equity == pytest.approx(20_005.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(9.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(8.0)
+    assert len(state.closed_trades) == 1
+
+
+def test_identical_lifecycle_entry_is_idempotent_and_conflict_fails_closed() -> None:
+    reserved, record, fill, funding = _reserved_stock_entry_case()
+    account = initialize_lifecycle_position_account_v1(source=reserved)
+    first = apply_lifecycle_entry_v1(
+        account,
+        fill=fill,
+        funding=funding,
+    )
+    duplicate = apply_lifecycle_entry_v1(
+        first.account,
+        fill=fill,
+        funding=funding,
+    )
+    assert duplicate.idempotent_reuse is True
+    assert duplicate.event is None
+    assert duplicate.account == first.account
+
+    conflicting_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="conflicting-stock-fill",
+            fill_source_fingerprint=_fp("1"),
+            filled_utc=fill.filled_utc + timedelta(seconds=1),
+            fill_price_per_unit=101.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    conflicting_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=conflicting_fill,
+    )
+    with pytest.raises(
+        LifecyclePositionAccountError,
+        match="conflicting fill",
+    ):
+        apply_lifecycle_entry_v1(
+            first.account,
+            fill=conflicting_fill,
+            funding=conflicting_funding,
+        )
+
+
+def test_competing_stock_entries_enforce_current_cash_not_isolated_projection() -> None:
+    source = _post_close_source()
+    account = initialize_lifecycle_reservation_account_v1(source=source)
+    first_record = _stock_record(created_utc=DECISION_BASE)
+    second_record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(minutes=2)
+    )
+    after_first_reserve = apply_lifecycle_decision_reservation_v1(
+        account,
+        first_record,
+    ).account
+    reserved = apply_lifecycle_decision_reservation_v1(
+        after_first_reserve,
+        second_record,
+    ).account
+    assert reserved.state.cash == pytest.approx(9_807.0)
+    assert reserved.state.stock_reserved_capital == pytest.approx(10_000.0)
+
+    first_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=first_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="competition-first",
+            fill_source_fingerprint=_fp("a"),
+            filled_utc=second_record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    second_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=second_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="competition-second",
+            fill_source_fingerprint=_fp("b"),
+            filled_utc=second_record.decision_created_utc + timedelta(minutes=2),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    first_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=first_fill,
+    )
+    second_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=second_fill,
+    )
+    assert (
+        first_funding.supplemental_unreserved_cash_required_dollars
+        == pytest.approx(5_002.0)
+    )
+    assert (
+        second_funding.supplemental_unreserved_cash_required_dollars
+        == pytest.approx(5_002.0)
+    )
+
+    position_account = initialize_lifecycle_position_account_v1(
+        source=reserved
+    )
+    first = apply_lifecycle_entry_v1(
+        position_account,
+        fill=first_fill,
+        funding=first_funding,
+    )
+    assert first.account.state.cash == pytest.approx(4_805.0)
+
+    with pytest.raises(
+        LifecyclePositionAccountError,
+        match="insufficient current cash after competing lifecycle entries",
+    ):
+        apply_lifecycle_entry_v1(
+            first.account,
+            fill=second_fill,
+            funding=second_funding,
+        )
+
+
+def test_mixed_entry_batch_is_deterministic_and_replays_exactly() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    stock_record = _stock_record()
+    option_record, terms = _option_case()
+    after_stock = apply_lifecycle_decision_reservation_v1(
+        base,
+        stock_record,
+    ).account
+    reserved = apply_lifecycle_decision_reservation_v1(
+        after_stock,
+        option_record,
+        option_terms=terms,
+    ).account
+
+    fill_time = option_record.decision_created_utc + timedelta(minutes=1)
+    stock_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=stock_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="batch-stock",
+            fill_source_fingerprint=_fp("c"),
+            filled_utc=fill_time,
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    option_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=option_record,
+        option_terms=terms,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="batch-option",
+            fill_source_fingerprint=_fp("d"),
+            filled_utc=fill_time + timedelta(seconds=1),
+            fill_price_per_unit=5.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    stock_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=stock_fill,
+    )
+    option_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=option_fill,
+    )
+    entries = (
+        (option_fill, option_funding),
+        (stock_fill, stock_funding),
+    )
+    first = replay_lifecycle_position_account_v1(
+        source=reserved,
+        entries=entries,
+    )
+    second = replay_lifecycle_position_account_v1(
+        source=reserved,
+        entries=tuple(reversed(entries)),
+    )
+
+    assert first.ordered_fill_fingerprints == (
+        stock_fill.fill_fingerprint,
+        option_fill.fill_fingerprint,
+    )
+    assert first.account.state == second.account.state
+    assert first.account.ledger == second.account.ledger
+    assert first.account.state.cash == pytest.approx(8_803.0)
+    assert first.account.state.open_entry_book_value_dollars == pytest.approx(
+        11_200.0
+    )
+    assert first.account.state.cumulative_entry_fees_dollars == pytest.approx(
+        6.0
+    )
+    assert first.account.state.account_book_equity == pytest.approx(20_003.0)
+    assert first.account.state.stock_reserved_capital == 0.0
+    assert first.account.state.option_reserved_capital == 0.0
+    assert len(first.account.state.open_positions) == 3
+    assert len(first.account.state.closed_trades) == 1
+
+    verify_lifecycle_position_account_replay_v1(
+        account=first.account,
+        source=reserved,
+        entries=entries,
+    )
+
+
+def test_lifecycle_position_state_grants_no_reservation_exit_mark_or_trading_authority() -> None:
+    reserved, _record, fill, funding = _reserved_stock_entry_case()
+    transition = apply_lifecycle_entry_v1(
+        initialize_lifecycle_position_account_v1(source=reserved),
+        fill=fill,
+        funding=funding,
+    )
+    state = transition.account.state
+
+    assert state.reservation_mutation_authority is False
+    assert state.exit_closeout_authority is False
+    assert state.mark_to_market_authority is False
+    assert state.provider_read_authority is False
+    assert state.broker_write_authority is False
+    assert state.order_creation_authority is False
+    assert state.paper_authority is False
+    assert state.live_authority is False
+
+    with pytest.raises(LifecyclePositionAccountError, match="cannot grant"):
+        replace(state, reservation_mutation_authority=True)
+    with pytest.raises(LifecyclePositionAccountError, match="cannot grant"):
+        replace(state, exit_closeout_authority=True)
+    with pytest.raises(LifecyclePositionAccountError, match="cannot grant"):
+        replace(state, paper_authority=True)
