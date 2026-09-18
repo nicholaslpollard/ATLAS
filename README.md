@@ -1021,10 +1021,34 @@ open-position value. Cash, reservations, entry/exit fees, realized P&L, lifetime
 net P&L, book equity, and the recurrent ledger remain unchanged.
 
 This projection grants no account mutation, new realized-P&L, exit/closeout,
-provider/broker/order, PAPER/LIVE, promotion, or confluence authority. The next
-recurrent package is source-bound full-close exit evidence followed by a
-`CLOSE_POSITION` mutation that appends directly to the same recurrent account/ledger
-and canonical closed-trade history. The Strategy Evidence Register remains unchanged.
+provider/broker/order, PAPER/LIVE, promotion, or confluence authority. The recurrent
+full-close exit evidence described below now supplies exact current-position exit
+provenance. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-18 — Recurrent lifecycle exit-fill evidence
+
+Track A now adds `atlas-simulation-recurrent-exit-fill-evidence-v1` under contract
+`61135bbede1416c852d7c84fa2914876c056508be9fdad1a87b834cb71f659ad`.
+
+The evidence binds two distinct account identities deliberately: the exact **current
+recurrent-state fingerprint** from which the active position is selected, and the
+position's immutable **entry-source account-state fingerprint** retained from when that
+position was created. These may not be collapsed or substituted for one another.
+
+The builder requires one exact active position fingerprint, explicit source id/SHA-256,
+timezone-aware exit time, nonnegative exit price, and explicit nonnegative exit fees.
+Quantity, multiplier, instrument/option identity, decision/candidate lineage,
+reservation, entry-fill, and funding lineage are inherited from the position. Gross
+proceeds are quantity × exit price × multiplier and net proceeds are gross less fees.
+Zero-price complete-loss exits are representable; exit fees may not exceed gross
+proceeds. V1 is full-close only.
+
+This package remains descriptive broker-neutral evidence. It does not remove the
+position, alter cash, compute realized P&L, append a recurrent ledger event, read/write
+providers or brokers, create an order, or grant PAPER/LIVE/promotion/confluence
+authority. The next bounded package is the recurrent `CLOSE_POSITION` mutation against
+the same stable account and append-only ledger. The Strategy Evidence Register remains
+unchanged.
 
 ## A33/B33 reference foundation
 
