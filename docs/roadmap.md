@@ -2713,13 +2713,46 @@ Frozen semantics:
    coordinator; and
 10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation is production recurrent orchestration: create a
-controlled bootstrap for the first authoritative recurrent checkpoint, define the
-scheduled evidence→reservation→entry→mark→exit→close cycle around the durable runtime,
-and prove restart/resume and no-double-application behavior before qualifying PAPER.
+The controlled recurrent genesis package described below now creates the first
+authoritative durable account without a hidden balance or external account source.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime durability and orchestration boundaries only.
+
+## Track A one-time recurrent genesis bootstrap — 2026-09-18
+
+Track A freezes `atlas-simulation-recurrent-genesis-bootstrap-v1` under contract
+`2784da99747760b50ff5cab35ae6f761d9ec8a77378ce767e603960571130b2a`.
+
+Frozen semantics:
+
+1. require explicit positive starting simulation equity and a timezone-aware bootstrap
+   timestamp; ATLAS embeds no default starting balance;
+2. perform zero provider, broker, research-artifact, or legacy-current-state reads;
+3. build the first recurrent account only by walking the accepted empty account chain:
+   simulation v2 → open-position → closeout → lifecycle reservation → lifecycle
+   position → lifecycle closeout → recurrent account;
+4. require every intermediate transition ledger and every reservation/open/closed
+   collection to be empty;
+5. require recurrent cash and book equity to equal the explicit starting equity and all
+   fee/P&L/exposure fields to be zero;
+6. retain all intermediate state fingerprints plus the recurrent state/ledger
+   fingerprints in the bootstrap result;
+7. refuse to overwrite an existing recurrent current checkpoint;
+8. refuse bootstrap when preserved recurrent checkpoint history exists without current
+   state;
+9. create the first authoritative checkpoint only through the durable recurrent runtime
+   bootstrap path; and
+10. grant no provider/broker/order, PAPER/LIVE, promotion, or confluence authority.
+
+Immediate Track A continuation is production recurrent-cycle orchestration: explicit
+evidence-acquisition inputs, deterministic cycle ordering, durable per-cycle receipts,
+restart/resume and no-double-application proof, and operator-visible health before any
+qualifying PAPER program.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/runtime bootstrap only.
+
 
 
 
