@@ -2764,8 +2764,9 @@ Frozen semantics:
    runtime snapshot fingerprint;
 4. persist one atomic, fsync-backed, self-hash-verified cycle receipt and one ordered
    stage record for every stage, including explicitly empty stages;
-5. fingerprint exact CLOSE exit fills, RESERVE decisions, ENTRY fill+funding pairs, and
-   MARK evidence plus the valuation timestamp;
+5. fingerprint exact CLOSE exit fills, RESERVE decisions plus exact option reservation
+   terms (or explicit absence), ENTRY fill+funding pairs, and MARK evidence plus the
+   valuation timestamp;
 6. make exact stage reuse idempotent and reject reuse with conflicting evidence;
 7. reconcile an interrupted post-runtime/pre-receipt stage by proving the exact action
    fingerprints already exist in recurrent ledger/marked state before recording the

@@ -4954,10 +4954,21 @@ def test_recurrent_genesis_result_grants_no_external_or_trading_authority(
     assert result.confluence_authority is False
 
 
+
+def _genesis_cycle_runtime(tmp_path):
+    checkpoint_path = tmp_path / "current.json"
+    runtime, _result = bootstrap_recurrent_genesis_v1(
+        checkpoint_path=checkpoint_path,
+        initial_equity=100_000.0,
+        as_of_utc=datetime(2026, 9, 18, 20, 0, tzinfo=UTC),
+    )
+    return checkpoint_path, runtime
+
+
 def test_recurrent_cycle_receipt_contract_fingerprint_is_frozen() -> None:
     assert (
         RECURRENT_CYCLE_RECEIPT_CONTRACT_FINGERPRINT
-        == "93cd6d908a601d070f4acbf61916dfe1fd8f299be9ed2ddb653cb0bd0d1f9490"
+        == "d64c95efc94c4548501e816ba6120a70a994dd6213dd3317baf136c9ff0cc667"
     )
 
 
@@ -5310,3 +5321,87 @@ def test_recurrent_empty_cycle_completes_without_account_mutation(
     assert runtime.current_account().state.open_positions == ()
     assert runtime.current_marked_state() is not None
     assert runtime.current_marked_state().marked_positions == ()
+
+
+def test_recurrent_cycle_recorded_reserve_stage_binds_option_terms(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, _receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="option-terms-recorded-conflict",
+    )
+    apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+    )
+    created = runtime.current_account().state.as_of_utc + timedelta(minutes=1)
+    record, terms = _option_case(
+        created_utc=created,
+        fee_reserve=3.0,
+    )
+    repeated_record, conflicting_terms = _option_case(
+        created_utc=created,
+        fee_reserve=4.0,
+    )
+    assert repeated_record.record_fingerprint == record.record_fingerprint
+    assert conflicting_terms.terms_fingerprint != terms.terms_fingerprint
+
+    apply_recurrent_cycle_reserve_stage(
+        path=path,
+        runtime=runtime,
+        decisions=((record, terms),),
+    )
+    with pytest.raises(
+        RecurrentCycleOrchestrationError,
+        match="already recorded with different evidence",
+    ):
+        apply_recurrent_cycle_reserve_stage(
+            path=path,
+            runtime=runtime,
+            decisions=((record, conflicting_terms),),
+        )
+
+
+def test_recurrent_cycle_recovery_rejects_conflicting_option_terms(
+    tmp_path,
+) -> None:
+    checkpoint, runtime = _genesis_cycle_runtime(tmp_path)
+    path, _receipt = begin_recurrent_cycle(
+        checkpoint_path=checkpoint,
+        runtime=runtime,
+        cycle_id="option-terms-recovery-conflict",
+    )
+    apply_recurrent_cycle_close_stage(
+        path=path,
+        runtime=runtime,
+        fills=(),
+    )
+    created = runtime.current_account().state.as_of_utc + timedelta(minutes=1)
+    record, terms = _option_case(
+        created_utc=created,
+        fee_reserve=3.0,
+    )
+    repeated_record, conflicting_terms = _option_case(
+        created_utc=created,
+        fee_reserve=4.0,
+    )
+    assert repeated_record.record_fingerprint == record.record_fingerprint
+    assert conflicting_terms.terms_fingerprint != terms.terms_fingerprint
+
+    runtime.apply_reservation(
+        record=record,
+        option_terms=terms,
+    )
+    with pytest.raises(
+        RecurrentCycleOrchestrationError,
+        match="advanced outside the current cycle stage",
+    ):
+        apply_recurrent_cycle_reserve_stage(
+            path=path,
+            runtime=runtime,
+            decisions=((record, conflicting_terms),),
+        )
+

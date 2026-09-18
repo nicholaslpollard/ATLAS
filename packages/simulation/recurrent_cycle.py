@@ -596,7 +596,19 @@ def _reservation_actions(
     ],
 ) -> tuple[str, ...]:
     return tuple(
-        sorted(record.record_fingerprint for record, _terms in decisions)
+        sorted(
+            _action_sha(
+                {
+                    "decision_record_fingerprint": record.record_fingerprint,
+                    "reservation_terms_fingerprint": (
+                        None
+                        if terms is None
+                        else terms.terms_fingerprint
+                    ),
+                }
+            )
+            for record, terms in decisions
+        )
     )
 
 
@@ -643,7 +655,16 @@ def _stage_already_applied(
 
     if stage == RecurrentCycleStage.RESERVE:
         observed = {
-            event.decision_record_fingerprint
+            _action_sha(
+                {
+                    "decision_record_fingerprint": (
+                        event.decision_record_fingerprint
+                    ),
+                    "reservation_terms_fingerprint": (
+                        event.reservation_terms_fingerprint
+                    ),
+                }
+            )
             for event in snapshot.account.ledger.events
             if event.kind
             in {

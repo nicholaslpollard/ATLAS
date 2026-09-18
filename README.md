@@ -1264,7 +1264,9 @@ source checkpoint SHA-256, source runtime-snapshot fingerprint, current checkpoi
 snapshot fingerprints, logical revision, and one content-addressed receipt under the
 recurrent checkpoint's sibling `cycles/` directory. Each stage records the exact
 sorted action fingerprints consumed plus before/after checkpoint and snapshot
-fingerprints. Receipt writes use the existing atomic write + fsync path and are
+fingerprints. RESERVE action identity binds the decision-record fingerprint together
+with the exact long-option reservation-terms fingerprint, or explicit absence of terms,
+so conflicting option capital terms cannot masquerade as an idempotent restart. Receipt writes use the existing atomic write + fsync path and are
 self-hash verified on readback.
 
 The stage contract is restart-safe. Repeating an exactly recorded stage is idempotent;

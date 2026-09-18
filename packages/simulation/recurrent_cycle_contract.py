@@ -24,6 +24,7 @@ RECURRENT_CYCLE_RECEIPT_CONTRACT = {
     "provider_acquisition_outside_orchestrator": True,
     "broker_acquisition_outside_orchestrator": True,
     "stage_action_fingerprints_required": True,
+    "reservation_action_binds_decision_and_option_terms": True,
     "stage_receipt_atomic_fsync_required": True,
     "stage_order_monotonic_required": True,
     "exact_stage_reuse_idempotent": True,
