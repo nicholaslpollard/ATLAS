@@ -21,6 +21,7 @@ from .paper_dashboard import PaperDashboardService
 from .phase16_policy import PHASE16_DEFAULT_BIND_HOST
 from .phase19_observability import Phase19ObservabilityService
 from .session import ControlPlaneSessionGuard
+from .simulation_lifecycle_dashboard import SimulationLifecycleDashboardService
 from .status import Phase16StatusService
 
 
@@ -44,6 +45,7 @@ _PHASE19_OBSERVABILITY_BUNDLE = (
     "observability.js",
     "observability_controls.js",
     "paper_dashboard.js",
+    "simulation_lifecycle_dashboard.js",
     "atlas_console.js",
     "atlas_overview_style.js",
     "atlas_overview.js",
@@ -149,6 +151,25 @@ class Phase19ControlPlaneRequestHandler(AtlasControlPlaneRequestHandler):
                 return
             self._send_json(HTTPStatus.OK, payload)
             return
+        if path == "/api/v1/ops/simulation-lifecycle":
+            try:
+                payload = self.atlas_server.simulation_lifecycle_dashboard_service.snapshot()  # type: ignore[attr-defined]
+            except Exception:
+                self._send_json(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    {
+                        "error": "SIMULATION_LIFECYCLE_DASHBOARD_READ_FAILED",
+                        "read_only": True,
+                        "provider_reads": 0,
+                        "provider_writes": 0,
+                        "broker_reads": 0,
+                        "broker_writes": 0,
+                        "order_writes": 0,
+                    },
+                )
+                return
+            self._send_json(HTTPStatus.OK, payload)
+            return
         super()._dispatch_get()
 
 
@@ -157,6 +178,7 @@ def create_phase19_status_server(
     service: Phase16StatusService,
     observability_service: Phase19ObservabilityService | None = None,
     paper_dashboard_service: PaperDashboardService | None = None,
+    simulation_lifecycle_dashboard_service: SimulationLifecycleDashboardService | None = None,
     host: str = PHASE16_DEFAULT_BIND_HOST,
     port: int = DEFAULT_CONTROL_PLANE_PORT,
     session_guard: ControlPlaneSessionGuard | None = None,
@@ -186,5 +208,9 @@ def create_phase19_status_server(
     )
     server.paper_dashboard_service = paper_dashboard_service or PaperDashboardService(  # type: ignore[attr-defined]
         service.settings,
+    )
+    server.simulation_lifecycle_dashboard_service = (  # type: ignore[attr-defined]
+        simulation_lifecycle_dashboard_service
+        or SimulationLifecycleDashboardService()
     )
     return server
