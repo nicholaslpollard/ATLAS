@@ -112,6 +112,16 @@ from packages.simulation.simulated_exit_fill import (
     SimulatedExitFillInputs,
     build_simulated_exit_fill_evidence,
 )
+from packages.simulation.recurrent_entry_evidence import (
+    RecurrentEntryEvidenceError,
+    RecurrentFundingModel,
+    build_recurrent_entry_fill_evidence,
+    build_recurrent_funding_terms,
+)
+from packages.simulation.recurrent_entry_evidence_contract import (
+    RECURRENT_ENTRY_FILL_CONTRACT_FINGERPRINT,
+    RECURRENT_FUNDING_TERMS_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.recurrent_lifecycle_contract import (
     RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT,
 )
@@ -2425,3 +2435,196 @@ def test_recurrent_duplicate_option_terms_conflict_fails_closed() -> None:
             record,
             option_terms=changed_terms,
         )
+
+
+def _recurrent_stock_reservation_case():
+    account = _recurrent_account()
+    record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1)
+    )
+    reserved = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+    ).account
+    return reserved, record
+
+
+def _recurrent_option_reservation_case():
+    account = _recurrent_account()
+    record, terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2)
+    )
+    reserved = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+        option_terms=terms,
+    ).account
+    return reserved, record, terms
+
+
+def test_recurrent_entry_and_funding_contract_fingerprints_are_frozen() -> None:
+    assert (
+        RECURRENT_ENTRY_FILL_CONTRACT_FINGERPRINT
+        == "6802682c78dac10921afd49a023bab774dded6d5c8415e53f17ac92f852bf15a"
+    )
+    assert (
+        RECURRENT_FUNDING_TERMS_CONTRACT_FINGERPRINT
+        == "4340cbe3d39b1026663db416094093814dab691ef611e7fca8a8a93e5023b6fc"
+    )
+
+
+def test_recurrent_stock_fill_and_funding_bind_current_recurrent_state() -> None:
+    reserved, record = _recurrent_stock_reservation_case()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-stock-fill",
+            fill_source_fingerprint=_fp("e"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+
+    assert fill.recurrent_state_fingerprint == reserved.state.state_fingerprint
+    assert fill.instrument_kind == InstrumentKind.STOCK
+    assert fill.quantity == pytest.approx(100.0)
+    assert fill.gross_fill_notional_dollars == pytest.approx(10_000.0)
+    assert fill.reserved_capital_dollars == pytest.approx(5_000.0)
+    assert fill.funding_semantics_resolved is False
+    assert fill.descriptive_only is True
+
+    assert funding.funding_model == RecurrentFundingModel.CASH_ONLY_STOCK_LONG
+    assert funding.required_cash_dollars == pytest.approx(10_002.0)
+    assert funding.supplemental_unreserved_cash_required_dollars == pytest.approx(
+        5_002.0
+    )
+    assert funding.projected_unreserved_cash_after_entry_dollars == pytest.approx(
+        10_002.0
+    )
+    assert reserved.state.cumulative_account_realized_pnl_dollars == pytest.approx(
+        208.0
+    )
+    assert reserved.state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(
+        205.0
+    )
+
+
+def test_recurrent_option_fill_reuses_exact_reserved_debit() -> None:
+    reserved, record, terms = _recurrent_option_reservation_case()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        option_terms=terms,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-option-fill",
+            fill_source_fingerprint=_fp("f"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=5.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+
+    assert fill.instrument_kind == InstrumentKind.OPTION
+    assert fill.quantity == pytest.approx(2.0)
+    assert fill.contract_multiplier == pytest.approx(100.0)
+    assert fill.gross_fill_notional_dollars == pytest.approx(1_000.0)
+    assert fill.cash_debit_dollars == pytest.approx(1_002.0)
+    assert fill.unspent_reserved_capital_dollars == pytest.approx(41.0)
+    assert fill.funding_semantics_resolved is True
+    assert funding.funding_model == RecurrentFundingModel.RESERVED_LONG_OPTION_DEBIT
+    assert funding.required_cash_dollars == pytest.approx(1_002.0)
+    assert funding.supplemental_unreserved_cash_required_dollars == 0.0
+    assert funding.unspent_reserved_capital_dollars == pytest.approx(41.0)
+    assert funding.projected_unreserved_cash_after_entry_dollars == pytest.approx(
+        19_002.0
+    )
+
+
+def test_recurrent_funding_rejects_fill_from_stale_account_snapshot() -> None:
+    reserved, record = _recurrent_stock_reservation_case()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="stale-recurrent-fill",
+            fill_source_fingerprint=_fp("1"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    with pytest.raises(
+        RecurrentEntryEvidenceError,
+        match="does not bind current recurrent account state",
+    ):
+        build_recurrent_funding_terms(
+            account=_recurrent_account(),
+            fill=fill,
+        )
+
+
+def test_recurrent_option_fill_rejects_fee_above_reserved_bucket() -> None:
+    account = _recurrent_account()
+    record, terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2),
+        fee_reserve=3.0,
+    )
+    reserved = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+        option_terms=terms,
+    ).account
+    with pytest.raises(
+        RecurrentEntryEvidenceError,
+        match="entry fees exceed reserved fee bucket",
+    ):
+        build_recurrent_entry_fill_evidence(
+            account=reserved,
+            record=record,
+            option_terms=terms,
+            inputs=SimulatedEntryFillInputs(
+                fill_source_id="bad-recurrent-option-fee",
+                fill_source_fingerprint=_fp("2"),
+                filled_utc=record.decision_created_utc + timedelta(minutes=1),
+                fill_price_per_unit=5.0,
+                explicit_entry_fees_dollars=4.0,
+            ),
+        )
+
+
+def test_recurrent_entry_and_funding_evidence_grant_no_mutation_authority() -> None:
+    reserved, record = _recurrent_stock_reservation_case()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="recurrent-authority-test",
+            fill_source_fingerprint=_fp("3"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+
+    with pytest.raises(RecurrentEntryEvidenceError, match="cannot grant"):
+        replace(fill, account_mutation_authority=True)
+    with pytest.raises(RecurrentEntryEvidenceError, match="cannot grant"):
+        replace(fill, broker_fill_authority=True)
+    with pytest.raises(RecurrentEntryEvidenceError, match="cannot grant"):
+        replace(funding, open_position_authority=True)
+    with pytest.raises(RecurrentEntryEvidenceError, match="cannot grant"):
+        replace(funding, paper_authority=True)
