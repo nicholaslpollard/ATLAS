@@ -112,6 +112,15 @@ from packages.simulation.simulated_exit_fill import (
     SimulatedExitFillInputs,
     build_simulated_exit_fill_evidence,
 )
+from packages.simulation.recurrent_close_position import (
+    RecurrentClosePositionError,
+    apply_recurrent_close_position_batch_v1,
+    apply_recurrent_close_position_v1,
+    verify_recurrent_close_position_replay_v1,
+)
+from packages.simulation.recurrent_close_position_contract import (
+    RECURRENT_CLOSE_POSITION_TRANSITION_CONTRACT_FINGERPRINT,
+)
 from packages.simulation.recurrent_entry_evidence import (
     RecurrentEntryEvidenceError,
     RecurrentFundingModel,
@@ -3415,3 +3424,387 @@ def test_recurrent_exit_fill_authority_escalation_fails_closed() -> None:
         replace(fill, broker_fill_authority=True)
     with pytest.raises(RecurrentExitFillError, match="cannot grant"):
         replace(fill, paper_authority=True)
+
+
+def _recurrent_exit(
+    account,
+    position,
+    *,
+    exited_utc: datetime,
+    price: float,
+    fees: float,
+    source_char: str,
+):
+    return build_recurrent_exit_fill_evidence(
+        source_state=account.state,
+        position_fingerprint=position.position_fingerprint,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id=f"recurrent-close-{source_char}",
+            fill_source_fingerprint=_fp(source_char),
+            exited_utc=exited_utc,
+            exit_price_per_unit=price,
+            explicit_exit_fees_dollars=fees,
+        ),
+    )
+
+
+def test_recurrent_close_position_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_CLOSE_POSITION_TRANSITION_CONTRACT_FINGERPRINT
+        == "9f2f32d8905c19bfb377184abd1fa3f9842eb979829ce5ca03c3a44068e17e39"
+    )
+
+
+def test_recurrent_close_stock_appends_native_canonical_history() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = _recurrent_exit(
+        account,
+        stock,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="b",
+    )
+    transition = apply_recurrent_close_position_v1(
+        account,
+        fill=fill,
+    )
+    state = transition.account.state
+    trade = transition.closed_trade
+
+    assert transition.idempotent_reuse is False
+    assert transition.event is not None
+    assert transition.event.kind == RecurrentLifecycleEventKind.CLOSE_POSITION
+    assert transition.event.entry_fee_delta_dollars == 0.0
+    assert transition.event.exit_fee_delta_dollars == pytest.approx(1.0)
+    assert transition.event.account_realized_pnl_delta_dollars == pytest.approx(
+        199.0
+    )
+    assert transition.event.lifetime_trade_net_pnl_delta_dollars == pytest.approx(
+        197.0
+    )
+
+    assert trade.origin == RecurrentClosedTradeOrigin.RECURRENT_ACCOUNT_V1
+    assert (
+        trade.source_state_contract_fingerprint
+        == RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
+    )
+    assert trade.source_state_fingerprint == account.state.state_fingerprint
+    assert trade.source_record_fingerprint == fill.exit_fill_fingerprint
+    assert trade.position_fingerprint == stock.position_fingerprint
+    assert trade.account_realized_pnl_delta_dollars == pytest.approx(199.0)
+    assert trade.lifetime_trade_net_pnl_dollars == pytest.approx(197.0)
+
+    assert state.cash == pytest.approx(20_201.0)
+    assert state.open_entry_book_value_dollars == pytest.approx(200.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(6.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(3.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(407.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(402.0)
+    assert state.account_book_equity == pytest.approx(20_401.0)
+    assert len(state.closed_trades) == 3
+    assert state.closed_trades[-1].origin == (
+        RecurrentClosedTradeOrigin.RECURRENT_ACCOUNT_V1
+    )
+    assert len(state.open_positions) == 1
+    assert state.open_positions[0].instrument_kind == InstrumentKind.OPTION
+    assert (
+        state.cash
+        + state.stock_reserved_capital
+        + state.option_reserved_capital
+        + state.open_entry_book_value_dollars
+        == pytest.approx(state.account_book_equity)
+    )
+
+
+def test_recurrent_close_can_finish_inherited_option_without_rewriting_history() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    option = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.OPTION
+    )
+    stock_fill = _recurrent_exit(
+        account,
+        stock,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="c",
+    )
+    option_fill = _recurrent_exit(
+        account,
+        option,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=6),
+        price=0.0,
+        fees=0.0,
+        source_char="d",
+    )
+
+    result = apply_recurrent_close_position_batch_v1(
+        account,
+        (option_fill, stock_fill),
+    )
+    state = result.account.state
+
+    assert result.source_state_fingerprint == account.state.state_fingerprint
+    assert result.ordered_exit_fill_fingerprints == (
+        stock_fill.exit_fill_fingerprint,
+        option_fill.exit_fill_fingerprint,
+    )
+    assert state.open_positions == ()
+    assert state.open_entry_book_value_dollars == 0.0
+    assert state.cash == pytest.approx(20_201.0)
+    assert state.account_book_equity == pytest.approx(20_201.0)
+    assert state.cumulative_entry_fees_dollars == pytest.approx(6.0)
+    assert state.cumulative_exit_fees_dollars == pytest.approx(3.0)
+    assert state.cumulative_account_realized_pnl_dollars == pytest.approx(207.0)
+    assert state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(201.0)
+    assert len(state.closed_trades) == 4
+    assert tuple(item.origin for item in state.closed_trades[:2]) == (
+        RecurrentClosedTradeOrigin.ORIGINAL_CLOSEOUT_V1,
+        RecurrentClosedTradeOrigin.LIFECYCLE_CLOSEOUT_V1,
+    )
+    assert all(
+        item.origin == RecurrentClosedTradeOrigin.RECURRENT_ACCOUNT_V1
+        for item in state.closed_trades[2:]
+    )
+
+
+def test_recurrent_close_duplicate_is_idempotent_and_conflict_fails_closed() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = _recurrent_exit(
+        account,
+        stock,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="e",
+    )
+    first = apply_recurrent_close_position_v1(
+        account,
+        fill=fill,
+    )
+    duplicate = apply_recurrent_close_position_v1(
+        first.account,
+        fill=fill,
+    )
+    assert duplicate.idempotent_reuse is True
+    assert duplicate.event is None
+    assert duplicate.account == first.account
+    assert duplicate.closed_trade == first.closed_trade
+
+    conflicting = _recurrent_exit(
+        account,
+        stock,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=6),
+        price=103.0,
+        fees=1.0,
+        source_char="f",
+    )
+    with pytest.raises(
+        RecurrentClosePositionError,
+        match="conflicting recurrent close",
+    ):
+        apply_recurrent_close_position_v1(
+            first.account,
+            fill=conflicting,
+        )
+
+
+def test_recurrent_close_single_rejects_exit_evidence_after_unrelated_mutation() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = _recurrent_exit(
+        account,
+        stock,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="1",
+    )
+    record = _stock_record(
+        created_utc=account.state.as_of_utc + timedelta(minutes=1)
+    )
+    changed = apply_recurrent_decision_reservation_v1(
+        account,
+        record,
+    ).account
+
+    with pytest.raises(
+        RecurrentClosePositionError,
+        match="exit fill must bind the recurrent evidence source state",
+    ):
+        apply_recurrent_close_position_v1(
+            changed,
+            fill=fill,
+        )
+
+
+def test_recurrent_close_batch_is_order_independent_and_replay_exact() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    option = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.OPTION
+    )
+    stock_fill = _recurrent_exit(
+        account,
+        stock,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="2",
+    )
+    option_fill = _recurrent_exit(
+        account,
+        option,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=6),
+        price=1.5,
+        fees=1.0,
+        source_char="3",
+    )
+    fills = (option_fill, stock_fill)
+
+    first = apply_recurrent_close_position_batch_v1(
+        account,
+        fills,
+    )
+    second = apply_recurrent_close_position_batch_v1(
+        account,
+        tuple(reversed(fills)),
+    )
+
+    assert first.account.state == second.account.state
+    assert first.account.ledger == second.account.ledger
+    assert first.account.state.cash == pytest.approx(20_350.0)
+    assert first.account.state.open_positions == ()
+    assert first.account.state.cumulative_exit_fees_dollars == pytest.approx(4.0)
+    assert first.account.state.cumulative_account_realized_pnl_dollars == pytest.approx(
+        356.0
+    )
+    assert first.account.state.cumulative_lifetime_trade_net_pnl_dollars == pytest.approx(
+        350.0
+    )
+    assert first.account.state.account_book_equity == pytest.approx(20_350.0)
+
+    verify_recurrent_close_position_replay_v1(
+        initial_account=account,
+        expected_account=first.account,
+        fills=fills,
+    )
+
+
+def test_recurrent_close_preserves_unrelated_pending_reservation() -> None:
+    account = _recurrent_account()
+    stock_record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1)
+    )
+    option_record, option_terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2)
+    )
+    reserved = apply_recurrent_reservation_batch_v1(
+        account,
+        ((option_record, option_terms), (stock_record, None)),
+    ).account
+    stock_fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=stock_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="pending-preserve-stock-entry",
+            fill_source_fingerprint=_fp("4"),
+            filled_utc=option_record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    stock_funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=stock_fill,
+    )
+    positioned = apply_recurrent_entry_v1(
+        reserved,
+        fill=stock_fill,
+        funding=stock_funding,
+    ).account
+    pending = positioned.state.option_reservations[0]
+    stock = next(
+        item
+        for item in positioned.state.open_positions
+        if item.decision_record_fingerprint == stock_record.record_fingerprint
+    )
+    exit_fill = _recurrent_exit(
+        positioned,
+        stock,
+        exited_utc=positioned.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="5",
+    )
+    closed = apply_recurrent_close_position_v1(
+        positioned,
+        fill=exit_fill,
+    ).account.state
+
+    assert closed.option_reservations == (pending,)
+    assert closed.option_reserved_capital == pytest.approx(pending.reserved_capital)
+    assert closed.option_reserved_max_loss_cash == pytest.approx(
+        pending.max_loss_cash
+    )
+    assert (
+        closed.option_reserved_abs_delta_equivalent_notional
+        == pytest.approx(pending.abs_delta_equivalent_notional)
+    )
+
+
+def test_recurrent_close_keeps_external_and_trading_authority_false() -> None:
+    account = _recurrent_positioned_account()
+    stock = next(
+        item
+        for item in account.state.open_positions
+        if item.instrument_kind == InstrumentKind.STOCK
+    )
+    fill = _recurrent_exit(
+        account,
+        stock,
+        exited_utc=account.state.as_of_utc + timedelta(minutes=1),
+        price=102.0,
+        fees=1.0,
+        source_char="6",
+    )
+    state = apply_recurrent_close_position_v1(
+        account,
+        fill=fill,
+    ).account.state
+
+    assert state.provider_read_authority is False
+    assert state.provider_write_authority is False
+    assert state.broker_read_authority is False
+    assert state.broker_write_authority is False
+    assert state.order_creation_authority is False
+    assert state.paper_authority is False
+    assert state.live_authority is False
