@@ -83,6 +83,21 @@ def main() -> int:
     print("broker_writes: 0")
     print("partial_bundle_persistence: disabled")
 
+    from packages.execution.current_webull_quote_bundle import (
+        current_webull_stock_quote_bundle_path,
+    )
+    current_path = current_webull_stock_quote_bundle_path(settings)
+    try:
+        current_path.unlink(missing_ok=True)
+    except OSError as exc:
+        print("status: BLOCKED")
+        print(
+            "reason: prior current quote bundle could not be invalidated: "
+            f"{type(exc).__name__}"
+        )
+        return 2
+    print("prior_current_bundle_invalidated: True")
+
     if not key or not secret:
         print("status: BLOCKED")
         print("reason: Webull paper/sandbox credentials are unavailable")
