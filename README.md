@@ -1359,6 +1359,33 @@ fail closed until the accepted broker/finalist quote source is connected. Workst
 restart/resume and market-hours validation remain required before any qualifying PAPER
 program. The Strategy Evidence Register remains unchanged.
 
+## 2026-09-18 — Realtime current-stock mark adapter
+
+Track A now freezes `atlas-simulation-current-stock-mark-adapter-v1` under contract
+`2ff8bfc7afff4b072b37e364a46aa565d40d4d91a29a799de0aece13bb2ac4c0`.
+It consumes only the accepted local current-live evidence object plus exact accepted
+open stock positions and produces ordinary accepted `SimulatedMarketMarkEvidence`
+records; it performs no provider or broker call itself.
+
+V1 is intentionally strict. The enclosing live snapshot must be subscribed, real-time,
+zero expected delay, and free of an open transport gap. Every open position must be a
+stock position with an exact-case symbol match and a fresh quote. The quote must
+postdate the position open, satisfy the frozen market-mark timestamp ordering, and
+remain within the accepted 60-second valuation age. Missing quotes, delayed feeds,
+minute-only state, stale marks, or any option position fail closed. Minute OHLC is never
+turned into a synthetic spread.
+
+The returned batch is deterministic by decision fingerprint and binds the exact
+current-live evidence fingerprint, raw source SHA-256, valuation timestamp, and
+individual accepted mark fingerprints. It grants no provider/broker/order/PAPER/LIVE,
+promotion, or confluence authority.
+
+The next bounded product work is equivalent execution-quality evidence for ENTRY and
+CLOSE plus the RESERVE decision-production adapter. Those paths require explicit fee,
+fill and option-quote semantics rather than inferring them from stock minute data.
+Real-machine quote/provider acceptance remains required before this adapter can produce
+non-empty production marks on the current deployment.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**

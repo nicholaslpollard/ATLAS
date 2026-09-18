@@ -2871,6 +2871,35 @@ required before qualifying PAPER.
 The Strategy Evidence Register remains unchanged because this package changes
 product/runtime evidence admission and read-only operations visibility only.
 
+## Track A realtime current-stock mark adapter — 2026-09-18
+
+Track A freezes `atlas-simulation-current-stock-mark-adapter-v1` under contract
+`2ff8bfc7afff4b072b37e364a46aa565d40d4d91a29a799de0aece13bb2ac4c0`.
+
+Frozen semantics:
+
+1. consume only accepted `atlas-simulation-current-live-evidence-v1` plus exact open
+   stock-position records;
+2. perform zero provider/broker calls inside the adapter;
+3. require a subscribed real-time snapshot with zero expected delay and no open
+   transport gap;
+4. require exact-case symbol coverage and a fresh quote for every supplied stock
+   position;
+5. reject any option position in v1 rather than substituting underlying stock prices;
+6. reject minute-only state and never fabricate bid/ask from OHLC;
+7. require quote market time to postdate position open and preserve
+   market <= receive <= valuation chronology;
+8. reuse the accepted market-mark contract and reject any mark outside its frozen
+   60-second freshness policy;
+9. return deterministic complete mark batches bound to source evidence/raw SHA and
+   valuation time; and
+10. grant no provider/broker/order/PAPER/LIVE, promotion, or confluence authority.
+
+Immediate continuation is RESERVE decision production and execution-quality ENTRY/CLOSE
+evidence construction, including explicit fee/fill semantics and the accepted
+broker/finalist quote source. Real-machine market-hours acceptance remains required
+before non-empty production MARK cycles.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
