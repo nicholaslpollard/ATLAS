@@ -1137,11 +1137,49 @@ one source. Recurrent injection performs no provider/broker initialization. The
 browser still uses the existing `atlas:observability-refreshed` event, GET only, with
 zero provider/broker/order/browser mutation authority.
 
-This closes the recurrent engine→operator-view seam. The next Track A work is runtime
-startup/orchestration: instantiate the recurrent coordinator from the accepted current
-simulation account, feed it accepted decision/fill/mark/exit evidence on schedule, and
-then remove the single-cycle bridge from the default runtime path without deleting its
-historical compatibility contracts. The Strategy Evidence Register remains unchanged.
+This closes the recurrent engine→operator-view seam. The durable checkpoint/restore
+layer described below now provides the production restart boundary. The Strategy
+Evidence Register remains unchanged.
+
+## 2026-09-18 — Durable recurrent lifecycle checkpoint and restore
+
+Track A now adds `atlas-simulation-recurrent-lifecycle-checkpoint-v1` under contract
+`53d34c03bf23157bb447cdf4ddb8902cd56ac008403efb8dd8145e596c45c2fa`.
+
+The checkpoint is a durable envelope around one exact
+`RecurrentLifecycleCoordinatorSnapshotV1`. It records the coordinator revision,
+snapshot fingerprint, recurrent account state/ledger fingerprints, optional current
+marked-state fingerprint, persisted timestamp, and the full validated snapshot payload.
+The checkpoint carries its own SHA-256 and every superseded current checkpoint is
+preserved in a content-addressed `history/<checkpoint_sha256>.json` file before the
+current projection changes.
+
+Writes use ATLAS's same-directory atomic temp/replace primitive with `fsync=True`.
+A successor checkpoint may not move revision backward, may not change a snapshot at
+the same revision, may not shrink or rewrite prior recurrent ledger events, and may
+not change bootstrap lineage. An exact duplicate snapshot is idempotent and does not
+grow checkpoint history. Callers may bind an expected previous checkpoint SHA to
+reject stale writers.
+
+Restore reconstructs the full nested dataclass graph from explicit JSON types and then
+re-runs the accepted recurrent coordinator/account/ledger/mark contracts and
+fingerprints. The coordinator's restored revision and current marked state are
+preserved exactly; revision may exceed ledger length because unique mark publications
+are versioned even though they do not mutate the recurrent ledger.
+
+The production Phase 19 startup path now looks only for
+`data/live/simulation/recurrent_lifecycle/current.json`. If no checkpoint exists,
+recurrent lifecycle remains explicitly unconnected. If a checkpoint exists but fails
+contract, self-hash, history-chain, state/ledger, marked-state, or lineage validation,
+startup fails closed rather than reconstructing current trading truth from research or
+legacy artifacts.
+
+This package adds persistence/restore only. It does not make simulation mutations
+durable as one transaction yet and grants no provider/broker/order, PAPER/LIVE,
+promotion, or confluence authority. The next bounded Track A package is a durable
+runtime wrapper that couples each accepted recurrent mutation/mark publication with
+checkpoint commit/rollback semantics before scheduled autonomous simulation work is
+allowed. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
