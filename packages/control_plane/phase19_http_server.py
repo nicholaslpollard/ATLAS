@@ -23,6 +23,9 @@ from .phase19_observability import Phase19ObservabilityService
 from .session import ControlPlaneSessionGuard
 from packages.simulation.engine import SimulationLifecycleCoordinatorV1
 from packages.simulation.recurrent_engine import RecurrentLifecycleCoordinatorV1
+from packages.simulation.recurrent_runtime import (
+    DurableRecurrentLifecycleRuntimeV1,
+)
 
 from .recurrent_lifecycle_dashboard import (
     RecurrentLifecycleDashboardService,
@@ -194,7 +197,11 @@ def create_phase19_status_server(
         | None
     ) = None,
     simulation_lifecycle_coordinator: SimulationLifecycleCoordinatorV1 | None = None,
-    recurrent_lifecycle_coordinator: RecurrentLifecycleCoordinatorV1 | None = None,
+    recurrent_lifecycle_coordinator: (
+        RecurrentLifecycleCoordinatorV1
+        | DurableRecurrentLifecycleRuntimeV1
+        | None
+    ) = None,
     host: str = PHASE16_DEFAULT_BIND_HOST,
     port: int = DEFAULT_CONTROL_PLANE_PORT,
     session_guard: ControlPlaneSessionGuard | None = None,
