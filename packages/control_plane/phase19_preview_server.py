@@ -559,14 +559,14 @@ def _simulation_lifecycle_payload(now: datetime) -> dict[str, Any]:
     valuation = now - timedelta(seconds=2)
     closed_opened = now - timedelta(days=2)
     closed_at = now - timedelta(hours=3)
-    closeout_fp = "c" * 64
+    account_fp = "c" * 64
     ledger_fp = "d" * 64
     marked_fp = "e" * 64
     position_fp = "1" * 64
     decision_fp = "2" * 64
     return {
         "contract_version": (
-            "track-a-simulation-lifecycle-dashboard-v1-engine-owned-readonly"
+            "track-a-recurrent-simulation-lifecycle-dashboard-v1-engine-owned-readonly"
         ),
         "preview_synthetic": True,
         "generated_at_utc": _iso(now),
@@ -578,9 +578,10 @@ def _simulation_lifecycle_payload(now: datetime) -> dict[str, Any]:
         "broker_writes": 0,
         "order_writes": 0,
         "source": {
-            "closeout_state_fingerprint": closeout_fp,
-            "closeout_ledger_fingerprint": ledger_fp,
+            "account_state_fingerprint": account_fp,
+            "account_ledger_fingerprint": ledger_fp,
             "marked_state_fingerprint": marked_fp,
+            "source_kind": "RECURRENT_LIFECYCLE_ACCOUNT",
             "book_as_of_utc": _iso(now - timedelta(minutes=5)),
             "valuation_utc": _iso(valuation),
             "complete_mark_coverage": True,
@@ -599,7 +600,7 @@ def _simulation_lifecycle_payload(now: datetime) -> dict[str, Any]:
             "remaining_option_reserved_capital": 0.0,
             "open_entry_book_value_dollars": 23250.0,
             "marked_open_position_value_dollars": 23325.44,
-            "snapshot_kind": "ENGINE_OWNED_SIMULATION_LIFECYCLE_CURRENT",
+            "snapshot_kind": "ENGINE_OWNED_RECURRENT_SIMULATION_LIFECYCLE_CURRENT",
         },
         "open_positions": [
             {
@@ -628,12 +629,16 @@ def _simulation_lifecycle_payload(now: datetime) -> dict[str, Any]:
                 "unrealized_return": 75.44 / 23250.0,
                 "option_signed_delta_equivalent_entry_reference_dollars": 0.0,
                 "option_abs_delta_equivalent_entry_reference_dollars": 0.0,
-                "position_state": "OPEN_SIMULATION_MARKED",
+                "position_state": "OPEN_RECURRENT_SIMULATION_MARKED",
             }
         ],
         "closed_trades": [
             {
                 "closed_trade_fingerprint": "5" * 64,
+                "origin": "RECURRENT_ACCOUNT_V1",
+                "source_state_contract_fingerprint": "9" * 64,
+                "source_state_fingerprint": account_fp,
+                "source_record_fingerprint": "7" * 64,
                 "position_fingerprint": "6" * 64,
                 "exit_fill_fingerprint": "7" * 64,
                 "decision_record_fingerprint": "8" * 64,
@@ -673,7 +678,7 @@ def _simulation_lifecycle_payload(now: datetime) -> dict[str, Any]:
             "flat_closed_trade_count": 0,
         },
         "authority": {
-            "source": "ENGINE_OWNED_INJECTED_STATE",
+            "source": "RECURRENT_ENGINE_OWNED_INJECTED_STATE",
             "browser_mutation_authority": False,
             "provider_read_authority": False,
             "provider_write_authority": False,
