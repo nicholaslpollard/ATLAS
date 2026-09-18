@@ -4,6 +4,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from packages.control_plane.simulation_lifecycle_dashboard import (
+    source_provider_from_coordinator,
+)
 from packages.execution.trade_expression import InstrumentKind
 from packages.schemas.discovery_score import DiscoveryDirection
 from packages.simulation.account_state_v2_contract import (
@@ -480,3 +483,71 @@ def test_single_cycle_boundary_exposes_no_reentry_mutator() -> None:
     assert not hasattr(coordinator, "apply_entry_fill")
     assert not hasattr(coordinator, "reserve_capital")
     assert coordinator.snapshot().reentry_supported is False
+
+
+def test_dashboard_adapter_exposes_only_atomic_current_mark_pair() -> None:
+    source = _source()
+    stock, option = source.open_positions
+    coordinator = SimulationLifecycleCoordinatorV1(source_state=source)
+    provider = source_provider_from_coordinator(coordinator)
+
+    assert provider() is None
+
+    coordinator.publish_marks(
+        marks=(
+            _mark(
+                stock,
+                valuation=VALUATION_0,
+                bid=11.0,
+                ask=11.1,
+                source_char="9",
+            ),
+            _mark(
+                option,
+                valuation=VALUATION_0,
+                bid=1.5,
+                ask=1.6,
+                source_char="0",
+            ),
+        ),
+        valuation_utc=VALUATION_0,
+    )
+    first = provider()
+    assert first is not None
+    assert (
+        first.marked_state.source_closeout_state_fingerprint
+        == first.closeout_account.state.state_fingerprint
+    )
+
+    coordinator.apply_exit_fill(
+        fill=_exit_fill(
+            source,
+            stock,
+            exited_utc=STOCK_EXIT,
+            price=11.0,
+            fees=1.0,
+            source_char="7",
+        )
+    )
+    assert provider() is None
+
+    coordinator.publish_marks(
+        marks=(
+            _mark(
+                option,
+                valuation=VALUATION_1,
+                bid=1.5,
+                ask=1.6,
+                source_char="0",
+            ),
+        ),
+        valuation_utc=VALUATION_1,
+    )
+    second = provider()
+    assert second is not None
+    assert len(second.closeout_account.state.open_positions) == 1
+    assert len(second.marked_state.marked_positions) == 1
+    assert (
+        second.marked_state.source_closeout_state_fingerprint
+        == second.closeout_account.state.state_fingerprint
+    )
