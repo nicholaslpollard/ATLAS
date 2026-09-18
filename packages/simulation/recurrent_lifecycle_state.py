@@ -56,6 +56,7 @@ class RecurrentLifecycleAccountError(ValueError):
 class RecurrentClosedTradeOrigin(StrEnum):
     ORIGINAL_CLOSEOUT_V1 = "ORIGINAL_CLOSEOUT_V1"
     LIFECYCLE_CLOSEOUT_V1 = "LIFECYCLE_CLOSEOUT_V1"
+    RECURRENT_ACCOUNT_V1 = "RECURRENT_ACCOUNT_V1"
 
 
 class RecurrentLifecycleEventKind(StrEnum):
@@ -201,6 +202,14 @@ class RecurrentClosedTradeV1:
             ):
                 raise RecurrentLifecycleAccountError(
                     "lifecycle closeout provenance contract mismatch"
+                )
+        elif self.origin == RecurrentClosedTradeOrigin.RECURRENT_ACCOUNT_V1:
+            if (
+                self.source_state_contract_fingerprint
+                != RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
+            ):
+                raise RecurrentLifecycleAccountError(
+                    "native recurrent close provenance contract mismatch"
                 )
         else:
             raise RecurrentLifecycleAccountError(
