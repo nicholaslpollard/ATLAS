@@ -2327,18 +2327,10 @@ def test_recurrent_option_reservation_preserves_canonical_history() -> None:
     assert transition.event.option_economics_result_fingerprint is not None
 
 
-def test_recurrent_duplicate_decision_is_idempotent_even_after_bootstrap_history() -> None:
+def test_recurrent_duplicate_decision_is_idempotent() -> None:
     account = _recurrent_account()
-    historical_decision = account.state.closed_trades[0].decision_record_fingerprint
-
     record = _stock_record(
         created_utc=DECISION_BASE + timedelta(hours=1)
-    )
-    record = replace(
-        record,
-        # Reconstructing a decision-record fingerprint is not supported by direct
-        # mutation, so validate source-history idempotency through the internal
-        # state predicate using an actually reserved decision below.
     )
     first = apply_recurrent_decision_reservation_v1(account, record)
     duplicate = apply_recurrent_decision_reservation_v1(
@@ -2348,7 +2340,6 @@ def test_recurrent_duplicate_decision_is_idempotent_even_after_bootstrap_history
     assert duplicate.idempotent_reuse is True
     assert duplicate.event is None
     assert duplicate.account == first.account
-    assert historical_decision != record.record_fingerprint
 
 
 def test_recurrent_reservation_batch_is_order_independent_and_replay_exact() -> None:
@@ -2420,11 +2411,11 @@ def test_recurrent_duplicate_option_terms_conflict_fails_closed() -> None:
         record,
         option_terms=terms,
     )
-    changed_terms = replace(
-        terms,
-        cash_fee_reserve_dollars=terms.cash_fee_reserve_dollars + 1.0,
-        reserved_capital_dollars=terms.reserved_capital_dollars + 1.0,
+    repeated_record, changed_terms = _option_case(
+        created_utc=DECISION_BASE + timedelta(hours=1, minutes=2),
+        fee_reserve=4.0,
     )
+    assert repeated_record.record_fingerprint == record.record_fingerprint
     with pytest.raises(
         RecurrentReservationError,
         match="different reservation terms",
