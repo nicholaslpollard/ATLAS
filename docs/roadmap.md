@@ -2094,14 +2094,53 @@ Frozen semantics:
 This is simulation lifecycle accounting only. It grants no provider/broker read/write,
 order, PAPER, LIVE, promotion, or confluence authority.
 
-Immediate Track A continuation after acceptance is to integrate the authoritative
-decision, open-position, market-mark, marked-account, exit-fill, closed-trade, and
-account-P&L records into the existing browser/operator observability and control-plane
-surface without creating a second trading truth; then close any remaining lifecycle
-or orchestration gaps before later broker/PAPER authority work.
+The post-close valuation layer described below closes the remaining current
+marked-equity gap before browser integration. The Strategy Evidence Register remains
+unchanged because this package changes product/account-simulation architecture only.
+
+## Track A post-close lifecycle marked-account state — 2026-09-17
+
+Track A now freezes `atlas-simulation-lifecycle-marked-account-state-v1` under
+contract
+`4cc4fb35c5a95cb48603f581a48127fe188c844c44e445394ad3d662e07a5346`.
+
+This package resolves the lifecycle valuation gap between deterministic closeout and
+operator observability. Market-mark evidence is already bound to immutable individual
+position fingerprints, but the earlier account-level marked state is bound to the
+pre-close open-position snapshot. After any close, using that old account snapshot as
+"current" would incorrectly include closed positions.
+
+Frozen semantics:
+
+1. consume the exact accepted closeout account state and exactly one fresh,
+   valuation-eligible mark for every currently open position at one common valuation
+   timestamp;
+2. reject missing, duplicate, stale, closed-position, or otherwise extra marks;
+3. mark only surviving positions; never revalue closed trades;
+4. carry cumulative entry fees, exit fees, account-realized P&L, lifetime trade net
+   P&L, cash, reservations, and closeout book equity forward without recomputation;
+5. compute current aggregate unrealized P&L only from surviving positions and define
+   marked equity as `account_book_equity + aggregate_unrealized_pnl`;
+6. independently reconcile marked equity to cash + remaining reserved capital +
+   current marked open-position value;
+7. allow an all-closed account to publish a complete zero-mark valuation equal to its
+   closeout book equity; and
+8. retain option delta-equivalent exposure as an entry reference only, with no current
+   Greek inference.
+
+This remains read-only simulation valuation and grants no account mutation, new
+realized-P&L, exit/closeout, provider/broker read/write, order, PAPER/LIVE, promotion,
+or confluence authority.
+
+Immediate Track A continuation after acceptance is a read-only lifecycle
+observability projection into the existing loopback control-plane/browser surface,
+using the accepted decision/position/mark/exit/closed-trade/account records directly
+and preserving one engine-owned source of truth. Any remaining orchestration/re-entry
+lifecycle gaps must be closed before later broker/PAPER authority.
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/account-simulation architecture only.
+
 
 
 ## Track A funding/collateral terms — 2026-09-16
