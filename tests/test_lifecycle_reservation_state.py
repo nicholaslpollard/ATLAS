@@ -1987,3 +1987,80 @@ def test_lifecycle_closeout_state_grants_no_external_or_trading_authority() -> N
         replace(state, broker_write_authority=True)
     with pytest.raises(LifecycleCloseoutAccountError, match="cannot grant"):
         replace(state, paper_authority=True)
+
+
+def test_lifecycle_closeout_preserves_unrelated_pending_reservation() -> None:
+    source = _post_close_source()
+    base = initialize_lifecycle_reservation_account_v1(source=source)
+    stock_record = _stock_record()
+    option_record, terms = _option_case()
+    after_stock_reserve = apply_lifecycle_decision_reservation_v1(
+        base,
+        stock_record,
+    ).account
+    reserved = apply_lifecycle_decision_reservation_v1(
+        after_stock_reserve,
+        option_record,
+        option_terms=terms,
+    ).account
+
+    stock_fill = build_lifecycle_entry_fill_evidence(
+        account=reserved,
+        record=stock_record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="preserve-reservation-entry",
+            fill_source_fingerprint=_fp("9"),
+            filled_utc=option_record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    stock_funding = build_lifecycle_funding_terms(
+        account=reserved,
+        fill=stock_fill,
+    )
+    position_account = apply_lifecycle_entry_v1(
+        initialize_lifecycle_position_account_v1(source=reserved),
+        fill=stock_fill,
+        funding=stock_funding,
+    ).account
+    assert len(position_account.state.option_reservations) == 1
+    pending = position_account.state.option_reservations[0]
+    pending_fp = pending.decision_record_fingerprint
+
+    stock_position = next(
+        x
+        for x in position_account.state.open_positions
+        if x.decision_record_fingerprint == stock_record.record_fingerprint
+    )
+    exit_fill = _lifecycle_exit(
+        position_account,
+        stock_position,
+        exited_utc=position_account.state.as_of_utc + timedelta(minutes=5),
+        price=102.0,
+        fees=1.0,
+        source_char="a",
+    )
+    closed = apply_lifecycle_closeout_v1(
+        initialize_lifecycle_closeout_account_v1(
+            source=position_account
+        ),
+        fill=exit_fill,
+    ).account.state
+
+    assert len(closed.option_reservations) == 1
+    assert closed.option_reservations[0] == pending
+    assert (
+        closed.option_reservations[0].decision_record_fingerprint
+        == pending_fp
+    )
+    assert closed.option_reserved_capital == pytest.approx(
+        pending.reserved_capital
+    )
+    assert closed.option_reserved_max_loss_cash == pytest.approx(
+        pending.max_loss_cash
+    )
+    assert (
+        closed.option_reserved_abs_delta_equivalent_notional
+        == pytest.approx(pending.abs_delta_equivalent_notional)
+    )
