@@ -163,3 +163,85 @@ def test_preview_exposes_synthetic_lifecycle_without_authority() -> None:
     assert payload["authority"]["live_authority"] is False
     assert len(payload["open_positions"]) == 1
     assert len(payload["closed_trades"]) == 1
+
+
+class _FakeLifecycleCoordinator:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def current_dashboard_pair(self):
+        self.calls += 1
+        return None
+
+
+def test_phase19_can_inject_lifecycle_coordinator_without_external_reads(
+    tmp_path,
+) -> None:
+    settings = _settings_with_derived(tmp_path)
+
+    def forbidden_broker_factory(_broker):
+        raise AssertionError(
+            "coordinator-backed lifecycle GET must not initialize a broker"
+        )
+
+    status_service = Phase16StatusService(
+        settings,
+        env={},
+        broker_factory=forbidden_broker_factory,
+    )
+    coordinator = _FakeLifecycleCoordinator()
+    server = create_phase19_status_server(
+        service=status_service,
+        observability_service=_FakeObservabilityService(),
+        paper_dashboard_service=_FakePaperDashboardService(),
+        simulation_lifecycle_coordinator=coordinator,
+        host="127.0.0.1",
+        port=0,
+        web_root=settings.project_root / "apps" / "web",
+    )
+    thread = threading.Thread(
+        target=server.serve_forever,
+        kwargs={"poll_interval": 0.01},
+        daemon=True,
+    )
+    thread.start()
+    try:
+        host, port = server.server_address[:2]
+        with urlopen(
+            f"http://{host}:{port}/api/v1/ops/simulation-lifecycle",
+            timeout=2,
+        ) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        assert payload["status"] == "NOT_CONNECTED"
+        assert payload["provider_reads"] == 0
+        assert payload["broker_reads"] == 0
+        assert payload["provider_writes"] == 0
+        assert payload["broker_writes"] == 0
+        assert payload["order_writes"] == 0
+        assert coordinator.calls == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_phase19_rejects_ambiguous_lifecycle_service_and_coordinator(
+    tmp_path,
+) -> None:
+    settings = _settings_with_derived(tmp_path)
+    status_service = Phase16StatusService(settings, env={})
+    try:
+        create_phase19_status_server(
+            service=status_service,
+            observability_service=_FakeObservabilityService(),
+            paper_dashboard_service=_FakePaperDashboardService(),
+            simulation_lifecycle_dashboard_service=_FakeLifecycleService(),
+            simulation_lifecycle_coordinator=_FakeLifecycleCoordinator(),
+            host="127.0.0.1",
+            port=0,
+            web_root=settings.project_root / "apps" / "web",
+        )
+    except ValueError as exc:
+        assert "either simulation lifecycle dashboard service or coordinator" in str(exc)
+    else:
+        raise AssertionError("ambiguous lifecycle injection must fail closed")
