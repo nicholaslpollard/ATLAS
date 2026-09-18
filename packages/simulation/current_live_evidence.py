@@ -195,7 +195,16 @@ class CurrentLiveEvidenceV1:
 
     @property
     def evidence_fingerprint(self) -> str:
-        return _fingerprint_payload(self)
+        return _fingerprint_payload(
+            {
+                "contract_version": self.contract_version,
+                "contract_fingerprint": self.contract_fingerprint,
+                "source_id": self.source_id,
+                "source_sha256": self.source_sha256,
+                "source_byte_count": self.source_byte_count,
+                "snapshot": self.snapshot,
+            }
+        )
 
     @property
     def snapshot_age_seconds(self) -> float:
