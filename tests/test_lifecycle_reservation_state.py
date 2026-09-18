@@ -131,6 +131,12 @@ from packages.simulation.recurrent_close_position import (
 from packages.simulation.recurrent_close_position_contract import (
     RECURRENT_CLOSE_POSITION_TRANSITION_CONTRACT_FINGERPRINT,
 )
+from packages.simulation.recurrent_coordinator_contract import (
+    RECURRENT_LIFECYCLE_COORDINATOR_CONTRACT_FINGERPRINT,
+)
+from packages.simulation.recurrent_engine import (
+    RecurrentLifecycleCoordinatorV1,
+)
 from packages.simulation.recurrent_exit_fill import (
     RecurrentExitFillError,
     RecurrentExitFillInputsV1,
@@ -3808,3 +3814,235 @@ def test_recurrent_close_keeps_external_and_trading_authority_false() -> None:
     assert state.order_creation_authority is False
     assert state.paper_authority is False
     assert state.live_authority is False
+
+
+def test_recurrent_coordinator_contract_fingerprint_is_frozen() -> None:
+    assert (
+        RECURRENT_LIFECYCLE_COORDINATOR_CONTRACT_FINGERPRINT
+        == "0cadfd2c89c09c26731b8895ca70893dde3855c3eded4773c4455bce94b8e882"
+    )
+
+
+def test_recurrent_coordinator_owns_repeated_cycle_and_invalidates_stale_marks() -> None:
+    coordinator = RecurrentLifecycleCoordinatorV1(
+        account=_recurrent_account()
+    )
+    assert coordinator.revision == 0
+    assert coordinator.current_dashboard_pair() is None
+
+    record = _stock_record(
+        created_utc=DECISION_BASE + timedelta(hours=1)
+    )
+    reservation, mutation = coordinator.apply_reservation(
+        record=record,
+    )
+    assert reservation.event is not None
+    assert mutation.new_ledger_event_count == 1
+    assert mutation.revision == 1
+    assert mutation.valuation_invalidated is False
+
+    reserved = coordinator.current_account()
+    fill = build_recurrent_entry_fill_evidence(
+        account=reserved,
+        record=record,
+        inputs=SimulatedEntryFillInputs(
+            fill_source_id="coordinator-stock-entry",
+            fill_source_fingerprint=_fp("7"),
+            filled_utc=record.decision_created_utc + timedelta(minutes=1),
+            fill_price_per_unit=100.0,
+            explicit_entry_fees_dollars=2.0,
+        ),
+    )
+    funding = build_recurrent_funding_terms(
+        account=reserved,
+        fill=fill,
+    )
+    entry, mutation = coordinator.apply_entry(
+        fill=fill,
+        funding=funding,
+    )
+    assert entry.position is not None
+    assert mutation.new_ledger_event_count == 1
+    assert mutation.revision == 2
+    assert coordinator.current_dashboard_pair() is None
+
+    current = coordinator.current_account()
+    valuation = current.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=(
+                101.0
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.5
+            ),
+            ask=(
+                101.1
+                if position.instrument_kind == InstrumentKind.STOCK
+                else 1.6
+            ),
+            source_char=(
+                "8"
+                if position.instrument_kind == InstrumentKind.STOCK
+                else "9"
+            ),
+        )
+        for position in current.state.open_positions
+    )
+    publication = coordinator.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    assert publication.revision == 3
+    assert publication.idempotent_reuse is False
+    assert coordinator.current_dashboard_pair() is not None
+
+    duplicate_entry, duplicate_mutation = coordinator.apply_entry(
+        fill=fill,
+        funding=funding,
+    )
+    assert duplicate_entry.idempotent_reuse is True
+    assert duplicate_mutation.idempotent_reuse is True
+    assert duplicate_mutation.new_ledger_event_count == 0
+    assert duplicate_mutation.revision == 3
+    assert duplicate_mutation.valuation_invalidated is False
+    assert coordinator.current_dashboard_pair() is not None
+
+    current = coordinator.current_account()
+    stock = next(
+        item
+        for item in current.state.open_positions
+        if item.decision_record_fingerprint == record.record_fingerprint
+    )
+    exit_fill = build_recurrent_exit_fill_evidence(
+        source_state=current.state,
+        position_fingerprint=stock.position_fingerprint,
+        inputs=RecurrentExitFillInputsV1(
+            fill_source_id="coordinator-stock-exit",
+            fill_source_fingerprint=_fp("a"),
+            exited_utc=valuation + timedelta(minutes=1),
+            exit_price_per_unit=102.0,
+            explicit_exit_fees_dollars=1.0,
+        ),
+    )
+    close, mutation = coordinator.apply_close(
+        fill=exit_fill,
+    )
+    assert close.idempotent_reuse is False
+    assert mutation.new_ledger_event_count == 1
+    assert mutation.revision == 4
+    assert mutation.valuation_invalidated is True
+    assert coordinator.current_dashboard_pair() is None
+    assert len(coordinator.current_account().state.closed_trades) == 3
+
+    survivor_account = coordinator.current_account()
+    survivor_valuation = (
+        survivor_account.state.as_of_utc + timedelta(minutes=1)
+    )
+    survivor_marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=survivor_valuation,
+            bid=1.5,
+            ask=1.6,
+            source_char="b",
+        )
+        for position in survivor_account.state.open_positions
+    )
+    publication = coordinator.publish_marks(
+        marks=survivor_marks,
+        valuation_utc=survivor_valuation,
+    )
+    assert publication.revision == 5
+    assert coordinator.current_dashboard_pair() is not None
+
+    next_record = _stock_record(
+        created_utc=survivor_valuation + timedelta(minutes=1)
+    )
+    _reservation, mutation = coordinator.apply_reservation(
+        record=next_record,
+    )
+    assert mutation.new_ledger_event_count == 1
+    assert mutation.revision == 6
+    assert mutation.valuation_invalidated is True
+    assert coordinator.current_dashboard_pair() is None
+    assert (
+        coordinator.current_account().state.contract_fingerprint
+        == RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
+    )
+
+
+def test_recurrent_coordinator_zero_money_event_invalidates_marked_snapshot() -> None:
+    coordinator = RecurrentLifecycleCoordinatorV1(
+        account=_recurrent_account()
+    )
+    current = coordinator.current_account()
+    valuation = current.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=1.5,
+            ask=1.6,
+            source_char="c",
+        )
+        for position in current.state.open_positions
+    )
+    coordinator.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    assert coordinator.current_dashboard_pair() is not None
+    revision_before = coordinator.revision
+
+    too_large = _stock_record(
+        created_utc=valuation + timedelta(minutes=1),
+        capital=25_000.0,
+    )
+    transition, mutation = coordinator.apply_reservation(
+        record=too_large,
+    )
+
+    assert transition.event is not None
+    assert transition.event.kind == (
+        RecurrentLifecycleEventKind.REJECT_INSUFFICIENT_CAPITAL
+    )
+    assert mutation.new_ledger_event_count == 1
+    assert mutation.revision == revision_before + 1
+    assert mutation.valuation_invalidated is True
+    assert coordinator.current_dashboard_pair() is None
+
+
+def test_recurrent_coordinator_identical_mark_republication_is_idempotent() -> None:
+    coordinator = RecurrentLifecycleCoordinatorV1(
+        account=_recurrent_account()
+    )
+    current = coordinator.current_account()
+    valuation = current.state.as_of_utc + timedelta(minutes=1)
+    marks = tuple(
+        _market_mark(
+            position,
+            valuation_utc=valuation,
+            bid=1.5,
+            ask=1.6,
+            source_char="d",
+        )
+        for position in current.state.open_positions
+    )
+    first = coordinator.publish_marks(
+        marks=marks,
+        valuation_utc=valuation,
+    )
+    second = coordinator.publish_marks(
+        marks=tuple(reversed(marks)),
+        valuation_utc=valuation,
+    )
+
+    assert first.idempotent_reuse is False
+    assert second.idempotent_reuse is True
+    assert second.revision == first.revision
+    assert (
+        second.marked_state.state_fingerprint
+        == first.marked_state.state_fingerprint
+    )
