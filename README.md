@@ -463,6 +463,39 @@ decision-bound STOP/TARGET/TIME policies determine exits directly. Any later cha
 to sizing, family caps, entry/exit policy, or short funding must be new explicit
 versions rather than silent reinterpretations of this run.
 
+## 2026-09-19 — Recurrent daily exit-policy sweep preregistration
+
+ATLAS now stages a bounded post-result DEVELOPMENT exit-policy research package under
+`atlas-recurrent-successor-daily-exit-policy-sweep-v1`.
+
+The package keeps the accepted successor selector and recurrent portfolio mechanics
+fixed, then compares exactly 16 daily LONG exit policies: STOP and TARGET each drawn
+from the already frozen 1%, 2%, 3%, and 5% move thresholds. Position sizing remains
+10% of current book equity with compounding, at most 10 active/reserved positions,
+at most 3 per economic family, and one active/reserved position per ticker.
+
+Execution uses only the hash-bound Alpaca SIP V2 DEVELOPMENT daily lake for selected
+instruments. Entry is the next regular-session open. STOP/TARGET are evaluated from
+actual daily OHLC. Same-session STOP+TARGET ambiguity resolves conservatively to STOP.
+An adverse gap through the stop fills at the worse session open. A favorable gap
+through the target receives no positive slippage beyond the target. If neither trigger
+occurs, TIME closes at the fifth entry-session regular close. Entry/exit costs retain
+the accepted 10-bps daily round-trip convention.
+
+The current fold's outcome is forbidden from its forecast. Return-distribution
+evidence remains training-cell-only; 1/2/3/5% path probabilities and timing are bound
+from strictly earlier selected folds with at least 30 prior cases. The recurrent
+decision record, decision-bound exit plan, five-session horizon clock, actual fill,
+daily historical replay marks, closeout and account ledger remain the canonical
+simulation lineage.
+
+This is DEVELOPMENT tuning research only. The sweep does not automatically promote
+the highest-return policy. Any candidate emerging from the 2025 diagnostic must be
+tested across other DEVELOPMENT regimes and later untouched/prospective evidence.
+SHORT simulation remains excluded until a separate accepted short funding/collateral
+model exists. Consumed-master/future/provider/broker/order/PAPER/LIVE/promotion/
+confluence authority remains zero/false.
+
 ## 2026-09-16 — Explicit simulation funding/collateral terms
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
