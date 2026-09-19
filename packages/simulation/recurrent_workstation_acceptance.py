@@ -343,6 +343,31 @@ class RecurrentWorkstationAcceptanceReceiptV1:
             raise RecurrentWorkstationAcceptanceError(
                 "acceptance receipt identity cannot be blank"
             )
+        if (
+            not math.isfinite(self.initial_equity)
+            or self.initial_equity <= 0.0
+        ):
+            raise RecurrentWorkstationAcceptanceError(
+                "acceptance receipt initial equity must be finite and positive"
+            )
+        for label, value in (
+            ("entry fee", self.entry_fee_dollars),
+            ("exit fee", self.exit_fee_dollars),
+        ):
+            if not math.isfinite(value) or value < 0.0:
+                raise RecurrentWorkstationAcceptanceError(
+                    f"acceptance receipt {label} must be finite and nonnegative"
+                )
+        try:
+            accepted = datetime.fromisoformat(self.accepted_at_utc)
+        except ValueError as exc:
+            raise RecurrentWorkstationAcceptanceError(
+                "acceptance receipt accepted time is invalid"
+            ) from exc
+        _require_aware(
+            accepted,
+            label="acceptance receipt accepted time",
+        )
         for label, value in (
             ("receipt", self.receipt_fingerprint),
             ("entry quote bundle", self.entry_quote_bundle_fingerprint),
