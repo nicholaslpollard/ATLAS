@@ -3220,13 +3220,40 @@ Frozen semantics:
     account mutation, provider/broker access, order, PAPER/LIVE, promotion or
     confluence authority.
 
-Immediate continuation is a separately versioned time-expiry disposition evaluator.
-It will accept this immutable clock plus an explicit evaluation UTC and emit only
-`NOT_EXPIRED` versus `TIME_EXPIRED` evidence. Fill creation and recurrent CLOSE
-integration remain separate acceptance boundaries.
+The separately versioned time-expiry disposition below now performs that explicit
+comparison without fill authority. Immediate continuation is Webull CLOSE integration,
+which must bind expiry to execution-quality quote timing and freeze price/time trigger
+precedence before any time-based fill can exist.
 
 The Strategy Evidence Register remains unchanged because this package freezes product
 time semantics rather than strategy evidence.
+
+## Track A descriptive recurrent time-expiry disposition — 2026-09-19
+
+Track A freezes **atlas-simulation-recurrent-time-expiry-disposition-v1** under contract
+**1616a9e5b9c950688081a45e4972e92d59c074a37fc129dc8449cf8fbc20617b**.
+
+Frozen semantics:
+
+1. consume the complete accepted recurrent forecast-horizon clock;
+2. require an explicit timezone-aware evaluation timestamp and normalize it to UTC;
+3. retain the complete source clock and exact clock fingerprint;
+4. emit `NOT_EXPIRED` only when evaluation UTC is before deadline;
+5. emit `TIME_EXPIRED` when evaluation UTC is equal to or later than deadline;
+6. retain the signed seconds from deadline plus source plan/position identity;
+7. make identical clock/evaluation inputs deterministically fingerprint-equivalent,
+   including timezone-equivalent evaluation timestamps after normalization;
+8. consume no price evidence and create no fill; and
+9. grant no account mutation, provider/broker access, order, PAPER/LIVE, promotion or
+   confluence authority.
+
+Immediate continuation is decision-bound Webull CLOSE integration. That package must
+evaluate time expiry at the execution-quality quote's market timestamp, define
+deterministic price-trigger versus time-expiry precedence, require explicit close-fee
+coverage for time exits, and preserve executable-bid exit pricing for bullish stocks.
+
+The Strategy Evidence Register remains unchanged because this package advances product
+lifecycle evidence rather than strategy evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
