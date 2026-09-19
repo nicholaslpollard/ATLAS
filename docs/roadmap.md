@@ -3058,6 +3058,50 @@ Time-based exit remains separately gated.
 The Strategy Evidence Register remains unchanged because this package repairs and
 advances product simulation architecture without changing strategy evidence.
 
+## Track A current Webull decision-bound stock CLOSE evidence — 2026-09-19
+
+Track A freezes **atlas-simulation-current-webull-decision-stock-close-evidence-bundle-v1** under
+contract **3834abe2212b794a04ce70b5595d992de38cea77ac82185e6daaf6134bd6db96**.
+
+Frozen semantics:
+
+1. consume only the exact current recurrent account, accepted decision-bound
+   open-position exit-plan book and current Webull sandbox stock L1 evidence;
+2. require exact open-position ↔ plan coverage and fail closed on option or bearish
+   stock positions in v1;
+3. require exact-case current ticker quote coverage for every open position, with
+   zero-delay realtime, regular-session, post-state chronology and the accepted
+   30-second execution age cap;
+4. require quote-bundle capture time no later than CLOSE evidence construction;
+5. classify bullish stock exits from executable bid only: STOP at/below stop, TARGET
+   at/above target, otherwise explicit NO_TRIGGER;
+6. preserve NO_TRIGGER as durable evidence with no exit fill and no fee source;
+7. require exact explicit nonnegative fee coverage and one fingerprinted fee source
+   only for STOP/TARGET positions;
+8. create accepted recurrent full-close fill evidence at the exact bid and bind fill
+   source lineage to the plan-book, quote-bundle, exact plan/quote/disposition and fee;
+9. dry-run all triggered fills through the accepted pure recurrent close-batch
+   transition before evidence acceptance;
+10. retain the complete plan book and quote bundle inside the CLOSE artifact so typed
+    readback re-proves nested source lineage instead of trusting fingerprints alone;
+11. treat zero-open-position CLOSE as provider-inert: no quote bundle, fee source or
+    exit-fee evidence is permitted;
+12. persist the deterministic self-fingerprinted bundle atomically with fsync at
+    data/live/simulation/recurrent_decision_stock_close/current.json;
+13. reuse a canonical typed exit-plan-book decoder for standalone and nested readback;
+    and
+14. grant no provider/broker write, broker-fill, order, PAPER/LIVE, promotion or
+    confluence authority. Time-exit evaluation remains disabled in v1.
+
+Immediate continuation is to integrate exit-plan-book refresh into the recurrent
+production sequence immediately after ENTRY, then freeze a separate horizon/clock
+policy before time can trigger CLOSE. After those deterministic seams are accepted,
+run the target-workstation market-hours Webull sandbox and restart/resume acceptance
+proof.
+
+The Strategy Evidence Register remains unchanged because this package advances product
+simulation execution/lifecycle plumbing without changing strategy research evidence.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`

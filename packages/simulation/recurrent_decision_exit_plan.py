@@ -901,6 +901,53 @@ def recurrent_decision_stock_exit_plan_from_payload(
     return RecurrentDecisionStockExitPlanV1(**values)
 
 
+def recurrent_decision_stock_exit_plan_book_from_payload(
+    payload: dict[str, object],
+) -> RecurrentDecisionStockExitPlanBookV1:
+    plans = tuple(
+        recurrent_decision_stock_exit_plan_from_payload(
+            dict(item)
+        )
+        for item in payload["plans"]
+    )
+    return RecurrentDecisionStockExitPlanBookV1(
+        contract_version=str(payload["contract_version"]),
+        contract_fingerprint=str(
+            payload["contract_fingerprint"]
+        ),
+        source_id=str(payload["source_id"]),
+        book_fingerprint=str(payload["book_fingerprint"]),
+        source_recurrent_state_fingerprint=str(
+            payload["source_recurrent_state_fingerprint"]
+        ),
+        built_at_utc=datetime.fromisoformat(
+            str(payload["built_at_utc"])
+        ),
+        plans=plans,
+        provider_reads=int(payload["provider_reads"]),
+        provider_writes=int(payload["provider_writes"]),
+        broker_reads=int(payload["broker_reads"]),
+        broker_writes=int(payload["broker_writes"]),
+        price_trigger_authority=bool(
+            payload["price_trigger_authority"]
+        ),
+        close_fill_authority=bool(
+            payload["close_fill_authority"]
+        ),
+        order_creation_authority=bool(
+            payload["order_creation_authority"]
+        ),
+        paper_authority=bool(payload["paper_authority"]),
+        live_authority=bool(payload["live_authority"]),
+        promotion_authority=bool(
+            payload["promotion_authority"]
+        ),
+        confluence_authority=bool(
+            payload["confluence_authority"]
+        ),
+    )
+
+
 def write_recurrent_decision_stock_exit_plan_book_v1(
     settings: AtlasSettings,
     book: RecurrentDecisionStockExitPlanBookV1,
@@ -965,47 +1012,8 @@ def read_recurrent_decision_stock_exit_plan_book_v1(
             "exit-plan book artifact root must be an object"
         )
     try:
-        plans = tuple(
-            recurrent_decision_stock_exit_plan_from_payload(
-                dict(item)
-            )
-            for item in payload["plans"]
-        )
-        return RecurrentDecisionStockExitPlanBookV1(
-            contract_version=str(payload["contract_version"]),
-            contract_fingerprint=str(
-                payload["contract_fingerprint"]
-            ),
-            source_id=str(payload["source_id"]),
-            book_fingerprint=str(payload["book_fingerprint"]),
-            source_recurrent_state_fingerprint=str(
-                payload["source_recurrent_state_fingerprint"]
-            ),
-            built_at_utc=datetime.fromisoformat(
-                str(payload["built_at_utc"])
-            ),
-            plans=plans,
-            provider_reads=int(payload["provider_reads"]),
-            provider_writes=int(payload["provider_writes"]),
-            broker_reads=int(payload["broker_reads"]),
-            broker_writes=int(payload["broker_writes"]),
-            price_trigger_authority=bool(
-                payload["price_trigger_authority"]
-            ),
-            close_fill_authority=bool(
-                payload["close_fill_authority"]
-            ),
-            order_creation_authority=bool(
-                payload["order_creation_authority"]
-            ),
-            paper_authority=bool(payload["paper_authority"]),
-            live_authority=bool(payload["live_authority"]),
-            promotion_authority=bool(
-                payload["promotion_authority"]
-            ),
-            confluence_authority=bool(
-                payload["confluence_authority"]
-            ),
+        return recurrent_decision_stock_exit_plan_book_from_payload(
+            payload
         )
     except (
         KeyError,
@@ -1035,6 +1043,7 @@ __all__ = [
     "build_recurrent_decision_stock_exit_plan_v1",
     "read_recurrent_decision_stock_exit_plan_book_v1",
     "recurrent_decision_stock_exit_plan_from_payload",
+    "recurrent_decision_stock_exit_plan_book_from_payload",
     "recurrent_decision_stock_exit_plan_path",
     "write_recurrent_decision_stock_exit_plan_book_v1",
 ]
