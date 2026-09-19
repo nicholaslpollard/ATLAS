@@ -1487,12 +1487,11 @@ persisted atomically with fsync at
 admission helper. The artifact grants no provider/broker/fill/order/PAPER/LIVE,
 promotion or confluence authority.
 
-Immediate continuation is an explicit recurrent exit-plan/trigger contract. Phase 13
-already carries reference-only risk/reward geometry; a new bridge must deliberately
-translate those accepted fractions onto the actual simulated entry fill before any
-stop/target can become a CLOSE trigger. Reference Phase 13 prices will not be treated as
-executable levels merely because they exist. The Strategy Evidence Register remains
-unchanged.
+That original continuation direction is superseded by the 2026-09-19 lineage audit
+below. Recurrent exit planning now consumes the accepted product-side
+UnderlyingMoveTimeForecast / SimulationDecisionRecord lineage directly; Phase 13
+reference geometry is not a recurrent exit dependency. The Strategy Evidence Register
+remains unchanged.
 
 ## 2026-09-19 — Decision-bound recurrent stock exit-plan book
 
@@ -1595,6 +1594,52 @@ Immediate continuation is production orchestration of the accepted plan-book ref
 after ENTRY so the next cycle's CLOSE always begins with exact durable plan coverage,
 followed by the separately versioned time-exit clock policy and the target-workstation
 market-hours/restart-resume acceptance proof. The Strategy Evidence Register remains
+unchanged.
+
+## 2026-09-19 — Restart-safe post-ENTRY exit-plan refresh
+
+Track A now freezes **atlas-simulation-recurrent-exit-plan-refresh-v1** under contract
+**7cf394ab6ba2fd3dc7e506a7718acb9f90ff647a55ed7b68c0a6a5f4eade2abc**.
+
+This is a sidecar orchestration boundary, not a fifth recurrent mutation stage. The
+accepted generic cycle order remains CLOSE → RESERVE → ENTRY → MARK. Refresh is only
+eligible while the cycle is OPEN with exactly CLOSE, RESERVE and ENTRY recorded and
+before MARK.
+
+The refresh proves that the durable runtime still matches the post-ENTRY cycle receipt
+checkpoint, snapshot and revision. Its receipt binds the immutable ENTRY stage-record
+fingerprint plus the independently persisted ENTRY stage-admission SHA, so that lineage
+remains verifiable after MARK/COMPLETE rewrites the cycle receipt file. When a current
+RESERVE bundle is supplied, it must also match the actual admitted RESERVE evidence
+source for that cycle. Exit policies are fingerprinted and bound to decision-record
+fingerprints in deterministic order.
+
+The current open-position plan book is then refreshed using the accepted decision-bound
+builder. Existing valid plans are carried forward, new open positions require their
+current-cycle full RESERVE decision evidence plus exact explicit policy coverage, and
+closed positions are pruned. The effective refresh time is the deterministic ENTRY
+stage recorded timestamp rather than a retry-dependent wall clock.
+
+Both outputs are durable: the canonical plan book is atomic/fsync-written first, then a
+self-fingerprinted per-cycle refresh receipt is atomic/fsync-written beside the
+recurrent checkpoint. Exact retries reuse the receipt and book. Conflicting retries
+fail closed. If a crash occurs after the plan book is committed but before the refresh
+receipt, recovery accepts the book only when it already binds the current recurrent
+state and the supplied policies exactly match its plans, then writes the missing
+receipt.
+
+This package deliberately does not change the frozen generic runner contract or stage
+order. A later production wrapper will enforce ENTRY → refresh → MARK while the
+existing zero-evidence smoke runner remains backward-compatible.
+
+Time-based exits remain gated. The accepted move/time forecast schema identifies
+horizons as MINUTES or SESSIONS but does not yet define whether MINUTES means wall-clock
+or regular-session trading time, nor the exact exchange-session counting rule for
+SESSIONS. No clock-trigger behavior will be inferred until that separately versioned
+policy is explicit.
+
+The refresh performs zero provider/broker reads or writes and grants no order,
+PAPER/LIVE, promotion or confluence authority. The Strategy Evidence Register remains
 unchanged.
 
 ## A33/B33 reference foundation

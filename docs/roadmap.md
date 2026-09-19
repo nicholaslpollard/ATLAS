@@ -2999,10 +2999,10 @@ Frozen semantics:
 10. persist deterministic fill/funding pairs atomically with fsync and grant no
     provider/broker/fill/order/PAPER/LIVE, promotion or confluence authority.
 
-Immediate continuation is a versioned recurrent exit-plan bridge. Phase 13
-`TradeGeometry` remains reference-only; accepted risk/reward fractions must be
-explicitly translated to actual simulated fill geometry before fresh L1 quotes can
-produce CLOSE trigger evidence.
+That original continuation direction is superseded by the 2026-09-19 lineage audit
+below. Recurrent exit planning now consumes the accepted product-side
+`UnderlyingMoveTimeForecast -> SimulationDecisionRecord` lineage directly; Phase 13
+`TradeGeometry` is not a recurrent exit dependency.
 
 The Strategy Evidence Register remains unchanged because this package advances product
 simulation execution evidence rather than research findings.
@@ -3101,6 +3101,55 @@ proof.
 
 The Strategy Evidence Register remains unchanged because this package advances product
 simulation execution/lifecycle plumbing without changing strategy research evidence.
+
+## Track A restart-safe post-ENTRY exit-plan refresh — 2026-09-19
+
+Track A freezes **atlas-simulation-recurrent-exit-plan-refresh-v1** under contract
+**7cf394ab6ba2fd3dc7e506a7718acb9f90ff647a55ed7b68c0a6a5f4eade2abc**.
+
+Frozen semantics:
+
+1. remain a sidecar orchestration receipt rather than changing the accepted recurrent
+   CLOSE → RESERVE → ENTRY → MARK mutation-stage order;
+2. run only while the cycle is OPEN with exactly CLOSE, RESERVE and ENTRY recorded;
+   MARK already present or ENTRY missing fails closed;
+3. require the durable runtime checkpoint SHA, snapshot fingerprint and revision to
+   equal the post-ENTRY cycle receipt;
+4. persist the immutable ENTRY stage-record fingerprint and independently persisted
+   ENTRY stage-admission SHA so refresh lineage remains provable after MARK/COMPLETE
+   rewrites the cycle receipt file;
+5. when a current RESERVE bundle is supplied, require its cycle identity and bundle
+   fingerprint to equal the actual admitted RESERVE evidence source;
+6. bind explicit exit-policy inputs to decision-record fingerprints in deterministic
+   order and preserve exact policy fingerprints in the refresh receipt;
+7. refresh the accepted durable open-position plan book: carry valid existing plans,
+   require current RESERVE decision evidence plus explicit policy for new positions,
+   and prune positions no longer open;
+8. use the ENTRY stage recorded timestamp as deterministic plan-book/refresh effective
+   time so retries do not create time-dependent fingerprints;
+9. atomic/fsync-write the plan book first and then a self-fingerprinted per-cycle
+   refresh receipt adjacent to the recurrent checkpoint;
+10. reuse exact recorded refreshes idempotently and reject conflicting reuse;
+11. recover the interrupted book-written/receipt-missing window only when the current
+    book already binds the exact current recurrent state, deterministic ENTRY timestamp,
+    and supplied policies match;
+12. leave the generic v1 cycle runner and zero-evidence smoke semantics unchanged; a
+    later production wrapper will enforce ENTRY → refresh → MARK;
+13. perform zero provider/broker reads or writes and grant no order, PAPER/LIVE,
+    promotion or confluence authority.
+
+Time-based exits remain separately gated. The accepted move/time schema names MINUTES
+and SESSIONS horizons but does not yet freeze whether MINUTES means wall-clock versus
+regular-session elapsed time or the exact exchange-session counting rule for SESSIONS.
+A clock trigger must not be inferred until those semantics are separately contracted.
+
+Immediate continuation after acceptance is a plan-aware production-cycle wrapper that
+requires this refresh receipt before MARK, without modifying the generic runner, then
+the explicit horizon/clock contract and target-workstation market-hours/restart-resume
+acceptance.
+
+The Strategy Evidence Register remains unchanged because this package advances durable
+product orchestration rather than strategy evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
