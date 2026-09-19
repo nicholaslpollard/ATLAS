@@ -424,6 +424,45 @@ Operator entry point:
 
 This historical replay does not require the market to be open. PR #161's current-Webull workstation acceptance remains a separate regular-market-hours operational-runtime gate.
 
+## 2026-09-19 — First recurrent successor workstation portfolio replay
+
+The first workstation historical portfolio replay completed successfully for signal scope
+`2025-01-01..2025-12-31` under recurrent successor outcome-replay contract
+`99c3b32b1905db3204646bac302a5b6836e843cbfe73d7647da9a84b8b879452`.
+Run fingerprint: `2096fe4bc3babdd80c667a0548ab24a861a586bd08f880237744f11b23378166`.
+
+Observed portfolio/account result:
+
+- 4,685 selected comparable opportunities;
+- 3,650 LONG supported by current recurrent cash-stock funding;
+- 1,035 SHORT retained as reported-only because short borrow/collateral remains unsupported;
+- 439 positions admitted and completed = about 12.0% of supported LONG selections;
+- starting book equity $100,000.00;
+- ending book equity $101,647.15;
+- total return +1.6472%;
+- maximum realized/book-equity drawdown -20.9896%;
+- peak active/reserved slots = 10;
+- rejections: 2,429 max-per-family, 458 max-open-position, 262 insufficient-capital, 62 ticker-already-active/reserved.
+
+The rejection counts reconcile exactly to the 3,211 supported LONG opportunities that
+were not admitted. The dominant constraint was the frozen three-position-per-family
+cap, which rejected roughly two-thirds of all supported LONG selections and roughly
+three-quarters of all rejected LONG opportunities. The account therefore demonstrated
+real portfolio competition rather than simply summing independent trade outcomes.
+
+This result is **diagnostic, not validation**. It is positive at the endpoint but carries
+a large realized/book-equity drawdown relative to the return, omits selected SHORT
+trades, and replays already accepted outcomes rather than allowing bar-driven
+STOP/TARGET/TIME mechanics to determine exits. No strategy, selector, family, or
+portfolio rule is promoted or retuned from this result.
+
+Immediate simulation continuation is the separately versioned bar-level historical
+campaign. It must preserve training/test chronology, reread only accepted DEVELOPMENT
+bars, keep the recurrent account as the single portfolio truth, and let frozen
+decision-bound STOP/TARGET/TIME policies determine exits directly. Any later changes
+to sizing, family caps, entry/exit policy, or short funding must be new explicit
+versions rather than silent reinterpretations of this run.
+
 ## 2026-09-16 — Explicit simulation funding/collateral terms
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
