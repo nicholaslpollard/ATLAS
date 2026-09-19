@@ -16,11 +16,13 @@ from packages.core.settings import AtlasSettings
 from packages.data.paths import MarketDataPaths
 from packages.simulation.forecast_horizon_clock import (
     FORECAST_HORIZON_CLOCK_CONTRACT_FINGERPRINT,
+    ForecastHorizonClockError,
     ForecastHorizonClockV1,
     forecast_horizon_clock_from_payload,
 )
 from packages.simulation.recurrent_forecast_horizon_clock_book import (
     RECURRENT_FORECAST_HORIZON_CLOCK_BOOK_CONTRACT_FINGERPRINT,
+    RecurrentForecastHorizonClockBookError,
     RecurrentForecastHorizonClockBookV1,
     recurrent_forecast_horizon_clock_book_from_payload,
 )
@@ -626,6 +628,8 @@ def read_recurrent_time_expiry_disposition_bundle_v1(
         KeyError,
         TypeError,
         ValueError,
+        ForecastHorizonClockError,
+        RecurrentForecastHorizonClockBookError,
         RecurrentTimeExpiryDispositionError,
     ) as exc:
         if isinstance(exc, RecurrentTimeExpiryDispositionError):
