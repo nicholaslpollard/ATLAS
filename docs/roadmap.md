@@ -3427,6 +3427,32 @@ A successful receipt closes the current simulation-runtime acceptance gate. Any 
 PAPER enablement remains a separate explicit authority decision. The Strategy Evidence
 Register remains unchanged.
 
+## Track A / Track B bridge: recurrent successor historical outcome replay — 2026-09-19
+
+ATLAS now stages **atlas-recurrent-successor-outcome-replay-v1-walk-forward-selector-long-only** as the first historical campaign bridge from accepted successor research artifacts into the current recurrent account lifecycle.
+
+This package deliberately reuses evidence rather than recomputing strategy rules. It consumes only the accepted successor conditioning output and its hash-bound normalized DEVELOPMENT artifacts. Admission remains the already-frozen 504-session training / 1-session embargo / 63-session test walk-forward selector. For each selected test opportunity, the product-side move/return forecast is reconstructed only from that fold's prior training cell; the held-out opportunity's realized return is not used in its forecast, selection, sizing, or reservation.
+
+Frozen v1 campaign mechanics:
+
+1. DEVELOPMENT signal scope remains within `2016-01-04..2026-04-30`; consumed master and future-blind rows remain forbidden.
+2. `research_eligible AND comparable` conditioning rows are the only candidate stream.
+3. portfolio constraints preserve the accepted reference mechanics: 10% of current book equity per position, at most 10 active/reserved positions, at most 3 per economic family, and one active/reserved position per ticker;
+4. v1 simulates **LONG stock only** because the accepted recurrent funding model is cash-only bullish stock. Selected SHORT opportunities are counted and reported but cannot be silently converted into longs or funded without the separately versioned short borrow/collateral model;
+5. each admitted opportunity creates a genuine `SimulationDecisionRecord` from its fold's training-only distribution, then passes through the current recurrent RESERVE -> ENTRY -> CLOSE accounting transitions;
+6. the accepted successor outcome is represented on a normalized $100 entry-price basis so percentage economics and the accepted cost convention are reproduced exactly without pretending to reconstruct historical share quantities;
+7. daily rows use the frozen five-session / 10-bps primary outcome; intraday rows use their accepted entry/exit timestamps and 50-bps primary cost convention;
+8. entry and exit costs are split exactly across the two recurrent fills, and every completed trade must reproduce the accepted primary net return or the campaign fails closed;
+9. portfolio output includes decisions/rejections, closed trades, realized book-equity curve, strategy/family P&L attribution, finite-cash competition, peak active/reserved slots, and realized/book-equity drawdown;
+10. this first mode is explicitly **OUTCOME_REPLAY_DIAGNOSTIC**. It does not yet reread historical bars to retest decision-bound STOP/TARGET/TIME exits and therefore is not the final strategy-tuning simulator;
+11. source files/receipts are hash-verified before use; provider calls, broker reads/writes, order actions, PAPER, LIVE, promotion and confluence authority remain zero/false.
+
+The operator entry point is:
+
+`python scripts/run_recurrent_successor_outcome_replay.py --authorize-development-replay --initial-equity 100000 [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--policy-id POLICY]`
+
+A successful first workstation run will establish the current recurrent account as a historical portfolio replay surface. The next historical-simulation package is the stricter bar-level campaign that rereads accepted historical bars and lets decision-bound STOP/TARGET/TIME mechanics determine exits directly rather than replaying retained outcomes. The separate PR #161 current-Webull workstation acceptance still requires XNYS regular market hours and remains an operational-runtime gate, not a prerequisite for this historical replay.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
