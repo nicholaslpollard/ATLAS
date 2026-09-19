@@ -575,3 +575,33 @@ DEVELOPMENT campaign using accepted historical bars and frozen decision-bound
 STOP/TARGET/TIME mechanics. Consumed-master/future-blind/provider/broker/order/PAPER/
 LIVE/promotion/confluence authority remain zero/false.
 
+## 14. Recurrent daily exit-policy sweep preregistration — 2026-09-19
+
+Contract: `atlas-recurrent-successor-daily-exit-policy-sweep-v1`.
+
+Purpose: bounded post-result DEVELOPMENT tuning of daily LONG exit construction while
+holding the accepted successor selector and recurrent portfolio constraints fixed.
+
+Frozen grid: STOP and TARGET each take exactly one of 1%, 2%, 3%, or 5%, producing
+16 policy combinations. TIME closes at the fifth entry-session regular close. Entry
+is next regular-session open. Costs remain 10 bps round trip. Same-session STOP+TARGET
+collision is resolved to STOP. Adverse stop gaps fill at the worse open; favorable
+target gaps receive no positive slippage beyond target.
+
+The current opportunity's outcome cannot inform its decision forecast. Return
+distribution evidence remains the accepted fold-training cell; threshold probabilities
+and favorable timing are sourced only from strictly earlier selected daily folds with
+at least 30 prior cases. Actual execution and marks use only the accepted hash-bound
+Alpaca SIP V2 DEVELOPMENT daily source for selected instruments.
+
+The recurrent account remains the sole portfolio truth. Compounding remains enabled at
+10% current book equity per position with max 10 active/reserved positions, max 3 per
+economic family, and one active/reserved ticker. Daily historical closes are published
+through the recurrent marked-account surface to produce marked-equity drawdown.
+
+This sweep is hypothesis generation, not validation. The highest 2025 return is not
+automatically selected or promoted. Any bounded candidate must be carried unchanged
+into other DEVELOPMENT regimes and then untouched/prospective evidence. SHORT funding,
+portfolio-cap tuning, confluence, PAPER and LIVE remain separate gates. Consumed-master,
+future-blind, provider, broker and order authority remain zero/false.
+
