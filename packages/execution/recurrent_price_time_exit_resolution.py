@@ -28,6 +28,7 @@ from packages.schemas.discovery_score import DiscoveryDirection
 from packages.simulation.recurrent_time_expiry_disposition import (
     RECURRENT_TIME_EXPIRY_DISPOSITION_BUNDLE_CONTRACT_FINGERPRINT,
     RecurrentTimeExpiryDispositionBundleV1,
+    RecurrentTimeExpiryDispositionError,
     TimeExpiryDisposition,
     recurrent_time_expiry_disposition_bundle_from_payload,
 )
@@ -482,6 +483,13 @@ class RecurrentPriceTimeExitResolutionBundleV1:
                         "resolution lineage differs from expiry/plan evidence"
                     )
 
+                if (
+                    quote.received_at_utc
+                    < self.expiry_bundle.clock_book.exit_plan_book.built_at_utc
+                ):
+                    raise RecurrentPriceTimeExitResolutionError(
+                        "resolution quote predates retained exit-plan state"
+                    )
                 provider_age = (
                     evaluation - quote.provider_timestamp_utc
                 ).total_seconds()
@@ -613,6 +621,13 @@ def build_recurrent_price_time_exit_resolution_bundle_v1(
             if quote.session_segment != SessionSegment.REGULAR:
                 raise RecurrentPriceTimeExitResolutionError(
                     f"resolution quote is outside regular session for {clock.ticker}"
+                )
+            if (
+                quote.received_at_utc
+                < expiry_bundle.clock_book.exit_plan_book.built_at_utc
+            ):
+                raise RecurrentPriceTimeExitResolutionError(
+                    f"resolution quote predates retained exit-plan state for {clock.ticker}"
                 )
             provider_age = (
                 evaluation - quote.provider_timestamp_utc
@@ -885,6 +900,7 @@ def read_recurrent_price_time_exit_resolution_bundle_v1(
         KeyError,
         TypeError,
         ValueError,
+        RecurrentTimeExpiryDispositionError,
         RecurrentPriceTimeExitResolutionError,
     ) as exc:
         if isinstance(
