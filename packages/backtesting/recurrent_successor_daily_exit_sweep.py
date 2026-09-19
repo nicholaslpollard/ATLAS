@@ -358,7 +358,10 @@ def _prior_path_evidence(
             "direction": key[2],
             "sample_size": minimum_sample,
             "evidence_cutoff_session": cutoff,
-            "thresholds": threshold_objects,
+            "thresholds": [
+                item.model_dump(mode="json")
+                for item in threshold_objects
+            ],
         }
         evidence[key] = PriorPathEvidence(
             fold_id=key[0],
@@ -623,7 +626,10 @@ def _forecast_for_case(case: DailyPathCase) -> UnderlyingMoveTimeForecast:
         "prior_path_source_fingerprint": prior.source_fingerprint,
         "prior_path_sample_size": prior.sample_size,
         "prior_path_cutoff": prior.evidence_cutoff_session,
-        "thresholds": prior.thresholds,
+        "thresholds": [
+            item.model_dump(mode="json")
+            for item in prior.thresholds
+        ],
     }
     return UnderlyingMoveTimeForecast(
         availability=ForecastAvailability.AVAILABLE,
