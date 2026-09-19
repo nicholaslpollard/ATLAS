@@ -1765,11 +1765,45 @@ The book remains descriptive evidence only: it carries no evaluation UTC, expire
 boolean, time-exit disposition, price-trigger authority, CLOSE-fill authority, account
 mutation, provider/broker access, order, PAPER/LIVE, promotion or confluence authority.
 
-Immediate continuation is a separately versioned `TIME_EXPIRED / NOT_EXPIRED`
-disposition that consumes this immutable clock book plus explicit evaluation UTC.
-After that, a later CLOSE package must freeze STOP/TARGET/TIME precedence before time
-expiry can create a simulated exit fill. The Strategy Evidence Register remains
-unchanged.
+The separately versioned `TIME_EXPIRED / NOT_EXPIRED` disposition below now consumes
+this immutable clock book plus explicit evaluation UTC without granting CLOSE authority.
+Immediate continuation is therefore the later CLOSE precedence package that must freeze
+STOP/TARGET/TIME ordering before time expiry can create a simulated exit fill. The
+Strategy Evidence Register remains unchanged.
+
+## 2026-09-19 — Explicit forecast-horizon time disposition
+
+Track A now freezes **atlas-simulation-forecast-horizon-time-disposition-v1** under
+contract **eda75ce9e816942b46e9c215c429da0b568cd2d2012bba2b09c43fe0672a049b**.
+
+This package performs the first explicit evaluation of the durable immutable horizon
+clock, while remaining separate from price triggers and CLOSE execution. It consumes
+the complete typed forecast-horizon clock book plus one caller-supplied timezone-aware
+evaluation UTC and retains the complete clock book inside its durable evidence.
+
+For every current open-position clock, v1 emits exactly one disposition:
+
+- **NOT_EXPIRED** when evaluation UTC is strictly before the immutable deadline;
+- **TIME_EXPIRED** when evaluation UTC is equal to or later than the immutable deadline.
+
+Deadline equality is therefore explicitly expired. Evaluation before the position-open
+time fails closed. Every disposition retains the exact clock fingerprint, position,
+instrument/ticker, position-open UTC, immutable deadline UTC and shared evaluation UTC.
+The bundle requires exact deterministic clock coverage and re-derives every disposition
+from its retained source clock during typed validation/readback.
+
+The complete bundle is self-fingerprinted and atomically fsync-persisted at
+`data/live/simulation/forecast_horizon_time_disposition/current.json`. Empty clock books
+produce an empty disposition set while still binding the explicit evaluation UTC.
+
+This evidence grants no price-trigger or STOP/TARGET comparison authority, no
+STOP/TARGET/TIME precedence authority, no CLOSE fill, account mutation, provider/broker
+access, order, PAPER/LIVE, promotion or confluence authority.
+
+Immediate continuation is a separately versioned CLOSE-decision boundary that consumes
+current Webull price-trigger evidence plus this time-disposition evidence and freezes
+deterministic precedence among STOP, TARGET and TIME before producing any exit fill.
+The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 

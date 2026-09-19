@@ -231,6 +231,15 @@ class MarketDataPaths:
             / "current.json"
         )
 
+    def forecast_horizon_time_disposition_file(self) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.live)
+        return (
+            root
+            / "simulation"
+            / "forecast_horizon_time_disposition"
+            / "current.json"
+        )
+
     def live_journal_file(self, session_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.live)
         return root / "journal" / "massive" / "stocks" / f"{session_date.year:04d}" / f"{session_date}.jsonl"
