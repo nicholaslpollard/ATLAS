@@ -3497,6 +3497,30 @@ The next historical-simulation package is a new bar-level campaign contract that
 Short-side portfolio simulation remains a later explicit funding/collateral package and
 must not be faked inside the bar-level campaign.
 
+## Recurrent daily exit-policy tuning campaign — preregistered 2026-09-19
+
+The next simulation package is frozen as
+`atlas-recurrent-successor-daily-exit-policy-sweep-v1`.
+
+It holds selector, sizing, family caps, ticker exclusivity, cost assumptions and LONG
+funding semantics fixed while comparing the 16 combinations formed by 1/2/3/5% STOP
+x 1/2/3/5% TARGET. TIME remains the fifth entry-session close. Same-session collision
+is worst-case STOP; adverse stop gaps fill at the worse open; favorable target gaps
+receive no improvement beyond target.
+
+Historical execution rereads only accepted hash-bound DEVELOPMENT daily bars for
+selected instruments. Daily close marks feed the current recurrent marked-account
+projection, so each policy reports both realized/book equity and daily marked-equity
+drawdown. Current-fold outcomes cannot affect their own forecasts: return evidence is
+training-only and threshold/timing evidence comes only from strictly prior selected
+folds with minimum support 30.
+
+The 2025 sweep is hypothesis generation only. No automatic winner or promotion is
+permitted. Bounded candidates that improve return/drawdown/capital recycling must next
+survive other DEVELOPMENT regimes with the same frozen policy before any prospective
+SHADOW/PAPER qualification. Portfolio-cap tuning and short funding remain separate
+versioned research/product packages.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
