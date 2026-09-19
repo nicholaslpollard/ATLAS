@@ -1629,7 +1629,7 @@ state and the supplied policies exactly match its plans, then writes the missing
 receipt.
 
 This package deliberately does not change the frozen generic runner contract or stage
-order. A later production wrapper will enforce ENTRY → refresh → MARK while the
+order. The production-cycle facade below now enforces ENTRY → refresh → MARK while the
 existing zero-evidence smoke runner remains backward-compatible.
 
 Time-based exits remain gated. The accepted move/time forecast schema identifies
@@ -1641,6 +1641,49 @@ policy is explicit.
 The refresh performs zero provider/broker reads or writes and grants no order,
 PAPER/LIVE, promotion or confluence authority. The Strategy Evidence Register remains
 unchanged.
+
+## 2026-09-19 — Plan-aware recurrent production-cycle facade
+
+Track A now freezes **atlas-simulation-recurrent-production-cycle-v1** under contract
+**c03e6e299076618a537e8ab2d7ebd575b33f22924f25fc1f0ba655f10e7412ca**.
+
+This facade composes the accepted recurrent runner and evidence packages without
+changing the generic CLOSE → RESERVE → ENTRY → MARK mutation order. Its contract
+also freezes the exact accepted fingerprints for the generic runner, RESERVE bundle,
+Webull stock ENTRY, post-ENTRY exit-plan refresh, decision-bound exit-plan book,
+Webull decision-bound CLOSE, and Webull stock MARK adapter.
+
+On first application, CLOSE must bind the current recurrent state. RESERVE delegates
+to the accepted durable reserve bundle. ENTRY must bind the current recurrent state
+and the exact RESERVE bundle already admitted for the cycle. Exact retries after a
+stage is durable rely on the existing stage-admission receipts rather than incorrectly
+revalidating against a later post-mutation account state.
+
+MARK is plan-aware. Before any MARK can be admitted, the facade runs or idempotently
+reuses the accepted post-ENTRY refresh. It then re-verifies the durable refresh receipt,
+immutable ENTRY stage-record fingerprint, ENTRY admission SHA, ENTRY result checkpoint/
+snapshot/revision, current account-state fingerprint, exact RESERVE bundle, explicit
+policy bindings, and the current durable exit-plan book. Missing, stale, or conflicting
+refresh lineage fails closed.
+
+Open stock positions require an accepted current Webull stock-mark batch with exact
+position coverage and matching valuation time. Zero-position MARK is provider-inert and
+uses no quote batch. A recorded MARK retry verifies the persisted MARK admission and
+returns idempotently, including after the cycle is COMPLETE; it does not reopen runtime
+mutation. COMPLETE still delegates to the accepted generic runner.
+
+The facade can be restored directly from the durable recurrent checkpoint after a
+process restart. It performs no provider or broker acquisition itself and grants no
+broker write, order, PAPER/LIVE, promotion, scheduler-trigger, or confluence authority.
+
+Immediate continuation is the separately versioned forecast-horizon clock contract.
+The accepted move/time forecast already carries MINUTES/SESSIONS horizons, but time
+exit behavior remains disabled until regular-session elapsed-time and exchange-session
+counting semantics are explicit. After that boundary, the next external acceptance
+step is the target-workstation market-hours Webull sandbox and restart/resume proof.
+
+The Strategy Evidence Register remains unchanged because this package composes accepted
+product/runtime evidence and does not change strategy research evidence.
 
 ## A33/B33 reference foundation
 
