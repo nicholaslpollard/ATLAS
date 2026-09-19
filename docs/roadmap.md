@@ -3266,13 +3266,45 @@ Frozen semantics:
 11. grant no time-expiry disposition, price-trigger, CLOSE-fill, account mutation,
     provider/broker, order, PAPER/LIVE, promotion or confluence authority.
 
-Immediate continuation is a separately versioned
-`TIME_EXPIRED / NOT_EXPIRED` disposition bundle over this durable clock book and one
-explicit evaluation UTC. A later CLOSE integration must freeze deterministic
-STOP/TARGET/TIME precedence before time expiry may create a simulated exit fill.
+The time-expiry disposition bundle below now evaluates this durable clock book at one
+explicit UTC without price or CLOSE authority. Immediate continuation is therefore an
+explicit STOP/TARGET/TIME precedence layer followed by time-aware CLOSE integration.
 
 The Strategy Evidence Register remains unchanged because this package adds durable
 product-simulation timing lineage rather than strategy evidence.
+
+## Track A durable recurrent time-expiry disposition — 2026-09-19
+
+Track A freezes
+**atlas-simulation-recurrent-time-expiry-disposition-bundle-v1** under contract
+**36e249c10d7a4bbaba35ace24ef9192e273c5713beb4629b20672fb6b2761b24**.
+
+Frozen semantics:
+
+1. consume the complete accepted durable horizon-clock book plus one explicit aware UTC;
+2. require evaluation UTC no earlier than clock-book construction;
+3. retain the exact source recurrent-state fingerprint inherited from the nested
+   decision-bound exit-plan book;
+4. emit exactly one disposition per current clock, ordered by position fingerprint;
+5. define `NOT_EXPIRED` strictly before deadline and `TIME_EXPIRED` exactly at or
+   after deadline;
+6. retain each full source clock, clock fingerprint and signed seconds from deadline;
+7. require every disposition evaluation UTC to equal the shared bundle evaluation UTC;
+8. deterministically rebuild each disposition from source clock + evaluation UTC during
+   validation/readback;
+9. reject a changed disposition even if the outer bundle fingerprint is recomputed;
+10. self-fingerprint and atomically fsync-persist at
+    `data/live/simulation/recurrent_time_expiry_disposition/current.json`; and
+11. grant no price-evidence, STOP/TARGET precedence, CLOSE-fill, account mutation,
+    provider/broker, order, PAPER/LIVE, promotion or confluence authority.
+
+Immediate continuation is an explicit precedence package over accepted STOP/TARGET
+price evidence and this TIME disposition for the exact same current state/position.
+Only a later versioned CLOSE adapter may turn the precedence result into a simulated
+exit fill.
+
+The Strategy Evidence Register remains unchanged because this package adds product
+simulation expiry evidence without changing strategy research evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
