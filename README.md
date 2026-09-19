@@ -1676,14 +1676,65 @@ The facade can be restored directly from the durable recurrent checkpoint after 
 process restart. It performs no provider or broker acquisition itself and grants no
 broker write, order, PAPER/LIVE, promotion, scheduler-trigger, or confluence authority.
 
-Immediate continuation is the separately versioned forecast-horizon clock contract.
-The accepted move/time forecast already carries MINUTES/SESSIONS horizons, but time
-exit behavior remains disabled until regular-session elapsed-time and exchange-session
-counting semantics are explicit. After that boundary, the next external acceptance
-step is the target-workstation market-hours Webull sandbox and restart/resume proof.
+The separately versioned forecast-horizon clock contract below now resolves the
+MINUTES/SESSIONS deadline ambiguity without granting expiry-disposition or CLOSE
+authority. Immediate continuation is a durable open-position horizon-clock book so the selected timing
+policy cannot change between cycles, followed by TIME_EXPIRED/NOT_EXPIRED disposition,
+explicit STOP/TARGET/TIME precedence, and the target-workstation market-hours Webull
+sandbox/restart-resume proof.
 
 The Strategy Evidence Register remains unchanged because this package composes accepted
 product/runtime evidence and does not change strategy research evidence.
+
+## 2026-09-19 — Descriptive forecast-horizon exchange clock
+
+Track A now freezes **atlas-simulation-forecast-horizon-clock-v1** under contract
+**5efb0fb3b6bd37ba718ced50d1ebcbd589843cc895aba33426aa6235c643a56a**.
+
+This package resolves the timing ambiguity that remained after the decision-bound
+exit-plan and production-cycle work while preserving a strict separation between
+**deadline calculation** and **expiry disposition**. It consumes the exact accepted
+decision-bound recurrent exit plan and emits one deterministic descriptive horizon
+deadline. It does not accept an evaluation time, does not emit an `expired` boolean,
+does not create a CLOSE fill, and does not mutate recurrent account state.
+
+V1 is deliberately limited to the accepted **XNYS** exchange calendar because current
+recurrent position/forecast lineage does not carry an authoritative exchange identity
+that would justify caller-selected calendars.
+
+For **MINUTES** horizons, one forecast minute means one elapsed minute of the official
+regular session from the actual simulated position-open timestamp. Premarket,
+after-hours, closed time, overnight, weekends and exchange holidays contribute zero.
+Official early closes are respected, and remaining minutes carry into later sessions.
+The evidence retains the ordered sessions traversed to the deadline.
+
+For **SESSIONS** horizons, the original move/time forecast did not encode whether the
+entry session counts. V1 therefore refuses to guess. The caller must provide one
+fingerprinted policy:
+
+- **ENTRY_SESSION_INCLUDED** — horizon 1 ends at the official close of the entry
+  session; or
+- **FULL_SESSIONS_AFTER_ENTRY** — horizon 1 ends at the official close of the first
+  complete exchange session after entry.
+
+MINUTES rejects a session-counting policy; SESSIONS requires one. The clock retains
+exact exit-plan, forecast, decision, position and policy fingerprints together with
+entry session, horizon unit/value, deadline UTC, deadline session and counted-session
+trace. The builder requires the real typed accepted exit-plan object and re-verifies
+its plan/forecast lineage before calculating a deadline.
+
+This clock remains descriptive evidence only: time-expiry disposition, price-trigger
+authority, CLOSE-fill authority, account mutation, provider/broker reads or writes,
+orders, PAPER/LIVE, promotion and confluence authority are all disabled.
+
+Immediate continuation is a durable **open-position horizon-clock book** that retains
+this exact clock/policy for the life of each open simulated position, carries valid
+clocks forward, adds clocks only for newly planned positions, and prunes closed
+positions. That persistence boundary is required before a separately versioned
+**TIME_EXPIRED / NOT_EXPIRED** disposition can evaluate the immutable deadline at an
+explicit UTC. Only after that evidence is accepted should a later CLOSE integration
+freeze deterministic precedence among STOP, TARGET and TIME. The Strategy Evidence
+Register remains unchanged.
 
 ## A33/B33 reference foundation
 
