@@ -127,7 +127,7 @@ def _record(
                 adverse=0.30,
                 favorable_first=0.45,
                 adverse_first=0.18,
-                median_time=20.0,
+                median_time=max(0.1, min(20.0, value * 0.25)),
             ),
             _threshold(
                 0.02,
@@ -135,7 +135,7 @@ def _record(
                 adverse=0.20,
                 favorable_first=0.34,
                 adverse_first=0.12,
-                median_time=45.0,
+                median_time=max(0.1, min(45.0, value * 0.50)),
             ),
         ),
         uncertainty_score=0.25,
