@@ -248,6 +248,19 @@ class CurrentWebullTimedStockCloseTriggerV2:
                     "timed triggered CLOSE requires fill"
                 )
             if (
+                self.base_trigger.explicit_exit_fee_dollars
+                is not None
+                and not math.isclose(
+                    self.base_trigger.explicit_exit_fee_dollars,
+                    self.explicit_exit_fee_dollars,
+                    rel_tol=1e-12,
+                    abs_tol=1e-9,
+                )
+            ):
+                raise CurrentWebullTimedStockCloseError(
+                    "timed CLOSE cannot change accepted base price-trigger fee"
+                )
+            if (
                 self.fill.position_fingerprint
                 != self.base_trigger.plan.position_fingerprint
             ):
@@ -283,6 +296,42 @@ class CurrentWebullTimedStockCloseTriggerV2:
                 raise CurrentWebullTimedStockCloseError(
                     "timed CLOSE fill fee mismatch"
                 )
+        if self.base_bundle.built_at_utc != self.built_at_utc:
+            raise CurrentWebullTimedStockCloseError(
+                "timed CLOSE build time must equal retained base bundle build time"
+            )
+        if final_triggered:
+            assert self.fee_source_id is not None
+            assert self.fee_source_fingerprint is not None
+            for trigger in final_triggered:
+                assert trigger.fill is not None
+                assert trigger.explicit_exit_fee_dollars is not None
+                expected_source = _fill_source_fingerprint(
+                    base_bundle_fingerprint=(
+                        self.base_bundle.bundle_fingerprint
+                    ),
+                    clock_evidence_fingerprint=(
+                        trigger.clock_evidence.evidence_fingerprint
+                    ),
+                    fee_source_id=self.fee_source_id,
+                    fee_source_fingerprint=(
+                        self.fee_source_fingerprint
+                    ),
+                    disposition=trigger.disposition,
+                    position_fingerprint=(
+                        trigger.base_trigger.plan.position_fingerprint
+                    ),
+                    explicit_exit_fee_dollars=(
+                        trigger.explicit_exit_fee_dollars
+                    ),
+                )
+                if (
+                    trigger.fill.fill_source_fingerprint
+                    != expected_source
+                ):
+                    raise CurrentWebullTimedStockCloseError(
+                        "timed CLOSE fill-source fingerprint mismatch"
+                    )
         if any(
             (
                 self.provider_calls_performed,
