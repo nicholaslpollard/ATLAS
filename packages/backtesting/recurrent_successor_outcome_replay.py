@@ -353,7 +353,7 @@ def _source_integrity(
     )
     for part_index, path in enumerate(normalized_paths, start=1):
         receipt = _validate_receipt(path, phase="NORMALIZE_PART")
-        if part_index % 100 == 0 or part_index == len(normalized_paths):
+        if part_index % 50 == 0 or part_index == len(normalized_paths):
             print(
                 f"  source integrity: {part_index:,}/{len(normalized_paths):,} parts verified",
                 flush=True,
@@ -433,8 +433,12 @@ def load_selected_replay_opportunities(
             f"SELECT * FROM read_parquet('{_sql_path(assignments)}')"
         )
         policy_filter = _policy_filter_sql(policy_ids)
+        print(
+            "  selection phase 1/3: materializing selected comparable test opportunities",
+            flush=True,
+        )
         selected_sql = f"""
-            CREATE OR REPLACE TEMP VIEW selected_replay AS
+            CREATE OR REPLACE TEMP TABLE selected_replay AS
             SELECT
                 a.fold_id,
                 a.policy_id,
@@ -481,6 +485,13 @@ def load_selected_replay_opportunities(
               {policy_filter}
         """
         conn.execute(selected_sql)
+        selected_count = int(
+            conn.execute("SELECT count(*) FROM selected_replay").fetchone()[0]
+        )
+        print(
+            f"  selection phase 1/3 complete: {selected_count:,} opportunities",
+            flush=True,
+        )
         duplicate = conn.execute(
             """
             SELECT policy_id, instrument_key, session_date, direction, count(*) AS n
@@ -511,9 +522,13 @@ def load_selected_replay_opportunities(
                 "selected successor opportunity contains invalid selector/outcome evidence"
             )
 
+        print(
+            "  selection phase 2/3: resolving unique selected training cells",
+            flush=True,
+        )
         conn.execute(
             """
-            CREATE OR REPLACE TEMP VIEW selected_cells AS
+            CREATE OR REPLACE TEMP TABLE selected_cells AS
             SELECT DISTINCT
                 fold_id,
                 fallback_level,
@@ -523,9 +538,20 @@ def load_selected_replay_opportunities(
             FROM selected_replay
             """
         )
+        selected_cell_count = int(
+            conn.execute("SELECT count(*) FROM selected_cells").fetchone()[0]
+        )
+        print(
+            f"  selection phase 2/3 complete: {selected_cell_count:,} unique cells",
+            flush=True,
+        )
+        print(
+            "  selection phase 3/3: building training-only distributions for selected cells",
+            flush=True,
+        )
         conn.execute(
             """
-            CREATE OR REPLACE TEMP VIEW training_cell_stats AS
+            CREATE OR REPLACE TEMP TABLE training_cell_stats AS
             SELECT
                 c.fold_id,
                 c.fallback_level,
@@ -570,6 +596,17 @@ def load_selected_replay_opportunities(
                  END = c.cell_key
             GROUP BY 1,2,3,4,5
             """
+        )
+        training_cell_count = int(
+            conn.execute("SELECT count(*) FROM training_cell_stats").fetchone()[0]
+        )
+        print(
+            f"  selection phase 3/3 complete: {training_cell_count:,} training distributions",
+            flush=True,
+        )
+        print(
+            "  selection finalization: joining selected opportunities to training evidence",
+            flush=True,
         )
         rows = conn.execute(
             """
@@ -1060,6 +1097,10 @@ def run_recurrent_successor_outcome_replay(
             )
         )
     events.sort()
+    print(
+        f"recurrent replay portfolio: scheduled {len(events):,} lifecycle events",
+        flush=True,
+    )
 
     slots: dict[int, _Slot] = {}
     decision_rows: list[dict[str, object]] = []
@@ -1080,7 +1121,23 @@ def run_recurrent_successor_outcome_replay(
     peak_book_equity = float(initial_equity)
     maximum_book_drawdown = 0.0
 
-    for event_utc, _, _, _, _, index, event_kind in events:
+    for event_number, (
+        event_utc,
+        _,
+        _,
+        _,
+        _,
+        index,
+        event_kind,
+    ) in enumerate(events, start=1):
+        if event_number == 1 or event_number % 500 == 0 or event_number == len(events):
+            print(
+                "  lifecycle progress: "
+                f"{event_number:,}/{len(events):,} events "
+                f"({event_number / len(events):.1%}); "
+                f"closed={len(closed_rows):,}; active/reserved={len(slots)}",
+                flush=True,
+            )
         opportunity = long_opportunities[index]
 
         if event_kind == "RESERVE":
@@ -1351,7 +1408,7 @@ def run_recurrent_successor_outcome_replay(
             }
         )
         del slots[index]
-        if len(closed_rows) % 500 == 0:
+        if len(closed_rows) % 100 == 0:
             print(
                 "  recurrent replay progress: "
                 f"{len(closed_rows):,} positions closed; "
