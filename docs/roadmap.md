@@ -3453,6 +3453,50 @@ The operator entry point is:
 
 A successful first workstation run will establish the current recurrent account as a historical portfolio replay surface. The next historical-simulation package is the stricter bar-level campaign that rereads accepted historical bars and lets decision-bound STOP/TARGET/TIME mechanics determine exits directly rather than replaying retained outcomes. The separate PR #161 current-Webull workstation acceptance still requires XNYS regular market hours and remains an operational-runtime gate, not a prerequisite for this historical replay.
 
+## Track A / Track B bridge: first workstation recurrent portfolio result — 2026-09-19
+
+The first real workstation campaign for
+`atlas-recurrent-successor-outcome-replay-v1-walk-forward-selector-long-only`
+completed over `2025-01-01..2025-12-31`.
+
+Run fingerprint:
+`2096fe4bc3babdd80c667a0548ab24a861a586bd08f880237744f11b23378166`.
+
+Observed result:
+
+- 4,685 selected comparable opportunities;
+- 3,650 supported LONG / 1,035 reported-only SHORT;
+- 439 admitted and 439 completed positions;
+- $100,000.00 -> $101,647.15;
+- +1.6472% total return;
+- -20.9896% maximum realized/book-equity drawdown;
+- peak 10 active/reserved slots;
+- rejections: 2,429 max-per-family, 458 max-open-position, 262 insufficient-capital, 62 duplicate-active-ticker.
+
+The portfolio gate therefore admitted only about 12.0% of supported LONG selections.
+Family concentration/competition is the dominant observed bottleneck, not raw signal
+scarcity. This is the first direct evidence that successor selection behavior changes
+materially once strategies share finite capital and simultaneous-position constraints.
+
+Do **not** tune the frozen v1 account constraints from this single post-result run.
+The next historical-simulation package is a new bar-level campaign contract that:
+
+1. preserves the same DEVELOPMENT-only / no-consumed-master authority;
+2. retains exact walk-forward training/test chronology;
+3. uses the current recurrent account as the sole cash/position/ledger truth;
+4. obtains historical entry, mark and exit evidence from accepted PIT bars rather than
+   replaying the retained terminal outcome;
+5. applies separately frozen decision-bound STOP/TARGET/TIME policies;
+6. resolves ambiguous same-bar/session stop/target collisions conservatively and
+   explicitly rather than inferring intrabar order;
+7. records mark-to-market equity in addition to realized/book-equity;
+8. keeps strategy/family, symbol, regime, fold and decision-version attribution;
+9. supports restart/resume and visible progress on workstation-scale runs; and
+10. remains DEVELOPMENT_DIAGNOSTIC with no promotion/PAPER/LIVE authority.
+
+Short-side portfolio simulation remains a later explicit funding/collateral package and
+must not be faked inside the bar-level campaign.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`
