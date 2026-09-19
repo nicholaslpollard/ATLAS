@@ -348,7 +348,7 @@ def _source_integrity(
         )
     normalized_identity: list[dict[str, object]] = []
     for path in normalized_paths:
-        receipt = _validate_receipt(path, phase="NORMALIZED")
+        receipt = _validate_receipt(path, phase="NORMALIZE_PART")
         normalized_identity.append(
             {
                 "name": path.name,
@@ -611,15 +611,36 @@ def load_selected_replay_opportunities(
             else float(INTRADAY_PRIMARY_COST_BPS)
         )
         gross_return = float(record["gross_return"])
-        if not math.isfinite(gross_return) or gross_return <= -1.0:
+        direction = str(record["direction"]).upper()
+        if not math.isfinite(gross_return):
             raise RecurrentSuccessorOutcomeReplayError(
-                "long replay gross return is non-finite or <= -100%"
+                "selected replay gross return is non-finite"
             )
         half = cost_bps / 20_000.0
-        expected_primary = (
-            NORMALIZED_ENTRY_PRICE * (1.0 + gross_return) * (1.0 - half)
-            - NORMALIZED_ENTRY_PRICE * (1.0 + half)
-        ) / NORMALIZED_ENTRY_PRICE
+        if direction == "LONG":
+            if gross_return <= -1.0:
+                raise RecurrentSuccessorOutcomeReplayError(
+                    "long replay gross return is <= -100%"
+                )
+            normalized_exit = NORMALIZED_ENTRY_PRICE * (1.0 + gross_return)
+            expected_primary = (
+                normalized_exit * (1.0 - half)
+                - NORMALIZED_ENTRY_PRICE * (1.0 + half)
+            ) / NORMALIZED_ENTRY_PRICE
+        elif direction == "SHORT":
+            if gross_return >= 1.0:
+                raise RecurrentSuccessorOutcomeReplayError(
+                    "short replay gross return is >= 100%"
+                )
+            normalized_exit = NORMALIZED_ENTRY_PRICE * (1.0 - gross_return)
+            expected_primary = (
+                NORMALIZED_ENTRY_PRICE * (1.0 - half)
+                - normalized_exit * (1.0 + half)
+            ) / NORMALIZED_ENTRY_PRICE
+        else:
+            raise RecurrentSuccessorOutcomeReplayError(
+                f"unsupported selected replay direction: {direction}"
+            )
         if not math.isclose(
             expected_primary,
             float(record["primary_net_return"]),
@@ -647,7 +668,7 @@ def load_selected_replay_opportunities(
                 instrument_id=str(record["instrument_key"]),
                 ticker=str(record["ticker"]),
                 signal_session=signal_session,
-                direction=str(record["direction"]).upper(),
+                direction=direction,
                 fallback_level=int(record["fallback_level"]),
                 selector_score=float(record["selector_score"]),
                 primary_net_return=float(record["primary_net_return"]),
