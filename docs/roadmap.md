@@ -3384,6 +3384,49 @@ separately gated on that evidence.
 The Strategy Evidence Register remains unchanged because this package composes already
 accepted product evidence and changes no strategy research result.
 
+## Track A isolated target-workstation recurrent acceptance — 2026-09-19
+
+Track A freezes **atlas-recurrent-workstation-acceptance-v1** under contract
+**5d450f115c03cfef389845ba594402f34a62ed7491f263dc7e33f8b5bb38af50**.
+
+Frozen semantics:
+
+1. run only against a dedicated isolated live root; the configured normal live root is
+   forbidden;
+2. use the accepted Webull sandbox L1 capture path for exactly three explicit provider
+   reads and perform zero provider writes, broker reads/writes or order actions;
+3. require operator-supplied initial simulation equity plus explicit entry and exit
+   fees; no pretend starting balance or silent fee default;
+4. label the acceptance decision as product fixture / NOT_STRATEGY_EVIDENCE;
+5. freeze a one-regular-session-minute MINUTES horizon and fixed ±20% threshold before
+   any exit observation; price-band breach fails acceptance instead of retuning;
+6. create a real process boundary after durable ENTRY, then restore for MARK;
+7. require production MARK to create/verify the accepted post-ENTRY exit-plan refresh,
+   complete cycle one, persist the explicit clock book and expose dashboard status
+   `AVAILABLE` from the same authoritative account/marked-state pair;
+8. wait for the immutable deadline and capture a new current Webull quote;
+9. require price NO_TRIGGER and accepted `TIME_EXPIRED` before final TIME resolution;
+10. admit TIME through the accepted time-aware production facade at exact current bid
+    with explicit exit fee evidence;
+11. create another real process boundary, restore the same CLOSE cycle and resubmit the
+    exact final bundle; require closed-trade count to remain exactly one;
+12. require cycle-health lineage with zero invalid receipts/admissions and expected
+    `OPEN_CYCLE` status after the intentionally paused second cycle CLOSE;
+13. write a self-fingerprinted final acceptance receipt containing quote, decision,
+    plan, clock, time-disposition, close, checkpoint, dashboard and health lineage;
+14. grant no PAPER/LIVE, order, promotion or confluence authority.
+
+The accepted operator command is:
+
+`python scripts/run_recurrent_workstation_acceptance.py --ticker SPY --initial-equity 100000 --entry-fee 0 --exit-fee 0`
+
+Run it during XNYS regular market hours with Webull sandbox credentials present. The
+harness normally waits about one minute between MARK and the final quote capture.
+
+A successful receipt closes the current simulation-runtime acceptance gate. Any later
+PAPER enablement remains a separate explicit authority decision. The Strategy Evidence
+Register remains unchanged.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`

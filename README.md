@@ -1886,6 +1886,58 @@ facade, prove durable restart/resume across the recurrent lifecycle, verify brow
 control-plane observability stays bound to the same authoritative state, and capture
 the resulting acceptance evidence before any PAPER authority is considered.
 
+## 2026-09-19 — Isolated target-workstation recurrent acceptance harness
+
+Track A now freezes **atlas-recurrent-workstation-acceptance-v1** under contract
+**5d450f115c03cfef389845ba594402f34a62ed7491f263dc7e33f8b5bb38af50**.
+
+This is the operational proof harness for the accepted time-aware recurrent production
+stack. It is not a strategy and does not grant PAPER or LIVE authority.
+
+The parent command creates a unique isolated live-data root under
+`data/acceptance/recurrent_workstation/<run-id>/live`. The configured normal `data/live`
+root is explicitly rejected. The existing Webull sandbox L1 capture CLI now supports an
+optional `--live-root` argument so the acceptance run can reuse the accepted read-only
+provider capture without overwriting normal operator evidence.
+
+The acceptance fixture is explicitly labeled product plumbing rather than strategy
+evidence. It uses one operator-selected stock ticker, one regular-session minute
+horizon, and a fixed ±20% stop/target threshold that is frozen before any exit quote is
+observed. The wide band exists to exercise the TIME path. If the current bid somehow
+crosses that fixed band, acceptance fails closed rather than retuning the fixture.
+
+One parent command performs three read-only Webull sandbox quote captures and launches
+fresh child Python processes across the lifecycle:
+
+1. bootstrap an isolated recurrent account from the operator-supplied initial equity,
+   admit empty CLOSE, deterministic RESERVE and ask-based ENTRY, then exit the process;
+2. capture a fresh quote, restore in a new process, run Webull MARK through the
+   production facade (which must create/verify post-ENTRY plan refresh), complete the
+   first cycle, persist the explicit horizon clock book, and prove the recurrent
+   dashboard reports the same authoritative marked state;
+3. wait for the immutable one-regular-session-minute deadline, capture a fresh quote,
+   restore again, require price NO_TRIGGER + TIME_EXPIRED, and admit a TIME close using
+   the exact current bid plus the operator-supplied exit fee;
+4. restore in one more process and submit the exact same CLOSE bundle again, proving
+   the stage-admission receipt prevents a double close; then require clean read-only
+   cycle-health lineage.
+
+The final acceptance receipt is self-fingerprinted and requires exactly one closed
+trade, three provider reads, zero provider writes, zero broker reads/writes, no order
+authority, dashboard status `AVAILABLE`, and cycle-health status `OPEN_CYCLE` after the
+exact CLOSE retry.
+
+Operator command after this package is accepted:
+
+`python scripts/run_recurrent_workstation_acceptance.py --ticker SPY --initial-equity 100000 --entry-fee 0 --exit-fee 0`
+
+The command must be run while XNYS is in the regular session and with the existing
+Webull sandbox/paper API credentials available. It normally waits about one minute for
+the immutable horizon before the final quote capture. No broker/order endpoint is used.
+
+The Strategy Evidence Register remains unchanged. A successful workstation receipt is
+product operational evidence only; PAPER authority remains separately gated.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**

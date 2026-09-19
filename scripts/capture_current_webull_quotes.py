@@ -64,10 +64,26 @@ def main() -> int:
         type=_symbols,
         help="Comma-separated exact provider-native stock tickers.",
     )
+    parser.add_argument(
+        "--live-root",
+        type=Path,
+        default=None,
+        help=(
+            "Optional isolated live-data root. When omitted, use the configured "
+            "normal live path."
+        ),
+    )
     args = parser.parse_args()
     symbols: tuple[str, ...] = args.tickers
 
     settings = load_settings(PROJECT_ROOT)
+    if args.live_root is not None:
+        isolated_live = args.live_root.expanduser().resolve()
+        paths = settings.data.paths.model_copy(
+            update={"live": isolated_live}
+        )
+        data = settings.data.model_copy(update={"paths": paths})
+        settings = settings.model_copy(update={"data": data})
     key = _first_env("WEBULL_PAPER_APP_KEY", "WEBULL_APP_KEY")
     secret = _first_env(
         "WEBULL_PAPER_APP_SECRET",
@@ -78,6 +94,10 @@ def main() -> int:
     print("environment: SANDBOX")
     print(f"symbols: {','.join(symbols)}")
     print(f"provider_read_calls_planned: {len(symbols)}")
+    print(
+        "live_root: "
+        + str(settings.resolved_path(settings.data.paths.live))
+    )
     print("provider_writes: 0")
     print("broker_reads: 0")
     print("broker_writes: 0")
