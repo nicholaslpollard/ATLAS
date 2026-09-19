@@ -1766,11 +1766,49 @@ The package performs no provider/broker access and grants no time-expiry disposi
 price-trigger, CLOSE-fill, account mutation, order, PAPER/LIVE, promotion or
 confluence authority.
 
-Immediate continuation is a separately versioned **TIME_EXPIRED / NOT_EXPIRED**
-disposition bundle that consumes this durable clock book and one explicit evaluation
-UTC. A later CLOSE integration must then freeze deterministic STOP/TARGET/TIME
-precedence before time expiry can create a simulated exit fill. The Strategy Evidence
-Register remains unchanged.
+The time-expiry disposition bundle below now evaluates this durable clock book at one
+explicit UTC without consuming price evidence or granting CLOSE authority. Immediate
+continuation is therefore an explicit STOP/TARGET/TIME precedence contract and
+decision-bound CLOSE integration. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-19 — Durable recurrent time-expiry disposition bundle
+
+Track A now freezes
+**atlas-simulation-recurrent-time-expiry-disposition-bundle-v1** under contract
+**36e249c10d7a4bbaba35ace24ef9192e273c5713beb4629b20672fb6b2761b24**.
+
+This package evaluates the accepted durable horizon-clock book at one explicit,
+timezone-aware UTC while preserving the clock book itself as source evidence. It does
+not recompute session policy, does not consume market-price evidence, and does not
+create an exit fill.
+
+Every current horizon clock receives exactly one deterministic disposition:
+
+- **NOT_EXPIRED** when evaluation UTC is before the immutable clock deadline;
+- **TIME_EXPIRED** when evaluation UTC is exactly at or after the immutable deadline.
+
+The evaluation UTC may not predate construction of the durable clock book. Each
+disposition retains the full source clock, source clock fingerprint and signed seconds
+from deadline. The outer bundle retains the full clock book, exact recurrent-state
+fingerprint inherited from the exit-plan book, one shared evaluation UTC, and exact
+one-to-one disposition coverage ordered by position fingerprint.
+
+Typed validation rebuilds every disposition from the retained clock + bundle evaluation
+UTC. A changed NOT_EXPIRED/TIME_EXPIRED result therefore fails even if an attacker
+recomputes the outer artifact fingerprint. The bundle is self-fingerprinted and
+atomically fsync-persisted at
+`data/live/simulation/recurrent_time_expiry_disposition/current.json`.
+
+This package intentionally has **no STOP/TARGET precedence authority**. It also grants
+no price-evidence, CLOSE-fill, account-mutation, provider/broker, order, PAPER/LIVE,
+promotion or confluence authority.
+
+Immediate continuation is a separately versioned precedence layer that combines the
+accepted Webull STOP/TARGET price observation with this TIME disposition for the exact
+same current position/state and explicitly decides which reason owns an exit when more
+than one condition is true. Only after that precedence evidence is frozen should a new
+CLOSE adapter be allowed to create a time-aware simulated exit fill. The Strategy
+Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
