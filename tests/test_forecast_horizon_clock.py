@@ -50,6 +50,14 @@ from packages.simulation.forecast_horizon_clock_book import (
     read_forecast_horizon_clock_book_v1,
     write_forecast_horizon_clock_book_v1,
 )
+from packages.simulation.forecast_horizon_time_disposition import (
+    FORECAST_HORIZON_TIME_DISPOSITION_CONTRACT_FINGERPRINT,
+    ForecastHorizonTimeDispositionError,
+    ForecastHorizonTimeDispositionKind,
+    build_forecast_horizon_time_disposition_bundle_v1,
+    read_forecast_horizon_time_disposition_bundle_v1,
+    write_forecast_horizon_time_disposition_bundle_v1,
+)
 from packages.simulation.recurrent_cycle_runner import (
     build_recurrent_cycle_run_identity_v1,
 )
@@ -675,3 +683,157 @@ def test_clock_book_prunes_closed_position_clocks(tmp_path) -> None:
     )
     assert pruned.clocks == ()
     assert pruned.source_exit_plan_book == empty_source
+
+
+def _clock_book(
+    tmp_path,
+    *,
+    opened_utc: datetime,
+    unit: ForecastHorizonUnit,
+    value: int,
+    session_policy: SessionHorizonCountingPolicy | None = None,
+):
+    source_book = _open_plan_book(
+        tmp_path,
+        opened_utc=opened_utc,
+        unit=unit,
+        value=value,
+    )
+    position_fp = source_book.plans[0].position_fingerprint
+    return build_forecast_horizon_clock_book_v1(
+        source_exit_plan_book=source_book,
+        existing_book=None,
+        clock_policy_by_position={
+            position_fp: ForecastHorizonClockPolicyV1(
+                session_counting_policy=session_policy,
+            ),
+        },
+    )
+
+
+def test_forecast_horizon_time_disposition_contract_is_frozen() -> None:
+    assert (
+        FORECAST_HORIZON_TIME_DISPOSITION_CONTRACT_FINGERPRINT
+        == "eda75ce9e816942b46e9c215c429da0b568cd2d2012bba2b09c43fe0672a049b"
+    )
+
+
+def test_time_disposition_before_deadline_is_not_expired(tmp_path) -> None:
+    book = _clock_book(
+        tmp_path,
+        opened_utc=datetime(2026, 9, 18, 19, 0, tzinfo=UTC),
+        unit=ForecastHorizonUnit.MINUTES,
+        value=120,
+    )
+    clock = book.clocks[0]
+    evaluation = clock.deadline_utc - timedelta(microseconds=1)
+    bundle = build_forecast_horizon_time_disposition_bundle_v1(
+        source_clock_book=book,
+        evaluation_utc=evaluation,
+    )
+    disposition = bundle.dispositions[0]
+    assert disposition.disposition == (
+        ForecastHorizonTimeDispositionKind.NOT_EXPIRED
+    )
+    assert disposition.opened_utc == clock.opened_utc
+    assert disposition.deadline_utc == clock.deadline_utc
+    assert bundle.evaluation_utc == evaluation
+    assert bundle.price_trigger_authority is False
+    assert bundle.close_precedence_authority is False
+    assert bundle.close_fill_authority is False
+
+
+@pytest.mark.parametrize("offset", (timedelta(0), timedelta(seconds=1)))
+def test_time_disposition_at_or_after_deadline_is_expired(
+    tmp_path,
+    offset,
+) -> None:
+    book = _clock_book(
+        tmp_path,
+        opened_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+        unit=ForecastHorizonUnit.SESSIONS,
+        value=1,
+        session_policy=(
+            SessionHorizonCountingPolicy.FULL_SESSIONS_AFTER_ENTRY
+        ),
+    )
+    clock = book.clocks[0]
+    evaluation = clock.deadline_utc + offset
+    bundle = build_forecast_horizon_time_disposition_bundle_v1(
+        source_clock_book=book,
+        evaluation_utc=evaluation,
+    )
+    assert bundle.dispositions[0].disposition == (
+        ForecastHorizonTimeDispositionKind.TIME_EXPIRED
+    )
+
+
+def test_time_disposition_rejects_evaluation_before_position_open(
+    tmp_path,
+) -> None:
+    book = _clock_book(
+        tmp_path,
+        opened_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+        unit=ForecastHorizonUnit.MINUTES,
+        value=30,
+    )
+    with pytest.raises(
+        ForecastHorizonTimeDispositionError,
+        match="cannot precede position open",
+    ):
+        build_forecast_horizon_time_disposition_bundle_v1(
+            source_clock_book=book,
+            evaluation_utc=book.clocks[0].opened_utc
+            - timedelta(microseconds=1),
+        )
+
+
+def test_time_disposition_bundle_roundtrips_full_clock_book(
+    tmp_path,
+) -> None:
+    book = _clock_book(
+        tmp_path,
+        opened_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+        unit=ForecastHorizonUnit.MINUTES,
+        value=30,
+    )
+    evaluation = book.clocks[0].deadline_utc
+    bundle = build_forecast_horizon_time_disposition_bundle_v1(
+        source_clock_book=book,
+        evaluation_utc=evaluation,
+    )
+    settings = _settings(tmp_path)
+    path = write_forecast_horizon_time_disposition_bundle_v1(
+        settings,
+        bundle,
+    )
+    restored = read_forecast_horizon_time_disposition_bundle_v1(
+        settings,
+        path=path,
+    )
+    assert restored == bundle
+    assert restored.source_clock_book == book
+    assert restored.dispositions[0].source_clock_fingerprint == (
+        book.clocks[0].clock_fingerprint
+    )
+
+
+def test_empty_clock_book_produces_empty_time_disposition_bundle(
+    tmp_path,
+) -> None:
+    source_plan_book = _empty_plan_book(
+        tmp_path,
+        as_of_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+    )
+    clock_book = build_forecast_horizon_clock_book_v1(
+        source_exit_plan_book=source_plan_book,
+        existing_book=None,
+        clock_policy_by_position={},
+    )
+    bundle = build_forecast_horizon_time_disposition_bundle_v1(
+        source_clock_book=clock_book,
+        evaluation_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+    )
+    assert bundle.dispositions == ()
+    assert bundle.provider_reads == 0
+    assert bundle.broker_writes == 0

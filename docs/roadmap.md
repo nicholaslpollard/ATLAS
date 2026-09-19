@@ -3269,13 +3269,44 @@ Frozen semantics:
     price-trigger, CLOSE-fill, account-mutation, provider/broker, order, PAPER/LIVE,
     promotion or confluence authority.
 
-Immediate continuation is a separately versioned `TIME_EXPIRED / NOT_EXPIRED`
-disposition that consumes the immutable clock book plus explicit evaluation UTC. Only
-after that evidence is accepted should CLOSE freeze deterministic STOP/TARGET/TIME
-precedence.
+The separately versioned `TIME_EXPIRED / NOT_EXPIRED` disposition below now consumes
+the immutable clock book plus explicit evaluation UTC. Immediate continuation is
+therefore the CLOSE precedence boundary that must freeze deterministic STOP/TARGET/TIME
+ordering before time expiry may create an exit fill.
 
 The Strategy Evidence Register remains unchanged because this package advances durable
 product timing evidence rather than strategy research evidence.
+
+## Track A explicit forecast-horizon time disposition — 2026-09-19
+
+Track A freezes **atlas-simulation-forecast-horizon-time-disposition-v1** under contract
+**eda75ce9e816942b46e9c215c429da0b568cd2d2012bba2b09c43fe0672a049b**.
+
+Frozen semantics:
+
+1. consume and retain the complete typed durable forecast-horizon clock book;
+2. require one explicit timezone-aware evaluation UTC for the entire current clock set;
+3. reject evaluation before any source position-open UTC;
+4. emit `NOT_EXPIRED` only when evaluation UTC is strictly before deadline UTC;
+5. emit `TIME_EXPIRED` when evaluation UTC is equal to or later than deadline UTC;
+6. freeze deadline equality as expired rather than leaving boundary behavior implicit;
+7. retain exact clock, position, instrument/ticker, position-open, deadline and
+   evaluation lineage for every disposition;
+8. require deterministic exact coverage of every current clock and re-derive each
+   disposition during typed validation/readback;
+9. persist the complete nested clock book and disposition set atomically with fsync at
+   `data/live/simulation/forecast_horizon_time_disposition/current.json`;
+10. permit an empty current clock book to produce an empty disposition set while still
+    binding the explicit evaluation UTC; and
+11. grant no price-trigger, STOP/TARGET/TIME precedence, CLOSE-fill, account-mutation,
+    provider/broker, order, PAPER/LIVE, promotion or confluence authority.
+
+Immediate continuation is a separately versioned CLOSE-decision package that consumes
+current price-trigger evidence plus this time-disposition evidence and freezes exact
+STOP/TARGET/TIME precedence before any time expiry can close a position.
+
+The Strategy Evidence Register remains unchanged because this package advances product
+timing disposition evidence rather than strategy research evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
