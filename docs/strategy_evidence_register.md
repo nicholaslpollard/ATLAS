@@ -1,6 +1,8 @@
 # ATLAS Strategy Evidence Register
 
-**Current as of 2026-09-15 (UTC). This file is a living project document.**
+**Current as of 2026-09-19 (UTC). This file is a living project document.**
+
+**2026-09-19 reconciliation:** reviewed against current `main` through merged PR #161. No strategy evidence or disposition changed after the 2026-09-16 ORB v2 closeout; the September 17–19 recurrent/runtime packages and PR #161 are Track A product/operational-acceptance work only. The target-workstation PR #161 harness is implemented but has not yet produced workstation acceptance evidence. Historical strategy support, promotion, PAPER, and LIVE authority therefore remain unchanged.
 
 This register is the durable scientific ledger for strategy-level evidence. It exists so a future ATLAS chat can determine, without reconstructing old conversations, what each strategy version was, what evidence it opened, where it worked or failed, what remains uncertain, and what research action is currently justified.
 
