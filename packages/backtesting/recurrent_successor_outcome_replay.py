@@ -347,8 +347,17 @@ def _source_integrity(
             "conditioning normalized artifact set is empty"
         )
     normalized_identity: list[dict[str, object]] = []
-    for path in normalized_paths:
+    print(
+        f"recurrent replay source integrity: verifying {len(normalized_paths):,} normalized parts",
+        flush=True,
+    )
+    for part_index, path in enumerate(normalized_paths, start=1):
         receipt = _validate_receipt(path, phase="NORMALIZE_PART")
+        if part_index % 100 == 0 or part_index == len(normalized_paths):
+            print(
+                f"  source integrity: {part_index:,}/{len(normalized_paths):,} parts verified",
+                flush=True,
+            )
         normalized_identity.append(
             {
                 "name": path.name,
@@ -391,6 +400,11 @@ def load_selected_replay_opportunities(
     root, analysis_summary = _conditioning_root(project_root)
     assignments, normalized_dir, source_fingerprint = _source_integrity(root)
     analysis_fingerprint = str(analysis_summary["analysis_fingerprint"])
+    print(
+        "recurrent replay selection: scanning accepted conditioning assignments "
+        "and training cells",
+        flush=True,
+    )
 
     threads = int(
         duckdb_threads
@@ -704,6 +718,10 @@ def load_selected_replay_opportunities(
                 source_analysis_fingerprint=analysis_fingerprint,
             )
         )
+    print(
+        f"recurrent replay selection: {len(opportunities):,} selected comparable opportunities loaded",
+        flush=True,
+    )
     source = {
         "conditioning_root": str(root),
         "conditioning_analysis_fingerprint": analysis_fingerprint,
@@ -965,6 +983,12 @@ def run_recurrent_successor_outcome_replay(
         raise RecurrentSuccessorOutcomeReplayError(
             "selected replay scope contains no LONG opportunities supported by recurrent funding v1"
         )
+    print(
+        "recurrent replay portfolio: "
+        f"{len(long_opportunities):,} LONG supported / "
+        f"{unsupported_short_count:,} SHORT reported-only",
+        flush=True,
+    )
 
     run_identity = {
         "contract_fingerprint": RECURRENT_SUCCESSOR_OUTCOME_REPLAY_CONTRACT_FINGERPRINT,
@@ -1200,6 +1224,26 @@ def run_recurrent_successor_outcome_replay(
                 )
             slot.position_fingerprint = transition.position.position_fingerprint
             slot.state = "OPEN"
+            current = coordinator.current_account()
+            book_equity = current.state.account_book_equity
+            peak_book_equity = max(peak_book_equity, book_equity)
+            drawdown = (
+                0.0
+                if peak_book_equity <= 0.0
+                else book_equity / peak_book_equity - 1.0
+            )
+            maximum_book_drawdown = min(maximum_book_drawdown, drawdown)
+            equity_rows.append(
+                {
+                    "timestamp_utc": opportunity.entry_utc,
+                    "event": "ENTRY",
+                    "book_equity": book_equity,
+                    "cash": current.state.cash,
+                    "closed_trade_count": len(current.state.closed_trades),
+                    "active_or_reserved_slots": len(slots),
+                    "drawdown_from_peak_book_equity": drawdown,
+                }
+            )
             continue
 
         if event_kind != "CLOSE" or slot.state != "OPEN":
@@ -1298,6 +1342,7 @@ def run_recurrent_successor_outcome_replay(
         equity_rows.append(
             {
                 "timestamp_utc": opportunity.exit_utc,
+                "event": "CLOSE",
                 "book_equity": book_equity,
                 "cash": current.state.cash,
                 "closed_trade_count": len(current.state.closed_trades),
@@ -1306,6 +1351,13 @@ def run_recurrent_successor_outcome_replay(
             }
         )
         del slots[index]
+        if len(closed_rows) % 500 == 0:
+            print(
+                "  recurrent replay progress: "
+                f"{len(closed_rows):,} positions closed; "
+                f"book equity={book_equity:,.2f}; active/reserved={len(slots)}",
+                flush=True,
+            )
 
     if slots:
         raise RecurrentSuccessorOutcomeReplayError(
