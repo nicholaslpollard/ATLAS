@@ -373,6 +373,88 @@ class ForecastHorizonClockEvidenceV1:
         return _fingerprint_payload(self)
 
 
+def forecast_horizon_clock_evidence_from_payload_v1(
+    payload: dict[str, object],
+) -> ForecastHorizonClockEvidenceV1:
+    try:
+        policy_payload = dict(payload["policy"])
+        session_policy = policy_payload.get(
+            "session_counting_policy"
+        )
+        policy = ForecastHorizonClockPolicyV1(
+            exchange=str(policy_payload["exchange"]),
+            session_counting_policy=(
+                None
+                if session_policy is None
+                else SessionHorizonCountingPolicy(
+                    str(session_policy)
+                )
+            ),
+        )
+        return ForecastHorizonClockEvidenceV1(
+            contract_version=str(payload["contract_version"]),
+            contract_fingerprint=str(
+                payload["contract_fingerprint"]
+            ),
+            plan_fingerprint=str(payload["plan_fingerprint"]),
+            policy=policy,
+            policy_fingerprint=str(
+                payload["policy_fingerprint"]
+            ),
+            exchange=str(payload["exchange"]),
+            horizon_unit=ForecastHorizonUnit(
+                str(payload["horizon_unit"])
+            ),
+            horizon_value=int(payload["horizon_value"]),
+            opened_utc=datetime.fromisoformat(
+                str(payload["opened_utc"])
+            ),
+            evaluation_utc=datetime.fromisoformat(
+                str(payload["evaluation_utc"])
+            ),
+            expiry_utc=datetime.fromisoformat(
+                str(payload["expiry_utc"])
+            ),
+            regular_session_elapsed_minutes=float(
+                payload["regular_session_elapsed_minutes"]
+            ),
+            expired=bool(payload["expired"]),
+            price_trigger_authority=bool(
+                payload["price_trigger_authority"]
+            ),
+            close_fill_authority=bool(
+                payload["close_fill_authority"]
+            ),
+            provider_reads=int(payload["provider_reads"]),
+            provider_writes=int(payload["provider_writes"]),
+            broker_reads=int(payload["broker_reads"]),
+            broker_writes=int(payload["broker_writes"]),
+            order_creation_authority=bool(
+                payload["order_creation_authority"]
+            ),
+            paper_authority=bool(payload["paper_authority"]),
+            live_authority=bool(payload["live_authority"]),
+            promotion_authority=bool(
+                payload["promotion_authority"]
+            ),
+            confluence_authority=bool(
+                payload["confluence_authority"]
+            ),
+            reason_codes=tuple(payload["reason_codes"]),
+        )
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        ForecastHorizonClockError,
+    ) as exc:
+        if isinstance(exc, ForecastHorizonClockError):
+            raise
+        raise ForecastHorizonClockError(
+            "forecast horizon clock payload failed typed validation"
+        ) from exc
+
+
 def build_forecast_horizon_clock_evidence_v1(
     *,
     plan: RecurrentDecisionStockExitPlanV1,
@@ -470,4 +552,5 @@ __all__ = [
     "ForecastHorizonClockPolicyV1",
     "SessionHorizonCountingPolicy",
     "build_forecast_horizon_clock_evidence_v1",
+    "forecast_horizon_clock_evidence_from_payload_v1",
 ]
