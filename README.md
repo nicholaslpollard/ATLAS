@@ -1800,10 +1800,52 @@ This evidence grants no price-trigger or STOP/TARGET comparison authority, no
 STOP/TARGET/TIME precedence authority, no CLOSE fill, account mutation, provider/broker
 access, order, PAPER/LIVE, promotion or confluence authority.
 
-Immediate continuation is a separately versioned CLOSE-decision boundary that consumes
-current Webull price-trigger evidence plus this time-disposition evidence and freezes
-deterministic precedence among STOP, TARGET and TIME before producing any exit fill.
-The Strategy Evidence Register remains unchanged.
+The price-first time-aware Webull CLOSE package below now consumes current price-trigger
+evidence plus this time-disposition evidence and freezes deterministic STOP/TARGET/TIME
+precedence. Immediate continuation is production-cycle facade integration of that final
+CLOSE evidence, followed by target-workstation market-hours Webull sandbox and
+restart/resume acceptance. The Strategy Evidence Register remains unchanged.
+
+## 2026-09-19 — Price-first time-aware Webull stock CLOSE
+
+Track A now freezes **atlas-simulation-current-webull-time-aware-stock-close-v1** under
+contract **7b3a9f25959002ea070eca4611a16ce57f73771430d7075f855cd924ca7cac45**.
+
+This package composes the already accepted current Webull STOP/TARGET/NO_TRIGGER evidence
+with the explicit forecast-horizon time disposition. It retains both full typed source
+bundles and requires their exact exit-plan book to match. The shared time-evaluation UTC
+must equal the price-CLOSE build timestamp.
+
+V1 freezes **price-first precedence**:
+
+- an accepted **STOP** remains STOP even if the horizon is also TIME_EXPIRED;
+- an accepted **TARGET** remains TARGET even if the horizon is also TIME_EXPIRED;
+- price **NO_TRIGGER + NOT_EXPIRED** remains NO_TRIGGER;
+- price **NO_TRIGGER + TIME_EXPIRED** becomes **TIME**.
+
+STOP/TARGET reuse their already accepted price-CLOSE fills unchanged. TIME may create a
+new recurrent exit fill only from a price NO_TRIGGER row. That TIME fill uses the same
+retained Webull executable bid, requires the quote itself to have been received at or
+after the immutable horizon deadline, and requires exact explicit time-exit fee coverage
+from one fingerprinted fee source. This prevents a post-deadline evaluation from
+retroactively closing at a quote that was actually sampled before the deadline.
+
+All final STOP/TARGET/TIME fills are dry-run together through the accepted pure recurrent
+close-batch transition before the final bundle is accepted. The complete nested evidence
+and final rows are self-fingerprinted and atomically fsync-persisted at
+`data/live/simulation/recurrent_time_aware_stock_close/current.json`. A canonical decoder
+for the accepted price-CLOSE bundle is also exposed so nested readback reuses one typed
+serialization contract rather than duplicating it.
+
+The package performs no provider or broker calls itself and grants no broker-fill, order,
+PAPER/LIVE, promotion or confluence authority. It only produces simulation CLOSE evidence
+for the already accepted recurrent runner.
+
+Immediate continuation is a small production-cycle facade update so first-stage CLOSE
+consumes this final price/time evidence rather than price-only evidence, while preserving
+the generic CLOSE → RESERVE → ENTRY → MARK order. After that exact-head gate, the next
+meaningful boundary is target-workstation market-hours Webull sandbox and restart/resume
+acceptance. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 

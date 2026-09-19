@@ -3301,12 +3301,52 @@ Frozen semantics:
 11. grant no price-trigger, STOP/TARGET/TIME precedence, CLOSE-fill, account-mutation,
     provider/broker, order, PAPER/LIVE, promotion or confluence authority.
 
-Immediate continuation is a separately versioned CLOSE-decision package that consumes
-current price-trigger evidence plus this time-disposition evidence and freezes exact
-STOP/TARGET/TIME precedence before any time expiry can close a position.
+The price-first time-aware CLOSE package below now consumes current price-trigger
+evidence plus this time-disposition evidence and freezes exact STOP/TARGET/TIME
+precedence. Immediate continuation is production-cycle facade integration followed by
+target-workstation market-hours/restart-resume acceptance.
 
 The Strategy Evidence Register remains unchanged because this package advances product
 timing disposition evidence rather than strategy research evidence.
+
+## Track A price-first time-aware Webull stock CLOSE — 2026-09-19
+
+Track A freezes **atlas-simulation-current-webull-time-aware-stock-close-v1** under
+contract **7b3a9f25959002ea070eca4611a16ce57f73771430d7075f855cd924ca7cac45**.
+
+Frozen semantics:
+
+1. retain and consume the complete accepted current Webull price-CLOSE bundle and
+   complete explicit horizon time-disposition bundle;
+2. require both sources to retain the exact same decision-bound exit-plan book;
+3. require time evaluation UTC to equal the price-CLOSE build timestamp;
+4. freeze price-first precedence: STOP remains STOP and TARGET remains TARGET even when
+   time is expired;
+5. permit TIME only for price NO_TRIGGER plus TIME_EXPIRED;
+6. preserve price NO_TRIGGER plus NOT_EXPIRED as final NO_TRIGGER;
+7. reuse accepted STOP/TARGET fills unchanged and prohibit separate time-fee evidence
+   for those positions;
+8. for TIME only, require the retained Webull quote receipt timestamp at or after the
+   immutable horizon deadline, use the exact retained executable bid, and require exact
+   explicit time-exit fees from one fingerprinted source;
+9. require exact time-fee coverage only for final TIME positions and reject unused fee
+   sources when there are no TIME exits;
+10. dry-run all final STOP/TARGET/TIME fills together through the accepted pure recurrent
+    close-batch transition before final evidence acceptance;
+11. retain full nested price/time source evidence and deterministic final rows,
+    self-fingerprint the complete artifact, and atomically fsync-persist it at
+    `data/live/simulation/recurrent_time_aware_stock_close/current.json`;
+12. expose/reuse one canonical typed decoder for the accepted price-CLOSE source; and
+13. perform no provider/broker calls and grant no broker-fill, order, PAPER/LIVE,
+    promotion or confluence authority.
+
+Immediate continuation is a production-cycle facade update that admits this final
+price/time CLOSE evidence as the recurrent CLOSE source while keeping the generic
+CLOSE → RESERVE → ENTRY → MARK stage order unchanged. After that, proceed to the
+target-workstation market-hours Webull sandbox and restart/resume acceptance proof.
+
+The Strategy Evidence Register remains unchanged because this package advances product
+simulation lifecycle evidence rather than strategy research evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
