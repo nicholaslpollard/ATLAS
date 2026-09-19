@@ -3348,6 +3348,42 @@ target-workstation market-hours Webull sandbox and restart/resume acceptance pro
 The Strategy Evidence Register remains unchanged because this package advances product
 simulation lifecycle evidence rather than strategy research evidence.
 
+## Track A time-aware recurrent production-cycle extension — 2026-09-19
+
+Track A freezes **atlas-simulation-recurrent-time-aware-production-cycle-v1** under
+contract **c16ce1d4b9923d857673a92e6a4378a76699d6413ccf3ee8dbed9b138a894e84**.
+
+Frozen semantics:
+
+1. extend, but do not modify, accepted recurrent production-cycle v1
+   (**c03e6e299076618a537e8ab2d7ebd575b33f22924f25fc1f0ba655f10e7412ca**);
+2. inherit BEGIN, RESERVE, ENTRY, post-ENTRY plan refresh, MARK, COMPLETE and
+   restart/restore behavior unchanged;
+3. preserve generic recurrent mutation order CLOSE → RESERVE → ENTRY → MARK;
+4. override only CLOSE to require the accepted time-aware final stock-CLOSE bundle
+   (**7b3a9f25959002ea070eca4611a16ce57f73771430d7075f855cd924ca7cac45**);
+5. require exact cycle identity and current recurrent-state binding on first CLOSE;
+6. after account mutation, delegate exact CLOSE retry to the existing immutable
+   stage-admission receipt so restart/retry cannot double-apply a close;
+7. inherit restore through the base cycle's class-aware constructor so restored
+   instances remain time-aware production-cycle instances;
+8. leave STOP/TARGET/TIME precedence, clock evidence, time disposition and fill
+   construction owned by their already accepted evidence packages;
+9. leave base production v1 behavior frozen: it continues to reject the time-aware
+   CLOSE contract rather than silently acquiring new semantics;
+10. perform zero provider/broker reads or writes and grant no order, PAPER/LIVE,
+    promotion or confluence authority.
+
+Immediate continuation after acceptance is target-workstation operational proof rather
+than another speculative backend layer: exercise real market-hours Webull sandbox L1
+through the accepted production facade, interrupt/restart the process at lifecycle
+boundaries, prove deterministic resume/no-double-application, and verify the browser/
+control-plane reads the same authoritative recurrent state. PAPER authority remains
+separately gated on that evidence.
+
+The Strategy Evidence Register remains unchanged because this package composes already
+accepted product evidence and changes no strategy research result.
+
 ## Track A funding/collateral terms — 2026-09-16
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`

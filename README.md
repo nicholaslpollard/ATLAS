@@ -1847,6 +1847,45 @@ the generic CLOSE → RESERVE → ENTRY → MARK order. After that exact-head ga
 meaningful boundary is target-workstation market-hours Webull sandbox and restart/resume
 acceptance. The Strategy Evidence Register remains unchanged.
 
+## 2026-09-19 — Time-aware recurrent production-cycle extension
+
+Track A now freezes **atlas-simulation-recurrent-time-aware-production-cycle-v1** under
+contract **c16ce1d4b9923d857673a92e6a4378a76699d6413ccf3ee8dbed9b138a894e84**.
+
+This is a backward-compatible extension of the accepted
+**atlas-simulation-recurrent-production-cycle-v1** contract
+(**c03e6e299076618a537e8ab2d7ebd575b33f22924f25fc1f0ba655f10e7412ca**).
+The base production cycle is not modified.
+
+The extension inherits accepted BEGIN, RESERVE, ENTRY, post-ENTRY exit-plan refresh,
+MARK, COMPLETE and restart/restore behavior unchanged. It overrides only first-stage
+CLOSE so the production facade admits the accepted
+**atlas-simulation-current-webull-time-aware-stock-close-v1** bundle
+(**7b3a9f25959002ea070eca4611a16ce57f73771430d7075f855cd924ca7cac45**)
+instead of the earlier price-only CLOSE bundle.
+
+First CLOSE application must still bind the exact current recurrent-state fingerprint.
+After CLOSE mutates the account, an exact retry delegates to the existing immutable
+stage-admission receipt and cannot double-close a position. Inherited restore uses
+the subclass through the base class's `cls(...)` construction, so the same exact bundle
+remains idempotent after process restart.
+
+The extension does not reacquire quotes, recompute clocks, reinterpret time
+dispositions, or alter STOP/TARGET/TIME precedence. Those semantics remain owned by
+the accepted time-aware CLOSE evidence package. The generic recurrent mutation order
+remains CLOSE → RESERVE → ENTRY → MARK, and the base production v1 continues to reject
+the time-aware CLOSE contract rather than silently changing behavior.
+
+The package performs zero provider/broker reads or writes and grants no order,
+PAPER/LIVE, promotion or confluence authority. The Strategy Evidence Register remains
+unchanged.
+
+Immediate continuation after acceptance is the target-workstation acceptance proof:
+use real market-hours Webull sandbox L1 evidence through the accepted production
+facade, prove durable restart/resume across the recurrent lifecycle, verify browser/
+control-plane observability stays bound to the same authoritative state, and capture
+the resulting acceptance evidence before any PAPER authority is considered.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
