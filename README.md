@@ -1676,14 +1676,57 @@ The facade can be restored directly from the durable recurrent checkpoint after 
 process restart. It performs no provider or broker acquisition itself and grants no
 broker write, order, PAPER/LIVE, promotion, scheduler-trigger, or confluence authority.
 
-Immediate continuation is the separately versioned forecast-horizon clock contract.
-The accepted move/time forecast already carries MINUTES/SESSIONS horizons, but time
-exit behavior remains disabled until regular-session elapsed-time and exchange-session
-counting semantics are explicit. After that boundary, the next external acceptance
-step is the target-workstation market-hours Webull sandbox and restart/resume proof.
+The separately versioned forecast-horizon clock contract below now resolves the
+MINUTES/SESSIONS timing ambiguity without granting CLOSE authority. Immediate
+continuation is to bind that clock evidence into a new version of decision-bound CLOSE,
+then run the target-workstation market-hours Webull sandbox and restart/resume proof.
 
 The Strategy Evidence Register remains unchanged because this package composes accepted
 product/runtime evidence and does not change strategy research evidence.
+
+## 2026-09-19 — Forecast-horizon exchange clock
+
+Track A now freezes **atlas-simulation-forecast-horizon-clock-v1** under contract
+**a5f3b07439b4ca9f2984aaae30dc7333fc93253ae781513edf99756283318d55**.
+
+This package resolves the timing ambiguity that remained after the decision-bound
+exit-plan and production-cycle work. It consumes the accepted exit plan and official
+exchange calendar, and emits deterministic clock evidence only. It does not create a
+CLOSE fill, place an order, or mutate recurrent account state.
+
+For **MINUTES** horizons, one forecast minute now means one elapsed minute of the
+official regular exchange session. Premarket, after-hours, closed time, overnight,
+weekends and exchange holidays contribute zero elapsed forecast minutes. Official
+early closes are respected automatically. Expiry occurs when the requested number of
+regular-session minutes has elapsed from the actual simulated position-open timestamp.
+
+For **SESSIONS** horizons, the older forecast object did not say whether the entry
+session itself counts. V1 therefore refuses to guess. The caller must provide one
+explicit fingerprinted policy:
+
+- **ENTRY_SESSION_INCLUDED** — horizon 1 expires at the official close of the entry
+  session; or
+- **FULL_SESSIONS_AFTER_ENTRY** — horizon 1 expires at the official close of the first
+  exchange session after the entry session.
+
+The chosen exchange and session policy are fingerprint material. MINUTES horizons
+reject a session-counting policy, while SESSIONS horizons require one. Clock evaluation
+cannot predate the position open, and `expired` becomes true only at or after the
+deterministically calculated expiry timestamp.
+
+The package uses ATLAS's accepted exchange-calendar wrapper, including official
+session opens/closes and early-close schedules. Tests cover overnight/weekend pausing,
+the 2026 post-Thanksgiving early close, both session-counting modes, exact expiry, and
+authority boundaries.
+
+This clock remains evidence-only: price-trigger authority, CLOSE-fill authority,
+provider/broker reads or writes, orders, PAPER/LIVE, promotion and confluence authority
+all remain disabled.
+
+Immediate continuation is a separately versioned CLOSE integration that accepts both
+the existing STOP/TARGET price evidence and this explicit horizon clock. That package
+must define deterministic precedence among STOP, TARGET and TIME before time expiry can
+close a simulated position. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 

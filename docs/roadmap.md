@@ -3185,15 +3185,55 @@ Frozen semantics:
 13. perform no provider/broker acquisition and grant no scheduler-trigger, broker-write,
     order, PAPER/LIVE, promotion or confluence authority.
 
-Immediate continuation is the separately versioned forecast-horizon clock contract.
-MINUTES and SESSIONS are already carried by accepted move/time forecasts, but the
-system must explicitly freeze regular-session elapsed-minute semantics and exchange
-session counting before a horizon can become a CLOSE trigger. After that deterministic
-boundary, run target-workstation market-hours Webull sandbox and restart/resume
-acceptance.
+The separately versioned forecast-horizon clock contract below now freezes the missing
+MINUTES/SESSIONS semantics without granting CLOSE authority. Immediate continuation is
+a versioned decision-bound CLOSE integration that consumes that clock evidence, followed
+by target-workstation market-hours Webull sandbox and restart/resume acceptance.
 
 The Strategy Evidence Register remains unchanged because this package integrates
 accepted product/runtime components without changing strategy evidence.
+
+## Track A forecast-horizon exchange clock — 2026-09-19
+
+Track A freezes **atlas-simulation-forecast-horizon-clock-v1** under contract
+**a5f3b07439b4ca9f2984aaae30dc7333fc93253ae781513edf99756283318d55**.
+
+Frozen semantics:
+
+1. consume the accepted decision-bound recurrent exit plan and the official ATLAS
+   exchange-calendar wrapper only;
+2. define MINUTES as elapsed **regular-session** minutes from actual simulated
+   position open; premarket, after-hours, closed periods, overnight, weekends and
+   exchange holidays contribute zero;
+3. respect official early closes automatically through exchange session boundaries;
+4. require MINUTES positions to have opened during the regular session;
+5. require an explicit fingerprinted SESSIONS counting policy because the original
+   move/time forecast did not specify whether the entry session counts;
+6. support exactly two v1 session policies:
+   `ENTRY_SESSION_INCLUDED` and `FULL_SESSIONS_AFTER_ENTRY`;
+7. under `ENTRY_SESSION_INCLUDED`, horizon 1 expires at official close of the entry
+   session; under `FULL_SESSIONS_AFTER_ENTRY`, horizon 1 expires at official close of
+   the first session after entry;
+8. reject a session-counting policy for MINUTES and require one for SESSIONS;
+9. fingerprint exchange plus policy so the timing interpretation is explicit lineage;
+10. require evaluation time no earlier than position open and set expired only when
+    evaluation is at or after deterministic expiry;
+11. retain regular-session elapsed-minute evidence for auditability; and
+12. grant no price-trigger, CLOSE-fill, provider/broker, order, PAPER/LIVE, promotion
+    or confluence authority.
+
+Tests cover overnight/weekend pausing, official early-close behavior, both SESSIONS
+counting policies, exact minute expiry, pre-open evaluation rejection and authority
+boundaries.
+
+Immediate continuation is a separately versioned decision-bound CLOSE integration that
+combines existing STOP/TARGET evidence with this clock evidence. That integration must
+freeze deterministic STOP/TARGET/TIME precedence before an expired horizon can create
+a simulated close fill. After that, run the target-workstation market-hours Webull
+sandbox and restart/resume acceptance proof.
+
+The Strategy Evidence Register remains unchanged because this package resolves product
+simulation clock semantics without changing strategy evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
