@@ -3185,15 +3185,48 @@ Frozen semantics:
 13. perform no provider/broker acquisition and grant no scheduler-trigger, broker-write,
     order, PAPER/LIVE, promotion or confluence authority.
 
-Immediate continuation is the separately versioned forecast-horizon clock contract.
-MINUTES and SESSIONS are already carried by accepted move/time forecasts, but the
-system must explicitly freeze regular-session elapsed-minute semantics and exchange
-session counting before a horizon can become a CLOSE trigger. After that deterministic
-boundary, run target-workstation market-hours Webull sandbox and restart/resume
-acceptance.
+The separately versioned forecast-horizon clock below now freezes regular-session
+elapsed-minute and exchange-session counting without creating a CLOSE trigger.
+Immediate continuation is the time-expiry disposition contract, then explicit CLOSE
+integration, followed by target-workstation market-hours Webull sandbox and
+restart/resume acceptance.
 
 The Strategy Evidence Register remains unchanged because this package integrates
 accepted product/runtime components without changing strategy evidence.
+
+## Track A descriptive recurrent forecast-horizon clock — 2026-09-19
+
+Track A freezes **atlas-simulation-recurrent-forecast-horizon-clock-v1** under contract
+**12de0a1214dac8fe566e0eb33ea8de34b5ec5729ab32411625431f778033fe53**.
+
+Frozen semantics:
+
+1. consume the accepted decision-bound recurrent stock exit plan and exact retained
+   move/time forecast horizon;
+2. start the clock at the actual simulated position-open/fill UTC timestamp;
+3. use XNYS regular-session boundaries from the existing exchange-calendar wrapper;
+4. interpret MINUTES as elapsed regular-session minutes only; pause the clock through
+   premarket, after-hours, overnight, weekends and holidays;
+5. carry remaining MINUTES across sessions using official opens/closes, including
+   exchange-calendar early closes;
+6. interpret SESSIONS with the entry session as session 1 and set the deadline at the
+   regular close of the Nth included exchange session;
+7. exclude all non-session calendar days from SESSIONS counting;
+8. retain the exact source plan/forecast/decision/position fingerprints, horizon,
+   deadline and ordered session trace and make the record deterministically
+   fingerprintable;
+9. allow a deadline to equal an official regular-session close; and
+10. remain descriptive only: no elapsed/due flag, time-exit trigger, CLOSE fill,
+    account mutation, provider/broker access, order, PAPER/LIVE, promotion or
+    confluence authority.
+
+Immediate continuation is a separately versioned time-expiry disposition evaluator.
+It will accept this immutable clock plus an explicit evaluation UTC and emit only
+`NOT_EXPIRED` versus `TIME_EXPIRED` evidence. Fill creation and recurrent CLOSE
+integration remain separate acceptance boundaries.
+
+The Strategy Evidence Register remains unchanged because this package freezes product
+time semantics rather than strategy evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
