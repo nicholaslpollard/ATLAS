@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-18 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-19 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -3006,6 +3006,57 @@ produce CLOSE trigger evidence.
 
 The Strategy Evidence Register remains unchanged because this package advances product
 simulation execution evidence rather than research findings.
+
+## Track A decision-bound recurrent stock exit-plan book — 2026-09-19
+
+A lineage audit retired PR #150 unmerged despite 20/20 green exact-head CI. That branch
+attempted to reintroduce Phase 13 reference geometry as a required recurrent exit source,
+which conflicted with the accepted separately versioned product sequence:
+`UnderlyingMoveTimeForecast -> SimulationDecisionRecord -> RESERVE -> ENTRY`.
+`Phase13CaseFile` remains unchanged/legacy-compatible and is not current recurrent
+exit truth.
+
+The replacement freezes
+`atlas-simulation-recurrent-decision-stock-exit-plan-v1` under contract
+`445d820b0d4268f10d66b842e3ed341ccadd94363418edf2f4ff30f755e44754`.
+
+Frozen semantics:
+
+1. consume exact accepted `SimulationDecisionRecord` plus exact recurrent bullish stock
+   open-position lineage; open option positions fail closed in v1;
+2. require an explicit non-authoritative stock-exit policy id/fingerprint for every
+   newly opened position;
+3. require both explicit stop and target fractions to match threshold fractions already
+   present in the original accepted `UnderlyingMoveTimeForecast`; no hidden threshold
+   default or Phase 13 geometry substitution is allowed;
+4. permit different stop and target threshold fractions while retaining the exact
+   corresponding threshold-probability/path-order evidence;
+5. derive stop/target only from the actual simulated entry fill:
+   `stop = entry × (1-stop_fraction)`,
+   `target = entry × (1+target_fraction)`;
+6. preserve the full immutable decision record, forecast fingerprint, selected candidate
+   fingerprint, explicit policy, actual fill and original forecast horizon in each plan;
+7. preserve forecast horizon as evidence only—time-exit triggering remains disabled
+   until a separate clock-policy contract is accepted;
+8. persist one durable **open-position plan book**: existing open-position plans are
+   immutable/carried forward, new positions require current RESERVE decision evidence,
+   and plans for positions absent from current authoritative state are pruned;
+9. require exact coverage of every current open bullish stock position and persist the
+   deterministic self-fingerprinted book atomically with fsync at
+   `data/live/simulation/recurrent_decision_stock_exit_plan/current.json`;
+10. centralize persisted `SimulationDecisionRecord` typed reconstruction in the
+    decision-record layer and make RESERVE reuse that canonical deterministic decoder;
+11. perform zero provider/broker reads or writes and grant no trigger, CLOSE-fill,
+    order, PAPER/LIVE, promotion or confluence authority.
+
+Immediate continuation is current Webull L1 stock CLOSE evidence against this plan book:
+exact current-position/plan/quote coverage, executable bid for bullish exits, explicit
+STOP/TARGET/NO_TRIGGER disposition, explicit fees only for triggered positions, durable
+evidence/readback, and pure close-batch dry-run before recurrent runner admission.
+Time-based exit remains separately gated.
+
+The Strategy Evidence Register remains unchanged because this package repairs and
+advances product simulation architecture without changing strategy evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 

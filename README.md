@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-17 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-19 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -1493,6 +1493,62 @@ translate those accepted fractions onto the actual simulated entry fill before a
 stop/target can become a CLOSE trigger. Reference Phase 13 prices will not be treated as
 executable levels merely because they exist. The Strategy Evidence Register remains
 unchanged.
+
+## 2026-09-19 — Decision-bound recurrent stock exit-plan book
+
+A pre-merge architecture audit caught and retired one green-but-wrong branch before it
+entered `main`. PR #150 had 20/20 exact-head checks green, but it attempted to make
+legacy-compatible Phase 13 reference geometry a required recurrent exit dependency.
+That contradicted the accepted Track A product sequence, which deliberately created the
+separately versioned
+`UnderlyingMoveTimeForecast -> SimulationDecisionRecord -> RESERVE -> ENTRY` path
+without modifying `Phase13CaseFile`. PR #150 was therefore closed unmerged. No Phase 13
+exit-plan code or living-document text from that PR entered `main`.
+
+The replacement freezes
+`atlas-simulation-recurrent-decision-stock-exit-plan-v1` under contract
+`445d820b0d4268f10d66b842e3ed341ccadd94363418edf2f4ff30f755e44754`.
+It consumes only accepted product-side decision/forecast evidence plus the exact
+recurrent open position.
+
+V1 requires an explicit fingerprinted stock-exit policy. The policy supplies separate
+stop and target threshold fractions, but **each fraction must already exist as an exact
+threshold in the original accepted `UnderlyingMoveTimeForecast`**. ATLAS does not pick
+a favorable threshold after seeing the position or invent one from Phase 13. For a
+bullish stock long, the plan binds those accepted fractions to the actual simulated
+entry fill:
+
+- stop = actual entry × (1 − explicit stop-threshold fraction);
+- target = actual entry × (1 + explicit target-threshold fraction).
+
+Stop and target thresholds may differ. The original forecast threshold records,
+probabilities, path-order evidence, horizon unit/value, full immutable
+`SimulationDecisionRecord`, selected candidate fingerprint, explicit exit policy, and
+actual fill are all retained in the plan. The forecast horizon is preserved for later
+clock-policy work, but v1 grants no time-exit or price-trigger authority.
+
+The durable artifact is an **open-position exit-plan book**, not a rolling one-cycle
+decision file. Existing open-position plans are carried forward unchanged across
+cycles. A newly opened position must be joined to its full decision record from the
+current durable RESERVE bundle plus exact explicit policy coverage. Positions no longer
+present in authoritative recurrent state are pruned on the next rebuild. This prevents
+the original decision evidence from disappearing when
+`recurrent_reserve/current.json` advances to a later cycle. The book is deterministic,
+self-fingerprinted, atomically fsync-persisted at
+`data/live/simulation/recurrent_decision_stock_exit_plan/current.json`, and requires
+exact coverage of all open bullish stock positions; open option positions fail closed
+in v1.
+
+The package also moves persisted `SimulationDecisionRecord` reconstruction into one
+canonical verified decoder in `decision_record.py`; RESERVE reuses that decoder rather
+than maintaining duplicate reconstruction logic.
+
+Immediate continuation is a fresh Webull L1 stock CLOSE adapter that consumes this
+book, requires exact current-position/plan/quote coverage, records STOP/TARGET versus
+NO_TRIGGER explicitly, uses the executable bid for bullish stock exits, requires
+explicit exit-fee evidence only for triggered positions, and dry-runs the accepted
+recurrent close batch before runner admission. Time-based exits remain a separate
+clock-policy boundary. The Strategy Evidence Register remains unchanged.
 
 ## A33/B33 reference foundation
 
