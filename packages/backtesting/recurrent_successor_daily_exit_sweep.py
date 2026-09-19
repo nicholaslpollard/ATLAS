@@ -4,6 +4,7 @@ import json
 import math
 import os
 from collections import Counter, defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -42,6 +43,7 @@ from packages.backtesting.successor_selected_daily_path_analysis import (
     _validated_daily_source,
     selected_daily_path_root,
 )
+from packages.core.execution_profile import GIB, detect_total_memory_bytes
 from packages.execution.stock_economics import StockEconomicsInputs
 from packages.execution.trade_expression import ActionabilityPolicy, TradeExpressionMode
 from packages.schemas.discovery_score import DiscoveryDirection
@@ -1324,6 +1326,80 @@ def _simulate_policy(
     return summary
 
 
+
+def resolve_daily_exit_sweep_workers(
+    requested_workers: int | None = None,
+) -> tuple[int, dict[str, object]]:
+    logical_cpus = max(1, int(os.cpu_count() or 1))
+    total_memory_bytes = detect_total_memory_bytes()
+
+    # Policy replays are independent processes, while each individual recurrent
+    # account remains strictly chronological. Leave one logical CPU for Windows,
+    # the parent coordinator, and filesystem work; cap at 8 for thermal headroom.
+    cpu_workers = max(1, logical_cpus - 1)
+    workers = min(8, cpu_workers, len(STOP_TARGET_POLICY_PAIRS))
+
+    memory_workers: int | None = None
+    if total_memory_bytes is not None:
+        total_memory_gib = total_memory_bytes / GIB
+        # Keep 4 GiB for the OS/coordinator and budget roughly 2 GiB per worker.
+        memory_workers = max(1, int(max(0.0, total_memory_gib - 4.0) // 2.0))
+        workers = min(workers, memory_workers)
+
+    env_raw = os.getenv("ATLAS_DAILY_EXIT_SWEEP_WORKERS")
+    source = "hardware_auto"
+    if requested_workers is not None:
+        workers = int(requested_workers)
+        source = "cli_override"
+    elif env_raw:
+        try:
+            workers = int(env_raw)
+        except ValueError as exc:
+            raise RecurrentSuccessorDailyExitSweepError(
+                "ATLAS_DAILY_EXIT_SWEEP_WORKERS must be an integer"
+            ) from exc
+        source = "environment_override"
+
+    max_safe_workers = min(8, cpu_workers, len(STOP_TARGET_POLICY_PAIRS))
+    if memory_workers is not None:
+        max_safe_workers = min(max_safe_workers, memory_workers)
+    if workers < 1 or workers > max_safe_workers:
+        raise RecurrentSuccessorDailyExitSweepError(
+            "daily exit sweep workers must be between 1 and "
+            f"{max_safe_workers} on this machine"
+        )
+
+    return workers, {
+        "logical_cpus": logical_cpus,
+        "total_memory_gib": (
+            None
+            if total_memory_bytes is None
+            else round(total_memory_bytes / GIB, 2)
+        ),
+        "workers": workers,
+        "max_safe_workers": max_safe_workers,
+        "profile_source": source,
+        "parallelism": "POLICY_LEVEL_PROCESS_PARALLELISM",
+        "per_policy_account_ordering": "STRICTLY_CHRONOLOGICAL",
+    }
+
+
+def _simulate_policy_worker(
+    cases: tuple[DailyPathCase, ...],
+    initial_equity: float,
+    stop_fraction: float,
+    target_fraction: float,
+    output_root: Path,
+) -> dict[str, object]:
+    return _simulate_policy(
+        cases,
+        initial_equity=initial_equity,
+        stop_fraction=stop_fraction,
+        target_fraction=target_fraction,
+        output_root=output_root,
+    )
+
+
 def run_recurrent_successor_daily_exit_sweep(
     project_root: Path,
     *,
@@ -1333,6 +1409,7 @@ def run_recurrent_successor_daily_exit_sweep(
     policy_ids: Sequence[str] = (),
     output_root: Path | None = None,
     duckdb_threads: int | None = None,
+    workers: int | None = None,
 ) -> dict[str, object]:
     if not math.isfinite(initial_equity) or initial_equity <= 0.0:
         raise RecurrentSuccessorDailyExitSweepError(
@@ -1383,37 +1460,88 @@ def run_recurrent_successor_daily_exit_sweep(
         },
     )
 
+    worker_count, execution_profile = resolve_daily_exit_sweep_workers(workers)
     print(
         "daily exit sweep: running "
         f"{len(STOP_TARGET_POLICY_PAIRS)} frozen stop/target policies across "
         f"{len(cases):,} daily LONG cases",
         flush=True,
     )
+    print(
+        "daily exit sweep execution: "
+        f"{execution_profile['workers']} policy workers / "
+        f"{execution_profile['logical_cpus']} logical CPUs "
+        f"({execution_profile['profile_source']}); "
+        "each policy remains strictly chronological",
+        flush=True,
+    )
     results: list[dict[str, object]] = []
-    for policy_number, (stop_fraction, target_fraction) in enumerate(
-        STOP_TARGET_POLICY_PAIRS,
-        start=1,
-    ):
+    if worker_count == 1:
+        for policy_number, (stop_fraction, target_fraction) in enumerate(
+            STOP_TARGET_POLICY_PAIRS,
+            start=1,
+        ):
+            print(
+                f"  policy {policy_number}/{len(STOP_TARGET_POLICY_PAIRS)}: "
+                f"stop={stop_fraction:.0%} target={target_fraction:.0%}",
+                flush=True,
+            )
+            result = _simulate_policy(
+                cases,
+                initial_equity=initial_equity,
+                stop_fraction=stop_fraction,
+                target_fraction=target_fraction,
+                output_root=root,
+            )
+            results.append(result)
+            print(
+                "    complete: "
+                f"return={float(result['total_return']):.2%}; "
+                f"marked DD={float(result['maximum_marked_equity_drawdown']):.2%}; "
+                f"trades={int(result['completed_positions']):,}",
+                flush=True,
+            )
+    else:
         print(
-            f"  policy {policy_number}/{len(STOP_TARGET_POLICY_PAIRS)}: "
-            f"stop={stop_fraction:.0%} target={target_fraction:.0%}",
+            "daily exit sweep: dispatching independent policies in parallel",
             flush=True,
         )
-        result = _simulate_policy(
-            cases,
-            initial_equity=initial_equity,
-            stop_fraction=stop_fraction,
-            target_fraction=target_fraction,
-            output_root=root,
-        )
-        results.append(result)
-        print(
-            "    complete: "
-            f"return={float(result['total_return']):.2%}; "
-            f"marked DD={float(result['maximum_marked_equity_drawdown']):.2%}; "
-            f"trades={int(result['completed_positions']):,}",
-            flush=True,
-        )
+        with ProcessPoolExecutor(max_workers=worker_count) as pool:
+            futures = {}
+            for policy_number, (stop_fraction, target_fraction) in enumerate(
+                STOP_TARGET_POLICY_PAIRS,
+                start=1,
+            ):
+                print(
+                    f"  queued policy {policy_number}/{len(STOP_TARGET_POLICY_PAIRS)}: "
+                    f"stop={stop_fraction:.0%} target={target_fraction:.0%}",
+                    flush=True,
+                )
+                future = pool.submit(
+                    _simulate_policy_worker,
+                    tuple(cases),
+                    initial_equity,
+                    stop_fraction,
+                    target_fraction,
+                    root,
+                )
+                futures[future] = (policy_number, stop_fraction, target_fraction)
+
+            completed = 0
+            for future in as_completed(futures):
+                policy_number, stop_fraction, target_fraction = futures[future]
+                result = future.result()
+                results.append(result)
+                completed += 1
+                print(
+                    f"  completed {completed}/{len(STOP_TARGET_POLICY_PAIRS)} "
+                    f"(policy {policy_number}: stop={stop_fraction:.0%} "
+                    f"target={target_fraction:.0%}): "
+                    f"return={float(result['total_return']):.2%}; "
+                    f"marked DD={float(result['maximum_marked_equity_drawdown']):.2%}; "
+                    f"trades={int(result['completed_positions']):,}",
+                    flush=True,
+                )
 
     results = sorted(
         results,
@@ -1434,6 +1562,7 @@ def run_recurrent_successor_daily_exit_sweep(
         },
         "source": source,
         "initial_equity": initial_equity,
+        "execution_profile": execution_profile,
         "usable_daily_long_cases": len(cases),
         "policy_results": results,
         "interpretation": {
