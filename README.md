@@ -1676,14 +1676,51 @@ The facade can be restored directly from the durable recurrent checkpoint after 
 process restart. It performs no provider or broker acquisition itself and grants no
 broker write, order, PAPER/LIVE, promotion, scheduler-trigger, or confluence authority.
 
-Immediate continuation is the separately versioned forecast-horizon clock contract.
-The accepted move/time forecast already carries MINUTES/SESSIONS horizons, but time
-exit behavior remains disabled until regular-session elapsed-time and exchange-session
-counting semantics are explicit. After that boundary, the next external acceptance
-step is the target-workstation market-hours Webull sandbox and restart/resume proof.
+The separately versioned forecast-horizon clock below now freezes those elapsed-time
+and exchange-session semantics without granting time-exit authority. Immediate
+continuation is a separate time-expiry disposition contract, followed by explicit
+CLOSE integration and then the target-workstation market-hours Webull sandbox and
+restart/resume proof.
 
 The Strategy Evidence Register remains unchanged because this package composes accepted
 product/runtime evidence and does not change strategy research evidence.
+
+## 2026-09-19 — Descriptive recurrent forecast-horizon clock
+
+Track A now freezes **atlas-simulation-recurrent-forecast-horizon-clock-v1** under
+contract **12de0a1214dac8fe566e0eb33ea8de34b5ec5729ab32411625431f778033fe53**.
+
+The clock consumes the accepted decision-bound recurrent exit plan and the retained
+underlying move/time forecast horizon. Its start is the **actual simulated position
+open/fill timestamp**, not the forecast creation time or a Phase 13 reference time.
+
+V1 uses the accepted XNYS exchange calendar. For `MINUTES`, only elapsed **regular
+session** minutes advance the clock; overnight, weekends, holidays, premarket and
+after-hours do not count. The calculation carries any remaining minutes into the next
+official exchange session and therefore inherits holiday closures and early-close
+boundaries from `exchange_calendars`.
+
+For `SESSIONS`, the entry session is session 1. A horizon of N sessions expires at the
+official regular close of the Nth included XNYS session. Non-session calendar days do
+not count, and an early close is the deadline when it is the Nth session.
+
+Each clock record retains the source plan/forecast/decision/position fingerprints,
+opened UTC time, exchange calendar, horizon unit/value, deterministic deadline UTC,
+entry/deadline session dates, and the exact ordered session trace used to reach the
+deadline. Identical accepted inputs produce the same clock fingerprint.
+
+This object is intentionally **descriptive only**. It exposes no elapsed/due boolean,
+has no time-exit trigger authority, cannot build a CLOSE fill, cannot mutate the
+account, performs no provider/broker reads or writes, and grants no order/PAPER/LIVE,
+promotion or confluence authority.
+
+Immediate continuation is a separately versioned time-expiry disposition contract that
+compares an explicit evaluation timestamp to this immutable deadline and emits
+`NOT_EXPIRED` or `TIME_EXPIRED` evidence only. That evaluator still will not create a
+fill; Webull CLOSE integration remains a later boundary.
+
+The Strategy Evidence Register remains unchanged because this package defines product
+clock semantics rather than strategy research evidence.
 
 ## A33/B33 reference foundation
 
