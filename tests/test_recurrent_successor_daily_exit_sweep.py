@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, date, datetime
 
 import pytest
@@ -8,6 +9,7 @@ from packages.backtesting.recurrent_successor_daily_exit_sweep import (
     DailyPathBar,
     DailyPathCase,
     PriorPathEvidence,
+    _forecast_for_case,
     resolve_daily_exit,
 )
 from packages.backtesting.recurrent_successor_daily_exit_sweep_contract import (
@@ -192,3 +194,24 @@ def test_no_trigger_exits_at_fifth_session_close() -> None:
     assert result.disposition == "TIME"
     assert result.exit_session_offset == 5
     assert result.exit_price_per_unit == pytest.approx(100.6)
+
+
+def test_current_opportunity_outcome_cannot_change_exit_sweep_forecast() -> None:
+    bars = (
+        _bar(1, date(2025, 1, 3), open_=100.0, high=101.0, low=99.0, close=100.2),
+        _bar(2, date(2025, 1, 6), open_=100.2, high=101.0, low=99.2, close=100.3),
+        _bar(3, date(2025, 1, 7), open_=100.3, high=101.1, low=99.3, close=100.4),
+        _bar(4, date(2025, 1, 8), open_=100.4, high=101.2, low=99.4, close=100.5),
+        _bar(5, date(2025, 1, 9), open_=100.5, high=101.3, low=99.5, close=100.6),
+    )
+    original = _case(bars)
+    changed = DailyPathCase(
+        opportunity=replace(
+            original.opportunity,
+            gross_return=-0.75,
+            primary_net_return=-0.751,
+        ),
+        bars=original.bars,
+        prior_path_evidence=original.prior_path_evidence,
+    )
+    assert _forecast_for_case(original) == _forecast_for_case(changed)
