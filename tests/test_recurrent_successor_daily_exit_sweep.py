@@ -5,12 +5,14 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+import packages.backtesting.recurrent_successor_daily_exit_sweep as sweep
 from packages.backtesting.recurrent_successor_daily_exit_sweep import (
     DailyPathBar,
     DailyPathCase,
     PriorPathEvidence,
     _forecast_for_case,
     resolve_daily_exit,
+    resolve_daily_exit_sweep_workers,
 )
 from packages.backtesting.recurrent_successor_daily_exit_sweep_contract import (
     AUTHORITY,
@@ -215,3 +217,41 @@ def test_current_opportunity_outcome_cannot_change_exit_sweep_forecast() -> None
         prior_path_evidence=original.prior_path_evidence,
     )
     assert _forecast_for_case(original) == _forecast_for_case(changed)
+
+
+def test_worker_profile_uses_three_policy_processes_on_four_cpu_24gib(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sweep.os, "cpu_count", lambda: 4)
+    monkeypatch.setattr(
+        sweep,
+        "detect_total_memory_bytes",
+        lambda: 24 * sweep.GIB,
+    )
+    monkeypatch.delenv("ATLAS_DAILY_EXIT_SWEEP_WORKERS", raising=False)
+
+    workers, profile = resolve_daily_exit_sweep_workers()
+
+    assert workers == 3
+    assert profile["logical_cpus"] == 4
+    assert profile["workers"] == 3
+    assert profile["max_safe_workers"] == 3
+    assert profile["profile_source"] == "hardware_auto"
+
+
+def test_worker_override_cannot_oversubscribe_safe_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(sweep.os, "cpu_count", lambda: 4)
+    monkeypatch.setattr(
+        sweep,
+        "detect_total_memory_bytes",
+        lambda: 24 * sweep.GIB,
+    )
+    monkeypatch.delenv("ATLAS_DAILY_EXIT_SWEEP_WORKERS", raising=False)
+
+    with pytest.raises(
+        sweep.RecurrentSuccessorDailyExitSweepError,
+        match="between 1 and 3",
+    ):
+        resolve_daily_exit_sweep_workers(4)
