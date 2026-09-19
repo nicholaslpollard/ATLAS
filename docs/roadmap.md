@@ -3133,8 +3133,8 @@ Frozen semantics:
 11. recover the interrupted book-written/receipt-missing window only when the current
     book already binds the exact current recurrent state, deterministic ENTRY timestamp,
     and supplied policies match;
-12. leave the generic v1 cycle runner and zero-evidence smoke semantics unchanged; a
-    later production wrapper will enforce ENTRY → refresh → MARK;
+12. leave the generic v1 cycle runner and zero-evidence smoke semantics unchanged; the
+    production-cycle facade below now enforces ENTRY → refresh → MARK;
 13. perform zero provider/broker reads or writes and grant no order, PAPER/LIVE,
     promotion or confluence authority.
 
@@ -3143,13 +3143,57 @@ and SESSIONS horizons but does not yet freeze whether MINUTES means wall-clock v
 regular-session elapsed time or the exact exchange-session counting rule for SESSIONS.
 A clock trigger must not be inferred until those semantics are separately contracted.
 
-Immediate continuation after acceptance is a plan-aware production-cycle wrapper that
-requires this refresh receipt before MARK, without modifying the generic runner, then
-the explicit horizon/clock contract and target-workstation market-hours/restart-resume
+The plan-aware production-cycle facade below now consumes this refresh boundary without
+modifying the generic runner. Immediate continuation is therefore the explicit
+horizon/clock contract, followed by target-workstation market-hours/restart-resume
 acceptance.
 
 The Strategy Evidence Register remains unchanged because this package advances durable
 product orchestration rather than strategy evidence.
+
+## Track A plan-aware recurrent production-cycle facade — 2026-09-19
+
+Track A freezes **atlas-simulation-recurrent-production-cycle-v1** under contract
+**c03e6e299076618a537e8ab2d7ebd575b33f22924f25fc1f0ba655f10e7412ca**.
+
+Frozen semantics:
+
+1. compose, rather than replace, the accepted deterministic recurrent runner;
+2. preserve the generic mutation order CLOSE → RESERVE → ENTRY → MARK;
+3. freeze the exact accepted dependency fingerprints for runner, RESERVE, Webull
+   stock ENTRY, post-ENTRY refresh, decision-bound exit-plan book, Webull CLOSE, and
+   Webull stock MARK;
+4. on first CLOSE application, require the evidence bundle to bind the exact current
+   recurrent state; exact durable retries use the existing stage admission;
+5. require accepted RESERVE evidence for the same cycle;
+6. on first ENTRY application, require the bundle to bind current recurrent state and
+   the exact already-admitted RESERVE bundle; exact durable retries again use stage
+   admission rather than post-mutation state;
+7. before first MARK admission, run or idempotently recover/reuse the accepted
+   post-ENTRY exit-plan refresh;
+8. re-prove refresh lineage from the durable refresh receipt, immutable ENTRY stage
+   fingerprint, ENTRY admission SHA, ENTRY result checkpoint/snapshot/revision, exact
+   current account state, exact RESERVE bundle, policy bindings and durable plan book;
+9. require exact current Webull stock-mark coverage for every open stock position and
+   matching valuation time; zero-position MARK remains provider-inert;
+10. make recorded MARK retry idempotent by verifying the existing MARK admission and
+    returning the recorded receipt without reopening runtime mutation, including after
+    cycle completion;
+11. support direct restore from the durable recurrent checkpoint after process restart;
+12. delegate COMPLETE to the accepted generic runner and leave the zero-evidence smoke
+    runner backward-compatible; and
+13. perform no provider/broker acquisition and grant no scheduler-trigger, broker-write,
+    order, PAPER/LIVE, promotion or confluence authority.
+
+Immediate continuation is the separately versioned forecast-horizon clock contract.
+MINUTES and SESSIONS are already carried by accepted move/time forecasts, but the
+system must explicitly freeze regular-session elapsed-minute semantics and exchange
+session counting before a horizon can become a CLOSE trigger. After that deterministic
+boundary, run target-workstation market-hours Webull sandbox and restart/resume
+acceptance.
+
+The Strategy Evidence Register remains unchanged because this package integrates
+accepted product/runtime components without changing strategy evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 
