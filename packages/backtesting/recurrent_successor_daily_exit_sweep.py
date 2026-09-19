@@ -5,7 +5,7 @@ import math
 import os
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -218,8 +218,8 @@ def _validated_daily_path_artifacts(
         raise RecurrentSuccessorDailyExitSweepError(
             "selected daily path artifacts are missing"
         )
-    path_file = Path(str(path_item["path"])).resolve()
-    threshold_file = Path(str(threshold_item["path"])).resolve()
+    path_file = (root / "selected_daily_paths.parquet").resolve()
+    threshold_file = (root / "selected_daily_thresholds.parquet").resolve()
     for item, path in ((path_item, path_file), (threshold_item, threshold_file)):
         if not path.is_file():
             raise RecurrentSuccessorDailyExitSweepError(
@@ -742,7 +742,7 @@ def resolve_daily_exit(
                 exit_price_per_unit=bar.open,
                 stop_touched=True,
                 target_touched=bar.high >= target,
-                same_session_collision=bar.high >= target,
+                same_session_collision=False,
                 gap_through_stop=True,
                 gap_through_target=False,
             )
@@ -754,7 +754,7 @@ def resolve_daily_exit(
                 exit_price_per_unit=target,
                 stop_touched=bar.low <= stop,
                 target_touched=True,
-                same_session_collision=bar.low <= stop,
+                same_session_collision=False,
                 gap_through_stop=False,
                 gap_through_target=True,
             )
@@ -844,7 +844,7 @@ def _simulate_policy(
     first_event = min(item.opportunity.decision_utc for item in cases)
     genesis_account, genesis_lineage = build_empty_recurrent_genesis_account_v1(
         initial_equity=initial_equity,
-        as_of_utc=first_event,
+        as_of_utc=first_event - timedelta(microseconds=1),
     )
     coordinator = RecurrentLifecycleCoordinatorV1(account=genesis_account)
 
