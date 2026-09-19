@@ -70,6 +70,15 @@ def _parser() -> argparse.ArgumentParser:
         help="Optional exact successor strategy policy filter; repeat as needed.",
     )
     parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help=(
+            "Optional policy-process worker count. Default uses hardware-aware "
+            "policy-level parallelism while leaving CPU/thermal headroom."
+        ),
+    )
+    parser.add_argument(
         "--duckdb-threads",
         type=int,
         default=None,
@@ -139,6 +148,7 @@ def main() -> int:
         policy_ids=tuple(args.policy_id),
         output_root=args.output_root,
         duckdb_threads=args.duckdb_threads,
+        workers=args.workers,
     )
 
     results = list(report["policy_results"])
