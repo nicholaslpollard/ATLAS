@@ -398,6 +398,32 @@ exceed streaming capacity, the coordinator streams the highest-priority subset a
 keeps the remainder current through rate-aware REST polling. Provider transport choice
 must not alter strategy authority, economics, portfolio-risk gates, or execution truth.
 
+## 2026-09-19 — Recurrent successor historical outcome replay bridge
+
+ATLAS now stages **atlas-recurrent-successor-outcome-replay-v1-walk-forward-selector-long-only** as the first historical campaign bridge from accepted successor research artifacts into the current recurrent account lifecycle.
+
+This package reuses the accepted successor conditioning output rather than recomputing strategy rules. Admission remains the frozen 504-session training / 1-session embargo / 63-session test walk-forward selector. For every selected test opportunity, the product-side move/return forecast is rebuilt only from the matching fold's prior training cell; the test opportunity's realized return is not used in its forecast, selection, sizing or reservation.
+
+Frozen v1 mechanics:
+
+1. signal scope remains inside DEVELOPMENT `2016-01-04..2026-04-30`; consumed-master and future-blind rows are forbidden;
+2. only `research_eligible AND comparable` conditioning rows enter the candidate stream;
+3. the portfolio uses 10% of current book equity per position, at most 10 active/reserved positions, at most 3 per economic family, and one active/reserved position per ticker;
+4. current recurrent funding supports LONG stock only. Selected SHORT opportunities are counted and reported but remain unsimulated until a separately versioned short borrow/collateral model exists;
+5. admitted opportunities produce genuine training-only `UnderlyingMoveTimeForecast -> SimulationDecisionRecord` evidence and then use the current recurrent RESERVE -> ENTRY -> CLOSE ledger transitions;
+6. accepted outcomes are mapped to a normalized $100 entry-price basis so percentage economics and the frozen cost convention are reproduced exactly without pretending to reconstruct historical share quantities;
+7. daily rows use the frozen five-session / 10-bps primary outcome and intraday rows use accepted entry/exit timestamps with the 50-bps primary cost convention;
+8. recurrent entry/exit costs are split exactly across the two fills; every completed trade must reproduce the accepted primary net return or the run fails closed;
+9. outputs include portfolio decisions/rejections, canonical recurrent closed trades, realized book-equity history, finite-cash competition, peak active/reserved slots and policy/family P&L attribution;
+10. this is explicitly **OUTCOME_REPLAY_DIAGNOSTIC**. It is not yet the stricter bar-level campaign where historical bars drive decision-bound STOP/TARGET/TIME exits directly;
+11. all inputs remain local/hash-bound and provider calls, broker reads/writes, order actions, PAPER, LIVE, promotion and confluence authority remain zero/false.
+
+Operator entry point:
+
+`python scripts/run_recurrent_successor_outcome_replay.py --authorize-development-replay --initial-equity 100000 [--start YYYY-MM-DD] [--end YYYY-MM-DD] [--policy-id POLICY]`
+
+This historical replay does not require the market to be open. PR #161's current-Webull workstation acceptance remains a separate regular-market-hours operational-runtime gate.
+
 ## 2026-09-16 — Explicit simulation funding/collateral terms
 
 Track A now freezes the funding boundary under contract `f76d77ebbf138924a22813773ad27276b0fa71691ddff1d21040171c7b6d3821`

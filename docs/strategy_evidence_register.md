@@ -513,3 +513,18 @@ Favorable underlying threshold-hit rates were LONG 34.31% / 18.22% / 11.00% / 4.
 ### 11.4 Disposition and authority
 
 Preserve v2 exactly and move on. Do not sweep opening-range length, relative-volume threshold, rank count, ATR stop, entry delay or exit on the same DEVELOPMENT evidence. A future materially distinct v3 requires targeted external research, preregistration and untouched/new/prospective evidence. Consumed-master reads = 0; future-blind reads = 0; provider reads = 0; broker reads/writes = 0. Promotion, confluence, PAPER, LIVE and option-trading authority remain false. The immutable detailed record is `docs/research/orb_stocks_in_play_literature_v2_development_closeout_20260916.md`.
+
+## 12. Recurrent successor portfolio outcome replay — preregistered 2026-09-19
+
+Contract: `atlas-recurrent-successor-outcome-replay-v1-walk-forward-selector-long-only`.
+
+This package does **not** create or upgrade strategy evidence. It is a portfolio/account diagnostic that reuses the already accepted successor DEVELOPMENT standalone and conditioning artifacts. The accepted walk-forward router remains unchanged: 504 training sessions, one-session embargo, 63-session test windows, and `research_eligible` only when the frozen training-cell lower-confidence score is strictly positive.
+
+For each selected comparable test opportunity, the recurrent decision adapter constructs its underlying return distribution only from the corresponding fold's prior training cell. The held-out opportunity's realized return is not available to its forecast, admission, sizing, reservation, or capital-competition decision. The accepted held-out outcome is revealed only at its chronological exit event and is used to settle the recurrent position on a normalized price basis.
+
+V1 is intentionally LONG-stock only because the accepted recurrent funding model has no short borrow/locate/collateral semantics. Selected SHORT rows remain visible in counts and attribution but cannot be converted into simulated long trades. Daily outcomes retain the frozen five-session / 10-bps primary convention; intraday outcomes retain the accepted entry/exit path and 50-bps primary convention. Every completed recurrent trade must numerically reproduce its accepted primary net return after the split entry/exit costs or the replay fails closed.
+
+This mode is **OUTCOME_REPLAY_DIAGNOSTIC**, not a new backtest of exit rules. It does not yet reopen historical bars and therefore cannot answer whether changing STOP/TARGET/TIME mechanics would improve a strategy. That stricter bar-level campaign is a later separately versioned research package.
+
+**Evidence status:** implementation/preregistration only; no workstation portfolio result has been opened yet. Historical supported modern alpha remains zero. No strategy, selector, family, or condition cell receives historical validation, promotion, PAPER, LIVE, confluence, or option-trading authority from this package. Consumed-master/future-blind/provider/broker/order authority remains zero/false.
+
