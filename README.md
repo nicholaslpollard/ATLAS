@@ -1714,13 +1714,45 @@ has no time-exit trigger authority, cannot build a CLOSE fill, cannot mutate the
 account, performs no provider/broker reads or writes, and grants no order/PAPER/LIVE,
 promotion or confluence authority.
 
-Immediate continuation is a separately versioned time-expiry disposition contract that
-compares an explicit evaluation timestamp to this immutable deadline and emits
-`NOT_EXPIRED` or `TIME_EXPIRED` evidence only. That evaluator still will not create a
-fill; Webull CLOSE integration remains a later boundary.
+The separately versioned time-expiry disposition below now performs that explicit
+deadline comparison without creating a fill. Immediate continuation is Webull CLOSE
+integration that binds expiry evaluation to execution-quality quote timing and freezes
+price-trigger versus time-expiry precedence.
 
 The Strategy Evidence Register remains unchanged because this package defines product
 clock semantics rather than strategy research evidence.
+
+## 2026-09-19 — Descriptive recurrent time-expiry disposition
+
+Track A now freezes **atlas-simulation-recurrent-time-expiry-disposition-v1** under
+contract **1616a9e5b9c950688081a45e4972e92d59c074a37fc129dc8449cf8fbc20617b**.
+
+The evaluator consumes the complete immutable forecast-horizon clock plus an explicit
+timezone-aware evaluation timestamp. The evaluation time is normalized to UTC and the
+source clock is retained in full inside the evidence record.
+
+V1 has exactly two outcomes:
+
+- `NOT_EXPIRED` when evaluation UTC is before the clock deadline;
+- `TIME_EXPIRED` when evaluation UTC is equal to or later than the deadline.
+
+The evidence also retains the exact signed seconds from the deadline, source clock
+fingerprint, source exit-plan fingerprint, position fingerprint and ticker. Identical
+clock/evaluation inputs produce the same disposition fingerprint, including
+timezone-equivalent evaluation timestamps after UTC normalization.
+
+This package remains price-neutral. It consumes no quote, does not choose an exit
+price, cannot create a CLOSE fill, cannot mutate recurrent state, performs no provider/
+broker access, and grants no order/PAPER/LIVE, promotion or confluence authority.
+
+Immediate continuation is decision-bound Webull CLOSE integration. That later boundary
+must use the execution-quality quote's market timestamp for time-expiry evaluation,
+define deterministic precedence when a price trigger and time expiry coexist, require
+explicit fees for any resulting close, and continue to use executable bid for bullish
+stock exits.
+
+The Strategy Evidence Register remains unchanged because this package adds product
+lifecycle evidence rather than strategy research evidence.
 
 ## A33/B33 reference foundation
 
