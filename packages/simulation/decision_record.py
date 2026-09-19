@@ -202,6 +202,57 @@ def simulation_decision_record_payload(record: SimulationDecisionRecord) -> dict
     }
 
 
+def _economic_candidate_from_payload(
+    payload: dict[str, object],
+) -> EconomicCandidate:
+    values = dict(payload)
+    values["kind"] = InstrumentKind(str(values["kind"]))
+    return EconomicCandidate(**values)
+
+
+def simulation_decision_record_from_payload(
+    payload: dict[str, object],
+) -> SimulationDecisionRecord:
+    """Rebuild and verify one persisted immutable simulation decision record."""
+
+    try:
+        forecast = UnderlyingMoveTimeForecast.model_validate(
+            payload["forecast"]
+        )
+        stock_inputs = StockEconomicsInputs(
+            **dict(payload["stock_inputs"])
+        )
+        policy = ActionabilityPolicy(
+            **dict(payload["actionability_policy"])
+        )
+        option_candidates = tuple(
+            _economic_candidate_from_payload(dict(item))
+            for item in payload["option_candidates"]
+        )
+        rebuilt = build_simulation_decision_record(
+            decision_created_utc=datetime.fromisoformat(
+                str(payload["decision_created_utc"])
+            ),
+            forecast=forecast,
+            stock_inputs=stock_inputs,
+            actionability_policy=policy,
+            trade_expression_mode=TradeExpressionMode(
+                str(payload["trade_expression_mode"])
+            ),
+            option_candidates=option_candidates,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SimulationDecisionRecordError(
+            "stored simulation decision record cannot be deterministically rebuilt"
+        ) from exc
+
+    if _canonicalize(rebuilt) != _canonicalize(payload):
+        raise SimulationDecisionRecordError(
+            "stored simulation decision record does not match deterministic rebuild"
+        )
+    return rebuilt
+
+
 def _normalized_option_candidates(
     option_candidates: Sequence[EconomicCandidate],
 ) -> tuple[EconomicCandidate, ...]:

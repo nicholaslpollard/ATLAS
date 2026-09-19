@@ -204,6 +204,15 @@ class MarketDataPaths:
         root = self.settings.resolved_path(self.settings.data.paths.live)
         return root / "simulation" / "recurrent_entry" / "current.json"
 
+    def recurrent_decision_stock_exit_plan_file(self) -> Path:
+        root = self.settings.resolved_path(self.settings.data.paths.live)
+        return (
+            root
+            / "simulation"
+            / "recurrent_decision_stock_exit_plan"
+            / "current.json"
+        )
+
     def live_journal_file(self, session_date: date) -> Path:
         root = self.settings.resolved_path(self.settings.data.paths.live)
         return root / "journal" / "massive" / "stocks" / f"{session_date.year:04d}" / f"{session_date}.jsonl"

@@ -28,6 +28,7 @@ from packages.simulation.decision_record import (
     actionability_policy_fingerprint,
     build_simulation_decision_record,
     economic_candidate_fingerprint,
+    simulation_decision_record_from_payload,
     simulation_decision_record_payload,
 )
 from packages.simulation.decision_record_contract import (
@@ -353,3 +354,19 @@ def test_record_cannot_grant_authority() -> None:
     assert record.live_authority is False
     assert record.promotion_authority is False
     assert record.confluence_authority is False
+
+
+def test_persisted_decision_record_rebuild_roundtrip_and_tamper_rejection() -> None:
+    record = _record()
+    payload = simulation_decision_record_payload(record)
+    payload.pop("record_fingerprint")
+    restored = simulation_decision_record_from_payload(payload)
+    assert restored == record
+
+    tampered = dict(payload)
+    tampered["trade_expression_mode"] = "OPTIONS_ONLY"
+    with pytest.raises(
+        SimulationDecisionRecordError,
+        match="does not match deterministic rebuild|cannot be deterministically rebuilt",
+    ):
+        simulation_decision_record_from_payload(tampered)

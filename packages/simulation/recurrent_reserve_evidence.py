@@ -25,8 +25,9 @@ from packages.schemas.discovery_score import DiscoveryDirection
 from packages.schemas.move_time_forecast import UnderlyingMoveTimeForecast
 from packages.simulation.decision_record import (
     SimulationDecisionRecord,
-    build_simulation_decision_record,
+    SimulationDecisionRecordError,
     economic_candidate_fingerprint,
+    simulation_decision_record_from_payload,
 )
 from packages.simulation.decision_record_contract import (
     SIMULATION_DECISION_RECORD_CONTRACT_FINGERPRINT,
@@ -108,53 +109,6 @@ def _fingerprint_payload(value: object) -> str:
         allow_nan=False,
     ).encode("utf-8")
     return hashlib.sha256(raw).hexdigest()
-
-
-def _candidate_from_payload(payload: dict[str, object]) -> EconomicCandidate:
-    values = dict(payload)
-    values["kind"] = InstrumentKind(str(values["kind"]))
-    return EconomicCandidate(**values)
-
-
-def _decision_record_from_payload(
-    payload: dict[str, object],
-) -> SimulationDecisionRecord:
-    try:
-        forecast = UnderlyingMoveTimeForecast.model_validate(
-            payload["forecast"]
-        )
-        stock_inputs = StockEconomicsInputs(
-            **dict(payload["stock_inputs"])
-        )
-        policy = ActionabilityPolicy(
-            **dict(payload["actionability_policy"])
-        )
-        option_candidates = tuple(
-            _candidate_from_payload(dict(item))
-            for item in payload["option_candidates"]
-        )
-        rebuilt = build_simulation_decision_record(
-            decision_created_utc=datetime.fromisoformat(
-                str(payload["decision_created_utc"])
-            ),
-            forecast=forecast,
-            stock_inputs=stock_inputs,
-            actionability_policy=policy,
-            trade_expression_mode=TradeExpressionMode(
-                str(payload["trade_expression_mode"])
-            ),
-            option_candidates=option_candidates,
-        )
-    except (KeyError, TypeError, ValueError) as exc:
-        raise RecurrentReserveEvidenceError(
-            "stored simulation decision record cannot be deterministically rebuilt"
-        ) from exc
-
-    if _canonicalize(rebuilt) != _canonicalize(payload):
-        raise RecurrentReserveEvidenceError(
-            "stored simulation decision record does not match deterministic rebuild"
-        )
-    return rebuilt
 
 
 def _option_terms_from_payload(
@@ -609,7 +563,7 @@ def read_recurrent_reserve_evidence_bundle_v1(
     try:
         entries = tuple(
             RecurrentReserveEvidenceEntryV1(
-                record=_decision_record_from_payload(
+                record=simulation_decision_record_from_payload(
                     dict(item["record"])
                 ),
                 option_terms=(
@@ -664,6 +618,7 @@ def read_recurrent_reserve_evidence_bundle_v1(
         TypeError,
         ValueError,
         RecurrentReserveEvidenceError,
+        SimulationDecisionRecordError,
     ) as exc:
         if isinstance(exc, RecurrentReserveEvidenceError):
             raise
