@@ -57,8 +57,13 @@ from packages.simulation.decision_record import (
 )
 from packages.simulation.forecast_horizon_clock import (
     ForecastHorizonClockPolicyV1,
+    ForecastHorizonClockV1,
     SessionHorizonCountingPolicy,
     build_forecast_horizon_clock_v1,
+)
+from packages.simulation.forecast_horizon_time_disposition import (
+    ForecastHorizonTimeDispositionKind,
+    build_forecast_horizon_time_disposition_v1,
 )
 from packages.simulation.market_mark_evidence import (
     MarketMarkInputs,
@@ -146,6 +151,7 @@ class _Slot:
     resolved_exit: ResolvedDailyExit
     position_fingerprint: str | None = None
     exit_plan: RecurrentDecisionStockExitPlanV1 | None = None
+    horizon_clock: ForecastHorizonClockV1 | None = None
     state: str = "RESERVED"
 
 
@@ -1131,14 +1137,40 @@ def _simulate_policy(
                     "forecast horizon clock does not match five-session daily path"
                 )
             slot.exit_plan = plan
+            slot.horizon_clock = clock
             continue
 
         if kind != "CLOSE" or slot.state != "OPEN":
             continue
-        if slot.position_fingerprint is None or slot.exit_plan is None:
+        if (
+            slot.position_fingerprint is None
+            or slot.exit_plan is None
+            or slot.horizon_clock is None
+        ):
             raise RecurrentSuccessorDailyExitSweepError(
-                "close requires open position and bound exit plan"
+                "close requires open position, bound exit plan, and horizon clock"
             )
+        time_disposition = build_forecast_horizon_time_disposition_v1(
+            clock=slot.horizon_clock,
+            evaluation_utc=event_utc,
+        )
+        if exit_result.disposition == "TIME":
+            if (
+                time_disposition.disposition
+                != ForecastHorizonTimeDispositionKind.TIME_EXPIRED
+            ):
+                raise RecurrentSuccessorDailyExitSweepError(
+                    "TIME exit is not expired under the bound forecast-horizon clock"
+                )
+        elif (
+            event_utc < slot.horizon_clock.deadline_utc
+            and time_disposition.disposition
+            != ForecastHorizonTimeDispositionKind.NOT_EXPIRED
+        ):
+            raise RecurrentSuccessorDailyExitSweepError(
+                "pre-deadline price exit has invalid time disposition"
+            )
+
         if exit_result.disposition == "STOP":
             if exit_result.exit_price_per_unit > slot.exit_plan.stop_price_per_unit + 1e-9:
                 raise RecurrentSuccessorDailyExitSweepError(
@@ -1186,6 +1218,10 @@ def _simulate_policy(
             "contract": RECURRENT_SUCCESSOR_DAILY_EXIT_SWEEP_CONTRACT,
             "policy_fingerprint": policy.policy_fingerprint,
             "exit_plan_fingerprint": slot.exit_plan.plan_fingerprint,
+            "horizon_clock_fingerprint": slot.horizon_clock.clock_fingerprint,
+            "time_disposition_fingerprint": (
+                time_disposition.disposition_fingerprint
+            ),
             "opportunity_id": item.opportunity_id,
             "disposition": exit_result.disposition,
             "session": exit_result.exit_session_date,
@@ -1232,6 +1268,8 @@ def _simulate_policy(
                 "same_session_collision": exit_result.same_session_collision,
                 "gap_through_stop": exit_result.gap_through_stop,
                 "gap_through_target": exit_result.gap_through_target,
+                "forecast_deadline_utc": slot.horizon_clock.deadline_utc,
+                "time_disposition": time_disposition.disposition.value,
                 "lifetime_trade_net_pnl_dollars": (
                     trade.lifetime_trade_net_pnl_dollars
                 ),
