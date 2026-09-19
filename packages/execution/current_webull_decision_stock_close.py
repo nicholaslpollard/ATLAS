@@ -1065,6 +1065,146 @@ def write_current_webull_decision_stock_close_evidence_bundle_v1(
     return path
 
 
+def current_webull_decision_stock_close_evidence_bundle_from_payload_v1(
+    payload: dict[str, object],
+) -> CurrentWebullDecisionStockCloseEvidenceBundleV1:
+    try:
+            exit_plan_book = (
+                recurrent_decision_stock_exit_plan_book_from_payload(
+                    dict(payload["exit_plan_book"])
+                )
+            )
+            quote_bundle = (
+                None
+                if payload.get("quote_bundle") is None
+                else CurrentWebullStockQuoteBundleV1.model_validate(
+                    payload["quote_bundle"]
+                )
+            )
+            triggers = tuple(
+                CurrentWebullDecisionStockCloseTriggerV1(
+                    plan=recurrent_decision_stock_exit_plan_from_payload(
+                        dict(item["plan"])
+                    ),
+                    quote=CurrentWebullStockQuoteV1.model_validate(
+                        item["quote"]
+                    ),
+                    disposition=StockExitTriggerDisposition(
+                        str(item["disposition"])
+                    ),
+                    explicit_exit_fee_dollars=(
+                        None
+                        if item.get("explicit_exit_fee_dollars") is None
+                        else float(item["explicit_exit_fee_dollars"])
+                    ),
+                    fill=(
+                        None
+                        if item.get("fill") is None
+                        else _fill_from_payload(
+                            dict(item["fill"])
+                        )
+                    ),
+                    time_exit_evaluated=bool(
+                        item["time_exit_evaluated"]
+                    ),
+                    provider_calls_performed=int(
+                        item["provider_calls_performed"]
+                    ),
+                    broker_calls_performed=int(
+                        item["broker_calls_performed"]
+                    ),
+                    broker_fill_authority=bool(
+                        item["broker_fill_authority"]
+                    ),
+                    order_creation_authority=bool(
+                        item["order_creation_authority"]
+                    ),
+                    paper_authority=bool(item["paper_authority"]),
+                    live_authority=bool(item["live_authority"]),
+                )
+                for item in payload["triggers"]
+            )
+            return CurrentWebullDecisionStockCloseEvidenceBundleV1(
+                contract_version=str(payload["contract_version"]),
+                contract_fingerprint=str(
+                    payload["contract_fingerprint"]
+                ),
+                source_id=str(payload["source_id"]),
+                bundle_fingerprint=str(
+                    payload["bundle_fingerprint"]
+                ),
+                cycle_id=str(payload["cycle_id"]),
+                cycle_fingerprint=str(
+                    payload["cycle_fingerprint"]
+                ),
+                source_recurrent_state_fingerprint=str(
+                    payload["source_recurrent_state_fingerprint"]
+                ),
+                exit_plan_book=exit_plan_book,
+                quote_bundle=quote_bundle,
+                fee_source_id=(
+                    None
+                    if payload.get("fee_source_id") is None
+                    else str(payload["fee_source_id"])
+                ),
+                fee_source_fingerprint=(
+                    None
+                    if payload.get("fee_source_fingerprint") is None
+                    else str(payload["fee_source_fingerprint"])
+                ),
+                built_at_utc=datetime.fromisoformat(
+                    str(payload["built_at_utc"])
+                ),
+                triggers=triggers,
+                provider_calls_performed=int(
+                    payload["provider_calls_performed"]
+                ),
+                broker_calls_performed=int(
+                    payload["broker_calls_performed"]
+                ),
+                provider_read_authority=bool(
+                    payload["provider_read_authority"]
+                ),
+                provider_write_authority=bool(
+                    payload["provider_write_authority"]
+                ),
+                broker_read_authority=bool(
+                    payload["broker_read_authority"]
+                ),
+                broker_write_authority=bool(
+                    payload["broker_write_authority"]
+                ),
+                broker_fill_authority=bool(
+                    payload["broker_fill_authority"]
+                ),
+                order_creation_authority=bool(
+                    payload["order_creation_authority"]
+                ),
+                paper_authority=bool(payload["paper_authority"]),
+                live_authority=bool(payload["live_authority"]),
+                promotion_authority=bool(
+                    payload["promotion_authority"]
+                ),
+                confluence_authority=bool(
+                    payload["confluence_authority"]
+                ),
+            )
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        CurrentWebullDecisionStockCloseEvidenceError,
+    ) as exc:
+        if isinstance(
+            exc,
+            CurrentWebullDecisionStockCloseEvidenceError,
+        ):
+            raise
+        raise CurrentWebullDecisionStockCloseEvidenceError(
+            "current Webull decision CLOSE payload failed typed validation"
+        ) from exc
+
+
 def read_current_webull_decision_stock_close_evidence_bundle_v1(
     settings: AtlasSettings,
     *,
@@ -1108,141 +1248,9 @@ def read_current_webull_decision_stock_close_evidence_bundle_v1(
             "current Webull decision CLOSE artifact root must be an object"
         )
 
-    try:
-        exit_plan_book = (
-            recurrent_decision_stock_exit_plan_book_from_payload(
-                dict(payload["exit_plan_book"])
-            )
-        )
-        quote_bundle = (
-            None
-            if payload.get("quote_bundle") is None
-            else CurrentWebullStockQuoteBundleV1.model_validate(
-                payload["quote_bundle"]
-            )
-        )
-        triggers = tuple(
-            CurrentWebullDecisionStockCloseTriggerV1(
-                plan=recurrent_decision_stock_exit_plan_from_payload(
-                    dict(item["plan"])
-                ),
-                quote=CurrentWebullStockQuoteV1.model_validate(
-                    item["quote"]
-                ),
-                disposition=StockExitTriggerDisposition(
-                    str(item["disposition"])
-                ),
-                explicit_exit_fee_dollars=(
-                    None
-                    if item.get("explicit_exit_fee_dollars") is None
-                    else float(item["explicit_exit_fee_dollars"])
-                ),
-                fill=(
-                    None
-                    if item.get("fill") is None
-                    else _fill_from_payload(
-                        dict(item["fill"])
-                    )
-                ),
-                time_exit_evaluated=bool(
-                    item["time_exit_evaluated"]
-                ),
-                provider_calls_performed=int(
-                    item["provider_calls_performed"]
-                ),
-                broker_calls_performed=int(
-                    item["broker_calls_performed"]
-                ),
-                broker_fill_authority=bool(
-                    item["broker_fill_authority"]
-                ),
-                order_creation_authority=bool(
-                    item["order_creation_authority"]
-                ),
-                paper_authority=bool(item["paper_authority"]),
-                live_authority=bool(item["live_authority"]),
-            )
-            for item in payload["triggers"]
-        )
-        return CurrentWebullDecisionStockCloseEvidenceBundleV1(
-            contract_version=str(payload["contract_version"]),
-            contract_fingerprint=str(
-                payload["contract_fingerprint"]
-            ),
-            source_id=str(payload["source_id"]),
-            bundle_fingerprint=str(
-                payload["bundle_fingerprint"]
-            ),
-            cycle_id=str(payload["cycle_id"]),
-            cycle_fingerprint=str(
-                payload["cycle_fingerprint"]
-            ),
-            source_recurrent_state_fingerprint=str(
-                payload["source_recurrent_state_fingerprint"]
-            ),
-            exit_plan_book=exit_plan_book,
-            quote_bundle=quote_bundle,
-            fee_source_id=(
-                None
-                if payload.get("fee_source_id") is None
-                else str(payload["fee_source_id"])
-            ),
-            fee_source_fingerprint=(
-                None
-                if payload.get("fee_source_fingerprint") is None
-                else str(payload["fee_source_fingerprint"])
-            ),
-            built_at_utc=datetime.fromisoformat(
-                str(payload["built_at_utc"])
-            ),
-            triggers=triggers,
-            provider_calls_performed=int(
-                payload["provider_calls_performed"]
-            ),
-            broker_calls_performed=int(
-                payload["broker_calls_performed"]
-            ),
-            provider_read_authority=bool(
-                payload["provider_read_authority"]
-            ),
-            provider_write_authority=bool(
-                payload["provider_write_authority"]
-            ),
-            broker_read_authority=bool(
-                payload["broker_read_authority"]
-            ),
-            broker_write_authority=bool(
-                payload["broker_write_authority"]
-            ),
-            broker_fill_authority=bool(
-                payload["broker_fill_authority"]
-            ),
-            order_creation_authority=bool(
-                payload["order_creation_authority"]
-            ),
-            paper_authority=bool(payload["paper_authority"]),
-            live_authority=bool(payload["live_authority"]),
-            promotion_authority=bool(
-                payload["promotion_authority"]
-            ),
-            confluence_authority=bool(
-                payload["confluence_authority"]
-            ),
-        )
-    except (
-        KeyError,
-        TypeError,
-        ValueError,
-        CurrentWebullDecisionStockCloseEvidenceError,
-    ) as exc:
-        if isinstance(
-            exc,
-            CurrentWebullDecisionStockCloseEvidenceError,
-        ):
-            raise
-        raise CurrentWebullDecisionStockCloseEvidenceError(
-            "current Webull decision CLOSE artifact failed typed validation"
-        ) from exc
+    return current_webull_decision_stock_close_evidence_bundle_from_payload_v1(
+        payload
+    )
 
 
 def apply_current_webull_decision_stock_close_evidence_bundle_v1(
@@ -1279,6 +1287,7 @@ __all__ = [
     "StockExitTriggerDisposition",
     "apply_current_webull_decision_stock_close_evidence_bundle_v1",
     "build_current_webull_decision_stock_close_evidence_bundle_v1",
+    "current_webull_decision_stock_close_evidence_bundle_from_payload_v1",
     "current_webull_decision_stock_close_evidence_path",
     "read_current_webull_decision_stock_close_evidence_bundle_v1",
     "write_current_webull_decision_stock_close_evidence_bundle_v1",
