@@ -1550,6 +1550,53 @@ explicit exit-fee evidence only for triggered positions, and dry-runs the accept
 recurrent close batch before runner admission. Time-based exits remain a separate
 clock-policy boundary. The Strategy Evidence Register remains unchanged.
 
+## 2026-09-19 — Current Webull decision-bound stock CLOSE evidence
+
+Track A now freezes **atlas-simulation-current-webull-decision-stock-close-evidence-bundle-v1** under
+contract **3834abe2212b794a04ce70b5595d992de38cea77ac82185e6daaf6134bd6db96**.
+
+This package consumes only the accepted recurrent account, exact decision-bound
+open-position exit-plan book, and current Webull sandbox L1 evidence. It does not
+reintroduce Phase 13, infer a different exit policy, or add broker authority.
+
+For every open bullish stock position, the exact current plan and exact-case current
+quote are required. Webull quotes must remain zero-delay/realtime, regular-session,
+postdate the current recurrent state, and satisfy the accepted 30-second execution age
+cap. The bundle's own capture timestamp may not postdate CLOSE evidence construction.
+
+Long-stock price-trigger semantics are explicit and deterministic:
+
+- **STOP** when executable bid is at or below the accepted actual-fill stop;
+- **TARGET** when executable bid is at or above the accepted actual-fill target;
+- **NO_TRIGGER** only when bid remains strictly between stop and target.
+
+NO_TRIGGER is retained as explicit evidence and carries neither fee evidence nor an
+exit fill. STOP/TARGET require exact explicit exit-fee coverage and one fingerprinted
+fee source. The accepted recurrent exit-fill builder then uses the exact Webull **bid**
+as the full-close price and binds the full current position quantity/multiplier. Before
+the bundle is accepted, all triggered fills are dry-run together through the accepted
+pure recurrent close-batch transition.
+
+The evidence bundle retains the full exit-plan book and full Webull quote bundle rather
+than only external fingerprints, allowing readback to revalidate plan/quote/trigger/fill
+lineage. Triggered fill-source fingerprints bind the CLOSE contract, exit-plan-book
+fingerprint, quote-bundle fingerprint, fee-source identity, exact plan, exact quote,
+trigger disposition and explicit fee. The artifact is deterministic,
+self-fingerprinted and atomically fsync-persisted at
+data/live/simulation/recurrent_decision_stock_close/current.json.
+
+A cycle with **zero open positions** is provider-inert: it requires no quote bundle, no
+fee source and no exit fees. A cycle with open positions but no trigger requires quote
+evidence but no fee source. Time-based exit remains deliberately unevaluated in v1.
+The package grants no provider/broker write, broker-fill, order, PAPER/LIVE, promotion
+or confluence authority.
+
+Immediate continuation is production orchestration of the accepted plan-book refresh
+after ENTRY so the next cycle's CLOSE always begins with exact durable plan coverage,
+followed by the separately versioned time-exit clock policy and the target-workstation
+market-hours/restart-resume acceptance proof. The Strategy Evidence Register remains
+unchanged.
+
 ## A33/B33 reference foundation
 
 The **A33/B33 — Practitioner Strategy Laboratory and Product Rebaseline**
