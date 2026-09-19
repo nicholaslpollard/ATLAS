@@ -528,3 +528,50 @@ This mode is **OUTCOME_REPLAY_DIAGNOSTIC**, not a new backtest of exit rules. It
 
 **Evidence status:** implementation/preregistration only; no workstation portfolio result has been opened yet. Historical supported modern alpha remains zero. No strategy, selector, family, or condition cell receives historical validation, promotion, PAPER, LIVE, confluence, or option-trading authority from this package. Consumed-master/future-blind/provider/broker/order authority remains zero/false.
 
+## 13. First recurrent successor portfolio outcome replay result — 2026-09-19
+
+Contract fingerprint:
+`99c3b32b1905db3204646bac302a5b6836e843cbfe73d7647da9a84b8b879452`.
+
+Run fingerprint:
+`2096fe4bc3babdd80c667a0548ab24a861a586bd08f880237744f11b23378166`.
+
+Scope: `2025-01-01..2025-12-31` successor DEVELOPMENT signals, starting book
+equity $100,000.
+
+Observed portfolio diagnostic:
+
+- selected comparable opportunities: 4,685;
+- supported LONG: 3,650;
+- reported-only SHORT: 1,035;
+- admitted/completed LONG positions: 439 / 439;
+- final book equity: $101,647.15;
+- total return: +1.6472%;
+- maximum realized/book-equity drawdown: -20.9896%;
+- peak active/reserved slots: 10;
+- rejected for max positions per family: 2,429;
+- rejected for max total open positions: 458;
+- rejected for insufficient capital: 262;
+- rejected because ticker was already active/reserved: 62.
+
+The 3,211 rejection count exactly reconciles the supported LONG selections not admitted.
+Only about 12.0% of supported LONG selections entered the simulated account. The
+three-position-per-family cap was the dominant constraint, rejecting about 66.5% of all
+supported LONG selections and about 75.6% of rejected LONG selections.
+
+**Interpretation:** the endpoint is positive, but the return is small relative to the
+observed realized/book-equity drawdown, and the result is heavily shaped by finite
+capital and family-level competition. It cannot be treated as evidence that the
+underlying strategy set is production-ready. It also excludes SHORT selections and
+uses accepted terminal outcomes rather than bar-driven recurrent STOP/TARGET/TIME exit
+logic.
+
+**Disposition:** `COMPLETE_DEVELOPMENT_PORTFOLIO_DIAGNOSTIC / NO_PROMOTION`.
+
+No strategy, family, selector, sizing rule, family-cap rule, or exit policy is promoted
+or retuned by this result. Historical supported modern alpha remains zero. The next
+permitted simulator research package is a separately preregistered bar-level
+DEVELOPMENT campaign using accepted historical bars and frozen decision-bound
+STOP/TARGET/TIME mechanics. Consumed-master/future-blind/provider/broker/order/PAPER/
+LIVE/promotion/confluence authority remain zero/false.
+
