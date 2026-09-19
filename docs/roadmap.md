@@ -3231,15 +3231,51 @@ Tests use real decision → RESERVE → Webull ENTRY → open-position → exit-
 plus weekend carry, official early-close handling, both explicit SESSIONS modes,
 arbitrary-exchange rejection and lookalike-plan rejection.
 
-Immediate continuation is a durable open-position horizon-clock book that retains the
-exact clock and selected policy for every open simulated position across cycles. After
-that persistence boundary is accepted, a separately versioned
-`TIME_EXPIRED / NOT_EXPIRED` disposition may consume the immutable clock plus explicit
-evaluation UTC. A later CLOSE integration must then freeze STOP/TARGET/TIME precedence
-before time expiry can produce a simulated exit fill.
+The durable open-position horizon-clock book below now retains the exact clock and
+selected policy for every open simulated position across cycles. Immediate continuation
+is therefore a separately versioned `TIME_EXPIRED / NOT_EXPIRED` disposition over the
+immutable clock plus explicit evaluation UTC. A later CLOSE integration must then
+freeze STOP/TARGET/TIME precedence before time expiry can produce a simulated exit fill.
 
 The Strategy Evidence Register remains unchanged because this package resolves product
 simulation clock semantics without changing strategy evidence.
+
+## Track A durable open-position forecast-horizon clock book — 2026-09-19
+
+Track A freezes **atlas-simulation-forecast-horizon-clock-book-v1** under contract
+**b6badd42b77c47f5994db08f5c419991831c232041857f968bde80efd3514017**.
+
+Frozen semantics:
+
+1. consume and retain the complete typed accepted decision-bound exit-plan book;
+2. require exactly one descriptive horizon clock for every current open exit plan;
+3. require an explicit ForecastHorizonClockPolicyV1 for every newly unclocked
+   position, including the explicit XNYS/no-session-counting policy for MINUTES;
+4. require SESSIONS to retain the explicit accepted counting policy selected when the
+   position is first clocked;
+5. carry existing open-position clocks forward unchanged only when their exact
+   exit-plan/forecast/decision/position/horizon lineage still matches;
+6. reject policy resubmission for already-clocked positions, preventing SESSIONS policy
+   drift between cycles;
+7. prune clocks for plans no longer present in the authoritative open-position plan
+   book;
+8. order clocks deterministically by position fingerprint and use the source
+   exit-plan-book timestamp as deterministic book time;
+9. retain the full source exit-plan book inside the artifact so typed readback can
+   re-prove nested lineage instead of trusting an external fingerprint alone;
+10. persist one deterministic self-fingerprinted clock book atomically with fsync at
+    `data/live/simulation/forecast_horizon_clock_book/current.json`; and
+11. emit no evaluation timestamp or expired boolean and grant no time-exit disposition,
+    price-trigger, CLOSE-fill, account-mutation, provider/broker, order, PAPER/LIVE,
+    promotion or confluence authority.
+
+Immediate continuation is a separately versioned `TIME_EXPIRED / NOT_EXPIRED`
+disposition that consumes the immutable clock book plus explicit evaluation UTC. Only
+after that evidence is accepted should CLOSE freeze deterministic STOP/TARGET/TIME
+precedence.
+
+The Strategy Evidence Register remains unchanged because this package advances durable
+product timing evidence rather than strategy research evidence.
 
 ## Track A funding/collateral terms — 2026-09-16
 

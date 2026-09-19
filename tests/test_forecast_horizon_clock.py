@@ -43,6 +43,13 @@ from packages.simulation.forecast_horizon_clock import (
     build_forecast_horizon_clock_v1,
     forecast_horizon_clock_from_payload,
 )
+from packages.simulation.forecast_horizon_clock_book import (
+    FORECAST_HORIZON_CLOCK_BOOK_CONTRACT_FINGERPRINT,
+    ForecastHorizonClockBookError,
+    build_forecast_horizon_clock_book_v1,
+    read_forecast_horizon_clock_book_v1,
+    write_forecast_horizon_clock_book_v1,
+)
 from packages.simulation.recurrent_cycle_runner import (
     build_recurrent_cycle_run_identity_v1,
 )
@@ -171,7 +178,7 @@ def _record(
     )
 
 
-def _open_plan(
+def _open_plan_book(
     tmp_path,
     *,
     opened_utc: datetime,
@@ -252,7 +259,41 @@ def _open_plan(
         built_at_utc=opened_utc + timedelta(seconds=3),
     )
     assert len(book.plans) == 1
-    return book.plans[0]
+    return book
+
+
+def _open_plan(
+    tmp_path,
+    *,
+    opened_utc: datetime,
+    unit: ForecastHorizonUnit,
+    value: int,
+):
+    return _open_plan_book(
+        tmp_path,
+        opened_utc=opened_utc,
+        unit=unit,
+        value=value,
+    ).plans[0]
+
+
+def _empty_plan_book(tmp_path, *, as_of_utc: datetime):
+    settings = _settings(tmp_path)
+    checkpoint = MarketDataPaths(
+        settings
+    ).recurrent_lifecycle_checkpoint_file()
+    runtime, _result = bootstrap_recurrent_genesis_v1(
+        checkpoint_path=checkpoint,
+        initial_equity=100_000.0,
+        as_of_utc=as_of_utc,
+    )
+    return build_recurrent_decision_stock_exit_plan_book_v1(
+        source_state=runtime.current_account().state,
+        current_reserve_bundle=None,
+        existing_book=None,
+        exit_policy_by_decision={},
+        built_at_utc=as_of_utc,
+    )
 
 
 def test_forecast_horizon_clock_contract_fingerprint_is_frozen() -> None:
@@ -494,3 +535,143 @@ def test_clock_payload_roundtrip_preserves_policy_and_deadline(
     )
     assert restored == clock
     assert restored.clock_fingerprint == clock.clock_fingerprint
+
+
+def test_forecast_horizon_clock_book_contract_fingerprint_is_frozen() -> None:
+    assert (
+        FORECAST_HORIZON_CLOCK_BOOK_CONTRACT_FINGERPRINT
+        == "b6badd42b77c47f5994db08f5c419991831c232041857f968bde80efd3514017"
+    )
+
+
+def test_clock_book_persists_explicit_minute_policy_and_roundtrips(
+    tmp_path,
+) -> None:
+    opened = datetime(2026, 9, 18, 19, 0, tzinfo=UTC)
+    source_book = _open_plan_book(
+        tmp_path,
+        opened_utc=opened,
+        unit=ForecastHorizonUnit.MINUTES,
+        value=120,
+    )
+    position_fp = source_book.plans[0].position_fingerprint
+    book = build_forecast_horizon_clock_book_v1(
+        source_exit_plan_book=source_book,
+        existing_book=None,
+        clock_policy_by_position={
+            position_fp: ForecastHorizonClockPolicyV1(),
+        },
+    )
+    assert book.source_exit_plan_book == source_book
+    assert book.built_at_utc == source_book.built_at_utc
+    assert len(book.clocks) == 1
+    assert book.clocks[0].position_fingerprint == position_fp
+    assert book.clocks[0].policy.session_counting_policy is None
+    assert not hasattr(book.clocks[0], "expired")
+    assert book.time_exit_disposition_authority is False
+    assert book.provider_reads == 0
+    assert book.broker_writes == 0
+
+    settings = _settings(tmp_path)
+    path = write_forecast_horizon_clock_book_v1(
+        settings,
+        book,
+    )
+    restored = read_forecast_horizon_clock_book_v1(
+        settings,
+        path=path,
+    )
+    assert restored == book
+
+
+def test_existing_clock_is_immutable_and_reused_without_new_policy(
+    tmp_path,
+) -> None:
+    opened = datetime(2026, 9, 18, 15, 0, tzinfo=UTC)
+    source_book = _open_plan_book(
+        tmp_path,
+        opened_utc=opened,
+        unit=ForecastHorizonUnit.SESSIONS,
+        value=1,
+    )
+    position_fp = source_book.plans[0].position_fingerprint
+    first = build_forecast_horizon_clock_book_v1(
+        source_exit_plan_book=source_book,
+        existing_book=None,
+        clock_policy_by_position={
+            position_fp: ForecastHorizonClockPolicyV1(
+                session_counting_policy=(
+                    SessionHorizonCountingPolicy.FULL_SESSIONS_AFTER_ENTRY
+                ),
+            ),
+        },
+    )
+    second = build_forecast_horizon_clock_book_v1(
+        source_exit_plan_book=source_book,
+        existing_book=first,
+        clock_policy_by_position={},
+    )
+    assert second == first
+
+    with pytest.raises(
+        ForecastHorizonClockBookError,
+        match="coverage must exactly match newly unclocked positions",
+    ):
+        build_forecast_horizon_clock_book_v1(
+            source_exit_plan_book=source_book,
+            existing_book=first,
+            clock_policy_by_position={
+                position_fp: ForecastHorizonClockPolicyV1(
+                    session_counting_policy=(
+                        SessionHorizonCountingPolicy.ENTRY_SESSION_INCLUDED
+                    ),
+                ),
+            },
+        )
+
+
+def test_new_position_requires_explicit_clock_policy(tmp_path) -> None:
+    source_book = _open_plan_book(
+        tmp_path,
+        opened_utc=datetime(2026, 9, 18, 15, 0, tzinfo=UTC),
+        unit=ForecastHorizonUnit.MINUTES,
+        value=30,
+    )
+    with pytest.raises(
+        ForecastHorizonClockBookError,
+        match="lacks explicit forecast-horizon clock policy",
+    ):
+        build_forecast_horizon_clock_book_v1(
+            source_exit_plan_book=source_book,
+            existing_book=None,
+            clock_policy_by_position={},
+        )
+
+
+def test_clock_book_prunes_closed_position_clocks(tmp_path) -> None:
+    opened = datetime(2026, 9, 18, 15, 0, tzinfo=UTC)
+    source_book = _open_plan_book(
+        tmp_path / "open",
+        opened_utc=opened,
+        unit=ForecastHorizonUnit.MINUTES,
+        value=30,
+    )
+    position_fp = source_book.plans[0].position_fingerprint
+    existing = build_forecast_horizon_clock_book_v1(
+        source_exit_plan_book=source_book,
+        existing_book=None,
+        clock_policy_by_position={
+            position_fp: ForecastHorizonClockPolicyV1(),
+        },
+    )
+    empty_source = _empty_plan_book(
+        tmp_path / "empty",
+        as_of_utc=opened + timedelta(minutes=10),
+    )
+    pruned = build_forecast_horizon_clock_book_v1(
+        source_exit_plan_book=empty_source,
+        existing_book=existing,
+        clock_policy_by_position={},
+    )
+    assert pruned.clocks == ()
+    assert pruned.source_exit_plan_book == empty_source
