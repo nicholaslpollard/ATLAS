@@ -140,6 +140,26 @@ the physical Parquet payload, and a regression test covers the production direct
 layout. This correction changes validator implementation only; the frozen closeout
 contract and its scientific authority boundary are unchanged.
 
+The corrected target-workstation closeout then reduced the failure surface to
+**2/141** partitions: `2015-07` and `2026-08`. Across those partitions, exactly
+**4 provider records** have `updated_at < created_at` (one in July 2015 and three
+in August 2026). The same four chronology violations appear in the bound normalized
+rows, while all corpus-wide structural evidence still reconciles:
+**2,211,606** raw records, **2,211,606** normalized rows,
+**2,211,606** globally distinct article IDs and **0** cross-month duplicate
+article-ID rows. The machine-path-independent corpus fingerprint remained exactly
+`a5a26ed8b0093db16060c03d5ecb883a03322e61d7fe7217549b678dc1b3a1b0`,
+confirming that the validator repair did not alter source data.
+
+Because Historical News V1 currently assigns final retrieved text
+`pit_available_at = updated_at`, those four rows are not eligible to be silently
+accepted: an `updated_at` earlier than `created_at` would place retrieved text before
+the provider-declared creation time. A read-only chronology diagnostic now inspects
+only those anomalous records' identifiers, timestamps, source metadata and
+raw/normalized hashes. No provider calls, source mutation, predictor generation or
+strategy-outcome access occurs. Predictor work remains blocked until the four
+records are classified under an explicit source-integrity policy.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
