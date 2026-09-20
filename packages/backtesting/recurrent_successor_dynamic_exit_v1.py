@@ -167,19 +167,20 @@ def _net_return_for_action(
     ) / entry
 
 
-def _action_outcome_matrix(
+def _reveal_action_outcomes(
     cases: Sequence[DailyPathCase],
-) -> dict[tuple[int, str], float]:
-    matrix: dict[tuple[int, str], float] = {}
-    for index, case in enumerate(cases):
+    indexes: Sequence[int],
+    outcomes: dict[tuple[int, str], float],
+) -> None:
+    for index in indexes:
+        case = cases[index]
         for stop_fraction, target_fraction in DYNAMIC_EXIT_ACTIONS:
             action_id = dynamic_exit_action_id(stop_fraction, target_fraction)
-            matrix[(index, action_id)] = _net_return_for_action(
+            outcomes[(index, action_id)] = _net_return_for_action(
                 case,
                 stop_fraction=stop_fraction,
                 target_fraction=target_fraction,
             )
-    return matrix
 
 
 def _cell_support(
@@ -459,7 +460,7 @@ def run_recurrent_successor_dynamic_exit_v1(
     )
     root.mkdir(parents=True, exist_ok=True)
 
-    outcomes = _action_outcome_matrix(cases)
+    known_outcomes: dict[tuple[int, str], float] = {}
     by_fold: dict[int, list[int]] = defaultdict(list)
     for index, case in enumerate(cases):
         by_fold[case.opportunity.fold_id].append(index)
@@ -492,19 +493,8 @@ def run_recurrent_successor_dynamic_exit_v1(
                 cases=cases,
                 current_index=current_index,
                 training_indexes=training_indexes,
-                outcomes=outcomes,
+                outcomes=known_outcomes,
             )
-            realized_net: float | None = None
-            realized_disposition: str | None = None
-            if choice.action_id != ABSTAIN_ACTION_ID:
-                selected_count += 1
-                realized_net = outcomes[(current_index, choice.action_id)]
-                resolved = resolve_daily_exit(
-                    case,
-                    stop_fraction=float(choice.stop_fraction),
-                    target_fraction=float(choice.target_fraction),
-                )
-                realized_disposition = resolved.disposition
             assignments.append(
                 {
                     "opportunity_id": case.opportunity.opportunity_id,
@@ -545,10 +535,35 @@ def run_recurrent_successor_dynamic_exit_v1(
                         choice.selected_probability_positive
                     ),
                     "reason": choice.reason,
-                    "realized_net_return": realized_net,
-                    "realized_exit_disposition": realized_disposition,
+                    "realized_net_return": None,
+                    "realized_exit_disposition": None,
                 }
             )
+
+        # Freeze every decision in this fold before revealing any current-fold
+        # counterfactual exit outcome. Only after the fold is fully assigned do
+        # these paths become evidence eligible for later completed folds.
+        _reveal_action_outcomes(cases, current_indexes, known_outcomes)
+        assignment_by_id = {
+            str(item["opportunity_id"]): item
+            for item in assignments
+            if int(item["fold_id"]) == fold_id
+        }
+        for current_index in current_indexes:
+            case = cases[current_index]
+            row = assignment_by_id[case.opportunity.opportunity_id]
+            if row["action_id"] == ABSTAIN_ACTION_ID:
+                continue
+            selected_count += 1
+            action_id = str(row["action_id"])
+            row["realized_net_return"] = known_outcomes[(current_index, action_id)]
+            resolved = resolve_daily_exit(
+                case,
+                stop_fraction=float(row["stop_fraction"]),
+                target_fraction=float(row["target_fraction"]),
+            )
+            row["realized_exit_disposition"] = resolved.disposition
+
         print(
             f"  fold {fold_position}/{len(ordered_folds)} id={fold_id}: "
             f"training={len(training_indexes):,} current={len(current_indexes):,} "
