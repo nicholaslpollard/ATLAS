@@ -463,6 +463,51 @@ decision-bound STOP/TARGET/TIME policies determine exits directly. Any later cha
 to sizing, family caps, entry/exit policy, or short funding must be new explicit
 versions rather than silent reinterpretations of this run.
 
+## 2026-09-20 — Static daily exits rejected across regimes; Dynamic Exit V1 frozen
+
+The unchanged 2%/5% and 3%/5% static daily exit candidates completed the
+retrospective 2018–2024 DEVELOPMENT regime map.
+
+Run fingerprint:
+`60989a10985973bff48d3d2a82a633282b62e664f22f5c3fac4c35bfee380ede`.
+
+Across seven annual regimes, each static geometry was positive in only one year:
+
+| Year | 2% STOP / 5% TARGET | 3% STOP / 5% TARGET |
+| --- | ---: | ---: |
+| 2018 | -15.75% | -8.98% |
+| 2019 | +6.60% | +6.64% |
+| 2020 | -8.71% | -11.18% |
+| 2021 | -21.19% | -18.76% |
+| 2022 | -24.87% | -27.74% |
+| 2023 | -9.79% | -9.24% |
+| 2024 | -11.00% | -16.30% |
+
+The 2%/5% median annual return was -11.00% with worst marked drawdown -25.32%.
+The 3%/5% median annual return was -11.18% with worst marked drawdown -28.38%.
+Combined with the failed Jan–Apr 2026 forward confirmation, this closes the
+hypothesis that either fixed geometry is a robust universal exit rule.
+
+Dynamic Exit V1 is now preregistered as a separate DEVELOPMENT research package.
+It does not fit arbitrary percentages. It chooses from six frozen geometries:
+1%/2%, 1%/3%, 1%/5%, 2%/3%, 2%/5%, and 3%/5%, plus an explicit ABSTAIN action.
+Every trade retains a fixed five-session horizon in V1.
+
+Selection uses only completed prior walk-forward folds from approximately the last
+two years (eight folds). The current fold and current trade future path are forbidden.
+Supported cells require at least 60 prior cases, 30 sessions, and 20 instruments.
+Context fallback is based on strategy policy, market volatility state, higher-timeframe
+ticker trend, realized-volatility bucket, and market-direction alignment.
+
+Each candidate exit action is scored from prior realized net returns after the frozen
+10-bps split entry/exit cost. The selector uses an equal-weight session-mean return and
+a one-sided 95% lower-confidence bound. If no supported action has a positive robust
+lower bound and positive mean trade return, ATLAS abstains rather than forcing a trade.
+
+Dynamic Exit V1 first produces selector diagnostics only. Portfolio competition,
+position admission, recurrent account compounding, and account return are deliberately
+deferred until the selector passes this anti-lookahead gate.
+
 ## 2026-09-19 — 2026 forward exit confirmation failed; regime map frozen
 
 The chronologically forward DEVELOPMENT confirmation for the two frozen 2025

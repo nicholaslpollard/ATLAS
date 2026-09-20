@@ -105,6 +105,11 @@ class SelectedReplayOpportunity:
     training_max_abs_excursion: float
     training_median_holding_minutes: float | None
     source_analysis_fingerprint: str
+    market_direction_alignment: str = ""
+    market_volatility_state: str = ""
+    higher_timeframe_ticker_trend: str = ""
+    realized_volatility_bucket: str = ""
+    execution_liquidity_quality: str = ""
 
 
 @dataclass(slots=True)
@@ -453,6 +458,11 @@ def load_selected_replay_opportunities(
                 a.primary_net_return,
                 a.stress_net_return,
                 a.liquidity_bucket,
+                o.market_direction_alignment,
+                o.market_volatility_state,
+                o.higher_timeframe_ticker_trend,
+                o.realized_volatility_bucket,
+                o.execution_liquidity_quality,
                 o.gross_return,
                 o.mfe,
                 o.mae,
@@ -753,6 +763,11 @@ def load_selected_replay_opportunities(
                     else float(record["median_holding_minutes"])
                 ),
                 source_analysis_fingerprint=analysis_fingerprint,
+                market_direction_alignment=str(record["market_direction_alignment"]),
+                market_volatility_state=str(record["market_volatility_state"]),
+                higher_timeframe_ticker_trend=str(record["higher_timeframe_ticker_trend"]),
+                realized_volatility_bucket=str(record["realized_volatility_bucket"]),
+                execution_liquidity_quality=str(record["execution_liquidity_quality"]),
             )
         )
     print(

@@ -3497,6 +3497,42 @@ The next historical-simulation package is a new bar-level campaign contract that
 Short-side portfolio simulation remains a later explicit funding/collateral package and
 must not be faked inside the bar-level campaign.
 
+## Static-exit regime closeout and Dynamic Exit V1 — 2026-09-20
+
+The retrospective 2018–2024 annual regime map completed under run fingerprint
+`60989a10985973bff48d3d2a82a633282b62e664f22f5c3fac4c35bfee380ede`.
+
+Neither frozen static exit geometry generalized:
+
+- 2% STOP / 5% TARGET was positive in 1/7 annual regimes, median annual return
+  -11.00%, worst annual return -24.87%, worst marked-equity drawdown -25.32%;
+- 3% STOP / 5% TARGET was positive in 1/7 annual regimes, median annual return
+  -11.18%, worst annual return -27.74%, worst marked-equity drawdown -28.38%.
+
+2019 was the only positive year for both geometries. Together with the failed
+chronologically forward 2026 confirmation, this ends the static universal-exit
+candidate path. No fixed exit policy is promoted.
+
+Dynamic Exit V1 is the next bounded research gate. The initial action menu is frozen
+to six geometries with target at least 1.5x stop: 1/2, 1/3, 1/5, 2/3, 2/5, and 3/5
+percent, plus ABSTAIN. The five-session time exit remains fixed so V1 isolates the
+effect of stop/target selection.
+
+For every current opportunity, the selector may use only the preceding eight completed
+walk-forward folds. It searches an interpretable context hierarchy built from policy,
+market-volatility state, higher-timeframe trend, realized-volatility bucket, and
+market-direction alignment. A context cell requires >=60 cases, >=30 sessions, and
+>=20 instruments. Exit actions are ranked by a one-sided 95% lower-confidence bound
+of equal-weight prior session mean net returns after the frozen 10-bps execution cost.
+No positive robust action means ABSTAIN.
+
+The first Dynamic Exit V1 package is intentionally a selector diagnostic, not an
+account return. It records action assignments and their subsequently revealed trade
+outcomes while proving the current trade's future path and current-fold outcomes do
+not influence the choice. If coherent, the next package will bind those frozen
+assignments into the recurrent account simulator with capital competition, risk caps,
+mark-to-market drawdown, and compounding.
+
 ## 2026 forward confirmation failure and static-exit regime map — 2026-09-19
 
 The frozen 2%/5% and 3%/5% candidates were evaluated unchanged over
