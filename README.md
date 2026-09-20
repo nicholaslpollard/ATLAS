@@ -141,24 +141,31 @@ layout. This correction changes validator implementation only; the frozen closeo
 contract and its scientific authority boundary are unchanged.
 
 The corrected target-workstation closeout then reduced the failure surface to
-**2/141** partitions: `2015-07` and `2026-08`. Across those partitions, exactly
-**4 provider records** have `updated_at < created_at` (one in July 2015 and three
-in August 2026). The same four chronology violations appear in the bound normalized
-rows, while all corpus-wide structural evidence still reconciles:
-**2,211,606** raw records, **2,211,606** normalized rows,
-**2,211,606** globally distinct article IDs and **0** cross-month duplicate
-article-ID rows. The machine-path-independent corpus fingerprint remained exactly
-`a5a26ed8b0093db16060c03d5ecb883a03322e61d7fe7217549b678dc1b3a1b0`,
-confirming that the validator repair did not alter source data.
+**2/141** partitions: `2015-07` and `2026-08`. The follow-up read-only chronology
+diagnostic proved exactly **4 provider-source timestamp inversions**: **three** in
+July 2015 and **one** in August 2026. Their `updated_at` values precede
+`created_at` by exactly **1, 16, 18 and 29 seconds**. Every anomalous normalized
+row binds to its immutable raw provider record by SHA-256, both timestamps remain
+inside the acquired monthly query window, and the stored V1
+`pit_available_at == updated_at` for all four. Corpus-wide structural evidence
+continues to reconcile at **2,211,606** raw records, **2,211,606** normalized rows,
+**2,211,606** globally distinct article IDs and **0** cross-month duplicate IDs.
+The machine-path-independent corpus fingerprint remains
+`a5a26ed8b0093db16060c03d5ecb883a03322e61d7fe7217549b678dc1b3a1b0`.
 
-Because Historical News V1 currently assigns final retrieved text
-`pit_available_at = updated_at`, those four rows are not eligible to be silently
-accepted: an `updated_at` earlier than `created_at` would place retrieved text before
-the provider-declared creation time. A read-only chronology diagnostic now inspects
-only those anomalous records' identifiers, timestamps, source metadata and
-raw/normalized hashes. No provider calls, source mutation, predictor generation or
-strategy-outcome access occurs. Predictor work remains blocked until the four
-records are classified under an explicit source-integrity policy.
+V1 closeout remains a truthful **FAIL** and is not rewritten. A successor
+`atlas-historical-news-v1-source-integrity-closeout-v2` contract is frozen under
+fingerprint
+`2a2039ba8ca495f1ea04a7ffd0719ccb95021d48917098899c4d93e5599df632`.
+It accepts only the exact four diagnosed article-ID/SHA-256/timestamp tuples; there
+is **no generic timestamp tolerance**, and any additional or changed anomaly fails
+closed. Raw and normalized provider fields remain unchanged. Downstream effective
+text availability is conservatively defined as
+`max(created_at, updated_at)`, ensuring final retrieved text is never available
+before either provider timestamp. For the other **2,211,602** rows this is identical
+to V1; only the four diagnosed rows move forward by 1/16/18/29 seconds. The V2
+package is source-integrity acceptance only and still grants no predictor,
+strategy-outcome, PAPER or LIVE authority.
 
 ## News + options historical-data foundation — 2026-09-20
 
