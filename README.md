@@ -463,6 +463,44 @@ decision-bound STOP/TARGET/TIME policies determine exits directly. Any later cha
 to sizing, family caps, entry/exit policy, or short funding must be new explicit
 versions rather than silent reinterpretations of this run.
 
+## 2026-09-19 — 2025 recurrent daily exit sweep result and forward confirmation freeze
+
+The first bar-driven recurrent daily exit sweep completed for
+`2025-01-01..2025-12-31`.
+
+Run fingerprint:
+`2726c3a644ac22ed3238adf5b03e978152eaa50a5d0e91fc937716309f0db9f4`.
+
+The sweep had 3,520 usable selected daily LONG cases and compared the preregistered
+16 STOP/TARGET combinations. Only two policies finished the 2025 window positive:
+
+- 2% STOP / 5% TARGET: +1.45% endpoint return, -9.20% maximum marked-equity
+  drawdown, -9.06% book-equity drawdown, 649 completed positions, with
+  397 STOP / 160 TARGET / 92 TIME exits;
+- 3% STOP / 5% TARGET: +0.46% endpoint return, -13.11% maximum marked-equity
+  drawdown, -13.26% book-equity drawdown, 575 completed positions, with
+  286 STOP / 169 TARGET / 120 TIME exits.
+
+All other frozen policies were negative in this tuning window. Narrower targets were
+especially weak: every 1% target policy lost at least 29%, while 2% and 3% targets were
+also negative across all tested stops.
+
+This does **not** promote 2%/5% or 3%/5%. The result is post-result DEVELOPMENT tuning
+evidence only. It also is not a direct apples-to-apples replacement for the earlier
+outcome replay because the population and exit mechanics differ. The useful product
+finding is that bar-driven exits materially change capital recycling, admission and
+drawdown behavior inside the recurrent account.
+
+Before inspecting any later result, ATLAS now freezes exactly those two positive 2025
+policies as confirmation candidates under
+`atlas-recurrent-successor-daily-exit-candidate-confirmation-v1`.
+
+Primary confirmation is chronologically forward within DEVELOPMENT:
+`2026-01-01..2026-04-30`. Candidate membership cannot change from that result.
+The 2026 confirmation remains DEVELOPMENT-only and grants no promotion, PAPER or LIVE
+authority. Earlier-regime robustness checks follow afterward with the same candidates
+unchanged.
+
 ## 2026-09-19 — Recurrent daily exit-policy sweep preregistration
 
 ATLAS now stages a bounded post-result DEVELOPMENT exit-policy research package under

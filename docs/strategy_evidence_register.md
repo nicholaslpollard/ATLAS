@@ -605,3 +605,46 @@ into other DEVELOPMENT regimes and then untouched/prospective evidence. SHORT fu
 portfolio-cap tuning, confluence, PAPER and LIVE remain separate gates. Consumed-master,
 future-blind, provider, broker and order authority remain zero/false.
 
+## 15. 2025 recurrent daily exit sweep result and candidate freeze — 2026-09-19
+
+Run fingerprint:
+`2726c3a644ac22ed3238adf5b03e978152eaa50a5d0e91fc937716309f0db9f4`.
+
+Scope: selected daily LONG DEVELOPMENT opportunities with signal sessions
+`2025-01-01..2025-12-31`; 3,520 usable cases.
+
+Observed frozen-grid results:
+
+- 2% STOP / 5% TARGET: +1.45% endpoint return; -9.20% maximum marked-equity
+  drawdown; -9.06% maximum book-equity drawdown; 649 completed positions;
+  397 STOP / 160 TARGET / 92 TIME.
+- 3% STOP / 5% TARGET: +0.46% endpoint return; -13.11% maximum marked-equity
+  drawdown; -13.26% maximum book-equity drawdown; 575 completed positions;
+  286 STOP / 169 TARGET / 120 TIME.
+- all other 14 preregistered STOP/TARGET combinations finished negative in 2025.
+
+Interpretation is limited to post-result DEVELOPMENT tuning. The two positive policies
+are **candidates**, not validated strategies or promoted account rules. The earlier
+outcome-replay result is not a direct comparator because its eligible population and
+exit mechanics differ.
+
+Candidate set frozen before forward confirmation:
+
+1. 2% STOP / 5% TARGET;
+2. 3% STOP / 5% TARGET.
+
+Primary confirmation interval:
+`2026-01-01..2026-04-30`, which is chronologically after the 2025 tuning interval
+while remaining inside the accepted DEVELOPMENT boundary.
+
+The confirmation contract binds the exact 2025 sweep run fingerprint and refuses to
+change candidate membership based on the 2026 outcome. After forward confirmation,
+earlier calendar/regime checks may assess robustness but are explicitly retrospective
+for exit-policy selection.
+
+**Disposition:** `COMPLETE_2025_EXIT_TUNING_DIAGNOSTIC / TWO_CANDIDATES_FROZEN /
+NO_PROMOTION`.
+
+Historical supported modern alpha remains zero. No selector, strategy, exit policy,
+portfolio rule, PAPER or LIVE authority is promoted by this result.
+

@@ -3497,6 +3497,36 @@ The next historical-simulation package is a new bar-level campaign contract that
 Short-side portfolio simulation remains a later explicit funding/collateral package and
 must not be faked inside the bar-level campaign.
 
+## 2025 daily exit sweep result and 2026 forward-confirmation gate — 2026-09-19
+
+The preregistered 16-policy daily LONG sweep completed for 2025 under run fingerprint
+`2726c3a644ac22ed3238adf5b03e978152eaa50a5d0e91fc937716309f0db9f4`.
+
+The 3,520 usable daily LONG cases produced only two positive endpoint policies:
+
+- 2% STOP / 5% TARGET: +1.45% return, -9.20% maximum marked-equity drawdown,
+  649 completed positions;
+- 3% STOP / 5% TARGET: +0.46% return, -13.11% maximum marked-equity drawdown,
+  575 completed positions.
+
+The remaining 14 policies were negative. The 1%-target family was particularly poor,
+and no tested 2% or 3% target combination finished positive.
+
+The result supports a bounded exit-policy hypothesis but not promotion. Because 2025
+selected the candidate set, the next primary gate is the chronologically later
+DEVELOPMENT interval `2026-01-01..2026-04-30`. Exactly two candidates are frozen
+before that result is observed: 2%/5% and 3%/5%.
+
+The forward-confirmation runner requires the exact completed 2025 sweep fingerprint
+before opening the 2026 test. It retains the same recurrent account, compounding,
+sizing, family/ticker caps, historical daily source, 10-bps cost assumption,
+conservative collision/gap semantics and five-session TIME horizon.
+
+After 2026 confirmation, those same candidates may be checked across earlier
+DEVELOPMENT regimes for robustness. Earlier periods are explicitly backward
+cross-regime checks, not temporally forward validation. Prospective SHADOW/PAPER
+qualification remains a later gate.
+
 ## Recurrent daily exit-policy tuning campaign — preregistered 2026-09-19
 
 The next simulation package is frozen as
