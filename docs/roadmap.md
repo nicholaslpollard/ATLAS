@@ -188,12 +188,16 @@ fingerprint remained
 `a5a26ed8b0093db16060c03d5ecb883a03322e61d7fe7217549b678dc1b3a1b0`.
 
 This is now a bounded source-semantics investigation rather than a broad acquisition
-or corruption problem. Because V1's PIT rule is `pit_available_at = updated_at`, a
-provider timestamp inversion could otherwise make final retrieved text appear
-available before provider-declared creation. A read-only diagnostic must classify
-the four records and their raw/normalized lineage before any acceptance, quarantine,
-or successor PIT policy is frozen. No provider calls or strategy outcomes are opened
-by that diagnostic.
+or corruption problem. Alpaca's documented news schema defines `created_at` as the
+time an article was created and `updated_at` as the time it was updated; the
+historical news endpoint also documents that result ordering is by updated date.
+Therefore `updated_at < created_at` conflicts with the provider's documented field
+semantics and is treated as a source-contract anomaly rather than silently normalized
+away. Because V1's PIT rule is `pit_available_at = updated_at`, such an inversion
+could otherwise make final retrieved text appear available before provider-declared
+creation. A read-only diagnostic must classify the four records and their
+raw/normalized lineage before any acceptance, quarantine, or successor PIT policy is
+frozen. No provider calls or strategy outcomes are opened by that diagnostic.
 
 After that gate passes, the next data package is historical option contract
 reference, followed by broad option daily history; candidate minute/quote/trade cache
