@@ -188,11 +188,20 @@ gap is explicit: no historical bid/ask is invented. A later replay contract must
 either use an accepted conservative execution model for that era or exclude cases
 whose required execution evidence is unavailable.
 
-The preflight package creates no market-data history. With provider probing enabled
-it performs only a one-record Alpaca historical-news request, a one-record Massive
-2016 SPY option-reference request and one-object S3 visibility checks for 2016/2025
-option daily/minute prefixes. This determines actual workstation entitlement before
-any acquisition package is permitted.
+The preflight completed successfully on the target workstation with fingerprint
+`8fa4fe13856c3e93973867e4503765be4c240c64d73df08ab11ed654985bb134`.
+Observed state: 119.01 GiB free, storage status SAFE, all 40.00 GiB of the initial
+research budget available, and zero existing usage in each new category. Provider
+probes were ACCESSIBLE for Alpaca historical news in 2015, Massive 2016 option
+reference, Massive option day aggregates for 2016/2025 and Massive option minute
+aggregates for 2016/2025. The preflight performed zero bulk downloads.
+
+PR #172 merged the bounded storage/source foundation as
+`551e2a88a13cec74e8ff4cef6147d742b5c1b659`. PR #173 merged Historical News V1 as
+`a7b1a12db1e9403372d6b499ef332de95730d655`. The workstation is now executing the
+authorized Historical News V1 source build. That run is restartable by monthly
+receipt and is not considered complete until its final summary/run fingerprint,
+partition count, article count and storage footprint are returned and recorded.
 
 Ordered continuation after an accepted preflight:
 
