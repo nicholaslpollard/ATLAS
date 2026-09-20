@@ -177,9 +177,19 @@ def _select_raw_records(
 
 def run_historical_news_v1_chronology_diagnostic(
     settings: AtlasSettings,
+    *,
+    months: set[str] | None = None,
 ) -> dict[str, object]:
     anomalies: list[dict[str, object]] = []
-    windows_by_month = {window.key: window for window in month_windows()}
+    all_windows = {window.key: window for window in month_windows()}
+    unknown_months = sorted((months or set()) - set(all_windows))
+    if unknown_months:
+        raise ValueError(f"unknown Historical News V1 months: {unknown_months}")
+    windows_by_month = {
+        month: window
+        for month, window in all_windows.items()
+        if months is None or month in months
+    }
 
     for month, window in windows_by_month.items():
         paths = _month_paths(settings, window)
