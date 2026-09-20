@@ -129,6 +129,52 @@ production operations`
   engine. It may format and aggregate authoritative records but must not maintain a
   separate trading truth or independently recompute trading decisions.
 
+### News/options historical-data foundation — 2026-09-20
+
+Before integrating catalyst/news and option economics into replay, ATLAS must prove
+that the workstation has storage headroom and that the configured provider
+entitlements can reproduce the needed historical intervals.
+
+The initial local-data policy reserves at most 40 GiB for this new research layer and
+fails closed before projected acquisition would cross a 50 GiB system-free-space
+floor. A 65 GiB free-space threshold is a warning boundary. Category quotas are
+4 GiB news, 4 GiB option reference, 8 GiB broad option daily aggregates, 20 GiB
+selective candidate option cache and 4 GiB derived IV/Greeks.
+
+Storage architecture:
+
+`data/news/raw` -> immutable provider articles;
+`data/news/normalized` -> normalized point-in-time records;
+`data/news/features` -> versioned sentiment/event/novelty/materiality features;
+`data/options/reference` -> active/expired contract identity;
+`data/options/daily` -> economical broad option OHLCV;
+`data/options/candidate_cache/*` -> permanent chain/minute/quote/trade slices only
+for replay-generated candidates;
+`data/options/derived/*` -> versioned reconstructed IV/Greeks.
+
+Provider coverage assumptions are deliberately separated from entitlement proof.
+Current documented coverage as of 2026-09-20 is: Alpaca news from 2015; Alpaca
+historical options from February 2024; Massive day/minute/trade option data from
+June 2014; Massive top-of-book option quotes from March 7, 2022. The pre-2022 quote
+gap is explicit: no historical bid/ask is invented. A later replay contract must
+either use an accepted conservative execution model for that era or exclude cases
+whose required execution evidence is unavailable.
+
+The preflight package creates no market-data history. With provider probing enabled
+it performs only a one-record Alpaca historical-news request, a one-record Massive
+2016 SPY option-reference request and one-object S3 visibility checks for 2016/2025
+option daily/minute prefixes. This determines actual workstation entitlement before
+any acquisition package is permitted.
+
+Ordered continuation after an accepted preflight:
+
+1. broad Historical News V1 acquisition/normalization;
+2. historical option contract-reference acquisition;
+3. broad option daily history only if storage and entitlement gates pass;
+4. candidate-driven minute/quote/trade acquisition with per-category quota checks;
+5. deterministic historical IV/Greek reconstruction;
+6. integrate news/catalyst features and stock-vs-option construction into replay.
+
 ### Target full-system simulator decision schema — frozen 2026-09-20
 
 The recurrent stock-equivalent research simulator is an intermediate scientific

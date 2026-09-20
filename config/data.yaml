@@ -43,3 +43,54 @@ data:
     duckdb: data/duckdb
     manifests: data/manifests
     checkpoints: data/checkpoints
+
+
+  research:
+    storage:
+      minimum_free_gib: 50
+      warning_free_gib: 65
+      acquisition_budget_gib: 40
+      categories:
+        news:
+          local_subdir: data/news
+          quota_gib: 4
+        options_reference:
+          local_subdir: data/options/reference
+          quota_gib: 4
+        options_daily:
+          local_subdir: data/options/daily
+          quota_gib: 8
+        options_candidate_cache:
+          local_subdir: data/options/candidate_cache
+          quota_gib: 20
+        options_derived:
+          local_subdir: data/options/derived
+          quota_gib: 4
+
+    news:
+      provider: alpaca
+      start_date: "2015-01-01"
+      endpoint_path: /v1beta1/news
+      page_limit: 50
+      raw_subdir: news/raw
+      normalized_subdir: news/normalized
+      features_subdir: news/features
+      manifests_subdir: news/manifests
+
+    options:
+      primary_historical_provider: massive
+      alpaca_candidate_provider_start_date: "2024-02-01"
+      reference_endpoint_path: /v3/reference/options/contracts
+      massive_day_prefix: us_options_opra/day_aggs_v1
+      massive_minute_prefix: us_options_opra/minute_aggs_v1
+      massive_trade_prefix: us_options_opra/trades_v1
+      massive_quote_prefix: us_options_opra/quotes_v1
+      reference_subdir: options/reference
+      daily_subdir: options/daily
+      candidate_chain_subdir: options/candidate_cache/chains
+      candidate_minute_subdir: options/candidate_cache/minute_bars
+      candidate_quote_subdir: options/candidate_cache/quotes
+      candidate_trade_subdir: options/candidate_cache/trades
+      derived_iv_subdir: options/derived/implied_volatility
+      derived_greeks_subdir: options/derived/greeks
+      manifests_subdir: options/manifests
