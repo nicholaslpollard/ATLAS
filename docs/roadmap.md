@@ -152,10 +152,26 @@ rate limiter. Before promoting each partition, the storage guard accounts for th
 replacement-aware final byte footprint and refuses a write that would exceed the
 4 GiB news quota, 40 GiB total research budget or 50 GiB free-space floor.
 
-Historical News V1 remains source-only. Predictor development begins only after the
-source corpus completes and its exact receipt set is frozen. The next data package
-after news is historical option contract reference, followed by broad option daily
-history; candidate minute/quote/trade cache acquisition remains selective.
+Historical News V1 remains source-only. The target-workstation acquisition completed
+on 2026-09-20 under run fingerprint
+`8076044e7f7c233f98b990dc5595bc4171d1788c143c8391bf173f827ed12c2f`:
+**141/141** monthly partitions, **2,211,606** raw provider records,
+**2,211,606** month-normalized article records, **1.931 GiB** news storage and
+**116.81 GiB** workstation free space after completion.
+
+Completion of acquisition is not authorization to derive predictors. The separate
+`atlas-historical-news-v1-source-integrity-closeout-v1` contract
+(`99b3b76cadbfff7a7975ce1c9c5b4f2103b2d9e8ec77acae46bba51f80fa8df0`)
+must independently validate all 141 receipt/file hashes, raw-to-normalized binding,
+schema, JSON and PIT chronology, cross-partition article-ID uniqueness and global
+count reconciliation before news feature work can begin. It also creates a
+machine-path-independent content corpus fingerprint rather than treating the
+operational acquisition-run fingerprint as the permanent corpus identity. The
+closeout intentionally does not infer undocumented provider interval semantics.
+
+After that gate passes, the next data package is historical option contract
+reference, followed by broad option daily history; candidate minute/quote/trade cache
+acquisition remains selective.
 
 ### News/options historical-data foundation — 2026-09-20
 
@@ -198,19 +214,21 @@ aggregates for 2016/2025. The preflight performed zero bulk downloads.
 
 PR #172 merged the bounded storage/source foundation as
 `551e2a88a13cec74e8ff4cef6147d742b5c1b659`. PR #173 merged Historical News V1 as
-`a7b1a12db1e9403372d6b499ef332de95730d655`. The workstation is now executing the
-authorized Historical News V1 source build. That run is restartable by monthly
-receipt and is not considered complete until its final summary/run fingerprint,
-partition count, article count and storage footprint are returned and recorded.
+`a7b1a12db1e9403372d6b499ef332de95730d655`. The workstation source build has now
+completed under run fingerprint
+`8076044e7f7c233f98b990dc5595bc4171d1788c143c8391bf173f827ed12c2f`,
+with 141/141 partitions and 2,211,606 raw / 2,211,606 month-normalized records.
 
-Ordered continuation after an accepted preflight:
+Ordered continuation after acquisition completion:
 
-1. broad Historical News V1 acquisition/normalization;
+1. Historical News V1 source-integrity closeout and stable corpus fingerprint;
 2. historical option contract-reference acquisition;
 3. broad option daily history only if storage and entitlement gates pass;
 4. candidate-driven minute/quote/trade acquisition with per-category quota checks;
 5. deterministic historical IV/Greek reconstruction;
-6. integrate news/catalyst features and stock-vs-option construction into replay.
+6. only after source-integrity acceptance, integrate news/catalyst features and
+   stock-vs-option construction into replay under separately frozen scientific
+   contracts.
 
 ### Target full-system simulator decision schema — frozen 2026-09-20
 

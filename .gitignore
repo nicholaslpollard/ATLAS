@@ -40,6 +40,10 @@ Thumbs.db
 /data/duckdb/
 /data/manifests/
 /data/checkpoints/
+/data/news/
+/data/options/
+/data/research/
+/data/v2_build/
 /logs/
 webull_trade_sdk.log*
 webull_data_sdk.log*
