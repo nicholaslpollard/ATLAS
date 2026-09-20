@@ -179,27 +179,31 @@ acquisition corpus and authority boundary are unchanged; the source-integrity ga
 must still PASS before predictor work.
 
 The corrected workstation closeout next passed **139/141** partitions and isolated
-exactly four provider chronology anomalies: one record in `2015-07` and three in
-`2026-08` have `updated_at < created_at` in both immutable raw provider data and
-the hash-bound normalized rows. Corpus-wide structure remains intact at
-**2,211,606** raw records, **2,211,606** normalized rows,
+four provider chronology anomalies. The read-only diagnostic established the exact
+distribution as **three records in `2015-07` and one in `2026-08`**, with
+`updated_at < created_at` by **1, 16, 18 and 29 seconds**. All four normalized
+records bind exactly to immutable raw provider records by SHA-256, both provider
+timestamps remain inside their monthly query windows, and corpus-wide structure
+remains intact at **2,211,606** raw records, **2,211,606** normalized rows,
 **2,211,606** distinct article IDs and **0** cross-month duplicate IDs. The corpus
-fingerprint remained
+fingerprint remains
 `a5a26ed8b0093db16060c03d5ecb883a03322e61d7fe7217549b678dc1b3a1b0`.
 
-This is now a bounded source-semantics investigation rather than a broad acquisition
-or corruption problem. Alpaca's documented news schema defines `created_at` as the
-time an article was created and `updated_at` as the time it was updated; the
-historical news endpoint also documents that result ordering is by updated date.
-Therefore `updated_at < created_at` conflicts with the provider's documented field
-semantics and is treated as a source-contract anomaly rather than silently normalized
-away. Because V1's PIT rule is `pit_available_at = updated_at`, such an inversion
-could otherwise make final retrieved text appear available before provider-declared
-creation. A read-only diagnostic must classify the four records and their
-raw/normalized lineage before any acceptance, quarantine, or successor PIT policy is
-frozen. No provider calls or strategy outcomes are opened by that diagnostic.
+The strict V1 closeout is preserved as **FAIL**. Source acceptance moves to the
+preregistered successor
+`atlas-historical-news-v1-source-integrity-closeout-v2`
+(`2a2039ba8ca495f1ea04a7ffd0719ccb95021d48917098899c4d93e5599df632`).
+V2 binds the exact four observed article IDs, provider-record SHA-256 values and
+timestamps; it has no generic tolerance and fails closed on any additional or
+changed chronology anomaly. Provider fields are never mutated. The downstream
+effective PIT rule is frozen as
+`effective_pit_available_at = max(created_at, updated_at)`, a conservative rule
+that is identical to V1 for the **2,211,602** non-anomalous records and moves only
+the four provider-defect rows forward by their observed inversion amount. This
+policy is frozen before any news predictor or strategy-outcome access.
 
-After that gate passes, the next data package is historical option contract
+After V2 source-integrity acceptance passes on the target corpus, the next data
+package is historical option contract
 reference, followed by broad option daily history; candidate minute/quote/trade cache
 acquisition remains selective.
 
