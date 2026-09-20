@@ -128,6 +128,18 @@ invent undocumented provider partition semantics. Predictor/strategy/PAPER/LIVE
 authority remains false until this source-integrity gate passes and later scientific
 contracts separately authorize research.
 
+The first target-workstation closeout execution exposed a validator-only false
+negative: DuckDB auto-detected the normalized file paths
+`year=YYYY/month=MM/articles.parquet` as Hive partitions and injected virtual
+`year`/`month` columns into `DESCRIBE SELECT *`, causing the exact-schema
+check to fail for all 141 otherwise readable partitions. The observed corpus still
+reconciled at **2,211,606** raw records, **2,211,606** normalized rows,
+**2,211,606** distinct article IDs and **0** cross-month duplicate article-ID rows.
+The closeout reader now explicitly disables Hive partition inference when validating
+the physical Parquet payload, and a regression test covers the production directory
+layout. This correction changes validator implementation only; the frozen closeout
+contract and its scientific authority boundary are unchanged.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and

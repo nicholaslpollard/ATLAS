@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import json
 import os
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
@@ -96,7 +97,7 @@ def _sql_literal(value: str | Path) -> str:
 
 def _parquet_source(paths: list[Path]) -> str:
     values = ",".join(f"'{_sql_literal(path)}'" for path in paths)
-    return f"read_parquet([{values}])"
+    return f"read_parquet([{values}], hive_partitioning=false)"
 
 
 def _atomic_write_json(path: Path, payload: object) -> None:
@@ -681,6 +682,11 @@ def run_historical_news_v1_closeout(
         for report in partition_reports
         if report["status"] != "PASS"
     ]
+    partition_error_counts = Counter(
+        str(error)
+        for partition_report in partition_reports
+        for error in partition_report.get("errors", [])
+    )
     if failed_partitions:
         errors.append(
             f"{len(failed_partitions)} monthly partitions failed integrity checks"
@@ -737,6 +743,7 @@ def run_historical_news_v1_closeout(
         "history_end": HISTORY_END.isoformat(),
         "monthly_partitions": len(partition_reports),
         "failed_partitions": failed_partitions,
+        "partition_error_counts": dict(sorted(partition_error_counts.items())),
         "raw_provider_records": raw_total,
         "normalized_articles": normalized_total,
         "global_normalized": global_normalized,

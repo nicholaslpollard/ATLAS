@@ -169,6 +169,15 @@ machine-path-independent content corpus fingerprint rather than treating the
 operational acquisition-run fingerprint as the permanent corpus identity. The
 closeout intentionally does not infer undocumented provider interval semantics.
 
+The first workstation closeout run produced a universal schema false-negative while
+all corpus-level counts and global article-ID uniqueness reconciled. Root cause was
+DuckDB Hive auto-detection on the physical `year=YYYY/month=MM` paths, which added
+virtual partition columns to the validator's `SELECT *` schema view. The validator
+now reads the physical Parquet payload with `hive_partitioning=false` and includes
+a regression test using the production path shape. The closeout contract fingerprint,
+acquisition corpus and authority boundary are unchanged; the source-integrity gate
+must still PASS before predictor work.
+
 After that gate passes, the next data package is historical option contract
 reference, followed by broad option daily history; candidate minute/quote/trade cache
 acquisition remains selective.
