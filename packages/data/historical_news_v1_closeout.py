@@ -243,7 +243,11 @@ def _inspect_partition(
     missing_updated_at = 0
     invalid_timestamp = 0
     chronology_violations = 0
+    created_outside_query_window = 0
+    updated_outside_query_window = 0
     selected: dict[str, tuple[tuple[str, str], str]] = {}
+    query_start = _parse_timestamp(query_start_utc)
+    query_end = _parse_timestamp(query_end_utc)
 
     try:
         with gzip.open(raw_path, "rt", encoding="utf-8", newline="") as handle:
@@ -289,6 +293,20 @@ def _inspect_partition(
                     and effective_updated_at < created_at
                 ):
                     chronology_violations += 1
+                if (
+                    created_at is not None
+                    and query_start is not None
+                    and query_end is not None
+                    and not (query_start <= created_at <= query_end)
+                ):
+                    created_outside_query_window += 1
+                if (
+                    effective_updated_at is not None
+                    and query_start is not None
+                    and query_end is not None
+                    and not (query_start <= effective_updated_at <= query_end)
+                ):
+                    updated_outside_query_window += 1
 
                 selection_key = (str(updated_raw or ""), text)
                 provider_record_sha256 = hashlib.sha256(
@@ -472,6 +490,8 @@ def _inspect_partition(
         "receipt_fingerprint": receipt.get("receipt_fingerprint"),
         "missing_created_at": missing_created_at,
         "missing_updated_at": missing_updated_at,
+        "created_outside_query_window": created_outside_query_window,
+        "updated_outside_query_window": updated_outside_query_window,
         "chronology_violations": chronology_violations
         + normalized_chronology_violations,
     }
