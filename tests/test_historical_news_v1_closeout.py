@@ -50,9 +50,16 @@ def _write_fixture(
     month: str,
     records: list[dict[str, object]],
     normalized_rows: list[dict[str, object]] | None = None,
+    hive_layout: bool = False,
 ) -> tuple[Path, Path, dict[str, object]]:
-    raw_path = tmp_path / month / "articles.jsonl.gz"
-    normalized_path = tmp_path / month / "articles.parquet"
+    year, month_number = month.split("-", maxsplit=1)
+    root = (
+        tmp_path / f"year={year}" / f"month={month_number}"
+        if hive_layout
+        else tmp_path / month
+    )
+    raw_path = root / "articles.jsonl.gz"
+    normalized_path = root / "articles.parquet"
     raw_path.parent.mkdir(parents=True, exist_ok=True)
 
     raw_lines = b"".join(
@@ -181,6 +188,29 @@ def test_partition_inspection_fails_if_normalized_row_is_not_bound_to_selected_r
         for error in report["errors"]
     )
 
+
+
+def test_partition_inspection_ignores_hive_directory_columns(
+    tmp_path: Path,
+) -> None:
+    raw_path, normalized_path, receipt = _write_fixture(
+        tmp_path,
+        month="2020-01",
+        records=[_record(1)],
+        hive_layout=True,
+    )
+
+    report = _inspect_partition(
+        month="2020-01",
+        query_start_utc="2020-01-01T00:00:00Z",
+        query_end_utc="2020-01-31T23:59:59.999999Z",
+        raw_path=raw_path,
+        normalized_path=normalized_path,
+        receipt=receipt,
+    )
+
+    assert report["status"] == "PASS"
+    assert report["errors"] == []
 
 def test_global_inspection_detects_cross_partition_article_id_duplicates(
     tmp_path: Path,
