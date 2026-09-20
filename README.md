@@ -72,6 +72,49 @@ and current conditions. It must not search indicators live until something agree
 with a desired trade.
 
 
+## News + options historical-data foundation — 2026-09-20
+
+ATLAS now has a bounded local-data foundation for bringing historical news and
+option economics into the deterministic simulator without repeating the stock-lake
+bulk-build mistake.
+
+The initial storage policy is intentionally conservative for the current workstation:
+
+- minimum free-space floor: **50 GiB**;
+- warning threshold: **65 GiB** free;
+- initial new research-data budget: **40 GiB**;
+- news quota: **4 GiB**;
+- option-reference quota: **4 GiB**;
+- broad option-daily quota: **8 GiB**;
+- selective candidate option cache: **20 GiB**;
+- derived IV/Greeks quota: **4 GiB**.
+
+The planned local lake is partitioned under `data/news/` and `data/options/`.
+News retains immutable raw articles plus normalized/versioned derived features.
+Options retain broad contract reference and daily data plus a selective permanent
+candidate cache for chains, minute bars, quotes and trades actually needed by
+historical replay. Derived implied-volatility and Greek records are separate from
+observed provider prices.
+
+The source roles are frozen at this stage:
+
+- Alpaca historical news is the intended broad historical-news source and documents
+  history beginning in 2015;
+- Alpaca historical option market data is recent-only for this research purpose,
+  beginning in February 2024;
+- Massive option day/minute/trade history documents coverage back to June 2014,
+  subject to the account's actual plan entitlement;
+- Massive historical option quotes document coverage beginning March 7, 2022;
+  therefore 2016-2021 exact historical top-of-book execution is not assumed and
+  requires a later explicit execution-fidelity policy.
+
+The first workstation action is a **source/storage preflight only**. It may create
+empty local directories and perform tiny read-only Alpaca/Massive entitlement probes,
+including checking whether the current Massive S3 credentials can see 2016 and 2025
+option day/minute prefixes. It performs zero bulk downloads, persists no provider
+records, exposes no credential values and grants no trading/research promotion
+authority.
+
 ## Full deterministic decision envelope and AI boundary — 2026-09-20
 
 The target ATLAS simulator and production decision object must be materially richer
