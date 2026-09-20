@@ -104,6 +104,30 @@ This package is source acquisition only. It does not derive sentiment, materiali
 event classes, novelty, or any other predictor yet and cannot access strategy outcomes
 or grant PAPER/LIVE authority.
 
+The authorized target-workstation acquisition completed on 2026-09-20 under
+contract fingerprint `c977c5fd379deb6fda8f6733d7066d4d3a2179ec3dd1e9896cc9d5d288189c51`
+and run fingerprint
+`8076044e7f7c233f98b990dc5595bc4171d1788c143c8391bf173f827ed12c2f`.
+All **141/141** monthly partitions were acquired in the run, producing
+**2,211,606** raw provider records and **2,211,606** month-normalized article
+records. The news lake occupied **1.931 GiB** of the 4 GiB category quota and the
+workstation retained **116.81 GiB** free after completion.
+
+Acquisition completion is not source-integrity acceptance. Before any Historical
+News V1 sentiment, novelty, materiality, event-class or other predictor work may
+begin, ATLAS must pass the separate
+`atlas-historical-news-v1-source-integrity-closeout-v1` gate, frozen under
+fingerprint
+`99b3b76cadbfff7a7975ce1c9c5b4f2103b2d9e8ec77acae46bba51f80fa8df0`.
+That gate independently re-hashes every raw/normalized month, recomputes receipt
+and summary fingerprints, reconstructs the normalized record selected from raw
+provider records, checks timestamp/PIT/JSON/schema invariants, tests article-ID
+uniqueness across all 141 partitions, reconciles the exact global counts, and
+derives a machine-path-independent corpus fingerprint. It deliberately does not
+invent undocumented provider partition semantics. Predictor/strategy/PAPER/LIVE
+authority remains false until this source-integrity gate passes and later scientific
+contracts separately authorize research.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
@@ -151,10 +175,14 @@ both 2016 and 2025. No bulk downloads occurred.
 PR #172 merged the bounded news/options data foundation as
 `551e2a88a13cec74e8ff4cef6147d742b5c1b659`. PR #173 then merged the resumable
 Historical News V1 acquisition package as
-`a7b1a12db1e9403372d6b499ef332de95730d655`. The target workstation has now begun
-the authorized Historical News V1 source acquisition; completion counts, final
-storage footprint and run fingerprint remain pending until the workstation run
-finishes.
+`a7b1a12db1e9403372d6b499ef332de95730d655`. The target-workstation Historical
+News V1 acquisition is now complete: **141/141** monthly partitions,
+**2,211,606** raw provider records, **2,211,606** month-normalized articles,
+**1.931 GiB** news storage and **116.81 GiB** free after the run. The completed
+run fingerprint is
+`8076044e7f7c233f98b990dc5595bc4171d1788c143c8391bf173f827ed12c2f`.
+A separate source-integrity closeout must PASS before predictor development; no
+strategy evidence or trading authority is created by the acquisition itself.
 
 ## Full deterministic decision envelope and AI boundary — 2026-09-20
 
