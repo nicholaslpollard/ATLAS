@@ -167,6 +167,30 @@ to V1; only the four diagnosed rows move forward by 1/16/18/29 seconds. The V2
 package is source-integrity acceptance only and still grants no predictor,
 strategy-outcome, PAPER or LIVE authority.
 
+The target-workstation V2 acceptance **PASSED** on 2026-09-20 with acceptance
+fingerprint
+`279c13b37eb0a793a3ba821172e8ee226315109a52bca55040bbb3e1dd0a1532`.
+The accepted corpus fingerprint remained
+`a5a26ed8b0093db16060c03d5ecb883a03322e61d7fe7217549b678dc1b3a1b0`,
+with **2,211,606** raw records, **2,211,606** normalized rows,
+**2,211,606** distinct article IDs and **0** cross-month duplicate IDs. Strict V1
+still records its two failed partitions; V2 accepted exactly the four hash-bound
+provider chronology anomalies and no others. Historical News V1 source integrity is
+therefore closed under the conservative V2 PIT policy, while news-derived predictor
+evidence remains unopened.
+
+Before the next bulk source acquisition, ATLAS now uses a reusable provider
+source-qualification framework covering identity/cardinality, chronology,
+duplicate/version semantics, pagination, provider metadata versus observed data,
+PIT availability, schema/nullability, entitlement boundaries, raw-to-normalized
+reconciliation, corruption/hash receipts and unknown-anomaly fail-closed behavior.
+Historical option reference is the first package using that framework. Its frozen
+qualification contract fingerprint is
+`17a3736f9317f7e403ea08c123aac35fabad0a8b2682bca7450373b797e9d260`.
+The qualification is read-only and bounded; it does not authorize bulk acquisition
+or grant historical candidate-availability, dynamic-deliverable, strategy, PAPER or
+LIVE authority.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
