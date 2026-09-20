@@ -3497,6 +3497,36 @@ The next historical-simulation package is a new bar-level campaign contract that
 Short-side portfolio simulation remains a later explicit funding/collateral package and
 must not be faked inside the bar-level campaign.
 
+## 2026 forward confirmation failure and static-exit regime map — 2026-09-19
+
+The frozen 2%/5% and 3%/5% candidates were evaluated unchanged over
+`2026-01-01..2026-04-30` using run fingerprint
+`bd8e1fd32d2c34e8699e6e243e851c936c475e0d5b16fc4f6047d5f02e40f210`.
+
+Observed results:
+
+- 2% STOP / 5% TARGET: -6.38% return, -9.88% marked-equity drawdown,
+  282 completed positions;
+- 3% STOP / 5% TARGET: -6.97% return, -10.42% marked-equity drawdown,
+  236 completed positions.
+
+The first chronologically later confirmation therefore rejected both static exit
+geometries as general rules. No static candidate is promoted and no 2026-informed
+parameter change is permitted.
+
+The next diagnostic is a retrospective annual regime map across 2018–2024 with both
+candidate geometries unchanged. The runner loads the accepted daily-case source once,
+subsets by signal year, and parallelizes regime-policy jobs. Each year starts from the
+same initial equity so cross-year return/drawdown behavior is directly comparable.
+
+The regime map is not validation and cannot overturn the failed forward result. It is
+the evidence package for Dynamic Exit V1. Dynamic Exit V1 should choose decision-bound
+STOP/TARGET/TIME geometry from point-in-time information only, initially using a small
+frozen action set and features such as volatility regime, ATR/realized volatility,
+strategy family, prior favorable/adverse path probabilities, forecast uncertainty and
+market regime. Continuous ATR-scaled geometry and in-trade adaptation remain later
+versions after discrete dynamic selection is proven.
+
 ## 2025 daily exit sweep result and 2026 forward-confirmation gate — 2026-09-19
 
 The preregistered 16-policy daily LONG sweep completed for 2025 under run fingerprint
