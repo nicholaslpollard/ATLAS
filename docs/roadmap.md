@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-19 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-20 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -65,8 +65,9 @@ risk, and risk of ruin. Profit is never guaranteed. Trade frequency is not succe
 Complete the operating system:
 
 `market data → features → regimes → discovery → strategies → candidate promotion →
-trade construction → portfolio/risk → AI review → operator-observable control plane
-→ operational PAPER → outcomes → performance/learning → production operations`
+trade construction → portfolio/risk → deterministic case/authority → optional independent
+AI verification → operator-observable control plane → operational PAPER → outcomes →
+performance/learning → production operations`
 
 Reference strategies may exercise every component. They must be visibly labeled
 as baselines and may not gain qualifying-PAPER or LIVE authority merely because the
@@ -98,8 +99,9 @@ qualification gates for LIVE.
 versioned features → broad discovery → market/sector/ticker regimes → deterministic
 strategy evaluation → optional ML probability evidence → authority gate →
 opportunity ranking → stock/options construction → portfolio risk/sizing →
-deterministic case → independent AI audit → SHADOW/PAPER execution → outcome ledger
-→ walk-forward learning → API/browser control plane → production operations`
+deterministic case/authority → optional independent AI verification → SHADOW/PAPER
+execution → outcome ledger → walk-forward learning → API/browser control plane →
+production operations`
 
 - **Parquet:** durable analytical/history lake.
 - **DuckDB:** analytical and replay query engine.
@@ -122,10 +124,76 @@ deterministic case → independent AI audit → SHADOW/PAPER execution → outco
 - **Alpaca execution:** explicit/manual secondary execution broker. Market-data
   primacy does not create execution authority. No automatic broker failover.
 - **ML:** predictive evidence and ranking, never standalone trading authority.
-- **AI:** independent review/challenge, never unilateral trading authority.
+- **AI:** late optional independent verification only. It is not part of signal generation, deterministic trade gating, option construction, sizing, portfolio admission, or exit-plan construction; the complete quantitative system must function and be measurable with AI disabled.
 - **Browser GUI:** operator surface over the same engine, never a second trading
   engine. It may format and aggregate authoritative records but must not maintain a
   separate trading truth or independently recompute trading decisions.
+
+### Target full-system simulator decision schema — frozen 2026-09-20
+
+The recurrent stock-equivalent research simulator is an intermediate scientific
+instrument, not the final ATLAS simulator. The full simulator must progressively
+integrate the following deterministic layers while retaining point-in-time lineage
+and an explicit no-AI baseline.
+
+**Underlying forecast:** direction/probability, expected move distribution, horizon,
+MFE/MAE and path/touch distributions, realized/implied volatility state, market/
+sector/ticker regime, momentum/relative-strength/trend/gap context, execution quality,
+tail scenarios, uncertainty and exact strategy/version provenance.
+
+**Catalyst/context:** news sentiment, novelty, materiality, relevance and duplication;
+event type/timing; earnings/guidance proximity; SEC/regulatory/corporate actions;
+accepted fundamental/reference predictors; macro/calendar risk; sector/industry/peer
+context; approved short-interest/ownership/event predictors; data freshness and
+contradiction state.
+
+**Trade gate:** TAKE/ABSTAIN, calibrated confidence/probability of profit, expected
+gross/net edge after all modeled costs, downside/tail value, evidence support and
+stability, walk-forward/regime applicability, independent confluence/conflict,
+tradability/freshness, portfolio capacity, authority state, ranked priority and
+explicit abstention/rejection reason.
+
+**Stock/options construction:** compare stock economics to option economics rather
+than assuming stock return maps mechanically to option return. For options retain
+call/put or structure, DTE/expiration, strike/moneyness, executable premium/spread,
+delta/gamma/theta/vega/rho where material, IV/term structure/skew, open interest,
+volume/quote age/liquidity, synchronized underlying/option timestamps, event exposure,
+scenario P&L distribution, breakeven, maximum premium at risk, expected value after
+option-specific costs and the reason the option or stock instrument won.
+
+**Risk/portfolio:** risk-normalized position size, premium/notional limits, buying
+power/cash reservation, gross/net exposure, ticker/family/sector/industry/factor
+concentration, correlation/clusters, beta, aggregate option Greeks/volatility exposure,
+liquidity/exit capacity, current drawdown/loss limits, gap/volatility stress loss,
+risk-of-ruin controls, competing-opportunity priority and capital opportunity cost.
+
+**Position management:** bind entry method and slippage tolerance, stop/target/time
+exit, versioned volatility-scaled or static geometry, any supported trailing/
+breakeven/partial-exit rules, option IV/theta/event invalidation, thesis invalidation,
+mark/freshness requirements, degraded-data behavior and trigger precedence before
+entry. Historical replay must use only data actually available at the relevant time
+and must model ambiguous bar ordering conservatively.
+
+**Outcome/learning:** retain every taken and abstained opportunity, realized stock or
+option P&L after modeled costs, MFE/MAE/touch/timing/path data, realized execution
+costs, option IV/Greek evolution where available, decision/exit reason, attribution
+by strategy/regime/catalyst/contract/portfolio constraint, marked/book equity impact,
+calibration error and complete fingerprints/provenance.
+
+The integration sequence is intentionally incremental: establish competent underlying
+forecast/trade gating and risk mechanics; add option-economics replay early enough
+that stock-return optimization does not become the wrong objective; add catalyst/news
+and reference evidence under accepted PIT source contracts; integrate portfolio-level
+option/risk accounting; then run the deterministic full-stack simulator and prospective
+SHADOW/PAPER.
+
+**AI remains outside this sequence until the deterministic stack is accepted.**
+When introduced, the AI receives an immutable completed deterministic case and may
+approve, caution, reject or flag inconsistency. It may not rewrite trade parameters
+or feed its judgment backward into the baseline decision. Any proposed alternative
+must be re-evaluated deterministically as a new record. ATLAS must maintain an
+AI-disabled control path so incremental AI value can be measured directly before
+AI is granted any operational role.
 
 The decommissioned V1 daily lake used Alpaca SIP through `2021-08-13` and
 Massive from `2021-08-16`; this is retained historical provenance only. The current

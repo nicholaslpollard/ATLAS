@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-19 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-20 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -70,6 +70,145 @@ rank eligible opportunities using frozen, walk-forward estimates of probability,
 net expectancy, downside, execution cost, confidence, correlation, concentration,
 and current conditions. It must not search indicators live until something agrees
 with a desired trade.
+
+
+## Full deterministic decision envelope and AI boundary — 2026-09-20
+
+The target ATLAS simulator and production decision object must be materially richer
+than the current recurrent stock-equivalent research slices. The deterministic core
+must be able to make, replay, explain, and score the complete trade decision **without
+AI participation**. The required information envelope is:
+
+### Underlying forecast
+
+- expected direction and calibrated direction probability;
+- expected return/move distribution, not only one point estimate;
+- expected horizon and time-to-move distribution;
+- MFE/MAE distributions and expected path shape;
+- probability and timing of reaching favorable/adverse thresholds;
+- realized/implied volatility state, volatility trend and regime;
+- market, sector, industry and ticker regime/alignment;
+- relative strength, momentum, trend, gap and participation context;
+- liquidity, spread, slippage and execution-quality expectations;
+- downside/tail scenarios, uncertainty/confidence and evidence support;
+- exact strategy/economic-family/version lineage and point-in-time provenance.
+
+### Catalyst and context
+
+- news sentiment, direction and source provenance;
+- novelty, materiality, relevance and duplication/echo handling;
+- event type and event-time certainty;
+- earnings date/proximity, surprise/guidance context and post-event state;
+- SEC/regulatory/corporate-action evidence when available;
+- analyst/reference/fundamental context when under an accepted source contract;
+- macro/calendar risk and scheduled-event proximity;
+- sector/industry/peer context and correlated catalyst exposure;
+- short-interest, ownership or other approved predictor context when separately
+  accepted;
+- data freshness, availability and contradiction/conflict state.
+
+### Trade gate
+
+- TAKE / ABSTAIN;
+- calibrated confidence and expected probability of profit;
+- expected gross and net edge after spread, fees, slippage and expected decay;
+- downside/tail estimate and expected risk-adjusted value;
+- support/sample size, stability, walk-forward robustness and regime applicability;
+- strategy/confluence agreement and conflict evidence without double-counting
+  correlated signals;
+- data-quality/freshness/tradability checks;
+- portfolio capacity and authority state;
+- ranked opportunity priority and explicit abstention reason.
+
+### Option construction
+
+When options are economically preferable to stock, the deterministic constructor
+must model the option rather than multiply the underlying return by a leverage
+factor. Required fields include:
+
+- call/put and strategy structure;
+- expiration/DTE and strike/moneyness;
+- bid, ask, midpoint, spread and executable-price assumption;
+- premium and contract multiplier;
+- delta, gamma, theta, vega and rho where available/material;
+- implied volatility, IV percentile/rank when supportable, term structure and skew;
+- open interest, volume, quote age and contract liquidity;
+- underlying/option synchronization and quote provenance;
+- earnings/event exposure through expiration;
+- expected contract P&L distribution under underlying-path and IV scenarios;
+- breakeven, maximum premium at risk and scenario/tail loss;
+- expected return on premium/capital and expected value after option-specific costs;
+- stock-versus-option economic comparison and reason for chosen instrument;
+- contract-roll/expiration handling where relevant.
+
+### Risk and portfolio construction
+
+- position size and account-risk dollars/percentage;
+- stop-distance-aware or scenario-loss-aware risk normalization;
+- maximum premium/notional/account risk;
+- available cash, buying power and capital reservation;
+- current portfolio gross/net exposure;
+- ticker, family, sector, industry and factor concentration;
+- pairwise/cluster correlation and overlapping catalyst exposure;
+- portfolio beta and directional exposure;
+- aggregate option Greeks and volatility exposure when options are used;
+- liquidity/exit-capacity constraints;
+- drawdown state, daily/weekly loss limits and risk-of-ruin controls;
+- stress/scenario loss including gap and volatility shocks;
+- competing-opportunity priority and opportunity-cost/capital-allocation evidence.
+
+### Position-management plan
+
+Before entry, every admitted trade must also bind a deterministic management plan:
+
+- entry method and acceptable price/slippage bounds;
+- stop, target and time-exit policy;
+- whether exits are fixed, volatility-scaled or otherwise versioned;
+- trailing/breakeven/partial-exit behavior when explicitly supported by that version;
+- option-specific IV/theta/event invalidation conditions;
+- thesis invalidation conditions;
+- mark/freshness requirements and degraded-data behavior;
+- exit precedence for simultaneous or conflicting triggers.
+
+### Outcome and learning record
+
+Every taken and abstained opportunity must retain the immutable decision-time
+features plus later outcomes required for learning:
+
+- realized stock and option P&L after all modeled costs;
+- MFE/MAE, threshold touches, time-to-touch and path diagnostics;
+- realized slippage/spread/fees and option Greek/IV evolution when available;
+- reason for entry, abstention, rejection and exit;
+- contribution by strategy, regime, catalyst, contract and portfolio constraint;
+- marked-equity and book-equity effect;
+- calibration error and forecast-vs-realized diagnostics;
+- complete fingerprints/provenance so future research can reproduce the decision.
+
+The full-system simulator should ultimately compare **stock and option economics on
+the same underlying opportunity and path**, then admit the economically justified
+instrument under the portfolio constraints. A favorable underlying move is not
+assumed to imply a profitable option trade.
+
+### AI is a late, independent verification layer
+
+AI is intentionally outside the quantitative decision stack. Signal generation,
+feature construction, news/catalyst extraction used by the deterministic models,
+trade gating, option construction, sizing, portfolio admission and exit-plan
+construction must all function and be testable without an AI reviewer.
+
+Only after ATLAS has produced an immutable deterministic trade case may an optional
+AI reviewer inspect that case plus the same authorized point-in-time evidence. Its
+role is independent challenge/verification: approve, caution, reject, or flag an
+evidence inconsistency. It may not silently rewrite direction, strike, expiration,
+position size, entry, stop, target, horizon, probabilities, expected value or
+portfolio state. If AI identifies a material problem or proposes an alternative, the
+original deterministic case remains immutable and any alternative must return through
+a new deterministic evaluation path under a new record.
+
+AI output is separately fingerprinted and its incremental value must eventually be
+measured against the identical deterministic system with AI disabled. AI is not
+allowed to become hidden alpha, a substitute for weak quantitative evidence, or a
+training input that contaminates the independent baseline.
 
 ## Current repository truth
 
