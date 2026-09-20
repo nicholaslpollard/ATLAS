@@ -140,12 +140,21 @@ The source roles are frozen at this stage:
   therefore 2016-2021 exact historical top-of-book execution is not assumed and
   requires a later explicit execution-fidelity policy.
 
-The first workstation action is a **source/storage preflight only**. It may create
-empty local directories and perform tiny read-only Alpaca/Massive entitlement probes,
-including checking whether the current Massive S3 credentials can see 2016 and 2025
-option day/minute prefixes. It performs zero bulk downloads, persists no provider
-records, exposes no credential values and grants no trading/research promotion
-authority.
+The source/storage preflight completed successfully on the target workstation under
+fingerprint `8fa4fe13856c3e93973867e4503765be4c240c64d73df08ab11ed654985bb134`.
+It observed **119.01 GiB free**, status `SAFE`, the full **40.00 GiB** research-data
+budget still available, and zero existing usage in all new categories. Read-only
+provider probes confirmed access to Alpaca historical news in the 2015 window,
+Massive 2016 option reference, and Massive option day/minute flat-file prefixes for
+both 2016 and 2025. No bulk downloads occurred.
+
+PR #172 merged the bounded news/options data foundation as
+`551e2a88a13cec74e8ff4cef6147d742b5c1b659`. PR #173 then merged the resumable
+Historical News V1 acquisition package as
+`a7b1a12db1e9403372d6b499ef332de95730d655`. The target workstation has now begun
+the authorized Historical News V1 source acquisition; completion counts, final
+storage footprint and run fingerprint remain pending until the workstation run
+finishes.
 
 ## Full deterministic decision envelope and AI boundary — 2026-09-20
 
