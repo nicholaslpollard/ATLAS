@@ -97,7 +97,11 @@ def _write_fixture(
 
 def test_closeout_contract_binds_exact_completed_acquisition_and_stays_source_only() -> None:
     manifest = historical_news_v1_closeout_manifest()
-    assert manifest["fingerprint"] == HISTORICAL_NEWS_V1_CLOSEOUT_CONTRACT_FINGERPRINT
+    assert (
+        manifest["fingerprint"]
+        == HISTORICAL_NEWS_V1_CLOSEOUT_CONTRACT_FINGERPRINT
+        == "99b3b76cadbfff7a7975ce1c9c5b4f2103b2d9e8ec77acae46bba51f80fa8df0"
+    )
     assert (
         manifest["expected_acquisition_run_fingerprint"]
         == EXPECTED_ACQUISITION_RUN_FINGERPRINT
