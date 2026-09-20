@@ -86,6 +86,10 @@ def _parse_timestamp(value: object) -> datetime | None:
     return parsed
 
 
+def _rfc3339(value: datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
 def _sql_literal(value: str | Path) -> str:
     return str(value).replace("'", "''")
 
@@ -184,6 +188,8 @@ def _load_json_object(path: Path) -> dict[str, object]:
 def _inspect_partition(
     *,
     month: str,
+    query_start_utc: str,
+    query_end_utc: str,
     raw_path: Path,
     normalized_path: Path,
     receipt: dict[str, object],
@@ -197,6 +203,19 @@ def _inspect_partition(
         errors.append("receipt acquisition contract fingerprint mismatch")
     if receipt.get("month") != month:
         errors.append("receipt month mismatch")
+    if receipt.get("provider") != "alpaca":
+        errors.append("receipt provider mismatch")
+    if receipt.get("query_start_utc") != query_start_utc:
+        errors.append("receipt query_start_utc mismatch")
+    if receipt.get("query_end_utc") != query_end_utc:
+        errors.append("receipt query_end_utc mismatch")
+    if receipt.get("pit_text_available_at") != PIT_TEXT_AVAILABLE_AT:
+        errors.append("receipt PIT text policy mismatch")
+    try:
+        if int(receipt.get("page_count", 0)) < 1:
+            errors.append("receipt page_count is not positive")
+    except (TypeError, ValueError):
+        errors.append("receipt page_count is invalid")
     if not _receipt_fingerprint_is_valid(receipt):
         errors.append("receipt fingerprint does not recompute")
 
@@ -213,6 +232,10 @@ def _inspect_partition(
         errors.append("raw SHA-256 does not match receipt")
     if receipt.get("normalized_sha256") != normalized_sha256:
         errors.append("normalized SHA-256 does not match receipt")
+    if int(receipt.get("raw_bytes", -1)) != int(raw_path.stat().st_size):
+        errors.append("raw byte size does not match receipt")
+    if int(receipt.get("normalized_bytes", -1)) != int(normalized_path.stat().st_size):
+        errors.append("normalized byte size does not match receipt")
 
     raw_count = 0
     missing_id = 0
@@ -601,6 +624,8 @@ def run_historical_news_v1_closeout(
             pool.submit(
                 _inspect_partition,
                 month=window.key,
+                query_start_utc=_rfc3339(window.start_utc),
+                query_end_utc=_rfc3339(window.end_utc),
                 raw_path=paths["raw"],
                 normalized_path=paths["normalized"],
                 receipt=receipt,
