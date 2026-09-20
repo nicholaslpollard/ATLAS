@@ -63,6 +63,54 @@ class StagingConfig(BaseModel):
     retain_normalized_after_success: bool = False
 
 
+class ResearchStorageCategoryConfig(BaseModel):
+    local_subdir: str
+    quota_gib: float = Field(gt=0)
+
+
+class ResearchStorageConfig(BaseModel):
+    minimum_free_gib: float = Field(default=50.0, gt=0)
+    warning_free_gib: float = Field(default=65.0, gt=0)
+    acquisition_budget_gib: float = Field(default=40.0, gt=0)
+    categories: dict[str, ResearchStorageCategoryConfig] = Field(default_factory=dict)
+
+
+class HistoricalNewsResearchConfig(BaseModel):
+    provider: str = "alpaca"
+    start_date: str = "2015-01-01"
+    endpoint_path: str = "/v1beta1/news"
+    page_limit: int = Field(default=50, ge=1, le=50)
+    raw_subdir: str = "news/raw"
+    normalized_subdir: str = "news/normalized"
+    features_subdir: str = "news/features"
+    manifests_subdir: str = "news/manifests"
+
+
+class HistoricalOptionsResearchConfig(BaseModel):
+    primary_historical_provider: str = "massive"
+    alpaca_candidate_provider_start_date: str = "2024-02-01"
+    reference_endpoint_path: str = "/v3/reference/options/contracts"
+    massive_day_prefix: str = "us_options_opra/day_aggs_v1"
+    massive_minute_prefix: str = "us_options_opra/minute_aggs_v1"
+    massive_trade_prefix: str = "us_options_opra/trades_v1"
+    massive_quote_prefix: str = "us_options_opra/quotes_v1"
+    reference_subdir: str = "options/reference"
+    daily_subdir: str = "options/daily"
+    candidate_chain_subdir: str = "options/candidate_cache/chains"
+    candidate_minute_subdir: str = "options/candidate_cache/minute_bars"
+    candidate_quote_subdir: str = "options/candidate_cache/quotes"
+    candidate_trade_subdir: str = "options/candidate_cache/trades"
+    derived_iv_subdir: str = "options/derived/implied_volatility"
+    derived_greeks_subdir: str = "options/derived/greeks"
+    manifests_subdir: str = "options/manifests"
+
+
+class ResearchDataConfig(BaseModel):
+    storage: ResearchStorageConfig = Field(default_factory=ResearchStorageConfig)
+    news: HistoricalNewsResearchConfig = Field(default_factory=HistoricalNewsResearchConfig)
+    options: HistoricalOptionsResearchConfig = Field(default_factory=HistoricalOptionsResearchConfig)
+
+
 class DataConfig(BaseModel):
     calendar: CalendarConfig
     canonical: CanonicalConfig
@@ -71,6 +119,7 @@ class DataConfig(BaseModel):
     materialized_derived_bars: list[str]
     on_demand_bars: list[str]
     paths: DataPaths
+    research: ResearchDataConfig = Field(default_factory=ResearchDataConfig)
 
 
 class MassiveProviderConfig(BaseModel):
