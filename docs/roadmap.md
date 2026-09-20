@@ -178,6 +178,23 @@ a regression test using the production path shape. The closeout contract fingerp
 acquisition corpus and authority boundary are unchanged; the source-integrity gate
 must still PASS before predictor work.
 
+The corrected workstation closeout next passed **139/141** partitions and isolated
+exactly four provider chronology anomalies: one record in `2015-07` and three in
+`2026-08` have `updated_at < created_at` in both immutable raw provider data and
+the hash-bound normalized rows. Corpus-wide structure remains intact at
+**2,211,606** raw records, **2,211,606** normalized rows,
+**2,211,606** distinct article IDs and **0** cross-month duplicate IDs. The corpus
+fingerprint remained
+`a5a26ed8b0093db16060c03d5ecb883a03322e61d7fe7217549b678dc1b3a1b0`.
+
+This is now a bounded source-semantics investigation rather than a broad acquisition
+or corruption problem. Because V1's PIT rule is `pit_available_at = updated_at`, a
+provider timestamp inversion could otherwise make final retrieved text appear
+available before provider-declared creation. A read-only diagnostic must classify
+the four records and their raw/normalized lineage before any acceptance, quarantine,
+or successor PIT policy is frozen. No provider calls or strategy outcomes are opened
+by that diagnostic.
+
 After that gate passes, the next data package is historical option contract
 reference, followed by broad option daily history; candidate minute/quote/trade cache
 acquisition remains selective.
