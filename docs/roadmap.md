@@ -129,6 +129,34 @@ production operations`
   engine. It may format and aggregate authoritative records but must not maintain a
   separate trading truth or independently recompute trading decisions.
 
+### Historical News V1 acquisition — 2026-09-20
+
+Historical News V1 is the first acquisition stage under the bounded news/options
+foundation. It freezes a complete prior-day corpus window
+`2015-01-01..2026-09-19` into 141 monthly partitions.
+
+Each month produces:
+
+- immutable deterministic gzip JSONL containing the provider article records;
+- normalized ZSTD Parquet retaining article ID/source/author/headline/summary/content,
+  URL, created/updated timestamps, symbols/images JSON and source-record hash;
+- a hash-bound COMPLETE receipt used for restart/resume and corruption detection.
+
+The PIT text rule is conservative: the historical endpoint does not expose the full
+sequence of article revisions, so the retrieved text is not considered available at
+the original `created_at` timestamp when a later `updated_at` exists.
+`pit_available_at = updated_at` is frozen for V1.
+
+The acquisition uses multiple monthly I/O workers behind one global Alpaca request
+rate limiter. Before promoting each partition, the storage guard accounts for the
+replacement-aware final byte footprint and refuses a write that would exceed the
+4 GiB news quota, 40 GiB total research budget or 50 GiB free-space floor.
+
+Historical News V1 remains source-only. Predictor development begins only after the
+source corpus completes and its exact receipt set is frozen. The next data package
+after news is historical option contract reference, followed by broad option daily
+history; candidate minute/quote/trade cache acquisition remains selective.
+
 ### News/options historical-data foundation — 2026-09-20
 
 Before integrating catalyst/news and option economics into replay, ATLAS must prove

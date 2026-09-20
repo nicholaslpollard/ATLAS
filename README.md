@@ -72,6 +72,38 @@ and current conditions. It must not search indicators live until something agree
 with a desired trade.
 
 
+## Historical News V1 acquisition — 2026-09-20
+
+The first bounded historical-data acquisition package is now frozen as
+`atlas-historical-news-v1`.
+
+Scope: `2015-01-01..2026-09-19`, covering 141 calendar-month source-query
+partitions from Alpaca's historical news endpoint. The package requests article
+content and preserves every returned provider record in deterministic gzip JSONL.
+A normalized ZSTD Parquet representation is produced beside the raw source.
+
+Every completed month has an independent receipt binding the acquisition contract,
+query window, page count, raw/unique article counts, byte sizes and SHA-256 hashes.
+Restart/resume reuses a month only when the receipt is COMPLETE, belongs to the exact
+contract fingerprint and both raw and normalized files still hash to the recorded
+values. Missing or damaged months are reacquired independently.
+
+The normalized layer deduplicates only by provider article ID, retaining the latest
+returned `updated_at` version while leaving the raw provider records untouched.
+Because Alpaca exposes creation/update timestamps but not a full historical revision
+stream, retrieved headline/summary/content is conservatively assigned
+`pit_available_at = updated_at`. The final retrieved body is never backdated to
+`created_at`.
+
+Acquisition is globally rate-limited across concurrent monthly fetch workers and is
+bound to the existing 4 GiB news category quota plus the 50 GiB workstation
+free-space floor. Normalization uses the existing DuckDB runtime; no new dependency
+is introduced.
+
+This package is source acquisition only. It does not derive sentiment, materiality,
+event classes, novelty, or any other predictor yet and cannot access strategy outcomes
+or grant PAPER/LIVE authority.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
