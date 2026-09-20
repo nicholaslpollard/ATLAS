@@ -513,11 +513,17 @@ def _persist_month(
         final_path=paths["normalized"],
     )
     try:
-        projected = len(raw_gzip) + int(parquet_temp.stat().st_size)
+        final_bytes = len(raw_gzip) + int(parquet_temp.stat().st_size)
+        existing_bytes = sum(
+            int(paths[name].stat().st_size)
+            for name in ("raw", "normalized")
+            if paths[name].is_file()
+        )
+        projected_additional = max(0, final_bytes - existing_bytes)
         assert_category_acquisition_allowed(
             settings,
             category=NEWS_STORAGE_CATEGORY,
-            projected_additional_bytes=projected,
+            projected_additional_bytes=projected_additional,
         )
         _atomic_write_bytes(paths["raw"], raw_gzip)
         replace_with_retry(parquet_temp, paths["normalized"])
