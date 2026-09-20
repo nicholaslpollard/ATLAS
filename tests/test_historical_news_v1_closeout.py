@@ -83,6 +83,7 @@ def _write_fixture(
         "normalized_unique_articles": len(rows),
         "duplicate_provider_records": len(records)
         - len({str(item["id"]) for item in records}),
+        "pit_text_available_at": "UPDATED_AT",
         "raw_path": str(raw_path.resolve()),
         "normalized_path": str(normalized_path.resolve()),
         "raw_bytes": raw_path.stat().st_size,
@@ -132,6 +133,8 @@ def test_partition_inspection_reconstructs_normalized_selection_from_raw(
 
     report = _inspect_partition(
         month="2020-01",
+        query_start_utc="2020-01-01T00:00:00Z",
+        query_end_utc="2020-01-31T23:59:59.999999Z",
         raw_path=raw_path,
         normalized_path=normalized_path,
         receipt=receipt,
@@ -159,6 +162,8 @@ def test_partition_inspection_fails_if_normalized_row_is_not_bound_to_selected_r
 
     report = _inspect_partition(
         month="2020-01",
+        query_start_utc="2020-01-01T00:00:00Z",
+        query_end_utc="2020-01-31T23:59:59.999999Z",
         raw_path=raw_path,
         normalized_path=normalized_path,
         receipt=receipt,
