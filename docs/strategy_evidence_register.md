@@ -648,3 +648,40 @@ NO_PROMOTION`.
 Historical supported modern alpha remains zero. No selector, strategy, exit policy,
 portfolio rule, PAPER or LIVE authority is promoted by this result.
 
+## 16. 2026 daily exit forward confirmation — failed — 2026-09-19
+
+Run fingerprint:
+`bd8e1fd32d2c34e8699e6e243e851c936c475e0d5b16fc4f6047d5f02e40f210`.
+
+Scope: selected daily LONG DEVELOPMENT opportunities with signal sessions
+`2026-01-01..2026-04-30`; 1,831 usable cases.
+
+Frozen-candidate results:
+
+- 2% STOP / 5% TARGET: -6.38% endpoint return; -9.88% maximum marked-equity
+  drawdown; -9.93% maximum book-equity drawdown; 282 completed positions;
+  190 STOP / 66 TARGET / 26 TIME.
+- 3% STOP / 5% TARGET: -6.97% endpoint return; -10.42% maximum marked-equity
+  drawdown; -10.45% maximum book-equity drawdown; 236 completed positions;
+  130 STOP / 62 TARGET / 44 TIME.
+
+Both candidates failed the first chronologically later confirmation interval. This
+invalidates promotion of either static geometry as a general exit policy. No parameter
+is retuned from the 2026 outcome.
+
+A retrospective regime-robustness contract now freezes annual 2018–2024 checks with
+the two candidate geometries unchanged and equal starting equity per year. Those
+checks are descriptive: they may identify regime dependence but cannot convert the
+failed forward confirmation into validation.
+
+The next research direction is Dynamic Exit V1: choose decision-bound STOP/TARGET/TIME
+geometry using only information available at entry, with a bounded action set and
+point-in-time regime/volatility/path evidence. Any adaptive in-trade logic requires a
+separate version and finer intraday path evidence.
+
+**Disposition:** `FAILED_FORWARD_STATIC_EXIT_CONFIRMATION /
+RETROSPECTIVE_REGIME_MAP_NEXT / NO_PROMOTION`.
+
+Historical supported modern alpha remains zero. No selector, strategy, exit policy,
+portfolio rule, PAPER or LIVE authority is promoted by this result.
+

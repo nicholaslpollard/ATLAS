@@ -463,6 +463,38 @@ decision-bound STOP/TARGET/TIME policies determine exits directly. Any later cha
 to sizing, family caps, entry/exit policy, or short funding must be new explicit
 versions rather than silent reinterpretations of this run.
 
+## 2026-09-19 — 2026 forward exit confirmation failed; regime map frozen
+
+The chronologically forward DEVELOPMENT confirmation for the two frozen 2025
+daily-exit candidates completed over `2026-01-01..2026-04-30`.
+
+Run fingerprint:
+`bd8e1fd32d2c34e8699e6e243e851c936c475e0d5b16fc4f6047d5f02e40f210`.
+
+The confirmation contained 1,831 usable selected daily LONG cases:
+
+- 2% STOP / 5% TARGET: -6.38% endpoint return, -9.88% maximum marked-equity
+  drawdown, -9.93% book-equity drawdown, 282 completed positions,
+  190 STOP / 66 TARGET / 26 TIME exits;
+- 3% STOP / 5% TARGET: -6.97% endpoint return, -10.42% maximum marked-equity
+  drawdown, -10.45% book-equity drawdown, 236 completed positions,
+  130 STOP / 62 TARGET / 44 TIME exits.
+
+Both candidates therefore failed the first chronologically later confirmation window.
+Neither static geometry is promoted. The result is preserved rather than retuned around:
+the candidate set remains unchanged for retrospective robustness mapping.
+
+ATLAS now freezes annual DEVELOPMENT regime checks for 2018 through 2024 under
+`atlas-recurrent-successor-daily-exit-regime-robustness-v1`. Each calendar regime
+resets to the same starting equity and runs both unchanged candidates through the same
+recurrent account, source, costs, compounding-within-regime, sizing/cap constraints,
+collision/gap semantics and five-session TIME exit.
+
+This backward regime map cannot rescue the failed 2026 confirmation. Its purpose is to
+identify whether static exit performance is regime-dependent and to provide evidence
+for the next research package: Dynamic Exit V1, where STOP/TARGET/TIME selection will
+use only point-in-time regime, volatility and prior path/forecast evidence.
+
 ## 2026-09-19 — 2025 recurrent daily exit sweep result and forward confirmation freeze
 
 The first bar-driven recurrent daily exit sweep completed for
