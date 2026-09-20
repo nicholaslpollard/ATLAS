@@ -685,3 +685,64 @@ RETROSPECTIVE_REGIME_MAP_NEXT / NO_PROMOTION`.
 Historical supported modern alpha remains zero. No selector, strategy, exit policy,
 portfolio rule, PAPER or LIVE authority is promoted by this result.
 
+## 17. Static daily exit regime robustness closeout — 2026-09-20
+
+Run fingerprint:
+`60989a10985973bff48d3d2a82a633282b62e664f22f5c3fac4c35bfee380ede`.
+
+Annual recurrent-account results with equal $100,000 starting equity per regime:
+
+| Year | 2%/5% return | 2%/5% marked DD | 3%/5% return | 3%/5% marked DD |
+| --- | ---: | ---: | ---: | ---: |
+| 2018 | -15.75% | -21.71% | -8.98% | -19.18% |
+| 2019 | +6.60% | -5.54% | +6.64% | -5.25% |
+| 2020 | -8.71% | -16.54% | -11.18% | -22.42% |
+| 2021 | -21.19% | -24.45% | -18.76% | -25.41% |
+| 2022 | -24.87% | -25.32% | -27.74% | -28.38% |
+| 2023 | -9.79% | -12.61% | -9.24% | -13.53% |
+| 2024 | -11.00% | -13.48% | -16.30% | -16.83% |
+
+2%/5% was positive in 1/7 years, with median annual return -11.00% and worst annual
+return -24.87%. 3%/5% was positive in 1/7 years, with median annual return -11.18%
+and worst annual return -27.74%. Only 2019 was positive for both.
+
+These results, combined with the failed 2026 forward confirmation, reject both fixed
+geometries as robust universal exit policies. Retrospective regime evidence does not
+rescue either candidate.
+
+**Disposition:** `STATIC_EXIT_UNIVERSAL_RULE_REJECTED / DYNAMIC_EXIT_V1_NEXT /
+NO_PROMOTION`.
+
+### Dynamic Exit V1 preregistration
+
+Dynamic Exit V1 is a DEVELOPMENT-only walk-forward selector diagnostic. Frozen actions:
+1%/2%, 1%/3%, 1%/5%, 2%/3%, 2%/5%, 3%/5%, plus ABSTAIN. V1 keeps the five-session
+time horizon fixed.
+
+For each current case, training evidence is restricted to the previous eight completed
+walk-forward folds. Current-fold outcomes and the current opportunity's future bars
+are forbidden from selection. Supported context cells require >=60 prior cases,
+>=30 unique sessions, and >=20 unique instruments.
+
+The context fallback hierarchy is:
+
+1. policy + market volatility + higher-timeframe trend + realized-volatility bucket +
+   market-direction alignment;
+2. policy + market volatility + higher-timeframe trend + realized-volatility bucket;
+3. policy + market volatility + higher-timeframe trend;
+4. policy + market volatility;
+5. policy.
+
+Every action is evaluated using prior realized net returns under the same conservative
+daily bar semantics and frozen 10-bps round-trip execution cost. The robust score is
+an equal-weight prior-session mean minus 1.645 standard errors. The highest positive
+lower-confidence-bound action is selected only when its mean trade return is also
+positive. Otherwise ATLAS abstains.
+
+This first package does not calculate portfolio return, capital competition, or
+compounding. Its purpose is to validate the dynamic decision mechanism and
+anti-lookahead behavior before binding actions into the recurrent account engine.
+
+Historical supported modern alpha remains zero. Dynamic Exit V1 grants no selector,
+exit-policy, portfolio, PAPER, or LIVE promotion authority.
+
