@@ -202,9 +202,28 @@ that is identical to V1 for the **2,211,602** non-anomalous records and moves on
 the four provider-defect rows forward by their observed inversion amount. This
 policy is frozen before any news predictor or strategy-outcome access.
 
-After V2 source-integrity acceptance passes on the target corpus, the next data
-package is historical option contract
-reference, followed by broad option daily history; candidate minute/quote/trade cache
+The target-workstation V2 acceptance **PASSED** with acceptance fingerprint
+`279c13b37eb0a793a3ba821172e8ee226315109a52bca55040bbb3e1dd0a1532`.
+Historical News V1 source integrity is therefore closed under the frozen conservative
+PIT rule; strict V1 remains preserved as FAIL and no predictor evidence is opened.
+
+The next package is historical option contract reference, but bulk acquisition is
+not yet authorized. ATLAS first freezes a reusable provider source-qualification
+framework and applies it to Massive's
+`/v3/reference/options/contracts` endpoint under qualification fingerprint
+`17a3736f9317f7e403ea08c123aac35fabad0a8b2682bca7450373b797e9d260`.
+The bounded probe tests current and historical entitlement, exact structural fields,
+repeated-page stability, provider `next_url` pagination and observed point-in-time
+behavior without bulk downloading records.
+
+The option-reference source role is deliberately narrower than market-data
+authority. Reference rows may establish identity/structure, but they do not expose a
+first-listed timestamp and may reflect later corrections or deliverable changes.
+Therefore reference alone cannot authorize historical candidate availability,
+historical dynamic deliverables or historical market prices. Those authorities must
+come from separately accepted point-in-time/observed market-data evidence. After the
+qualification is accepted, ATLAS may freeze the actual option-reference acquisition
+contract, followed by broad option daily history; candidate minute/quote/trade cache
 acquisition remains selective.
 
 ### News/options historical-data foundation — 2026-09-20
