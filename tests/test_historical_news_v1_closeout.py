@@ -144,6 +144,8 @@ def test_partition_inspection_reconstructs_normalized_selection_from_raw(
     assert report["errors"] == []
     assert report["raw_provider_records"] == 1
     assert report["normalized_articles"] == 1
+    assert report["created_outside_query_window"] == 0
+    assert report["updated_outside_query_window"] == 0
 
 
 def test_partition_inspection_fails_if_normalized_row_is_not_bound_to_selected_raw(
