@@ -79,6 +79,10 @@ def main() -> int:
         "  cross-month duplicate article-id rows: "
         f"{int(global_normalized['duplicate_article_id_rows']):,}"
     )
+    if report["partition_error_counts"]:
+        print("  partition error summary:")
+        for error, count in report["partition_error_counts"].items():
+            print(f"    - {int(count):,}x {error}")
     if report["errors"]:
         print("  errors:")
         for error in report["errors"]:
