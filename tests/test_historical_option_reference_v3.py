@@ -60,9 +60,11 @@ def test_v3_contract_is_frozen_and_narrow() -> None:
     assert manifest["parent_v2_contract_fingerprint"] == (
         "6d0af0b58a66b77c445d7e561d759dfd947e348e994045a1f7cfc16aeb9ccb41"
     )
+    assert CONFLICT_DIAGNOSTIC_EVIDENCE_FINGERPRINT == (
+        "20f255cab7b19e1d27902a76ed386e94156393c019434fbff4623b6d269a1722"
+    )
     assert manifest["conflict_diagnostic"]["evidence_fingerprint"] == (
         CONFLICT_DIAGNOSTIC_EVIDENCE_FINGERPRINT
-        == "20f255cab7b19e1d27902a76ed386e94156393c019434fbff4623b6d269a1722"
     )
     fallback = manifest["normalization"]["narrow_conflict_fallback"]
     assert fallback["eligible_reference_state"] == "EXPIRED"
