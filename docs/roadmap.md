@@ -280,23 +280,29 @@ specific ticker at current and pre-expiration historical `as_of` dates, preservi
 returned rows/hashes and field differences. Only that evidence may justify a later
 successor rule; the diagnostic itself grants no acquisition or strategy authority.
 
-The first target-workstation execution of that diagnostic completed both repeated
-structural-list request sets, then the first current Contract Overview request returned
-HTTP 404 with provider status `NOT_FOUND` and message `Option Ticker not found.`.
-The original harness treated every non-retryable HTTP error as fatal, so no completed
-diagnostic evidence fingerprint was produced. That is an implementation defect, not a
-source-resolution result: Contract Overview absence is itself one of the frozen
-diagnostic outcomes. The repaired implementation preserves that exact provider 404 as
-explicit row-absence evidence, requires repeated overview responses to be semantically
-stable, and still fails closed on any other 404 payload. It also prevents two absent
-overview rows from being misreported as equal canonical hashes. The frozen diagnostic
-contract/request set and fingerprint are unchanged; a clean workstation rerun is
-required before any successor conflict-resolution rule may be frozen.
+The repaired diagnostic completed on the target workstation under evidence fingerprint
+`20f255cab7b19e1d27902a76ed386e94156393c019434fbff4623b6d269a1722`.
+All repeated requests were stable. The current view returned two target-ticker rows
+plus adjusted series `O:AAL2140621C00020000`; the target rows differed only in
+`primary_exchange` (`BATO` versus `XMIO`) and exact current Contract Overview
+returned stable HTTP 404 / `NOT_FOUND`. The pre-expiration
+`as_of=2014-06-20` view returned one target structural row and one stable exact
+Contract Overview row that matched it.
 
-After V2 source acquisition completes and is independently closed for
-raw/version/normalized/hash/cardinality integrity, the next bulk market-data package
-is broad option daily history; candidate minute/quote/trade cache acquisition remains
-selective.
+Historical Option Reference V3 is frozen from that evidence under contract fingerprint
+`7a9dab85c57bbc6cd93dee2472a9244d86e8c1776f986cd97036b9963bc4c48e`.
+V3 preserves V2 correction ranking and exact duplicates. Its sole same-rank fallback
+is restricted to expired, unversioned conflicts differing only in
+`primary_exchange`. Two exact pre-expiration Contract Overview requests must be
+stable and their payload must exactly match one of the current conflicting raw rows;
+otherwise acquisition fails closed. The observed AAL conflict is a mandatory
+pre-acquisition probe before any bulk provider request. Verified V2/V1 raw lineage is
+re-normalized locally without copying raw bytes; bounded scheduling and all storage
+guards remain unchanged.
+
+After V3 source acquisition completes, independently close
+raw/version/normalized/hash/cardinality and conflict-resolution lineage before broad
+option daily history. Candidate minute/quote/trade cache acquisition remains selective.
 
 ### News/options historical-data foundation — 2026-09-20
 
@@ -1719,29 +1725,29 @@ Every closeout reports:
 - negative results and unresolved risks;
 - next highest-value coherent package.
 
-## 21. Current active continuation — Historical Option Reference V2 conflict diagnostic
+## 21. Current active continuation — Historical Option Reference V3 acquisition
 
-The repository-wide active handoff is the bounded Historical Option Reference V2
-source-conflict diagnostic frozen by PR #185. Earlier successor-DEVELOPMENT benchmark
-steps in this roadmap are retained historical sequence, not the current repository-wide
-next action.
+The repository-wide active source package is Historical Option Reference V3, frozen
+from completed V2 conflict-diagnostic evidence. Earlier successor-DEVELOPMENT work is
+retained historical/parallel Track-B context rather than the current source gate.
 
-1. Historical Option Reference V2 remains incomplete. Do not resume bulk option-reference
-   acquisition and do not relax the frozen same-highest-correction conflict rule.
+1. Accept the V3 implementation and frozen contract fingerprint
+   `7a9dab85c57bbc6cd93dee2472a9244d86e8c1776f986cd97036b9963bc4c48e`.
 2. On accepted `main`, run only
-   `.\.venv\Scripts\python.exe scripts\diagnose_historical_option_reference_v2_conflict.py`
-   on the target workstation. The diagnostic is read-only and targets
-   `O:AAL140621C00020000` under contract fingerprint
-   `f544bb78cb6d61cbd69aa5fd266ee20349b3a977b39cb85e79a0a6a5ec0f9678`.
-3. Preserve the emitted manifest and exact evidence fingerprint. Any successor
-   duplicate/version rule must be separately frozen from that evidence before another
-   acquisition attempt; the diagnostic itself authorizes no rule.
-4. Do not rerun Historical Option Reference V1. Verified V1 raw lineage already remains
-   reusable by V2/successor acquisition where its receipts, hashes and query bounds verify.
-5. After option-reference acquisition eventually completes, require an independent
-   raw/version/normalized/hash/cardinality closeout before broad option daily acquisition.
-6. Predictor, strategy, promotion, confluence, PAPER and LIVE authority remain unchanged.
-   Track A product/runtime work may continue independently under its own accepted gates.
+   `.\.venv\Scripts\python.exe scripts\run_historical_option_reference_v3.py --authorize-source-acquisition --workers 5`
+   on the target workstation. The known AAL conflict probe runs before bulk acquisition
+   and must PASS or the command fails before the provider queue starts.
+3. V3 may reuse verified V3 receipts and verified V2/V1 raw lineage, re-normalizing
+   locally under V3 without duplicating raw source bytes. Provider work remains bounded
+   to at most the configured worker count.
+4. Any conflict outside the frozen expired/unversioned/primary-exchange-only class, any
+   unstable historical overview, or any overview that does not exactly match a current
+   conflicting raw payload fails closed. Do not add another fallback during the run.
+5. After all 212 partitions complete, independently close raw/version/normalized/hash/
+   cardinality and resolution-lineage integrity before broad option daily acquisition.
+6. Historical availability, dynamic deliverables, price authority, predictor access,
+   strategy promotion, confluence, PAPER and LIVE remain false. Track A may continue
+   independently under its own gates.
 
 ## 22. Retained exact historical validator statements
 
