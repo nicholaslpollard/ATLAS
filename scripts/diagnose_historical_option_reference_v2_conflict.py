@@ -56,16 +56,24 @@ def main() -> int:
     print("\nHISTORICAL OPTION REFERENCE V2 CONFLICT DIAGNOSTIC: COMPLETE")
     print(f"  evidence fingerprint: {report['evidence_fingerprint']}")
     print(
-        "  current exact-list: "
+        "  current structural-list: "
         f"target_rows={int(current_first.get('target_row_count', 0))} "
         f"candidates={int(current_first.get('candidate_row_count', 0))} "
         f"stable={current_list.get('stable')}"
     )
     print(
-        "  historical exact-list: "
+        "  historical structural-list: "
         f"target_rows={int(historical_first.get('target_row_count', 0))} "
         f"candidates={int(historical_first.get('candidate_row_count', 0))} "
         f"stable={historical_list.get('stable')}"
+    )
+    print(
+        "  current structural candidate tickers: "
+        + json.dumps(current_first.get("candidate_tickers", []))
+    )
+    print(
+        "  historical structural candidate tickers: "
+        + json.dumps(historical_first.get("candidate_tickers", []))
     )
     print(
         "  current contract overview: "
