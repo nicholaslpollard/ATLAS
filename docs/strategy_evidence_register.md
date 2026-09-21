@@ -6,10 +6,22 @@
 target-workstation acquisition attempt subsequently passed the hard-end and known-AAL
 preflight, rebuilt 63 verified V2 raw partitions locally, and failed closed in
 `expired-2014-06` on `O:ACHI140621C00001000` because unversioned same-ticker
-rows differed in `underlying_ticker`, outside V3's frozen resolver. A read-only
-underlying-identity diagnostic is frozen under fingerprint
-`aaf0a8e52fdd56521fe000dc1ead04059115d2639b18eb29fad03b8fe76eaec1`;
-it grants no acquisition, predictor, strategy, PAPER or LIVE authority.
+rows differed in `underlying_ticker`, outside V3's frozen resolver. The read-only underlying-identity diagnostic is now COMPLETE under contract fingerprint
+`aaf0a8e52fdd56521fe000dc1ead04059115d2639b18eb29fad03b8fe76eaec1` and
+evidence fingerprint
+`b655282ff5f1da7bd3c2d7ac931a34b37650ffaa57354c6ac47efdfe746f81d1`.
+Current reference reproduced two ACHI rows differing only in `underlying_ticker`
+(`ACHI` versus `AH`); pre-expiration reference and exact Contract Overview both
+uniquely selected the `ACHI` payload, which exactly matched one current raw row.
+Massive's OTC stock-history floor and SEC CIK `0001472595` corroborate the historical
+symbol context but are not runtime resolution authorities. Historical Option Reference
+V4 is frozen under fingerprint
+`2ddeb58d5f552ff0edb87a2244f130b813cf49600f5f82b1f50d8e1ee047a57d`, extending
+the provider-native pre-expiration fallback only to conflicts differing in
+`primary_exchange` and/or `underlying_ticker`, with unique stable historical list
+and overview equality plus exact match to one current raw payload required. This remains
+source infrastructure only and grants no historical availability/deliverable/price,
+predictor, strategy, promotion, PAPER or LIVE authority.
 
 This register is the durable scientific ledger for strategy-level evidence. It exists so a future ATLAS chat can determine, without reconstructing old conversations, what each strategy version was, what evidence it opened, where it worked or failed, what remains uncertain, and what research action is currently justified.
 
