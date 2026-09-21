@@ -37,8 +37,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--workers",
         type=int,
-        default=4,
-        help="Concurrent expiration-month workers. Default: 4.",
+        default=5,
+        help="Concurrent expiration-month workers. Default: 5.",
     )
     return parser
 
@@ -84,7 +84,7 @@ def main() -> int:
     )
 
     storage = summary["storage_after"]
-    print("\nHISTORICAL OPTION REFERENCE V3: COMPLETE")
+    print("\nHISTORICAL OPTION REFERENCE V4: COMPLETE")
     print(f"  corpus fingerprint: {summary['corpus_fingerprint']}")
     print(f"  run fingerprint: {summary['run_fingerprint']}")
     print(f"  partitions: {int(summary['monthly_partitions']):,}")
