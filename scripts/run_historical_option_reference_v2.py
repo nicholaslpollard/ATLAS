@@ -66,6 +66,8 @@ def main() -> int:
     )
     print(f"  monthly partitions: {len(reference_partitions())}")
     print(f"  workers: {args.workers}")
+    print(f"  max in-flight partitions: {args.workers}")
+    print("  verified V1 raw reuse: enabled")
     print(f"  duplicate-version policy: {CORRECTION_SELECTION_POLICY}")
     print(
         "  authority: structural reference acquisition only; "
@@ -83,9 +85,14 @@ def main() -> int:
     print(f"  run fingerprint: {summary['run_fingerprint']}")
     print(f"  partitions: {int(summary['monthly_partitions']):,}")
     print(
-        "  reused/acquired this run: "
+        "  V2 reused / V1 raw rebuilt / provider acquired: "
         f"{int(summary['reused_verified_partitions']):,} / "
-        f"{int(summary['acquired_partitions_this_run']):,}"
+        f"{int(summary['rebuilt_from_verified_v1_raw_this_run']):,} / "
+        f"{int(summary['provider_acquired_partitions_this_run']):,}"
+    )
+    print(
+        "  raw reused from V1 partitions: "
+        f"{int(summary['raw_reused_from_v1_partitions']):,}"
     )
     print(
         "  raw provider records: "
