@@ -262,6 +262,24 @@ in flight; the coordinator submits replacement work only after a successful
 completion, so one future source failure cannot leave the rest of the 212-partition
 queue running silently.
 
+The first V2 retry on the target workstation used five workers, discovered **63**
+verified V1 raw partitions and rebuilt all 63 locally; **149** provider partitions
+remained. The hard-boundary probe passed again. Provider acquisition then failed
+closed in `expired-2014-06` on
+`O:AAL140621C00020000`: multiple provider rows had conflicting payloads while
+sharing the same highest correction rank `-1`, so V2's frozen rule correctly
+refused to choose one. This is a second source-contract boundary, not a reason to
+weaken duplicate handling after seeing the data. V2 remains incomplete.
+
+Before any V3/successor acquisition rule is frozen, run the bounded
+`atlas-historical-option-reference-v2-unversioned-conflict-diagnostic-v1`
+contract, fingerprint
+`b67ed3cde545627b851199db4d30bfac31050960400c4b11a051c8c1fb8cf716`.
+It compares repeated exact-list and single-contract-overview responses for the
+specific ticker at current and pre-expiration historical `as_of` dates, preserving
+returned rows/hashes and field differences. Only that evidence may justify a later
+successor rule; the diagnostic itself grants no acquisition or strategy authority.
+
 After V2 source acquisition completes and is independently closed for
 raw/version/normalized/hash/cardinality integrity, the next bulk market-data package
 is broad option daily history; candidate minute/quote/trade cache acquisition remains
