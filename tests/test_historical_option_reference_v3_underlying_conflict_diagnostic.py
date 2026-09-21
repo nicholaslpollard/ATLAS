@@ -100,7 +100,7 @@ def test_current_structural_probe_preserves_both_underlying_identities(
     assert first["target_row_count"] == 2
     assert first["target_underlying_tickers"] == ["ACHI", "AH"]
     assert section["field_differences"] == {
-        "underlying_ticker": ["AH", "ACHI"]
+        "underlying_ticker": ["ACHI", "AH"]
     }
 
 
