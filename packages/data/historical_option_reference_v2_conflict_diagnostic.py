@@ -48,22 +48,35 @@ def diagnostic_manifest() -> dict[str, object]:
         "target": {
             "partition": TARGET_PARTITION,
             "ticker": TARGET_TICKER,
+            "underlying_ticker": "AAL",
+            "contract_type": "call",
             "expiration_date": TARGET_EXPIRATION,
+            "strike_price": 20,
             "observed_failure": (
                 "CONFLICTING_PROVIDER_ROWS_SHARE_HIGHEST_CORRECTION_RANK_MINUS_ONE"
             ),
         },
         "requests": {
-            "current_exact_list": {
+            "current_structural_list": {
                 "endpoint": REFERENCE_ENDPOINT,
-                "ticker": TARGET_TICKER,
+                "filters": {
+                    "underlying_ticker": "AAL",
+                    "contract_type": "call",
+                    "expiration_date": TARGET_EXPIRATION,
+                    "strike_price": 20,
+                },
                 "as_of": CURRENT_AS_OF,
                 "expired": True,
                 "repeat": 2,
             },
-            "historical_exact_list": {
+            "historical_structural_list": {
                 "endpoint": REFERENCE_ENDPOINT,
-                "ticker": TARGET_TICKER,
+                "filters": {
+                    "underlying_ticker": "AAL",
+                    "contract_type": "call",
+                    "expiration_date": TARGET_EXPIRATION,
+                    "strike_price": 20,
+                },
                 "as_of": HISTORICAL_AS_OF,
                 "expired": False,
                 "repeat": 2,
@@ -82,10 +95,11 @@ def diagnostic_manifest() -> dict[str, object]:
             },
         },
         "diagnostic_questions": [
-            "ARE_EXACT_LIST_CONFLICT_ROWS_STABLE_ACROSS_REPEATS",
+            "ARE_STRUCTURAL_LIST_CONFLICT_ROWS_STABLE_ACROSS_REPEATS",
             "WHICH_FIELDS_DIFFER_BETWEEN_SAME_TICKER_UNVERSIONED_ROWS",
+            "ARE_RELATED_ADJUSTED_SERIES_VISIBLE_FOR_THE_SAME_STRUCTURE",
             "DOES_CONTRACT_OVERVIEW_RETURN_ONE_CANONICAL_ROW",
-            "DOES_CONTRACT_OVERVIEW_MATCH_ANY_LIST_ROW_BY_CANONICAL_HASH",
+            "DOES_CONTRACT_OVERVIEW_MATCH_ANY_TARGET_LIST_ROW_BY_CANONICAL_HASH",
             "DOES_HISTORICAL_AS_OF_CHANGE_THE_VISIBLE_STRUCTURAL_ROW_SET",
         ],
         "authority": {
@@ -132,7 +146,10 @@ def _list_url(
 ) -> str:
     query = urllib.parse.urlencode(
         {
-            "ticker": TARGET_TICKER,
+            "underlying_ticker": "AAL",
+            "contract_type": "call",
+            "expiration_date": TARGET_EXPIRATION,
+            "strike_price": 20,
             "as_of": as_of,
             "expired": "true" if expired else "false",
             "order": "asc",
@@ -157,21 +174,9 @@ def _extract_list_results(payload: dict[str, Any]) -> list[dict[str, Any]]:
         not isinstance(item, dict) for item in results
     ):
         raise HistoricalOptionReferenceConflictDiagnosticError(
-            "exact-list response results is not a list of objects"
+            "structural-list response results is not a list of objects"
         )
-    rows = [dict(item) for item in results]
-    wrong = sorted(
-        {
-            str(item.get("ticker") or "")
-            for item in rows
-            if str(item.get("ticker") or "") != TARGET_TICKER
-        }
-    )
-    if wrong:
-        raise HistoricalOptionReferenceConflictDiagnosticError(
-            f"exact ticker filter escaped to unexpected tickers: {wrong[:5]}"
-        )
-    return rows
+    return [dict(item) for item in results]
 
 
 def _extract_overview_result(payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -241,26 +246,46 @@ def _request_list_twice(
     for _ in range(2):
         status, payload = _request_json(settings, url=url, api_key=api_key)
         rows = _extract_list_results(payload)
+        target_rows = [
+            row
+            for row in rows
+            if str(row.get("ticker") or "") == TARGET_TICKER
+        ]
         attempts.append(
             {
                 "http_status": status,
                 "request_id": str(payload.get("request_id") or ""),
                 "safe_url": _safe_url(url),
-                "row_count": len(rows),
-                "row_hashes": sorted(_row_hash(row) for row in rows),
-                "row_set_fingerprint": _row_set_fingerprint(rows),
-                "rows": rows,
+                "candidate_row_count": len(rows),
+                "candidate_tickers": sorted(
+                    {
+                        str(row.get("ticker") or "")
+                        for row in rows
+                        if str(row.get("ticker") or "")
+                    }
+                ),
+                "candidate_row_hashes": sorted(_row_hash(row) for row in rows),
+                "candidate_set_fingerprint": _row_set_fingerprint(rows),
+                "candidate_rows": rows,
+                "target_row_count": len(target_rows),
+                "target_row_hashes": sorted(
+                    _row_hash(row) for row in target_rows
+                ),
+                "target_row_set_fingerprint": _row_set_fingerprint(target_rows),
+                "target_rows": target_rows,
                 "next_url_present": bool(payload.get("next_url")),
             }
         )
     return {
         "stable": (
-            attempts[0]["row_set_fingerprint"]
-            == attempts[1]["row_set_fingerprint"]
+            attempts[0]["candidate_set_fingerprint"]
+            == attempts[1]["candidate_set_fingerprint"]
+            and attempts[0]["target_row_set_fingerprint"]
+            == attempts[1]["target_row_set_fingerprint"]
         ),
         "attempts": attempts,
         "field_differences": _field_differences(
-            list(attempts[0]["rows"])  # type: ignore[arg-type]
+            list(attempts[0]["target_rows"])  # type: ignore[arg-type]
         ),
     }
 
@@ -296,7 +321,7 @@ def _first_list_rows(section: dict[str, object]) -> list[dict[str, Any]]:
     attempts = section["attempts"]
     if not isinstance(attempts, list) or not attempts:
         return []
-    rows = attempts[0].get("rows")
+    rows = attempts[0].get("target_rows")
     if not isinstance(rows, list):
         return []
     return [dict(row) for row in rows if isinstance(row, dict)]
@@ -400,8 +425,8 @@ def run_historical_option_reference_v2_conflict_diagnostic(
         "target_expiration": TARGET_EXPIRATION,
         "current_as_of": CURRENT_AS_OF,
         "historical_as_of": HISTORICAL_AS_OF,
-        "current_exact_list": current_list,
-        "historical_exact_list": historical_list,
+        "current_structural_list": current_list,
+        "historical_structural_list": historical_list,
         "current_contract_overview": current_overview,
         "historical_contract_overview": historical_overview,
         "interpretation": interpretation,
