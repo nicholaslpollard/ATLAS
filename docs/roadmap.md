@@ -230,22 +230,30 @@ All acquisition-critical dimensions passed: identity/cardinality,
 schema/nullability, historical and recent entitlement, sampled pagination and
 repeat-page stability. The chronology/PIT/deliverable limitations remain active.
 
-Historical Option Reference V1 acquisition is now preregistered under fingerprint
+Historical Option Reference V1 acquisition was preregistered under fingerprint
 `95eb5048336e411cb31c912e2cf8569915aedd42fc9e9f0fd0917f3fb3fe3f23`.
-It uses a fixed reference `as_of=2026-09-19`, **212** expiration-month partitions,
-1,000-row pages and a zero-result active-contract hard-boundary probe at
-2032-01-01. Expired reference coverage starts 2014-06-02; active-at-cutoff reference
-coverage begins after the replay cutoff. The implementation streams provider records
-to deterministic gzip JSONL and normalized ZSTD Parquet, fails on duplicate ticker
-identity or filter escape, hashes every final file, writes exact COMPLETE receipts,
-reuses only hash-verified matching partitions and applies the existing 4 GiB
-option-reference quota plus 50 GiB free-space floor at persistence time. Four
-workers are the default so network pagination and local conversion overlap without
-turning one giant corpus into a single restart unit.
+Its first target-workstation attempt passed the 2032 hard-boundary probe and then
+failed closed in `expired-2014-08` on duplicate provider ticker
+`O:AAL140816C00020000`. This is retained as a source-contract failure: the
+provider's documented `correction` field means one ticker can have multiple
+reference versions, so V1's one-row-per-ticker assumption was invalid.
 
-After this source acquisition completes and is independently closed for
-raw/normalized/hash/cardinality integrity, the next bulk market-data package is
-broad option daily history; candidate minute/quote/trade cache acquisition remains
+Historical Option Reference V2 is preregistered before retry under fingerprint
+`6d0af0b58a66b77c445d7e561d759dfd947e348e994045a1f7cfc16aeb9ccb41`.
+The 2026-09-19 `as_of`, **212** expiration-month partitions, 1,000-row pages,
+2032-01-01 hard boundary, four-worker default, 4 GiB option-reference quota and
+50 GiB free-space floor are unchanged. V2 preserves all provider versions in raw
+gzip JSONL. Normalized structural reference groups consecutive provider rows by
+ticker and selects the highest explicit numeric correction; missing correction ranks
+below explicit correction. Exact duplicate selected payloads are deduplicated with
+lineage counts, while conflicting payloads at the same highest correction fail
+closed. Receipts reconcile
+`raw_provider_records = normalized_unique_contracts + duplicate_version_rows`
+and bind correction/version statistics and file hashes.
+
+After V2 source acquisition completes and is independently closed for
+raw/version/normalized/hash/cardinality integrity, the next bulk market-data package
+is broad option daily history; candidate minute/quote/trade cache acquisition remains
 selective.
 
 ### News/options historical-data foundation — 2026-09-20
