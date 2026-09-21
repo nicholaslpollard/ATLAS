@@ -262,18 +262,32 @@ one of the list rows. The diagnostic has no bulk-acquisition, source-mutation,
 predictor, strategy, PAPER or LIVE authority and authorizes no conflict-resolution
 rule by itself.
 
-The first target-workstation execution of that diagnostic completed both repeated
-structural-list request sets, then the first current Contract Overview request returned
-HTTP 404 with provider status `NOT_FOUND` and message `Option Ticker not found.`.
-The original harness treated every non-retryable HTTP error as fatal, so no completed
-diagnostic evidence fingerprint was produced. That is an implementation defect, not a
-source-resolution result: Contract Overview absence is itself one of the frozen
-diagnostic outcomes. The repaired implementation preserves that exact provider 404 as
-explicit row-absence evidence, requires repeated overview responses to be semantically
-stable, and still fails closed on any other 404 payload. It also prevents two absent
-overview rows from being misreported as equal canonical hashes. The frozen diagnostic
-contract/request set and fingerprint are unchanged; a clean workstation rerun is
-required before any successor conflict-resolution rule may be frozen.
+The repaired target-workstation diagnostic is now complete under evidence fingerprint
+`20f255cab7b19e1d27902a76ed386e94156393c019434fbff4623b6d269a1722`.
+All repeated requests were stable. At current `as_of=2026-09-19`, the structural
+list returned two rows for `O:AAL140621C00020000` plus adjusted series
+`O:AAL2140621C00020000`; the two target rows differed only in
+`primary_exchange` (`BATO` versus `XMIO`). Exact current Contract Overview
+returned stable HTTP 404 / `NOT_FOUND`. At pre-expiration
+`as_of=2014-06-20`, the structural list returned exactly one target row and exact
+Contract Overview returned one stable row that matched the historical list row.
+
+Historical Option Reference V3 is therefore separately frozen under fingerprint
+`7a9dab85c57bbc6cd93dee2472a9244d86e8c1776f986cd97036b9963bc4c48e`.
+V3 retains V2 correction ranking, exact-duplicate handling, 212 monthly partitions,
+the 2032 hard-end/storage guards, bounded worker scheduling and verified V2/V1 raw
+reuse. Its only new resolver is deliberately narrow: an expired same-highest conflict
+may proceed only when all rows are unversioned, differ only in `primary_exchange`,
+and two stable exact Contract Overview requests at
+`expiration_date - 1 calendar day` return a payload that exactly matches one of the
+current conflicting raw rows. Anything else still fails closed. Before bulk work,
+the observed AAL conflict itself must pass this rule as a dedicated pre-acquisition
+probe. The immutable diagnostic closeout is
+`docs/research/historical_option_reference_v2_conflict_diagnostic_closeout_20260921.md`.
+
+V3 remains structural-reference acquisition only. It does not establish historical
+contract availability, dynamic deliverables, market prices, predictor validity,
+strategy evidence, promotion, PAPER or LIVE authority.
 
 ## News + options historical-data foundation — 2026-09-20
 
