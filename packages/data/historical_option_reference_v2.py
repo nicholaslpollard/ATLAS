@@ -99,7 +99,7 @@ def _request_json(
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Accept": "application/json",
-                "User-Agent": "ATLAS-historical-option-reference-v1/1",
+                "User-Agent": "ATLAS-historical-option-reference-v2/1",
             },
             method="GET",
         )
@@ -882,6 +882,8 @@ def run_historical_option_reference_v2_acquisition(
                 print(
                     f"  {done}/{len(pending)} acquired {partition.key}: "
                     f"{int(receipt['normalized_unique_contracts']):,} contracts / "
+                    f"{int(receipt['duplicate_version_rows']):,} version rows / "
+                    f"{int(receipt['tickers_with_multiple_versions']):,} multi-version tickers / "
                     f"{int(receipt['page_count']):,} pages / "
                     f"reference="
                     f"{storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
