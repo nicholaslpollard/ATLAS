@@ -595,10 +595,10 @@ def _acquire_partition(
                     else:
                         next_url = candidate
 
+            raw_file.flush()
+            os.fsync(raw_file.fileno())
             normalized_file.flush()
             os.fsync(normalized_file.fileno())
-        with raw_temp.open("rb") as handle:
-            os.fsync(handle.fileno())
 
         _write_parquet_from_jsonl(
             normalized_jsonl=normalized_jsonl,
