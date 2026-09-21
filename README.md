@@ -213,6 +213,25 @@ four concurrent workers by default and continuous 4 GiB reference-quota / disk-f
 enforcement. No acquired reference row gains historical availability, dynamic
 deliverable, price, predictor, strategy, PAPER or LIVE authority.
 
+The first target-workstation V1 acquisition attempt failed closed in
+`expired-2014-08` when Massive returned the same option ticker
+`O:AAL140816C00020000` more than once. No V1 completion claim is made. Massive's
+current endpoint documentation explicitly defines `correction` as the correction
+number for an option contract, so ticker identity is not sufficient to assume a
+single provider row.
+
+V1 remains frozen as failed evidence. Historical Option Reference V2 is preregistered
+under fingerprint
+`6d0af0b58a66b77c445d7e561d759dfd947e348e994045a1f7cfc16aeb9ccb41`.
+V2 preserves every provider row in immutable raw storage and resolves normalized
+structural reference by ticker using the highest explicit numeric correction number;
+a missing correction ranks below any explicit correction. Exact duplicate rows at the
+same selected correction are deduplicated but counted and hash-recorded. Conflicting
+payloads at the same highest correction fail closed. Every discarded version hash,
+observed correction rank, version count and exact-duplicate count is carried into
+normalized lineage and partition receipts. The original 212-partition/date/storage/
+authority boundaries are unchanged.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
