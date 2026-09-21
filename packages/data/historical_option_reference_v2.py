@@ -1199,20 +1199,31 @@ def run_historical_option_reference_v2_acquisition(
     partitions = reference_partitions()
     persistence_lock = threading.Lock()
 
-    reused: list[dict[str, object]] = []
-    pending: list[ReferencePartition] = []
+    reused_v2: list[dict[str, object]] = []
+    rebuild_from_v1: list[tuple[ReferencePartition, dict[str, object]]] = []
+    provider_pending: list[ReferencePartition] = []
     for partition in partitions:
         receipt = _verified_existing_receipt(settings, partition)
-        if receipt is None:
-            pending.append(partition)
+        if receipt is not None:
+            reused_v2.append(receipt)
+            continue
+        v1_receipt = _verified_v1_raw_receipt(settings, partition)
+        if v1_receipt is not None:
+            rebuild_from_v1.append((partition, v1_receipt))
         else:
-            reused.append(receipt)
+            provider_pending.append(partition)
 
     print(
         "historical option reference v2: "
         f"{len(partitions)} monthly partitions / "
-        f"{len(reused)} verified reusable / "
-        f"{len(pending)} pending / workers={workers}",
+        f"{len(reused_v2)} verified V2 reusable / "
+        f"{len(rebuild_from_v1)} verified V1 raw reusable / "
+        f"{len(provider_pending)} provider pending / workers={workers}",
+        flush=True,
+    )
+    print(
+        "  bounded scheduling: at most "
+        f"{workers} partitions in flight; no all-corpus prequeue",
         flush=True,
     )
     print(
@@ -1222,37 +1233,82 @@ def run_historical_option_reference_v2_acquisition(
         flush=True,
     )
 
-    completed: list[dict[str, object]] = list(reused)
-    if pending:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {
-                pool.submit(
-                    _acquire_partition,
-                    settings,
-                    partition,
-                    api_key=api_key,
-                    persistence_lock=persistence_lock,
-                ): partition
-                for partition in pending
-            }
-            done = 0
-            for future in as_completed(futures):
-                partition = futures[future]
-                receipt = future.result()
-                completed.append(receipt)
-                done += 1
-                storage = inspect_research_storage(settings)
-                print(
-                    f"  {done}/{len(pending)} acquired {partition.key}: "
-                    f"{int(receipt['normalized_unique_contracts']):,} contracts / "
-                    f"{int(receipt['duplicate_version_rows']):,} version rows / "
-                    f"{int(receipt['tickers_with_multiple_versions']):,} multi-version tickers / "
-                    f"{int(receipt['page_count']):,} pages / "
-                    f"reference="
-                    f"{storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
-                    f"free={storage.disk_free_gib:.2f} GiB",
-                    flush=True,
-                )
+    completed: list[dict[str, object]] = list(reused_v2)
+
+    if rebuild_from_v1:
+        def rebuild_task(
+            item: tuple[ReferencePartition, dict[str, object]],
+        ) -> dict[str, object]:
+            partition, v1_receipt = item
+            return _rebuild_partition_from_v1_raw(
+                settings,
+                partition,
+                v1_receipt=v1_receipt,
+                persistence_lock=persistence_lock,
+            )
+
+        def rebuild_progress(
+            item: tuple[ReferencePartition, dict[str, object]],
+            receipt: dict[str, object],
+            done: int,
+        ) -> None:
+            partition, _v1_receipt = item
+            storage = inspect_research_storage(settings)
+            print(
+                f"  {done}/{len(rebuild_from_v1)} rebuilt {partition.key} "
+                "from verified V1 raw: "
+                f"{int(receipt['normalized_unique_contracts']):,} contracts / "
+                f"reference="
+                f"{storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
+                f"free={storage.disk_free_gib:.2f} GiB",
+                flush=True,
+            )
+
+        completed.extend(
+            _run_bounded(
+                rebuild_from_v1,
+                workers=workers,
+                task=rebuild_task,
+                on_complete=rebuild_progress,
+            )
+        )
+
+    if provider_pending:
+        def provider_task(partition: ReferencePartition) -> dict[str, object]:
+            return _acquire_partition(
+                settings,
+                partition,
+                api_key=api_key,
+                persistence_lock=persistence_lock,
+            )
+
+        def provider_progress(
+            partition: ReferencePartition,
+            receipt: dict[str, object],
+            done: int,
+        ) -> None:
+            storage = inspect_research_storage(settings)
+            print(
+                f"  {done}/{len(provider_pending)} acquired {partition.key}: "
+                f"{int(receipt['normalized_unique_contracts']):,} contracts / "
+                f"{int(receipt['duplicate_version_rows']):,} version rows / "
+                f"{int(receipt['tickers_with_multiple_versions']):,} "
+                "multi-version tickers / "
+                f"{int(receipt['page_count']):,} pages / "
+                f"reference="
+                f"{storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
+                f"free={storage.disk_free_gib:.2f} GiB",
+                flush=True,
+            )
+
+        completed.extend(
+            _run_bounded(
+                provider_pending,
+                workers=workers,
+                task=provider_task,
+                on_complete=provider_progress,
+            )
+        )
 
     completed.sort(key=lambda item: str(item["partition"]))
     total_raw_records = sum(
@@ -1290,8 +1346,12 @@ def run_historical_option_reference_v2_acquisition(
         "active_hard_end_exclusive": ACTIVE_HARD_END_EXCLUSIVE.isoformat(),
         "boundary_probe": boundary,
         "monthly_partitions": len(completed),
-        "reused_verified_partitions": len(reused),
-        "acquired_partitions_this_run": len(pending),
+        "reused_verified_partitions": len(reused_v2),
+        "rebuilt_from_verified_v1_raw_this_run": len(rebuild_from_v1),
+        "provider_acquired_partitions_this_run": len(provider_pending),
+        "acquired_partitions_this_run": (
+            len(rebuild_from_v1) + len(provider_pending)
+        ),
         "raw_provider_records": total_raw_records,
         "normalized_unique_contracts": total_normalized,
         "duplicate_version_rows": sum(
@@ -1310,6 +1370,10 @@ def run_historical_option_reference_v2_acquisition(
             bool(item["raw_version_reconciliation"]) for item in completed
         ),
         "correction_selection_policy": CORRECTION_SELECTION_POLICY,
+        "raw_reused_from_v1_partitions": sum(
+            1 for item in completed if bool(item.get("raw_reused_from_v1"))
+        ),
+        "bounded_in_flight_partitions": workers,
         "raw_bytes": total_raw_bytes,
         "normalized_bytes": total_normalized_bytes,
         "source_role": SOURCE_ROLE,
