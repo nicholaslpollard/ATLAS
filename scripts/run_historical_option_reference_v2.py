@@ -83,8 +83,9 @@ def main() -> int:
     print(f"  run fingerprint: {summary['run_fingerprint']}")
     print(f"  partitions: {int(summary['monthly_partitions']):,}")
     print(
-        "  reused/acquired this run: "
+        "  reused V2 / imported V1 / provider-acquired this run: "
         f"{int(summary['reused_verified_partitions']):,} / "
+        f"{int(summary['imported_verified_v1_partitions']):,} / "
         f"{int(summary['acquired_partitions_this_run']):,}"
     )
     print(
