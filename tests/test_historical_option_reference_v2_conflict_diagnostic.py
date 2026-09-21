@@ -99,7 +99,13 @@ def test_run_diagnostic_compares_current_historical_and_overview(
     historical_overview_row = _row(shares=100)
     calls: list[str] = []
 
-    def fake_request(_settings, *, url: str, api_key: str):
+    def fake_request(
+        _settings,
+        *,
+        url: str,
+        api_key: str,
+        accepted_http_statuses: frozenset[int] = frozenset(),
+    ):
         assert api_key == "token"
         calls.append(url)
         parsed = __import__("urllib.parse").parse.urlsplit(url)
@@ -144,6 +150,8 @@ def test_run_diagnostic_compares_current_historical_and_overview(
     assert interpretation["current_list_conflict_reproduced"] is True
     assert interpretation["historical_list_conflict_reproduced"] is False
     assert interpretation["all_requests_repeat_stable"] is True
+    assert interpretation["current_overview_not_found"] is False
+    assert interpretation["historical_overview_not_found"] is False
     assert interpretation["current_overview_matches_current_list_row"] is True
     assert interpretation["historical_overview_matches_historical_list_row"] is True
     assert interpretation["current_vs_historical_list_fingerprint_equal"] is False
@@ -161,3 +169,77 @@ def test_run_diagnostic_compares_current_historical_and_overview(
     assert manifest_path.is_file()
     persisted = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert persisted["evidence_fingerprint"] == report["evidence_fingerprint"]
+
+
+def test_contract_overview_not_found_is_retained_as_repeatable_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path)
+    calls: list[frozenset[int]] = []
+
+    def fake_request(
+        _settings,
+        *,
+        url: str,
+        api_key: str,
+        accepted_http_statuses: frozenset[int] = frozenset(),
+    ):
+        assert api_key == "token"
+        assert module.TARGET_TICKER.replace(":", "%3A") in url
+        calls.append(accepted_http_statuses)
+        return 404, {
+            "status": "NOT_FOUND",
+            "request_id": f"not-found-{len(calls)}",
+            "message": "Option Ticker not found.",
+        }
+
+    monkeypatch.setattr(module, "_request_json", fake_request)
+
+    section = module._request_overview_twice(
+        settings,
+        api_key="token",
+        as_of=module.CURRENT_AS_OF,
+    )
+
+    assert calls == [frozenset({404}), frozenset({404})]
+    assert section["stable"] is True
+    first = section["attempts"][0]
+    assert first["http_status"] == 404
+    assert first["provider_status"] == "NOT_FOUND"
+    assert first["provider_message"] == "Option Ticker not found."
+    assert first["not_found"] is True
+    assert first["row_present"] is False
+    assert first["row_hash"] is None
+
+
+def test_contract_overview_unexpected_404_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path)
+
+    def fake_request(
+        _settings,
+        *,
+        url: str,
+        api_key: str,
+        accepted_http_statuses: frozenset[int] = frozenset(),
+    ):
+        return 404, {
+            "status": "NOT_FOUND",
+            "request_id": "unexpected",
+            "message": "Different provider error.",
+        }
+
+    monkeypatch.setattr(module, "_request_json", fake_request)
+
+    with pytest.raises(
+        module.HistoricalOptionReferenceConflictDiagnosticError,
+        match="did not match the frozen provider NOT_FOUND semantics",
+    ):
+        module._request_overview_twice(
+            settings,
+            api_key="token",
+            as_of=module.CURRENT_AS_OF,
+        )
