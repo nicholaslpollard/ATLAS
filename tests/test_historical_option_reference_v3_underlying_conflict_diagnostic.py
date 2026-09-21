@@ -98,7 +98,7 @@ def test_current_structural_probe_preserves_both_underlying_identities(
     assert section["stable"] is True
     first = section["attempts"][0]
     assert first["target_row_count"] == 2
-    assert first["target_underlying_tickers"] == ["AH", "ACHI"]
+    assert first["target_underlying_tickers"] == ["ACHI", "AH"]
     assert section["field_differences"] == {
         "underlying_ticker": ["AH", "ACHI"]
     }
@@ -146,4 +146,4 @@ def test_underlying_candidates_include_list_and_overview_rows() -> None:
         [_row(underlying="ACHI")],
         [{"ticker": module.TARGET_TICKER, "underlying_ticker": "RCM"}],
     )
-    assert values == ["AH", "ACHI", "RCM"]
+    assert values == ["ACHI", "AH", "RCM"]
