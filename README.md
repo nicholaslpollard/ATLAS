@@ -300,17 +300,41 @@ rows differed in `underlying_ticker`, which is outside V3's deliberately frozen
 reported free space about **116.40 GiB** at the end of the reusable rebuild phase.
 No V3 completion claim is made.
 
-Massive's current public documentation confirms that `underlying_ticker` is a
-structural contract field, `as_of` is a point-in-time contract-reference selector,
-`additional_underlyings` carries altered deliverables, adjusted option series can
-coexist without being merged, and stock ticker history is not automatically stitched
-across ticker changes/acquisitions. ATLAS therefore does not broaden V3 after seeing
-the ACHI conflict. A new read-only diagnostic is frozen under fingerprint
-`aaf0a8e52fdd56521fe000dc1ead04059115d2639b18eb29fad03b8fe76eaec1`.
-It omits an underlying filter, repeats current and pre-expiration option list/overview
-requests, records all observed underlying identities, and supplements those results
-with point-in-time stock-reference lookups when the account can provide them. It
-authorizes no source-resolution rule or bulk acquisition.
+The read-only ACHI diagnostic completed under evidence fingerprint
+`b655282ff5f1da7bd3c2d7ac931a34b37650ffaa57354c6ac47efdfe746f81d1`.
+All repeated requests were stable. At current `as_of=2026-09-19`, the provider
+returned two `O:ACHI140621C00001000` rows differing only in
+`underlying_ticker` (`ACHI` versus `AH`) and exact current Contract Overview
+returned stable HTTP 404 / `NOT_FOUND`. At pre-expiration
+`as_of=2014-06-20`, the provider returned exactly one target row with
+`underlying_ticker=ACHI`; exact Contract Overview returned one stable HTTP-200 row,
+matched that historical list row, and matched exactly one of the current conflicting
+raw payloads.
+
+Supplemental Massive Stocks reference returned no 2014 `ACHI` row but did return
+inactive `AH` under CIK `0001472595`. This does not contradict the options result:
+Massive documents OTC stock history as beginning on 2021-12-31. SEC EDGAR for the same
+CIK independently states that Accretive Health traded on NYSE as `AH` through
+2014-03-14 and began OTC trading as `ACHI` on 2014-03-17, before the target option's
+2014-06-21 expiration. That SEC evidence is corroboration only; ATLAS does not stitch
+symbols or use SEC at runtime.
+
+Historical Option Reference V4 is therefore frozen under fingerprint
+`2ddeb58d5f552ff0edb87a2244f130b813cf49600f5f82b1f50d8e1ee047a57d`.
+V4 retains correction ranking and exact-duplicate semantics. Its successor fallback is
+restricted to expired unversioned same-ticker conflicts whose only differing fields
+are `primary_exchange`, `underlying_ticker`, or both. Two repeated pre-expiration
+structural-list requests without an underlying filter must yield one stable target row;
+two repeated exact Contract Overview requests must yield the same payload; and that
+provider-native historical payload must exactly match one and only one current raw
+conflicting row. Otherwise V4 fails closed. Both observed AAL and ACHI cases are
+mandatory pre-acquisition probes.
+
+The immutable ACHI diagnostic closeout is
+`docs/research/historical_option_reference_v3_achi_diagnostic_closeout_20260921.md`.
+V4 remains structural-reference acquisition only and opens no historical availability,
+dynamic-deliverable, market-price, predictor, strategy, promotion, PAPER or LIVE
+authority.
 
 ## News + options historical-data foundation — 2026-09-20
 

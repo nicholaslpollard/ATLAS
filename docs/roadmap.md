@@ -1725,34 +1725,35 @@ Every closeout reports:
 - negative results and unresolved risks;
 - next highest-value coherent package.
 
-## 21. Current active continuation — V3 underlying-identity conflict diagnostic
+## 21. Current active continuation — Historical Option Reference V4 acquisition
 
-Historical Option Reference V3 remains incomplete. The first target-workstation V3
-attempt passed the 2032 hard boundary and the mandatory AAL resolver probe, rebuilt
-all 63 verified V2 raw partitions locally, and then failed closed on
-`O:ACHI140621C00001000` in `expired-2014-06` because same-ticker unversioned
-payloads differed in `underlying_ticker`. That field is outside V3's frozen
-`primary_exchange`-only fallback.
+The V3 ACHI diagnostic is complete under evidence fingerprint
+`b655282ff5f1da7bd3c2d7ac931a34b37650ffaa57354c6ac47efdfe746f81d1`.
+The provider's pre-expiration option reference uniquely selected the
+`underlying_ticker=ACHI` raw payload, while current reference exposed both `ACHI`
+and `AH`. Massive's documented OTC stock-history floor explains why supplemental
+Stocks reference could not independently represent 2014 OTC `ACHI`; SEC EDGAR
+corroborates the AH-to-ACHI March 2014 symbol transition but is not runtime authority.
 
-1. Do not rerun V3 bulk acquisition and do not broaden the V3 resolver.
+1. Accept Historical Option Reference V4 under frozen contract fingerprint
+   `2ddeb58d5f552ff0edb87a2244f130b813cf49600f5f82b1f50d8e1ee047a57d`.
 2. On accepted `main`, run only
-   `.\.venv\Scripts\python.exe scripts\diagnose_historical_option_reference_v3_underlying_conflict.py`
+   `.\.venv\Scripts\python.exe scripts\run_historical_option_reference_v4.py --authorize-source-acquisition --workers 5`
    on the target workstation.
-3. The diagnostic contract fingerprint is
-   `aaf0a8e52fdd56521fe000dc1ead04059115d2639b18eb29fad03b8fe76eaec1`.
-   It performs repeated current and pre-expiration option structural-list and exact
-   Contract Overview requests without filtering by underlying ticker, then performs
-   supplemental point-in-time stock-reference lookups for every discovered underlying
-   symbol. Stocks-plan 403/404 responses are recorded as limitations rather than
-   converted into option-source conclusions.
-4. Preserve the emitted evidence fingerprint and exact underlying identities. Any
-   V4/successor rule must be separately frozen from this evidence; the diagnostic
-   itself authorizes no conflict resolution or acquisition.
-5. Verified V3/V2/V1 receipts and raw lineage remain reusable. A later successor run
-   must re-inventory them before provider acquisition; do not redownload verified raw.
-6. After option-reference acquisition eventually completes, independently close raw/
-   version/normalized/hash/cardinality and conflict-resolution lineage before broad
-   option daily acquisition.
+3. Before bulk provider work, both known conflicts must PASS:
+   `O:AAL140621C00020000` for `primary_exchange` and
+   `O:ACHI140621C00001000` for `underlying_ticker`.
+4. V4 resolves only expired unversioned same-ticker conflicts differing solely in
+   `primary_exchange`, `underlying_ticker`, or both. Repeated pre-expiration
+   structural-list requests without an underlying filter must yield exactly one stable
+   target row; repeated exact Contract Overview must yield the identical payload; that
+   payload must exactly match one and only one current conflicting raw row. Anything
+   else fails closed.
+5. Re-inventory verified V4/V3/V2/V1 receipts and raw lineage before provider work.
+   Re-normalize locally and do not duplicate verified raw bytes. Keep provider work
+   bounded to the configured worker count.
+6. After all 212 partitions complete, independently close raw/version/normalized/hash/
+   cardinality and resolution-lineage integrity before broad option daily acquisition.
 7. Historical availability, dynamic deliverables, price authority, predictor access,
    strategy promotion, confluence, PAPER and LIVE remain false. Track A may continue
    independently under its own gates.
