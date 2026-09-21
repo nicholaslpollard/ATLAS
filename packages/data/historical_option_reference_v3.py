@@ -37,6 +37,11 @@ from packages.data.historical_option_reference_v3_contract import (
     CONFLICT_DIAGNOSTIC_EVIDENCE_FINGERPRINT,
     CONFLICT_RESOLUTION_POLICY,
     CONFLICT_RESOLUTION_REPEAT_COUNT,
+    KNOWN_CONFLICT_CONTRACT_TYPE,
+    KNOWN_CONFLICT_EXPIRATION,
+    KNOWN_CONFLICT_STRIKE,
+    KNOWN_CONFLICT_TICKER,
+    KNOWN_CONFLICT_UNDERLYING,
     SOURCE_ROLE,
     STORAGE_CATEGORY,
     ReferencePartition,
@@ -901,6 +906,86 @@ def _verified_v1_raw_receipt(
     return receipt
 
 
+def _known_conflict_resolution_probe(
+    settings: AtlasSettings,
+    *,
+    api_key: str,
+) -> dict[str, object]:
+    query = urllib.parse.urlencode(
+        {
+            "underlying_ticker": KNOWN_CONFLICT_UNDERLYING,
+            "contract_type": KNOWN_CONFLICT_CONTRACT_TYPE,
+            "expiration_date": KNOWN_CONFLICT_EXPIRATION,
+            "strike_price": KNOWN_CONFLICT_STRIKE,
+            "as_of": REFERENCE_AS_OF_DATE.isoformat(),
+            "expired": "true",
+            "order": "asc",
+            "sort": "ticker",
+            "limit": PAGE_LIMIT,
+        }
+    )
+    payload = _request_json(
+        settings,
+        url=_endpoint(settings) + "?" + query,
+        api_key=api_key,
+    )
+    rows = payload.get("results") or []
+    if not isinstance(rows, list) or any(not isinstance(item, dict) for item in rows):
+        raise HistoricalOptionReferenceV3Error(
+            "known-conflict preflight returned malformed structural-list results"
+        )
+    target_rows = [
+        dict(item)
+        for item in rows
+        if str(item.get("ticker") or "") == KNOWN_CONFLICT_TICKER
+    ]
+    if len(target_rows) != 2:
+        raise HistoricalOptionReferenceV3Error(
+            "known-conflict preflight expected exactly 2 current target rows, "
+            f"received {len(target_rows)}"
+        )
+    expiration = date.fromisoformat(KNOWN_CONFLICT_EXPIRATION)
+    partition = next(
+        (
+            item
+            for item in reference_partitions()
+            if item.state == "EXPIRED"
+            and item.expiration_gte <= expiration < item.expiration_lt
+        ),
+        None,
+    )
+    if partition is None:
+        raise HistoricalOptionReferenceV3Error(
+            "known-conflict preflight could not resolve target partition"
+        )
+    normalized, _discarded = _resolve_ticker_versions(
+        target_rows,
+        partition=partition,
+        settings=settings,
+        api_key=api_key,
+    )
+    if not bool(normalized["historically_resolved_conflict"]):
+        raise HistoricalOptionReferenceV3Error(
+            "known-conflict preflight did not exercise the frozen V3 resolver"
+        )
+    return {
+        "status": "PASS",
+        "ticker": KNOWN_CONFLICT_TICKER,
+        "partition": partition.key,
+        "current_target_rows": len(target_rows),
+        "selected_provider_record_sha256": normalized["provider_record_sha256"],
+        "selected_primary_exchange": normalized["primary_exchange"],
+        "resolution_policy": normalized["conflict_resolution_policy"],
+        "resolution_as_of_date": normalized["conflict_resolution_as_of_date"],
+        "resolution_overview_sha256": (
+            normalized["conflict_resolution_overview_sha256"]
+        ),
+        "diagnostic_evidence_fingerprint": (
+            CONFLICT_DIAGNOSTIC_EVIDENCE_FINGERPRINT
+        ),
+    }
+
+
 def _verified_v2_raw_receipt(
     settings: AtlasSettings,
     partition: ReferencePartition,
@@ -1153,7 +1238,7 @@ def _acquire_partition(
             "raw_origin_contract_fingerprint": (
                 HISTORICAL_OPTION_REFERENCE_V3_CONTRACT_FINGERPRINT
             ),
-            "raw_reused_from_v1": False,
+            "raw_reused_from_parent": False,
             "raw_bytes": int(paths["raw"].stat().st_size),
             "normalized_bytes": int(paths["normalized"].stat().st_size),
             "raw_sha256": _sha256_file(paths["raw"]),
@@ -1201,6 +1286,7 @@ def _rebuild_partition_from_parent_raw(
     tickers_with_multiple_versions = 0
     exact_duplicate_rows = 0
     corrected_selected_contracts = 0
+    historically_resolved_conflicts = 0
     first_ticker: str | None = None
     last_ticker: str | None = None
     current_ticker: str | None = None
@@ -1444,6 +1530,10 @@ def run_historical_option_reference_v3_acquisition(
 
     api_key = _resolve_massive_api_key(settings)
     boundary = _boundary_probe(settings, api_key=api_key)
+    known_conflict_probe = _known_conflict_resolution_probe(
+        settings,
+        api_key=api_key,
+    )
     partitions = reference_partitions()
     persistence_lock = threading.Lock()
 
@@ -1488,6 +1578,13 @@ def run_historical_option_reference_v3_acquisition(
         "  active hard-end boundary probe: PASS / "
         f"no active contracts >= {ACTIVE_HARD_END_EXCLUSIVE.isoformat()} "
         f"as of {REFERENCE_AS_OF_DATE.isoformat()}",
+        flush=True,
+    )
+    print(
+        "  known V2 conflict resolution probe: PASS / "
+        f"{known_conflict_probe['ticker']} -> "
+        f"{known_conflict_probe['selected_primary_exchange']} / "
+        f"as_of={known_conflict_probe['resolution_as_of_date']}",
         flush=True,
     )
 
@@ -1649,6 +1746,7 @@ def run_historical_option_reference_v3_acquisition(
         "reference_as_of_date": REFERENCE_AS_OF_DATE.isoformat(),
         "active_hard_end_exclusive": ACTIVE_HARD_END_EXCLUSIVE.isoformat(),
         "boundary_probe": boundary,
+        "known_conflict_resolution_probe": known_conflict_probe,
         "monthly_partitions": len(completed),
         "reused_verified_partitions": len(reused_v3),
         "rebuilt_from_verified_v2_raw_this_run": len(rebuild_from_v2),
