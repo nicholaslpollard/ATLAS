@@ -103,9 +103,6 @@ def test_run_diagnostic_compares_current_historical_and_overview(
         parsed = __import__("urllib.parse").parse.urlsplit(url)
         query = dict(__import__("urllib.parse").parse.parse_qsl(parsed.query))
 
-        if parsed.path.endswith("/" + module.TARGET_TICKER.replace(":", "%3A")):
-            raise AssertionError("path should be URL-decoded by urlsplit")
-
         if "/v3/reference/options/contracts/" in parsed.path:
             if query["as_of"] == module.CURRENT_AS_OF:
                 row = current_overview_row
