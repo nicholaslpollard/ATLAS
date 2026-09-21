@@ -38,6 +38,11 @@ CONFLICT_RESOLUTION_POLICY = (
 )
 CONFLICT_ALLOWED_DIFFERING_FIELDS = ("primary_exchange",)
 CONFLICT_RESOLUTION_REPEAT_COUNT = 2
+KNOWN_CONFLICT_TICKER = "O:AAL140621C00020000"
+KNOWN_CONFLICT_UNDERLYING = "AAL"
+KNOWN_CONFLICT_CONTRACT_TYPE = "call"
+KNOWN_CONFLICT_EXPIRATION = "2014-06-21"
+KNOWN_CONFLICT_STRIKE = 20
 
 
 def _stable_hash(value: object) -> str:
@@ -115,6 +120,17 @@ def acquisition_contract_manifest() -> dict[str, object]:
             "historical_candidate_availability_authority": False,
             "historical_dynamic_deliverable_authority": False,
             "historical_market_price_authority": False,
+        },
+        "known_conflict_preacquisition_probe": {
+            "ticker": KNOWN_CONFLICT_TICKER,
+            "underlying_ticker": KNOWN_CONFLICT_UNDERLYING,
+            "contract_type": KNOWN_CONFLICT_CONTRACT_TYPE,
+            "expiration_date": KNOWN_CONFLICT_EXPIRATION,
+            "strike_price": KNOWN_CONFLICT_STRIKE,
+            "current_as_of": REFERENCE_AS_OF_DATE.isoformat(),
+            "expected_current_target_rows": 2,
+            "required_resolution_policy": CONFLICT_RESOLUTION_POLICY,
+            "must_pass_before_bulk_provider_acquisition": True,
         },
         "normalization": {
             "identity": "ticker",
