@@ -144,10 +144,21 @@ def test_exact_same_highest_correction_is_deduped_but_counted() -> None:
 def test_correction_must_be_integral() -> None:
     with pytest.raises(
         acquisition.HistoricalOptionReferenceV2Error,
-        match="correction value",
+        match="non-integral correction value",
     ):
         acquisition._resolve_ticker_versions(
             [_record(correction="1.5")],
+            partition=PARTITION,
+        )
+
+
+def test_negative_correction_fails_closed() -> None:
+    with pytest.raises(
+        acquisition.HistoricalOptionReferenceV2Error,
+        match="negative correction value",
+    ):
+        acquisition._resolve_ticker_versions(
+            [_record(correction=-1)],
             partition=PARTITION,
         )
 
