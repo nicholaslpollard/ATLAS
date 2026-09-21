@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-20 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-21 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -1706,14 +1706,29 @@ Every closeout reports:
 - negative results and unresolved risks;
 - next highest-value coherent package.
 
-## 21. Immediate next action
+## 21. Current active continuation — Historical Option Reference V2 conflict diagnostic
 
-1. Finish exact-head Windows/Ubuntu acceptance and merge PR #84. Repository acceptance opens no successor performance and grants no PAPER/LIVE/promotion authority.
-2. On accepted `main`, run only `.\.venv\Scripts\python.exe scripts\run_successor_development.py --authorize-development-outcomes --mode benchmark` on the workstation. This bounded benchmark evaluates the frozen subset under 4x1/6x1/8x1 shapes and must prove exact scientific equivalence before runtime selection.
-3. Record the fastest shape that also preserves thermal and OS headroom; raw speed does not override throttling.
-4. Only after benchmark acceptance may the second-gated full standalone DEVELOPMENT command be authorized. Preserve all standalone results before condition/confluence analysis.
-5. Consumed master and future blind remain prohibited; provider/broker access remains zero; PAPER/LIVE/promotion remains false.
-6. Track A may continue independently under its separate authority gates.
+The repository-wide active handoff is the bounded Historical Option Reference V2
+source-conflict diagnostic frozen by PR #185. Earlier successor-DEVELOPMENT benchmark
+steps in this roadmap are retained historical sequence, not the current repository-wide
+next action.
+
+1. Historical Option Reference V2 remains incomplete. Do not resume bulk option-reference
+   acquisition and do not relax the frozen same-highest-correction conflict rule.
+2. On accepted `main`, run only
+   `.\.venv\Scripts\python.exe scripts\diagnose_historical_option_reference_v2_conflict.py`
+   on the target workstation. The diagnostic is read-only and targets
+   `O:AAL140621C00020000` under contract fingerprint
+   `f544bb78cb6d61cbd69aa5fd266ee20349b3a977b39cb85e79a0a6a5ec0f9678`.
+3. Preserve the emitted manifest and exact evidence fingerprint. Any successor
+   duplicate/version rule must be separately frozen from that evidence before another
+   acquisition attempt; the diagnostic itself authorizes no rule.
+4. Do not rerun Historical Option Reference V1. Verified V1 raw lineage already remains
+   reusable by V2/successor acquisition where its receipts, hashes and query bounds verify.
+5. After option-reference acquisition eventually completes, require an independent
+   raw/version/normalized/hash/cardinality closeout before broad option daily acquisition.
+6. Predictor, strategy, promotion, confluence, PAPER and LIVE authority remain unchanged.
+   Track A product/runtime work may continue independently under its own accepted gates.
 
 ## 22. Retained exact historical validator statements
 
@@ -1750,7 +1765,7 @@ research chats from reconstructing strategy truth from conversational memory.
 
 B35 canonical replay, strategy x condition/selector analysis, retained-artifact robustness, exact targeted perturbations and final research disposition are complete. Do not rerun the canonical minute replay or reopen neighboring B35 parameter rescue. The register's current dispositions remain: Gap Continuation = condition-gate/calibrate candidate; Opening Range Breakout = condition-gate/calibrate plus execution audit; Premarket Rel-Vol = cost/execution-sensitive R&D candidate; Highest-Volume-Day style = redefine/insufficient evidence. None is promoted.
 
-The successor 21-family/context/confluence package, exact rules/features, PR #83 portable source/runner contract, hash-only workstation source binding, and the bounded SPY source-only audit are complete. PR #84 remains the Track-B DEVELOPMENT outcome runner implementation. The accepted SPY audit resolved all 2,596 DEVELOPMENT sessions with 2,595 minute-primary closes and one exact same-session raw-native-daily repair on 2019-08-12. The next permitted evidence action is the separately authorized complete 546-work-group standalone run (64 daily buckets + 482 minute groups); 493 is retained only as the earlier source-verification grouping. The frozen 4x1/6x1/8x1 benchmark remains available as an optional performance/equivalence diagnostic, not a scientific prerequisite. The long-term router should
+The successor 21-family/context/confluence package, exact rules/features, PR #83 portable source/runner contract, hash-only workstation source binding, and the bounded SPY source-only audit are complete. PR #84 remains the Track-B DEVELOPMENT outcome runner implementation. The accepted SPY audit resolved all 2,596 DEVELOPMENT sessions with 2,595 minute-primary closes and one exact same-session raw-native-daily repair on 2019-08-12. Within that successor Strategy Lab branch, the next permitted evidence action is the separately authorized complete 546-work-group standalone run (64 daily buckets + 482 minute groups); 493 is retained only as the earlier source-verification grouping. The frozen 4x1/6x1/8x1 benchmark remains available as an optional performance/equivalence diagnostic, not a scientific prerequisite. The long-term router should
 activate/deactivate strategy specialties using trailing point-in-time evidence and
 abstain when no specialty clears support, cost, robustness, risk, and authority
 gates. Continuous market coverage is desirable; forced continuous trading is not.
