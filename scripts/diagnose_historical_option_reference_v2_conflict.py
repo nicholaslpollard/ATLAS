@@ -77,12 +77,16 @@ def main() -> int:
     )
     print(
         "  current contract overview: "
+        f"status={current_overview_first.get('http_status')} "
         f"present={current_overview_first.get('row_present')} "
+        f"not_found={current_overview_first.get('not_found')} "
         f"stable={current_overview.get('stable')}"
     )
     print(
         "  historical contract overview: "
+        f"status={historical_overview_first.get('http_status')} "
         f"present={historical_overview_first.get('row_present')} "
+        f"not_found={historical_overview_first.get('not_found')} "
         f"stable={historical_overview.get('stable')}"
     )
 
