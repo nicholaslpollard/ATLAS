@@ -67,7 +67,7 @@ def main() -> int:
     print(f"  monthly partitions: {len(reference_partitions())}")
     print(f"  workers: {args.workers}")
     print(f"  max in-flight partitions: {args.workers}")
-    print("  verified V1 raw reuse: enabled")
+    print("  verified V2/V1 raw reuse: enabled")
     print(f"  duplicate-version policy: {CORRECTION_SELECTION_POLICY}")
     print(
         "  same-rank conflict fallback: pre-expiration Contract Overview "
@@ -84,7 +84,7 @@ def main() -> int:
     )
 
     storage = summary["storage_after"]
-    print("\nHISTORICAL OPTION REFERENCE V2: COMPLETE")
+    print("\nHISTORICAL OPTION REFERENCE V3: COMPLETE")
     print(f"  corpus fingerprint: {summary['corpus_fingerprint']}")
     print(f"  run fingerprint: {summary['run_fingerprint']}")
     print(f"  partitions: {int(summary['monthly_partitions']):,}")
