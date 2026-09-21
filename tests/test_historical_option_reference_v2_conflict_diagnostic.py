@@ -36,7 +36,7 @@ def test_conflict_diagnostic_contract_is_frozen_and_non_authoritative() -> None:
 
     assert (
         module.HISTORICAL_OPTION_REFERENCE_V2_CONFLICT_DIAGNOSTIC_FINGERPRINT
-        == "b67ed3cde545627b851199db4d30bfac31050960400c4b11a051c8c1fb8cf716"
+        == "f544bb78cb6d61cbd69aa5fd266ee20349b3a977b39cb85e79a0a6a5ec0f9678"
     )
     assert manifest["parent_v2_contract_fingerprint"] == (
         "6d0af0b58a66b77c445d7e561d759dfd947e348e994045a1f7cfc16aeb9ccb41"
@@ -65,22 +65,24 @@ def test_field_differences_reports_only_conflicting_fields() -> None:
     assert differences == {"shares_per_contract": [100, 50]}
 
 
-def test_extract_exact_list_rejects_ticker_filter_escape() -> None:
+def test_structural_list_can_retain_related_candidate_series() -> None:
     payload = {
         "results": [
             _row(),
             {
                 **_row(),
-                "ticker": "O:OTHER140621C00020000",
+                "ticker": "O:AAL1140621C00020000",
             },
         ]
     }
 
-    with pytest.raises(
-        module.HistoricalOptionReferenceConflictDiagnosticError,
-        match="ticker filter escaped",
-    ):
-        module._extract_list_results(payload)
+    rows = module._extract_list_results(payload)
+
+    assert len(rows) == 2
+    assert {row["ticker"] for row in rows} == {
+        module.TARGET_TICKER,
+        "O:AAL1140621C00020000",
+    }
 
 
 def test_run_diagnostic_compares_current_historical_and_overview(
@@ -148,7 +150,7 @@ def test_run_diagnostic_compares_current_historical_and_overview(
     assert interpretation["current_vs_historical_overview_hash_equal"] is False
     assert interpretation["diagnostic_only_no_resolution_rule_authorized"] is True
 
-    differences = report["current_exact_list"]["field_differences"]
+    differences = report["current_structural_list"]["field_differences"]
     assert differences == {"shares_per_contract": [100, 50]}
 
     manifest_path = (
