@@ -636,7 +636,7 @@ def _resolve_ticker_versions(
         if settings is None or api_key is None:
             raise HistoricalOptionReferenceV4Error(
                 f"{partition.key}: {ticker}: conflicting provider rows share "
-                f"highest correction rank {highest_rank}; V3 resolver context missing"
+                f"highest correction rank {highest_rank}; V4 resolver context missing"
             )
         selected, conflict_lineage = _resolve_narrow_unversioned_conflict(
             [item[2] for item in highest],
