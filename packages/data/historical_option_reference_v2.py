@@ -9,16 +9,19 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 import duckdb
 
 from packages.core.atomic_io import replace_with_retry
 from packages.core.settings import AtlasSettings
+from packages.data.historical_option_reference_v1_contract import (
+    HISTORICAL_OPTION_REFERENCE_V1_CONTRACT_FINGERPRINT,
+)
 from packages.data.historical_option_reference_v2_contract import (
     ACTIVE_HARD_END_EXCLUSIVE,
     HISTORICAL_OPTION_REFERENCE_V2_CONTRACT,
@@ -51,6 +54,7 @@ _REQUIRED_FIELDS: tuple[str, ...] = (
     "shares_per_contract",
 )
 _MAX_PAGES_PER_PARTITION = 100_000
+_T = TypeVar("_T")
 
 
 def _stable_json(value: object) -> str:
@@ -501,6 +505,34 @@ def _write_parquet_from_jsonl(
         con.close()
 
 
+def _v1_partition_paths(
+    settings: AtlasSettings,
+    partition: ReferencePartition,
+) -> dict[str, Path]:
+    root = settings.resolved_path("data")
+    options = settings.data.research.options
+    expiration_month = partition.expiration_gte.replace(day=1)
+    suffix = (
+        Path("massive")
+        / f"reference_as_of={REFERENCE_AS_OF_DATE.isoformat()}"
+        / f"state={partition.state.lower()}"
+        / f"expiration_year={expiration_month.year:04d}"
+        / f"expiration_month={expiration_month.month:02d}"
+    )
+    manifest_suffix = (
+        Path("massive")
+        / "historical_option_reference_v1"
+        / f"state={partition.state.lower()}"
+        / f"expiration_year={expiration_month.year:04d}"
+        / f"expiration_month={expiration_month.month:02d}"
+    )
+    return {
+        "raw": root / options.reference_subdir / suffix / "contracts.jsonl.gz",
+        "normalized": root / options.reference_subdir / suffix / "contracts.parquet",
+        "receipt": root / options.manifests_subdir / manifest_suffix / "receipt.json",
+    }
+
+
 def _partition_paths(
     settings: AtlasSettings,
     partition: ReferencePartition,
@@ -555,6 +587,19 @@ def _atomic_write_json(path: Path, payload: object) -> None:
         raise
 
 
+def _receipt_data_path(
+    settings: AtlasSettings,
+    value: object,
+) -> Path | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    root = settings.project_root.resolve()
+    candidate = (root / value).resolve()
+    if candidate != root and root not in candidate.parents:
+        return None
+    return candidate
+
+
 def _verified_existing_receipt(
     settings: AtlasSettings,
     partition: ReferencePartition,
@@ -575,12 +620,66 @@ def _verified_existing_receipt(
         return None
     if receipt.get("partition") != partition.key:
         return None
+    expected_fingerprint = receipt.get("receipt_fingerprint")
+    fingerprint_payload = dict(receipt)
+    fingerprint_payload.pop("receipt_fingerprint", None)
+    if expected_fingerprint != _stable_hash(fingerprint_payload):
+        return None
     for name in ("raw", "normalized"):
-        path = paths[name]
-        if not path.is_file():
+        path = _receipt_data_path(settings, receipt.get(f"{name}_path"))
+        if path is None or not path.is_file():
             return None
         if receipt.get(f"{name}_sha256") != _sha256_file(path):
             return None
+    return receipt
+
+
+def _verified_v1_raw_receipt(
+    settings: AtlasSettings,
+    partition: ReferencePartition,
+) -> dict[str, object] | None:
+    paths = _v1_partition_paths(settings, partition)
+    receipt_path = paths["receipt"]
+    if not receipt_path.is_file() or not paths["raw"].is_file():
+        return None
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if receipt.get("status") != "COMPLETE":
+        return None
+    if (
+        receipt.get("contract_fingerprint")
+        != HISTORICAL_OPTION_REFERENCE_V1_CONTRACT_FINGERPRINT
+    ):
+        return None
+    if receipt.get("partition") != partition.key:
+        return None
+    if receipt.get("reference_as_of_date") != REFERENCE_AS_OF_DATE.isoformat():
+        return None
+    if receipt.get("reference_state") != partition.state:
+        return None
+    if receipt.get("expiration_gte") != partition.expiration_gte.isoformat():
+        return None
+    if receipt.get("expiration_lt") != partition.expiration_lt.isoformat():
+        return None
+    if bool(receipt.get("expired_query_value")) != partition.expired:
+        return None
+    if int(receipt.get("page_limit", -1)) != PAGE_LIMIT:
+        return None
+    if int(receipt.get("duplicate_ticker_rows", -1)) != 0:
+        return None
+    if int(receipt.get("raw_provider_records", -1)) != int(
+        receipt.get("normalized_unique_contracts", -2)
+    ):
+        return None
+    expected_fingerprint = receipt.get("receipt_fingerprint")
+    fingerprint_payload = dict(receipt)
+    fingerprint_payload.pop("receipt_fingerprint", None)
+    if expected_fingerprint != _stable_hash(fingerprint_payload):
+        return None
+    if receipt.get("raw_sha256") != _sha256_file(paths["raw"]):
+        return None
     return receipt
 
 
