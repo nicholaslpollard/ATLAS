@@ -74,6 +74,13 @@ def test_v3_contract_is_frozen_and_narrow() -> None:
     assert manifest["known_conflict_preacquisition_probe"][
         "must_pass_before_bulk_provider_acquisition"
     ] is True
+    assert manifest["reuse"] == {
+        "verified_v3_receipts": True,
+        "verified_v2_raw_lineage": True,
+        "verified_v1_raw_lineage": True,
+        "local_renormalization_required": True,
+        "raw_copy_required": False,
+    }
     assert manifest["authority"]["strategy_outcome_access"] is False
     assert manifest["authority"]["paper_authority"] is False
     assert manifest["authority"]["live_authority"] is False
