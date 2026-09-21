@@ -253,8 +253,8 @@ Reference usage remained only about **0.136 GiB** with about **116.48 GiB** free
 No V2 completion claim is made and the same-correction conflict rule is not relaxed.
 
 A targeted read-only successor diagnostic is frozen under fingerprint
-`b67ed3cde545627b851199db4d30bfac31050960400c4b11a051c8c1fb8cf716`.
-It makes two repeated exact-ticker list requests and two repeated single-contract
+`f544bb78cb6d61cbd69aa5fd266ee20349b3a977b39cb85e79a0a6a5ec0f9678`.
+It makes two repeated supported structural-list requests and two repeated single-contract
 overview requests at both the frozen current `as_of=2026-09-19` and a
 pre-expiration historical `as_of=2014-06-20`. It records every returned row/hash,
 field-level differences, request stability and whether the overview endpoint matches
