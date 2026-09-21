@@ -9,16 +9,19 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, TypeVar
 
 import duckdb
 
 from packages.core.atomic_io import replace_with_retry
 from packages.core.settings import AtlasSettings
+from packages.data.historical_option_reference_v1_contract import (
+    HISTORICAL_OPTION_REFERENCE_V1_CONTRACT_FINGERPRINT,
+)
 from packages.data.historical_option_reference_v2_contract import (
     ACTIVE_HARD_END_EXCLUSIVE,
     HISTORICAL_OPTION_REFERENCE_V2_CONTRACT,
@@ -51,6 +54,7 @@ _REQUIRED_FIELDS: tuple[str, ...] = (
     "shares_per_contract",
 )
 _MAX_PAGES_PER_PARTITION = 100_000
+_T = TypeVar("_T")
 
 
 def _stable_json(value: object) -> str:
@@ -501,6 +505,34 @@ def _write_parquet_from_jsonl(
         con.close()
 
 
+def _v1_partition_paths(
+    settings: AtlasSettings,
+    partition: ReferencePartition,
+) -> dict[str, Path]:
+    root = settings.resolved_path("data")
+    options = settings.data.research.options
+    expiration_month = partition.expiration_gte.replace(day=1)
+    suffix = (
+        Path("massive")
+        / f"reference_as_of={REFERENCE_AS_OF_DATE.isoformat()}"
+        / f"state={partition.state.lower()}"
+        / f"expiration_year={expiration_month.year:04d}"
+        / f"expiration_month={expiration_month.month:02d}"
+    )
+    manifest_suffix = (
+        Path("massive")
+        / "historical_option_reference_v1"
+        / f"state={partition.state.lower()}"
+        / f"expiration_year={expiration_month.year:04d}"
+        / f"expiration_month={expiration_month.month:02d}"
+    )
+    return {
+        "raw": root / options.reference_subdir / suffix / "contracts.jsonl.gz",
+        "normalized": root / options.reference_subdir / suffix / "contracts.parquet",
+        "receipt": root / options.manifests_subdir / manifest_suffix / "receipt.json",
+    }
+
+
 def _partition_paths(
     settings: AtlasSettings,
     partition: ReferencePartition,
@@ -555,6 +587,19 @@ def _atomic_write_json(path: Path, payload: object) -> None:
         raise
 
 
+def _receipt_data_path(
+    settings: AtlasSettings,
+    value: object,
+) -> Path | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    root = settings.project_root.resolve()
+    candidate = (root / value).resolve()
+    if candidate != root and root not in candidate.parents:
+        return None
+    return candidate
+
+
 def _verified_existing_receipt(
     settings: AtlasSettings,
     partition: ReferencePartition,
@@ -575,12 +620,66 @@ def _verified_existing_receipt(
         return None
     if receipt.get("partition") != partition.key:
         return None
+    expected_fingerprint = receipt.get("receipt_fingerprint")
+    fingerprint_payload = dict(receipt)
+    fingerprint_payload.pop("receipt_fingerprint", None)
+    if expected_fingerprint != _stable_hash(fingerprint_payload):
+        return None
     for name in ("raw", "normalized"):
-        path = paths[name]
-        if not path.is_file():
+        path = _receipt_data_path(settings, receipt.get(f"{name}_path"))
+        if path is None or not path.is_file():
             return None
         if receipt.get(f"{name}_sha256") != _sha256_file(path):
             return None
+    return receipt
+
+
+def _verified_v1_raw_receipt(
+    settings: AtlasSettings,
+    partition: ReferencePartition,
+) -> dict[str, object] | None:
+    paths = _v1_partition_paths(settings, partition)
+    receipt_path = paths["receipt"]
+    if not receipt_path.is_file() or not paths["raw"].is_file():
+        return None
+    try:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if receipt.get("status") != "COMPLETE":
+        return None
+    if (
+        receipt.get("contract_fingerprint")
+        != HISTORICAL_OPTION_REFERENCE_V1_CONTRACT_FINGERPRINT
+    ):
+        return None
+    if receipt.get("partition") != partition.key:
+        return None
+    if receipt.get("reference_as_of_date") != REFERENCE_AS_OF_DATE.isoformat():
+        return None
+    if receipt.get("reference_state") != partition.state:
+        return None
+    if receipt.get("expiration_gte") != partition.expiration_gte.isoformat():
+        return None
+    if receipt.get("expiration_lt") != partition.expiration_lt.isoformat():
+        return None
+    if bool(receipt.get("expired_query_value")) != partition.expired:
+        return None
+    if int(receipt.get("page_limit", -1)) != PAGE_LIMIT:
+        return None
+    if int(receipt.get("duplicate_ticker_rows", -1)) != 0:
+        return None
+    if int(receipt.get("raw_provider_records", -1)) != int(
+        receipt.get("normalized_unique_contracts", -2)
+    ):
+        return None
+    expected_fingerprint = receipt.get("receipt_fingerprint")
+    fingerprint_payload = dict(receipt)
+    fingerprint_payload.pop("receipt_fingerprint", None)
+    if expected_fingerprint != _stable_hash(fingerprint_payload):
+        return None
+    if receipt.get("raw_sha256") != _sha256_file(paths["raw"]):
+        return None
     return receipt
 
 
@@ -811,6 +910,10 @@ def _acquire_partition(
             "last_ticker": last_ticker,
             "raw_path": _relative(settings, paths["raw"]),
             "normalized_path": _relative(settings, paths["normalized"]),
+            "raw_origin_contract_fingerprint": (
+                HISTORICAL_OPTION_REFERENCE_V2_CONTRACT_FINGERPRINT
+            ),
+            "raw_reused_from_v1": False,
             "raw_bytes": int(paths["raw"].stat().st_size),
             "normalized_bytes": int(paths["normalized"].stat().st_size),
             "raw_sha256": _sha256_file(paths["raw"]),
@@ -828,6 +931,261 @@ def _acquire_partition(
             path.unlink(missing_ok=True)
 
 
+def _rebuild_partition_from_v1_raw(
+    settings: AtlasSettings,
+    partition: ReferencePartition,
+    *,
+    v1_receipt: dict[str, object],
+    persistence_lock: threading.Lock,
+) -> dict[str, object]:
+    v1_paths = _v1_partition_paths(settings, partition)
+    paths = _partition_paths(settings, partition)
+    paths["normalized"].parent.mkdir(parents=True, exist_ok=True)
+    paths["receipt"].parent.mkdir(parents=True, exist_ok=True)
+
+    staging = settings.resolved_path(
+        Path("data/staging/historical_option_reference_v2_v1_reuse")
+        / partition.key
+    )
+    staging.mkdir(parents=True, exist_ok=True)
+    normalized_jsonl = staging / "contracts.normalized.jsonl.tmp"
+    parquet_temp = staging / "contracts.parquet.tmp"
+    for path in (normalized_jsonl, parquet_temp):
+        path.unlink(missing_ok=True)
+
+    raw_provider_records = 0
+    normalized_unique_contracts = 0
+    duplicate_version_rows = 0
+    tickers_with_multiple_versions = 0
+    exact_duplicate_rows = 0
+    corrected_selected_contracts = 0
+    first_ticker: str | None = None
+    last_ticker: str | None = None
+    current_ticker: str | None = None
+    current_versions: list[dict[str, Any]] = []
+
+    def flush_group(normalized_file) -> None:
+        nonlocal normalized_unique_contracts
+        nonlocal duplicate_version_rows
+        nonlocal tickers_with_multiple_versions
+        nonlocal exact_duplicate_rows
+        nonlocal corrected_selected_contracts
+        nonlocal current_versions
+        if not current_versions:
+            return
+        normalized, discarded = _resolve_ticker_versions(
+            current_versions,
+            partition=partition,
+        )
+        normalized_file.write(_stable_json(normalized))
+        normalized_file.write("\n")
+        normalized_unique_contracts += 1
+        duplicate_version_rows += discarded
+        if len(current_versions) > 1:
+            tickers_with_multiple_versions += 1
+        exact_duplicate_rows += int(normalized["exact_duplicate_rows"])
+        if int(normalized["selected_correction_rank"]) >= 0:
+            corrected_selected_contracts += 1
+        current_versions = []
+
+    try:
+        with gzip.open(
+            v1_paths["raw"],
+            "rt",
+            encoding="utf-8",
+            newline="",
+        ) as raw_file, normalized_jsonl.open(
+            "w",
+            encoding="utf-8",
+            newline="\n",
+        ) as normalized_file:
+            for line_number, line in enumerate(raw_file, start=1):
+                if not line.strip():
+                    continue
+                try:
+                    raw_item = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise HistoricalOptionReferenceV2Error(
+                        f"{partition.key}: invalid V1 raw JSONL at line {line_number}"
+                    ) from exc
+                if not isinstance(raw_item, dict):
+                    raise HistoricalOptionReferenceV2Error(
+                        f"{partition.key}: V1 raw line {line_number} is not an object"
+                    )
+                item = dict(raw_item)
+                ticker, *_rest = _validate_structural_record(
+                    item,
+                    partition=partition,
+                )
+                if last_ticker is not None and ticker < last_ticker:
+                    raise HistoricalOptionReferenceV2Error(
+                        f"{partition.key}: verified V1 raw ticker order regressed "
+                        f"from {last_ticker!r} to {ticker!r}"
+                    )
+                if current_ticker is None:
+                    current_ticker = ticker
+                    first_ticker = ticker
+                elif ticker != current_ticker:
+                    flush_group(normalized_file)
+                    current_ticker = ticker
+                current_versions.append(item)
+                last_ticker = ticker
+                raw_provider_records += 1
+
+            flush_group(normalized_file)
+            normalized_file.flush()
+            os.fsync(normalized_file.fileno())
+
+        expected_raw_records = int(v1_receipt["raw_provider_records"])
+        if raw_provider_records != expected_raw_records:
+            raise HistoricalOptionReferenceV2Error(
+                f"{partition.key}: verified V1 raw row count changed: "
+                f"{raw_provider_records} != {expected_raw_records}"
+            )
+        if raw_provider_records != normalized_unique_contracts + duplicate_version_rows:
+            raise HistoricalOptionReferenceV2Error(
+                f"{partition.key}: V1 raw/version reconciliation failed: "
+                f"{raw_provider_records} != {normalized_unique_contracts} + "
+                f"{duplicate_version_rows}"
+            )
+
+        _write_parquet_from_jsonl(
+            normalized_jsonl=normalized_jsonl,
+            parquet_path=parquet_temp,
+            row_count=normalized_unique_contracts,
+        )
+        normalized_bytes = int(parquet_temp.stat().st_size)
+        existing_bytes = (
+            int(paths["normalized"].stat().st_size)
+            if paths["normalized"].is_file()
+            else 0
+        )
+        projected_additional = max(0, normalized_bytes - existing_bytes)
+
+        with persistence_lock:
+            assert_category_acquisition_allowed(
+                settings,
+                category=STORAGE_CATEGORY,
+                projected_additional_bytes=projected_additional,
+            )
+            replace_with_retry(parquet_temp, paths["normalized"])
+
+        raw_path = v1_paths["raw"]
+        receipt: dict[str, object] = {
+            "status": "COMPLETE",
+            "contract": HISTORICAL_OPTION_REFERENCE_V2_CONTRACT,
+            "contract_fingerprint": (
+                HISTORICAL_OPTION_REFERENCE_V2_CONTRACT_FINGERPRINT
+            ),
+            "provider": "massive",
+            "partition": partition.key,
+            "reference_as_of_date": REFERENCE_AS_OF_DATE.isoformat(),
+            "reference_state": partition.state,
+            "expiration_gte": partition.expiration_gte.isoformat(),
+            "expiration_lt": partition.expiration_lt.isoformat(),
+            "expired_query_value": partition.expired,
+            "page_limit": PAGE_LIMIT,
+            "page_count": int(v1_receipt.get("page_count", 0)),
+            "request_id_count": int(v1_receipt.get("request_id_count", 0)),
+            "raw_provider_records": raw_provider_records,
+            "normalized_unique_contracts": normalized_unique_contracts,
+            "duplicate_version_rows": duplicate_version_rows,
+            "tickers_with_multiple_versions": tickers_with_multiple_versions,
+            "exact_duplicate_rows": exact_duplicate_rows,
+            "corrected_selected_contracts": corrected_selected_contracts,
+            "raw_version_reconciliation": (
+                raw_provider_records
+                == normalized_unique_contracts + duplicate_version_rows
+            ),
+            "correction_selection_policy": CORRECTION_SELECTION_POLICY,
+            "first_ticker": first_ticker,
+            "last_ticker": last_ticker,
+            "raw_path": _relative(settings, raw_path),
+            "normalized_path": _relative(settings, paths["normalized"]),
+            "raw_origin_contract_fingerprint": (
+                HISTORICAL_OPTION_REFERENCE_V1_CONTRACT_FINGERPRINT
+            ),
+            "raw_origin_receipt_fingerprint": (
+                v1_receipt["receipt_fingerprint"]
+            ),
+            "raw_reused_from_v1": True,
+            "raw_bytes": int(raw_path.stat().st_size),
+            "normalized_bytes": int(paths["normalized"].stat().st_size),
+            "raw_sha256": _sha256_file(raw_path),
+            "normalized_sha256": _sha256_file(paths["normalized"]),
+            "source_role": SOURCE_ROLE,
+            "historical_candidate_availability_authority": False,
+            "historical_dynamic_deliverable_authority": False,
+            "historical_market_price_authority": False,
+        }
+        if receipt["raw_sha256"] != v1_receipt.get("raw_sha256"):
+            raise HistoricalOptionReferenceV2Error(
+                f"{partition.key}: V1 raw hash changed during local V2 rebuild"
+            )
+        receipt["receipt_fingerprint"] = _stable_hash(receipt)
+        _atomic_write_json(paths["receipt"], receipt)
+        return receipt
+    finally:
+        for path in (normalized_jsonl, parquet_temp):
+            path.unlink(missing_ok=True)
+
+
+def _run_bounded(
+    items: list[_T],
+    *,
+    workers: int,
+    task: Callable[[_T], dict[str, object]],
+    on_complete: Callable[[_T, dict[str, object], int], None],
+) -> list[dict[str, object]]:
+    if not items:
+        return []
+
+    iterator = iter(items)
+    pool = ThreadPoolExecutor(max_workers=workers)
+    in_flight: dict[object, _T] = {}
+    results: list[dict[str, object]] = []
+
+    def submit_next() -> bool:
+        try:
+            item = next(iterator)
+        except StopIteration:
+            return False
+        in_flight[pool.submit(task, item)] = item
+        return True
+
+    try:
+        for _ in range(min(workers, len(items))):
+            submit_next()
+
+        completed_count = 0
+        while in_flight:
+            done, _pending = wait(
+                tuple(in_flight),
+                return_when=FIRST_COMPLETED,
+            )
+
+            batch: list[tuple[_T, dict[str, object]]] = []
+            for future in done:
+                item = in_flight.pop(future)
+                batch.append((item, future.result()))
+
+            for item, receipt in batch:
+                results.append(receipt)
+                completed_count += 1
+                on_complete(item, receipt, completed_count)
+
+            for _ in batch:
+                submit_next()
+    except Exception:
+        for future in in_flight:
+            future.cancel()
+        pool.shutdown(wait=True, cancel_futures=True)
+        raise
+    else:
+        pool.shutdown(wait=True)
+    return results
+
+
 def run_historical_option_reference_v2_acquisition(
     settings: AtlasSettings,
     *,
@@ -841,20 +1199,31 @@ def run_historical_option_reference_v2_acquisition(
     partitions = reference_partitions()
     persistence_lock = threading.Lock()
 
-    reused: list[dict[str, object]] = []
-    pending: list[ReferencePartition] = []
+    reused_v2: list[dict[str, object]] = []
+    rebuild_from_v1: list[tuple[ReferencePartition, dict[str, object]]] = []
+    provider_pending: list[ReferencePartition] = []
     for partition in partitions:
         receipt = _verified_existing_receipt(settings, partition)
-        if receipt is None:
-            pending.append(partition)
+        if receipt is not None:
+            reused_v2.append(receipt)
+            continue
+        v1_receipt = _verified_v1_raw_receipt(settings, partition)
+        if v1_receipt is not None:
+            rebuild_from_v1.append((partition, v1_receipt))
         else:
-            reused.append(receipt)
+            provider_pending.append(partition)
 
     print(
         "historical option reference v2: "
         f"{len(partitions)} monthly partitions / "
-        f"{len(reused)} verified reusable / "
-        f"{len(pending)} pending / workers={workers}",
+        f"{len(reused_v2)} verified V2 reusable / "
+        f"{len(rebuild_from_v1)} verified V1 raw reusable / "
+        f"{len(provider_pending)} provider pending / workers={workers}",
+        flush=True,
+    )
+    print(
+        "  bounded scheduling: at most "
+        f"{workers} partitions in flight; no all-corpus prequeue",
         flush=True,
     )
     print(
@@ -864,37 +1233,82 @@ def run_historical_option_reference_v2_acquisition(
         flush=True,
     )
 
-    completed: list[dict[str, object]] = list(reused)
-    if pending:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures = {
-                pool.submit(
-                    _acquire_partition,
-                    settings,
-                    partition,
-                    api_key=api_key,
-                    persistence_lock=persistence_lock,
-                ): partition
-                for partition in pending
-            }
-            done = 0
-            for future in as_completed(futures):
-                partition = futures[future]
-                receipt = future.result()
-                completed.append(receipt)
-                done += 1
-                storage = inspect_research_storage(settings)
-                print(
-                    f"  {done}/{len(pending)} acquired {partition.key}: "
-                    f"{int(receipt['normalized_unique_contracts']):,} contracts / "
-                    f"{int(receipt['duplicate_version_rows']):,} version rows / "
-                    f"{int(receipt['tickers_with_multiple_versions']):,} multi-version tickers / "
-                    f"{int(receipt['page_count']):,} pages / "
-                    f"reference="
-                    f"{storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
-                    f"free={storage.disk_free_gib:.2f} GiB",
-                    flush=True,
-                )
+    completed: list[dict[str, object]] = list(reused_v2)
+
+    if rebuild_from_v1:
+        def rebuild_task(
+            item: tuple[ReferencePartition, dict[str, object]],
+        ) -> dict[str, object]:
+            partition, v1_receipt = item
+            return _rebuild_partition_from_v1_raw(
+                settings,
+                partition,
+                v1_receipt=v1_receipt,
+                persistence_lock=persistence_lock,
+            )
+
+        def rebuild_progress(
+            item: tuple[ReferencePartition, dict[str, object]],
+            receipt: dict[str, object],
+            done: int,
+        ) -> None:
+            partition, _v1_receipt = item
+            storage = inspect_research_storage(settings)
+            print(
+                f"  {done}/{len(rebuild_from_v1)} rebuilt {partition.key} "
+                "from verified V1 raw: "
+                f"{int(receipt['normalized_unique_contracts']):,} contracts / "
+                f"reference="
+                f"{storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
+                f"free={storage.disk_free_gib:.2f} GiB",
+                flush=True,
+            )
+
+        completed.extend(
+            _run_bounded(
+                rebuild_from_v1,
+                workers=workers,
+                task=rebuild_task,
+                on_complete=rebuild_progress,
+            )
+        )
+
+    if provider_pending:
+        def provider_task(partition: ReferencePartition) -> dict[str, object]:
+            return _acquire_partition(
+                settings,
+                partition,
+                api_key=api_key,
+                persistence_lock=persistence_lock,
+            )
+
+        def provider_progress(
+            partition: ReferencePartition,
+            receipt: dict[str, object],
+            done: int,
+        ) -> None:
+            storage = inspect_research_storage(settings)
+            print(
+                f"  {done}/{len(provider_pending)} acquired {partition.key}: "
+                f"{int(receipt['normalized_unique_contracts']):,} contracts / "
+                f"{int(receipt['duplicate_version_rows']):,} version rows / "
+                f"{int(receipt['tickers_with_multiple_versions']):,} "
+                "multi-version tickers / "
+                f"{int(receipt['page_count']):,} pages / "
+                f"reference="
+                f"{storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
+                f"free={storage.disk_free_gib:.2f} GiB",
+                flush=True,
+            )
+
+        completed.extend(
+            _run_bounded(
+                provider_pending,
+                workers=workers,
+                task=provider_task,
+                on_complete=provider_progress,
+            )
+        )
 
     completed.sort(key=lambda item: str(item["partition"]))
     total_raw_records = sum(
@@ -932,8 +1346,12 @@ def run_historical_option_reference_v2_acquisition(
         "active_hard_end_exclusive": ACTIVE_HARD_END_EXCLUSIVE.isoformat(),
         "boundary_probe": boundary,
         "monthly_partitions": len(completed),
-        "reused_verified_partitions": len(reused),
-        "acquired_partitions_this_run": len(pending),
+        "reused_verified_partitions": len(reused_v2),
+        "rebuilt_from_verified_v1_raw_this_run": len(rebuild_from_v1),
+        "provider_acquired_partitions_this_run": len(provider_pending),
+        "acquired_partitions_this_run": (
+            len(rebuild_from_v1) + len(provider_pending)
+        ),
         "raw_provider_records": total_raw_records,
         "normalized_unique_contracts": total_normalized,
         "duplicate_version_rows": sum(
@@ -952,6 +1370,10 @@ def run_historical_option_reference_v2_acquisition(
             bool(item["raw_version_reconciliation"]) for item in completed
         ),
         "correction_selection_policy": CORRECTION_SELECTION_POLICY,
+        "raw_reused_from_v1_partitions": sum(
+            1 for item in completed if bool(item.get("raw_reused_from_v1"))
+        ),
+        "bounded_in_flight_partitions": workers,
         "raw_bytes": total_raw_bytes,
         "normalized_bytes": total_normalized_bytes,
         "source_role": SOURCE_ROLE,

@@ -251,6 +251,17 @@ closed. Receipts reconcile
 `raw_provider_records = normalized_unique_contracts + duplicate_version_rows`
 and bind correction/version statistics and file hashes.
 
+The retry path now explicitly salvages verified V1 source work. A V1 partition is
+eligible for local V2 rebuild only when the COMPLETE V1 receipt and receipt
+fingerprint verify, its frozen query bounds/state/page limit match V2, its V1
+duplicate count is zero and the original raw gzip still matches its SHA-256. The V2
+receipt then binds that V1 raw receipt/hash as immutable source lineage and writes a
+new V2 normalized Parquet without copying the raw file. Remaining partitions use
+provider acquisition. Concurrency is bounded to at most the configured worker count
+in flight; the coordinator submits replacement work only after a successful
+completion, so one future source failure cannot leave the rest of the 212-partition
+queue running silently.
+
 After V2 source acquisition completes and is independently closed for
 raw/version/normalized/hash/cardinality integrity, the next bulk market-data package
 is broad option daily history; candidate minute/quote/trade cache acquisition remains

@@ -232,6 +232,16 @@ observed correction rank, version count and exact-duplicate count is carried int
 normalized lineage and partition receipts. The original 212-partition/date/storage/
 authority boundaries are unchanged.
 
+V2 also treats the failed V1 run as reusable source lineage rather than wasted I/O.
+Any V1 partition is reused only when its COMPLETE receipt, V1 contract fingerprint,
+receipt fingerprint, query bounds, zero-duplicate V1 condition and raw SHA-256 all
+verify exactly. V2 then rebuilds only the normalized Parquet/lineage layer while
+referencing the original immutable V1 raw gzip, so the raw source is neither
+redownloaded nor duplicated on disk. Partitions without verified V1 raw are acquired
+from Massive normally. Work submission is bounded to the configured worker count
+instead of pre-queuing all 212 partitions; after any failure no new partitions are
+launched and only already-running workers are allowed to finish.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
