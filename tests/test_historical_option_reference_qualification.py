@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
+import urllib.error
 
 import pytest
 
@@ -222,3 +224,39 @@ def test_dimensions_keep_reference_role_pit_limited() -> None:
     assert by_name["POINT_IN_TIME_AVAILABILITY"]["status"] == "LIMITATION"
     assert by_name["ENTITLEMENT_AND_COVERAGE_BOUNDARIES"]["status"] == "PASS"
     assert by_name["PAGINATION_COMPLETENESS"]["status"] == "PASS"
+
+
+def test_request_json_can_return_explicitly_accepted_http_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path)
+    payload = (
+        b'{"status":"NOT_FOUND","request_id":"rid-404",'
+        b'"message":"Option Ticker not found."}'
+    )
+
+    def fake_urlopen(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            404,
+            "Not Found",
+            {},
+            BytesIO(payload),
+        )
+
+    monkeypatch.setattr(module.urllib.request, "urlopen", fake_urlopen)
+
+    status, response = module._request_json(
+        settings,
+        url="https://api.massive.com/v3/reference/options/contracts/O%3ATEST",
+        api_key="token",
+        accepted_http_statuses=frozenset({404}),
+    )
+
+    assert status == 404
+    assert response == {
+        "status": "NOT_FOUND",
+        "request_id": "rid-404",
+        "message": "Option Ticker not found.",
+    }

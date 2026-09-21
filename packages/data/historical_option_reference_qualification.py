@@ -201,6 +201,7 @@ def _request_json(
     *,
     url: str,
     api_key: str,
+    accepted_http_statuses: frozenset[int] = frozenset(),
 ) -> tuple[int, dict[str, Any]]:
     cfg = settings.massive.reference
     delay = float(cfg.initial_retry_seconds)
@@ -227,11 +228,27 @@ def _request_json(
                     )
                 return int(response.status), payload
         except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            if int(exc.code) in accepted_http_statuses:
+                try:
+                    payload = json.loads(body)
+                except json.JSONDecodeError as parse_exc:
+                    raise HistoricalOptionReferenceQualificationError(
+                        "Massive option-reference accepted HTTP error response "
+                        "was not valid JSON"
+                    ) from parse_exc
+                if not isinstance(payload, dict):
+                    raise HistoricalOptionReferenceQualificationError(
+                        "Massive option-reference accepted HTTP error response "
+                        "root is not an object"
+                    )
+                return int(exc.code), payload
+
             retryable = exc.code == 429 or 500 <= exc.code <= 599
             if not retryable or attempt >= int(cfg.max_attempts):
-                body = exc.read().decode("utf-8", errors="replace")[:500]
                 raise HistoricalOptionReferenceQualificationError(
-                    f"Massive option-reference request failed HTTP {exc.code}: {body}"
+                    "Massive option-reference request failed HTTP "
+                    f"{exc.code}: {body[:500]}"
                 ) from exc
             retry_after = exc.headers.get("Retry-After")
             try:

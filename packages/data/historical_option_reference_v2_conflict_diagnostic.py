@@ -299,20 +299,49 @@ def _request_overview_twice(
     url = _overview_url(settings, as_of=as_of)
     attempts: list[dict[str, object]] = []
     for _ in range(2):
-        status, payload = _request_json(settings, url=url, api_key=api_key)
-        row = _extract_overview_result(payload)
+        status, payload = _request_json(
+            settings,
+            url=url,
+            api_key=api_key,
+            accepted_http_statuses=frozenset({404}),
+        )
+        not_found = status == 404
+        if not_found and (
+            str(payload.get("status") or "") != "NOT_FOUND"
+            or str(payload.get("message") or "") != "Option Ticker not found."
+        ):
+            raise HistoricalOptionReferenceConflictDiagnosticError(
+                "contract-overview HTTP 404 did not match the frozen "
+                "provider NOT_FOUND semantics"
+            )
+        row = None if not_found else _extract_overview_result(payload)
+        response_fingerprint = stable_fingerprint(
+            {
+                "http_status": status,
+                "provider_status": str(payload.get("status") or ""),
+                "provider_message": str(payload.get("message") or ""),
+                "row_hash": None if row is None else _row_hash(row),
+            }
+        )
         attempts.append(
             {
                 "http_status": status,
                 "request_id": str(payload.get("request_id") or ""),
                 "safe_url": _safe_url(url),
+                "provider_status": str(payload.get("status") or ""),
+                "provider_message": str(payload.get("message") or ""),
+                "not_found": not_found,
                 "row_present": row is not None,
                 "row_hash": None if row is None else _row_hash(row),
                 "row": row,
+                "response_fingerprint": response_fingerprint,
             }
         )
     return {
-        "stable": attempts[0]["row_hash"] == attempts[1]["row_hash"],
+        "stable": (
+            attempts[0]["response_fingerprint"]
+            == attempts[1]["response_fingerprint"]
+        ),
         "attempts": attempts,
     }
 
@@ -393,6 +422,12 @@ def run_historical_option_reference_v2_conflict_diagnostic(
                 historical_overview,
             )
         ),
+        "current_overview_not_found": bool(
+            current_overview["attempts"][0]["not_found"]  # type: ignore[index]
+        ),
+        "historical_overview_not_found": bool(
+            historical_overview["attempts"][0]["not_found"]  # type: ignore[index]
+        ),
         "current_overview_matches_current_list_row": (
             current_overview_hash in current_list_hashes
             if current_overview_hash is not None
@@ -408,7 +443,9 @@ def run_historical_option_reference_v2_conflict_diagnostic(
             == _row_set_fingerprint(historical_list_rows)
         ),
         "current_vs_historical_overview_hash_equal": (
-            current_overview_hash == historical_overview_hash
+            current_overview_hash is not None
+            and historical_overview_hash is not None
+            and current_overview_hash == historical_overview_hash
         ),
         "diagnostic_only_no_resolution_rule_authorized": True,
     }
