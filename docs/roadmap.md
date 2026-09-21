@@ -280,6 +280,19 @@ specific ticker at current and pre-expiration historical `as_of` dates, preservi
 returned rows/hashes and field differences. Only that evidence may justify a later
 successor rule; the diagnostic itself grants no acquisition or strategy authority.
 
+The first target-workstation execution of that diagnostic completed both repeated
+structural-list request sets, then the first current Contract Overview request returned
+HTTP 404 with provider status `NOT_FOUND` and message `Option Ticker not found.`.
+The original harness treated every non-retryable HTTP error as fatal, so no completed
+diagnostic evidence fingerprint was produced. That is an implementation defect, not a
+source-resolution result: Contract Overview absence is itself one of the frozen
+diagnostic outcomes. The repaired implementation preserves that exact provider 404 as
+explicit row-absence evidence, requires repeated overview responses to be semantically
+stable, and still fails closed on any other 404 payload. It also prevents two absent
+overview rows from being misreported as equal canonical hashes. The frozen diagnostic
+contract/request set and fingerprint are unchanged; a clean workstation rerun is
+required before any successor conflict-resolution rule may be frozen.
+
 After V2 source acquisition completes and is independently closed for
 raw/version/normalized/hash/cardinality integrity, the next bulk market-data package
 is broad option daily history; candidate minute/quote/trade cache acquisition remains
