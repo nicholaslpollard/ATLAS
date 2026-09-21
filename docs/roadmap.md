@@ -1725,27 +1725,35 @@ Every closeout reports:
 - negative results and unresolved risks;
 - next highest-value coherent package.
 
-## 21. Current active continuation — Historical Option Reference V3 acquisition
+## 21. Current active continuation — V3 underlying-identity conflict diagnostic
 
-The repository-wide active source package is Historical Option Reference V3, frozen
-from completed V2 conflict-diagnostic evidence. Earlier successor-DEVELOPMENT work is
-retained historical/parallel Track-B context rather than the current source gate.
+Historical Option Reference V3 remains incomplete. The first target-workstation V3
+attempt passed the 2032 hard boundary and the mandatory AAL resolver probe, rebuilt
+all 63 verified V2 raw partitions locally, and then failed closed on
+`O:ACHI140621C00001000` in `expired-2014-06` because same-ticker unversioned
+payloads differed in `underlying_ticker`. That field is outside V3's frozen
+`primary_exchange`-only fallback.
 
-1. Accept the V3 implementation and frozen contract fingerprint
-   `7a9dab85c57bbc6cd93dee2472a9244d86e8c1776f986cd97036b9963bc4c48e`.
+1. Do not rerun V3 bulk acquisition and do not broaden the V3 resolver.
 2. On accepted `main`, run only
-   `.\.venv\Scripts\python.exe scripts\run_historical_option_reference_v3.py --authorize-source-acquisition --workers 5`
-   on the target workstation. The known AAL conflict probe runs before bulk acquisition
-   and must PASS or the command fails before the provider queue starts.
-3. V3 may reuse verified V3 receipts and verified V2/V1 raw lineage, re-normalizing
-   locally under V3 without duplicating raw source bytes. Provider work remains bounded
-   to at most the configured worker count.
-4. Any conflict outside the frozen expired/unversioned/primary-exchange-only class, any
-   unstable historical overview, or any overview that does not exactly match a current
-   conflicting raw payload fails closed. Do not add another fallback during the run.
-5. After all 212 partitions complete, independently close raw/version/normalized/hash/
-   cardinality and resolution-lineage integrity before broad option daily acquisition.
-6. Historical availability, dynamic deliverables, price authority, predictor access,
+   `.\.venv\Scripts\python.exe scripts\diagnose_historical_option_reference_v3_underlying_conflict.py`
+   on the target workstation.
+3. The diagnostic contract fingerprint is
+   `aaf0a8e52fdd56521fe000dc1ead04059115d2639b18eb29fad03b8fe76eaec1`.
+   It performs repeated current and pre-expiration option structural-list and exact
+   Contract Overview requests without filtering by underlying ticker, then performs
+   supplemental point-in-time stock-reference lookups for every discovered underlying
+   symbol. Stocks-plan 403/404 responses are recorded as limitations rather than
+   converted into option-source conclusions.
+4. Preserve the emitted evidence fingerprint and exact underlying identities. Any
+   V4/successor rule must be separately frozen from this evidence; the diagnostic
+   itself authorizes no conflict resolution or acquisition.
+5. Verified V3/V2/V1 receipts and raw lineage remain reusable. A later successor run
+   must re-inventory them before provider acquisition; do not redownload verified raw.
+6. After option-reference acquisition eventually completes, independently close raw/
+   version/normalized/hash/cardinality and conflict-resolution lineage before broad
+   option daily acquisition.
+7. Historical availability, dynamic deliverables, price authority, predictor access,
    strategy promotion, confluence, PAPER and LIVE remain false. Track A may continue
    independently under its own gates.
 
