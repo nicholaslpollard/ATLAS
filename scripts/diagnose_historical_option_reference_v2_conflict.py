@@ -42,8 +42,8 @@ def main() -> int:
 
     report = run_historical_option_reference_v2_conflict_diagnostic(settings)
 
-    current_list = dict(report["current_exact_list"])
-    historical_list = dict(report["historical_exact_list"])
+    current_list = dict(report["current_structural_list"])
+    historical_list = dict(report["historical_structural_list"])
     current_overview = dict(report["current_contract_overview"])
     historical_overview = dict(report["historical_contract_overview"])
     interpretation = dict(report["interpretation"])
@@ -57,12 +57,14 @@ def main() -> int:
     print(f"  evidence fingerprint: {report['evidence_fingerprint']}")
     print(
         "  current exact-list: "
-        f"rows={int(current_first.get('row_count', 0))} "
+        f"target_rows={int(current_first.get('target_row_count', 0))} "
+        f"candidates={int(current_first.get('candidate_row_count', 0))} "
         f"stable={current_list.get('stable')}"
     )
     print(
         "  historical exact-list: "
-        f"rows={int(historical_first.get('row_count', 0))} "
+        f"target_rows={int(historical_first.get('target_row_count', 0))} "
+        f"candidates={int(historical_first.get('candidate_row_count', 0))} "
         f"stable={historical_list.get('stable')}"
     )
     print(
