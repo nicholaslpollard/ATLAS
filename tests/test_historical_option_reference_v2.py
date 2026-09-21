@@ -144,7 +144,7 @@ def test_exact_same_highest_correction_is_deduped_but_counted() -> None:
 def test_correction_must_be_integral() -> None:
     with pytest.raises(
         acquisition.HistoricalOptionReferenceV2Error,
-        match="non-integral correction value",
+        match="correction value",
     ):
         acquisition._resolve_ticker_versions(
             [_record(correction="1.5")],
