@@ -262,6 +262,19 @@ one of the list rows. The diagnostic has no bulk-acquisition, source-mutation,
 predictor, strategy, PAPER or LIVE authority and authorizes no conflict-resolution
 rule by itself.
 
+The first target-workstation execution of that diagnostic completed both repeated
+structural-list request sets, then the first current Contract Overview request returned
+HTTP 404 with provider status `NOT_FOUND` and message `Option Ticker not found.`.
+The original harness treated every non-retryable HTTP error as fatal, so no completed
+diagnostic evidence fingerprint was produced. That is an implementation defect, not a
+source-resolution result: Contract Overview absence is itself one of the frozen
+diagnostic outcomes. The repaired implementation preserves that exact provider 404 as
+explicit row-absence evidence, requires repeated overview responses to be semantically
+stable, and still fails closed on any other 404 payload. It also prevents two absent
+overview rows from being misreported as equal canonical hashes. The frozen diagnostic
+contract/request set and fingerprint are unchanged; a clean workstation rerun is
+required before any successor conflict-resolution rule may be frozen.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
