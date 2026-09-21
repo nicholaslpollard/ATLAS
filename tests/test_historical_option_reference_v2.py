@@ -264,10 +264,16 @@ def test_verified_v1_raw_receipt_requires_exact_receipt_and_raw_hash(
 
 def test_v2_rebuilds_normalized_data_from_verified_v1_raw_without_copying_raw(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings, v1_receipt = _write_verified_v1_raw(
         tmp_path,
         rows=[_record()],
+    )
+    monkeypatch.setattr(
+        acquisition,
+        "assert_category_acquisition_allowed",
+        lambda *_args, **_kwargs: None,
     )
 
     receipt = acquisition._rebuild_partition_from_v1_raw(
