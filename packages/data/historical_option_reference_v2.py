@@ -244,19 +244,24 @@ def _correction_rank(item: dict[str, Any]) -> int:
             f"invalid boolean correction value: {value!r}"
         )
     try:
-        numeric = int(value)
-    except (TypeError, ValueError) as exc:
+        decimal_value = Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError) as exc:
         raise HistoricalOptionReferenceV2Error(
             f"invalid correction value: {value!r}"
         ) from exc
-    if str(numeric) != str(value).strip():
-        try:
-            if Decimal(str(value)) != Decimal(numeric):
-                raise ValueError
-        except (InvalidOperation, ValueError) as exc:
-            raise HistoricalOptionReferenceV2Error(
-                f"non-integral correction value: {value!r}"
-            ) from exc
+    if not decimal_value.is_finite():
+        raise HistoricalOptionReferenceV2Error(
+            f"invalid correction value: {value!r}"
+        )
+    if decimal_value != decimal_value.to_integral_value():
+        raise HistoricalOptionReferenceV2Error(
+            f"non-integral correction value: {value!r}"
+        )
+    numeric = int(decimal_value)
+    if numeric < 0:
+        raise HistoricalOptionReferenceV2Error(
+            f"negative correction value: {value!r}"
+        )
     return numeric
 
 
