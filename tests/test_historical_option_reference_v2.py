@@ -245,8 +245,14 @@ def test_verified_v1_receipt_can_be_reused_only_while_hashes_match(
 
 def test_verified_v1_raw_is_locally_renormalized_into_v2(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings, receipt = _write_verified_v1_artifacts(tmp_path)
+    monkeypatch.setattr(
+        acquisition,
+        "assert_category_acquisition_allowed",
+        lambda *_args, **_kwargs: None,
+    )
 
     imported = acquisition._import_verified_v1_partition(
         settings,
