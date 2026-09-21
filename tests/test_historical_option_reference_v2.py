@@ -152,6 +152,17 @@ def test_correction_must_be_integral() -> None:
         )
 
 
+def test_negative_correction_fails_closed() -> None:
+    with pytest.raises(
+        acquisition.HistoricalOptionReferenceV2Error,
+        match="negative correction value",
+    ):
+        acquisition._resolve_ticker_versions(
+            [_record(correction=-1)],
+            partition=PARTITION,
+        )
+
+
 def test_documented_rare_other_contract_type_is_structurally_allowed() -> None:
     item = _record()
     item["contract_type"] = "other"
