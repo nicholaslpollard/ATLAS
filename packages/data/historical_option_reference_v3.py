@@ -22,9 +22,9 @@ from packages.core.settings import AtlasSettings
 from packages.data.historical_option_reference_v1_contract import (
     HISTORICAL_OPTION_REFERENCE_V1_CONTRACT_FINGERPRINT,
 )
-import packages.data.historical_option_reference_v3 as v2_parent
-from packages.data.historical_option_reference_v3_contract import (
-    HISTORICAL_OPTION_REFERENCE_V3_CONTRACT_FINGERPRINT,
+import packages.data.historical_option_reference_v2 as v2_parent
+from packages.data.historical_option_reference_v2_contract import (
+    HISTORICAL_OPTION_REFERENCE_V2_CONTRACT_FINGERPRINT,
 )
 from packages.data.historical_option_reference_v3_contract import (
     ACTIVE_HARD_END_EXCLUSIVE,
