@@ -1641,7 +1641,7 @@ def _rebuild_partition_from_parent_raw(
         }
         if receipt["raw_sha256"] != parent_receipt.get("raw_sha256"):
             raise HistoricalOptionReferenceV4Error(
-                f"{partition.key}: parent raw hash changed during local V3 rebuild"
+                f"{partition.key}: parent raw hash changed during local V4 rebuild"
             )
         receipt["receipt_fingerprint"] = _stable_hash(receipt)
         _atomic_write_json(paths["receipt"], receipt)
