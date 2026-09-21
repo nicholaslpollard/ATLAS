@@ -232,6 +232,16 @@ observed correction rank, version count and exact-duplicate count is carried int
 normalized lineage and partition receipts. The original 212-partition/date/storage/
 authority boundaries are unchanged.
 
+The V2 runtime also reuses prior work safely. Any V1 partition with a COMPLETE
+receipt, exact V1 contract fingerprint and matching raw/normalized SHA-256 values is
+classified as importable. Its existing immutable V1 raw gzip is retained in place
+and re-normalized locally under V2 correction-lineage rules; V2 does not re-download
+that partition or duplicate its raw bytes. The resulting V2 receipt binds the parent
+V1 receipt fingerprint and the shared raw hash. Only partitions without a verified
+V2 or importable V1 receipt call Massive. Parallel batches now cancel queued futures
+on the first exception, preventing the V1 fail-late behavior in which submitted work
+could continue after progress reporting had already stopped.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
