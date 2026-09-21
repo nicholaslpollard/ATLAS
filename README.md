@@ -191,6 +191,28 @@ The qualification is read-only and bounded; it does not authorize bulk acquisiti
 or grant historical candidate-availability, dynamic-deliverable, strategy, PAPER or
 LIVE authority.
 
+The target-workstation qualification completed **PASS_WITH_LIMITATIONS** under
+evidence fingerprint
+`120f141089420dcfaf86e1d30203a1517f27815bf1e6b3587976ccb74f4025e3`.
+Identity/cardinality, schema/nullability, historical/recent entitlement, sampled
+pagination and repeat-page integrity all passed. The retained limitations are
+intentional: the source has no first-listed timestamp, may expose later
+correction/deliverable state, and is not market-activity evidence.
+
+Historical Option Reference V1 acquisition is therefore frozen as a structural
+reference corpus only under contract fingerprint
+`95eb5048336e411cb31c912e2cf8569915aedd42fc9e9f0fd0917f3fb3fe3f23`.
+The corpus is anchored to provider `as_of=2026-09-19` and split into **212**
+expiration-month partitions: expired contracts from 2014-06-02 through the replay
+cutoff plus active-at-cutoff contracts through an exclusive 2032-01-01 hard
+boundary. A pre-acquisition boundary probe must prove zero active contracts beyond
+that bound or the run fails closed. Acquisition uses 1,000-row pages, exact
+ticker-identity checks, streaming raw gzip JSONL, normalized ZSTD Parquet,
+raw-to-normalized 1:1 reconciliation, SHA-256 receipts, partition restart/reuse,
+four concurrent workers by default and continuous 4 GiB reference-quota / disk-floor
+enforcement. No acquired reference row gains historical availability, dynamic
+deliverable, price, predictor, strategy, PAPER or LIVE authority.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and

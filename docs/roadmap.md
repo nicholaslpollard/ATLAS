@@ -221,10 +221,32 @@ authority. Reference rows may establish identity/structure, but they do not expo
 first-listed timestamp and may reflect later corrections or deliverable changes.
 Therefore reference alone cannot authorize historical candidate availability,
 historical dynamic deliverables or historical market prices. Those authorities must
-come from separately accepted point-in-time/observed market-data evidence. After the
-qualification is accepted, ATLAS may freeze the actual option-reference acquisition
-contract, followed by broad option daily history; candidate minute/quote/trade cache
-acquisition remains selective.
+come from separately accepted point-in-time/observed market-data evidence.
+
+The target-workstation qualification returned **PASS_WITH_LIMITATIONS** under
+evidence fingerprint
+`120f141089420dcfaf86e1d30203a1517f27815bf1e6b3587976ccb74f4025e3`.
+All acquisition-critical dimensions passed: identity/cardinality,
+schema/nullability, historical and recent entitlement, sampled pagination and
+repeat-page stability. The chronology/PIT/deliverable limitations remain active.
+
+Historical Option Reference V1 acquisition is now preregistered under fingerprint
+`95eb5048336e411cb31c912e2cf8569915aedd42fc9e9f0fd0917f3fb3fe3f23`.
+It uses a fixed reference `as_of=2026-09-19`, **212** expiration-month partitions,
+1,000-row pages and a zero-result active-contract hard-boundary probe at
+2032-01-01. Expired reference coverage starts 2014-06-02; active-at-cutoff reference
+coverage begins after the replay cutoff. The implementation streams provider records
+to deterministic gzip JSONL and normalized ZSTD Parquet, fails on duplicate ticker
+identity or filter escape, hashes every final file, writes exact COMPLETE receipts,
+reuses only hash-verified matching partitions and applies the existing 4 GiB
+option-reference quota plus 50 GiB free-space floor at persistence time. Four
+workers are the default so network pagination and local conversion overlap without
+turning one giant corpus into a single restart unit.
+
+After this source acquisition completes and is independently closed for
+raw/normalized/hash/cardinality integrity, the next bulk market-data package is
+broad option daily history; candidate minute/quote/trade cache acquisition remains
+selective.
 
 ### News/options historical-data foundation — 2026-09-20
 
