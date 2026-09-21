@@ -274,8 +274,8 @@ weaken duplicate handling after seeing the data. V2 remains incomplete.
 Before any V3/successor acquisition rule is frozen, run the bounded
 `atlas-historical-option-reference-v2-unversioned-conflict-diagnostic-v1`
 contract, fingerprint
-`b67ed3cde545627b851199db4d30bfac31050960400c4b11a051c8c1fb8cf716`.
-It compares repeated exact-list and single-contract-overview responses for the
+`f544bb78cb6d61cbd69aa5fd266ee20349b3a977b39cb85e79a0a6a5ec0f9678`.
+It compares repeated supported structural-list and single-contract-overview responses for the
 specific ticker at current and pre-expiration historical `as_of` dates, preserving
 returned rows/hashes and field differences. Only that evidence may justify a later
 successor rule; the diagnostic itself grants no acquisition or strategy authority.
