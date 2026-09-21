@@ -242,3 +242,20 @@ def test_known_conflict_probe_must_resolve_before_bulk(
     assert result["diagnostic_evidence_fingerprint"] == (
         CONFLICT_DIAGNOSTIC_EVIDENCE_FINGERPRINT
     )
+
+
+def test_v3_never_merges_adjusted_series_into_standard_ticker() -> None:
+    standard = _row(exchange="BATO")
+    adjusted = {
+        **standard,
+        "ticker": "O:AAL2140621C00020000",
+    }
+
+    with pytest.raises(
+        acquisition.HistoricalOptionReferenceV3Error,
+        match="mixed ticker identities",
+    ):
+        acquisition._resolve_ticker_versions(
+            [standard, adjusted],
+            partition=PARTITION,
+        )
