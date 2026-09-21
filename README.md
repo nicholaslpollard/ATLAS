@@ -242,6 +242,26 @@ from Massive normally. Work submission is bounded to the configured worker count
 instead of pre-queuing all 212 partitions; after any failure no new partitions are
 launched and only already-running workers are allowed to finish.
 
+The first V2 target-workstation retry used five workers. It found **63** verified V1
+raw partitions, rebuilt all 63 locally into V2 structural reference, and left **149**
+partitions requiring provider acquisition. The 2032 active hard-boundary probe again
+passed. After the local rebuild phase, V2 failed closed in the first historical
+provider month, `expired-2014-06`, because ticker
+`O:AAL140621C00020000` had conflicting provider payloads with the same highest
+correction rank of `-1` (no explicit correction on either selected version).
+Reference usage remained only about **0.136 GiB** with about **116.48 GiB** free.
+No V2 completion claim is made and the same-correction conflict rule is not relaxed.
+
+A targeted read-only successor diagnostic is frozen under fingerprint
+`b67ed3cde545627b851199db4d30bfac31050960400c4b11a051c8c1fb8cf716`.
+It makes two repeated exact-ticker list requests and two repeated single-contract
+overview requests at both the frozen current `as_of=2026-09-19` and a
+pre-expiration historical `as_of=2014-06-20`. It records every returned row/hash,
+field-level differences, request stability and whether the overview endpoint matches
+one of the list rows. The diagnostic has no bulk-acquisition, source-mutation,
+predictor, strategy, PAPER or LIVE authority and authorizes no conflict-resolution
+rule by itself.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
