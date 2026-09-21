@@ -251,6 +251,14 @@ closed. Receipts reconcile
 `raw_provider_records = normalized_unique_contracts + duplicate_version_rows`
 and bind correction/version statistics and file hashes.
 
+For efficiency and recovery, V2 first reuses any already-complete V2 receipt, then
+imports any hash-verified COMPLETE V1 partition by re-normalizing its existing raw
+gzip locally under the V2 lineage schema. Imported V1 raw is referenced in place and
+is not downloaded or duplicated. Massive is called only for partitions that have no
+verified reusable source artifact. Parallel import/acquisition batches cancel queued
+futures immediately after the first exception so a fail-closed source anomaly does
+not continue consuming the entire queued workload.
+
 After V2 source acquisition completes and is independently closed for
 raw/version/normalized/hash/cardinality integrity, the next bulk market-data package
 is broad option daily history; candidate minute/quote/trade cache acquisition remains
