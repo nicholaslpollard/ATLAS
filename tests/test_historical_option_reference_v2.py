@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 from datetime import date
+import gzip
+import json
+import threading
+from pathlib import Path
 
 import pytest
 
 import packages.data.historical_option_reference_v2 as acquisition
+from packages.core.settings import load_settings
 from packages.data.historical_option_reference_v2_contract import (
     CORRECTION_SELECTION_POLICY,
     HISTORICAL_OPTION_REFERENCE_V2_CONTRACT_FINGERPRINT,
@@ -163,3 +168,119 @@ def test_documented_rare_other_contract_type_is_structurally_allowed() -> None:
 
     assert normalized["contract_type"] == "other"
     assert discarded == 0
+
+
+def _settings(tmp_path: Path):
+    base = load_settings(Path(__file__).resolve().parents[1])
+    return base.model_copy(update={"project_root": tmp_path.resolve()})
+
+
+def _write_verified_v1_artifacts(
+    tmp_path: Path,
+) -> tuple[object, dict[str, object]]:
+    settings = _settings(tmp_path)
+    paths = acquisition._v1_partition_paths(settings, PARTITION)
+    for path in paths.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+    raw_item = _record()
+    raw_bytes = gzip.compress(
+        (acquisition._stable_json(raw_item) + "\n").encode("utf-8"),
+        compresslevel=6,
+        mtime=0,
+    )
+    paths["raw"].write_bytes(raw_bytes)
+    paths["normalized"].write_bytes(b"verified-v1-normalized-placeholder")
+
+    receipt: dict[str, object] = {
+        "status": "COMPLETE",
+        "contract": "atlas-historical-option-reference-v1",
+        "contract_fingerprint": (
+            "95eb5048336e411cb31c912e2cf8569915aedd42fc9e9f0fd0917f3fb3fe3f23"
+        ),
+        "provider": "massive",
+        "partition": PARTITION.key,
+        "reference_as_of_date": "2026-09-19",
+        "reference_state": PARTITION.state,
+        "expiration_gte": PARTITION.expiration_gte.isoformat(),
+        "expiration_lt": PARTITION.expiration_lt.isoformat(),
+        "expired_query_value": True,
+        "page_limit": 1000,
+        "page_count": 1,
+        "request_id_count": 1,
+        "raw_provider_records": 1,
+        "normalized_unique_contracts": 1,
+        "duplicate_ticker_rows": 0,
+        "raw_path": acquisition._relative(settings, paths["raw"]),
+        "normalized_path": acquisition._relative(settings, paths["normalized"]),
+        "raw_bytes": paths["raw"].stat().st_size,
+        "normalized_bytes": paths["normalized"].stat().st_size,
+        "raw_sha256": acquisition._sha256_file(paths["raw"]),
+        "normalized_sha256": acquisition._sha256_file(paths["normalized"]),
+        "source_role": "REFERENCE_IDENTITY_STRUCTURE_ONLY",
+    }
+    receipt["receipt_fingerprint"] = acquisition._stable_hash(receipt)
+    paths["receipt"].write_text(
+        json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return settings, receipt
+
+
+def test_verified_v1_receipt_can_be_reused_only_while_hashes_match(
+    tmp_path: Path,
+) -> None:
+    settings, receipt = _write_verified_v1_artifacts(tmp_path)
+
+    verified = acquisition._verified_v1_receipt(settings, PARTITION)
+
+    assert verified is not None
+    assert verified["receipt_fingerprint"] == receipt["receipt_fingerprint"]
+
+    paths = acquisition._v1_partition_paths(settings, PARTITION)
+    paths["normalized"].write_bytes(b"corrupted")
+
+    assert acquisition._verified_v1_receipt(settings, PARTITION) is None
+
+
+def test_verified_v1_raw_is_locally_renormalized_into_v2(
+    tmp_path: Path,
+) -> None:
+    settings, receipt = _write_verified_v1_artifacts(tmp_path)
+
+    imported = acquisition._import_verified_v1_partition(
+        settings,
+        PARTITION,
+        v1_receipt=receipt,
+        persistence_lock=threading.Lock(),
+    )
+
+    assert imported["status"] == "COMPLETE"
+    assert imported["imported_from_verified_v1"] is True
+    assert imported["v1_receipt_fingerprint"] == receipt["receipt_fingerprint"]
+    assert imported["raw_provider_records"] == 1
+    assert imported["normalized_unique_contracts"] == 1
+    assert imported["duplicate_version_rows"] == 0
+    assert imported["raw_version_reconciliation"] is True
+
+    v1_paths = acquisition._v1_partition_paths(settings, PARTITION)
+    v2_paths = acquisition._partition_paths(settings, PARTITION)
+    assert imported["raw_path"] == acquisition._relative(settings, v1_paths["raw"])
+    assert not v2_paths["raw"].exists()
+    assert v2_paths["normalized"].is_file()
+    assert v2_paths["receipt"].is_file()
+    assert acquisition._verified_existing_receipt(settings, PARTITION) is not None
+
+
+def test_receipt_artifact_path_rejects_project_escape(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+
+    with pytest.raises(
+        acquisition.HistoricalOptionReferenceV2Error,
+        match="escapes project root",
+    ):
+        acquisition._receipt_artifact_path(
+            settings,
+            {"raw_path": "../outside.jsonl.gz"},
+            "raw_path",
+        )
