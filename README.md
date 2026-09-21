@@ -289,6 +289,29 @@ V3 remains structural-reference acquisition only. It does not establish historic
 contract availability, dynamic deliverables, market prices, predictor validity,
 strategy evidence, promotion, PAPER or LIVE authority.
 
+The first V3 target-workstation acquisition attempt used five workers. Its hard-end
+probe passed and the mandatory AAL pre-acquisition resolver probe passed, selecting
+the `BATO` raw payload at historical `as_of=2014-06-20`. The run discovered
+**63 verified V2 raw partitions**, rebuilt all 63 locally under V3, and identified
+**149 provider-pending partitions**. After the local rebuild phase, V3 failed closed
+in `expired-2014-06` on `O:ACHI140621C00001000`: the unversioned same-ticker
+rows differed in `underlying_ticker`, which is outside V3's deliberately frozen
+`primary_exchange`-only resolver. Reference usage was about **0.198 GiB** and
+reported free space about **116.40 GiB** at the end of the reusable rebuild phase.
+No V3 completion claim is made.
+
+Massive's current public documentation confirms that `underlying_ticker` is a
+structural contract field, `as_of` is a point-in-time contract-reference selector,
+`additional_underlyings` carries altered deliverables, adjusted option series can
+coexist without being merged, and stock ticker history is not automatically stitched
+across ticker changes/acquisitions. ATLAS therefore does not broaden V3 after seeing
+the ACHI conflict. A new read-only diagnostic is frozen under fingerprint
+`aaf0a8e52fdd56521fe000dc1ead04059115d2639b18eb29fad03b8fe76eaec1`.
+It omits an underlying filter, repeats current and pre-expiration option list/overview
+requests, records all observed underlying identities, and supplements those results
+with point-in-time stock-reference lookups when the account can provide them. It
+authorizes no source-resolution rule or bulk acquisition.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
