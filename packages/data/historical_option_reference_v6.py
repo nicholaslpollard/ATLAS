@@ -1907,7 +1907,6 @@ def _acquire_partition(
             replace_with_retry(raw_temp, paths["raw"])
             replace_with_retry(parquet_temp, paths["normalized"])
             replace_with_retry(quarantine_temp, paths["quarantine"])
-            replace_with_retry(quarantine_temp, paths["quarantine"])
 
         receipt: dict[str, object] = {
             "status": "COMPLETE",
@@ -2145,6 +2144,7 @@ def _rebuild_partition_from_parent_raw(
                 projected_additional_bytes=projected_additional,
             )
             replace_with_retry(parquet_temp, paths["normalized"])
+            replace_with_retry(quarantine_temp, paths["quarantine"])
 
         raw_path = raw_path
         receipt: dict[str, object] = {
