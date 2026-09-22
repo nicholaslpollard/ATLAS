@@ -4,7 +4,6 @@ import json
 from datetime import date
 from pathlib import Path
 from urllib.error import HTTPError
-from urllib.response import addinfourl
 
 from packages.core.settings import load_settings
 from packages.providers.massive.reference_data import MassiveReferenceProvider
