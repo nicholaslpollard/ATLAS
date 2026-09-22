@@ -391,7 +391,7 @@ after observing the failure.
 A read-only successor diagnostic is frozen as
 `atlas-historical-option-reference-v6-artc-deliverable-cfi-conflict-diagnostic-v1`
 under fingerprint
-`3677394560a04885f063571e07d5ac02db8ab514e4bc28813c459ce62c67c610`.
+`af4cae21c4d8307a37346098449b37ebc04e6e9a5ab25ef4414d5820f71853df`.
 It fully paginates and repeats the current structural view; records exact CFI,
 `additional_underlyings`, correction and row-hash evidence; probes the immediate
 2014-07-19 expiration boundary; and repeats exact Contract Overview to determine
