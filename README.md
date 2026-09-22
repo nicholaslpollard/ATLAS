@@ -179,6 +179,55 @@ provider chronology anomalies and no others. Historical News V1 source integrity
 therefore closed under the conservative V2 PIT policy, while news-derived predictor
 evidence remains unopened.
 
+### Historical source preservation and recovery doctrine — 2026-09-22
+
+News and option-source anomalies are treated as source-semantics/reconstruction
+problems to understand, not as reasons to weaken an acceptance rule until a run
+passes. A failed or quarantined source record remains preserved evidence.
+
+For historical news, option reference and later option market-data layers, ATLAS
+uses the following recovery order:
+
+1. **Preserve first.** Keep immutable raw provider rows, receipts, hashes and prior
+   failed-version evidence. Never delete or rewrite the original source merely
+   because a later interpretation becomes available.
+2. **Diagnose the exact anomaly.** Determine whether the problem is provider
+   correction/versioning, symbol identity, corporate action, adjusted deliverable,
+   timestamp chronology, pagination, entitlement, schema, missing history or another
+   reproducible source behavior.
+3. **Repair narrowly when possible.** If authoritative evidence exists for only a
+   small set of records/partitions, reacquire or supplement only those records and
+   bind the replacement/supplement to explicit provenance and hashes. Do not
+   redownload an entire corpus merely to repair a bounded defect.
+4. **Use corroborating sources when needed.** A second qualified provider, supported
+   historical endpoint, corporate-action/deliverable source or other authoritative
+   evidence may resolve an ambiguity that the original source cannot. The original
+   provider data remains preserved alongside the corroborating evidence.
+5. **Rebuild derived layers freely when justified.** Normalized/reference/derived
+   databases may be regenerated from preserved source lineage under a separately
+   versioned contract when the data model or resolver improves. A rebuild must not
+   silently reinterpret historical raw data without recorded provenance.
+6. **Full reacquisition is permitted for systemic defects.** If evidence shows that
+   an acquisition/source model is broadly inadequate, ATLAS may redownload and
+   rebuild the affected corpus from the same or a better source. Storage/time
+   efficiency is important, but it does not override source correctness.
+7. **Quarantine is reversible authority withholding, not data disposal.** A
+   quarantined record remains retained and auditable. It is excluded only from
+   authoritative normalized/research use until sufficient evidence supports a
+   deterministic resolution. The preferred outcome is eventual evidence-backed
+   recovery whenever feasible.
+
+A later contract may change behavior only after the root cause is documented and the
+successor rule is frozen before reopening the broader run. The old failure remains
+truthful historical evidence. Successor rules must be scoped to the diagnosed source
+class and must not contain a generic tolerance or exception whose purpose is merely
+to make the previously failing corpus pass.
+
+This doctrine applies equally to news chronology/revision issues, historical option
+identity/correction/deliverable conflicts, future quote/trade reconstruction and
+similar source-integrity work. It changes no strategy evidence and grants no
+predictor, PAPER or LIVE authority.
+
 Before the next bulk source acquisition, ATLAS now uses a reusable provider
 source-qualification framework covering identity/cardinality, chronology,
 duplicate/version semantics, pagination, provider metadata versus observed data,
