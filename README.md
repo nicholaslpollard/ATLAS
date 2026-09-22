@@ -448,7 +448,7 @@ quarantine semantics are broadened from the observed result.
 A read-only ARTC source-conflict diagnostic is therefore frozen as
 `atlas-historical-option-reference-v6-artc-deliverable-cfi-conflict-diagnostic-v1`
 under contract fingerprint
-`3677394560a04885f063571e07d5ac02db8ab514e4bc28813c459ce62c67c610`.
+`af4cae21c4d8307a37346098449b37ebc04e6e9a5ab25ef4414d5820f71853df`.
 It fully paginates and repeats the current structural list, records exact
 `additional_underlyings` and `cfi` values, probes the immediate expiration
 boundary, repeats exact Contract Overview, and tests whether any stable historical
