@@ -670,6 +670,120 @@ frozen Phase 7 V1 population, change provider policy, or grant PAPER/LIVE author
 Full evidence is preserved in
 `docs/research/tradier_current_asset_rest_stress_20260922.md`.
 
+### Selected live-data routing and execution-broker migration direction — 2026-09-22
+
+The operator has selected the target current-market-data routing order for future
+runtime implementation:
+
+1. **Tradier — primary discovery/current ingest.** The target uses Tradier's
+   production consolidated current-data surface for broad REST snapshots and later
+   selective streaming after the remaining formal qualification gates pass.
+2. **Alpaca — first fallback.** Under the operator's current no-paid-data-plan
+   assumption, Alpaca remains a useful real-time fallback with its available
+   entitlement even though the free stock feed is narrower than consolidated SIP.
+3. **Webull — second fallback.** Webull remains a capable current-data source when
+   production OpenAPI access and the required account/entitlement state are available.
+4. **No qualified source — fail closed.** ATLAS must publish data unavailable/degraded
+   state and abstain from new entries rather than silently substitute delayed,
+   stale, unqualified or differently entitled data.
+
+This order is a **product-routing decision**, not a claim that all three providers
+currently possess equal accepted runtime authority. The frozen Tradier V1 source
+qualification and later freshness/streaming work must still complete before the
+runtime may promote Tradier to primary. Data-source failover may be automated only
+when the fallback source independently satisfies its frozen entitlement, freshness,
+identity and quality contract. Provider identity must remain explicit in every
+current-data observation.
+
+Execution-broker selection is intentionally independent from market-data routing.
+Using the same company for data and execution earns no preference by itself. The
+current execution candidates, before a common broker-execution qualification, are:
+
+- **Webull — leading execution candidate** because the existing ATLAS adapter and
+  provider-specific safety work are the most mature, the API supplies strong order
+  lifecycle controls and deterministic client-order identifiers, and ordinary
+  stock/equity-option commission economics are attractive.
+- **Alpaca — close execution challenger** because its automation semantics,
+  client-order-id recovery, fractional stock support, paper/live workflow and existing
+  ATLAS adapter are strong.
+- **Tradier — execution challenger** because its trading API and options support are
+  viable, but whole-share equity sizing and the need to prove uncertain-submit /
+  idempotent-reconciliation behavior leave more execution work before selection.
+
+The eventual execution primary must be chosen from common ATLAS evidence covering
+fees, spread/slippage, decision-to-ack/fill latency, partial fills, cancel/replace,
+unknown-submit recovery, order-event consistency, option lifecycle behavior and
+operational reliability. Market-data-provider rank must not influence that score.
+
+The target operator model is **one normal ACTIVE_EXECUTION broker at a time** with
+other qualified brokers allowed to remain connected as standby. ATLAS must never
+automatically fail over order placement to another broker. The front end must expose
+an explicit Trade Management Broker selector backed by a controlled migration
+workflow rather than a raw configuration toggle.
+
+Before activating a target broker, ATLAS must perform read-only preflight and
+reconciliation of credentials/connectivity, account identity, funding/buying power,
+required trading permissions, current positions, current open orders and any
+unresolved provider-mutation state. An unfunded or otherwise unready broker may remain
+connected but cannot become ACTIVE_EXECUTION.
+
+If the current broker is flat and reconciled, an explicitly confirmed switch may
+move new-trade authority to the target broker. If the current broker has positions or
+working orders, the operator must be shown the exposure and choose explicitly among:
+
+- cancel the broker change;
+- close/cancel and reconcile the current broker to flat, then switch; or
+- keep existing exposure at the old broker while moving **new-trade** authority to
+  the target broker.
+
+When existing exposure is retained and the old broker API remains available, the old
+broker enters **MANAGE_EXISTING_ONLY**: ATLAS may monitor, reconcile, amend or exit
+only the already-existing positions/orders there and may not originate new entries.
+The target broker becomes ACTIVE_EXECUTION for new positions. Once the old broker is
+proven flat, it returns to CONNECTED_STANDBY.
+
+If the operator switches because access to the old broker API has been lost while
+exposure may remain, ATLAS must not discard that exposure or pretend it can still
+control it. The broker enters **BROKER_CONTROL_LOST** and the affected positions enter
+a local/shadow-management state. ATLAS must preserve the last verified broker
+quantity, entry, strategy lineage, intended exit policy and last broker-confirmed
+protective SL/TP state; continue valuation and exit analysis from independent
+qualified market data; and continue counting the last verified exposure in portfolio,
+ticker/family and risk limits. Any broker-side SL/TP is recorded only as **last
+confirmed protection**, not asserted to remain active while broker truth is
+unavailable.
+
+For a locally managed/unverified position, ATLAS may continue to tell the operator
+when its accepted exit logic recommends leaving the trade, but it must clearly state
+that it cannot submit or verify the exit at the inaccessible broker. Manual closure
+through the broker's own app/site remains available to the operator. After manual
+action, the position remains closure-pending until later broker reconciliation or an
+explicit, audited manual-resolution workflow establishes the terminal state.
+
+The intended broker/runtime states are therefore distinct:
+
+- `ACTIVE_EXECUTION` — may accept new entries and manage existing exposure;
+- `CONNECTED_STANDBY` — connected/readable but has no new-order authority;
+- `MANAGE_EXISTING_ONLY` — may manage only exposure already held there;
+- `SWITCH_PENDING` — migration/preflight is incomplete;
+- `DEGRADED` — broker connection/reconciliation is incomplete but not fully lost;
+- `BROKER_CONTROL_LOST` — broker-side exposure may exist but current broker truth
+  and mutation authority are unavailable;
+- `NOT_READY` — connection may exist but funding/permissions/other activation
+  requirements are insufficient;
+- `DISCONNECTED` — no usable broker connection.
+
+The corresponding position-management states must distinguish broker-managed exposure
+from locally/shadow-managed unverified exposure, manual-action-required exposure,
+closure-pending verification and reconciled closed positions.
+
+This direction **supersedes the old product assumption that future switching must
+always require both brokers to be flat**, but it does not rewrite the already accepted
+Phase 15/16 flat-only PAPER switch contract or promote LIVE broker switching today.
+The richer migration model requires a separately versioned successor implementation,
+front-end confirmation flow, tests and acceptance evidence before it gains PAPER/LIVE
+authority. Automatic execution-broker failover remains prohibited.
+
 ## 5. Accepted foundation through Phase32
 
 Phases1–25 accepted project/config/session foundations, provider ingestion,
