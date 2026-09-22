@@ -86,6 +86,7 @@ from packages.simulation.recurrent_workstation_acceptance import (
     workstation_acceptance_context_path,
     workstation_acceptance_receipt_path,
     workstation_acceptance_stage_path,
+    workstation_entry_cycle_action_utc,
     workstation_entry_schedule_utc,
     write_acceptance_json,
     write_workstation_acceptance_receipt_v1,
@@ -238,6 +239,10 @@ def _phase_entry(live_root: Path) -> int:
         schedule_id=ENTRY_SCHEDULE_ID,
         scheduled_for_utc=entry_schedule_utc,
     )
+    cycle_action_utc = workstation_entry_cycle_action_utc(
+        scheduled_for_utc=identity.scheduled_for_utc,
+        captured_at_utc=quotes.captured_at_utc,
+    )
     production = RecurrentTimeAwareProductionCycleV1(
         settings=settings,
         runner=RecurrentCycleRunnerV1(
@@ -246,15 +251,15 @@ def _phase_entry(live_root: Path) -> int:
         ),
         identity=identity,
     )
-    production.begin(now_utc=quotes.captured_at_utc)
+    production.begin(now_utc=cycle_action_utc)
     empty_close = _empty_time_aware_close(
         runtime=runtime,
         identity=identity,
-        evaluation_utc=quotes.captured_at_utc,
+        evaluation_utc=cycle_action_utc,
     )
     production.apply_close(
         bundle=empty_close,
-        now_utc=quotes.captured_at_utc,
+        now_utc=cycle_action_utc,
     )
 
     decision = build_workstation_reference_decision_v1(
@@ -272,7 +277,7 @@ def _phase_entry(live_root: Path) -> int:
     write_recurrent_reserve_evidence_bundle_v1(settings, reserve)
     production.apply_reserve(
         bundle=reserve,
-        now_utc=quote.received_at_utc,
+        now_utc=cycle_action_utc,
     )
 
     fee_source_id = "workstation-acceptance-entry-fee-v1"
@@ -311,6 +316,9 @@ def _phase_entry(live_root: Path) -> int:
             ),
             "entry_quote_bundle_captured_at_utc": (
                 quotes.captured_at_utc.isoformat()
+            ),
+            "entry_cycle_action_utc": (
+                cycle_action_utc.isoformat()
             ),
             "entry_cycle_id": identity.cycle_id,
             "entry_cycle_fingerprint": identity.cycle_fingerprint,
