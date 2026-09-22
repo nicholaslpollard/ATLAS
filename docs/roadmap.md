@@ -461,6 +461,67 @@ independently close raw/version/normalized/quarantine/hash/cardinality plus ever
 conflict-resolution and quarantine lineage record before broad option daily history.
 Candidate minute/quote/trade cache acquisition remains selective.
 
+### ARTC diagnostic closeout and Historical Option Reference V7 — 2026-09-22
+
+The target-workstation ARTC diagnostic completed under evidence fingerprint
+`c7c52de6fb807957ecdb0fe5c6c9c2efb65baa739831fe7f25a64a2a5d77b48c`.
+The current `as_of=2026-09-19` view contains two stable, unversioned rows for
+`O:ARTC140719C00025000`, differing exactly in `additional_underlyings` and
+`cfi`: one row carries a **$4,825 USD** cash additional-underlying with CFI
+`OCASCN`, while the other has no additional underlying and CFI `OCASPS`.
+
+The expiration-boundary evidence resolves the historical structural state without
+guessing. On both 2014-07-17 and 2014-07-18 with `expired=false`, repeated
+structural-list requests return exactly one ARTC row; repeated Contract Overview is
+present and stable; list and overview agree exactly; and that payload matches exactly
+one current conflicting row. The selected historical/current payload hash is
+`6f1274868c60e6d23c42c96e4698a08724b3ff1014dd6ecf5b3a992f9794d3d8`,
+the `OCASCN` + $4,825 cash-deliverable row. Beginning at expiration under
+`expired=true`, both current variants appear and exact overview becomes unavailable.
+
+Independent corporate-action evidence corroborates, but does not drive, the runtime
+resolver: ArthroCare's 2014 acquisition converted each common share into **$48.25
+cash**; 100 shares per contract therefore imply exactly **$4,825**. CFI documentation
+also supports the cash/non-standardized versus physical/standardized classification
+difference. The provider-native PIT list/overview evidence remains the resolver
+authority; external sources are retained only as root-cause corroboration.
+
+Historical Option Reference V7 is separately frozen from this evidence. It does
+**not** simply add `additional_underlyings` and `cfi` to V6's generic allowance.
+Its new unversioned cash-deliverable/classification branch requires an expired,
+correction-null conflict differing **exactly** in those two fields; exactly two rows;
+identical underlying/exchange/shares and immutable option economics; exactly one
+positive USD cash additional-underlying row and one no-deliverable row; two distinct
+non-empty CFI values; and stable repeated pre-expiration list + Contract Overview
+evidence whose identical payload matches exactly one current row and itself carries
+the USD cash deliverable. Anything outside that complete class still fails closed.
+
+ARTC becomes a mandatory V7 pre-acquisition probe with the exact expected selected
+row hash, `OCASCN` classification and $4,825 cash deliverable. Known-conflict
+preflight now fully paginates the current structural result because the ARTC target
+was found inside a three-page candidate set. The ACIW quarantine semantics remain
+unchanged; its raw data remains preserved for later evidence-backed recovery.
+
+V7 reuses verified V7 receipts first, then verified V6/V5/V4/V3/V2/V1 raw lineage,
+re-normalizing reusable raw locally without copying it. Only partitions lacking
+verified reusable raw require provider reacquisition. Five bounded workers remain
+the default.
+
+V7 remains structural-reference acquisition only. It creates no historical candidate
+availability, dynamic-deliverable, market-price, predictor, strategy, PAPER or LIVE
+authority. The Strategy Evidence Register remains unchanged. Full evidence and
+preregistration are recorded in
+`docs/research/historical_option_reference_v6_artc_conflict_closeout_v7_20260922.md`.
+
+After V7 is accepted on `main`, the next workstation gate is:
+
+```powershell
+git checkout main; git pull; .\.venv\Scripts\python.exe scripts\run_historical_option_reference_v7.py --authorize-source-acquisition --workers 5
+```
+
+If V7 encounters another new source-semantic class, preserve completed/reusable work
+and stop for another bounded diagnostic rather than widening V7 after the result.
+
 ### News/options historical-data foundation — 2026-09-20
 
 Before integrating catalyst/news and option economics into replay, ATLAS must prove
