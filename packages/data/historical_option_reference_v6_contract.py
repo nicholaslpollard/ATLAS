@@ -19,8 +19,8 @@ from packages.data.historical_option_reference_v2_contract import (
 
 
 HISTORICAL_OPTION_REFERENCE_V6_CONTRACT = "atlas-historical-option-reference-v6"
-PARENT_V4_CONTRACT_FINGERPRINT = (
-    "2ddeb58d5f552ff0edb87a2244f130b813cf49600f5f82b1f50d8e1ee047a57d"
+PARENT_V5_CONTRACT_FINGERPRINT = (
+    "4a9775c90414d8a454654d5f0928d79b68dec785b16b493e197ea34471aef1ea"
 )
 AAL_DIAGNOSTIC_CONTRACT_FINGERPRINT = (
     "f544bb78cb6d61cbd69aa5fd266ee20349b3a977b39cb85e79a0a6a5ec0f9678"
@@ -164,10 +164,10 @@ def acquisition_contract_manifest() -> dict[str, object]:
         "contract": HISTORICAL_OPTION_REFERENCE_V6_CONTRACT,
         "parent_v5_contract_fingerprint": PARENT_V5_CONTRACT_FINGERPRINT,
         "v5_observed_failure": {
-            "partition": "expired-2014-07",
-            "ticker": "O:ACT2140719C00045000",
+            "partition": "expired-2014-08",
+            "ticker": "O:ACIW140816C00040000",
             "failure_class": (
-                "EXPLICIT_SAME_HIGHEST_CORRECTION_ADDITIONAL_UNDERLYINGS_CONFLICT"
+                "UNVERSIONED_PRIMARY_EXCHANGE_CONFLICT_WITH_ZERO_PREEXPIRATION_TARGET_ROWS"
             ),
         },
         "accepted_diagnostics": {
