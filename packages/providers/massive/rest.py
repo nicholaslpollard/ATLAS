@@ -18,24 +18,59 @@ class MassiveRESTClient:
 
     RETRYABLE_HTTP = {408, 425, 429, 500, 502, 503, 504}
 
-    def __init__(self, settings: AtlasSettings, *, opener: Callable[..., Any] | None = None, sleeper: Callable[[float], None] = time.sleep) -> None:
+    def __init__(
+        self,
+        settings: AtlasSettings,
+        *,
+        opener: Callable[..., Any] | None = None,
+        sleeper: Callable[[float], None] = time.sleep,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self.settings = settings
         self.base_url = settings.massive.provider.rest_base_url.rstrip("/") + "/"
         self._base_host = urlsplit(self.base_url).netloc.lower()
         self._api_key = get_secret(settings.massive.credentials.api_key_env)
         self._opener = opener or urlopen
         self._sleep = sleeper
+        self._clock = clock
         cfg = settings.massive.reference
         self.timeout = cfg.request_timeout_seconds
         self.max_attempts = cfg.max_attempts
         self.initial_retry = cfg.initial_retry_seconds
         self.max_retry = cfg.max_retry_seconds
+        self.requests_per_minute = cfg.requests_per_minute
+        self._minimum_request_interval = 60.0 / float(self.requests_per_minute)
+        self._last_request_started: float | None = None
 
     @staticmethod
     def _safe_url(url: str) -> str:
         parts = urlsplit(url)
         query = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k.lower() != "apikey"]
         return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+    @staticmethod
+    def _retry_after_seconds(exc: HTTPError) -> float | None:
+        headers = getattr(exc, "headers", None)
+        if headers is None:
+            return None
+        value = headers.get("Retry-After")
+        if value is None:
+            return None
+        try:
+            seconds = float(str(value).strip())
+        except (TypeError, ValueError):
+            return None
+        return max(0.0, seconds)
+
+    def _pace_request(self) -> None:
+        now = self._clock()
+        if self._last_request_started is not None:
+            elapsed = max(0.0, now - self._last_request_started)
+            remaining = self._minimum_request_interval - elapsed
+            if remaining > 0:
+                self._sleep(remaining)
+                now = self._clock()
+        self._last_request_started = now
 
     def _build_url(self, path_or_url: str, params: Mapping[str, Any] | None = None) -> str:
         if path_or_url.startswith(("http://", "https://")):
@@ -61,7 +96,9 @@ class MassiveRESTClient:
         delay = self.initial_retry
         last_error: Exception | None = None
         for attempt in range(1, self.max_attempts + 1):
+            self._pace_request()
             request = Request(url, method="GET", headers={"Authorization": f"Bearer {self._api_key}", "Accept": "application/json", "User-Agent": "ATLAS/0.1 reference-data"})
+            retry_after: float | None = None
             try:
                 with self._opener(request, timeout=self.timeout) as response:
                     payload = json.loads(response.read().decode("utf-8"))
@@ -73,14 +110,16 @@ class MassiveRESTClient:
                 return payload
             except HTTPError as exc:
                 last_error = exc
+                retry_after = self._retry_after_seconds(exc)
                 if exc.code not in self.RETRYABLE_HTTP or attempt >= self.max_attempts:
                     raise ProviderError(f"Massive REST request failed with HTTP {exc.code}") from exc
             except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
                 last_error = exc
                 if attempt >= self.max_attempts:
                     raise ProviderError(f"Massive REST request failed: {type(exc).__name__}") from exc
-            if delay > 0:
-                self._sleep(delay)
+            sleep_for = max(delay, retry_after or 0.0)
+            if sleep_for > 0:
+                self._sleep(sleep_for)
             delay = min(self.max_retry, max(delay * 2, self.initial_retry))
         raise ProviderError(f"Massive REST request failed after retries: {type(last_error).__name__}")
 
