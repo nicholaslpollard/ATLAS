@@ -164,3 +164,57 @@ The accepted repository sequence remains unchanged:
 
 This source/transport diagnostic does not belong in the Strategy Evidence Register
 because it changes no strategy evidence or research disposition.
+
+
+## Full-universe live quote ingestion benchmark
+
+With the regular session still open on 2026-09-22, a supplemental read-only benchmark
+measured end-to-end REST quote ingestion for the complete surviving Alpaca SIP V2
+current asset population: **13,412 active, tradable US equities**.
+
+The same exact symbol population was requested using four batching strategies:
+
+| Batch size | Requests | Returned unique | Coverage | Total wall time | Provider latency |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,000 | 14 | 12,775 | 95.251% | 7.202 s | avg 0.495 s / max 0.707 s |
+| 2,000 | 7 | 12,775 | 95.251% | 4.470 s | avg 0.633 s / max 0.749 s |
+| 5,000 | 3 | 12,775 | 95.251% | 2.865 s | avg 0.941 s / max 0.979 s |
+| 13,412 | 1 | 12,775 | 95.251% | **2.009 s** | **1.983 s** |
+
+Every strategy returned the exact same **12,775** unique symbols and therefore the
+same **637** missing symbols. This strongly rules out request-size truncation as the
+cause of the observed coverage gap through the tested 13,412-symbol request.
+
+The single-request full-universe result transferred approximately **5.853 MiB** and
+processed:
+
+- 13,412 requested symbols in 2.009 seconds;
+- 6,676 requested symbols/second;
+- 12,775 returned symbols in the same request;
+- 6,359 returned symbols/second.
+
+The observed endpoint therefore accepted the complete 13,412-symbol current-asset
+population in one POST on the target workstation. No POST cardinality ceiling was
+observed at that scale.
+
+### Architectural implication
+
+This result materially supports a two-tier current-market-data design:
+
+1. broad discovery remains driven by the local analytical lake and deterministic
+   research/discovery state;
+2. a **single bounded Tradier REST snapshot** can refresh current prices for the broad
+   current universe in roughly two seconds under the observed production entitlement;
+3. the system can then narrow/rank candidates locally; and
+4. streaming can remain reserved for finalists, pending orders and open positions
+   where sub-second updates matter economically.
+
+This is more efficient than treating full-universe streaming as the primary discovery
+transport, and it preserves stream capacity for high-value symbols.
+
+The benchmark does **not** establish a safe polling cadence. Provider limits,
+acceptable load, freshness requirements and retry/recovery behavior must be frozen
+separately before recurrent broad-universe polling is accepted. It also does not
+change the 95.251% raw symbol-coverage limitation or accept any normalization rule.
+
+The formal Tradier V1 Phase 7 qualification remains a separate frozen gate.
