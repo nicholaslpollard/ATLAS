@@ -38,7 +38,7 @@ diagnostic contract:
 
 Contract fingerprint:
 
-`3677394560a04885f063571e07d5ac02db8ab514e4bc28813c459ce62c67c610`
+`af4cae21c4d8307a37346098449b37ebc04e6e9a5ab25ef4414d5820f71853df`
 
 Target:
 
