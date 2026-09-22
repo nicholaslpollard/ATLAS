@@ -292,3 +292,52 @@ The raw artifact is local research evidence only and is intentionally not commit
 Any post-close normalization/freshness analysis must use the stored capture timestamp
 and provider timestamps from this immutable snapshot rather than analysis wall-clock
 time, so closing-bell delay does not contaminate the measured freshness distribution.
+
+
+## Full-universe normalized snapshot quality
+
+Post-close analysis of the immutable 19:58:44 UTC raw capture produced a normalized
+12,775-row Parquet snapshot (approximately 1.103 MiB).
+
+Observed raw-population quality metrics:
+
+- valid bid/ask geometry: **12,764 / 12,775 (99.91%)**
+- quote freshness <= 5 s: **1,763 (13.80%)**
+- quote freshness <= 15 s: **5,728 (44.84%)**
+- quote freshness <= 30 s: **7,068 (55.33%)**
+- trade freshness <= 5 s: **2,027 (15.87%)**
+- trade freshness <= 30 s: **5,588 (43.74%)**
+- trade freshness <= 60 s: **6,298 (49.30%)**
+- session open/high/low populated: **11,616 (90.93%)**
+- previous close populated: **12,762 (99.90%)**
+- session and average volume populated: **12,775 (100%)**
+- median quote age: **19.567 s**
+- median trade age: **65.738 s**
+- median spread: **18.594 bps**
+
+The broad raw population contains many thin, stale and specialized securities. Examples
+among the stalest/widest rows included warrants, units, preferred-like literals and
+very low-volume securities. Therefore these percentages describe the complete
+Alpaca-active/tradable source population, not the narrower accepted Phase 7
+discovery-eligible population and not an execution-ready candidate set.
+
+A diagnostic normalization defect was also exposed: provider timestamp value `0` was
+converted to an epoch-based age of roughly 1.79 billion seconds rather than being
+classified as missing/unknown. Those extreme maximum-age values must not be interpreted
+as genuine quote staleness. Production normalization must treat non-positive provider
+timestamps as absent and retain an explicit freshness-unknown state.
+
+The quality result reinforces a layered design:
+
+1. row presence != current/actionable data;
+2. current state must preserve independent trade/bid/ask timestamps and freshness;
+3. broad discovery should apply security-type, liquidity, spread and freshness gates
+   before a row becomes current actionable evidence;
+4. stale/illiquid rows remain observable but fail closed;
+5. the same quality analysis must later be repeated on the exact reproduced Phase 7
+   discovery population before any formal coverage/freshness claim is accepted.
+
+The observed 2-second acquisition speed remains valid. This quality analysis narrows
+what that speed means: Tradier can rapidly return a broad current-market snapshot, but
+ATLAS must locally distinguish fresh/liquid/actionable rows from stale or thin
+provider rows before discovery or execution use.
