@@ -13,6 +13,10 @@ This package freezes only the first qualification stage:
 
 `atlas-tradier-production-market-data-source-qualification-v1`
 
+Contract fingerprint:
+
+`3a14be911be351d465ad3a99ab6dc7d47e985fbd17005af0bb6faa9c7613305d`
+
 It is a read-only production market-data diagnostic. It has no account-read, order,
 broker-mutation, PAPER, LIVE, promotion, confluence or current-provider-policy
 authority.
