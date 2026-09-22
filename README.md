@@ -1062,6 +1062,39 @@ frozen Phase 7 V1 population, change provider policy, or grant PAPER/LIVE author
 Full evidence is preserved in
 `docs/research/tradier_current_asset_rest_stress_20260922.md`.
 
+### Tradier REST qualification V1 closeout — 2026-09-22
+
+The exact 2026-08-14 Phase 7 universe was successfully reproduced before rerunning
+the frozen Tradier REST qualification: **36,417** reference rows, **35,226** stable
+instruments, **12,066** discovery-eligible symbols and accepted universe fingerprint
+`98e72372e2a4725b2e90b3f6bf797e085f6ed64e2190454892b5ffa42c240124`.
+
+The production read-only V1 rerun completed all six frozen POST quote stages with no
+terminal provider/request error, no unexpected symbols and no duplicate symbol rows.
+Observed coverage/latency was: 1/1 at 0.317 s; 10/10 at 0.182 s; 98/100 at 0.260 s;
+238/250 at 0.332 s; 477/500 at 0.392 s; and 952/1,000 at 0.439 s. Evidence fingerprint:
+`e78e5bfa26039d6895b2b25ebe377d0242f83a2943fe9854f3f1bd1518310a29`.
+
+The frozen >=98% completeness rule is satisfied through the 100-symbol stage but not
+at 250/500/1,000, so V1 closes exactly as
+`DIAGNOSTIC_COMPLETE_WITH_LIMITATIONS`. The limitation is cross-provider
+symbol/coverage behavior rather than request-cardinality failure. In the 1,000-symbol
+sample, 38/48 misses use the Phase-7 lowercase-`p` preferred/class notation, three
+are dotted classes and seven are otherwise plain literals; no generic ticker rewrite
+is authorized.
+
+V1 therefore accepts the observed REST transport/batch capability as useful evidence
+but creates **no current-data authority**. Streaming, timestamp/freshness,
+provider-symbol resolution and fallback behavior remain separately versioned work.
+The selected future routing target remains Tradier -> Alpaca -> Webull ->
+DATA_UNAVAILABLE/abstain. Full closeout:
+`docs/research/tradier_market_data_source_qualification_v1_closeout_20260922.md`.
+
+With the REST V1 evidence closed, the active historical data-foundation thread returns
+to the already frozen Historical Option Reference V6 ARTC diagnostic; V6 itself must
+not be rerun and no V7 rule may be invented before that diagnostic evidence is
+reviewed.
+
 ### Selected live-data routing and execution-broker migration direction — 2026-09-22
 
 The operator has selected the target current-market-data routing order for future
