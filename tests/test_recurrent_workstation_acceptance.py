@@ -20,6 +20,7 @@ from packages.simulation.recurrent_workstation_acceptance import (
     build_workstation_reference_decision_v1,
     isolated_acceptance_settings,
     read_workstation_acceptance_receipt_v1,
+    workstation_entry_cycle_action_utc,
     workstation_entry_schedule_utc,
     write_workstation_acceptance_receipt_v1,
 )
@@ -111,6 +112,13 @@ def test_entry_schedule_uses_quote_receipt_not_later_bundle_capture() -> None:
     assert reserve.scheduled_for_utc == received
     assert reserve.built_at_utc == received
 
+    cycle_action = workstation_entry_cycle_action_utc(
+        scheduled_for_utc=scheduled,
+        captured_at_utc=captured,
+    )
+    assert cycle_action == captured
+    assert cycle_action >= reserve.built_at_utc
+
 
 def test_entry_schedule_rejects_invalid_quote_chronology() -> None:
     provider = datetime(2026, 9, 22, 13, 34, 43, tzinfo=UTC)
@@ -124,6 +132,20 @@ def test_entry_schedule_rejects_invalid_quote_chronology() -> None:
         workstation_entry_schedule_utc(
             provider_timestamp_utc=provider,
             received_at_utc=received,
+            captured_at_utc=captured,
+        )
+
+
+def test_entry_cycle_action_rejects_timestamp_before_schedule() -> None:
+    scheduled = datetime(2026, 9, 22, 14, 2, 32, 700000, tzinfo=UTC)
+    captured = scheduled - timedelta(milliseconds=1)
+
+    with pytest.raises(
+        RecurrentWorkstationAcceptanceError,
+        match="cycle action cannot precede its scheduled slot",
+    ):
+        workstation_entry_cycle_action_utc(
+            scheduled_for_utc=scheduled,
             captured_at_utc=captured,
         )
 

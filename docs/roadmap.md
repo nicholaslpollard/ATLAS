@@ -3860,14 +3860,19 @@ The operator entry point is:
 
 A successful first workstation run will establish the current recurrent account as a historical portfolio replay surface. The next historical-simulation package is the stricter bar-level campaign that rereads accepted historical bars and lets decision-bound STOP/TARGET/TIME mechanics determine exits directly rather than replaying retained outcomes. The separate PR #161 current-Webull workstation acceptance still requires XNYS regular market hours and remains an operational-runtime gate, not a prerequisite for this historical replay.
 
-The first 2026-09-22 regular-session workstation attempt confirmed successful read-only
-Webull sandbox L1 capture but exposed an acceptance-harness timestamp bug before RESERVE:
-the cycle slot used the later bundle-capture time while RESERVE evidence used the earlier
-quote-receipt time. The production RESERVE chronology invariant remains unchanged. The
-acceptance harness now schedules ENTRY at quote receipt, records receipt/capture timing
-explicitly, and has regression coverage for the observed millisecond ordering. A new
-isolated regular-hours run is still required; the failed run confers no acceptance,
-PAPER or LIVE authority.
+Two 2026-09-22 regular-session workstation attempts confirmed successful read-only
+Webull sandbox L1 capture while exposing two adjacent acceptance-fixture chronology
+defects before RESERVE could complete. The first used a cycle slot later than RESERVE
+evidence construction; the second fixed that schedule but still applied RESERVE at
+quote receipt after creating the cycle at the later bundle-capture time. Both durable
+production invariants correctly failed closed.
+
+The fixture now freezes monotonic ENTRY timing:
+`provider <= receipt = schedule = reserve-build <= bundle-capture = cycle-begin = CLOSE/RESERVE-apply`.
+The production RESERVE and recurrent-cycle contracts remain unchanged. Acceptance
+artifacts record schedule, receipt, capture and cycle-action timestamps, and regression
+coverage protects both chronology boundaries. A fresh isolated regular-hours run is
+still required; neither failed run confers acceptance, PAPER or LIVE authority.
 
 ## Track A / Track B bridge: first workstation recurrent portfolio result — 2026-09-19
 

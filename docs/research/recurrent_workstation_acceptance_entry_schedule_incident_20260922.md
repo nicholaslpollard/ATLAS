@@ -47,26 +47,57 @@ harness consequently scheduled the cycle slightly after the evidence build times
 
 The durable RESERVE invariant was correct and rejected the chronology.
 
-## Repair
+## Second attempt
 
-The production RESERVE evidence contract is unchanged.
+After the first repair was accepted, a second isolated regular-session run was started:
 
-The workstation acceptance harness now derives the ENTRY cycle schedule from the
-**local quote receipt timestamp**, which is the first ATLAS-observable time for the
-accepted quote:
+- run id: `20260922T140229Z`
+- ticker: `SPY`
+- quote bundle fingerprint:
+  `302ab9633eb58504f13f28d67bdc8f3f79c3971afb031b031bd43034bd7995bf`
+- bundle capture timestamp: `2026-09-22T14:02:32.792512+00:00`
 
-`scheduled_for_utc = quote.received_at_utc`
+The quote capture again succeeded with one provider read and no provider/broker
+mutation. The reserve evidence itself now satisfied
+`built_at_utc >= scheduled_for_utc`, but applying RESERVE failed with:
 
-The recurrent cycle still begins at the later bundle capture timestamp. The persisted
-ENTRY acceptance stage records all three relevant times/lineage:
+```
+RecurrentCycleOrchestrationError:
+cycle updated timestamp cannot precede creation
+```
 
-- scheduled cycle timestamp;
-- quote receipt timestamp; and
-- bundle capture timestamp.
+The first repair correctly moved the deterministic cycle schedule to quote receipt.
+However, the harness still created/began the recurrent cycle at the later bundle
+capture timestamp and then applied RESERVE using the earlier quote receipt timestamp.
+The durable recurrent-cycle receipt invariant correctly rejected an update before
+cycle creation.
 
-A regression test reproduces the observed millisecond ordering and proves that a
-RESERVE bundle built exactly at quote receipt satisfies the existing
-`built_at_utc >= scheduled_for_utc` invariant.
+## Final repair
+
+The production RESERVE and recurrent-cycle contracts remain unchanged.
+
+The workstation acceptance harness now freezes the complete ENTRY chronology as:
+
+```
+provider_timestamp_utc
+<= quote.received_at_utc
+ = scheduled_for_utc
+ = reserve built_at_utc
+<= quote_bundle.captured_at_utc
+ = cycle begin time
+ = empty CLOSE application time
+ = RESERVE application time
+```
+
+The schedule remains the first ATLAS-observable evidence time. The cycle mutation
+timestamp is the later bundle-capture time, so no stage update can predate cycle
+creation. The ENTRY acceptance artifact records the schedule, quote receipt, bundle
+capture and cycle-action timestamps explicitly.
+
+Regression coverage now proves both independent invariants:
+
+1. RESERVE evidence cannot be built before its scheduled slot; and
+2. cycle mutation cannot occur before the acceptance cycle-action timestamp.
 
 ## Authority boundary
 

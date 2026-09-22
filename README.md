@@ -990,15 +990,24 @@ ENTRY cycle at the later quote-bundle capture timestamp while building RESERVE
 evidence at the earlier local quote-receipt timestamp.
 
 The durable RESERVE rule `built_at_utc >= scheduled_for_utc` remains unchanged and
-correct. The workstation fixture now schedules ENTRY at
-`quote.received_at_utc`—the first ATLAS-observable time for that evidence—while
-beginning the recurrent cycle at the later bundle capture time. ENTRY acceptance
-artifacts now retain the schedule, quote-receipt and bundle-capture timestamps
-explicitly. Regression coverage reproduces the millisecond ordering observed on the
-workstation and proves the existing RESERVE chronology contract is satisfied without
-weakening it.
+correct. The first repair moved ENTRY scheduling to
+`quote.received_at_utc`—the first ATLAS-observable time for that evidence.
 
-The failed run is not accepted workstation evidence. A fresh isolated run id remains
+A second isolated run, `20260922T140229Z`, again captured SPY successfully but exposed
+the remaining fixture defect: the recurrent cycle was created at the later bundle
+capture timestamp and RESERVE was then applied using the earlier quote receipt time.
+The durable cycle invariant correctly rejected the update as preceding cycle creation.
+
+The final fixture chronology is now explicit and monotonic:
+
+`provider <= receipt = schedule = reserve-build <= bundle-capture = cycle-begin = CLOSE/RESERVE-apply`.
+
+ENTRY acceptance artifacts retain schedule, quote-receipt, bundle-capture and
+cycle-action timestamps. Regression coverage now protects both the RESERVE evidence
+schedule invariant and the cycle-update-after-creation invariant. No production
+recurrent or evidence contract was weakened.
+
+Neither failed run is accepted workstation evidence. A fresh isolated run id remains
 required during XNYS regular hours. This repair changes no provider/broker permissions,
 strategy evidence, order authority, PAPER authority, LIVE authority, promotion
 authority or confluence authority. The immutable incident record is

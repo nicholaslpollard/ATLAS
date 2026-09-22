@@ -73,6 +73,26 @@ def workstation_entry_schedule_utc(
     return received
 
 
+def workstation_entry_cycle_action_utc(
+    *,
+    scheduled_for_utc: datetime,
+    captured_at_utc: datetime,
+) -> datetime:
+    scheduled = _require_aware(
+        scheduled_for_utc,
+        label="acceptance scheduled cycle time",
+    )
+    captured = _require_aware(
+        captured_at_utc,
+        label="acceptance quote capture time",
+    )
+    if captured < scheduled:
+        raise RecurrentWorkstationAcceptanceError(
+            "acceptance cycle action cannot precede its scheduled slot"
+        )
+    return captured
+
+
 def _require_aware(value: datetime, *, label: str) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise RecurrentWorkstationAcceptanceError(
@@ -528,6 +548,7 @@ __all__ = [
     "RecurrentWorkstationAcceptanceError",
     "RecurrentWorkstationAcceptanceReceiptV1",
     "workstation_entry_schedule_utc",
+    "workstation_entry_cycle_action_utc",
     "build_workstation_acceptance_receipt_v1",
     "build_workstation_reference_decision_v1",
     "isolated_acceptance_settings",
