@@ -88,7 +88,7 @@ def test_v6_contract_freezes_no_guess_quarantine() -> None:
 
     # Temporary capture assertion is replaced with the exact frozen fingerprint
     # after the first CI import/test pass.
-    assert HISTORICAL_OPTION_REFERENCE_V6_CONTRACT_FINGERPRINT == "__CAPTURE_V6_FINGERPRINT__"
+    assert HISTORICAL_OPTION_REFERENCE_V6_CONTRACT_FINGERPRINT == "f40edc7bc0dd872dfa944297571545a8e4ab14c112af1ea35ddd806bf2c30342"
 
     assert manifest["parent_v5_contract_fingerprint"] == (
         "4a9775c90414d8a454654d5f0928d79b68dec785b16b493e197ea34471aef1ea"
