@@ -376,16 +376,41 @@ Receipts hash raw, normalized and quarantine artifacts. V6 reuses verified V6
 receipts first, then verified V5/V4/V3/V2/V1 raw lineage with local re-normalization;
 bounded scheduling remains default five workers.
 
-After this package is accepted on `main`, the next target-workstation command is:
+The first target-workstation V6 attempt passed the hard-end probe, all AAL/ACHI/ACT2
+resolution probes and the ACIW quarantine probe. Startup inventory was **0 verified
+V6 reusable / 63 verified V5 raw reusable / 149 provider pending**. All **63/63**
+verified V5 raw partitions were re-normalized locally under V6 with bounded five-worker
+scheduling. Provider continuation then failed closed in `expired-2014-07` on
+`O:ARTC140719C00025000`: the unversioned same-rank rows differ in both
+`additional_underlyings` and `cfi`, outside V6's frozen unversioned resolver
+allowance and outside the primary-exchange-only ACIW quarantine.
+
+No V6 completion claim is made. The resolver and quarantine contracts are not widened
+after observing the failure.
+
+A read-only successor diagnostic is frozen as
+`atlas-historical-option-reference-v6-artc-deliverable-cfi-conflict-diagnostic-v1`
+under fingerprint
+`3677394560a04885f063571e07d5ac02db8ab514e4bc28813c459ce62c67c610`.
+It fully paginates and repeats the current structural view; records exact CFI,
+`additional_underlyings`, correction and row-hash evidence; probes the immediate
+2014-07-19 expiration boundary; and repeats exact Contract Overview to determine
+whether a stable historical provider payload matches exactly one current row. The
+diagnostic has no resolution, quarantine, bulk-acquisition, strategy, PAPER or LIVE
+authority.
+
+After this diagnostic package is accepted on `main`, the next target-workstation
+command is:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\run_historical_option_reference_v6.py --authorize-source-acquisition --workers 5
+git checkout main; git pull; .\.venv\Scripts\python.exe scripts\diagnose_historical_option_reference_v6_artc_deliverable_cfi_conflict.py
 ```
 
-After V6 completes all **212** partitions, independently close
-raw/version/normalized/quarantine/hash/cardinality plus every conflict-resolution and
-quarantine lineage record before broad option daily history. Candidate
-minute/quote/trade cache acquisition remains selective.
+Do not rerun V6 until that evidence is reviewed and any successor rule is separately
+frozen. After a future reference acquisition completes all **212** partitions,
+independently close raw/version/normalized/quarantine/hash/cardinality plus every
+conflict-resolution and quarantine lineage record before broad option daily history.
+Candidate minute/quote/trade cache acquisition remains selective.
 
 ### News/options historical-data foundation — 2026-09-20
 
