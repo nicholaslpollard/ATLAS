@@ -1042,11 +1042,27 @@ cycle-action timestamps. Regression coverage now protects both the RESERVE evide
 schedule invariant and the cycle-update-after-creation invariant. No production
 recurrent or evidence contract was weakened.
 
-Neither failed run is accepted workstation evidence. A fresh isolated run id remains
-required during XNYS regular hours. This repair changes no provider/broker permissions,
-strategy evidence, order authority, PAPER authority, LIVE authority, promotion
-authority or confluence authority. The immutable incident record is
+The third isolated regular-session run, `20260922T142213Z`, completed the
+full acceptance path successfully. ENTRY passed, restart/MARK passed, the immutable
+one-minute horizon was respected, TIME CLOSE passed, and the exact persisted CLOSE
+bundle replayed idempotently after a second restart. The final closed-trade count
+remained exactly 1 and cycle health reported `OPEN_CYCLE`.
+
+Accepted receipt fingerprint:
+
+`d0f880a85d5f07c0ddc68c7d3017a0ae0e3bacc04d5e0bb6473da3f601340c4a`
+
+This closes the frozen PR #161 current-Webull regular-market-hours operational-runtime
+acceptance gate for `atlas-recurrent-workstation-acceptance-v1`. The accepted run
+used exactly three explicit read-only Webull sandbox L1 captures; provider writes,
+broker reads/writes, order creation, PAPER, LIVE, promotion and confluence authority
+all remained zero/false. This is a product/runtime acceptance proof, not strategy
+evidence and not trading authorization.
+
+The immutable chronology incident remains
 `docs/research/recurrent_workstation_acceptance_entry_schedule_incident_20260922.md`.
+The accepted closeout is
+`docs/research/recurrent_workstation_acceptance_closeout_20260922.md`.
 
 ## 2026-09-19 — First recurrent successor workstation portfolio replay
 
