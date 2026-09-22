@@ -1685,8 +1685,9 @@ def _acquire_partition(
     staging.mkdir(parents=True, exist_ok=True)
     raw_temp = staging / "contracts.jsonl.gz.tmp"
     normalized_jsonl = staging / "contracts.normalized.jsonl.tmp"
+    quarantine_temp = staging / "quarantine.jsonl.tmp"
     parquet_temp = staging / "contracts.parquet.tmp"
-    for path in (raw_temp, normalized_jsonl, parquet_temp):
+    for path in (raw_temp, normalized_jsonl, quarantine_temp, parquet_temp):
         path.unlink(missing_ok=True)
 
     page_count = 0
@@ -1698,6 +1699,8 @@ def _acquire_partition(
     exact_duplicate_rows = 0
     corrected_selected_contracts = 0
     historically_resolved_conflicts = 0
+    quarantined_tickers = 0
+    quarantined_raw_rows = 0
     first_ticker: str | None = None
     last_ticker: str | None = None
     current_ticker: str | None = None
@@ -1705,22 +1708,35 @@ def _acquire_partition(
     next_url = _partition_query_url(settings, partition)
     seen_page_urls: set[str] = set()
 
-    def flush_group(normalized_file) -> None:
+    def flush_group(normalized_file, quarantine_file) -> None:
         nonlocal normalized_unique_contracts
         nonlocal duplicate_version_rows
         nonlocal tickers_with_multiple_versions
         nonlocal exact_duplicate_rows
         nonlocal corrected_selected_contracts
         nonlocal historically_resolved_conflicts
+        nonlocal quarantined_tickers
+        nonlocal quarantined_raw_rows
         nonlocal current_versions
         if not current_versions:
             return
-        normalized, discarded = _resolve_ticker_versions(
-            current_versions,
-            partition=partition,
-            settings=settings,
-            api_key=api_key,
-        )
+        try:
+            normalized, discarded = _resolve_ticker_versions(
+                current_versions,
+                partition=partition,
+                settings=settings,
+                api_key=api_key,
+            )
+        except HistoricalOptionReferenceV6Quarantine as quarantine:
+            if len(current_versions) > 1:
+                tickers_with_multiple_versions += 1
+            quarantine_file.write(_stable_json(quarantine.record))
+            quarantine_file.write("\n")
+            quarantined_tickers += 1
+            quarantined_raw_rows += len(current_versions)
+            current_versions = []
+            return
+
         normalized_file.write(_stable_json(normalized))
         normalized_file.write("\n")
         normalized_unique_contracts += 1
@@ -1739,7 +1755,11 @@ def _acquire_partition(
             "w",
             encoding="utf-8",
             newline="\n",
-        ) as normalized_file:
+        ) as normalized_file, quarantine_temp.open(
+            "w",
+            encoding="utf-8",
+            newline="\n",
+        ) as quarantine_file:
             with gzip.GzipFile(
                 filename="",
                 mode="wb",
@@ -1796,7 +1816,7 @@ def _acquire_partition(
                             current_ticker = ticker
                             first_ticker = ticker
                         elif ticker != current_ticker:
-                            flush_group(normalized_file)
+                            flush_group(normalized_file, quarantine_file)
                             current_ticker = ticker
 
                         current_versions.append(item)
@@ -1823,18 +1843,23 @@ def _acquire_partition(
                     else:
                         next_url = candidate
 
-                flush_group(normalized_file)
+                flush_group(normalized_file, quarantine_file)
 
             raw_file.flush()
             os.fsync(raw_file.fileno())
             normalized_file.flush()
             os.fsync(normalized_file.fileno())
+            quarantine_file.flush()
+            os.fsync(quarantine_file.fileno())
 
-        if raw_provider_records != normalized_unique_contracts + duplicate_version_rows:
+        if (
+            raw_provider_records
+            != normalized_unique_contracts + duplicate_version_rows + quarantined_raw_rows
+        ):
             raise HistoricalOptionReferenceV6Error(
                 f"{partition.key}: raw/version reconciliation failed: "
                 f"{raw_provider_records} != {normalized_unique_contracts} + "
-                f"{duplicate_version_rows}"
+                f"{duplicate_version_rows} + {quarantined_raw_rows} quarantined"
             )
 
         _write_parquet_from_jsonl(
@@ -1845,10 +1870,11 @@ def _acquire_partition(
 
         raw_bytes = int(raw_temp.stat().st_size)
         normalized_bytes = int(parquet_temp.stat().st_size)
-        final_bytes = raw_bytes + normalized_bytes
+        quarantine_bytes = int(quarantine_temp.stat().st_size)
+        final_bytes = raw_bytes + normalized_bytes + quarantine_bytes
         existing_bytes = sum(
             int(paths[name].stat().st_size)
-            for name in ("raw", "normalized")
+            for name in ("raw", "normalized", "quarantine")
             if paths[name].is_file()
         )
         projected_additional = max(0, final_bytes - existing_bytes)
@@ -1861,6 +1887,8 @@ def _acquire_partition(
             )
             replace_with_retry(raw_temp, paths["raw"])
             replace_with_retry(parquet_temp, paths["normalized"])
+            replace_with_retry(quarantine_temp, paths["quarantine"])
+            replace_with_retry(quarantine_temp, paths["quarantine"])
 
         receipt: dict[str, object] = {
             "status": "COMPLETE",
@@ -1885,23 +1913,31 @@ def _acquire_partition(
             "exact_duplicate_rows": exact_duplicate_rows,
             "corrected_selected_contracts": corrected_selected_contracts,
             "historically_resolved_conflicts": historically_resolved_conflicts,
+            "quarantined_tickers": quarantined_tickers,
+            "quarantined_raw_rows": quarantined_raw_rows,
             "raw_version_reconciliation": (
                 raw_provider_records
-                == normalized_unique_contracts + duplicate_version_rows
+                == normalized_unique_contracts
+                + duplicate_version_rows
+                + quarantined_raw_rows
             ),
             "correction_selection_policy": CORRECTION_SELECTION_POLICY,
+            "ambiguity_quarantine_policy": AMBIGUITY_QUARANTINE_POLICY,
             "first_ticker": first_ticker,
             "last_ticker": last_ticker,
             "raw_path": _relative(settings, paths["raw"]),
             "normalized_path": _relative(settings, paths["normalized"]),
+            "quarantine_path": _relative(settings, paths["quarantine"]),
             "raw_origin_contract_fingerprint": (
                 HISTORICAL_OPTION_REFERENCE_V6_CONTRACT_FINGERPRINT
             ),
             "raw_reused_from_parent": False,
             "raw_bytes": int(paths["raw"].stat().st_size),
             "normalized_bytes": int(paths["normalized"].stat().st_size),
+            "quarantine_bytes": int(paths["quarantine"].stat().st_size),
             "raw_sha256": _sha256_file(paths["raw"]),
             "normalized_sha256": _sha256_file(paths["normalized"]),
+            "quarantine_sha256": _sha256_file(paths["quarantine"]),
             "source_role": SOURCE_ROLE,
             "historical_candidate_availability_authority": False,
             "historical_dynamic_deliverable_authority": False,
@@ -1911,7 +1947,7 @@ def _acquire_partition(
         _atomic_write_json(paths["receipt"], receipt)
         return receipt
     finally:
-        for path in (raw_temp, normalized_jsonl, parquet_temp):
+        for path in (raw_temp, normalized_jsonl, quarantine_temp, parquet_temp):
             path.unlink(missing_ok=True)
 
 
@@ -1935,8 +1971,9 @@ def _rebuild_partition_from_parent_raw(
     )
     staging.mkdir(parents=True, exist_ok=True)
     normalized_jsonl = staging / "contracts.normalized.jsonl.tmp"
+    quarantine_temp = staging / "quarantine.jsonl.tmp"
     parquet_temp = staging / "contracts.parquet.tmp"
-    for path in (normalized_jsonl, parquet_temp):
+    for path in (normalized_jsonl, quarantine_temp, parquet_temp):
         path.unlink(missing_ok=True)
 
     raw_provider_records = 0
@@ -1946,27 +1983,42 @@ def _rebuild_partition_from_parent_raw(
     exact_duplicate_rows = 0
     corrected_selected_contracts = 0
     historically_resolved_conflicts = 0
+    quarantined_tickers = 0
+    quarantined_raw_rows = 0
     first_ticker: str | None = None
     last_ticker: str | None = None
     current_ticker: str | None = None
     current_versions: list[dict[str, Any]] = []
 
-    def flush_group(normalized_file) -> None:
+    def flush_group(normalized_file, quarantine_file) -> None:
         nonlocal normalized_unique_contracts
         nonlocal duplicate_version_rows
         nonlocal tickers_with_multiple_versions
         nonlocal exact_duplicate_rows
         nonlocal corrected_selected_contracts
         nonlocal historically_resolved_conflicts
+        nonlocal quarantined_tickers
+        nonlocal quarantined_raw_rows
         nonlocal current_versions
         if not current_versions:
             return
-        normalized, discarded = _resolve_ticker_versions(
-            current_versions,
-            partition=partition,
-            settings=settings,
-            api_key=api_key,
-        )
+        try:
+            normalized, discarded = _resolve_ticker_versions(
+                current_versions,
+                partition=partition,
+                settings=settings,
+                api_key=api_key,
+            )
+        except HistoricalOptionReferenceV6Quarantine as quarantine:
+            if len(current_versions) > 1:
+                tickers_with_multiple_versions += 1
+            quarantine_file.write(_stable_json(quarantine.record))
+            quarantine_file.write("\n")
+            quarantined_tickers += 1
+            quarantined_raw_rows += len(current_versions)
+            current_versions = []
+            return
+
         normalized_file.write(_stable_json(normalized))
         normalized_file.write("\n")
         normalized_unique_contracts += 1
@@ -1990,7 +2042,11 @@ def _rebuild_partition_from_parent_raw(
             "w",
             encoding="utf-8",
             newline="\n",
-        ) as normalized_file:
+        ) as normalized_file, quarantine_temp.open(
+            "w",
+            encoding="utf-8",
+            newline="\n",
+        ) as quarantine_file:
             for line_number, line in enumerate(raw_file, start=1):
                 if not line.strip():
                     continue
@@ -2018,15 +2074,17 @@ def _rebuild_partition_from_parent_raw(
                     current_ticker = ticker
                     first_ticker = ticker
                 elif ticker != current_ticker:
-                    flush_group(normalized_file)
+                    flush_group(normalized_file, quarantine_file)
                     current_ticker = ticker
                 current_versions.append(item)
                 last_ticker = ticker
                 raw_provider_records += 1
 
-            flush_group(normalized_file)
+            flush_group(normalized_file, quarantine_file)
             normalized_file.flush()
             os.fsync(normalized_file.fileno())
+            quarantine_file.flush()
+            os.fsync(quarantine_file.fileno())
 
         expected_raw_records = int(parent_receipt["raw_provider_records"])
         if raw_provider_records != expected_raw_records:
@@ -2034,11 +2092,14 @@ def _rebuild_partition_from_parent_raw(
                 f"{partition.key}: verified parent raw row count changed: "
                 f"{raw_provider_records} != {expected_raw_records}"
             )
-        if raw_provider_records != normalized_unique_contracts + duplicate_version_rows:
+        if (
+            raw_provider_records
+            != normalized_unique_contracts + duplicate_version_rows + quarantined_raw_rows
+        ):
             raise HistoricalOptionReferenceV6Error(
                 f"{partition.key}: parent raw/version reconciliation failed: "
                 f"{raw_provider_records} != {normalized_unique_contracts} + "
-                f"{duplicate_version_rows}"
+                f"{duplicate_version_rows} + {quarantined_raw_rows} quarantined"
             )
 
         _write_parquet_from_jsonl(
@@ -2047,12 +2108,16 @@ def _rebuild_partition_from_parent_raw(
             row_count=normalized_unique_contracts,
         )
         normalized_bytes = int(parquet_temp.stat().st_size)
-        existing_bytes = (
-            int(paths["normalized"].stat().st_size)
-            if paths["normalized"].is_file()
-            else 0
+        quarantine_bytes = int(quarantine_temp.stat().st_size)
+        existing_bytes = sum(
+            int(paths[name].stat().st_size)
+            for name in ("normalized", "quarantine")
+            if paths[name].is_file()
         )
-        projected_additional = max(0, normalized_bytes - existing_bytes)
+        projected_additional = max(
+            0,
+            normalized_bytes + quarantine_bytes - existing_bytes,
+        )
 
         with persistence_lock:
             assert_category_acquisition_allowed(
@@ -2086,15 +2151,21 @@ def _rebuild_partition_from_parent_raw(
             "exact_duplicate_rows": exact_duplicate_rows,
             "corrected_selected_contracts": corrected_selected_contracts,
             "historically_resolved_conflicts": historically_resolved_conflicts,
+            "quarantined_tickers": quarantined_tickers,
+            "quarantined_raw_rows": quarantined_raw_rows,
             "raw_version_reconciliation": (
                 raw_provider_records
-                == normalized_unique_contracts + duplicate_version_rows
+                == normalized_unique_contracts
+                + duplicate_version_rows
+                + quarantined_raw_rows
             ),
             "correction_selection_policy": CORRECTION_SELECTION_POLICY,
+            "ambiguity_quarantine_policy": AMBIGUITY_QUARANTINE_POLICY,
             "first_ticker": first_ticker,
             "last_ticker": last_ticker,
             "raw_path": _relative(settings, raw_path),
             "normalized_path": _relative(settings, paths["normalized"]),
+            "quarantine_path": _relative(settings, paths["quarantine"]),
             "raw_origin_contract_fingerprint": str(
                 parent_receipt.get("raw_origin_contract_fingerprint")
                 or parent_contract_fingerprint
@@ -2104,8 +2175,10 @@ def _rebuild_partition_from_parent_raw(
             "raw_reused_from_parent": True,
             "raw_bytes": int(raw_path.stat().st_size),
             "normalized_bytes": int(paths["normalized"].stat().st_size),
+            "quarantine_bytes": int(paths["quarantine"].stat().st_size),
             "raw_sha256": _sha256_file(raw_path),
             "normalized_sha256": _sha256_file(paths["normalized"]),
+            "quarantine_sha256": _sha256_file(paths["quarantine"]),
             "source_role": SOURCE_ROLE,
             "historical_candidate_availability_authority": False,
             "historical_dynamic_deliverable_authority": False,
@@ -2119,7 +2192,7 @@ def _rebuild_partition_from_parent_raw(
         _atomic_write_json(paths["receipt"], receipt)
         return receipt
     finally:
-        for path in (normalized_jsonl, parquet_temp):
+        for path in (normalized_jsonl, quarantine_temp, parquet_temp):
             path.unlink(missing_ok=True)
 
 
