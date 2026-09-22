@@ -300,9 +300,38 @@ pre-acquisition probe before any bulk provider request. Verified V2/V1 raw linea
 re-normalized locally without copying raw bytes; bounded scheduling and all storage
 guards remain unchanged.
 
-After V3 source acquisition completes, independently close
-raw/version/normalized/hash/cardinality and conflict-resolution lineage before broad
-option daily history. Candidate minute/quote/trade cache acquisition remains selective.
+V3 then failed closed in `expired-2014-06` on
+`O:ACHI140621C00001000`, whose unversioned current rows differed in
+`underlying_ticker`. A dedicated read-only diagnostic proved a stable
+pre-expiration `2014-06-20` structural/overview payload with
+`underlying_ticker=ACHI` that matched exactly one current conflicting row.
+Historical Option Reference V4 was therefore frozen under fingerprint
+`2ddeb58d5f552ff0edb87a2244f130b813cf49600f5f82b1f50d8e1ee047a57d`.
+V4 permits the same exact historical-provider match only for expired, **unversioned**
+same-rank conflicts whose differing fields are limited to `primary_exchange`,
+`underlying_ticker`, or both. AAL and ACHI are mandatory pre-acquisition probes.
+
+The first V4 target-workstation attempt used five workers. The 2032 hard-end probe and
+both mandatory conflict probes passed, and all **63** verified V3 raw partitions were
+rebuilt locally. The run then failed closed in `expired-2014-07` on
+`O:ACT2140719C00045000` because the same-highest-rank conflict carried an
+**explicit correction**, which is outside V4's frozen unversioned fallback. No V4
+completion claim is made and the resolver is not relaxed after observing the result.
+
+The active source gate is now the bounded
+`atlas-historical-option-reference-v4-explicit-correction-conflict-diagnostic-v1`
+contract under fingerprint
+`54a4436ba1cfee33c6dc3eaabfedd4334c50985d2ee696fab2cc97cfc22620c7`.
+It repeats current `as_of=2026-09-19` and pre-expiration
+`as_of=2014-07-18` structural-list and Contract Overview requests for the ACT2
+ticker, preserves explicit correction values and all field differences, and asks
+whether the stable historical payload matches exactly one current conflicting row.
+The diagnostic is read-only and authorizes no successor resolver by itself.
+
+After an accepted successor option-reference acquisition completes all **212**
+partitions, independently close raw/version/normalized/hash/cardinality and
+conflict-resolution lineage before broad option daily history. Candidate
+minute/quote/trade cache acquisition remains selective.
 
 ### News/options historical-data foundation — 2026-09-20
 

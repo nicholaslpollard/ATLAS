@@ -336,6 +336,30 @@ V4 remains structural-reference acquisition only and opens no historical availab
 dynamic-deliverable, market-price, predictor, strategy, promotion, PAPER or LIVE
 authority.
 
+The first target-workstation V4 acquisition attempt used five workers. The active
+hard-end probe passed, both mandatory known-conflict probes passed, and all **63**
+verified V3 raw partitions were rebuilt locally under V4. At that point the reference
+lake occupied about **0.260 GiB** and the workstation reported about **116.22 GiB**
+free. Provider acquisition then failed closed in `expired-2014-07` on
+`O:ACT2140719C00045000`: the same-highest-rank conflict reached V4's narrow
+fallback with an **explicit correction present**, while V4 intentionally authorizes
+that historical exact-match fallback only for unversioned rows. This is a new
+source-semantics boundary, not a runtime defect, and no V4 completion claim is made.
+
+A read-only successor diagnostic is now frozen as
+`atlas-historical-option-reference-v4-explicit-correction-conflict-diagnostic-v1`
+under fingerprint
+`54a4436ba1cfee33c6dc3eaabfedd4334c50985d2ee696fab2cc97cfc22620c7`.
+It targets `O:ACT2140719C00045000` at current `as_of=2026-09-19` and
+pre-expiration `as_of=2014-07-18`, repeats the structural-list and exact Contract
+Overview requests twice, records the explicit correction values and field-level
+differences, and tests whether a stable historical provider payload matches exactly
+one current conflicting row. The diagnostic grants no conflict-resolution, bulk
+acquisition, predictor, strategy-outcome, PAPER or LIVE authority. V4 must not be
+rerun until that evidence is reviewed and any successor resolver is separately
+frozen. The source incident is preserved in
+`docs/research/historical_option_reference_v4_act2_correction_conflict_20260921.md`.
+
 ## News + options historical-data foundation — 2026-09-20
 
 ATLAS now has a bounded local-data foundation for bringing historical news and
