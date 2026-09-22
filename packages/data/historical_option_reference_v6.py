@@ -2266,10 +2266,15 @@ def run_historical_option_reference_v6_acquisition(
         settings,
         api_key=api_key,
     )
+    known_quarantine_probes = _known_quarantine_probes(
+        settings,
+        api_key=api_key,
+    )
     partitions = reference_partitions()
     persistence_lock = threading.Lock()
 
     reused_v6: list[dict[str, object]] = []
+    rebuild_from_v5: list[tuple[ReferencePartition, dict[str, object], Path]] = []
     rebuild_from_v4: list[tuple[ReferencePartition, dict[str, object], Path]] = []
     rebuild_from_v3: list[tuple[ReferencePartition, dict[str, object], Path]] = []
     rebuild_from_v2: list[tuple[ReferencePartition, dict[str, object], Path]] = []
@@ -2280,6 +2285,12 @@ def run_historical_option_reference_v6_acquisition(
         receipt = _verified_existing_receipt(settings, partition)
         if receipt is not None:
             reused_v6.append(receipt)
+            continue
+
+        v5_source = _verified_v5_raw_receipt(settings, partition)
+        if v5_source is not None:
+            v5_receipt, raw_path = v5_source
+            rebuild_from_v5.append((partition, v5_receipt, raw_path))
             continue
 
         v4_source = _verified_v4_raw_receipt(settings, partition)
@@ -2310,6 +2321,7 @@ def run_historical_option_reference_v6_acquisition(
         "historical option reference v6: "
         f"{len(partitions)} monthly partitions / "
         f"{len(reused_v6)} verified V6 reusable / "
+        f"{len(rebuild_from_v5)} verified V5 raw reusable / "
         f"{len(rebuild_from_v4)} verified V4 raw reusable / "
         f"{len(rebuild_from_v3)} verified V3 raw reusable / "
         f"{len(rebuild_from_v2)} verified V2 raw reusable / "
@@ -2335,6 +2347,15 @@ def run_historical_option_reference_v6_acquisition(
             f"underlying={probe['selected_underlying_ticker']} "
             f"exchange={probe['selected_primary_exchange']} / "
             f"as_of={probe['resolution_as_of_date']}",
+            flush=True,
+        )
+
+    for probe in known_quarantine_probes:
+        print(
+            "  known ambiguity quarantine probe: PASS / "
+            f"{probe['id']} / {probe['ticker']} -> "
+            f"no selected row / as_of={probe['historical_as_of']} / "
+            f"reason={probe['quarantine_reason']}",
             flush=True,
         )
 
@@ -2366,6 +2387,7 @@ def run_historical_option_reference_v6_acquisition(
                 f"from verified {label} raw: "
                 f"{int(receipt['normalized_unique_contracts']):,} contracts / "
                 f"resolved={int(receipt['historically_resolved_conflicts']):,} / "
+                f"quarantined={int(receipt['quarantined_tickers']):,} / "
                 f"reference={storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
                 f"free={storage.disk_free_gib:.2f} GiB",
                 flush=True,
@@ -2376,6 +2398,17 @@ def run_historical_option_reference_v6_acquisition(
             workers=workers,
             task=task,
             on_complete=progress,
+        )
+
+    if rebuild_from_v5:
+        completed.extend(
+            rebuild_parent_batch(
+                rebuild_from_v5,
+                label="V5",
+                parent_contract_fingerprint=(
+                    HISTORICAL_OPTION_REFERENCE_V5_CONTRACT_FINGERPRINT
+                ),
+            )
         )
 
     if rebuild_from_v4:
@@ -2451,6 +2484,7 @@ def run_historical_option_reference_v6_acquisition(
                 f"{int(receipt['duplicate_version_rows']):,} version rows / "
                 f"{int(receipt['tickers_with_multiple_versions']):,} multi-version / "
                 f"{int(receipt['historically_resolved_conflicts']):,} resolved / "
+                f"{int(receipt['quarantined_tickers']):,} quarantined / "
                 f"{int(receipt['page_count']):,} pages / "
                 f"reference={storage.category_usage_gib.get(STORAGE_CATEGORY, 0.0):.3f} GiB / "
                 f"free={storage.disk_free_gib:.2f} GiB",
@@ -2480,6 +2514,15 @@ def run_historical_option_reference_v6_acquisition(
     total_normalized_bytes = sum(
         int(item["normalized_bytes"]) for item in completed
     )
+    total_quarantine_bytes = sum(
+        int(item["quarantine_bytes"]) for item in completed
+    )
+    total_quarantined_tickers = sum(
+        int(item["quarantined_tickers"]) for item in completed
+    )
+    total_quarantined_raw_rows = sum(
+        int(item["quarantined_raw_rows"]) for item in completed
+    )
     storage = inspect_research_storage(settings)
 
     corpus_basis = {
@@ -2490,8 +2533,12 @@ def run_historical_option_reference_v6_acquisition(
         ],
         "raw_provider_records": total_raw_records,
         "normalized_unique_contracts": total_normalized,
+        "quarantined_tickers": total_quarantined_tickers,
+        "quarantined_raw_rows": total_quarantined_raw_rows,
         "raw_bytes": total_raw_bytes,
         "normalized_bytes": total_normalized_bytes,
+        "quarantine_bytes": total_quarantine_bytes,
+        "quarantine_bytes": total_quarantine_bytes,
     }
     summary: dict[str, object] = {
         "status": "COMPLETE",
@@ -2501,15 +2548,18 @@ def run_historical_option_reference_v6_acquisition(
         "active_hard_end_exclusive": ACTIVE_HARD_END_EXCLUSIVE.isoformat(),
         "boundary_probe": boundary,
         "known_conflict_resolution_probes": known_conflict_probes,
+        "known_ambiguity_quarantine_probes": known_quarantine_probes,
         "monthly_partitions": len(completed),
         "reused_verified_partitions": len(reused_v6),
+        "rebuilt_from_verified_v5_raw_this_run": len(rebuild_from_v5),
         "rebuilt_from_verified_v4_raw_this_run": len(rebuild_from_v4),
         "rebuilt_from_verified_v3_raw_this_run": len(rebuild_from_v3),
         "rebuilt_from_verified_v2_raw_this_run": len(rebuild_from_v2),
         "rebuilt_from_verified_v1_raw_this_run": len(rebuild_from_v1),
         "provider_acquired_partitions_this_run": len(provider_pending),
         "acquired_partitions_this_run": (
-            len(rebuild_from_v4)
+            len(rebuild_from_v5)
+            + len(rebuild_from_v4)
             + len(rebuild_from_v3)
             + len(rebuild_from_v2)
             + len(rebuild_from_v1)
@@ -2532,11 +2582,14 @@ def run_historical_option_reference_v6_acquisition(
         "historically_resolved_conflicts": sum(
             int(item["historically_resolved_conflicts"]) for item in completed
         ),
+        "quarantined_tickers": total_quarantined_tickers,
+        "quarantined_raw_rows": total_quarantined_raw_rows,
         "raw_version_reconciliation": all(
             bool(item["raw_version_reconciliation"]) for item in completed
         ),
         "correction_selection_policy": CORRECTION_SELECTION_POLICY,
         "conflict_resolution_policy": CONFLICT_RESOLUTION_POLICY,
+        "ambiguity_quarantine_policy": AMBIGUITY_QUARANTINE_POLICY,
         "bounded_in_flight_partitions": workers,
         "raw_bytes": total_raw_bytes,
         "normalized_bytes": total_normalized_bytes,
