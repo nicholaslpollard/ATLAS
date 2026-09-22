@@ -60,7 +60,9 @@ def _settings(tmp_path: Path):
 
 
 def test_tradier_source_qualification_contract_has_no_authority() -> None:
-    assert len(TRADIER_SOURCE_QUALIFICATION_CONTRACT_FINGERPRINT) == 64
+    assert TRADIER_SOURCE_QUALIFICATION_CONTRACT_FINGERPRINT == (
+        "3a14be911be351d465ad3a99ab6dc7d47e985fbd17005af0bb6faa9c7613305d"
+    )
     assert (
         TRADIER_SOURCE_QUALIFICATION_CONTRACT["source_role"]
         == "CANDIDATE_CURRENT_MARKET_DATA_PROVIDER_ONLY"
