@@ -3871,8 +3871,22 @@ The fixture now freezes monotonic ENTRY timing:
 `provider <= receipt = schedule = reserve-build <= bundle-capture = cycle-begin = CLOSE/RESERVE-apply`.
 The production RESERVE and recurrent-cycle contracts remain unchanged. Acceptance
 artifacts record schedule, receipt, capture and cycle-action timestamps, and regression
-coverage protects both chronology boundaries. A fresh isolated regular-hours run is
-still required; neither failed run confers acceptance, PAPER or LIVE authority.
+coverage protects both chronology boundaries.
+
+A third isolated regular-session run, `20260922T142213Z`, then completed the entire
+frozen acceptance contract successfully. ENTRY passed, restart/MARK passed, the
+one-minute immutable horizon was respected, TIME CLOSE passed, and an exact CLOSE
+replay after another restart did not double-apply the trade. Final closed-trade count
+was 1 and cycle health after retry was `OPEN_CYCLE`.
+
+Accepted receipt fingerprint:
+
+`d0f880a85d5f07c0ddc68c7d3017a0ae0e3bacc04d5e0bb6473da3f601340c4a`
+
+The PR #161 current-Webull regular-market-hours operational-runtime gate is therefore
+closed for `atlas-recurrent-workstation-acceptance-v1`. This is not strategy
+evidence, promotion, PAPER or LIVE authority. The next active source gate remains
+Historical Option Reference V6 and its 212-partition acquisition/integrity sequence.
 
 ## Track A / Track B bridge: first workstation recurrent portfolio result — 2026-09-19
 
