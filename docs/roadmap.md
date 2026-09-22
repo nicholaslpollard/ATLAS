@@ -362,7 +362,7 @@ boundary: the target is absent before expiration, both rows appear only under
 throughout, and no historical payload matches exactly one current row.
 
 Historical Option Reference V6 is frozen under contract fingerprint
-`__V6_FINGERPRINT__`. It preserves V5's accepted AAL/ACHI/ACT2 resolution
+`f40edc7bc0dd872dfa944297571545a8e4ab14c112af1ea35ddd806bf2c30342`. It preserves V5's accepted AAL/ACHI/ACT2 resolution
 branches unchanged. Its new quarantine path is deliberately separate from resolution:
 for expired unversioned same-ticker conflicts differing **only** in
 `primary_exchange`, with one identical underlying ticker and two repeatable zero-row
