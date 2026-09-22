@@ -92,7 +92,7 @@ def main() -> int:
     )
 
     storage = summary["storage_after"]
-    print("\nHISTORICAL OPTION REFERENCE V6: COMPLETE")
+    print("\nHISTORICAL OPTION REFERENCE V7: COMPLETE")
     print(f"  corpus fingerprint: {summary['corpus_fingerprint']}")
     print(f"  run fingerprint: {summary['run_fingerprint']}")
     print(f"  partitions: {int(summary['monthly_partitions']):,}")
