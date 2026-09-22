@@ -1453,7 +1453,7 @@ def _known_conflict_resolution_probes(
         )
         if not bool(normalized["historically_resolved_conflict"]):
             raise HistoricalOptionReferenceV6Error(
-                f"{ticker}: known-conflict preflight did not exercise V4 resolver"
+                f"{ticker}: known-conflict preflight did not exercise accepted resolver"
             )
         results.append(
             {
@@ -1509,23 +1509,42 @@ def _known_quarantine_probes(
                 "limit": PAGE_LIMIT,
             }
         )
-        payload = _request_json(
-            settings,
-            url=_endpoint(settings) + "?" + query,
-            api_key=api_key,
-        )
-        rows = payload.get("results") or []
-        if not isinstance(rows, list) or any(
-            not isinstance(item, dict) for item in rows
-        ):
-            raise HistoricalOptionReferenceV6Error(
-                f"{ticker}: known-quarantine preflight returned malformed rows"
+        next_url = _endpoint(settings) + "?" + query
+        seen_urls: set[str] = set()
+        target_rows: list[dict[str, Any]] = []
+        while next_url:
+            if next_url in seen_urls:
+                raise HistoricalOptionReferenceV6Error(
+                    f"{ticker}: known-quarantine preflight pagination loop"
+                )
+            seen_urls.add(next_url)
+            _validate_next_url(settings, next_url)
+            payload = _request_json(
+                settings,
+                url=next_url,
+                api_key=api_key,
             )
-        target_rows = [
-            dict(item)
-            for item in rows
-            if str(item.get("ticker") or "") == ticker
-        ]
+            rows = payload.get("results") or []
+            if not isinstance(rows, list) or any(
+                not isinstance(item, dict) for item in rows
+            ):
+                raise HistoricalOptionReferenceV6Error(
+                    f"{ticker}: known-quarantine preflight returned malformed rows"
+                )
+            target_rows.extend(
+                dict(item)
+                for item in rows
+                if str(item.get("ticker") or "") == ticker
+            )
+            candidate = payload.get("next_url")
+            if candidate in (None, ""):
+                next_url = ""
+            elif not isinstance(candidate, str):
+                raise HistoricalOptionReferenceV6Error(
+                    f"{ticker}: known-quarantine next_url was not a string"
+                )
+            else:
+                next_url = candidate
         if len(target_rows) != int(spec["expected_current_target_rows"]):
             raise HistoricalOptionReferenceV6Error(
                 f"{ticker}: known-quarantine preflight current target-row count changed"
