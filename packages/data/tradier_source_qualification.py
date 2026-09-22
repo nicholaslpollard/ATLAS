@@ -115,18 +115,18 @@ def latest_universe_symbol_source(settings: AtlasSettings) -> UniverseSymbolSour
     path = max(candidates, key=_parse_snapshot_date)
     as_of_date = _parse_snapshot_date(path)
 
+    safe_path = path.as_posix().replace("'", "''")
     con = duckdb.connect(database=":memory:")
     try:
         rows = con.execute(
-            """
+            f"""
             SELECT DISTINCT ticker
-            FROM read_parquet(?)
+            FROM read_parquet('{safe_path}')
             WHERE discovery_eligible = TRUE
               AND ticker IS NOT NULL
               AND trim(ticker) <> ''
             ORDER BY ticker
-            """,
-            [str(path)],
+            """
         ).fetchall()
     finally:
         con.close()
@@ -331,14 +331,16 @@ def run_tradier_rest_source_qualification(
     }
     report["evidence_fingerprint"] = stable_fingerprint(report)
 
+    # Preserve the repository's existing ignored data/research convention
+    # without broadening the global DataPaths schema for this diagnostic.
     output = (
-        settings.resolved_path(settings.data.paths.research)
-        if hasattr(settings.data.paths, "research")
-        else settings.project_root / "data" / "research"
+        settings.project_root
+        / "data"
+        / "research"
+        / "provider_qualification"
+        / "tradier"
+        / "rest"
     )
-    # DataPaths predates the research root; preserve the repository's existing
-    # ignored data/research convention rather than changing the global path schema.
-    output = settings.project_root / "data" / "research" / "provider_qualification" / "tradier" / "rest"
     output.mkdir(parents=True, exist_ok=True)
     stamp = generated_at_utc.strftime("%Y%m%dT%H%M%SZ")
     report_path = output / f"{stamp}.json"
