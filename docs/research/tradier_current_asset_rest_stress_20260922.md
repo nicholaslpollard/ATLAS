@@ -264,3 +264,31 @@ Additional semantic observations:
 The raw diagnostic was intentionally persisted only beneath ignored local research
 state. A production current-state adapter should persist an explicit normalized schema
 and provenance/freshness metadata rather than archive unrestricted provider payloads.
+
+
+## Pre-close full-universe raw capture
+
+A final production read-only snapshot was captured while the 2026-09-22 regular session
+was still open.
+
+Observed capture:
+
+- request started: `2026-09-22T19:58:42.512356+00:00`
+- capture completed: `2026-09-22T19:58:44.567733+00:00`
+- requested symbols: **13,412**
+- returned rows: **12,775**
+- coverage: **95.251%**
+- provider latency: **2.038 s**
+- total wall time: **2.055 s**
+- response bytes: **6,139,901**
+- local ignored artifact:
+  `data/research/provider_qualification/tradier/full_universe_raw/20260922T195844Z.json`
+
+This independently reproduced the earlier full-universe benchmark immediately before
+the regular-session close. The returned cardinality remained exactly 12,775 and the
+wall time remained approximately two seconds.
+
+The raw artifact is local research evidence only and is intentionally not committed.
+Any post-close normalization/freshness analysis must use the stored capture timestamp
+and provider timestamps from this immutable snapshot rather than analysis wall-clock
+time, so closing-bell delay does not contaminate the measured freshness distribution.
