@@ -84,6 +84,42 @@ Documentation reference:
 
 - `https://docs.tradier.com/docs/market-data`
 
+## Follow-up symbol probe
+
+A read-only follow-up tested the documented dot-to-slash hypothesis directly.
+
+Dotted-symbol probe:
+
+- requested: **30**
+- returned: **4**
+- coverage: **13.333%**
+- provider latency: **0.265 s**
+- evidence fingerprint:
+  `ba559a59019b4b25d0d099e416efeada7679e26c573df8bc65bbc4e884424ff6`
+
+Because the missing list omitted only four transformed literals, the successful
+translations were `BRK/B`, `HVT/A`, `RAC/U` and `WSO/B`. The remaining 26
+slash-transformed literals were still absent. This demonstrates that a mechanical
+`.` -> `/` rule is valid for only a subset of the observed cases and may not be
+generalized across preferreds, rights, warrants or other specialized symbols.
+
+Plain-symbol probe:
+
+- requested: **8**
+- returned: **0**
+- coverage: **0.0%**
+- provider latency: **0.190 s**
+- evidence fingerprint:
+  `39032d1f7c0af09c0bcb993025cd0ca768c563606bf9fa0424aa2d6b1c62cd53`
+
+The eight unchanged plain literals were `CAPNR, CHPGR, CRACR, IEAGR, LKSPR, MCAHR,
+SZZLR, TAVIR`. Their absence cannot be attributed to dot/slash notation.
+
+The appropriate next step is therefore not a broad punctuation rewrite. Any accepted
+cross-provider mapping must be evidence-backed per security/symbol class, preserve the
+original provider-native identifiers and fail closed when no deterministic mapping is
+proven.
+
 Returned `X-Ratelimit-*` headers were retained as raw evidence. The observed
 `used` value was not monotonic across sequential requests, so no cumulative-rate
 semantics are inferred from that field in this diagnostic.
