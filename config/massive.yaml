@@ -64,6 +64,7 @@ massive:
 
   reference:
     page_limit: 1000
+    requests_per_minute: 5
     request_timeout_seconds: 30.0
     max_attempts: 4
     initial_retry_seconds: 1.0
