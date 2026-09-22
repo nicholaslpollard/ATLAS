@@ -174,7 +174,7 @@ class MassiveReferenceConfig(BaseModel):
     page_limit: int = Field(default=1000, ge=1, le=1000)
     requests_per_minute: int = Field(default=5, ge=1, le=10_000)
     request_timeout_seconds: float = Field(default=30.0, gt=0)
-    max_attempts: int = Field(default=4, ge=1, le=20)
+    max_attempts: int = Field(default=8, ge=1, le=20)
     initial_retry_seconds: float = Field(default=1.0, ge=0)
     max_retry_seconds: float = Field(default=20.0, ge=0)
 
