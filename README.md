@@ -392,28 +392,47 @@ V5. Displayed option-reference usage reached about **0.322 GiB** with about
 resolver requested its required pre-expiration `as_of=2014-08-15` structural
 view and received **zero** target rows instead of exactly one.
 
-This is a new provider historical-availability gap, not authority to weaken V5.
-A bounded read-only diagnostic is now frozen as
-`atlas-historical-option-reference-v5-aciw-historical-gap-diagnostic-v1`
-under fingerprint
-`5be1afdd7cb18cf77f6e0c5b76d2329f4afd1d8c07c37b2c051ec003325688b1`.
-It fully paginates the targeted current view, reproduces the failed 2014-08-15
-lookup, probes the immediate 2014-08-14 through 2014-08-18 boundary with the
-relevant `expired` states, and repeats exact Contract Overview. The goal is to
-determine whether any stable provider-native historical payload both agrees between
-list/overview and matches exactly one current conflicting row.
+The ACIW diagnostic completed on the target workstation under evidence
+fingerprint
+`9c04eba3dd7fce45bbd3e35366e93191acb92493c3e4ed34001e0ad4ef31c777`.
+The fully paginated current view returned two stable unversioned ACIW rows with the
+same underlying ticker and differing only in `primary_exchange`
+(`GMNI` versus `XCBO`). The historical boundary matrix was stable: no target
+row existed on 2014-08-14 or the required pre-expiration 2014-08-15 view; the target
+remained absent for `expired=false` on/after expiration; `expired=true` exposed
+both rows beginning on 2014-08-16. Exact Contract Overview was absent throughout the
+tested 2014-08-14 through 2014-08-18 boundary. No provider-native historical payload
+identified exactly one current row.
 
-If such evidence does not exist, ATLAS must not guess a row. A separately frozen
-successor may instead quarantine that unresolved ticker from authoritative normalized
-use while preserving both raw rows and allowing unrelated acquisition to continue.
-Neither resolution nor quarantine is authorized yet. The incident is preserved in
-`docs/research/historical_option_reference_v5_aciw_historical_gap_20260921.md`.
+Historical Option Reference V6 is therefore frozen under contract fingerprint
+`__V6_FINGERPRINT__`. V6 preserves all V5 AAL/ACHI/ACT2 resolution semantics
+unchanged and adds a separate **no-guess ambiguity quarantine**. Quarantine is
+eligible only for expired, unversioned same-ticker conflicts whose sole differing
+field is `primary_exchange`, whose underlying ticker is identical across current
+rows, and whose required pre-expiration structural target is repeatably absent.
+Eligible conflicts select **no provider row**: all raw rows are preserved, a
+fingerprinted partition quarantine artifact is written, and the ticker is excluded
+from normalized authoritative option reference. Other unresolved ambiguity classes
+remain fail-closed.
 
-The next authorized workstation action is the ACIW diagnostic. V5 bulk acquisition
-must not be rerun until that evidence is reviewed. After an accepted successor
-completes all **212** partitions, ATLAS must independently close raw/version/
-normalized/hash/cardinality and conflict-resolution/quarantine lineage before broad
-option daily history.
+V6 reconciliation is explicitly
+`raw rows = normalized selected + discarded version rows + quarantined raw rows`.
+Verified V6 receipts require raw, normalized and quarantine hashes. V6 inventories
+verified V5 raw lineage before V4/V3/V2/V1, so the 63 V5 partitions already completed
+during the first attempt—and any provider partitions that atomically completed before
+worker cancellation—can be re-normalized locally without refetching. Five bounded
+workers remain the default.
+
+The immutable ACIW diagnostic closeout is
+`docs/research/historical_option_reference_v5_aciw_historical_gap_closeout_20260922.md`.
+V6 quarantine is source-quality exclusion only and creates no historical
+candidate-availability, dynamic-deliverable, market-price, predictor, strategy,
+promotion, PAPER or LIVE authority.
+
+The next authorized workstation action is the V6 acquisition after this package is
+accepted on `main`. After all **212** partitions complete, ATLAS must independently
+close raw/version/normalized/quarantine/hash/cardinality and all
+conflict-resolution/quarantine lineage before broad option daily history.
 
 ## News + options historical-data foundation — 2026-09-20
 
