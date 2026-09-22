@@ -405,7 +405,7 @@ tested 2014-08-14 through 2014-08-18 boundary. No provider-native historical pay
 identified exactly one current row.
 
 Historical Option Reference V6 is therefore frozen under contract fingerprint
-`__V6_FINGERPRINT__`. V6 preserves all V5 AAL/ACHI/ACT2 resolution semantics
+`f40edc7bc0dd872dfa944297571545a8e4ab14c112af1ea35ddd806bf2c30342`. V6 preserves all V5 AAL/ACHI/ACT2 resolution semantics
 unchanged and adds a separate **no-guess ambiguity quarantine**. Quarantine is
 eligible only for expired, unversioned same-ticker conflicts whose sole differing
 field is `primary_exchange`, whose underlying ticker is identical across current
