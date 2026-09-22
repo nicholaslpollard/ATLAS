@@ -381,9 +381,39 @@ strategy, promotion, PAPER or LIVE authority.
 
 The immutable ACT2 diagnostic closeout is
 `docs/research/historical_option_reference_v4_act2_correction_conflict_closeout_20260921.md`.
-The next authorized workstation action is the V5 acquisition; after all **212**
-partitions complete, ATLAS must independently close raw/version/normalized/hash/
-cardinality and conflict-resolution lineage before broad option daily history.
+
+The first target-workstation V5 acquisition passed the hard-end probe and all three
+mandatory AAL/ACHI/ACT2 probes. Startup inventory was **212** monthly partitions:
+0 verified V5 reusable, **63 verified V4 raw reusable**, and **149 provider
+pending**. All 63 verified V4 raw partitions were successfully re-normalized under
+V5. Displayed option-reference usage reached about **0.322 GiB** with about
+**135.45 GiB** free. Provider-side continuation then failed closed in
+`expired-2014-08` on `O:ACIW140816C00040000`: the frozen unversioned
+resolver requested its required pre-expiration `as_of=2014-08-15` structural
+view and received **zero** target rows instead of exactly one.
+
+This is a new provider historical-availability gap, not authority to weaken V5.
+A bounded read-only diagnostic is now frozen as
+`atlas-historical-option-reference-v5-aciw-historical-gap-diagnostic-v1`
+under fingerprint
+`5be1afdd7cb18cf77f6e0c5b76d2329f4afd1d8c07c37b2c051ec003325688b1`.
+It fully paginates the targeted current view, reproduces the failed 2014-08-15
+lookup, probes the immediate 2014-08-14 through 2014-08-18 boundary with the
+relevant `expired` states, and repeats exact Contract Overview. The goal is to
+determine whether any stable provider-native historical payload both agrees between
+list/overview and matches exactly one current conflicting row.
+
+If such evidence does not exist, ATLAS must not guess a row. A separately frozen
+successor may instead quarantine that unresolved ticker from authoritative normalized
+use while preserving both raw rows and allowing unrelated acquisition to continue.
+Neither resolution nor quarantine is authorized yet. The incident is preserved in
+`docs/research/historical_option_reference_v5_aciw_historical_gap_20260921.md`.
+
+The next authorized workstation action is the ACIW diagnostic. V5 bulk acquisition
+must not be rerun until that evidence is reviewed. After an accepted successor
+completes all **212** partitions, ATLAS must independently close raw/version/
+normalized/hash/cardinality and conflict-resolution/quarantine lineage before broad
+option daily history.
 
 ## News + options historical-data foundation — 2026-09-20
 
