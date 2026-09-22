@@ -219,6 +219,33 @@ class AlpacaBackfillConfig(BaseModel):
     credentials: AlpacaCredentialsConfig = Field(default_factory=AlpacaCredentialsConfig)
 
 
+class TradierProviderConfig(BaseModel):
+    name: str = "tradier"
+    production_base_url: str = "https://api.tradier.com/v1"
+    websocket_market_url: str = "wss://ws.tradier.com/v1/markets/events"
+
+
+class TradierCredentialsConfig(BaseModel):
+    api_key_env: str = "TRADIER_API_KEY"
+
+
+class TradierMarketDataConfig(BaseModel):
+    requests_per_minute: int = Field(default=120, ge=1, le=1000)
+    request_timeout_seconds: float = Field(default=30.0, gt=0)
+    max_attempts: int = Field(default=4, ge=1, le=20)
+    initial_retry_seconds: float = Field(default=1.0, ge=0)
+    max_retry_seconds: float = Field(default=15.0, ge=0)
+    qualification_batch_sizes: list[int] = Field(
+        default_factory=lambda: [1, 10, 100, 250, 500, 1000]
+    )
+
+
+class TradierConfig(BaseModel):
+    provider: TradierProviderConfig = Field(default_factory=TradierProviderConfig)
+    credentials: TradierCredentialsConfig = Field(default_factory=TradierCredentialsConfig)
+    market_data: TradierMarketDataConfig = Field(default_factory=TradierMarketDataConfig)
+
+
 class LoggingConfig(BaseModel):
     level: str = "INFO"
     format: str
@@ -235,6 +262,7 @@ class AtlasSettings(BaseModel):
     data: DataConfig
     massive: MassiveConfig
     alpaca: AlpacaBackfillConfig
+    tradier: TradierConfig
     logging: LoggingConfig
 
     def resolved_path(self, relative: Path | str) -> Path:
@@ -289,6 +317,7 @@ def load_settings(project_root: Path | None = None, environment: str | Environme
     data_doc = _load_yaml(config_dir / "data.yaml")
     massive_doc = _load_yaml(config_dir / "massive.yaml")
     alpaca_doc = _load_yaml(config_dir / "alpaca.yaml")
+    tradier_doc = _load_yaml(config_dir / "tradier.yaml")
     logging_doc = _load_yaml(config_dir / "logging.yaml")
 
     env_name = str(environment or os.getenv("ATLAS_ENV") or app_doc.get("app", {}).get("environment", "development"))
@@ -296,7 +325,7 @@ def load_settings(project_root: Path | None = None, environment: str | Environme
     overlay = _load_yaml(env_path)
 
     merged: dict[str, Any] = {}
-    for doc in (app_doc, data_doc, massive_doc, alpaca_doc, logging_doc):
+    for doc in (app_doc, data_doc, massive_doc, alpaca_doc, tradier_doc, logging_doc):
         merged = _deep_merge(merged, doc)
     merged = _deep_merge(merged, overlay)
     merged["project_root"] = root

@@ -15,6 +15,9 @@ def test_development_settings_load():
     assert settings.app.trading_mode == TradingMode.SHADOW
     assert settings.data.calendar.exchange == "XNYS"
     assert settings.massive.credentials.api_key_env == "MASSIVE_API_KEY"
+    assert settings.tradier.credentials.api_key_env == "TRADIER_API_KEY"
+    assert settings.tradier.market_data.requests_per_minute == 120
+    assert settings.tradier.provider.production_base_url == "https://api.tradier.com/v1"
 
 
 def test_live_overlay_selects_autonomous_mode():

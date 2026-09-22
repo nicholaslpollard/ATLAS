@@ -1,0 +1,22 @@
+tradier:
+  provider:
+    name: tradier
+    production_base_url: https://api.tradier.com/v1
+    websocket_market_url: wss://ws.tradier.com/v1/markets/events
+
+  credentials:
+    api_key_env: TRADIER_API_KEY
+
+  market_data:
+    requests_per_minute: 120
+    request_timeout_seconds: 30.0
+    max_attempts: 4
+    initial_retry_seconds: 1.0
+    max_retry_seconds: 15.0
+    qualification_batch_sizes:
+      - 1
+      - 10
+      - 100
+      - 250
+      - 500
+      - 1000

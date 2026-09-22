@@ -915,8 +915,12 @@ manual execution fallback. Automatic broker failover remains prohibited.
 Massive is no longer a required forward runtime dependency. Any retained Massive free
 access is diagnostic/research-only and carries no trading authority; historical Massive
 source provenance and reproducibility paths remain immutable evidence and are not
-rewritten. Tradier and unofficial Yahoo/yfinance feeds are not part of the supported
-operating-provider chain.
+rewritten. Unofficial Yahoo/yfinance feeds are not part of the supported
+operating-provider chain. Tradier is **not yet** in that chain either; as of
+2026-09-22 it is a separately qualified candidate current-market-data source only.
+Its availability and credentials do not change the accepted Alpaca-primary /
+Webull-secondary policy until REST, streaming, freshness, coverage and cross-provider
+quality evidence are independently accepted.
 
 Live transport is intentionally selective rather than market-wide. Broad discovery
 runs locally first; REST/API snapshots refresh the narrowed candidate set and obtain
@@ -954,6 +958,37 @@ WebSockets -> entry -> held-contract/underlying streams through exit`. If finali
 exceed streaming capacity, the coordinator streams the highest-priority subset and
 keeps the remainder current through rate-aware REST polling. Provider transport choice
 must not alter strategy authority, economics, portfolio-risk gates, or execution truth.
+
+### Tradier candidate source qualification — 2026-09-22
+
+The operator now has a production Tradier Brokerage API token stored only in the local
+`TRADIER_API_KEY` environment variable. Official Tradier documentation describes
+production U.S. equity/options market data as real-time consolidated data, production
+`/markets` resources as 120 requests/minute per access token, POST
+`/v1/markets/quotes` as the larger-symbol-list quote surface, and one market-data
+stream session with practical support beyond several hundred symbols but no published
+hard symbol cap.
+
+ATLAS does not accept those provider claims as an operating-policy change. The frozen
+first-stage diagnostic
+`atlas-tradier-production-market-data-source-qualification-v1`
+has contract fingerprint
+`3a14be911be351d465ad3a99ab6dc7d47e985fbd17005af0bb6faa9c7613305d`.
+It uses read-only production POST quote requests staged at
+`1, 10, 100, 250, 500, 1000` symbols from the latest local Phase 7
+discovery-eligible universe. It records returned cardinality, exact coverage,
+missing/unexpected symbols, duplicate rows, provider/request latency, response bytes,
+payload fingerprint, non-null schema fields and returned `X-Ratelimit-*` headers.
+Actual quote values are not persisted by the diagnostic.
+
+Streaming is deliberately **not** qualified in V1. Tradier publishes no hard stream
+symbol limit and explicitly discourages exchange-wide subscriptions, so a separate
+stream contract will be designed from the accepted REST evidence using bounded
+candidate-style symbol sets. Until both REST and streaming/freshness/feed-quality
+evidence are accepted, Tradier has no current-data authority and the existing
+Alpaca-primary/Webull-secondary live transport policy remains unchanged. The source
+contract is documented in
+`docs/research/tradier_market_data_source_qualification_v1_20260922.md`.
 
 ## 2026-09-19 — Recurrent successor historical outcome replay bridge
 
