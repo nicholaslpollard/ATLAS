@@ -4027,3 +4027,52 @@ Frozen v2 semantics:
 7. release exactly the previously reserved stock or option cash/exposure amounts
    without inventing fills, marks, or P&L;
 8. provide deterministic state, event, and ledger fingerprints plus replay checks for
+   chronology, before/after state lineage, and reservation/release integrity;
+9. never fold option delta-equivalent exposure into stock gross notional; and
+10. infer no margin, collateral, or leverage and grant no provider/broker, order,
+    fill, mark-to-market, realized-P&L, PAPER, LIVE, promotion, or confluence authority.
+
+## Track A broker-neutral simulated entry-fill evidence — 2026-09-16
+
+The next execution boundary is frozen under contract
+`e271ba5c66fe9bc41b7f81945a1ef8152a2eeae091b27f6efd4859bacd2d8668`
+(`atlas-simulated-entry-fill-evidence-v1`). It consumes exact active reservation,
+account-state, decision-record and selected-candidate lineage plus explicit
+caller-supplied complete-fill evidence. Source id, source fingerprint, fill timestamp,
+price and explicit fees are fingerprint material. Partial fills remain outside this
+version.
+
+Frozen fill semantics:
+
+1. STOCK preserves the accepted reservation economic gross notional and derives
+   complete fractional simulation quantity as notional / explicit fill price;
+2. STOCK does not resolve or infer cash funding, margin, collateral, leverage or
+   short-sale proceeds when accepted economic capital differs from gross notional;
+3. OPTION requires exact accepted long-option reservation terms, contract count and
+   multiplier;
+4. OPTION premium debit cannot exceed the reserved ask-premium debit, explicit entry
+   fees cannot exceed the separate fee reserve, total cash debit cannot exceed total
+   reserved capital, and unspent reserve is recorded explicitly;
+5. every fill binds exact account-state, reservation, decision, candidate and external
+   fill-source lineage and receives a deterministic fingerprint; and
+6. the package grants no reservation-release, account-mutation, open-position,
+   mark-to-market, realized-P&L, provider/broker, order, PAPER, LIVE, promotion or
+   confluence authority.
+
+Immediate Track A continuation after acceptance:
+
+1. freeze broker-neutral simulated complete exit-fill evidence tied to one exact active
+   open-position fingerprint, explicit source id/SHA-256, exit timestamp, executable
+   exit price, exact quantity/multiplier and explicit exit fees;
+2. keep the exit evidence descriptive only—no broker/order/PAPER/LIVE authority and no
+   position mutation merely because an exit fill record exists;
+3. consume exact open-position + exit-fill lineage in a deterministic closeout state
+   that removes only the matched position and returns exact net exit proceeds to cash;
+4. distinguish account-state realized P&L from lifetime trade net P&L so previously
+   expensed entry fees are not double counted, and add replay/idempotency/tamper checks;
+5. only after lifecycle accounting is accepted, integrate the authoritative records into
+   browser observability and later broker/PAPER authority gates.
+
+The Strategy Evidence Register remains unchanged because this package changes
+product/account-simulation architecture only.
+
