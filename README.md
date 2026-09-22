@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-21 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-22 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -346,19 +346,44 @@ fallback with an **explicit correction present**, while V4 intentionally authori
 that historical exact-match fallback only for unversioned rows. This is a new
 source-semantics boundary, not a runtime defect, and no V4 completion claim is made.
 
-A read-only successor diagnostic is now frozen as
-`atlas-historical-option-reference-v4-explicit-correction-conflict-diagnostic-v1`
-under fingerprint
-`54a4436ba1cfee33c6dc3eaabfedd4334c50985d2ee696fab2cc97cfc22620c7`.
-It targets `O:ACT2140719C00045000` at current `as_of=2026-09-19` and
-pre-expiration `as_of=2014-07-18`, repeats the structural-list and exact Contract
-Overview requests twice, records the explicit correction values and field-level
-differences, and tests whether a stable historical provider payload matches exactly
-one current conflicting row. The diagnostic grants no conflict-resolution, bulk
-acquisition, predictor, strategy-outcome, PAPER or LIVE authority. V4 must not be
-rerun until that evidence is reviewed and any successor resolver is separately
-frozen. The source incident is preserved in
-`docs/research/historical_option_reference_v4_act2_correction_conflict_20260921.md`.
+The read-only ACT2 diagnostic completed on the target workstation under evidence
+fingerprint
+`283f736a73a742704c7d005b9c0c48aee2b11cf2dd1eccc8bf44fd52a443e1e3`.
+All repeated requests were stable. At current `as_of=2026-09-19`, Massive
+returned two `O:ACT2140719C00045000` rows carrying the same explicit correction
+value **2**. The rows differed only in `additional_underlyings`: both were USD cash
+deliverables, with observed amounts **2604** and **2617.04**. Exact current Contract
+Overview returned stable HTTP 404 / `NOT_FOUND`. At pre-expiration
+`as_of=2014-07-18`, the structural list returned exactly one target row with
+correction **2**, and exact Contract Overview returned one stable HTTP-200 row that
+matched the historical list row and exactly one current conflicting raw payload.
+
+Historical Option Reference V5 is therefore frozen under contract fingerprint
+`4a9775c90414d8a454654d5f0928d79b68dec785b16b493e197ea34471aef1ea`.
+V5 preserves V4's unversioned AAL/ACHI branch unchanged: expired rows must have
+missing correction and may differ only in `primary_exchange`,
+`underlying_ticker`, or both before the repeated pre-expiration exact-match rule may
+run. V5 adds a separate branch for **expired explicit same-correction conflicts**.
+That branch requires all conflicting current rows to share one nonnegative highest
+correction rank, permits only `additional_underlyings` to differ, requires the
+pre-expiration structural-list and Contract Overview payloads to be stable and
+identical, requires the historical correction rank to equal the current highest
+rank, and requires that historical payload to match exactly one current conflicting
+raw row. Anything else remains fail-closed.
+
+AAL, ACHI and ACT2 are all mandatory pre-acquisition probes. V5 inventories verified
+V5 receipts first, then verified V4/V3/V2/V1 raw lineage and re-normalizes reusable
+raw locally without copying it. Five workers remain the default with at most five
+partitions in flight. V5 remains structural-reference acquisition only; choosing the
+provider-native pre-expiration ACT2 row creates **no historical dynamic-deliverable
+authority** and grants no historical candidate-availability, market-price, predictor,
+strategy, promotion, PAPER or LIVE authority.
+
+The immutable ACT2 diagnostic closeout is
+`docs/research/historical_option_reference_v4_act2_correction_conflict_closeout_20260921.md`.
+The next authorized workstation action is the V5 acquisition; after all **212**
+partitions complete, ATLAS must independently close raw/version/normalized/hash/
+cardinality and conflict-resolution lineage before broad option daily history.
 
 ## News + options historical-data foundation — 2026-09-20
 
