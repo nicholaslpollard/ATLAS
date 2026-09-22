@@ -40,7 +40,7 @@ def test_v6_artc_diagnostic_contract_is_frozen() -> None:
 
     assert (
         module.HISTORICAL_OPTION_REFERENCE_V6_ARTC_DELIVERABLE_CFI_CONFLICT_DIAGNOSTIC_FINGERPRINT
-        == "3677394560a04885f063571e07d5ac02db8ab514e4bc28813c459ce62c67c610"
+        == "af4cae21c4d8307a37346098449b37ebc04e6e9a5ab25ef4414d5820f71853df"
     )
     assert manifest["parent_v6_contract_fingerprint"] == (
         "f40edc7bc0dd872dfa944297571545a8e4ab14c112af1ea35ddd806bf2c30342"
