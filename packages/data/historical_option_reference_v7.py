@@ -780,7 +780,7 @@ def _resolve_narrow_explicit_correction_conflict(
     if not differing or not differing.issubset(allowed):
         raise HistoricalOptionReferenceV7Error(
             f"{partition.key}: {ticker}: explicit same-rank conflict fields "
-            f"{sorted(differing)} exceed frozen V6 allowance {sorted(allowed)}"
+            f"{sorted(differing)} exceed frozen V7 allowance {sorted(allowed)}"
         )
 
     structural = [
@@ -1039,7 +1039,7 @@ def _resolve_ticker_versions(
         if settings is None or api_key is None:
             raise HistoricalOptionReferenceV7Error(
                 f"{partition.key}: {ticker}: conflicting provider rows share "
-                f"highest correction rank {highest_rank}; V6 resolver context missing"
+                f"highest correction rank {highest_rank}; V7 resolver context missing"
             )
         if highest_rank == -1:
             try:
@@ -2369,7 +2369,7 @@ def _rebuild_partition_from_parent_raw(
         }
         if receipt["raw_sha256"] != parent_receipt.get("raw_sha256"):
             raise HistoricalOptionReferenceV7Error(
-                f"{partition.key}: parent raw hash changed during local V6 rebuild"
+                f"{partition.key}: parent raw hash changed during local V7 rebuild"
             )
         receipt["receipt_fingerprint"] = _stable_hash(receipt)
         _atomic_write_json(paths["receipt"], receipt)
@@ -2456,7 +2456,7 @@ def run_historical_option_reference_v7_acquisition(
     partitions = reference_partitions()
     persistence_lock = threading.Lock()
 
-    reused_v6: list[dict[str, object]] = []
+    reused_v7: list[dict[str, object]] = []
     rebuild_from_v6: list[tuple[ReferencePartition, dict[str, object], Path]] = []
     rebuild_from_v5: list[tuple[ReferencePartition, dict[str, object], Path]] = []
     rebuild_from_v4: list[tuple[ReferencePartition, dict[str, object], Path]] = []
@@ -2468,7 +2468,7 @@ def run_historical_option_reference_v7_acquisition(
     for partition in partitions:
         receipt = _verified_existing_receipt(settings, partition)
         if receipt is not None:
-            reused_v6.append(receipt)
+            reused_v7.append(receipt)
             continue
 
         v6_source = _verified_v6_raw_receipt(settings, partition)
@@ -2508,9 +2508,10 @@ def run_historical_option_reference_v7_acquisition(
             provider_pending.append(partition)
 
     print(
-        "historical option reference v6: "
+        "historical option reference v7: "
         f"{len(partitions)} monthly partitions / "
-        f"{len(reused_v6)} verified V6 reusable / "
+        f"{len(reused_v7)} verified V7 reusable / "
+        f"{len(rebuild_from_v6)} verified V6 raw reusable / "
         f"{len(rebuild_from_v5)} verified V5 raw reusable / "
         f"{len(rebuild_from_v4)} verified V4 raw reusable / "
         f"{len(rebuild_from_v3)} verified V3 raw reusable / "
@@ -2549,7 +2550,7 @@ def run_historical_option_reference_v7_acquisition(
             flush=True,
         )
 
-    completed: list[dict[str, object]] = list(reused_v6)
+    completed: list[dict[str, object]] = list(reused_v7)
 
     def rebuild_parent_batch(
         items,
@@ -2704,7 +2705,7 @@ def run_historical_option_reference_v7_acquisition(
     completed.sort(key=lambda item: str(item["partition"]))
     if len(completed) != len(partitions):
         raise HistoricalOptionReferenceV7Error(
-            f"V6 partition completion mismatch: {len(completed)} != {len(partitions)}"
+            f"V7 partition completion mismatch: {len(completed)} != {len(partitions)}"
         )
 
     total_raw_records = sum(int(item["raw_provider_records"]) for item in completed)
@@ -2751,7 +2752,7 @@ def run_historical_option_reference_v7_acquisition(
         "known_conflict_resolution_probes": known_conflict_probes,
         "known_ambiguity_quarantine_probes": known_quarantine_probes,
         "monthly_partitions": len(completed),
-        "reused_verified_partitions": len(reused_v6),
+        "reused_verified_partitions": len(reused_v7),
         "rebuilt_from_verified_v6_raw_this_run": len(rebuild_from_v6),
         "rebuilt_from_verified_v5_raw_this_run": len(rebuild_from_v5),
         "rebuilt_from_verified_v4_raw_this_run": len(rebuild_from_v4),
