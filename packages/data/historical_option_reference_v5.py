@@ -123,7 +123,7 @@ def _request_json(
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Accept": "application/json",
-                "User-Agent": "ATLAS-historical-option-reference-v4/1",
+                "User-Agent": "ATLAS-historical-option-reference-v5/1",
             },
             method="GET",
         )
