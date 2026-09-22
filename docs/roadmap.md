@@ -652,6 +652,18 @@ the original **12,066** discovery-eligible count and universe fingerprint
 `98e72372e2a4725b2e90b3f6bf797e085f6ed64e2190454892b5ffa42c240124`, and only then
 rerun the frozen Tradier REST qualification.
 
+A separate current-asset stress diagnostic was then run against a deterministic
+1,000-symbol sample drawn from the surviving Alpaca SIP V2 asset snapshot
+(SHA-256 `43a5645d4366e7f7294e14f60596c5e753db6158c394a62262fdd283bbab151a`).
+Tradier completed every POST stage through 1,000 requested symbols without a terminal
+error; the 1,000-symbol stage returned **962 / 1,000 (96.2%)** in **0.544 s** and
+461,708 response bytes. Thirty of the 38 missing literals contained a dot, strongly
+concentrating the observed limitation in cross-provider symbol representation rather
+than request cardinality. This is supplemental engineering evidence only: it does not
+replace the frozen Phase 7 V1 population, establish a symbol-translation rule, change
+provider policy, or grant PAPER/LIVE authority. Full evidence is preserved in
+`docs/research/tradier_current_asset_rest_stress_20260922.md`.
+
 ## 5. Accepted foundation through Phase32
 
 Phases1–25 accepted project/config/session foundations, provider ingestion,
