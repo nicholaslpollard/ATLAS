@@ -981,6 +981,29 @@ Operator entry point:
 
 This historical replay does not require the market to be open. PR #161's current-Webull workstation acceptance remains a separate regular-market-hours operational-runtime gate.
 
+## 2026-09-22 — Recurrent workstation market-hours entry-schedule repair
+
+The first target-workstation regular-session acceptance attempt reached the Webull
+sandbox L1 SPY quote capture successfully under run id `20260922T133439Z`, then
+failed closed before RESERVE admission because the acceptance harness scheduled the
+ENTRY cycle at the later quote-bundle capture timestamp while building RESERVE
+evidence at the earlier local quote-receipt timestamp.
+
+The durable RESERVE rule `built_at_utc >= scheduled_for_utc` remains unchanged and
+correct. The workstation fixture now schedules ENTRY at
+`quote.received_at_utc`—the first ATLAS-observable time for that evidence—while
+beginning the recurrent cycle at the later bundle capture time. ENTRY acceptance
+artifacts now retain the schedule, quote-receipt and bundle-capture timestamps
+explicitly. Regression coverage reproduces the millisecond ordering observed on the
+workstation and proves the existing RESERVE chronology contract is satisfied without
+weakening it.
+
+The failed run is not accepted workstation evidence. A fresh isolated run id remains
+required during XNYS regular hours. This repair changes no provider/broker permissions,
+strategy evidence, order authority, PAPER authority, LIVE authority, promotion
+authority or confluence authority. The immutable incident record is
+`docs/research/recurrent_workstation_acceptance_entry_schedule_incident_20260922.md`.
+
 ## 2026-09-19 — First recurrent successor workstation portfolio replay
 
 The first workstation historical portfolio replay completed successfully for signal scope

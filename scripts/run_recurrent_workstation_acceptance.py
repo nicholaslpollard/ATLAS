@@ -86,6 +86,7 @@ from packages.simulation.recurrent_workstation_acceptance import (
     workstation_acceptance_context_path,
     workstation_acceptance_receipt_path,
     workstation_acceptance_stage_path,
+    workstation_entry_schedule_utc,
     write_acceptance_json,
     write_workstation_acceptance_receipt_v1,
 )
@@ -228,9 +229,14 @@ def _phase_entry(live_root: Path) -> int:
         initial_equity=initial_equity,
         as_of_utc=cutoff - timedelta(seconds=1),
     )
+    entry_schedule_utc = workstation_entry_schedule_utc(
+        provider_timestamp_utc=quote.provider_timestamp_utc,
+        received_at_utc=quote.received_at_utc,
+        captured_at_utc=quotes.captured_at_utc,
+    )
     identity = _identity(
         schedule_id=ENTRY_SCHEDULE_ID,
-        scheduled_for_utc=quotes.captured_at_utc,
+        scheduled_for_utc=entry_schedule_utc,
     )
     production = RecurrentTimeAwareProductionCycleV1(
         settings=settings,
@@ -298,6 +304,12 @@ def _phase_entry(live_root: Path) -> int:
         "entry",
         {
             "entry_scheduled_for_utc": (
+                identity.scheduled_for_utc.isoformat()
+            ),
+            "entry_quote_received_at_utc": (
+                quote.received_at_utc.isoformat()
+            ),
+            "entry_quote_bundle_captured_at_utc": (
                 quotes.captured_at_utc.isoformat()
             ),
             "entry_cycle_id": identity.cycle_id,

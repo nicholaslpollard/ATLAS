@@ -7,6 +7,12 @@ import pytest
 
 from packages.core.settings import load_settings
 from packages.execution.trade_expression import SelectionKind
+from packages.simulation.recurrent_cycle_runner import (
+    build_recurrent_cycle_run_identity_v1,
+)
+from packages.simulation.recurrent_reserve_evidence import (
+    build_recurrent_reserve_evidence_bundle_v1,
+)
 from packages.simulation.recurrent_workstation_acceptance import (
     RECURRENT_WORKSTATION_ACCEPTANCE_CONTRACT_FINGERPRINT,
     RecurrentWorkstationAcceptanceError,
@@ -14,6 +20,7 @@ from packages.simulation.recurrent_workstation_acceptance import (
     build_workstation_reference_decision_v1,
     isolated_acceptance_settings,
     read_workstation_acceptance_receipt_v1,
+    workstation_entry_schedule_utc,
     write_workstation_acceptance_receipt_v1,
 )
 
@@ -69,6 +76,56 @@ def test_reference_fixture_produces_stock_decision_without_strategy_claim() -> N
         0.20
     )
     assert "NOT_STRATEGY_EVIDENCE" in record.forecast.reason_codes
+
+
+def test_entry_schedule_uses_quote_receipt_not_later_bundle_capture() -> None:
+    provider = datetime(2026, 9, 22, 13, 34, 42, 900000, tzinfo=UTC)
+    received = datetime(2026, 9, 22, 13, 34, 43, 100000, tzinfo=UTC)
+    captured = datetime(2026, 9, 22, 13, 34, 43, 158543, tzinfo=UTC)
+
+    scheduled = workstation_entry_schedule_utc(
+        provider_timestamp_utc=provider,
+        received_at_utc=received,
+        captured_at_utc=captured,
+    )
+    assert scheduled == received
+    assert scheduled < captured
+
+    identity = build_recurrent_cycle_run_identity_v1(
+        schedule_id="workstation-acceptance-entry-v1",
+        scheduled_for_utc=scheduled,
+    )
+    decision = build_workstation_reference_decision_v1(
+        ticker="SPY",
+        reference_price=500.0,
+        decision_created_utc=provider,
+        evidence_cutoff_utc=provider - timedelta(seconds=1),
+        position_notional_dollars=10_000.0,
+    )
+    reserve = build_recurrent_reserve_evidence_bundle_v1(
+        identity=identity,
+        decisions=((decision, None),),
+        built_at_utc=received,
+    )
+
+    assert reserve.scheduled_for_utc == received
+    assert reserve.built_at_utc == received
+
+
+def test_entry_schedule_rejects_invalid_quote_chronology() -> None:
+    provider = datetime(2026, 9, 22, 13, 34, 43, tzinfo=UTC)
+    received = provider - timedelta(milliseconds=1)
+    captured = provider + timedelta(milliseconds=1)
+
+    with pytest.raises(
+        RecurrentWorkstationAcceptanceError,
+        match="provider timestamp cannot follow quote receipt",
+    ):
+        workstation_entry_schedule_utc(
+            provider_timestamp_utc=provider,
+            received_at_utc=received,
+            captured_at_utc=captured,
+        )
 
 
 def test_acceptance_receipt_self_hash_roundtrips(tmp_path) -> None:

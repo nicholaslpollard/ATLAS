@@ -44,6 +44,35 @@ class RecurrentWorkstationAcceptanceError(RuntimeError):
     pass
 
 
+def workstation_entry_schedule_utc(
+    *,
+    provider_timestamp_utc: datetime,
+    received_at_utc: datetime,
+    captured_at_utc: datetime,
+) -> datetime:
+    provider = _require_aware(
+        provider_timestamp_utc,
+        label="acceptance provider timestamp",
+    )
+    received = _require_aware(
+        received_at_utc,
+        label="acceptance quote receipt time",
+    )
+    captured = _require_aware(
+        captured_at_utc,
+        label="acceptance quote capture time",
+    )
+    if provider > received:
+        raise RecurrentWorkstationAcceptanceError(
+            "acceptance provider timestamp cannot follow quote receipt"
+        )
+    if received > captured:
+        raise RecurrentWorkstationAcceptanceError(
+            "acceptance quote receipt cannot follow bundle capture"
+        )
+    return received
+
+
 def _require_aware(value: datetime, *, label: str) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise RecurrentWorkstationAcceptanceError(
@@ -498,6 +527,7 @@ __all__ = [
     "REFERENCE_THRESHOLD_FRACTION",
     "RecurrentWorkstationAcceptanceError",
     "RecurrentWorkstationAcceptanceReceiptV1",
+    "workstation_entry_schedule_utc",
     "build_workstation_acceptance_receipt_v1",
     "build_workstation_reference_decision_v1",
     "isolated_acceptance_settings",
