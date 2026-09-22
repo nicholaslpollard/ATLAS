@@ -343,16 +343,37 @@ reused first; otherwise verified V4/V3/V2/V1 raw lineage is re-normalized locall
 without copying raw bytes. Work remains bounded to the configured worker count,
 default **5**.
 
-The next authorized target-workstation command, after this package is accepted on
-`main`, is:
+The first V5 target-workstation attempt passed the hard-end probe and all three
+mandatory AAL/ACHI/ACT2 probes. Startup inventory was 0 verified V5 reusable,
+**63 verified V4 raw reusable** and **149 provider pending**. All 63 V4 raw
+partitions were successfully re-normalized under V5. Provider-side continuation then
+failed closed in `expired-2014-08` on `O:ACIW140816C00040000`: the
+unversioned resolver's required pre-expiration `as_of=2014-08-15`,
+`expired=false` structural-list request returned zero target rows rather than
+exactly one.
 
-```powershell
-.\.venv\Scripts\python.exe scripts\run_historical_option_reference_v5.py --authorize-source-acquisition --workers 5
-```
+The active source gate is now the read-only
+`atlas-historical-option-reference-v5-aciw-historical-gap-diagnostic-v1`
+contract under fingerprint
+`5be1afdd7cb18cf77f6e0c5b76d2329f4afd1d8c07c37b2c051ec003325688b1`.
+It repeats and fully paginates the current targeted structural view, reproduces the
+failed pre-expiration cell, probes 2014-08-14 through 2014-08-18 with the relevant
+`expired` filter states, and repeats exact Contract Overview. It records whether
+any stable list/overview historical payload identifies exactly one current
+conflicting row.
 
-After V5 completes all **212** partitions, independently close raw/version/normalized/
-hash/cardinality and both conflict-resolution branches before broad option daily
-history. Candidate minute/quote/trade cache acquisition remains selective.
+If no provider-native point-in-time identity exists, the successor path is **not**
+to guess or silently discard a row. A separately frozen ambiguity-quarantine
+contract may preserve the raw conflict, exclude that ticker from authoritative
+normalized reference use, and allow unrelated source acquisition to continue. The
+diagnostic itself grants no resolver or quarantine authority.
+
+After this diagnostic package is accepted on `main`, run only its diagnostic
+runner. Do **not** rerun V5 bulk acquisition until the evidence is reviewed. After
+an accepted successor completes all **212** partitions, independently close
+raw/version/normalized/hash/cardinality and all conflict-resolution/quarantine
+lineage before broad option daily history. Candidate minute/quote/trade cache
+acquisition remains selective.
 
 ### News/options historical-data foundation — 2026-09-20
 
