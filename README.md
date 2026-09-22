@@ -429,9 +429,39 @@ V6 quarantine is source-quality exclusion only and creates no historical
 candidate-availability, dynamic-deliverable, market-price, predictor, strategy,
 promotion, PAPER or LIVE authority.
 
-The next authorized workstation action is the V6 acquisition after this package is
-accepted on `main`. After all **212** partitions complete, ATLAS must independently
-close raw/version/normalized/quarantine/hash/cardinality and all
+The first target-workstation V6 acquisition passed the 2032 hard-end boundary probe,
+all three AAL/ACHI/ACT2 resolution probes and the ACIW quarantine probe. Startup
+inventory was **0 verified V6 reusable / 63 verified V5 raw reusable / 149 provider
+pending**, and all **63/63** verified V5 raw partitions were re-normalized locally
+under V6. Bounded scheduling remained five workers / five in flight. At the end of
+the reusable rebuild phase, displayed option-reference usage was about **0.384 GiB**
+with about **103.35 GiB** free.
+
+Provider-side continuation then failed closed in `expired-2014-07` on
+`O:ARTC140719C00025000`. The current unversioned same-rank rows differ in both
+`additional_underlyings` and `cfi`, which exceeds V6's deliberately frozen
+unversioned allowance of `primary_exchange` and `underlying_ticker`. The conflict
+is also outside the ACIW quarantine, whose sole allowed differing field is
+`primary_exchange`. No V6 completion claim is made and neither resolver nor
+quarantine semantics are broadened from the observed result.
+
+A read-only ARTC source-conflict diagnostic is therefore frozen as
+`atlas-historical-option-reference-v6-artc-deliverable-cfi-conflict-diagnostic-v1`
+under contract fingerprint
+`af4cae21c4d8307a37346098449b37ebc04e6e9a5ab25ef4414d5820f71853df`.
+It fully paginates and repeats the current structural list, records exact
+`additional_underlyings` and `cfi` values, probes the immediate expiration
+boundary, repeats exact Contract Overview, and tests whether any stable historical
+provider payload matches exactly one current conflicting row. It grants no
+conflict-resolution, quarantine, predictor, strategy, PAPER or LIVE authority.
+
+The immutable failure/diagnostic contract is
+`docs/research/historical_option_reference_v6_artc_deliverable_cfi_conflict_20260922.md`.
+The next authorized workstation action is this ARTC diagnostic after the package is
+accepted on `main`. V6 must not be rerun until that evidence is reviewed and any
+successor rule is separately frozen. After a future reference acquisition completes
+all **212** partitions, ATLAS must independently close
+raw/version/normalized/quarantine/hash/cardinality and all
 conflict-resolution/quarantine lineage before broad option daily history.
 
 ## News + options historical-data foundation — 2026-09-20
