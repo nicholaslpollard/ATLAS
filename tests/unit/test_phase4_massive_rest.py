@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import date
 from pathlib import Path
+from urllib.error import HTTPError
 
 from packages.core.settings import load_settings
 from packages.providers.massive.reference_data import MassiveReferenceProvider
@@ -70,3 +71,82 @@ def test_reference_provider_combines_active_and_inactive_without_case_folding_ti
     assert [row["ticker"] for row in rows] == ["aapl", "old"]
     # Stable code-like identifiers are normalized; ticker text is not.
     assert rows[0]["composite_figi"] == "BBG000B9XRY4"
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def test_rest_paces_successful_pagination_to_configured_reference_budget(monkeypatch):
+    monkeypatch.setenv("MASSIVE_API_KEY", "super-secret")
+    settings = load_settings(ROOT, "development")
+    clock = FakeClock()
+    calls = []
+    payloads = [
+        {
+            "status": "OK",
+            "results": [{"ticker": "A", "active": True}],
+            "next_url": "https://api.massive.com/v3/reference/tickers?cursor=abc",
+        },
+        {"status": "OK", "results": [{"ticker": "B", "active": True}]},
+    ]
+
+    def opener(request, timeout):
+        calls.append((request, timeout, clock.now))
+        return FakeResponse(payloads[len(calls) - 1])
+
+    client = MassiveRESTClient(
+        settings,
+        opener=opener,
+        sleeper=clock.sleep,
+        clock=clock,
+    )
+    rows = list(client.list_tickers(as_of_date="2026-08-14", active=True))
+
+    assert [row["ticker"] for row in rows] == ["A", "B"]
+    assert len(calls) == 2
+    assert calls[0][2] == 0.0
+    assert calls[1][2] >= 12.0
+    assert any(seconds >= 12.0 for seconds in clock.sleeps)
+
+
+def test_rest_honors_numeric_retry_after_before_retry(monkeypatch):
+    monkeypatch.setenv("MASSIVE_API_KEY", "super-secret")
+    settings = load_settings(ROOT, "development")
+    clock = FakeClock()
+    calls = []
+
+    def opener(request, timeout):
+        calls.append(clock.now)
+        if len(calls) == 1:
+            headers = {"Retry-After": "30"}
+            raise HTTPError(
+                request.full_url,
+                429,
+                "Too Many Requests",
+                headers,
+                None,
+            )
+        return FakeResponse({"status": "OK", "results": [{"ticker": "A"}]})
+
+    client = MassiveRESTClient(
+        settings,
+        opener=opener,
+        sleeper=clock.sleep,
+        clock=clock,
+    )
+    payload = client.get_json("/v3/reference/tickers")
+
+    assert payload["status"] == "OK"
+    assert len(calls) == 2
+    assert calls[1] >= 30.0
+    assert 30.0 in clock.sleeps

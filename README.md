@@ -1020,6 +1020,30 @@ Alpaca-primary/Webull-secondary live transport policy remains unchanged. The sou
 contract is documented in
 `docs/research/tradier_market_data_source_qualification_v1_20260922.md`.
 
+The first target-workstation Tradier REST qualification attempt on 2026-09-22
+stopped **before any Tradier request** because the previously accepted Phase 7
+universe snapshot was no longer present locally. Recovery then confirmed that the
+2026-08-14 Phase 4 reference manifest and reference Parquet were also absent. An exact
+historical reference reacquisition through the accepted Phase 4 path reached Massive
+HTTP 429 before the snapshot could complete.
+
+That failure exposed an old operational gap in the Phase 4 Massive REST adapter:
+retryable 429 responses were recognized, but successful pagination was not paced to a
+configured request budget and four exponential retries could still be exhausted
+inside the provider's rate-limit window. The reference client is now explicitly
+rate-aware. `massive.reference.requests_per_minute` is configurable and set to **5**
+for the retained free reference-access profile; every reference request, including
+pagination and retry attempts, is paced to that budget, and numeric `Retry-After`
+headers are honored in addition to bounded exponential backoff.
+
+This is transport hardening only. It does not alter Phase 4 identity semantics,
+Phase 7 eligibility, the frozen Tradier qualification population, any provider-policy
+authority, or strategy/PAPER/LIVE authority. After this hardening is accepted on
+`main`, reacquire the exact 2026-08-14 reference snapshot, rebuild Phase 7, require
+the original **12,066** discovery-eligible count and universe fingerprint
+`98e72372e2a4725b2e90b3f6bf797e085f6ed64e2190454892b5ffa42c240124`, and only then
+rerun the frozen Tradier REST qualification.
+
 ## 2026-09-19 — Recurrent successor historical outcome replay bridge
 
 ATLAS now stages **atlas-recurrent-successor-outcome-replay-v1-walk-forward-selector-long-only** as the first historical campaign bridge from accepted successor research artifacts into the current recurrent account lifecycle.
