@@ -218,3 +218,49 @@ separately before recurrent broad-universe polling is accepted. It also does not
 change the 95.251% raw symbol-coverage limitation or accept any normalization rule.
 
 The formal Tradier V1 Phase 7 qualification remains a separate frozen gate.
+
+
+## Raw quote field-semantics inspection
+
+A 10-symbol production sample was captured during the regular session at approximately
+19:56:46 UTC using SPY, QQQ, AAPL, MSFT, NVDA, AMD, TSLA, IWM, BRK/B and HVT/A.
+All ten requests were returned in one POST (HTTP 200) in 0.240 seconds / 4,935 bytes.
+
+Across the ten returned rows, the following fields were non-null for all ten:
+`ask, ask_date, askexch, asksize, average_volume, bid, bid_date, bidexch, bidsize,
+change, change_percentage, description, exch, last, last_volume, prevclose, symbol,
+trade_date, type, volume, week_52_high, week_52_low`.
+
+`open, high, low` and `root_symbols` were present for 9/10. `close` was null for
+10/10 during the regular session.
+
+Nine liquid symbols showed current-session quote/trade timestamps around
+19:56:44 UTC. HVT/A exposed the required fail-closed counterexample:
+
+- last trade timestamp: 2026-09-21 23:00:00.001 UTC;
+- bid timestamp: 2026-09-22 19:56:09 UTC;
+- ask timestamp: 2026-09-22 19:50:01 UTC;
+- bid/ask: 28.53 / 30.94;
+- session volume: 35;
+- open/high/low: null.
+
+Therefore row presence alone is not sufficient current-data evidence. A normalized
+Tradier snapshot must independently preserve and gate trade, bid and ask freshness,
+spread/quote geometry and liquidity. Illiquid/stale rows must remain observable but
+must not be promoted to actionable current state.
+
+Additional semantic observations:
+
+- `prevclose` was populated 10/10 while intraday `close` was null 10/10, so
+  prior-session comparison must not depend on `close` during the regular session.
+- returned 52-week extrema are not necessarily updated with current-session extremes:
+  both AAPL and AMD had current-session highs above the returned `week_52_high`.
+  ATLAS may retain the provider field as descriptive context, but must not use it as
+  an unreconciled real-time breakout boundary.
+- `root_symbols` is provider metadata rather than a canonical ATLAS identity key;
+  e.g. AMD returned `AMD,AMD1`, TSLA returned `TSLA,TSLA1`, BRK/B returned
+  `BRKB`, while HVT/A had no root-symbol value.
+
+The raw diagnostic was intentionally persisted only beneath ignored local research
+state. A production current-state adapter should persist an explicit normalized schema
+and provenance/freshness metadata rather than archive unrestricted provider payloads.
