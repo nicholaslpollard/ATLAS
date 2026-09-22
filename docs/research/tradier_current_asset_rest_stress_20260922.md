@@ -70,8 +70,19 @@ TWO.PRC, WRB.PRF, WSO.B`.
 The missing population is strongly concentrated in provider-specific symbol forms:
 30/38 contain a dot. Of those, 24 match the literal `.PR*` pattern, two end in
 `.RT`, one ends in `.U`, and three are other dotted forms. Eight missing symbols
-are plain undotted literals. This is descriptive morphology only; ATLAS has not yet
-accepted any cross-provider symbol translation rule.
+are plain undotted literals.
+
+Tradier's current Market Data documentation explicitly states that warrants,
+preferred classes and other specialized securities use `/` where some other brokers
+use `.`, including the example `BRK.B -> BRK/B`. That provider documentation makes
+dot-to-slash normalization a concrete follow-up hypothesis for the dotted misses, but
+ATLAS has **not** accepted that transformation merely from documentation or from this
+sample. It must be tested read-only, preserve the original provider-native symbol and
+become a separately versioned mapping rule before any operating use.
+
+Documentation reference:
+
+- `https://docs.tradier.com/docs/market-data`
 
 Returned `X-Ratelimit-*` headers were retained as raw evidence. The observed
 `used` value was not monotonic across sequential requests, so no cumulative-rate
