@@ -341,3 +341,52 @@ The observed 2-second acquisition speed remains valid. This quality analysis nar
 what that speed means: Tradier can rapidly return a broad current-market snapshot, but
 ATLAS must locally distinguish fresh/liquid/actionable rows from stale or thin
 provider rows before discovery or execution use.
+
+
+## Near-close discovery-quality sensitivity
+
+The full-universe quality snapshot was captured at 15:58:44 America/New_York, less
+than two minutes before the regular-session close. It is therefore a useful
+near-close regime observation, not a whole-day representativeness claim.
+
+Diagnostic sensitivity across the 12,775 returned rows showed:
+
+- quote age <=30 s and spread <=100 bps: **6,771 (53.00%)**
+- the same gate with average volume >=50,000: **4,588 (35.91%)**
+- average volume >=100,000: **4,179 (32.71%)**
+- average volume >=500,000: **2,669 (20.89%)**
+- average volume >=1,000,000: **1,875 (14.68%)**
+
+The quality relationship with liquidity was strong. Under the <=30 s / <=100 bps
+diagnostic gate, **90.54%** of symbols averaging at least 1M shares/day were usable,
+**85.84%** of the 500K-1M bucket were usable, and **67.90%** of the 100K-500K bucket
+were usable. The raw broad universe's weak freshness statistics are therefore
+materially concentrated outside the most liquid population.
+
+No threshold above is accepted production policy. These are sensitivity observations
+only and should be repeated at multiple regular-session regimes (open, mid-morning,
+midday, power hour/near-close) before any freshness or liquidity gate is frozen.
+
+## Candidate multi-pass rediscovery design
+
+The observed ~2-second full-universe REST snapshot makes a bounded multi-pass discovery
+cycle technically plausible without broad streaming.
+
+A future versioned design should:
+
+1. perform one broad current snapshot;
+2. immediately classify each requested symbol as fresh/usable, returned-but-unresolved,
+   or missing;
+3. run discovery immediately on fresh/usable rows rather than waiting for every symbol;
+4. re-request only the unresolved/missing cohort after a bounded interval;
+5. merge a retry only when its provider timestamps/quality improve the stored state;
+6. incrementally admit newly usable symbols into rediscovery;
+7. preserve symbols that remain stale/missing as explicit unavailable evidence rather
+   than fabricating or carrying forward currentness;
+8. stop after a frozen retry budget/horizon.
+
+This would allow a stock whose first-pass quote was stale, incomplete or absent to
+become discovery-eligible on a later pass without recomputing or delaying the already
+usable majority. Retry cadence, maximum attempts, liquidity prioritization and
+incremental-discovery semantics remain future contracts and are not authorized by this
+diagnostic evidence.
