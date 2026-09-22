@@ -318,20 +318,41 @@ rebuilt locally. The run then failed closed in `expired-2014-07` on
 **explicit correction**, which is outside V4's frozen unversioned fallback. No V4
 completion claim is made and the resolver is not relaxed after observing the result.
 
-The active source gate is now the bounded
-`atlas-historical-option-reference-v4-explicit-correction-conflict-diagnostic-v1`
-contract under fingerprint
-`54a4436ba1cfee33c6dc3eaabfedd4334c50985d2ee696fab2cc97cfc22620c7`.
-It repeats current `as_of=2026-09-19` and pre-expiration
-`as_of=2014-07-18` structural-list and Contract Overview requests for the ACT2
-ticker, preserves explicit correction values and all field differences, and asks
-whether the stable historical payload matches exactly one current conflicting row.
-The diagnostic is read-only and authorizes no successor resolver by itself.
+The ACT2 diagnostic completed on the target workstation under evidence fingerprint
+`283f736a73a742704c7d005b9c0c48aee2b11cf2dd1eccc8bf44fd52a443e1e3`.
+All repeated requests were stable. Current `as_of=2026-09-19` returned two target
+rows at explicit correction **2**, differing only in `additional_underlyings` cash
+amount (**2604** versus **2617.04**); exact current Contract Overview was stable
+404 / `NOT_FOUND`. Pre-expiration `as_of=2014-07-18` returned one target row at
+correction **2**, and exact Contract Overview matched that historical list row and
+exactly one current conflicting payload.
 
-After an accepted successor option-reference acquisition completes all **212**
-partitions, independently close raw/version/normalized/hash/cardinality and
-conflict-resolution lineage before broad option daily history. Candidate
-minute/quote/trade cache acquisition remains selective.
+Historical Option Reference V5 is frozen under contract fingerprint
+`4a9775c90414d8a454654d5f0928d79b68dec785b16b493e197ea34471aef1ea`.
+V5 keeps the V4 unversioned identity branch unchanged. Its new explicit-correction
+branch is separately limited to expired conflicts where all current rows share one
+nonnegative highest correction rank and **only `additional_underlyings` differs**.
+The repeated pre-expiration structural-list and exact Contract Overview payloads must
+agree exactly, the historical correction rank must equal the current highest rank,
+and the historical payload must match exactly one current conflicting raw row.
+Otherwise acquisition fails closed. This row-selection rule creates no historical
+dynamic-deliverable authority.
+
+AAL, ACHI and ACT2 are mandatory pre-acquisition probes. Verified V5 receipts are
+reused first; otherwise verified V4/V3/V2/V1 raw lineage is re-normalized locally
+without copying raw bytes. Work remains bounded to the configured worker count,
+default **5**.
+
+The next authorized target-workstation command, after this package is accepted on
+`main`, is:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_historical_option_reference_v5.py --authorize-source-acquisition --workers 5
+```
+
+After V5 completes all **212** partitions, independently close raw/version/normalized/
+hash/cardinality and both conflict-resolution branches before broad option daily
+history. Candidate minute/quote/trade cache acquisition remains selective.
 
 ### News/options historical-data foundation — 2026-09-20
 
