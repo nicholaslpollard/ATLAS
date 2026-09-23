@@ -2,7 +2,7 @@
 
 ## Status
 
-**PREREGISTERED / WORKSTATION EVIDENCE PENDING**
+**DIAGNOSTIC_INCOMPLETE / MASSIVE PLAN-ENTITLEMENT BLOCKED / FROZEN**
 
 Contract:
 
@@ -92,6 +92,43 @@ Possible date dispositions:
 - `NO_PRICE_ELIGIBLE_RAW_TRADES`;
 - `RAW_TRADES_PRESENT_ELIGIBILITY_UNRESOLVED`;
 - `PRICE_ELIGIBLE_RAW_TRADES_WITHOUT_DAILY_BAR`.
+
+## Workstation result — 2026-09-23
+
+Accepted incomplete diagnostic evidence:
+
+- run id: `20260923T222933Z`;
+- evidence fingerprint:
+  `48d58cecf4d084f241f8b6b008454427389be609c18d42ffcdcb318a12be4e6a`;
+- status: `DIAGNOSTIC_INCOMPLETE`;
+- five missing daily-aggregate dates were reproduced exactly:
+  2026-08-06, 2026-08-07, 2026-08-10, 2026-08-12 and 2026-08-13;
+- the options trade-condition request succeeded and returned 33 metadata rows with
+  complete pagination;
+- the first raw-trades request, for 2026-08-06, returned HTTP 403;
+- terminal error:
+  `ProviderError: Massive REST request failed with HTTP 403`.
+
+The 403 is now classified as a provider-plan entitlement boundary rather than a
+request-shape failure. Massive's current Options REST documentation lists historical
+`/v3/trades/{optionsTicker}` access as unavailable on Options Basic and Starter,
+available from Options Developer onward. The successful condition-metadata request is
+consistent with the same documentation, which includes condition codes in all Options
+plans.
+
+This run is not to be blindly retried under the same plan. V1 remains incomplete and
+frozen. No raw-trade, condition-eligibility or missing-bar causal conclusion was
+opened from it.
+
+A separately versioned aggregate-surface diagnostic now uses the Massive aggregate
+endpoints that are included in Options Basic. It compares one-minute aggregate
+presence across all nine frozen DIA dates, using the four dates with daily bars as
+controls and the five missing dates as the target set. That follow-up can test
+cross-aggregate consistency but cannot distinguish no raw trades from condition-
+ineligible raw trades.
+
+Follow-up contract:
+`docs/research/marketdata_massive_dia_aggregate_surface_v1_20260923.md`.
 
 ## Decision boundary
 
