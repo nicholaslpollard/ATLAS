@@ -132,7 +132,7 @@ def _persist_raw(
     return receipt
 
 
-def _choose_contract(rows: tuple[dict[str, Any], ...]) -> dict[str, Any] | None:
+def _choose_qualification_contract(rows: tuple[dict[str, Any], ...]) -> dict[str, Any] | None:
     candidates = [
         row
         for row in rows
@@ -230,7 +230,7 @@ def run_marketdata_five_year_options_qualification_v1(
             payload=chain_response.payload,
         )
         chain_rows = array_rows(chain_response.payload)
-        selected = _choose_contract(chain_rows)
+        selected = _choose_qualification_contract(chain_rows)
         chain_fields = _required_fields_present(
             chain_rows,
             list(CONTRACT["required_chain_fields"]),
