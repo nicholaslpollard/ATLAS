@@ -192,6 +192,27 @@ bar. The original V1 remains failed regardless of the diagnostic outcome.
 Diagnostic contract:
 `docs/research/marketdata_massive_dia_gap_diagnostic_v1_20260923.md`.
 
+The first workstation execution of that raw-trade diagnostic is preserved as
+**DIAGNOSTIC_INCOMPLETE**, run `20260923T222933Z` / evidence fingerprint
+`48d58cecf4d084f241f8b6b008454427389be609c18d42ffcdcb318a12be4e6a`.
+The condition-metadata request succeeded with 33 rows, but the first historical
+raw-options-trades request for 2026-08-06 returned HTTP 403. Current Massive plan
+documentation confirms that `/v3/trades/{optionsTicker}` is not included in Options
+Basic or Starter and begins at Options Developer. The V1 diagnostic is therefore
+closed as entitlement-blocked rather than retried or silently changed.
+
+The next separately frozen gate is
+`atlas-marketdata-massive-dia-aggregate-surface-diagnostic-v1`. It uses **0
+MarketData calls** and nine Options-Basic-accessible Massive 1-minute aggregate
+queries: one for each DIA EOD date in the frozen window. The four dates with known
+Massive daily bars act as controls and the five missing dates are the target set.
+This can determine whether daily-bar presence/absence is consistent with Massive's
+minute aggregate surface. It cannot determine whether an empty aggregate surface was
+caused by no raw trades or by raw trades whose conditions made them ineligible.
+
+Aggregate-surface contract:
+`docs/research/marketdata_massive_dia_aggregate_surface_v1_20260923.md`.
+
 MarketData EOD last/volume, bid/ask, intraday, execution, simulator, strategy, PAPER
 and LIVE authority all remain closed.
 
