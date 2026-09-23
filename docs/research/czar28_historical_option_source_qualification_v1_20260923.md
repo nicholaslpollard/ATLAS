@@ -189,22 +189,14 @@ health endpoint.
 No scientific source authority or trading authority changes from this result.
 
 
-## Corroborated provider-health result
+## Corroborated provider-health result and current OpenAPI correction
 
-The earlier HTTP 502/503 workstation observations are now corroborated by a direct
-health request on the documentation example host.
+The earlier HTTP 502/503 observations and the direct degraded-health payload remain
+preserved evidence. The user's Czar28 dashboard showed the Free plan active, one
+active read-only key, and seven requests counted for the month, establishing that
+requests reached Czar28's service/control plane.
 
-The user's Czar28 dashboard showed the Free plan active, one active read-only key,
-and seven recorded requests for the month. This demonstrates that requests reached
-Czar28's service/control plane.
-
-Czar28's documentation is internally inconsistent about hostnames: its Servers
-section identifies `https://api.czar28.com/v1` as the Production base URL, while
-several endpoint examples use `https://czar28.com/v1`. ATLAS therefore retains the
-explicit Production base from the Servers section.
-
-A direct unauthenticated call to
-`https://czar28.com/v1/options/health` returned:
+A direct public health request returned:
 
 ```json
 {
@@ -219,12 +211,50 @@ A direct unauthenticated call to
 }
 ```
 
-Cloudflare documents Error 1033 as a Cloudflare Tunnel failure in which no healthy
-`cloudflared` instance is available to receive traffic for the origin tunnel. This
-supports the interpretation that Czar28's historical-options upstream was degraded at
-the time of testing.
+This remains operational evidence only and does not establish whether Czar28 can or
+cannot serve the required 2016..2026 historical option corpus after recovery.
 
-This remains operational evidence only. It does not establish whether Czar28 can or
-cannot serve the required 2016..2026 historical option corpus once the upstream
-recovers. The 1,000-call qualification remains blocked until a health/current-data
-preflight succeeds.
+### Current machine-readable server contract
+
+Czar28's current OpenAPI 3.1 document reports API version 1.2.0 and declares
+`https://czar28.com` as the Production server. The stable endpoint paths remain
+beneath `/v1`. The `/v1/options/health` operation declares `security: []`, while
+chain/EOD/intraday/trade operations remain Bearer-authenticated.
+
+ATLAS therefore pins `https://czar28.com/v1` as the current provider base. This
+supersedes the earlier hostname interpretation recorded during initial qualification.
+
+### Fail-closed recovery rule
+
+Before the broad free-tier qualification can issue any quota-consuming request, ATLAS
+must first call the public health endpoint. The run is blocked unless both conditions
+are explicitly true:
+
+- `status == "ok"`; and
+- `upstream.mdds_status == "CONNECTED"`.
+
+Degraded, disconnected, undetermined, malformed, or unreachable health states create
+zero historical-option qualification calls.
+
+After health recovery, the existing five-probe preflight remains required before the
+1,000-call qualification:
+
+1. public health;
+2. current SPY chain;
+3. recent expired SPY chain;
+4. SPY 2016-06-17 chain; and
+5. direct SPY 2016-06-17 $200C EOD.
+
+No source-science or trading authority is opened by this recovery hardening.
+
+A quota-free public health watcher is available while the provider is degraded:
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\watch_czar28_health_v1.py
+~~~
+
+It checks at 60-second intervals by default, prints state changes plus periodic
+heartbeats, consumes no Czar API-key quota, and exits only when public health is
+explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
+exit is the existing five-probe preflight, not the 1,000-call qualification.
+

@@ -58,34 +58,45 @@ remaining monthly quota. The full qualifier also now prints phase transitions,
 remaining quota, recovered retry events, and correct physical HTTP-attempt counts
 including failed probes.
 
-### Czar28 provider-health evidence — 2026-09-23
+### Czar28 provider-health evidence and recovery gate — 2026-09-23
 
-The first broad qualification attempts reached Czar28 but returned HTTP 502
-`upstream_error`. A later bounded preflight against the documented production API
-host `https://api.czar28.com/v1` returned HTTP 503 at the health step. The user's
-Czar28 dashboard independently showed the Free plan active, one active read-only key,
-and seven recorded requests, confirming that requests were reaching Czar's service.
+The user's Czar28 dashboard showed the Free plan active, one active read-only key,
+and seven requests counted, confirming that ATLAS requests reached Czar's service.
 
-A direct unauthenticated call to the documented health example at
-`https://czar28.com/v1/options/health` returned a structured degraded-health
-payload:
+Direct health checks on the apex service returned a structured degraded payload with
+`status=degraded`, `upstream.mdds_status=UNDETERMINED`, and upstream message
+`ERROR CODE: 1033`. This is operational evidence that the options-history upstream
+was degraded at the time of testing; it is **not** evidence that the required
+2016..2026 historical option corpus is absent.
 
-- `status = degraded`;
-- `upstream.mdds_status = UNDETERMINED`;
-- `upstream.upstream_ms = 131`; and
-- message `Unexpected status payload: ERROR CODE: 1033`.
+Czar28's **current OpenAPI 1.2.0** now declares `https://czar28.com` as the
+Production server and exposes the stable API beneath `/v1`. The health operation
+has `security: []`, so it is public and does not consume API-key quota. This current
+machine-readable contract supersedes the earlier hostname ambiguity captured during
+initial qualification work.
 
-Cloudflare documents error 1033 as a Cloudflare Tunnel failure in which no healthy
-`cloudflared` instance is available for the origin. Czar's own docs are internally
-inconsistent about hostname examples: the Servers section names
-`https://api.czar28.com/v1` as Production, while several endpoint examples use
-`https://czar28.com/v1`. ATLAS therefore retains the explicit Production base from
-the Servers section and treats the apex-host health response as corroborating
-provider-upstream degradation, not as a reason to switch hosts.
+ATLAS therefore uses `https://czar28.com/v1` and now enforces a fail-closed public
+health gate before the 1,000-call qualification. The broad qualification may proceed
+only when the health payload is explicitly `status=ok` **and**
+`upstream.mdds_status=CONNECTED`. A degraded, disconnected, undetermined, malformed,
+or unreachable health response blocks all quota-consuming qualification calls.
 
-The full 1,000-call qualification remains blocked while the provider health path is
-degraded. This is operational evidence only and does not establish that 2016 option
-history is absent. Czar28 remains a candidate source.
+Once health recovers, the required next step remains the bounded five-probe preflight:
+health -> current SPY chain -> recent expired SPY chain -> 2016 SPY chain -> direct
+2016 SPY $200C EOD. The 1,000-call qualification remains blocked until that corrected
+preflight succeeds or yields a bounded deep-EOD/chain-limitation result.
+
+A quota-free public health watcher is available while the provider is degraded:
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\watch_czar28_health_v1.py
+~~~
+
+It checks at 60-second intervals by default, prints state changes plus periodic
+heartbeats, consumes no Czar API-key quota, and exits only when public health is
+explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
+exit is the existing five-probe preflight, not the 1,000-call qualification.
+
 
 ## Read this first
 
