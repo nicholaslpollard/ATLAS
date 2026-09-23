@@ -145,6 +145,21 @@ one-year limit. This can prove endpoint/schema/OI/quote-series mechanics without
 spending $30, but it cannot prove broad five-year entitlement for non-AAPL symbols.
 The paid six-anchor gate remains distinct.
 
+The workstation Starter Trial qualification has now **PASSED** under run id
+`20260923T203419Z` / evidence fingerprint
+`facd9289fc56279a14294c442f8a1f256388cfd152662be1bc06f600d1bf914a`.
+All five anchors returned non-empty chains and quote histories, OI, usable bid/ask,
+required schema and the expected historical-Greeks-null behavior. It consumed only
+8 observed API credits and ended at 9,992 remaining. This accepts MarketData as a
+**qualified Starter-Trial capability source**, not as five-year historical-price
+authority.
+
+The next source gate reuses those local raw files and makes only four Massive Basic
+daily-aggregate reads for the 2026 SPY/MSFT/NVDA/QQQ selected contracts. It is an
+exploratory exact-contract `last/volume` versus Massive `close/volume` semantic
+calibration; no MarketData calls are needed. The 2021 AAPL trial anchor is excluded
+because it lies outside Massive Basic's current two-year REST aggregate history.
+
 
 MarketData daily credit reset is 09:30 America/New_York. Runtime budget control uses
 the provider's `X-Api-Ratelimit-*` headers, and future acquisition must stay below
