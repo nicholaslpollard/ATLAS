@@ -171,7 +171,8 @@ def _nonnull_count(rows: tuple[dict[str, Any], ...], field: str) -> int:
 
 def _greeks_null(rows: tuple[dict[str, Any], ...]) -> dict[str, bool]:
     return {
-        field: all(row.get(field) is None for row in rows)
+        field: bool(rows)
+        and all(field in row and row[field] is None for row in rows)
         for field in CONTRACT["historical_greeks_expected_null"]
     }
 
@@ -333,6 +334,26 @@ def run_marketdata_five_year_options_qualification_v1(
             for item in anchors
         )
     )
+    required_schema_present = (
+        len(anchors) == len(active_anchors)
+        and all(
+            isinstance(item.get("chain_required_fields"), dict)
+            and all(bool(value) for value in item["chain_required_fields"].values())
+            and isinstance(item.get("quote_required_fields"), dict)
+            and all(bool(value) for value in item["quote_required_fields"].values())
+            for item in anchors
+        )
+    )
+    historical_greeks_null = (
+        len(anchors) == len(active_anchors)
+        and all(
+            isinstance(item.get("chain_historical_greeks_null"), dict)
+            and all(bool(value) for value in item["chain_historical_greeks_null"].values())
+            and isinstance(item.get("quote_historical_greeks_null"), dict)
+            and all(bool(value) for value in item["quote_historical_greeks_null"].values())
+            for item in anchors
+        )
+    )
     oldest_anchor_ok = bool(
         anchors
         and anchors[0].get("date") == "2021-10-01"
@@ -340,10 +361,19 @@ def run_marketdata_five_year_options_qualification_v1(
         and int(anchors[0].get("quote_rows") or 0) > 0
     )
 
+    qualification_checks_pass = (
+        all_anchor_chains
+        and all_quote_series
+        and all_oi
+        and required_schema_present
+        and historical_greeks_null
+        and oldest_anchor_ok
+    )
+
     if starter_trial:
         status = (
             "QUALIFIED_FOR_STARTER_TRIAL_CAPABILITY"
-            if all_anchor_chains and all_quote_series and all_oi and oldest_anchor_ok
+            if qualification_checks_pass
             else "DIAGNOSTIC_COMPLETE_WITH_LIMITATIONS"
             if anchors
             else "FAIL"
@@ -393,6 +423,8 @@ def run_marketdata_five_year_options_qualification_v1(
         "all_anchor_chains_nonempty": all_anchor_chains,
         "all_quote_series_nonempty": all_quote_series,
         "open_interest_present_across_anchors": all_oi,
+        "required_schema_present_across_anchors": required_schema_present,
+        "historical_greeks_present_and_null_across_anchors": historical_greeks_null,
         "observed_api_credits_consumed": observed_credit_consumed,
         "last_observed_api_credits_remaining": last_remaining,
         "anchors": anchors,
