@@ -187,3 +187,31 @@ banner is not accepted as stronger evidence than the authenticated target-workst
 health endpoint.
 
 No scientific source authority or trading authority changes from this result.
+
+## Transport-host correction after dashboard/OpenAPI review
+
+The earlier workstation reports remain preserved exactly as observed, but their
+interpretation is corrected.
+
+ATLAS's provider client was configured with
+`CZAR28_BASE_URL = https://api.czar28.com/v1`. The user then supplied the Czar28
+dashboard and endpoint documentation. The dashboard showed the Free plan active, one
+active read-only key, and seven requests recorded for the month. Independent review
+of Czar28's current OpenAPI 3.1 document established the authoritative Production
+server as `https://czar28.com`; the stable endpoints are therefore
+`https://czar28.com/v1/...`. The health path is explicitly public via
+`security: []`.
+
+Consequences:
+
+- the previous 502 and 503 responses remain valid observations against the prior
+  client host;
+- they are **not** accepted as evidence that Czar28's authoritative Production API
+  was down;
+- they are **not** historical-coverage evidence;
+- the client base URL is corrected to `https://czar28.com/v1`;
+- the health preflight is unauthenticated; and
+- the five-probe preflight must be rerun on the corrected Production host before the
+  1,000-call qualification may proceed.
+
+No source-science or trading authority is opened by this correction.
