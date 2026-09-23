@@ -38,6 +38,12 @@ def _http_error(code: int, payload: dict[str, object]) -> urllib.error.HTTPError
     )
 
 
+def test_czar28_default_retry_policy_matches_documented_guidance() -> None:
+    assert client.CZAR28_DEFAULT_MAX_ATTEMPTS == 5
+    assert client.CZAR28_DEFAULT_INITIAL_RETRY_SECONDS == 0.25
+    assert client.CZAR28_DEFAULT_MAX_RETRY_SECONDS == 2.0
+
+
 def test_get_json_retries_transient_502_with_same_logical_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
