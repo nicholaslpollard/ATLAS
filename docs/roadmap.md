@@ -155,10 +155,25 @@ The Starter Trial workstation gate is now **accepted**: run
 passing, 8 observed credits consumed, 9,992 remaining. Broad five-year entitlement
 remains unproven.
 
-**Next:** run a four-contract MarketData x Massive Basic EOD semantic-overlap
-diagnostic on the 2026 SPY/MSFT/NVDA/QQQ trial contracts, with zero new MarketData
-reads. The 2021 AAPL anchor is outside Massive Basic's two-year REST aggregate
-window. This diagnostic cannot grant historical-price or bid/ask authority.
+The first independent overlap calibration is now complete under run id
+`20260923T205206Z` / evidence fingerprint
+`b10d6d8eb2f3bfcb9fa9dad5623d1eb56297bec5222922b2b8f2302fe5324f3a`.
+All four 2026 contracts produced full date overlap: 31 overlapping sessions total,
+77.419355% exact MarketData-last / Massive-close matches, zero aggregate median
+absolute last-close difference, and 100% of MarketData historical last values inside
+Massive's independent daily low/high range. Aggregate median relative volume
+difference was 0.065284%; the maximum observed session relative volume difference was
+14.213836%. No terminal error occurred.
+
+That calibration does not itself grant price authority. Its purpose was to learn the
+cross-vendor semantics before freezing a decision rule.
+
+The next gate is now the **preregistered disjoint validation** in
+`docs/research/marketdata_massive_disjoint_validation_v1_20260923.md`. Its untouched
+sample is IWM 2026-02-02, AMZN 2026-04-01, META 2026-06-01 and DIA 2026-08-03.
+Binding thresholds were frozen before any of those provider reads. A pass may validate
+only MarketData historical EOD last/volume semantics; bid/ask, intraday, execution,
+simulator, strategy, PAPER and LIVE authority remain closed.
 
 
 **MarketData runtime budget policy:** daily self-service credits reset at 09:30
