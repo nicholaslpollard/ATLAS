@@ -30,7 +30,7 @@ class _FakeResponse:
 
 def _http_error(code: int, payload: dict[str, object]) -> urllib.error.HTTPError:
     return urllib.error.HTTPError(
-        url="https://czar28.com/v1/options/chain",
+        url="https://api.czar28.com/v1/options/chain",
         code=code,
         msg="test",
         hdrs={},
@@ -39,7 +39,7 @@ def _http_error(code: int, payload: dict[str, object]) -> urllib.error.HTTPError
 
 
 def test_czar28_base_url_matches_authoritative_openapi() -> None:
-    assert client.CZAR28_BASE_URL == "https://czar28.com/v1"
+    assert client.CZAR28_BASE_URL == "https://api.czar28.com/v1"
 
 
 def test_health_request_can_be_unauthenticated(
@@ -69,7 +69,7 @@ def test_health_request_can_be_unauthenticated(
 
     assert response.http_status == 200
     assert len(captured) == 1
-    assert captured[0].full_url == "https://czar28.com/v1/options/health"
+    assert captured[0].full_url == "https://api.czar28.com/v1/options/health"
     assert captured[0].get_header("Authorization") is None
 
 
