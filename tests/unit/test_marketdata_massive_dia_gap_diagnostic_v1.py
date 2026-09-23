@@ -76,8 +76,9 @@ def test_classify_day_distinguishes_no_trades_and_eligible_trades() -> None:
         [{"size": 2, "conditions": []}],
         {},
     )
-    assert result["aggregate_eligible_trade_count"] == 1
-    assert result["disposition"] == "AGGREGATE_ELIGIBLE_RAW_TRADES_PRESENT"
+    assert result["price_eligible_trade_count"] == 1
+    assert result["volume_eligible_trade_count"] == 1
+    assert result["disposition"] == "PRICE_ELIGIBLE_RAW_TRADES_WITHOUT_DAILY_BAR"
 
 
 class _FakeMassive:
@@ -227,6 +228,6 @@ def test_end_to_end_gap_diagnostic_preserves_failed_v1(
         for item in result["days"]
     )
     assert any(
-        item["disposition"] == "RAW_TRADES_ALL_AGGREGATE_INELIGIBLE"
+        item["disposition"] == "NO_PRICE_ELIGIBLE_RAW_TRADES"
         for item in result["days"]
     )
