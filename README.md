@@ -69,15 +69,17 @@ Direct health checks on the apex service returned a structured degraded payload 
 was degraded at the time of testing; it is **not** evidence that the required
 2016..2026 historical option corpus is absent.
 
-Czar28's **current OpenAPI 1.2.0** now declares `https://czar28.com` as the
-Production server and exposes the stable API beneath `/v1`. The health operation
-has `security: []`, so it is public and does not consume API-key quota. This current
-machine-readable contract supersedes the earlier hostname ambiguity captured during
-initial qualification work.
+Czar28's current official surfaces disagree on the global Production host: OpenAPI
+1.2.0 declares `https://czar28.com`, while the human Servers table identifies
+`https://api.czar28.com/v1` for live authenticated traffic. The health operation is
+public in OpenAPI and the human health example also uses the apex host without an
+Authorization header.
 
-ATLAS therefore uses `https://czar28.com/v1` and now enforces a fail-closed public
-health gate before the 1,000-call qualification. The broad qualification may proceed
-only when the health payload is explicitly `status=ok` **and**
+ATLAS therefore freezes role-specific routing rather than claiming either source
+globally supersedes the other: authenticated chain/EOD/intraday/trade requests use
+`https://api.czar28.com/v1`, while public health uses
+`https://czar28.com/v1/options/health`. The qualification remains fail-closed unless
+public health is explicitly `status=ok` **and**
 `upstream.mdds_status=CONNECTED`. A degraded, disconnected, undetermined, malformed,
 or unreachable health response blocks all quota-consuming qualification calls.
 
@@ -98,7 +100,7 @@ explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
 exit is the existing five-probe preflight, not the 1,000-call qualification.
 
 
-### Active paid unblocking path — MarketData.app five-year options V1
+### Active unblocking path — MarketData.app five-year options V1
 
 ATLAS will no longer let ten-year option-source perfection block simulator
 development. The active paid challenger is
