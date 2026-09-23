@@ -316,6 +316,36 @@ def _qualification_root(settings: AtlasSettings) -> Path:
     )
 
 
+def _load_completed_qualification(root: Path) -> dict[str, object] | None:
+    completion_path = root / "completion.json"
+    if not completion_path.exists():
+        return None
+    try:
+        completion = json.loads(completion_path.read_text(encoding="utf-8"))
+        if (
+            completion.get("status") != "COMPLETE"
+            or completion.get("contract_fingerprint")
+            != CZAR28_HISTORICAL_OPTION_QUALIFICATION_V1_CONTRACT_FINGERPRINT
+        ):
+            return None
+        report_name = str(completion.get("report_name") or "")
+        if not report_name:
+            return None
+        report_path = root / "reports" / report_name
+        if not report_path.exists():
+            return None
+        if completion.get("report_sha256") != _sha256_file(report_path):
+            return None
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        if report.get("evidence_fingerprint") != completion.get("evidence_fingerprint"):
+            return None
+        report["report_path"] = str(report_path.resolve())
+        report["reused_completed_qualification"] = True
+        return report
+    except Exception:
+        return None
+
+
 def _persist_probe(
     root: Path,
     *,
@@ -601,6 +631,11 @@ def run_czar28_historical_option_qualification_v1(
 ) -> dict[str, object]:
     root = _qualification_root(settings)
     root.mkdir(parents=True, exist_ok=True)
+    if max_requests == MAX_FREE_REQUESTS:
+        completed = _load_completed_qualification(root)
+        if completed is not None:
+            return completed
+
     budget = ProbeBudget(
         max_requests=max_requests,
         requests_per_minute=requests_per_minute,
@@ -914,4 +949,29 @@ def run_czar28_historical_option_qualification_v1(
         json.dumps(report, indent=2, sort_keys=True) + "\n",
     )
     report["report_path"] = str(report_path.resolve())
+
+    qualification_cycle_complete = (
+        max_requests == MAX_FREE_REQUESTS
+        and (
+            budget.request_attempts >= MAX_FREE_REQUESTS
+            or budget.provider_remaining == 0
+        )
+    )
+    report["qualification_cycle_complete"] = qualification_cycle_complete
+    report["reused_completed_qualification"] = False
+    if qualification_cycle_complete:
+        completion = {
+            "status": "COMPLETE",
+            "contract_fingerprint": (
+                CZAR28_HISTORICAL_OPTION_QUALIFICATION_V1_CONTRACT_FINGERPRINT
+            ),
+            "completed_at_utc": datetime.now(UTC).isoformat(),
+            "report_name": report_path.name,
+            "report_sha256": _sha256_file(report_path),
+            "evidence_fingerprint": report["evidence_fingerprint"],
+        }
+        atomic_write_text(
+            root / "completion.json",
+            json.dumps(completion, indent=2, sort_keys=True) + "\n",
+        )
     return report
