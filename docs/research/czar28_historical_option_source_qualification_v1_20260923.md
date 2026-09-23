@@ -1,0 +1,122 @@
+# Czar28 Historical Option Source Qualification V1 — 2026-09-23
+
+## Status
+
+**IMPLEMENTED / WORKSTATION EVIDENCE PENDING**
+
+This package qualifies Czar28/PublicOptions as a candidate read-only historical
+US-equity-option source. It does not make Czar28 authoritative, does not open
+strategy outcomes, and grants no PAPER/LIVE or order authority.
+
+## Why this package exists
+
+Historical Option Reference V7 proved scientifically useful but operationally
+impractical on the current Massive Basic entitlement. The resumed V7 provider phase
+had 149 provider-pending monthly partitions. After roughly 1.5–2 hours it had issued
+477 provider request starts at the enforced 5 requests/minute account budget while
+all five in-flight monthly partitions were still incomplete.
+
+That evidence does not invalidate V7. The preserved V7 raw data, receipts, conflict
+diagnostics, resolver rules and quarantine evidence remain valid. It does show that
+a full broad-reference crawl through the current Massive Basic REST entitlement is
+not the preferred acquisition route for the stock-aligned historical option research
+problem.
+
+Czar28 currently documents:
+
+- US equity options under /v1;
+- 12+ years of history and about 5.2k tickers;
+- /options/chain, /options/quote/eod, /options/quote/intraday, and /options/trades;
+- a Free plan with 1,000 requests/month, all endpoints, 60 requests/minute and
+  burst 20;
+- response headers exposing monthly quota/remaining/reset; and
+- per-logical-request idempotency keys that can safely replay a cached request
+  within 24 hours without consuming another monthly request.
+
+Provider documentation reviewed for this package:
+https://czar28.com/docs
+https://czar28.com/pricing
+
+These are provider claims to qualify, not accepted ATLAS source facts.
+
+## Frozen V1 probe design
+
+The qualification deliberately exercises essentially the entire free monthly quota,
+but every request must produce useful evidence.
+
+The primary historical-depth matrix is 30 durable US option roots across a June
+standard monthly expiration in every year from 2016 through 2026:
+
+SPY, QQQ, IWM, DIA, AAPL, MSFT, AMZN, GOOG, GOOGL, NVDA, AMD, INTC, IBM, ORCL,
+CSCO, JPM, BAC, GS, XOM, CVX, WMT, COST, HD, MCD, KO, PEP, JNJ, PFE, DIS, BA.
+
+That is 330 chain probes.
+
+From each non-empty chain ATLAS deterministically selects the median listed strike
+for calls and puts. This is a structural representative only; it is not described as
+ATM or delta-equivalent. V1 then spends up to 520 requests on 90-day EOD lifecycle
+windows for those contracts.
+
+Up to 50 successful EOD contracts receive a one-day 1-minute RTH intraday-quote
+probe and up to 50 receive a one-day trade-print probe. Twenty-five chain probes and
+25 EOD probes are intentionally repeated with distinct logical probe IDs to measure
+exact response stability.
+
+If those declared stages leave unused quota, ATLAS spends it first on additional
+representative EOD contracts and then on March/September standard-monthly chain
+probes. It does not burn quota on random/no-op requests.
+
+## Quota and credential safety
+
+The workstation credential name is exactly CZAR_API_KEY.
+
+The value is read from the ignored root .env through the existing ATLAS settings
+loader. The secret is never written to raw responses, receipts or reports.
+
+The V1 runner has two explicit authorization gates:
+
+- --authorize-provider-reads
+- --consume-free-quota
+
+It has a hard local maximum of 1,000 provider calls per run and refuses a local rate
+above 55 requests/minute. Provider X-RateLimit-* headers are recorded. If the
+provider reports zero remaining quota, the runner stops. HTTP 429 also stops the run.
+
+Each logical probe gets a stable idempotency key and is persisted immediately as a
+compressed raw-response envelope plus a hash-bound COMPLETE receipt. A restart
+reuses locally verified completed probes without another provider request. This is
+important because free quota is evidence and must not be wasted after interruption.
+
+## Evidence opened by V1
+
+V1 may measure:
+
+- whether expired chains really exist from 2016 through 2026;
+- breadth across durable equities and ETFs;
+- contract identity and strike/right representation;
+- EOD OHLC/closing bid/ask/volume presence;
+- one-day intraday bid/ask/size presence;
+- one-day trade-print presence;
+- HTTP missingness/error behavior;
+- provider quota/rate-limit behavior; and
+- repeated-response stability.
+
+It does **not** yet validate Czar28 prices against another provider. A successful V1
+run therefore makes Czar28 a qualified candidate only. Cross-provider overlap
+validation remains required before historical option prices can become an ATLAS
+historical market-data authority.
+
+The documented Czar28 EOD schema does not include open interest. OI remains a
+separately versioned future overlay study using a source that actually provides
+point-in-time historical OI.
+
+## Authorized workstation command
+
+~~~powershell
+git checkout main; git pull
+.\.venv\Scripts\python.exe scripts\qualify_czar28_historical_options_v1.py --authorize-provider-reads --consume-free-quota
+~~~
+
+Do not start a second copy while one qualification process is active. The runner is
+resumable and quota-aware; restart the identical command only after the first process
+has stopped.

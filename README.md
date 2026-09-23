@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-22 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-23 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -15,6 +15,35 @@ improve its strategy library without hindsight or silent self-modification.
 Profit is an objective, never a guarantee. Activity, alerts, attractive charts, and
 profitable backtests are not substitutes for positive expected value after costs,
 controlled risk, prospective evidence, and reliable operation.
+
+### Active historical-options source gate — Czar28 V1
+
+The broad Massive Historical Option Reference V7 contract remains preserved, but its
+current Basic-tier provider continuation is operationally paused after a resumed run
+issued 477 request starts at the enforced 5 requests/minute budget over roughly
+1.5–2 hours while all first five provider partitions remained incomplete. This is a
+throughput finding, not a scientific rejection of V7 or its preserved evidence.
+
+The active source gate is now the separately frozen
+`atlas-czar28-historical-option-source-qualification-v1`. It uses the user's free
+Czar28/PublicOptions key only through read-only documented endpoints and may consume
+up to the full 1,000-request monthly Free allowance under an explicit second CLI
+gate. The deterministic matrix covers 30 durable US option roots across June monthly
+expirations for every anchor year 2016..2026, representative 90-day EOD contract
+histories, bounded one-day intraday quotes and trades, intentional repeatability
+checks, and useful March/September fill probes if quota remains. Every completed
+probe is preserved with a hash-bound receipt and is reusable after restart. Local
+pacing is capped at 55 requests/minute and provider remaining-quota headers stop the
+run at zero. Czar28 remains candidate-only until workstation evidence and later
+cross-provider price validation pass. The documented Czar28 EOD schema does not
+supply open interest; OI remains a separately versioned future overlay study.
+
+Authorized workstation command after this package merges:
+
+~~~powershell
+git checkout main; git pull
+.\\.venv\\Scripts\\python.exe scripts\\qualify_czar28_historical_options_v1.py --authorize-provider-reads --consume-free-quota
+~~~
 
 ## Read this first
 
