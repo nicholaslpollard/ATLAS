@@ -45,7 +45,8 @@ The default diagnostic runs for about ten minutes:
 - 20 broad snapshots;
 - broad snapshots start every 30 seconds;
 - after each broad snapshot, the diagnostic waits until +10 seconds and requests only
-  the first-pass unresolved cohort;
+  unresolved symbols from the local Phase 7 discovery universe when it is available;
+  otherwise it falls back to the unresolved broad population;
 - at most 40 read-only Tradier provider calls are made;
 - the production quote endpoint is `POST /v1/markets/quotes`;
 - no account, order or broker endpoint is used.
