@@ -168,12 +168,32 @@ difference was 0.065284%; the maximum observed session relative volume differenc
 That calibration does not itself grant price authority. Its purpose was to learn the
 cross-vendor semantics before freezing a decision rule.
 
-The next gate is now the **preregistered disjoint validation** in
-`docs/research/marketdata_massive_disjoint_validation_v1_20260923.md`. Its untouched
-sample is IWM 2026-02-02, AMZN 2026-04-01, META 2026-06-01 and DIA 2026-08-03.
-Binding thresholds were frozen before any of those provider reads. A pass may validate
-only MarketData historical EOD last/volume semantics; bid/ask, intraday, execution,
-simulator, strategy, PAPER and LIVE authority remain closed.
+The preregistered disjoint validation has now **FAILED** under run
+`20260923T211759Z` / evidence fingerprint
+`2ab5dc3012bdbda388e6d2648403814999c54aa9ac0d4184295c595072eea145`.
+IWM, AMZN and META passed every frozen anchor criterion. DIA failed only the overlap
+requirements: MarketData returned 9 EOD rows while Massive returned 4 daily aggregate
+bars, producing 4/9 overlap. On those four overlapping DIA sessions, last/close
+median disagreement was 0%, volume median disagreement was 0%, and MarketData last
+was inside Massive's daily low/high 100% of the time. The aggregate price/volume
+median checks also passed, but V1 required all four anchors and therefore remains a
+real failed validation. Its thresholds will not be widened and V1 will not be rerun.
+
+Failure closeout:
+`docs/research/marketdata_massive_disjoint_validation_v1_closeout_20260923.md`.
+
+Massive's current aggregate semantics allow a daily interval to be absent when no
+qualifying trade exists, so the active next gate is a separately versioned **DIA
+aggregate-gap diagnostic**, not a retroactive reinterpretation of V1. It reuses the
+accepted local raw evidence, makes zero MarketData calls, and checks Massive raw
+trades plus option trade-condition update rules for each DIA date missing a daily
+bar. The original V1 remains failed regardless of the diagnostic outcome.
+
+Diagnostic contract:
+`docs/research/marketdata_massive_dia_gap_diagnostic_v1_20260923.md`.
+
+MarketData EOD last/volume, bid/ask, intraday, execution, simulator, strategy, PAPER
+and LIVE authority all remain closed.
 
 
 **MarketData runtime budget policy:** daily self-service credits reset at 09:30
