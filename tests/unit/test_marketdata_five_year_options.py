@@ -250,6 +250,17 @@ def test_starter_trial_completion_uses_trial_anchor_count(
     assert report["broad_five_year_entitlement_proven"] is False
     assert report["observed_api_credits_consumed"] == 10
 
+    paid_report = qualification.run_marketdata_five_year_options_qualification_v1(
+        SimpleNamespace(project_root=tmp_path / "paid"),
+        starter_trial=False,
+    )
+    assert paid_report["status"] == "QUALIFIED_FOR_FIVE_YEAR_EOD_ECONOMICS_CHALLENGER"
+    assert len(paid_report["anchors"]) == 6
+    assert paid_report["required_schema_present_across_anchors"] is True
+    assert paid_report["historical_greeks_present_and_null_across_anchors"] is True
+    assert paid_report["broad_five_year_entitlement_proven"] is True
+    assert paid_report["observed_api_credits_consumed"] == 12
+
 
 def test_get_json_does_not_retry_429(
     monkeypatch: pytest.MonkeyPatch,
