@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -138,12 +139,22 @@ def test_passed_authority_remains_narrow() -> None:
 
 
 
+_EASTERN = ZoneInfo("America/New_York")
+
+
 def _epoch_seconds_eastern(date_text: str) -> int:
-    return int(datetime.fromisoformat(date_text + "T16:00:00-04:00").timestamp())
+    session_date = datetime.fromisoformat(date_text).date()
+    return int(
+        datetime.combine(session_date, time(16, 0), tzinfo=_EASTERN).timestamp()
+    )
 
 
 def _epoch_millis_eastern(date_text: str) -> int:
-    return int(datetime.fromisoformat(date_text + "T00:00:00-04:00").timestamp() * 1000)
+    session_date = datetime.fromisoformat(date_text).date()
+    return int(
+        datetime.combine(session_date, time(0, 0), tzinfo=_EASTERN).timestamp()
+        * 1000
+    )
 
 
 class _FakeMassive:
