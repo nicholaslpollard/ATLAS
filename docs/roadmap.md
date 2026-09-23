@@ -74,19 +74,19 @@ not modify the frozen Czar28 V1 scientific contract or authority. The full quali
 also exposes phase/current-probe/live quota/retry/elapsed telemetry every 10 logical
 calls and correctly counts failed transport attempts.
 
-### Czar28 workstation preflight — provider health unavailable
+### Czar28 transport-host correction — production preflight still pending
 
-The first accepted connectivity-preflight execution on 2026-09-23 stopped at
-probe 1/5. The authenticated `/v1/options/health` call returned HTTP **503** on
-three transport attempts, yielding classification `PROVIDER_HEALTH_UNAVAILABLE`.
-No current-chain, recent-history, deep-chain, or direct deep-EOD request was sent.
-This result is operational only and makes no claim about historical coverage.
+The first qualification attempts and first connectivity-preflight execution used the
+client base `https://api.czar28.com/v1`. Czar28's current OpenAPI 3.1 specification
+instead declares `https://czar28.com` as the Production server and exposes the
+stable endpoints beneath `/v1`. The health operation is public (`security: []`).
 
-Czar28 documents HTTP 503 as its upstream circuit-breaker-open condition. The full
-1,000-call source qualification is therefore paused until health/current access is
-observed working. No Czar28 historical-price authority, strategy evidence, PAPER,
-LIVE, broker or order authority is created. Provider-search work may continue in
-parallel without discarding any preserved Czar28 or Massive evidence.
+Accordingly, the preserved HTTP 502/503 responses are retained as transport
+diagnostics but are **not accepted as production-provider health or historical-depth
+evidence**. The client is corrected to `https://czar28.com/v1`; the health probe is
+sent without authentication; and the five-probe preflight must be rerun before any
+broad quota-consuming qualification. No historical-data, strategy, PAPER, LIVE,
+broker or order authority changes.
 
 ## 2. Mission
 
