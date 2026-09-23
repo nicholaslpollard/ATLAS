@@ -54,6 +54,16 @@ A successful run does not create historical price authority; Czar28 must later p
 cross-provider overlap validation. Historical open interest is explicitly outside
 this V1 schema and remains a later separately versioned overlay study.
 
+
+The first target-workstation attempt issued one logical provider call and received
+HTTP 502 `upstream_error` before any chain evidence was returned. That run is
+retained as `DIAGNOSTIC_COMPLETE_WITH_LIMITATIONS` and does not count as a history
+failure. Czar's documented retry semantics say 5xx responses are uncached and safe
+to retry under the same idempotency key. The provider client therefore now performs
+bounded exponential-backoff retries for 500/502/503/504 and transient URL failures,
+records physical HTTP-attempt counts separately, and still fails closed if retries
+are exhausted. No scientific or authority contract changed.
+
 ## 2. Mission
 
 ATLAS is the **Autonomous Trading, Learning, and Analysis System**, the greenfield
