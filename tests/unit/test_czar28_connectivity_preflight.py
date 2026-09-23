@@ -36,6 +36,7 @@ def test_preflight_pass_requires_all_four_stages() -> None:
             _result("current_chain"),
             _result("recent_expired_chain"),
             _result("deep_expired_chain"),
+            _result("deep_expired_eod"),
         ]
     ) == "PREFLIGHT_PASS"
 
@@ -47,8 +48,9 @@ def test_preflight_distinguishes_deep_history_failure() -> None:
             _result("current_chain"),
             _result("recent_expired_chain"),
             _result("deep_expired_chain", status="ERROR"),
+            _result("deep_expired_eod"),
         ]
-    ) == "DEEP_HISTORY_UNAVAILABLE"
+    ) == "DEEP_EOD_AVAILABLE_CHAIN_LIMITATION"
 
 
 def test_preflight_distinguishes_current_chain_failure() -> None:
@@ -64,3 +66,15 @@ def test_preflight_detects_degraded_health() -> None:
     assert classify_preflight(
         [_result("health", health_status="degraded")]
     ) == "PROVIDER_HEALTH_DEGRADED"
+
+
+def test_preflight_distinguishes_deep_eod_failure() -> None:
+    assert classify_preflight(
+        [
+            _result("health", health_status="ok"),
+            _result("current_chain"),
+            _result("recent_expired_chain"),
+            _result("deep_expired_chain", status="ERROR"),
+            _result("deep_expired_eod", status="ERROR"),
+        ]
+    ) == "DEEP_HISTORY_UNAVAILABLE"
