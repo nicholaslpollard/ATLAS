@@ -121,6 +121,16 @@ def load_accepted_marketdata_trial_report(settings: AtlasSettings) -> dict[str, 
     report = _load_json(path)
     expected_status = str(CONTRACT["marketdata_source"]["required_status"])
     expected_fingerprint = str(CONTRACT["marketdata_source"]["evidence_fingerprint"])
+    expected_contract = str(CONTRACT["marketdata_source"]["contract_id"])
+    expected_run_id = str(CONTRACT["marketdata_source"]["run_id"])
+    if report.get("contract_id") != expected_contract:
+        raise MarketDataMassiveOverlapError(
+            f"MarketData source contract mismatch: {report.get('contract_id')!r}"
+        )
+    if report.get("run_id") != expected_run_id:
+        raise MarketDataMassiveOverlapError(
+            f"MarketData source run id mismatch: {report.get('run_id')!r}"
+        )
     if report.get("status") != expected_status:
         raise MarketDataMassiveOverlapError(
             f"MarketData source status mismatch: {report.get('status')!r}"
