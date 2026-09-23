@@ -13,13 +13,24 @@ from typing import Any, Callable
 CZAR28_BASE_URL = "https://api.czar28.com/v1"
 CZAR28_CREDENTIAL_ENV = "CZAR_API_KEY"
 CZAR28_TRANSIENT_HTTP_STATUS = frozenset({500, 502, 503, 504})
-CZAR28_DEFAULT_MAX_ATTEMPTS = 6
-CZAR28_DEFAULT_INITIAL_RETRY_SECONDS = 2.0
-CZAR28_DEFAULT_MAX_RETRY_SECONDS = 20.0
+CZAR28_DEFAULT_MAX_ATTEMPTS = 5
+CZAR28_DEFAULT_INITIAL_RETRY_SECONDS = 0.25
+CZAR28_DEFAULT_MAX_RETRY_SECONDS = 2.0
 
 
 class Czar28Error(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        transport_attempts: int = 0,
+        http_status: int | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.transport_attempts = max(0, int(transport_attempts))
+        self.http_status = http_status
+        self.error_code = error_code
 
 
 class Czar28QuotaExhausted(Czar28Error):
@@ -131,9 +142,13 @@ def get_json(
             payload = _safe_decode_json(raw)
 
             if exc.code == 429:
+                error_code = str(payload.get("error") or "quota_exceeded")
                 raise Czar28QuotaExhausted(
                     f"Czar28 quota/rate limit returned HTTP 429: "
-                    f"{payload.get('error') or payload.get('message') or 'quota_exceeded'}"
+                    f"{error_code}",
+                    transport_attempts=attempt,
+                    http_status=429,
+                    error_code=error_code,
                 ) from exc
 
             if exc.code == 404:
@@ -161,9 +176,17 @@ def get_json(
                 if attempt > 1
                 else ""
             )
+            error_code = str(
+                payload.get("error")
+                or payload.get("message")
+                or payload.get("raw_error")
+                or "http_error"
+            )
             raise Czar28Error(
-                f"Czar28 HTTP {exc.code}{suffix}: "
-                f"{payload.get('error') or payload.get('message') or payload.get('raw_error') or raw[:200]!r}"
+                f"Czar28 HTTP {exc.code}{suffix}: {error_code!r}",
+                transport_attempts=attempt,
+                http_status=int(exc.code),
+                error_code=error_code,
             ) from exc
 
         except urllib.error.URLError as exc:
@@ -176,9 +199,13 @@ def get_json(
                 sleep(backoff)
                 continue
             raise Czar28Error(
-                f"Czar28 transport error after {attempt} attempts: {exc}"
+                f"Czar28 transport error after {attempt} attempts: {exc}",
+                transport_attempts=attempt,
+                error_code="transport_error",
             ) from exc
 
     raise Czar28Error(
-        f"Czar28 request failed after {max_attempts} attempts: {last_error}"
+        f"Czar28 request failed after {max_attempts} attempts: {last_error}",
+        transport_attempts=max_attempts,
+        error_code="transport_error",
     )

@@ -599,6 +599,20 @@ def _spread_cases_across_expiration_years(
     return selected
 
 
+def _probe_label(descriptor: dict[str, object]) -> str:
+    params = dict(descriptor.get("params") or {})
+    parts = [
+        str(descriptor.get("kind") or "probe"),
+        str(params.get("root") or ""),
+        str(params.get("exp") or ""),
+    ]
+    if params.get("strike"):
+        parts.append(str(params["strike"]))
+    if params.get("right"):
+        parts.append(str(params["right"]))
+    return " ".join(part for part in parts if part)
+
+
 def _summary_record(
     descriptor: dict[str, object],
     receipt: dict[str, object],
@@ -649,9 +663,11 @@ def run_czar28_historical_option_qualification_v1(
     successful_eod: list[tuple[dict[str, object], dict[str, Any]]] = []
     terminal_error: str | None = None
     quota_exhausted = False
+    failed_transport_attempts = 0
+    run_started = time.monotonic()
 
     def execute(descriptor: dict[str, object]) -> dict[str, Any] | None:
-        nonlocal terminal_error, quota_exhausted
+        nonlocal terminal_error, quota_exhausted, failed_transport_attempts
         if not budget.can_request() and _load_reusable_probe(root, descriptor) is None:
             return None
         try:
@@ -662,27 +678,55 @@ def run_czar28_historical_option_qualification_v1(
                 request_json=request_json,
             )
         except Czar28QuotaExhausted as exc:
+            failed_transport_attempts += int(exc.transport_attempts or 0)
             quota_exhausted = True
             terminal_error = str(exc)
+            print(
+                f"  STOP: {_probe_label(descriptor)} -> {terminal_error}",
+                flush=True,
+            )
             return None
         except Czar28LocalBudgetExhausted:
             return None
         except Czar28Error as exc:
+            failed_transport_attempts += int(exc.transport_attempts or 0)
             terminal_error = f"{type(exc).__name__}: {exc}"
+            print(
+                f"  STOP: {_probe_label(descriptor)} -> {terminal_error}",
+                flush=True,
+            )
             budget.halt()
             return None
-        probe_summaries.append(
-            _summary_record(descriptor, receipt, payload, reused=reused)
-        )
-        if not reused and budget.request_attempts % 25 == 0:
+        summary = _summary_record(descriptor, receipt, payload, reused=reused)
+        probe_summaries.append(summary)
+        if not reused and int(summary["transport_attempts"]) > 1:
+            print(
+                f"  RECOVERED: {_probe_label(descriptor)} after "
+                f"{summary['transport_attempts']} HTTP attempts",
+                flush=True,
+            )
+        if not reused and (
+            budget.request_attempts == 1 or budget.request_attempts % 10 == 0
+        ):
+            elapsed_minutes = max(0.0, time.monotonic() - run_started) / 60.0
             print(
                 "  Czar28 progress: "
-                f"provider_calls={budget.request_attempts:,}/{max_requests:,} "
+                f"logical={budget.request_attempts:,}/{max_requests:,} "
+                f"physical={sum(int(item.get('transport_attempts') or 1) for item in probe_summaries if not bool(item.get('reused'))) + failed_transport_attempts:,} "
                 f"remaining={budget.provider_remaining} "
-                f"saved_probes={len(probe_summaries):,}",
+                f"saved={len(probe_summaries):,} "
+                f"current={_probe_label(descriptor)} "
+                f"rows={summary['row_count']} "
+                f"elapsed={elapsed_minutes:.1f}m",
                 flush=True,
             )
         return payload
+
+    print(
+        "  Phase 1/5 — historical chain coverage: "
+        "30 roots x June monthly expiration x 2016..2026",
+        flush=True,
+    )
 
     # Phase 1: one standard monthly chain snapshot for 30 durable roots across
     # every stock-aligned anchor year. This alone establishes historical depth
@@ -693,6 +737,18 @@ def run_czar28_historical_option_qualification_v1(
             break
         if payload is not None and _rows(payload):
             chain_payloads.append((descriptor, payload))
+
+    print(
+        "  Phase 1 complete: "
+        f"successful_nonempty_chains={len(chain_payloads):,} "
+        f"logical_calls={budget.request_attempts:,} "
+        f"remaining={budget.provider_remaining}",
+        flush=True,
+    )
+    print(
+        "  Phase 2/5 — representative 90-day EOD option histories",
+        flush=True,
+    )
 
     # Phase 2: deterministic median-strike call/put EOD lifecycle probes.
     primary_eod: list[dict[str, object]] = []
@@ -724,6 +780,18 @@ def run_czar28_historical_option_qualification_v1(
             break
         if payload is not None and _rows(payload):
             successful_eod.append((descriptor, payload))
+
+    print(
+        "  Phase 2 complete: "
+        f"successful_nonempty_eod={len(successful_eod):,} "
+        f"logical_calls={budget.request_attempts:,} "
+        f"remaining={budget.provider_remaining}",
+        flush=True,
+    )
+    print(
+        "  Phase 3/5 — one-day intraday quotes and trade prints",
+        flush=True,
+    )
 
     # Phase 3: real one-day intraday NBBO-style quote and trade-print presence
     # for 50 contracts spread deterministically over the successful EOD pool.
@@ -763,6 +831,17 @@ def run_czar28_historical_option_qualification_v1(
         if not budget.can_request():
             break
 
+    print(
+        "  Phase 3 complete: "
+        f"logical_calls={budget.request_attempts:,} "
+        f"remaining={budget.provider_remaining}",
+        flush=True,
+    )
+    print(
+        "  Phase 4/5 — intentional repeatability checks",
+        flush=True,
+    )
+
     # Phase 4: intentional uncached repeats. Different logical probe ids force
     # fresh provider observations so payload stability can be measured.
     for descriptor, _payload in _spread_cases_across_expiration_years(
@@ -792,6 +871,17 @@ def run_czar28_historical_option_qualification_v1(
         execute(repeat)
         if not budget.can_request():
             break
+
+    print(
+        "  Phase 4 complete: "
+        f"logical_calls={budget.request_attempts:,} "
+        f"remaining={budget.provider_remaining}",
+        flush=True,
+    )
+    print(
+        "  Phase 5/5 — useful quota fill with additional EOD / March / September probes",
+        flush=True,
+    )
 
     # Phase 5: consume otherwise-unused free quota with additional useful,
     # deterministic evidence. First use representative EOD contracts not yet
@@ -903,10 +993,13 @@ def run_czar28_historical_option_qualification_v1(
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "credential_env": CZAR28_CREDENTIAL_ENV,
         "provider_request_attempts_this_run": budget.request_attempts,
-        "provider_transport_attempts_this_run": sum(
-            int(item.get("transport_attempts") or 1)
-            for item in probe_summaries
-            if not bool(item.get("reused"))
+        "provider_transport_attempts_this_run": (
+            sum(
+                int(item.get("transport_attempts") or 1)
+                for item in probe_summaries
+                if not bool(item.get("reused"))
+            )
+            + failed_transport_attempts
         ),
         "provider_limit_observed": budget.provider_limit,
         "provider_remaining_observed": budget.provider_remaining,
