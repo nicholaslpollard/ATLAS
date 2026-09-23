@@ -24,11 +24,25 @@ from packages.data.tradier_source_qualification import (
 from packages.providers.tradier.client import TradierMarketDataClient
 
 
+EXPECTED_ASSET_SNAPSHOT_SHA256 = "43a5645d4366e7f7294e14f60596c5e753db6158c394a62262fdd283bbab151a"
+EXPECTED_BROAD_SYMBOL_COUNT = 13_412
+EXPECTED_PHASE7_AS_OF = "2026-08-14"
+EXPECTED_PHASE7_SYMBOL_COUNT = 12_066
+EXPECTED_PHASE7_SNAPSHOT_SHA256 = "00ec1231008cf3faac7a0c456d73daae3730b0d09f8b4ea7b5b48680925d2afe"
+
+
 CONTRACT = {
     "contract_id": "atlas-tradier-whole-universe-cadence-diagnostic-v1",
     "provider": "tradier",
     "environment": "production",
-    "population": "ALPACA_SIP_V2_CURRENT_ACTIVE_TRADABLE_US_EQUITY",
+    "population": {
+        "type": "ALPACA_SIP_V2_CURRENT_ACTIVE_TRADABLE_US_EQUITY",
+        "asset_snapshot_sha256": EXPECTED_ASSET_SNAPSHOT_SHA256,
+        "expected_symbol_count": EXPECTED_BROAD_SYMBOL_COUNT,
+        "phase7_optional_exact_as_of": EXPECTED_PHASE7_AS_OF,
+        "phase7_optional_symbol_count": EXPECTED_PHASE7_SYMBOL_COUNT,
+        "phase7_optional_snapshot_sha256": EXPECTED_PHASE7_SNAPSHOT_SHA256,
+    },
     "cycles": 20,
     "broad_interval_seconds": 30,
     "retry_delay_seconds": 10,
@@ -213,14 +227,36 @@ def load_current_population(settings: AtlasSettings) -> Population:
             "current asset snapshot produced no active/tradable US-equity symbols"
         )
 
+    asset_sha = _sha256_file(path)
+    if asset_sha != EXPECTED_ASSET_SNAPSHOT_SHA256:
+        raise TradierCadenceDiagnosticError(
+            "current asset snapshot changed from the frozen 2026-09-22 stress source: "
+            f"{asset_sha}"
+        )
+    if len(symbols) != EXPECTED_BROAD_SYMBOL_COUNT:
+        raise TradierCadenceDiagnosticError(
+            "frozen current asset population count changed: "
+            f"expected {EXPECTED_BROAD_SYMBOL_COUNT:,}, got {len(symbols):,}"
+        )
+
     try:
-        phase7 = latest_universe_symbol_source(settings)
+        candidate_phase7 = latest_universe_symbol_source(settings)
     except (FileNotFoundError, ValueError):
         phase7 = None
+    else:
+        phase7 = (
+            candidate_phase7
+            if (
+                candidate_phase7.as_of_date.isoformat() == EXPECTED_PHASE7_AS_OF
+                and len(candidate_phase7.symbols) == EXPECTED_PHASE7_SYMBOL_COUNT
+                and candidate_phase7.sha256 == EXPECTED_PHASE7_SNAPSHOT_SHA256
+            )
+            else None
+        )
 
     return Population(
         path=path.resolve(),
-        sha256=_sha256_file(path),
+        sha256=asset_sha,
         symbols=symbols,
         symbols_fingerprint=stable_fingerprint(symbols),
         phase7=phase7,
