@@ -10,6 +10,7 @@ from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
 from packages.data.provider_source_qualification import stable_fingerprint
 from packages.providers.czar28.client import (
+    CZAR28_HEALTH_BASE_URL,
     Czar28Error,
     Czar28QuotaExhausted,
     Czar28Response,
@@ -134,7 +135,10 @@ def classify_preflight(
 
     if health is None or health.status != "PASS":
         return "PROVIDER_HEALTH_UNAVAILABLE"
-    if health.health_status not in (None, "ok"):
+    if (
+        str(health.health_status or "").strip().lower() != "ok"
+        or str(health.upstream_status or "").strip().upper() != "CONNECTED"
+    ):
         return "PROVIDER_HEALTH_DEGRADED"
     if current is None or current.status != "PASS":
         return "CURRENT_CHAIN_UNAVAILABLE"
@@ -167,11 +171,10 @@ def run_czar28_connectivity_preflight_v1(
         )
         print(f"  [{index}/{total}] {rendered}", flush=True)
         try:
-            response = request_json(
-                path,
-                params=params,
-                authenticate=(name != "health"),
-                idempotency_key=stable_fingerprint(
+            request_kwargs: dict[str, Any] = {
+                "params": params,
+                "authenticate": name != "health",
+                "idempotency_key": stable_fingerprint(
                     {
                         "contract": CZAR28_CONNECTIVITY_PREFLIGHT_V1_FINGERPRINT,
                         "name": name,
@@ -179,12 +182,15 @@ def run_czar28_connectivity_preflight_v1(
                         "params": params,
                     }
                 ),
-                max_attempts=int(
+                "max_attempts": int(
                     CZAR28_CONNECTIVITY_PREFLIGHT_V1[
                         "max_transport_attempts_per_probe"
                     ]
                 ),
-            )
+            }
+            if name == "health":
+                request_kwargs["base_url"] = CZAR28_HEALTH_BASE_URL
+            response = request_json(path, **request_kwargs)
             health_status, upstream_status = _health_fields(response.payload)
             row_count = _row_count(response.payload)
             status = (
