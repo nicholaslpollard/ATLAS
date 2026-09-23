@@ -35,8 +35,10 @@ CONTRACT = {
     "max_provider_reads": 40,
     "broad_request": "one POST /v1/markets/quotes for complete resolved population",
     "retry_request": (
-        "one POST for first-pass missing, invalid-geometry, unknown-freshness, "
-        "or quote-age-over-30-second symbols"
+        "one POST for first-pass unresolved Phase 7 discovery symbols when the "
+        "local Phase 7 universe is available; otherwise unresolved broad-population "
+        "symbols. Unresolved means missing, invalid geometry, unknown freshness, "
+        "quote age over 30 seconds, or future-timestamp anomaly"
     ),
     "diagnostic_thresholds_only": {
         "quote_age_seconds": [5, 15, 30, 60],
@@ -454,10 +456,13 @@ def _phase7_summary(
     selected = [quality[symbol] for symbol in phase7_symbols if symbol in quality]
     if not selected:
         return None
+    absent_from_broad = len(phase7_symbols) - len(selected)
     returned = sum(item.returned for item in selected)
     usable = sum(item.diagnostic_usable_30s_100bps for item in selected)
     return {
+        "phase7_symbol_count": len(phase7_symbols),
         "requested_symbols_present_in_broad_population": len(selected),
+        "absent_from_broad_population": absent_from_broad,
         "returned": returned,
         "coverage_fraction": returned / len(selected),
         "diagnostic_usable_30s_100bps": usable,
@@ -667,6 +672,17 @@ def run_tradier_whole_universe_cadence_v1(
     population = load_current_population(settings)
     market_client = client or TradierMarketDataClient(settings)
     phase7_symbols = population.phase7.symbols if population.phase7 else None
+    broad_symbol_set = set(population.symbols)
+    retry_eligible = (
+        set(phase7_symbols).intersection(broad_symbol_set)
+        if phase7_symbols
+        else broad_symbol_set
+    )
+    retry_population_label = (
+        "PHASE7_DISCOVERY_ELIGIBLE_INTERSECTION"
+        if phase7_symbols
+        else "BROAD_CURRENT_ASSET_POPULATION"
+    )
 
     generated = datetime.now(UTC)
     run_id = generated.strftime("%Y%m%dT%H%M%SZ")
@@ -735,7 +751,13 @@ def run_tradier_whole_universe_cadence_v1(
             flush=True,
         )
 
-        cohort = tuple(record["freshness_unresolved_symbols"])
+        cohort = tuple(
+            symbol
+            for symbol in record["freshness_unresolved_symbols"]
+            if symbol in retry_eligible
+        )
+        record["retry_population"] = retry_population_label
+        record["retry_eligible_symbol_count"] = len(retry_eligible)
         if not cohort:
             print("    retry: skipped; no unresolved symbols", flush=True)
             continue
@@ -746,7 +768,8 @@ def run_tradier_whole_universe_cadence_v1(
             sleeper(retry_wait)
 
         print(
-            f"    retry +{CONTRACT['retry_delay_seconds']}s: "
+            f"    retry +{CONTRACT['retry_delay_seconds']}s "
+            f"[{retry_population_label}]: "
             f"requesting {len(cohort):,} unresolved symbols...",
             flush=True,
         )
@@ -823,6 +846,8 @@ def run_tradier_whole_universe_cadence_v1(
                 if population.phase7
                 else None
             ),
+            "retry_population": retry_population_label,
+            "retry_eligible_symbol_count": len(retry_eligible),
         },
         "provider_reads": provider_reads,
         "broad_cycles_completed": len(broad_records),
