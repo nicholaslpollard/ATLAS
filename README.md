@@ -98,6 +98,54 @@ explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
 exit is the existing five-probe preflight, not the 1,000-call qualification.
 
 
+### Active paid unblocking path — MarketData.app five-year options V1
+
+ATLAS will no longer let ten-year option-source perfection block simulator
+development. The active paid challenger is
+`atlas-marketdata-five-year-historical-options-v1`, targeting the MarketData.app
+Starter plan at $30 month-to-month.
+
+The current documented Starter entitlement provides 10,000 API credits/day and a
+rolling five-year historical window. Historical option-chain requests with a date
+parameter are billed at one credit per 1,000 returned contracts; historical
+single-contract quote series are billed at one credit per 1,000 quote rows. The
+provider exposes historical bid/ask/mid/last, volume, open interest, underlying
+price, OCC symbol, strike/expiration/side and timestamps. Historical IV/Greeks are
+not stored and are expected null.
+
+This source is intended to unlock **five-year EOD option economics plus OI** for
+candidate-first simulation. It is not a whole-market bulk-download authorization.
+ATLAS will query only PIT stock opportunities already produced by the research
+pipeline, restrict DTE/strike range server-side, select contracts under a separately
+frozen rule, and download short EOD quote paths only for selected contracts.
+
+Point-in-time semantics remain explicit: historical OI on date D is the value
+settled from D-1 and available before D opens; bid/ask/last/underlyingPrice and
+volume are EOD-D observations. Full-session D volume is therefore unavailable to an
+intraday-D decision. Provider data is as-traded and not corporate-action adjusted;
+corporate-action-sensitive/non-standard cases remain fail-closed unless separately
+resolved.
+
+Massive Historical Option Reference V7 remains preserved but its 5-calls/minute
+Basic-tier continuation is **not on the simulator critical path**. Czar28 remains
+the low-cost ten-year challenger/backfill path after its upstream health recovers.
+
+The first MarketData qualification is intentionally small: six anchors from
+2021-10-01 through 2026-09-01 across SPY/AAPL/MSFT/NVDA/QQQ, each using a restricted
+historical chain and a ten-day quote series for one selected contract. Passing that
+gate creates challenger-source evidence only; cross-provider validation and a
+separate simulator adapter remain required.
+
+The user's current **Starter Trial** is now used before any purchase. Trial mode
+(`--starter-trial`) exploits the documented full-history AAPL exception for
+a 2021-10-01 deep probe and uses SPY/MSFT/NVDA/QQQ anchors inside the trial's normal
+one-year limit. This can prove endpoint/schema/OI/quote-series mechanics without
+spending $30, but it cannot prove broad five-year entitlement for non-AAPL symbols.
+The paid six-anchor gate remains distinct.
+
+Full design:
+`docs/research/marketdata_five_year_historical_options_v1_20260923.md`.
+
 ## Read this first
 
 1. Read this entire README for the current handoff.

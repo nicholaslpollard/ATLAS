@@ -1,0 +1,196 @@
+# MarketData.app Five-Year Historical Options Qualification V1 — 2026-09-23
+
+## Status
+
+**IMPLEMENTED / STARTER-TRIAL CAPABILITY PROBE PENDING / PAID-STARTER FIVE-YEAR QUALIFICATION PENDING**
+
+Contract:
+
+`atlas-marketdata-five-year-historical-options-v1`
+
+This package is intended to unblock historical option-economics simulation without
+waiting for ten-year source perfection.
+
+## Provider role
+
+MarketData.app Starter is the primary paid challenger for a rolling five-year
+historical option layer.
+
+Current documented Starter terms:
+
+- $30 month-to-month;
+- 10,000 API credits per day;
+- five years of historical data;
+- historical option chains;
+- historical single-contract EOD quote series;
+- 15-minute delayed current options on the paid Starter plan.
+
+The trial/free tiers do not prove the paid five-year entitlement: they are limited to
+one year of history for general tickers. The current Starter Trial additionally grants
+full historical access for AAPL specifically. ATLAS therefore uses the free trial as a
+bounded capability probe before any purchase:
+
+- AAPL 2021-10-01 proves the same deep historical chain/quote mechanics near the
+  five-year boundary using the trial's documented AAPL exception;
+- SPY 2026-03-02, MSFT 2026-05-01, NVDA 2026-07-01 and QQQ 2026-09-01 prove the same
+  schema/OI/quote-path behavior across multiple underlyings inside the trial's general
+  one-year history window.
+
+A successful trial run can de-risk endpoint behavior, schema, OI, raw persistence and
+candidate-first economics at zero subscription cost. It **cannot** establish broad
+five-year entitlement for non-AAPL symbols. The paid six-anchor qualification remains
+the final five-year entitlement gate if ATLAS proceeds with Starter.
+
+## Historical economics available
+
+Historical chain and quote rows can expose:
+
+- OCC option symbol;
+- expiration;
+- side;
+- strike;
+- first-traded date;
+- DTE;
+- bid / ask / sizes;
+- midpoint;
+- last;
+- volume;
+- open interest;
+- underlying price;
+- updated timestamp;
+- in-the-money state; and
+- intrinsic / extrinsic value.
+
+Historical IV and Greeks are not stored and are expected to be null. Derived
+IV/Greeks, if later needed, must be a separately versioned derived layer and may not
+be mistaken for provider-observed historical Greeks.
+
+## Point-in-time semantics
+
+For a historical date D:
+
+- open interest is the figure settled from D-1 and available before D opens;
+- bid/ask/mid/last/underlyingPrice and volume are end-of-day D observations;
+- full-session D volume is therefore look-ahead for an intraday-D decision.
+
+ATLAS must preserve those semantics in any simulator adapter. OI may be used for a
+decision on D. Full-session D volume may only affect decisions whose cutoff is after
+D's close or later.
+
+## Corporate actions
+
+The provider documents historical option data as as-traded and not adjusted for
+splits, dividends or other corporate actions.
+
+Therefore:
+
+- raw provider prices are preserved exactly;
+- the provider's historical `underlyingPrice` is retained with each option row;
+- ATLAS must not silently combine as-traded option strikes with a stock series whose
+  corporate-action adjustment basis is incompatible;
+- adjusted/non-standard/corporate-action-sensitive cases remain fail-closed or
+  quarantined until a separately accepted resolver proves the economics.
+
+Massive Historical Option Reference V7 remains preserved for structural anomaly and
+deliverable research, but it is no longer required to finish before five-year
+economics qualification can proceed.
+
+## Cost-aware acquisition design
+
+Historical chain queries are documented at one API credit per 1,000 option symbols
+returned. Historical single-contract quote requests are documented at one credit per
+1,000 quote rows.
+
+ATLAS will therefore use a candidate-first design rather than download the whole
+option market:
+
+1. take a stock strategy opportunity already known to ATLAS;
+2. query the historical option chain only at the opportunity's PIT date;
+3. restrict DTE and strike range before download;
+4. choose candidate call/put contracts under a frozen selection rule;
+5. request a short historical EOD series only for selected contracts over the
+   intended holding horizon;
+6. retain OI, bid/ask and underlying price with the same PIT record;
+7. preserve raw response + SHA-256 receipt;
+8. quarantine inconsistent/corporate-action-sensitive cases.
+
+This design is materially more efficient than the Massive structural reference
+rebuild that was throttled to five REST calls per minute.
+
+## Qualification anchors
+
+V1 uses six low-cost anchor probes spanning the rolling five-year entitlement:
+
+- SPY — 2021-10-01;
+- AAPL — 2022-10-03;
+- MSFT — 2023-10-02;
+- NVDA — 2024-10-01;
+- QQQ — 2025-10-01;
+- SPY — 2026-09-01.
+
+Each anchor requests a historical chain near 30 DTE with only eight strikes, chooses
+the nearest-ATM call by provider-reported underlying price, and requests a ten-day
+historical quote series for that exact contract.
+
+The run records:
+
+- raw JSON responses;
+- SHA-256 receipts;
+- required schema presence;
+- chain and quote row counts;
+- non-null OI counts;
+- historical-Greeks-null behavior; and
+- proof that the oldest 2021-10-01 anchor is available.
+
+## Acceptance meaning
+
+A status of
+`QUALIFIED_FOR_FIVE_YEAR_EOD_ECONOMICS_CHALLENGER`
+means only that MarketData.app has passed the bounded five-year source/schema/OI
+qualification.
+
+It does **not** yet create:
+
+- simulator historical-price authority;
+- strategy evidence;
+- an accepted option selection rule;
+- an accepted execution/slippage model;
+- PAPER/LIVE authority; or
+- broker/order authority.
+
+Cross-provider overlap validation and a separately frozen simulator integration
+remain required.
+
+## Workstation credential
+
+The provider uses Bearer authentication. Keep the token only in the local `.env`:
+
+~~~text
+MARKETDATA_TOKEN=<token>
+~~~
+
+Never place the token in source control or command-line URLs.
+
+## Workstation commands
+
+For the 30-day Starter Trial, run the bounded capability probe first:
+
+~~~powershell
+git checkout main; git pull
+.\.venv\Scripts\python.exe scripts\qualify_marketdata_five_year_options_v1.py --authorize-provider-reads --starter-trial
+~~~
+
+This uses only the documented deep-AAPL exception plus general-ticker dates inside the
+trial's one-year history limit. It does not intentionally issue a known-to-fail
+out-of-entitlement request for another ticker.
+
+Only if ATLAS later activates the paid Starter plan should the broad five-year
+qualification be run:
+
+~~~powershell
+git checkout main; git pull
+.\.venv\Scripts\python.exe scripts\qualify_marketdata_five_year_options_v1.py --authorize-provider-reads
+~~~
+
+If the paid run passes, the next package is the candidate-first five-year acquisition
+adapter. No whole-market bulk download is authorized by V1.

@@ -104,6 +104,51 @@ explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
 exit is the existing five-probe preflight, not the 1,000-call qualification.
 
 
+### Active paid unblocking path — MarketData.app five-year historical options
+
+ATLAS will no longer treat ten-year historical-option completeness as a global
+simulator blocker. The active paid challenger is
+`atlas-marketdata-five-year-historical-options-v1`, targeting MarketData.app
+Starter at $30 month-to-month, 10,000 API credits/day, and a rolling five-year
+historical window.
+
+Historical option chains are acquired point in time and restricted by DTE/strike
+before download. Historical selected-contract quote series provide EOD bid/ask/mid/
+last, volume, open interest, underlying price and timestamps. Historical IV/Greeks
+are not stored and may only be derived later under a separate contract.
+
+The architecture is candidate-first rather than whole-market:
+
+`stock opportunity -> PIT historical chain -> frozen contract selection -> short
+selected-contract EOD path -> option-economics replay`.
+
+This path can provide the five-year option-economics layer needed to resume
+simulation while preserving the longer-horizon stock history. The simulator must
+label the option-history evidence window explicitly and may not describe five-year
+option evidence as ten-year option validation.
+
+Historical OI on date D is settled from D-1 and available before D opens. EOD-D
+volume/quotes are not available to an intraday-D cutoff. Provider option history is
+as-traded and not corporate-action adjusted, so adjusted/non-standard cases remain
+fail-closed unless separately reconciled.
+
+Massive V7 remains preserved for structural reference/anomaly work but its Basic-tier
+5-calls/minute acquisition is removed from the critical path. Czar28 remains a
+ten-year challenger/backfill source once health recovers.
+
+The first paid qualification probes six anchors spanning 2021-10-01..2026-09-01 and
+must prove historical chains, exact contract quote paths, OI presence and expected
+historical-Greeks-null behavior before any simulator integration.
+
+Before that paid gate, the active Starter Trial may run a zero-cost capability probe.
+The trial is documented as 10,000 credits/day with one year of general historical
+access plus full historical access for AAPL. ATLAS therefore probes deep AAPL at
+2021-10-01 and recent SPY/MSFT/NVDA/QQQ dates within one year. A pass proves the
+candidate-first mechanics and data fields, not broad five-year entitlement.
+
+No historical-price, strategy, PAPER, LIVE, broker or order authority is created by
+this qualification.
+
 ## 2. Mission
 
 ATLAS is the **Autonomous Trading, Learning, and Analysis System**, the greenfield

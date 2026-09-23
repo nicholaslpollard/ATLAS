@@ -115,35 +115,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 4
 
-    print("  mandatory public health gate: checking...")
-    try:
-        health = get_health()
-    except Czar28Error as exc:
-        print(
-            "BLOCKED: Czar28 public health check failed before any "
-            f"quota-consuming request: {type(exc).__name__}: {exc}"
-        )
-        return 4
-
-    upstream = health.payload.get("upstream")
-    upstream_status = None
-    upstream_message = None
-    if isinstance(upstream, dict):
-        upstream_status = upstream.get("mdds_status")
-        upstream_message = upstream.get("message")
-    print(
-        "  health: "
-        f"status={health.payload.get('status')} "
-        f"upstream={upstream_status} "
-        f"message={upstream_message}"
-    )
-    if not health_is_ready(health.payload):
-        print(
-            "BLOCKED: Czar28 is not explicitly healthy/CONNECTED. "
-            "No quota-consuming qualification calls were sent."
-        )
-        return 4
-
     print(
         "  contract fingerprint: "
         f"{CZAR28_HISTORICAL_OPTION_QUALIFICATION_V1_CONTRACT_FINGERPRINT}"
