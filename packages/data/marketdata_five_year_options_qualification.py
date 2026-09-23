@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -169,6 +170,25 @@ def _nonnull_count(rows: tuple[dict[str, Any], ...], field: str) -> int:
     return sum(row.get(field) is not None for row in rows)
 
 
+def _usable_bid_ask_count(rows: tuple[dict[str, Any], ...]) -> int:
+    count = 0
+    for row in rows:
+        try:
+            bid = float(row.get("bid"))
+            ask = float(row.get("ask"))
+        except (TypeError, ValueError):
+            continue
+        if (
+            math.isfinite(bid)
+            and math.isfinite(ask)
+            and bid >= 0.0
+            and ask > 0.0
+            and ask >= bid
+        ):
+            count += 1
+    return count
+
+
 def _greeks_null(rows: tuple[dict[str, Any], ...]) -> dict[str, bool]:
     return {
         field: bool(rows)
@@ -236,6 +256,7 @@ def run_marketdata_five_year_options_qualification_v1(
             list(CONTRACT["required_chain_fields"]),
         )
         chain_oi = _nonnull_count(chain_rows, "openInterest")
+        chain_usable_bid_ask = _usable_bid_ask_count(chain_rows)
         chain_greeks_null = _greeks_null(chain_rows)
 
         record: dict[str, object] = {
@@ -245,6 +266,7 @@ def run_marketdata_five_year_options_qualification_v1(
             "chain_rows": len(chain_rows),
             "chain_required_fields": chain_fields,
             "chain_open_interest_nonnull": chain_oi,
+            "chain_usable_bid_ask_rows": chain_usable_bid_ask,
             "chain_historical_greeks_null": chain_greeks_null,
             "chain_rate_limit": rate_limit_snapshot(chain_response.headers),
             "chain_raw_receipt": chain_receipt,
@@ -304,6 +326,7 @@ def run_marketdata_five_year_options_qualification_v1(
                     quote_rows,
                     "openInterest",
                 ),
+                "quote_usable_bid_ask_rows": _usable_bid_ask_count(quote_rows),
                 "quote_historical_greeks_null": _greeks_null(quote_rows),
                 "quote_rate_limit": rate_limit_snapshot(quote_response.headers),
                 "quote_raw_receipt": quote_receipt,
@@ -331,6 +354,14 @@ def run_marketdata_five_year_options_qualification_v1(
         and all(
             int(item.get("chain_open_interest_nonnull") or 0) > 0
             and int(item.get("quote_open_interest_nonnull") or 0) > 0
+            for item in anchors
+        )
+    )
+    usable_bid_ask_across_anchors = (
+        len(anchors) == len(active_anchors)
+        and all(
+            int(item.get("chain_usable_bid_ask_rows") or 0) > 0
+            and int(item.get("quote_usable_bid_ask_rows") or 0) > 0
             for item in anchors
         )
     )
@@ -365,6 +396,7 @@ def run_marketdata_five_year_options_qualification_v1(
         all_anchor_chains
         and all_quote_series
         and all_oi
+        and usable_bid_ask_across_anchors
         and required_schema_present
         and historical_greeks_null
         and oldest_anchor_ok
@@ -423,6 +455,7 @@ def run_marketdata_five_year_options_qualification_v1(
         "all_anchor_chains_nonempty": all_anchor_chains,
         "all_quote_series_nonempty": all_quote_series,
         "open_interest_present_across_anchors": all_oi,
+        "usable_bid_ask_across_anchors": usable_bid_ask_across_anchors,
         "required_schema_present_across_anchors": required_schema_present,
         "historical_greeks_present_and_null_across_anchors": historical_greeks_null,
         "observed_api_credits_consumed": observed_credit_consumed,
