@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 from packages.data.czar28_connectivity_preflight import (
     PreflightProbeResult,
     classify_preflight,
@@ -69,12 +71,9 @@ def test_preflight_detects_degraded_health() -> None:
 
 
 def test_preflight_requires_connected_upstream() -> None:
-    health = _result("health", health_status="ok")
-    health = PreflightProbeResult(
-        **{
-            **health.__dict__,
-            "upstream_status": "DISCONNECTED",
-        }
+    health = replace(
+        _result("health", health_status="ok"),
+        upstream_status="DISCONNECTED",
     )
     assert classify_preflight([health]) == "PROVIDER_HEALTH_DEGRADED"
 
