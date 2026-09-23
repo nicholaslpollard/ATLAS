@@ -143,6 +143,13 @@ one-year limit. This can prove endpoint/schema/OI/quote-series mechanics without
 spending $30, but it cannot prove broad five-year entitlement for non-AAPL symbols.
 The paid six-anchor gate remains distinct.
 
+
+MarketData daily credit reset is 09:30 America/New_York. Runtime budget control uses
+the provider's `X-Api-Ratelimit-*` headers, and future acquisition must stay below
+the documented 50-request concurrency ceiling. Trial qualification is sequential and
+records observed credit consumption/remaining balance. HTTP 203 is accepted as normal
+success; 429 fails closed rather than being blindly retried.
+
 Full design:
 `docs/research/marketdata_five_year_historical_options_v1_20260923.md`.
 
