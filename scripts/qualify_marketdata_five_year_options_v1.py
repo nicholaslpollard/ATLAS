@@ -87,6 +87,14 @@ def main(argv: list[str] | None = None) -> int:
         "  open interest present across anchors: "
         f"{report['open_interest_present_across_anchors']}"
     )
+    print(
+        "  observed API credits consumed: "
+        f"{report['observed_api_credits_consumed']}"
+    )
+    print(
+        "  last observed API credits remaining: "
+        f"{report['last_observed_api_credits_remaining']}"
+    )
     for item in report["anchors"]:
         print(
             "  "
