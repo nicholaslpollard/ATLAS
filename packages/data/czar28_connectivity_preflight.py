@@ -170,6 +170,7 @@ def run_czar28_connectivity_preflight_v1(
             response = request_json(
                 path,
                 params=params,
+                authenticate=(name != "health"),
                 idempotency_key=stable_fingerprint(
                     {
                         "contract": CZAR28_CONNECTIVITY_PREFLIGHT_V1_FINGERPRINT,

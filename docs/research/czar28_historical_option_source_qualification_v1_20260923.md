@@ -163,3 +163,68 @@ current probe, rows returned, and elapsed time. Recovered multi-attempt requests
 printed immediately. Failed retry attempts are included in the physical HTTP count.
 Deep chain discovery and deep EOD pricing are evaluated independently. If the deep chain endpoint fails but the direct 2016 EOD contract succeeds, ATLAS classifies that as `DEEP_EOD_AVAILABLE_CHAIN_LIMITATION` rather than rejecting the provider outright. That preserves the possibility of using Czar28 for prices while sourcing historical contract identity separately.
 
+## Target-workstation connectivity preflight result
+
+The first target-workstation execution of
+`atlas-czar28-connectivity-preflight-v1` produced:
+
+- classification: `PROVIDER_HEALTH_UNAVAILABLE`;
+- evidence fingerprint: `ace936dfe105887ae26c0a8ca2fdaac070dad58c39e26684409294353e84aa08`;
+- probe reached: 1/5 only (`/options/health`);
+- HTTP status: 503 on all three transport attempts;
+- returned health payload: none;
+- returned quota headers: none;
+- current-chain probes: not attempted;
+- recent-history probes: not attempted;
+- 2016 chain probes: not attempted; and
+- direct 2016 EOD probe: not attempted.
+
+This is not evidence against Czar28's advertised historical depth. Under the
+provider's documented API error semantics, HTTP 503 indicates its upstream circuit
+breaker is open after repeated upstream failures. The full 1,000-call qualification
+remains blocked while this condition persists. The public website's operational
+banner is not accepted as stronger evidence than the authenticated target-workstation
+health endpoint.
+
+No scientific source authority or trading authority changes from this result.
+
+
+## Corroborated provider-health result
+
+The earlier HTTP 502/503 workstation observations are now corroborated by a direct
+health request on the documentation example host.
+
+The user's Czar28 dashboard showed the Free plan active, one active read-only key,
+and seven recorded requests for the month. This demonstrates that requests reached
+Czar28's service/control plane.
+
+Czar28's documentation is internally inconsistent about hostnames: its Servers
+section identifies `https://api.czar28.com/v1` as the Production base URL, while
+several endpoint examples use `https://czar28.com/v1`. ATLAS therefore retains the
+explicit Production base from the Servers section.
+
+A direct unauthenticated call to
+`https://czar28.com/v1/options/health` returned:
+
+```json
+{
+  "status": "degraded",
+  "service": "options-history-api",
+  "version": "1.0",
+  "upstream": {
+    "mdds_status": "UNDETERMINED",
+    "upstream_ms": 131,
+    "message": "Unexpected status payload: ERROR CODE: 1033"
+  }
+}
+```
+
+Cloudflare documents Error 1033 as a Cloudflare Tunnel failure in which no healthy
+`cloudflared` instance is available to receive traffic for the origin tunnel. This
+supports the interpretation that Czar28's historical-options upstream was degraded at
+the time of testing.
+
+This remains operational evidence only. It does not establish whether Czar28 can or
+cannot serve the required 2016..2026 historical option corpus once the upstream
+recovers. The 1,000-call qualification remains blocked until a health/current-data
+preflight succeeds.
