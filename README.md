@@ -1432,17 +1432,21 @@ symbols were persistently absent, and neither later broad passes nor +10-second
 retries recovered any missing symbol. That gap is now treated as a separate
 identity/provider-coverage problem rather than a polling-cadence problem.
 
-Freshness was materially weaker at midday than mid-morning: mean quote-age <=30s
-count fell from 5,805.2 to 4,768.6, mean diagnostic-usable count fell from 5,598.4
-to 4,660.6, and mean unresolved count rose from 7,607.15 to 8,643.4. The broad
-quote-timestamp advancement curve also fell at every measured interval: 30s
-51.277% -> 43.345%, 60s 60.648% -> 52.756%, 120s 68.253% -> 61.174%, and 300s
-77.363% -> 70.581%. +10-second retries remain useful for freshness but recovered
-zero missing symbols.
+Freshness weakened across the three observed regular-session regimes. Mean quote-age
+<=30s counts were 5,805.2 mid-morning, 4,768.6 midday and 4,608.3 in the power hour;
+mean diagnostic-usable counts were 5,598.4 / 4,660.6 / 4,515.55; and mean unresolved
+counts were 7,607.15 / 8,643.4 / 8,803.7. The final power-hour run completed under
+evidence fingerprint
+`6ba17e5fcca3c2890d6ad38a41ca56953afaf4d978f97e6ed14e2977a634fd01`.
+It again returned exactly 12,775/13,412 symbols with the same 637 persistent/ever
+missing and zero missing-symbol recovery.
 
-Disposition remains diagnostic: 30-second broad polling is not justified by current
-evidence; 120 seconds is only a plausible candidate. A final regular-session cadence
-decision remains open pending the identical power-hour/near-close run.
+The three-regime cadence diagnostic is **COMPLETE**. +10-second retries are retained
+for freshness only. **120 seconds is frozen as the subsequent Tradier broad-REST
+qualification/engineering baseline** because it is the shortest tested interval with
+>60% quote-timestamp advancement in all three observed regimes (68.253% / 61.174% /
+60.942%). This does not freeze production trading cadence or freshness/liquidity
+policy and does not grant Tradier current-data, PAPER or LIVE authority.
 
 ### Tradier REST qualification V1 closeout — 2026-09-22
 
