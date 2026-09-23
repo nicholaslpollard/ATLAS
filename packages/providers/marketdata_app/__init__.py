@@ -7,6 +7,7 @@ from .client import (
     get_json,
     historical_chain,
     historical_quote_series,
+    rate_limit_snapshot,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "get_json",
     "historical_chain",
     "historical_quote_series",
+    "rate_limit_snapshot",
 ]
