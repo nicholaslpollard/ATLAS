@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 
-CZAR28_BASE_URL = "https://api.czar28.com/v1"
+CZAR28_BASE_URL = "https://czar28.com/v1"
 CZAR28_CREDENTIAL_ENV = "CZAR_API_KEY"
 CZAR28_TRANSIENT_HTTP_STATUS = frozenset({500, 502, 503, 504})
 CZAR28_DEFAULT_MAX_ATTEMPTS = 5
@@ -214,3 +214,27 @@ def get_json(
         transport_attempts=max_attempts,
         error_code="transport_error",
     )
+
+
+def get_health(
+    *,
+    timeout_seconds: float = 15.0,
+    max_attempts: int = 3,
+) -> Czar28Response:
+    """Read the public Czar28 health endpoint without consuming API-key quota."""
+    return get_json(
+        "options/health",
+        authenticate=False,
+        timeout_seconds=timeout_seconds,
+        max_attempts=max_attempts,
+    )
+
+
+def health_is_ready(payload: dict[str, Any]) -> bool:
+    """Return True only for an explicitly healthy, connected upstream."""
+    status = str(payload.get("status") or "").strip().lower()
+    upstream = payload.get("upstream")
+    mdds_status = ""
+    if isinstance(upstream, dict):
+        mdds_status = str(upstream.get("mdds_status") or "").strip().upper()
+    return status == "ok" and mdds_status == "CONNECTED"
