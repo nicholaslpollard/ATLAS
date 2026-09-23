@@ -88,6 +88,14 @@ def main(argv: list[str] | None = None) -> int:
         f"{report['open_interest_present_across_anchors']}"
     )
     print(
+        "  required schema present across anchors: "
+        f"{report['required_schema_present_across_anchors']}"
+    )
+    print(
+        "  historical Greeks present and null across anchors: "
+        f"{report['historical_greeks_present_and_null_across_anchors']}"
+    )
+    print(
         "  observed API credits consumed: "
         f"{report['observed_api_credits_consumed']}"
     )
