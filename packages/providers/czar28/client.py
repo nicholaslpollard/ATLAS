@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 
-CZAR28_BASE_URL = "https://api.czar28.com/v1"
+CZAR28_BASE_URL = "https://czar28.com/v1"
 CZAR28_CREDENTIAL_ENV = "CZAR_API_KEY"
 CZAR28_TRANSIENT_HTTP_STATUS = frozenset({500, 502, 503, 504})
 CZAR28_DEFAULT_MAX_ATTEMPTS = 5
