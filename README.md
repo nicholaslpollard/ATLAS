@@ -156,6 +156,16 @@ use the token. MarketData-derived data also remains private/internal under the
 self-service license; public or multi-user redistribution requires a separate
 licensing gate.
 
+
+**EOD-only scientific boundary:** MarketData historical option chains and quote
+series are EOD snapshots. The qualification's nearest-ATM contract selection is only
+an endpoint-linkage probe. A future simulator may not use EOD-D
+`underlyingPrice`/moneyness to select a contract for an earlier open/intraday-D
+decision. Strike bounds must come from ATLAS's PIT opportunity-time underlying price.
+MarketData alone also cannot reconstruct option open/intraday STOP/TARGET paths; an
+intraday-faithful option replay requires a separately qualified intraday source or a
+separately preregistered EOD-only option experiment.
+
 Full design:
 `docs/research/marketdata_five_year_historical_options_v1_20260923.md`.
 
