@@ -522,6 +522,48 @@ git checkout main; git pull; .\.venv\Scripts\python.exe scripts\run_historical_o
 If V7 encounters another new source-semantic class, preserve completed/reusable work
 and stop for another bounded diagnostic rather than widening V7 after the result.
 
+### Historical Option Reference V7 provider-throttle hotfix — 2026-09-22
+
+The first target-workstation V7 run successfully rebuilt all **63/63** verified V6 raw
+partitions under V7, then entered the 149-partition provider-acquisition phase. The
+provider phase exposed an operational defect: V7's direct-`urllib` request path did
+not consume the existing Massive reference budget of **5 requests/minute**. Five
+partition workers could therefore burst account-level requests and trigger HTTP 429
+even though `config/massive.yaml` already required approximately 12 seconds between
+reference request starts.
+
+The observed stop was transport throttling, not a new source-semantic conflict. No
+V7 resolver rule or scientific/source policy changes.
+
+V7 now uses one shared request coordinator across boundary probes, known-conflict/
+quarantine probes, provider pagination, historical exact-match list requests and
+Contract Overview calls. At the configured five requests/minute, request starts are
+globally paced at approximately 12-second intervals across all worker threads. HTTP
+429 imposes a shared provider cooldown; `Retry-After` is honored when present and a
+full 60-second cooldown is used when it is absent. The existing bounded retry count
+remains authoritative.
+
+Fatal worker/provider errors now trigger cooperative cancellation before executor
+shutdown. Queued work is cancelled, workers waiting in pacing/backoff wake immediately,
+and any active network request remains bounded by the configured request timeout. The
+CLI reports expected failures as `STOPPED_RESUMABLE` instead of dumping an uncaught
+traceback; Ctrl+C reports `INTERRUPTED_RESUMABLE`. Completed V7 receipts remain
+restart-reusable in both cases.
+
+Provider acquisition also emits an explicit phase-transition line and one-minute
+heartbeats with completed partitions, in-flight partitions, request starts and
+throttle-event count. A healthy rate-limited run therefore no longer appears frozen
+while a monthly partition is still paging.
+
+The 63 completed V7 rebuild receipts from the interrupted workstation run remain
+reusable; any provider partition that atomically completed a receipt before the peer
+failure is likewise discovered on restart. Full root-cause and operational details:
+`docs/research/historical_option_reference_v7_massive_throttle_hotfix_20260922.md`.
+
+This is transport/reliability hardening only. The Strategy Evidence Register remains
+unchanged and no historical availability/deliverable/price, predictor, strategy,
+PAPER or LIVE authority is created.
+
 ### News/options historical-data foundation — 2026-09-20
 
 Before integrating catalyst/news and option economics into replay, ATLAS must prove
