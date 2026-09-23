@@ -1,10 +1,14 @@
-from __future__ import annotations
+from datetime import datetime, timedelta
+from types import SimpleNamespace
 
-from packages.data.marketdata_massive_disjoint_validation_v1 import (
-    CONTRACT,
-    _aggregate_checks,
-    _anchor_checks,
-)
+import pytest
+
+from packages.data import marketdata_massive_disjoint_validation_v1 as validation
+from packages.providers.marketdata_app import MarketDataResponse
+
+CONTRACT = validation.CONTRACT
+_aggregate_checks = validation._aggregate_checks
+_anchor_checks = validation._anchor_checks
 
 
 def test_validation_anchors_are_disjoint_from_calibration_roots_and_dates() -> None:
@@ -131,3 +135,122 @@ def test_passed_authority_remains_narrow() -> None:
     assert authority["simulator_authority"] is False
     assert authority["paper"] is False
     assert authority["live"] is False
+
+
+
+def _epoch_seconds_eastern(date_text: str) -> int:
+    return int(datetime.fromisoformat(date_text + "T16:00:00-04:00").timestamp())
+
+
+def _epoch_millis_eastern(date_text: str) -> int:
+    return int(datetime.fromisoformat(date_text + "T00:00:00-04:00").timestamp() * 1000)
+
+
+class _FakeMassive:
+    def __init__(self, rows_by_symbol):
+        self.rows_by_symbol = rows_by_symbol
+        self.calls = []
+
+    def get_json(self, path, params):
+        self.calls.append((path, params))
+        ticker = path.split("/ticker/")[1].split("/range/")[0]
+        return {"status": "OK", "results": self.rows_by_symbol[ticker]}
+
+
+def test_end_to_end_disjoint_validation_passes_only_frozen_gate(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    quote_dates_by_symbol = {}
+    marketdata_calls = {"chains": 0, "quotes": 0}
+
+    def fake_chain(underlying, *, date, dte, strike_limit, side=None):
+        marketdata_calls["chains"] += 1
+        option_symbol = f"{underlying}261231C00100000"
+        return MarketDataResponse(
+            http_status=200,
+            payload={
+                "s": "ok",
+                "optionSymbol": [option_symbol],
+                "side": ["call"],
+                "strike": [100.0],
+                "underlyingPrice": [100.0],
+            },
+            headers={
+                "X-Api-Ratelimit-Limit": "10000",
+                "X-Api-Ratelimit-Remaining": str(9999 - marketdata_calls["chains"]),
+                "X-Api-Ratelimit-Consumed": "1",
+            },
+            response_bytes=100,
+            elapsed_seconds=0.01,
+        )
+
+    def fake_quotes(option_symbol, *, from_date, to_date):
+        marketdata_calls["quotes"] += 1
+        start = datetime.fromisoformat(from_date).date()
+        dates = []
+        cursor = start
+        while len(dates) < 6:
+            if cursor.weekday() < 5:
+                dates.append(cursor.isoformat())
+            cursor += timedelta(days=1)
+        quote_dates_by_symbol[option_symbol] = dates
+        return MarketDataResponse(
+            http_status=200,
+            payload={
+                "s": "ok",
+                "optionSymbol": [option_symbol] * len(dates),
+                "last": [1.10] * len(dates),
+                "volume": [100] * len(dates),
+                "updated": [_epoch_seconds_eastern(d) for d in dates],
+            },
+            headers={
+                "X-Api-Ratelimit-Limit": "10000",
+                "X-Api-Ratelimit-Remaining": str(9990 - marketdata_calls["quotes"]),
+                "X-Api-Ratelimit-Consumed": "1",
+            },
+            response_bytes=100,
+            elapsed_seconds=0.01,
+        )
+
+    monkeypatch.setattr(validation, "historical_chain", fake_chain)
+    monkeypatch.setattr(validation, "historical_quote_series", fake_quotes)
+
+    rows_by_symbol = {}
+    fake_massive = _FakeMassive(rows_by_symbol)
+
+    original_get_json = fake_massive.get_json
+
+    def dynamic_get_json(path, params):
+        ticker = path.split("/ticker/")[1].split("/range/")[0]
+        option_symbol = ticker.removeprefix("O:")
+        dates = quote_dates_by_symbol[option_symbol]
+        rows_by_symbol[ticker] = [
+            {
+                "t": _epoch_millis_eastern(d),
+                "o": 1.05,
+                "h": 1.20,
+                "l": 1.00,
+                "c": 1.10,
+                "v": 100,
+            }
+            for d in dates
+        ]
+        return original_get_json(path, params)
+
+    fake_massive.get_json = dynamic_get_json
+
+    report = validation.run_marketdata_massive_disjoint_validation_v1(
+        SimpleNamespace(project_root=tmp_path),
+        massive_client=fake_massive,
+    )
+
+    assert report["status"] == "VALIDATED_FOR_EOD_LAST_VOLUME_SEMANTICS"
+    assert report["validation_passed"] is True
+    assert report["anchor_pass_count"] == 4
+    assert len(fake_massive.calls) == 4
+    assert marketdata_calls == {"chains": 4, "quotes": 4}
+    assert report["observed_marketdata_api_credits_consumed"] == 8
+    assert report["authority"]["marketdata_eod_last_volume_semantics_validated"] is True
+    assert report["authority"]["historical_bid_ask_validated"] is False
+    assert report["authority"]["execution_price_authority"] is False
