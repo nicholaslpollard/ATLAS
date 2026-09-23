@@ -275,6 +275,7 @@ def test_starter_trial_completion_uses_trial_anchor_count(
     assert report["all_anchor_chains_nonempty"] is True
     assert report["all_quote_series_nonempty"] is True
     assert report["open_interest_present_across_anchors"] is True
+    assert report["usable_bid_ask_across_anchors"] is True
     assert report["required_schema_present_across_anchors"] is True
     assert report["historical_greeks_present_and_null_across_anchors"] is True
     assert report["broad_five_year_entitlement_proven"] is False
@@ -286,6 +287,7 @@ def test_starter_trial_completion_uses_trial_anchor_count(
     )
     assert paid_report["status"] == "QUALIFIED_FOR_FIVE_YEAR_EOD_ECONOMICS_CHALLENGER"
     assert len(paid_report["anchors"]) == 6
+    assert paid_report["usable_bid_ask_across_anchors"] is True
     assert paid_report["required_schema_present_across_anchors"] is True
     assert paid_report["historical_greeks_present_and_null_across_anchors"] is True
     assert paid_report["broad_five_year_entitlement_proven"] is True
@@ -325,3 +327,16 @@ def test_get_json_does_not_retry_429(
 
     assert captured.value.http_status == 429
     assert calls == 1
+
+
+def test_usable_bid_ask_count_rejects_missing_crossed_and_nonfinite_rows() -> None:
+    import packages.data.marketdata_five_year_options_qualification as qualification
+
+    rows = (
+        {"bid": 1.0, "ask": 1.2},
+        {"bid": None, "ask": 1.2},
+        {"bid": 1.3, "ask": 1.2},
+        {"bid": float("nan"), "ask": 1.2},
+        {"bid": 0.0, "ask": 0.05},
+    )
+    assert qualification._usable_bid_ask_count(rows) == 2
