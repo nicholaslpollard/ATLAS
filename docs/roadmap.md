@@ -863,6 +863,47 @@ frozen Phase 7 V1 population, change provider policy, or grant PAPER/LIVE author
 Full evidence is preserved in
 `docs/research/tradier_current_asset_rest_stress_20260922.md`.
 
+
+### Tradier whole-universe cadence diagnostic V1 — 2026-09-23
+
+The next current-data question is no longer POST cardinality; it is **how often broad
+current discovery should refresh and how much a bounded retry of stale/missing symbols
+actually recovers**. The prior 13,412-symbol stress work established roughly two-second
+full-universe acquisition and a stable 95.251% raw-return cardinality, but the
+near-close quality snapshot was not representative of the whole session and explicitly
+left polling cadence unfrozen.
+
+ATLAS now freezes
+`atlas-tradier-whole-universe-cadence-diagnostic-v1` as a read-only mid-morning
+diagnostic. It performs 20 broad current-universe quote snapshots at 30-second starts
+and, ten seconds after each broad pass, re-requests only symbols that were missing,
+had invalid quote geometry, had unknown quote freshness, had quote age above 30
+seconds, or carried a future-timestamp anomaly. The maximum provider-read count is 40
+over about ten minutes, far below the observed 120 requests/minute entitlement.
+
+The source population is the surviving Alpaca SIP V2 active/tradable/us-equity asset
+snapshot. Its exact file hash and sorted-symbol fingerprint are captured before the
+first provider read. When the exact local Phase 7 discovery snapshot is available,
+its 12,066-symbol population is analyzed as a subset of the same broad responses
+without consuming additional provider calls.
+
+V1 preserves raw gzip responses, hash-bound receipts, missing/unresolved-set
+fingerprints, retry recovery, quote/trade freshness, spread/liquidity sensitivity and
+descriptive 30/60/120/300-second cadence views. Non-positive provider timestamps are
+explicitly UNKNOWN rather than epoch-aged. All freshness/spread thresholds remain
+diagnostic sensitivity only: this package does **not** freeze production cadence,
+provider policy, strategy evidence, PAPER/LIVE or execution authority.
+
+Workstation command after merge:
+
+~~~powershell
+git checkout main; git pull
+.\.venv\Scripts\python.exe scripts\diagnose_tradier_whole_universe_cadence_v1.py --authorize-provider-reads --run-live-cadence-diagnostic
+~~~
+
+Full design:
+`docs/research/tradier_whole_universe_cadence_v1_20260923.md`.
+
 ### Tradier REST qualification V1 closeout — 2026-09-22
 
 The exact 2026-08-14 Phase 7 universe was successfully reproduced before rerunning
