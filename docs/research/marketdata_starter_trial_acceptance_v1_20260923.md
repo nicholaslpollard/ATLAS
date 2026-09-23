@@ -74,33 +74,51 @@ The qualification contract's selected contracts are endpoint-linkage probes only
 They must not become a simulator contract-selection rule because their selection used
 provider EOD-D moneyness information.
 
-## Next gate — independent recent overlap
+## Independent overlap calibration — accepted
 
-Before any paid Starter purchase, ATLAS will use the accepted local MarketData raw
-evidence and the existing Massive Options Basic entitlement for a **read-only,
-four-contract semantic calibration**:
+The planned read-only calibration completed on 2026-09-23:
 
-- SPY260331C00686000;
-- MSFT260529C00415000;
-- NVDA260731C00200000;
-- QQQ260930C00708000.
+- run id: `20260923T205206Z`;
+- evidence fingerprint:
+  `b10d6d8eb2f3bfcb9fa9dad5623d1eb56297bec5222922b2b8f2302fe5324f3a`;
+- 4/4 exact contracts had overlap;
+- 31/31 MarketData sessions overlapped Massive daily aggregates;
+- aggregate exact last/close match rate: 77.419355%;
+- aggregate median absolute last-close difference: $0.00;
+- maximum absolute last-close difference: $0.82;
+- MarketData last inside Massive daily low/high: 100%;
+- aggregate median relative volume difference: 0.065284%;
+- maximum session relative volume difference: 14.213836%;
+- terminal error: none.
 
-For each contract, ATLAS will request one unadjusted Massive 1Day aggregate series
-over the exact MarketData quote window and compare MarketData historical
-`last`/volume with Massive daily close/volume on overlapping sessions.
+Contract-level exact last/close rates ranged from 50% to 100%, which confirms that
+exact equality is too strict to use as the semantic validator. The stronger observed
+invariant was complete session overlap plus 100% containment of MarketData last
+inside Massive's independently observed daily trade range.
 
-The 2021 AAPL anchor is excluded from this Massive REST diagnostic because the current
-Massive Options Basic plan exposes only two years of REST aggregate history.
+This remains calibration evidence only.
 
-This next package is intentionally **exploratory semantic calibration** with no
-post-hoc price-authority threshold. If overlap is coherent, a separately preregistered
-validation package must use a disjoint contract/date sample before any MarketData
-historical-price authority is considered.
+## Next gate — preregistered disjoint validation
 
-Massive Basic does not expose historical option quotes, so this overlap cannot
-independently validate MarketData bid/ask. Bid/ask authority remains unresolved until
-a separately qualified source (for example, recovered Czar28 if its historical EOD
-schema supports the needed field semantics) can provide independent overlap.
+The next package is now frozen in
+`docs/research/marketdata_massive_disjoint_validation_v1_20260923.md`.
+
+Disjoint anchors:
+
+- IWM — 2026-02-02;
+- AMZN — 2026-04-01;
+- META — 2026-06-01;
+- DIA — 2026-08-03.
+
+No calibration root or calibration date is reused. Binding thresholds were frozen
+before acquiring any validation-anchor provider data. They require complete overlap,
+100% daily-range containment, bounded median relative price disagreement and bounded
+median relative volume disagreement.
+
+A pass can validate only MarketData historical EOD last/volume semantics for
+candidate-first research. Massive Basic does not expose historical option quotes, so
+bid/ask validation remains unresolved. Intraday, execution, simulator, strategy,
+PAPER/LIVE, broker/order and promotion authority remain closed.
 
 ## Authority
 
