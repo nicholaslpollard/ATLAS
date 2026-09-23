@@ -58,6 +58,22 @@ remaining monthly quota. The full qualifier also now prints phase transitions,
 remaining quota, recovered retry events, and correct physical HTTP-attempt counts
 including failed probes.
 
+### Czar28 preflight result — 2026-09-23
+
+The target-workstation connectivity preflight failed at probe **1/5** before any
+chain or EOD request was attempted. The authenticated `/v1/options/health` endpoint
+returned HTTP **503** on all three transport attempts. No rate-limit headers, chain
+rows, EOD rows, intraday rows or trade rows were returned. Under Czar28's documented
+error contract, HTTP 503 is the provider circuit-breaker state for repeated upstream
+feed failures; this is operational unavailability, not evidence that 2016 option
+history is absent.
+
+ATLAS therefore **must not run the 1,000-call qualification while this condition
+persists**. Czar28 remains a candidate source only. Massive V7 evidence remains
+preserved, and the low-cost provider search remains open. The public Czar28 website
+currently advertises all systems operational, but the authenticated health endpoint
+on the target workstation is the stronger operational evidence for ATLAS.
+
 Authorized workstation command after this package merges:
 
 ~~~powershell
