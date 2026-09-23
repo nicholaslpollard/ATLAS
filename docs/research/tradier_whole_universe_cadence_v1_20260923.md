@@ -67,9 +67,7 @@ The diagnostic requires the snapshot itself to prove:
 - tradable status; and
 - US-equity asset class.
 
-The exact source file SHA-256 and exact sorted symbol fingerprint are recorded before
-any provider call.
-
+V1 is pinned to the exact 2026-09-22 comparison source: asset snapshot SHA-256\n`43a5645d4366e7f7294e14f60596c5e753db6158c394a62262fdd283bbab151a` and exactly\n13,412 active/tradable/us-equity symbols. A changed file hash or population count fails\nclosed before any provider call.\n
 When a local Phase 7 discovery-eligible universe snapshot is also available, its
 quality/coverage is measured as a subset of the same broad response. That does not
 consume an additional provider request and does not alter either universe contract.
