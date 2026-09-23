@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED / TARGET-WORKSTATION MARKET-HOURS EVIDENCE PENDING**
+**COMPLETE / THREE-REGIME TARGET-WORKSTATION EVIDENCE ACCEPTED**
 
 Contract:
 
@@ -195,9 +195,9 @@ It does not:
 - authorize PAPER or LIVE trading; or
 - change the Strategy Evidence Register.
 
-## Accepted workstation evidence — mid-morning and midday
+## Accepted workstation evidence — mid-morning, midday and power hour
 
-Two target-workstation runs completed on 2026-09-23 under the same frozen contract,
+Three target-workstation runs completed on 2026-09-23 under the same frozen contract,
 same 13,412-symbol broad population, same 12,066-symbol Phase 7 subset, same 20-cycle
 schedule and same provider endpoint.
 
@@ -241,38 +241,65 @@ schedule and same provider endpoint.
   - 120s: 61.174%;
   - 300s: 70.581%.
 
-### Cross-regime findings opened
+### Power-hour run
 
-The 637-symbol raw-return gap is now observed as an invariant across forty broad
-snapshots spanning two different regular-session regimes. The exact missing count
-never changed and neither a later broad pass nor any +10-second unresolved retry
-recovered a missing symbol. V1 therefore treats the raw missing set as a
-provider-coverage/identity problem to diagnose separately, not evidence that faster
-whole-universe polling is useful.
+- evidence fingerprint:
+  `6ba17e5fcca3c2890d6ad38a41ca56953afaf4d978f97e6ed14e2977a634fd01`;
+- completed: 20/20 broad + 20/20 retries / 40 provider reads;
+- wall time: 581.5 seconds;
+- broad coverage: 12,775 / 13,412 = 95.251% on every cycle;
+- persistent missing: 637;
+- ever missing: 637;
+- missing recovered by +10-second retries: 0;
+- total freshness recoveries across retries: 11,358;
+- mean broad quote-age <=30-second count: 4,608.3;
+- mean broad <=30-second / <=100-bps diagnostic usable count: 4,515.55;
+- mean broad unresolved count: 8,803.7;
+- broad quote-timestamp advancement:
+  - 30s: 42.120%;
+  - 60s: 51.660%;
+  - 120s: 60.942%;
+  - 300s: 71.539%.
 
-Freshness is regime-sensitive. Relative to mid-morning, midday averaged 1,036.6 fewer
-symbols with quote age <=30 seconds (-17.86%), 937.8 fewer diagnostic-usable symbols
-(-16.75%), and 1,036.25 more unresolved broad rows (+13.62%). The +10-second retry
-cohort was correspondingly larger at midday, while total freshness recoveries fell
-from 12,377 to 10,903.
+### Cross-regime closeout findings
 
-The broad quote-advance curves also shifted lower at every measured cadence. Midday
-was lower than mid-morning by approximately 7.93 percentage points at 30 seconds,
-7.89 points at 60 seconds, 7.08 points at 120 seconds and 6.78 points at 300 seconds.
+The 637-symbol raw-return gap is invariant across all sixty broad snapshots spanning
+mid-morning, midday and power-hour regimes. Every broad cycle returned exactly
+12,775 / 13,412 symbols (95.251%), persistent missing and ever-missing both remained
+637, and no +10-second retry recovered a missing symbol. V1 therefore closes missing
+rows as a **separate provider-coverage/identity problem**, not a cadence problem.
 
-These results are strong enough to reject a model in which one fixed raw-return
-coverage snapshot or one time-of-day freshness snapshot is representative of the
-whole regular session. They are not yet sufficient to freeze 30/60/120/300-second
-production cadence.
+Freshness is materially regime-sensitive. Mean quote-age <=30-second counts declined
+from 5,805.2 mid-morning to 4,768.6 midday and 4,608.3 in the power hour. Mean
+diagnostic-usable counts declined from 5,598.4 to 4,660.6 to 4,515.55, while mean
+unresolved counts rose from 7,607.15 to 8,643.4 to 8,803.7. The +10-second retry
+continued to recover freshness but never provider presence.
 
-### Current disposition
+The cadence curves are stable enough to choose a bounded follow-on engineering
+baseline. Across all three regimes, 30-second quote advancement was 51.277% / 43.345%
+/ 42.120%; 60-second was 60.648% / 52.756% / 51.660%; 120-second was 68.253% /
+61.174% / 60.942%; and 300-second was 77.363% / 70.581% / 71.539%.
+
+**120 seconds is the shortest tested broad interval that exceeded 60% quote-timestamp
+advancement in every observed regime.** V1 therefore freezes 120 seconds as the
+**subsequent Tradier broad-REST qualification/engineering baseline**, not as a
+production trading cadence. The +10-second unresolved retry remains available only as
+a targeted freshness mechanism; it is not a missing-symbol recovery strategy.
+
+### Final disposition
 
 - persistent missing-symbol handling: **separate identity/provider-coverage problem**;
-- +10-second unresolved retry: **useful for freshness, not missing-symbol recovery**;
-- 30-second full-universe polling: **not justified by current evidence**;
-- 120-second broad refresh: **plausible candidate only, not frozen**;
-- final regular-session cadence decision: **OPEN** pending the planned power-hour /
-  near-close observation under the identical V1 contract;
+- +10-second unresolved retry: **retained for freshness only**;
+- 30-second full-universe polling: **rejected as a broad engineering baseline**;
+- 60-second full-universe polling: **not selected; below the >60% advancement
+  threshold in midday and power-hour evidence**;
+- 120-second broad refresh: **frozen for subsequent REST qualification/engineering**;
+- 300-second view: **retained as a slower diagnostic comparison**;
+- production current-data cadence/freshness/liquidity policy: **not authorized**;
+- Tradier current-data provider authority: **unchanged / not promoted**;
 - Strategy Evidence Register: unchanged;
 - PAPER/LIVE/provider-policy authority: unchanged.
 
+V1 is closed. A future production-current-data policy must be a separately versioned
+acceptance package that includes bounded streaming/failover behavior and does not
+reinterpret this diagnostic as trading authority.
