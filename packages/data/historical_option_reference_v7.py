@@ -80,6 +80,87 @@ class HistoricalOptionReferenceV7Error(RuntimeError):
     pass
 
 
+class HistoricalOptionReferenceV7ProviderThrottleError(
+    HistoricalOptionReferenceV7Error
+):
+    pass
+
+
+class HistoricalOptionReferenceV7Cancelled(HistoricalOptionReferenceV7Error):
+    pass
+
+
+class _V7RequestCoordinator:
+    """One shared Massive reference request budget across every V7 worker."""
+
+    def __init__(
+        self,
+        *,
+        requests_per_minute: int,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        if requests_per_minute < 1:
+            raise ValueError("requests_per_minute must be at least 1")
+        self.requests_per_minute = int(requests_per_minute)
+        self.minimum_interval_seconds = 60.0 / float(requests_per_minute)
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._cancel_event = threading.Event()
+        self._next_request_start = 0.0
+        self._cooldown_until = 0.0
+        self.request_starts = 0
+        self.throttle_events = 0
+
+    def cancel(self) -> None:
+        self._cancel_event.set()
+
+    def check_cancelled(self) -> None:
+        if self._cancel_event.is_set():
+            raise HistoricalOptionReferenceV7Cancelled(
+                "V7 worker cancellation requested after a peer failure"
+            )
+
+    def wait_for_request_slot(self) -> None:
+        while True:
+            self.check_cancelled()
+            with self._lock:
+                now = self._clock()
+                ready_at = max(
+                    self._next_request_start,
+                    self._cooldown_until,
+                )
+                wait_seconds = max(0.0, ready_at - now)
+                if wait_seconds <= 0:
+                    self._next_request_start = (
+                        now + self.minimum_interval_seconds
+                    )
+                    self.request_starts += 1
+                    return
+            if self._cancel_event.wait(wait_seconds):
+                self.check_cancelled()
+
+    def impose_throttle_cooldown(self, seconds: float) -> None:
+        seconds = max(0.0, float(seconds))
+        with self._lock:
+            now = self._clock()
+            self._cooldown_until = max(
+                self._cooldown_until,
+                now + seconds,
+            )
+            self.throttle_events += 1
+
+    def wait_backoff(self, seconds: float) -> None:
+        seconds = max(0.0, float(seconds))
+        if seconds <= 0:
+            self.check_cancelled()
+            return
+        if self._cancel_event.wait(seconds):
+            self.check_cancelled()
+
+
+_ACTIVE_REQUEST_COORDINATOR: _V7RequestCoordinator | None = None
+
+
 class HistoricalOptionReferenceV7HistoricalTargetCardinalityError(
     HistoricalOptionReferenceV7Error
 ):
@@ -161,8 +242,12 @@ def _request_json(
     api_key: str,
 ) -> dict[str, Any]:
     cfg = settings.massive.reference
+    coordinator = _ACTIVE_REQUEST_COORDINATOR
     delay = float(cfg.initial_retry_seconds)
     for attempt in range(1, int(cfg.max_attempts) + 1):
+        if coordinator is not None:
+            coordinator.wait_for_request_slot()
+
         request = urllib.request.Request(
             url,
             headers={
@@ -185,24 +270,57 @@ def _request_json(
             return payload
         except urllib.error.HTTPError as exc:
             retryable = exc.code == 429 or 500 <= exc.code <= 599
-            if not retryable or attempt >= int(cfg.max_attempts):
-                body = exc.read().decode("utf-8", errors="replace")[:500]
+            body = exc.read().decode("utf-8", errors="replace")[:500]
+
+            retry_after = exc.headers.get("Retry-After")
+            try:
+                parsed_retry_after = (
+                    float(retry_after) if retry_after else 0.0
+                )
+            except (TypeError, ValueError):
+                parsed_retry_after = 0.0
+
+            if exc.code == 429:
+                # A 429 is account/provider throttling, not source evidence.
+                # Coordinate the cooldown across every worker. If Massive does
+                # not send Retry-After, back off for a complete minute window
+                # rather than immediately re-bursting the account.
+                wait_seconds = max(
+                    parsed_retry_after,
+                    60.0 if parsed_retry_after <= 0 else 0.0,
+                    delay,
+                )
+                if coordinator is not None:
+                    coordinator.impose_throttle_cooldown(wait_seconds)
+                if attempt >= int(cfg.max_attempts):
+                    raise HistoricalOptionReferenceV7ProviderThrottleError(
+                        "Massive option-reference throttling persisted through "
+                        f"{attempt} attempts (HTTP 429). Completed V7 receipts "
+                        "remain reusable; rerun the same command to resume. "
+                        f"Provider response: {body}"
+                    ) from exc
+            elif not retryable or attempt >= int(cfg.max_attempts):
                 raise HistoricalOptionReferenceV7Error(
                     f"Massive option-reference request failed HTTP {exc.code}: {body}"
                 ) from exc
-            retry_after = exc.headers.get("Retry-After")
-            try:
-                wait_seconds = float(retry_after) if retry_after else delay
-            except ValueError:
-                wait_seconds = delay
-            time.sleep(max(0.0, wait_seconds))
+            else:
+                wait_seconds = max(parsed_retry_after, delay)
+
+            if coordinator is not None:
+                if exc.code != 429:
+                    coordinator.wait_backoff(wait_seconds)
+            else:
+                time.sleep(max(0.0, wait_seconds))
             delay = min(float(cfg.max_retry_seconds), max(delay * 2.0, 0.1))
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             if attempt >= int(cfg.max_attempts):
                 raise HistoricalOptionReferenceV7Error(
                     f"Massive option-reference request failed after {attempt} attempts: {exc}"
                 ) from exc
-            time.sleep(delay)
+            if coordinator is not None:
+                coordinator.wait_backoff(delay)
+            else:
+                time.sleep(delay)
             delay = min(float(cfg.max_retry_seconds), max(delay * 2.0, 0.1))
     raise AssertionError("unreachable")
 
@@ -2385,6 +2503,8 @@ def _run_bounded(
     workers: int,
     task: Callable[[_T], dict[str, object]],
     on_complete: Callable[[_T, dict[str, object], int], None],
+    heartbeat_seconds: float | None = None,
+    on_heartbeat: Callable[[int, int], None] | None = None,
 ) -> list[dict[str, object]]:
     if not items:
         return []
@@ -2408,10 +2528,20 @@ def _run_bounded(
 
         completed_count = 0
         while in_flight:
+            timeout = (
+                float(heartbeat_seconds)
+                if heartbeat_seconds is not None
+                else None
+            )
             done, _pending = wait(
                 tuple(in_flight),
+                timeout=timeout,
                 return_when=FIRST_COMPLETED,
             )
+            if not done:
+                if on_heartbeat is not None:
+                    on_heartbeat(completed_count, len(in_flight))
+                continue
 
             batch: list[tuple[_T, dict[str, object]]] = []
             for future in done:
@@ -2426,8 +2556,14 @@ def _run_bounded(
             for _ in batch:
                 submit_next()
     except Exception:
+        coordinator = _ACTIVE_REQUEST_COORDINATOR
+        if coordinator is not None:
+            coordinator.cancel()
         for future in in_flight:
             future.cancel()
+        # Running urllib calls have a configured finite timeout. Peer workers
+        # wake immediately from coordinated pacing/backoff once cancel() is set,
+        # so this shutdown is bounded rather than an indefinite silent wait.
         pool.shutdown(wait=True, cancel_futures=True)
         raise
     else:
@@ -2442,6 +2578,11 @@ def run_historical_option_reference_v7_acquisition(
 ) -> dict[str, object]:
     if workers < 1:
         raise ValueError("workers must be at least 1")
+
+    global _ACTIVE_REQUEST_COORDINATOR
+    _ACTIVE_REQUEST_COORDINATOR = _V7RequestCoordinator(
+        requests_per_minute=int(settings.massive.reference.requests_per_minute)
+    )
 
     api_key = _resolve_massive_api_key(settings)
     boundary = _boundary_probe(settings, api_key=api_key)
@@ -2666,6 +2807,17 @@ def run_historical_option_reference_v7_acquisition(
         )
 
     if provider_pending:
+        coordinator = _ACTIVE_REQUEST_COORDINATOR
+        assert coordinator is not None
+        print(
+            "  provider acquisition start: "
+            f"{len(provider_pending)} partitions pending / "
+            f"{workers} workers / shared Massive budget="
+            f"{coordinator.requests_per_minute} requests/minute "
+            f"(~{coordinator.minimum_interval_seconds:.1f}s between starts)",
+            flush=True,
+        )
+
         def provider_task(partition: ReferencePartition) -> dict[str, object]:
             return _acquire_partition(
                 settings,
@@ -2693,12 +2845,26 @@ def run_historical_option_reference_v7_acquisition(
                 flush=True,
             )
 
+        def provider_heartbeat(done: int, active: int) -> None:
+            coordinator = _ACTIVE_REQUEST_COORDINATOR
+            starts = coordinator.request_starts if coordinator is not None else 0
+            throttles = coordinator.throttle_events if coordinator is not None else 0
+            print(
+                "  provider heartbeat: "
+                f"{done}/{len(provider_pending)} partitions complete / "
+                f"{active} in flight / request_starts={starts:,} / "
+                f"throttle_events={throttles:,}",
+                flush=True,
+            )
+
         completed.extend(
             _run_bounded(
                 provider_pending,
                 workers=workers,
                 task=provider_task,
                 on_complete=provider_progress,
+                heartbeat_seconds=60.0,
+                on_heartbeat=provider_heartbeat,
             )
         )
 
