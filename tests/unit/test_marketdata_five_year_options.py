@@ -51,6 +51,36 @@ def test_array_rows_rejects_mismatched_columns() -> None:
         )
 
 
+def test_marketdata_token_is_header_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured = []
+
+    def fake_urlopen(request, timeout):
+        captured.append(request)
+        return _FakeResponse(
+            {
+                "s": "ok",
+                "optionSymbol": ["AAPL261016C00250000"],
+                "strike": [250],
+            }
+        )
+
+    monkeypatch.setattr(client.urllib.request, "urlopen", fake_urlopen)
+
+    client.get_json(
+        "options/chain/AAPL/",
+        params={"date": "2026-09-01"},
+        token="super-secret-token",
+        max_attempts=1,
+    )
+
+    assert len(captured) == 1
+    assert captured[0].get_header("Authorization") == "Bearer super-secret-token"
+    assert "super-secret-token" not in captured[0].full_url
+    assert "token=" not in captured[0].full_url.lower()
+
+
 def test_get_json_accepts_http_203_cached_success(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
