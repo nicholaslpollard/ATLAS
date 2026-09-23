@@ -148,6 +148,18 @@ access plus full historical access for AAPL. ATLAS therefore probes deep AAPL at
 2021-10-01 and recent SPY/MSFT/NVDA/QQQ dates within one year. A pass proves the
 candidate-first mechanics and data fields, not broad five-year entitlement.
 
+The Starter Trial workstation gate is now **accepted**: run
+`20260923T203419Z`, evidence fingerprint
+`facd9289fc56279a14294c442f8a1f256388cfd152662be1bc06f600d1bf914a`,
+5/5 non-empty chains and quote paths, OI/schema/bid-ask/Greeks-null checks all
+passing, 8 observed credits consumed, 9,992 remaining. Broad five-year entitlement
+remains unproven.
+
+**Next:** run a four-contract MarketData x Massive Basic EOD semantic-overlap
+diagnostic on the 2026 SPY/MSFT/NVDA/QQQ trial contracts, with zero new MarketData
+reads. The 2021 AAPL anchor is outside Massive Basic's two-year REST aggregate
+window. This diagnostic cannot grant historical-price or bid/ask authority.
+
 
 **MarketData runtime budget policy:** daily self-service credits reset at 09:30
 America/New_York. The provider's limit/remaining/reset/consumed response headers are
