@@ -75,6 +75,29 @@ The future candidate-first acquisition adapter must enforce a local concurrency 
 strictly below 50, honor the provider reset header, and budget estimated credits
 before each request.
 
+
+## Account/IP and redistribution boundary
+
+The supplied MarketData documentation imposes two non-data constraints that ATLAS
+must preserve:
+
+- one MarketData account may connect from only one public IP address at a time;
+  switching back and forth between IPs inside a five-minute window can trigger a
+  temporary block;
+- self-service plans are licensed for personal/internal consumption and do not
+  authorize redistributing MarketData-derived market data to outside users through a
+  public website, application, or shared dashboard.
+
+During research acquisition, the MarketData token is therefore workstation-only.
+GitHub Actions and other cloud runners must not perform authenticated provider reads,
+and another machine must not use the same account concurrently. Browser observability
+may display MarketData-derived state only inside the user's private/local ATLAS
+surface under the self-service license. Any future public or multi-user exposure is a
+separate licensing gate before implementation.
+
+These constraints do not affect local historical simulation authority; they govern
+provider access and data presentation.
+
 ## Historical economics available
 
 Historical chain and quote rows can expose:
