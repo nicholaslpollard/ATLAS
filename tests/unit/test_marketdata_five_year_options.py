@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import json
 import urllib.error
+from types import SimpleNamespace
 
 import pytest
 
@@ -163,9 +164,89 @@ def test_starter_trial_completion_uses_trial_anchor_count(
 ) -> None:
     import packages.data.marketdata_five_year_options_qualification as qualification
 
-    trial_anchors = qualification.CONTRACT["starter_trial_anchors"]
-    assert len(trial_anchors) == 5
+    assert len(qualification.CONTRACT["starter_trial_anchors"]) == 5
     assert len(qualification.CONTRACT["anchors"]) == 6
+
+    def fake_chain(underlying, *, date, dte, strike_limit, side=None):
+        symbol = f"{underlying}261016C00100000"
+        return client.MarketDataResponse(
+            http_status=200,
+            payload={
+                "s": "ok",
+                "optionSymbol": [symbol],
+                "underlying": [underlying],
+                "expiration": [1792180800],
+                "side": ["call"],
+                "strike": [100.0],
+                "firstTraded": [1700000000],
+                "dte": [dte],
+                "bid": [1.0],
+                "ask": [1.2],
+                "mid": [1.1],
+                "last": [1.1],
+                "volume": [5],
+                "openInterest": [10],
+                "underlyingPrice": [100.0],
+                "updated": [1790000000],
+                "iv": [None],
+                "delta": [None],
+                "gamma": [None],
+                "theta": [None],
+                "vega": [None],
+            },
+            headers={
+                "X-Api-Ratelimit-Limit": "10000",
+                "X-Api-Ratelimit-Remaining": "9999",
+                "X-Api-Ratelimit-Consumed": "1",
+            },
+            response_bytes=100,
+            elapsed_seconds=0.01,
+        )
+
+    def fake_quotes(option_symbol, *, from_date, to_date):
+        return client.MarketDataResponse(
+            http_status=200,
+            payload={
+                "s": "ok",
+                "optionSymbol": [option_symbol],
+                "bid": [1.0],
+                "ask": [1.2],
+                "mid": [1.1],
+                "last": [1.1],
+                "volume": [5],
+                "openInterest": [10],
+                "underlyingPrice": [100.0],
+                "updated": [1790000000],
+                "iv": [None],
+                "delta": [None],
+                "gamma": [None],
+                "theta": [None],
+                "vega": [None],
+            },
+            headers={
+                "X-Api-Ratelimit-Limit": "10000",
+                "X-Api-Ratelimit-Remaining": "9998",
+                "X-Api-Ratelimit-Consumed": "1",
+            },
+            response_bytes=100,
+            elapsed_seconds=0.01,
+        )
+
+    monkeypatch.setattr(qualification, "historical_chain", fake_chain)
+    monkeypatch.setattr(qualification, "historical_quote_series", fake_quotes)
+
+    report = qualification.run_marketdata_five_year_options_qualification_v1(
+        SimpleNamespace(project_root=tmp_path),
+        starter_trial=True,
+    )
+
+    assert report["status"] == "QUALIFIED_FOR_STARTER_TRIAL_CAPABILITY"
+    assert len(report["anchors"]) == 5
+    assert report["all_anchor_chains_nonempty"] is True
+    assert report["all_quote_series_nonempty"] is True
+    assert report["open_interest_present_across_anchors"] is True
+    assert report["broad_five_year_entitlement_proven"] is False
+    assert report["observed_api_credits_consumed"] == 10
 
 
 def test_get_json_does_not_retry_429(
