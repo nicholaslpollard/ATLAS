@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from packages.providers.marketdata_app import client
-from packages.data.marketdata_five_year_options_qualification import CONTRACT, _choose_contract
+from packages.data.marketdata_five_year_options_qualification import CONTRACT, _choose_qualification_contract
 
 
 class _FakeResponse:
@@ -125,7 +125,7 @@ def test_choose_contract_prefers_nearest_atm_call() -> None:
             "underlyingPrice": 601,
         },
     )
-    assert _choose_contract(rows)["optionSymbol"] == "SPY261016C00600000"
+    assert _choose_qualification_contract(rows)["optionSymbol"] == "SPY261016C00600000"
 
 
 def test_starter_trial_anchors_use_deep_aapl_and_recent_general_tickers() -> None:
