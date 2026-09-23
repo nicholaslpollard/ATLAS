@@ -129,6 +129,17 @@ def load_accepted_marketdata_trial_report(settings: AtlasSettings) -> dict[str, 
         raise MarketDataMassiveOverlapError(
             "MarketData source evidence fingerprint does not match the accepted trial"
         )
+    recomputed = stable_fingerprint(
+        {
+            key: value
+            for key, value in report.items()
+            if key != "evidence_fingerprint"
+        }
+    )
+    if recomputed != expected_fingerprint:
+        raise MarketDataMassiveOverlapError(
+            "MarketData source report contents do not reproduce the accepted evidence fingerprint"
+        )
     if report.get("starter_trial") is not True:
         raise MarketDataMassiveOverlapError(
             "MarketData source report is not marked as Starter Trial evidence"
