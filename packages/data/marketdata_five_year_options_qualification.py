@@ -381,7 +381,7 @@ def run_marketdata_five_year_options_qualification_v1(
     else:
         status = (
             "QUALIFIED_FOR_FIVE_YEAR_EOD_ECONOMICS_CHALLENGER"
-            if all_anchor_chains and all_quote_series and all_oi and oldest_anchor_ok
+            if qualification_checks_pass
             else "DIAGNOSTIC_COMPLETE_WITH_LIMITATIONS"
             if anchors
             else "FAIL"
@@ -418,7 +418,7 @@ def run_marketdata_five_year_options_qualification_v1(
         "provider": CONTRACT["provider"],
         "plan_target": "Starter Trial" if starter_trial else CONTRACT["plan_target"],
         "starter_trial": starter_trial,
-        "broad_five_year_entitlement_proven": False if starter_trial else oldest_anchor_ok,
+        "broad_five_year_entitlement_proven": False if starter_trial else qualification_checks_pass,
         "oldest_anchor_proven": oldest_anchor_ok,
         "all_anchor_chains_nonempty": all_anchor_chains,
         "all_quote_series_nonempty": all_quote_series,
