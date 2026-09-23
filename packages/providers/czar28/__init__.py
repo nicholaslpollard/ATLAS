@@ -2,6 +2,8 @@
 
 from .client import (
     CZAR28_BASE_URL,
+    CZAR28_DATA_BASE_URL,
+    CZAR28_HEALTH_BASE_URL,
     CZAR28_CREDENTIAL_ENV,
     Czar28Error,
     Czar28QuotaExhausted,
@@ -13,6 +15,8 @@ from .client import (
 
 __all__ = [
     "CZAR28_BASE_URL",
+    "CZAR28_DATA_BASE_URL",
+    "CZAR28_HEALTH_BASE_URL",
     "CZAR28_CREDENTIAL_ENV",
     "Czar28Error",
     "Czar28QuotaExhausted",
