@@ -120,3 +120,21 @@ git checkout main; git pull
 Do not start a second copy while one qualification process is active. The runner is
 resumable and quota-aware; restart the identical command only after the first process
 has stopped.
+
+## First workstation attempt and transport repair
+
+The first target-workstation execution returned
+`DIAGNOSTIC_COMPLETE_WITH_LIMITATIONS` after exactly one logical provider call.
+The first frozen probe was SPY / 2016-06-17 chain discovery and Czar28 returned HTTP
+502 with `upstream_error`. No rate-limit headers, chain rows, EOD rows, intraday
+rows or trade rows were returned, so the run provides no evidence for or against
+historical coverage.
+
+Czar28's current API documentation explicitly states that 5xx responses are not
+cached and that transient failures are safe to retry using the same idempotency key.
+The provider transport has therefore been repaired without changing the frozen V1
+scientific contract: HTTP 500/502/503/504 and URL transport failures receive bounded
+exponential-backoff retries, the logical idempotency key is unchanged across retry
+attempts, HTTP 429 remains an immediate quota stop, and exhausted retries still fail
+closed. Reports now distinguish logical qualification calls from physical HTTP
+attempts. The first failed run remains preserved evidence rather than being rewritten.
