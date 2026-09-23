@@ -68,6 +68,17 @@ def test_preflight_detects_degraded_health() -> None:
     ) == "PROVIDER_HEALTH_DEGRADED"
 
 
+def test_preflight_requires_connected_upstream() -> None:
+    health = _result("health", health_status="ok")
+    health = PreflightProbeResult(
+        **{
+            **health.__dict__,
+            "upstream_status": "DISCONNECTED",
+        }
+    )
+    assert classify_preflight([health]) == "PROVIDER_HEALTH_DEGRADED"
+
+
 def test_preflight_distinguishes_deep_eod_failure() -> None:
     assert classify_preflight(
         [
@@ -78,3 +89,37 @@ def test_preflight_distinguishes_deep_eod_failure() -> None:
             _result("deep_expired_eod", status="ERROR"),
         ]
     ) == "DEEP_HISTORY_UNAVAILABLE"
+
+
+def test_preflight_health_uses_public_health_host(monkeypatch, tmp_path) -> None:
+    from types import SimpleNamespace
+
+    from packages.data import czar28_connectivity_preflight as preflight
+    from packages.providers.czar28.client import CZAR28_HEALTH_BASE_URL, Czar28Response
+
+    calls = []
+
+    def fake_request(path, **kwargs):
+        calls.append((path, kwargs))
+        return Czar28Response(
+            http_status=200,
+            payload={
+                "status": "ok",
+                "upstream": {"mdds_status": "CONNECTED"},
+            },
+            headers={},
+            response_bytes=10,
+            elapsed_seconds=0.01,
+            transport_attempts=1,
+        )
+
+    report = preflight.run_czar28_connectivity_preflight_v1(
+        SimpleNamespace(project_root=tmp_path),
+        request_json=fake_request,
+    )
+
+    assert calls[0][0] == "options/health"
+    assert calls[0][1]["authenticate"] is False
+    assert calls[0][1]["base_url"] == CZAR28_HEALTH_BASE_URL
+    assert report["results"][0]["health_status"] == "ok"
+    assert report["results"][0]["upstream_status"] == "CONNECTED"
