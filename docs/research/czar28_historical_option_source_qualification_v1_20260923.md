@@ -188,30 +188,43 @@ health endpoint.
 
 No scientific source authority or trading authority changes from this result.
 
-## Transport-host correction after dashboard/OpenAPI review
 
-The earlier workstation reports remain preserved exactly as observed, but their
-interpretation is corrected.
+## Corroborated provider-health result
 
-ATLAS's provider client was configured with
-`CZAR28_BASE_URL = https://api.czar28.com/v1`. The user then supplied the Czar28
-dashboard and endpoint documentation. The dashboard showed the Free plan active, one
-active read-only key, and seven requests recorded for the month. Independent review
-of Czar28's current OpenAPI 3.1 document established the authoritative Production
-server as `https://czar28.com`; the stable endpoints are therefore
-`https://czar28.com/v1/...`. The health path is explicitly public via
-`security: []`.
+The earlier HTTP 502/503 workstation observations are now corroborated by a direct
+health request on the documentation example host.
 
-Consequences:
+The user's Czar28 dashboard showed the Free plan active, one active read-only key,
+and seven recorded requests for the month. This demonstrates that requests reached
+Czar28's service/control plane.
 
-- the previous 502 and 503 responses remain valid observations against the prior
-  client host;
-- they are **not** accepted as evidence that Czar28's authoritative Production API
-  was down;
-- they are **not** historical-coverage evidence;
-- the client base URL is corrected to `https://czar28.com/v1`;
-- the health preflight is unauthenticated; and
-- the five-probe preflight must be rerun on the corrected Production host before the
-  1,000-call qualification may proceed.
+Czar28's documentation is internally inconsistent about hostnames: its Servers
+section identifies `https://api.czar28.com/v1` as the Production base URL, while
+several endpoint examples use `https://czar28.com/v1`. ATLAS therefore retains the
+explicit Production base from the Servers section.
 
-No source-science or trading authority is opened by this correction.
+A direct unauthenticated call to
+`https://czar28.com/v1/options/health` returned:
+
+```json
+{
+  "status": "degraded",
+  "service": "options-history-api",
+  "version": "1.0",
+  "upstream": {
+    "mdds_status": "UNDETERMINED",
+    "upstream_ms": 131,
+    "message": "Unexpected status payload: ERROR CODE: 1033"
+  }
+}
+```
+
+Cloudflare documents Error 1033 as a Cloudflare Tunnel failure in which no healthy
+`cloudflared` instance is available to receive traffic for the origin tunnel. This
+supports the interpretation that Czar28's historical-options upstream was degraded at
+the time of testing.
+
+This remains operational evidence only. It does not establish whether Czar28 can or
+cannot serve the required 2016..2026 historical option corpus once the upstream
+recovers. The 1,000-call qualification remains blocked until a health/current-data
+preflight succeeds.
