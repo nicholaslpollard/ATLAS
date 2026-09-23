@@ -539,6 +539,34 @@ def _eod_descriptor(
     )
 
 
+def _spread_cases_across_expiration_years(
+    cases: Iterable[tuple[dict[str, object], dict[str, Any]]],
+    *,
+    limit: int,
+) -> list[tuple[dict[str, object], dict[str, Any]]]:
+    groups: dict[int, list[tuple[dict[str, object], dict[str, Any]]]] = defaultdict(list)
+    for descriptor, payload in cases:
+        exp = str(dict(descriptor["params"]).get("exp") or "")
+        if len(exp) == 8 and exp[:4].isdigit():
+            groups[int(exp[:4])].append((descriptor, payload))
+    selected: list[tuple[dict[str, object], dict[str, Any]]] = []
+    offset = 0
+    years = sorted(groups)
+    while len(selected) < limit:
+        added = False
+        for year in years:
+            bucket = groups[year]
+            if offset < len(bucket):
+                selected.append(bucket[offset])
+                added = True
+                if len(selected) >= limit:
+                    break
+        if not added:
+            break
+        offset += 1
+    return selected
+
+
 def _summary_record(
     descriptor: dict[str, object],
     receipt: dict[str, object],
@@ -629,19 +657,28 @@ def run_czar28_historical_option_qualification_v1(
             chain_payloads.append((descriptor, payload))
 
     # Phase 2: deterministic median-strike call/put EOD lifecycle probes.
-    eod_descriptors: list[dict[str, object]] = []
+    primary_eod: list[dict[str, object]] = []
+    secondary_eod: list[dict[str, object]] = []
     for chain_descriptor, payload in chain_payloads:
-        for contract in representative_contracts(payload):
-            if contract["root"] and contract["exp"]:
-                eod_descriptors.append(
-                    _eod_descriptor(
-                        contract,
-                        role=(
-                            f"representative_from_"
-                            f"{chain_descriptor['role']}_{contract['right']}"
-                        ),
-                    )
-                )
+        representatives = representative_contracts(payload)
+        for index, contract in enumerate(representatives):
+            if not contract["root"] or not contract["exp"]:
+                continue
+            descriptor = _eod_descriptor(
+                contract,
+                role=(
+                    f"representative_from_"
+                    f"{chain_descriptor['role']}_{contract['right']}"
+                ),
+            )
+            if index == 0:
+                primary_eod.append(descriptor)
+            else:
+                secondary_eod.append(descriptor)
+    # Open one representative contract from every successful root/year chain
+    # before spending additional quota on the second right. This prevents early
+    # years from consuming the EOD budget before 2025/2026 are tested.
+    eod_descriptors = primary_eod + secondary_eod
 
     for descriptor in eod_descriptors[:EOD_PROBE_TARGET]:
         payload = execute(descriptor)
@@ -652,7 +689,10 @@ def run_czar28_historical_option_qualification_v1(
 
     # Phase 3: real one-day intraday NBBO-style quote and trade-print presence
     # for 50 contracts spread deterministically over the successful EOD pool.
-    detail_cases = successful_eod[: max(INTRADAY_PROBE_TARGET, TRADE_PROBE_TARGET)]
+    detail_cases = _spread_cases_across_expiration_years(
+        successful_eod,
+        limit=max(INTRADAY_PROBE_TARGET, TRADE_PROBE_TARGET),
+    )
     for index, (eod_descriptor, payload) in enumerate(detail_cases):
         day = _last_eod_date(payload)
         if day is None:
@@ -687,7 +727,10 @@ def run_czar28_historical_option_qualification_v1(
 
     # Phase 4: intentional uncached repeats. Different logical probe ids force
     # fresh provider observations so payload stability can be measured.
-    for descriptor, _payload in chain_payloads[:CHAIN_REPEAT_TARGET]:
+    for descriptor, _payload in _spread_cases_across_expiration_years(
+        chain_payloads,
+        limit=CHAIN_REPEAT_TARGET,
+    ):
         repeat = _descriptor(
             "chain",
             dict(descriptor["params"]),
@@ -698,7 +741,10 @@ def run_czar28_historical_option_qualification_v1(
         if not budget.can_request():
             break
 
-    for descriptor, _payload in successful_eod[:EOD_REPEAT_TARGET]:
+    for descriptor, _payload in _spread_cases_across_expiration_years(
+        successful_eod,
+        limit=EOD_REPEAT_TARGET,
+    ):
         repeat = _descriptor(
             "eod",
             dict(descriptor["params"]),
