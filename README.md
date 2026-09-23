@@ -146,6 +146,33 @@ The paid six-anchor gate remains distinct.
 Full design:
 `docs/research/marketdata_five_year_historical_options_v1_20260923.md`.
 
+
+### Official Czar host/auth documentation discrepancy — 2026-09-23
+
+A later complete documentation capture exposed an official-surface inconsistency that
+ATLAS must preserve rather than silently resolve:
+
+- the human `/docs` Servers table and quickstart name
+  `https://api.czar28.com/v1` as the Production base for authenticated data;
+- the same human documentation's endpoint examples, including the health example,
+  use `https://czar28.com/v1`;
+- the current OpenAPI 3.1 / API version 1.2.0 document declares
+  `https://czar28.com` as its Production server;
+- the human authentication section says every request requires Bearer auth, while
+  the OpenAPI health operation explicitly overrides global auth with `security: []`
+  and the human health example supplies no Authorization header.
+
+ATLAS therefore no longer claims that either official surface globally supersedes the
+other. Role-specific defaults are frozen instead: authenticated chain/EOD/intraday/
+trade requests use the human-doc Production data host
+`https://api.czar28.com/v1`; the quota-free public health watcher uses
+`https://czar28.com/v1/options/health`, which is supported by both the endpoint
+example and the machine-readable no-auth health contract.
+
+This is a transport-contract reconciliation only. Historical depth remains unproven
+while the upstream is degraded, and no provider, historical-price, strategy, PAPER,
+LIVE, broker or order authority changes.
+
 ## Read this first
 
 1. Read this entire README for the current handoff.
