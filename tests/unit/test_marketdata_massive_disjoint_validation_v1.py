@@ -7,11 +7,25 @@ from packages.data.marketdata_massive_disjoint_validation_v1 import (
 )
 
 
-def test_validation_anchors_are_disjoint_from_calibration_roots() -> None:
+def test_validation_anchors_are_disjoint_from_calibration_roots_and_dates() -> None:
     validation_roots = {item["root"] for item in CONTRACT["validation_anchors"]}
+    validation_dates = {item["date"] for item in CONTRACT["validation_anchors"]}
     calibration_roots = {"SPY", "MSFT", "NVDA", "QQQ"}
+    calibration_dates = {
+        "2026-03-02",
+        "2026-05-01",
+        "2026-07-01",
+        "2026-09-01",
+    }
     assert validation_roots.isdisjoint(calibration_roots)
+    assert validation_dates.isdisjoint(calibration_dates)
     assert validation_roots == {"IWM", "AMZN", "META", "DIA"}
+    assert validation_dates == {
+        "2026-02-02",
+        "2026-04-01",
+        "2026-06-01",
+        "2026-08-03",
+    }
 
 
 def test_thresholds_are_frozen_and_exact_match_is_descriptive_only() -> None:
