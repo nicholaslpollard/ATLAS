@@ -41,6 +41,40 @@ candidate-first economics at zero subscription cost. It **cannot** establish bro
 five-year entitlement for non-AAPL symbols. The paid six-anchor qualification remains
 the final five-year entitlement gate if ATLAS proceeds with Starter.
 
+
+## API-credit and transport controls confirmed from provider documentation
+
+The provider documentation supplied on 2026-09-23 adds the following frozen
+operational facts:
+
+- Starter and Starter Trial use a daily API-credit window; Starter is 10,000
+  credits/day;
+- the daily usage counter resets at **09:30 America/New_York**, not midnight;
+- all plans permit at most 50 concurrent requests;
+- successful HTTP 200 and 203 responses consume credits; error responses do not;
+- the response headers `X-Api-Ratelimit-Limit`,
+  `X-Api-Ratelimit-Remaining`, `X-Api-Ratelimit-Reset`, and
+  `X-Api-Ratelimit-Consumed` are the runtime budget authority;
+- a single request may overdraw the remaining balance, so future bulk acquisition
+  must estimate request cost before dispatch rather than relying only on
+  `remaining > 0`;
+- trial AAPL stock/options are documented free examples and may consume zero credits;
+- Starter Trial does not support `mode=cached`;
+- authentication uses a Bearer token in the Authorization header and ATLAS must never
+  place the token in a query string;
+- HTTP 203 is a normal cached success and must be treated identically to HTTP 200.
+
+The V1 qualification is deliberately sequential, so it cannot approach the
+50-concurrent-request ceiling. It now records the provider rate-limit snapshot for
+every chain and quote response and reports observed credits consumed and the last
+observed remaining balance. HTTP 429 is fail-closed in this qualification rather than
+blindly retried because a sequential run cannot legitimately create the documented
+concurrency condition.
+
+The future candidate-first acquisition adapter must enforce a local concurrency cap
+strictly below 50, honor the provider reset header, and budget estimated credits
+before each request.
+
 ## Historical economics available
 
 Historical chain and quote rows can expose:
