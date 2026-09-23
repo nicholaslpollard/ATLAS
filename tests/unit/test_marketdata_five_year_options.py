@@ -139,3 +139,30 @@ def test_starter_trial_anchors_use_deep_aapl_and_recent_general_tickers() -> Non
         for item in anchors[1:]
     )
     assert {item["root"] for item in anchors[1:]} == {"SPY", "MSFT", "NVDA", "QQQ"}
+
+
+def test_rate_limit_snapshot_is_case_insensitive_and_numeric() -> None:
+    assert client.rate_limit_snapshot(
+        {
+            "X-Api-Ratelimit-Limit": "10000",
+            "x-api-ratelimit-remaining": "9997",
+            "X-Api-Ratelimit-Reset": "1789997400",
+            "X-Api-Ratelimit-Consumed": "3",
+        }
+    ) == {
+        "limit": 10000,
+        "remaining": 9997,
+        "reset": 1789997400,
+        "consumed": 3,
+    }
+
+
+def test_starter_trial_completion_uses_trial_anchor_count(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+) -> None:
+    import packages.data.marketdata_five_year_options_qualification as qualification
+
+    trial_anchors = qualification.CONTRACT["starter_trial_anchors"]
+    assert len(trial_anchors) == 5
+    assert len(qualification.CONTRACT["anchors"]) == 6
