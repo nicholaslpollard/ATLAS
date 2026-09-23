@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 MARKETDATA_BASE_URL = "https://api.marketdata.app/v1"
 MARKETDATA_TOKEN_ENV = "MARKETDATA_TOKEN"
-TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
+TRANSIENT_STATUS = frozenset({500, 502, 503, 504})
 
 
 class MarketDataError(RuntimeError):
@@ -184,6 +184,26 @@ def get_json(
         f"MarketData.app request failed after {max_attempts} attempts: "
         f"{type(last_error).__name__ if last_error else 'unknown error'}"
     ) from last_error
+
+
+def rate_limit_snapshot(headers: dict[str, str]) -> dict[str, int | None]:
+    lowered = {str(k).lower(): str(v) for k, v in headers.items()}
+
+    def parse(name: str) -> int | None:
+        raw = lowered.get(name.lower())
+        if raw is None:
+            return None
+        try:
+            return int(float(raw))
+        except (TypeError, ValueError):
+            return None
+
+    return {
+        "limit": parse("x-api-ratelimit-limit"),
+        "remaining": parse("x-api-ratelimit-remaining"),
+        "reset": parse("x-api-ratelimit-reset"),
+        "consumed": parse("x-api-ratelimit-consumed"),
+    }
 
 
 def array_rows(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
