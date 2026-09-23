@@ -58,27 +58,33 @@ remaining monthly quota. The full qualifier also now prints phase transitions,
 remaining quota, recovered retry events, and correct physical HTTP-attempt counts
 including failed probes.
 
-### Czar28 preflight result — 2026-09-23
+### Czar28 transport-host correction — 2026-09-23
 
-The target-workstation connectivity preflight failed at probe **1/5** before any
-chain or EOD request was attempted. The authenticated `/v1/options/health` endpoint
-returned HTTP **503** on all three transport attempts. No rate-limit headers, chain
-rows, EOD rows, intraday rows or trade rows were returned. Under Czar28's documented
-error contract, HTTP 503 is the provider circuit-breaker state for repeated upstream
-feed failures; this is operational unavailability, not evidence that 2016 option
-history is absent.
+The first qualification attempts and first connectivity preflight were sent by the
+ATLAS client to `https://api.czar28.com/v1`. After comparing the user-provided
+documentation with Czar28's current OpenAPI 3.1 specification, ATLAS established
+that the authoritative Production server is `https://czar28.com`, with the stable
+API paths under `/v1`. The OpenAPI health operation also declares `security: []`,
+so the health probe does not require the API key.
 
-ATLAS therefore **must not run the 1,000-call qualification while this condition
-persists**. Czar28 remains a candidate source only. Massive V7 evidence remains
-preserved, and the low-cost provider search remains open. The public Czar28 website
-currently advertises all systems operational, but the authenticated health endpoint
-on the target workstation is the stronger operational evidence for ATLAS.
+The previously preserved HTTP 502/503 observations remain factual transport
+artifacts, but they **must not be interpreted as evidence that Czar28's production
+API is unhealthy or that historical option data is unavailable**, because they were
+issued against the non-authoritative host. The user's Czar28 dashboard independently
+showed the Free plan/key active and recorded seven requests, confirming that the
+attempts reached Czar infrastructure.
 
-Authorized workstation command after this package merges:
+The provider client now uses `https://czar28.com/v1` and the preflight health step
+is unauthenticated. The next required workstation action is to rerun only the
+five-probe connectivity/history preflight. The 1,000-call qualification remains
+blocked until that corrected preflight passes or yields a bounded
+`DEEP_EOD_AVAILABLE_CHAIN_LIMITATION` result.
+
+Authorized workstation command after this correction merges:
 
 ~~~powershell
 git checkout main; git pull
-.\\.venv\\Scripts\\python.exe scripts\\qualify_czar28_historical_options_v1.py --authorize-provider-reads --consume-free-quota
+.\.venv\Scripts\python.exe scripts\probe_czar28_connectivity_v1.py --authorize-provider-reads
 ~~~
 
 ## Read this first
