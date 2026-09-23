@@ -74,19 +74,25 @@ not modify the frozen Czar28 V1 scientific contract or authority. The full quali
 also exposes phase/current-probe/live quota/retry/elapsed telemetry every 10 logical
 calls and correctly counts failed transport attempts.
 
-### Czar28 transport-host correction — production preflight still pending
+### Czar28 workstation preflight — corroborated upstream degradation
 
-The first qualification attempts and first connectivity-preflight execution used the
-client base `https://api.czar28.com/v1`. Czar28's current OpenAPI 3.1 specification
-instead declares `https://czar28.com` as the Production server and exposes the
-stable endpoints beneath `/v1`. The health operation is public (`security: []`).
+The first bounded preflight on the documented Production API host
+`https://api.czar28.com/v1` returned HTTP 503 at the health step. The user's
+dashboard showed the key active and seven requests counted, so this was not treated
+as an authentication or reachability failure.
 
-Accordingly, the preserved HTTP 502/503 responses are retained as transport
-diagnostics but are **not accepted as production-provider health or historical-depth
-evidence**. The client is corrected to `https://czar28.com/v1`; the health probe is
-sent without authentication; and the five-probe preflight must be rerun before any
-broad quota-consuming qualification. No historical-data, strategy, PAPER, LIVE,
-broker or order authority changes.
+A direct unauthenticated health call using the documented example host
+`https://czar28.com/v1/options/health` returned `status=degraded`,
+`mdds_status=UNDETERMINED`, latency 131 ms, and
+`Unexpected status payload: ERROR CODE: 1033`. Cloudflare documents error 1033 as
+a tunnel-origin failure with no healthy `cloudflared` instance. Czar's docs remain
+hostname-inconsistent: the Servers section names `api.czar28.com/v1` as Production,
+while examples use the apex host. ATLAS keeps the explicit Production host and uses
+the apex-host health response only as corroborating provider-health evidence.
+
+The 1,000-call historical-options qualification remains paused until provider health
+recovers. No historical-data, strategy, PAPER, LIVE, broker or order authority is
+created or changed.
 
 ## 2. Mission
 
