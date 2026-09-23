@@ -97,7 +97,7 @@ def test_get_json_stops_after_bounded_transient_retries(
 
     monkeypatch.setattr(client.urllib.request, "urlopen", fake_urlopen)
 
-    with pytest.raises(client.Czar28Error, match="after 3 transport attempts"):
+    with pytest.raises(client.Czar28Error, match="after 3 transport attempts") as captured:
         client.get_json(
             "options/chain",
             params={"root": "SPY", "exp": "20160617"},
@@ -109,6 +109,9 @@ def test_get_json_stops_after_bounded_transient_retries(
             sleep=sleeps.append,
         )
 
+    assert captured.value.transport_attempts == 3
+    assert captured.value.http_status == 503
+    assert captured.value.error_code == "upstream_error"
     assert calls == 3
     assert sleeps == [1.0, 2.0]
 
