@@ -30,12 +30,47 @@ class _FakeResponse:
 
 def _http_error(code: int, payload: dict[str, object]) -> urllib.error.HTTPError:
     return urllib.error.HTTPError(
-        url="https://api.czar28.com/v1/options/chain",
+        url="https://czar28.com/v1/options/chain",
         code=code,
         msg="test",
         hdrs={},
         fp=io.BytesIO(json.dumps(payload).encode("utf-8")),
     )
+
+
+def test_czar28_base_url_matches_authoritative_openapi() -> None:
+    assert client.CZAR28_BASE_URL == "https://czar28.com/v1"
+
+
+def test_health_request_can_be_unauthenticated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[object] = []
+
+    def fake_urlopen(request, timeout):
+        captured.append(request)
+        return _FakeResponse(
+            {
+                "status": "ok",
+                "upstream": {
+                    "mdds_status": "CONNECTED",
+                    "upstream_ms": 12,
+                },
+            }
+        )
+
+    monkeypatch.setattr(client.urllib.request, "urlopen", fake_urlopen)
+
+    response = client.get_json(
+        "options/health",
+        authenticate=False,
+        max_attempts=1,
+    )
+
+    assert response.http_status == 200
+    assert len(captured) == 1
+    assert captured[0].full_url == "https://czar28.com/v1/options/health"
+    assert captured[0].get_header("Authorization") is None
 
 
 def test_czar28_default_retry_policy_matches_documented_guidance() -> None:
