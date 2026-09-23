@@ -337,11 +337,19 @@ def quality_summary(
     *,
     captured_at: datetime,
 ) -> tuple[dict[str, object], dict[str, RowQuality]]:
+    row_symbols = [
+        str(row.get("symbol") or "").strip()
+        for row in rows
+        if str(row.get("symbol") or "").strip()
+    ]
     by_symbol = {
         str(row.get("symbol") or "").strip(): row
         for row in rows
         if str(row.get("symbol") or "").strip()
     }
+    requested_set = set(requested)
+    unexpected = sorted(set(row_symbols) - requested_set)
+    duplicate_rows = len(row_symbols) - len(set(row_symbols))
     quality = {
         symbol: normalize_quality(
             by_symbol.get(symbol),
@@ -394,7 +402,11 @@ def quality_summary(
 
     summary: dict[str, object] = {
         "requested": len(requested),
+        "raw_returned_rows": len(rows),
         "returned": len(returned),
+        "unexpected_symbol_count": len(unexpected),
+        "unexpected_symbols": unexpected,
+        "duplicate_symbol_rows": duplicate_rows,
         "coverage_fraction": len(returned) / len(requested) if requested else 0.0,
         "missing_count": len(missing),
         "missing_symbols": missing,
