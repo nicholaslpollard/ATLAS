@@ -47,6 +47,16 @@ logical probe/idempotency key. Retry attempts are reported separately from logic
 qualification calls. The frozen qualification contract and authority boundary are
 unchanged.
 
+
+A separate operational preflight now runs before any further full-quota attempt. It
+checks the documented Czar health endpoint, a current SPY monthly chain, a recent
+expired SPY monthly chain, and the 2016 SPY monthly chain. This distinguishes a
+provider-wide outage from a deep-history-only failure before ATLAS spends the
+remaining monthly quota. The full qualifier also now prints phase transitions,
+10-call live heartbeats, current probe identity, rows returned, elapsed time,
+remaining quota, recovered retry events, and correct physical HTTP-attempt counts
+including failed probes.
+
 Authorized workstation command after this package merges:
 
 ~~~powershell
