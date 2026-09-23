@@ -365,6 +365,7 @@ def _persist_probe(
         "headers": _filtered_response_headers(response.headers),
         "response_bytes": response.response_bytes,
         "elapsed_seconds": response.elapsed_seconds,
+        "transport_attempts": response.transport_attempts,
         "payload": response.payload,
     }
     raw_bytes = _stable_json_bytes(envelope)
@@ -388,6 +389,7 @@ def _persist_probe(
         "raw_sha256": raw_sha256,
         "response_bytes": response.response_bytes,
         "elapsed_seconds": response.elapsed_seconds,
+        "transport_attempts": response.transport_attempts,
         "rate_limit": _filtered_response_headers(response.headers),
         "payload_fingerprint": stable_fingerprint(response.payload),
     }
@@ -619,6 +621,7 @@ def _summary_record(
         "reused": reused,
         "response_bytes": receipt["response_bytes"],
         "elapsed_seconds": receipt["elapsed_seconds"],
+        "transport_attempts": int(receipt.get("transport_attempts") or 1),
     }
 
 
@@ -900,6 +903,11 @@ def run_czar28_historical_option_qualification_v1(
         "generated_at_utc": datetime.now(UTC).isoformat(),
         "credential_env": CZAR28_CREDENTIAL_ENV,
         "provider_request_attempts_this_run": budget.request_attempts,
+        "provider_transport_attempts_this_run": sum(
+            int(item.get("transport_attempts") or 1)
+            for item in probe_summaries
+            if not bool(item.get("reused"))
+        ),
         "provider_limit_observed": budget.provider_limit,
         "provider_remaining_observed": budget.provider_remaining,
         "provider_reset_observed": budget.provider_reset,
