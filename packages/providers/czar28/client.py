@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 
-CZAR28_BASE_URL = "https://czar28.com/v1"
+CZAR28_DATA_BASE_URL = "https://api.czar28.com/v1"
+CZAR28_HEALTH_BASE_URL = "https://czar28.com/v1"
+CZAR28_BASE_URL = CZAR28_DATA_BASE_URL
 CZAR28_CREDENTIAL_ENV = "CZAR_API_KEY"
 CZAR28_TRANSIENT_HTTP_STATUS = frozenset({500, 502, 503, 504})
 CZAR28_DEFAULT_MAX_ATTEMPTS = 5
@@ -99,6 +101,7 @@ def get_json(
     initial_retry_seconds: float = CZAR28_DEFAULT_INITIAL_RETRY_SECONDS,
     max_retry_seconds: float = CZAR28_DEFAULT_MAX_RETRY_SECONDS,
     sleep: Callable[[float], None] = time.sleep,
+    base_url: str = CZAR28_DATA_BASE_URL,
 ) -> Czar28Response:
     if max_attempts < 1:
         raise ValueError("max_attempts must be positive")
@@ -112,7 +115,7 @@ def get_json(
     query = urllib.parse.urlencode(
         {str(k): str(v) for k, v in (params or {}).items()}
     )
-    url = CZAR28_BASE_URL.rstrip("/") + "/" + path.lstrip("/")
+    url = base_url.rstrip("/") + "/" + path.lstrip("/")
     if query:
         url += "?" + query
 
@@ -227,6 +230,7 @@ def get_health(
         authenticate=False,
         timeout_seconds=timeout_seconds,
         max_attempts=max_attempts,
+        base_url=CZAR28_HEALTH_BASE_URL,
     )
 
 
