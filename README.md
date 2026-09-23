@@ -1324,6 +1324,27 @@ git checkout main; git pull
 Full design:
 `docs/research/tradier_whole_universe_cadence_v1_20260923.md`.
 
+
+Accepted workstation evidence now covers both **mid-morning** and **midday** under
+the same frozen 13,412-symbol / 12,066-symbol comparison populations. Both runs
+completed 20 broad + 20 unresolved-retry cycles with no terminal errors. Raw broad
+coverage was identically 12,775/13,412 (95.251%) on every snapshot; the same 637
+symbols were persistently absent, and neither later broad passes nor +10-second
+retries recovered any missing symbol. That gap is now treated as a separate
+identity/provider-coverage problem rather than a polling-cadence problem.
+
+Freshness was materially weaker at midday than mid-morning: mean quote-age <=30s
+count fell from 5,805.2 to 4,768.6, mean diagnostic-usable count fell from 5,598.4
+to 4,660.6, and mean unresolved count rose from 7,607.15 to 8,643.4. The broad
+quote-timestamp advancement curve also fell at every measured interval: 30s
+51.277% -> 43.345%, 60s 60.648% -> 52.756%, 120s 68.253% -> 61.174%, and 300s
+77.363% -> 70.581%. +10-second retries remain useful for freshness but recovered
+zero missing symbols.
+
+Disposition remains diagnostic: 30-second broad polling is not justified by current
+evidence; 120 seconds is only a plausible candidate. A final regular-session cadence
+decision remains open pending the identical power-hour/near-close run.
+
 ### Tradier REST qualification V1 closeout — 2026-09-22
 
 The exact 2026-08-14 Phase 7 universe was successfully reproduced before rerunning
