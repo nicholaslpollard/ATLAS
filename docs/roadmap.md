@@ -160,6 +160,14 @@ self-service account enforces one public IP at a time. MarketData-derived market
 may be shown only in the user's private/internal ATLAS browser surface under the
 self-service license. Public or multi-user redistribution is a later licensing gate.
 
+
+**MarketData EOD boundary:** the five-year source provides EOD option economics and
+PIT-safe prior-session OI, not historical option opens or intraday quote paths. The
+qualification's EOD-moneyness contract selector is source plumbing only. Future
+simulation must select strikes from the ATLAS opportunity-time underlying price and
+must not backdate EOD-D fields. Open/intraday option replay requires a separate
+intraday source; otherwise the experiment must be explicitly EOD-only.
+
 No historical-price, strategy, PAPER, LIVE, broker or order authority is created by
 this qualification.
 
