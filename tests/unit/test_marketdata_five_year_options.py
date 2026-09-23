@@ -245,6 +245,8 @@ def test_starter_trial_completion_uses_trial_anchor_count(
     assert report["all_anchor_chains_nonempty"] is True
     assert report["all_quote_series_nonempty"] is True
     assert report["open_interest_present_across_anchors"] is True
+    assert report["required_schema_present_across_anchors"] is True
+    assert report["historical_greeks_present_and_null_across_anchors"] is True
     assert report["broad_five_year_entitlement_proven"] is False
     assert report["observed_api_credits_consumed"] == 10
 
