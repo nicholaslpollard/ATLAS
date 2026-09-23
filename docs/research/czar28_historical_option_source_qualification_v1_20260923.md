@@ -148,7 +148,8 @@ preflight checks, in order:
 1. /options/health;
 2. SPY 2026-10-16 current monthly chain;
 3. SPY 2025-06-20 recent expired monthly chain; and
-4. SPY 2016-06-17 deep historical monthly chain.
+4. SPY 2016-06-17 deep historical monthly chain; and
+5. SPY 2016-06-17 $200 call direct EOD prices for 2016-06-01..2016-06-17.
 
 Each probe has at most three transport attempts. If health/current access fails, the
 preflight stops before the broad qualification. If current and recent history pass
@@ -160,4 +161,5 @@ The broad qualification now prints phase transitions and a heartbeat every 10 ne
 logical calls containing logical/physical request counts, observed remaining quota,
 current probe, rows returned, and elapsed time. Recovered multi-attempt requests are
 printed immediately. Failed retry attempts are included in the physical HTTP count.
+Deep chain discovery and deep EOD pricing are evaluated independently. If the deep chain endpoint fails but the direct 2016 EOD contract succeeds, ATLAS classifies that as `DEEP_EOD_AVAILABLE_CHAIN_LIMITATION` rather than rejecting the provider outright. That preserves the possibility of using Czar28 for prices while sourcing historical contract identity separately.
 
