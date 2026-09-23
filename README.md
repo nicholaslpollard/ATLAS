@@ -50,7 +50,8 @@ unchanged.
 
 A separate operational preflight now runs before any further full-quota attempt. It
 checks the documented Czar health endpoint, a current SPY monthly chain, a recent
-expired SPY monthly chain, and the 2016 SPY monthly chain. This distinguishes a
+expired SPY monthly chain, the 2016 SPY monthly chain, and a direct 2016 SPY $200C
+EOD query. This distinguishes a
 provider-wide outage from a deep-history-only failure before ATLAS spends the
 remaining monthly quota. The full qualifier also now prints phase transitions,
 10-call live heartbeats, current probe identity, rows returned, elapsed time,
@@ -4166,4 +4167,5 @@ debit funding reuses the exact accepted fill evidence. The next bounded Track A 
 is deterministic reservation/fill/funding -> open-position and cost-basis account
 state. The Strategy Evidence Register is intentionally unchanged because this package
 changes product simulation architecture only.
+Deep chain discovery and deep EOD pricing are evaluated independently. If the deep chain endpoint fails but the direct 2016 EOD contract succeeds, ATLAS classifies that as `DEEP_EOD_AVAILABLE_CHAIN_LIMITATION` rather than rejecting the provider outright. That preserves the possibility of using Czar28 for prices while sourcing historical contract identity separately.
 
