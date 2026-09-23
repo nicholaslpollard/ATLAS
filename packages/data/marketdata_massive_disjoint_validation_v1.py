@@ -12,6 +12,7 @@ from packages.data.marketdata_five_year_options_qualification import (
     _choose_qualification_contract,
 )
 from packages.data.marketdata_massive_overlap_v1 import (
+    MarketDataMassiveOverlapError,
     compare_exact_contract_days,
     summarize_comparisons,
 )
@@ -369,7 +370,25 @@ def run_marketdata_massive_disjoint_validation_v1(
             if isinstance(massive_results, list)
             else []
         )
-        comparisons = compare_exact_contract_days(marketdata_rows, massive_rows)
+        try:
+            comparisons = compare_exact_contract_days(marketdata_rows, massive_rows)
+        except MarketDataMassiveOverlapError as exc:
+            terminal_error = f"{type(exc).__name__}: {exc}"
+            anchors.append(
+                {
+                    "root": underlying,
+                    "date": anchor_date,
+                    "option_symbol": option_symbol,
+                    "massive_ticker": massive_ticker,
+                    "status": "COMPARISON_ERROR",
+                    "error": terminal_error,
+                    "chain_raw_receipt": chain_receipt,
+                    "quote_raw_receipt": quote_receipt,
+                    "massive_raw_receipt": massive_receipt,
+                }
+            )
+            print(f"      STOP: {terminal_error}", flush=True)
+            break
         summary = summarize_comparisons(comparisons)
         overlap_sessions = int(summary.get("overlap_sessions") or 0)
         coverage = (
