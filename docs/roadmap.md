@@ -64,6 +64,16 @@ bounded exponential-backoff retries for 500/502/503/504 and transient URL failur
 records physical HTTP-attempt counts separately, and still fails closed if retries
 are exhausted. No scientific or authority contract changed.
 
+
+Before another full Czar28 quota run, ATLAS now requires the separately bounded
+`atlas-czar28-connectivity-preflight-v1`: health -> current SPY chain -> recent
+expired SPY chain -> 2016 SPY chain. A current-chain failure stops before the full
+qualification; a recent-history failure is classified separately; and a 2016-only
+failure is recorded as deep-history unavailability. This operational diagnostic does
+not modify the frozen Czar28 V1 scientific contract or authority. The full qualifier
+also exposes phase/current-probe/live quota/retry/elapsed telemetry every 10 logical
+calls and correctly counts failed transport attempts.
+
 ## 2. Mission
 
 ATLAS is the **Autonomous Trading, Learning, and Analysis System**, the greenfield
