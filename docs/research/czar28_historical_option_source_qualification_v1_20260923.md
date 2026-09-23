@@ -221,8 +221,17 @@ Czar28's current OpenAPI 3.1 document reports API version 1.2.0 and declares
 beneath `/v1`. The `/v1/options/health` operation declares `security: []`, while
 chain/EOD/intraday/trade operations remain Bearer-authenticated.
 
-ATLAS therefore pins `https://czar28.com/v1` as the current provider base. This
-supersedes the earlier hostname interpretation recorded during initial qualification.
+A complete same-day capture of the human documentation exposes an official contract
+discrepancy: its Servers table and quickstart identify
+`https://api.czar28.com/v1` as Production for live traffic, while later endpoint
+examples use the apex host. The human auth text says every request requires a key,
+while its health example omits auth and the OpenAPI explicitly marks health public.
+
+ATLAS therefore freezes role-specific hosts instead of declaring either source
+globally superseding: authenticated data requests use
+`https://api.czar28.com/v1`; public health uses
+`https://czar28.com/v1/options/health`. Any future provider correction is a
+separately recorded transport-contract change.
 
 ### Fail-closed recovery rule
 

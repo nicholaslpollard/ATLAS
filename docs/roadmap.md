@@ -82,11 +82,13 @@ Czar28. Direct health evidence returned `status=degraded`,
 operational upstream-health evidence only; no conclusion about 2016..2026 historical
 coverage is opened.
 
-Czar28's current OpenAPI 1.2.0 declares `https://czar28.com` as Production, with
-stable endpoints beneath `/v1`, and marks the health endpoint public. ATLAS now
-pins that current machine-readable server contract and fails closed before any
-quota-consuming historical-option qualification unless public health is explicitly
-`status=ok` and `mdds_status=CONNECTED`.
+Czar28's current official surfaces disagree on the global Production host: OpenAPI
+1.2.0 declares the apex host while the human Servers table names
+`https://api.czar28.com/v1` for authenticated live traffic. ATLAS freezes
+role-specific routing: authenticated chain/EOD/intraday/trade requests use the API
+subdomain and public health uses the apex
+`https://czar28.com/v1/options/health`. Qualification fails closed unless public
+health is explicitly `status=ok` and `mdds_status=CONNECTED`.
 
 After recovery, ATLAS must run the existing five-probe connectivity/history preflight
 before any 1,000-call source qualification. Historical-data, strategy, PAPER, LIVE,
@@ -103,6 +105,100 @@ heartbeats, consumes no Czar API-key quota, and exits only when public health is
 explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
 exit is the existing five-probe preflight, not the 1,000-call qualification.
 
+
+### Active unblocking path — MarketData.app five-year historical options
+
+ATLAS will no longer treat ten-year historical-option completeness as a global
+simulator blocker. The active paid challenger is
+`atlas-marketdata-five-year-historical-options-v1`, targeting MarketData.app
+Starter at $30 month-to-month, 10,000 API credits/day, and a rolling five-year
+historical window.
+
+Historical option chains are acquired point in time and restricted by DTE/strike
+before download. Historical selected-contract quote series provide EOD bid/ask/mid/
+last, volume, open interest, underlying price and timestamps. Historical IV/Greeks
+are not stored and may only be derived later under a separate contract.
+
+The architecture is candidate-first rather than whole-market:
+
+`stock opportunity -> PIT historical chain -> frozen contract selection -> short
+selected-contract EOD path -> option-economics replay`.
+
+This path can provide the five-year option-economics layer needed to resume
+simulation while preserving the longer-horizon stock history. The simulator must
+label the option-history evidence window explicitly and may not describe five-year
+option evidence as ten-year option validation.
+
+Historical OI on date D is settled from D-1 and available before D opens. EOD-D
+volume/quotes are not available to an intraday-D cutoff. Provider option history is
+as-traded and not corporate-action adjusted, so adjusted/non-standard cases remain
+fail-closed unless separately reconciled.
+
+Massive V7 remains preserved for structural reference/anomaly work but its Basic-tier
+5-calls/minute acquisition is removed from the critical path. Czar28 remains a
+ten-year challenger/backfill source once health recovers.
+
+The first paid qualification probes six anchors spanning 2021-10-01..2026-09-01 and
+must prove historical chains, exact contract quote paths, OI presence and expected
+historical-Greeks-null behavior before any simulator integration.
+
+Before that paid gate, the active Starter Trial may run a zero-cost capability probe.
+The trial is documented as 10,000 credits/day with one year of general historical
+access plus full historical access for AAPL. ATLAS therefore probes deep AAPL at
+2021-10-01 and recent SPY/MSFT/NVDA/QQQ dates within one year. A pass proves the
+candidate-first mechanics and data fields, not broad five-year entitlement.
+
+
+**MarketData runtime budget policy:** daily self-service credits reset at 09:30
+America/New_York. The provider's limit/remaining/reset/consumed response headers are
+runtime authority. Future acquisition must estimate cost before dispatch because one
+request may overdraw the balance, and local concurrency must remain below the
+documented 50-request maximum. Trial qualification remains sequential.
+
+
+**MarketData provider-access boundary:** authenticated reads remain on the target
+workstation; no GitHub Actions/cloud runner may use the MarketData token because the
+self-service account enforces one public IP at a time. MarketData-derived market data
+may be shown only in the user's private/internal ATLAS browser surface under the
+self-service license. Public or multi-user redistribution is a later licensing gate.
+
+
+**MarketData EOD boundary:** the five-year source provides EOD option economics and
+PIT-safe prior-session OI, not historical option opens or intraday quote paths. The
+qualification's EOD-moneyness contract selector is source plumbing only. Future
+simulation must select strikes from the ATLAS opportunity-time underlying price and
+must not backdate EOD-D fields. Open/intraday option replay requires a separate
+intraday source; otherwise the experiment must be explicitly EOD-only.
+
+No historical-price, strategy, PAPER, LIVE, broker or order authority is created by
+this qualification.
+
+
+### Official Czar host/auth documentation discrepancy — 2026-09-23
+
+A later complete documentation capture exposed an official-surface inconsistency that
+ATLAS must preserve rather than silently resolve:
+
+- the human `/docs` Servers table and quickstart name
+  `https://api.czar28.com/v1` as the Production base for authenticated data;
+- the same human documentation's endpoint examples, including the health example,
+  use `https://czar28.com/v1`;
+- the current OpenAPI 3.1 / API version 1.2.0 document declares
+  `https://czar28.com` as its Production server;
+- the human authentication section says every request requires Bearer auth, while
+  the OpenAPI health operation explicitly overrides global auth with `security: []`
+  and the human health example supplies no Authorization header.
+
+ATLAS therefore no longer claims that either official surface globally supersedes the
+other. Role-specific defaults are frozen instead: authenticated chain/EOD/intraday/
+trade requests use the human-doc Production data host
+`https://api.czar28.com/v1`; the quota-free public health watcher uses
+`https://czar28.com/v1/options/health`, which is supported by both the endpoint
+example and the machine-readable no-auth health contract.
+
+This is a transport-contract reconciliation only. Historical depth remains unproven
+while the upstream is degraded, and no provider, historical-price, strategy, PAPER,
+LIVE, broker or order authority changes.
 
 ## 2. Mission
 
