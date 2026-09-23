@@ -38,6 +38,15 @@ run at zero. Czar28 remains candidate-only until workstation evidence and later
 cross-provider price validation pass. The documented Czar28 EOD schema does not
 supply open interest; OI remains a separately versioned future overlay study.
 
+The first workstation execution stopped after its first logical chain probe because
+Czar28 returned HTTP 502 `upstream_error`; no chain/EOD coverage conclusion was
+opened from that run. Czar documents 5xx responses as uncached and safe to retry with
+the same idempotency key. The client now retries HTTP 500/502/503/504 and transient
+URL transport failures with bounded exponential backoff while preserving the same
+logical probe/idempotency key. Retry attempts are reported separately from logical
+qualification calls. The frozen qualification contract and authority boundary are
+unchanged.
+
 Authorized workstation command after this package merges:
 
 ~~~powershell
