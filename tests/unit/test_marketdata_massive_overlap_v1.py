@@ -154,6 +154,7 @@ def test_end_to_end_reuses_accepted_marketdata_raw_without_marketdata_reads(
         },
     )
     report = {
+        "contract_id": overlap.CONTRACT["marketdata_source"]["contract_id"],
         "status": "QUALIFIED_FOR_STARTER_TRIAL_CAPABILITY",
         "starter_trial": True,
         "run_id": run_id,
@@ -197,6 +198,8 @@ def test_source_report_fingerprint_mismatch_fails_closed(tmp_path: Path) -> None
     )
     root.mkdir(parents=True, exist_ok=True)
     report = {
+        "contract_id": overlap.CONTRACT["marketdata_source"]["contract_id"],
+        "run_id": run_id,
         "status": "QUALIFIED_FOR_STARTER_TRIAL_CAPABILITY",
         "evidence_fingerprint": "0" * 64,
         "starter_trial": True,
@@ -227,6 +230,8 @@ def test_source_report_contents_are_rehashed(
     )
     root.mkdir(parents=True, exist_ok=True)
     original = {
+        "contract_id": overlap.CONTRACT["marketdata_source"]["contract_id"],
+        "run_id": run_id,
         "status": "QUALIFIED_FOR_STARTER_TRIAL_CAPABILITY",
         "starter_trial": True,
         "anchors": [],
@@ -245,6 +250,42 @@ def test_source_report_contents_are_rehashed(
         overlap.MarketDataMassiveOverlapError,
         match="contents do not reproduce",
     ):
+        overlap.load_accepted_marketdata_trial_report(
+            SimpleNamespace(project_root=tmp_path)
+        )
+
+
+def test_source_report_run_id_mismatch_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    run_id = overlap.CONTRACT["marketdata_source"]["run_id"]
+    root = (
+        tmp_path
+        / "data"
+        / "research"
+        / "provider_qualification"
+        / "marketdata_app"
+        / "historical_options_v1"
+        / run_id
+    )
+    root.mkdir(parents=True, exist_ok=True)
+    report = {
+        "contract_id": overlap.CONTRACT["marketdata_source"]["contract_id"],
+        "run_id": "wrong-run",
+        "status": "QUALIFIED_FOR_STARTER_TRIAL_CAPABILITY",
+        "starter_trial": True,
+        "anchors": [],
+    }
+    fingerprint = overlap.stable_fingerprint(report)
+    monkeypatch.setitem(
+        overlap.CONTRACT["marketdata_source"],
+        "evidence_fingerprint",
+        fingerprint,
+    )
+    report["evidence_fingerprint"] = fingerprint
+    (root / "report.json").write_text(json.dumps(report), encoding="utf-8")
+    with pytest.raises(overlap.MarketDataMassiveOverlapError, match="run id mismatch"):
         overlap.load_accepted_marketdata_trial_report(
             SimpleNamespace(project_root=tmp_path)
         )
