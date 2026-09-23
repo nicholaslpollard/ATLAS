@@ -111,8 +111,12 @@ def main(argv: list[str] | None = None) -> int:
     print("\nCZAR28 HISTORICAL OPTION QUALIFICATION: " + str(report["status"]))
     print(f"  evidence fingerprint: {report['evidence_fingerprint']}")
     print(
-        "  provider calls this run: "
+        "  logical provider calls this run: "
         f"{int(report['provider_request_attempts_this_run']):,}"
+    )
+    print(
+        "  physical HTTP attempts this run: "
+        f"{int(report.get('provider_transport_attempts_this_run') or 0):,}"
     )
     print(
         "  observed quota: "
