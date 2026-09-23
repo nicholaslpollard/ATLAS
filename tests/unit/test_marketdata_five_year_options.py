@@ -166,3 +166,38 @@ def test_starter_trial_completion_uses_trial_anchor_count(
     trial_anchors = qualification.CONTRACT["starter_trial_anchors"]
     assert len(trial_anchors) == 5
     assert len(qualification.CONTRACT["anchors"]) == 6
+
+
+def test_get_json_does_not_retry_429(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+
+    def fake_urlopen(request, timeout):
+        nonlocal calls
+        calls += 1
+        raise urllib.error.HTTPError(
+            url=request.full_url,
+            code=429,
+            msg="credit limit reached",
+            hdrs={"X-Api-Ratelimit-Remaining": "0"},
+            fp=io.BytesIO(
+                json.dumps({"s": "error", "errmsg": "credit limit reached"}).encode(
+                    "utf-8"
+                )
+            ),
+        )
+
+    monkeypatch.setattr(client.urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(client.MarketDataError) as captured:
+        client.get_json(
+            "options/chain/SPY/",
+            params={"date": "2026-09-01"},
+            token="test-token",
+            max_attempts=5,
+            sleep=lambda _seconds: None,
+        )
+
+    assert captured.value.http_status == 429
+    assert calls == 1
