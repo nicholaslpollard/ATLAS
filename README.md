@@ -150,6 +150,12 @@ the documented 50-request concurrency ceiling. Trial qualification is sequential
 records observed credit consumption/remaining balance. HTTP 203 is accepted as normal
 success; 429 fails closed rather than being blindly retried.
 
+MarketData authenticated reads are workstation-only during this research phase because
+the self-service account permits one public IP at a time. CI/cloud runners must not
+use the token. MarketData-derived data also remains private/internal under the
+self-service license; public or multi-user redistribution requires a separate
+licensing gate.
+
 Full design:
 `docs/research/marketdata_five_year_historical_options_v1_20260923.md`.
 
