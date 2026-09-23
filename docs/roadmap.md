@@ -881,9 +881,7 @@ had invalid quote geometry, had unknown quote freshness, had quote age above 30
 seconds, or carried a future-timestamp anomaly. The maximum provider-read count is 40
 over about ten minutes, far below the observed 120 requests/minute entitlement.
 
-The source population is the surviving Alpaca SIP V2 active/tradable/us-equity asset
-snapshot. Its exact file hash and sorted-symbol fingerprint are captured before the
-first provider read. When the exact local Phase 7 discovery snapshot is available,
+The source population is pinned to the exact 2026-09-22 Alpaca SIP V2 comparison source: SHA-256 `43a5645d4366e7f7294e14f60596c5e753db6158c394a62262fdd283bbab151a` and exactly 13,412 active/tradable/us-equity symbols. Any change fails closed before the first provider read. When the exact local Phase 7 discovery snapshot is available,
 its 12,066-symbol population is analyzed as a subset of the same broad responses
 without consuming additional provider calls.
 
