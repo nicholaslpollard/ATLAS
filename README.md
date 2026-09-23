@@ -86,6 +86,18 @@ health -> current SPY chain -> recent expired SPY chain -> 2016 SPY chain -> dir
 2016 SPY $200C EOD. The 1,000-call qualification remains blocked until that corrected
 preflight succeeds or yields a bounded deep-EOD/chain-limitation result.
 
+A quota-free public health watcher is available while the provider is degraded:
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\watch_czar28_health_v1.py
+~~~
+
+It checks at 60-second intervals by default, prints state changes plus periodic
+heartbeats, consumes no Czar API-key quota, and exits only when public health is
+explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
+exit is the existing five-probe preflight, not the 1,000-call qualification.
+
+
 ## Read this first
 
 1. Read this entire README for the current handoff.
