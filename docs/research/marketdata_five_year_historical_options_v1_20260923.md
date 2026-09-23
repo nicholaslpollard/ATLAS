@@ -122,6 +122,44 @@ Historical IV and Greeks are not stored and are expected to be null. Derived
 IV/Greeks, if later needed, must be a separately versioned derived layer and may not
 be mistaken for provider-observed historical Greeks.
 
+
+## EOD-only boundary and anti-lookahead rule
+
+MarketData's historical options surfaces are end-of-day snapshots. That creates a
+hard distinction between **source qualification** and **faithful strategy replay**.
+
+The V1 qualifier deliberately uses `dte=30`, `strikeLimit=8` and the provider's
+historical `underlyingPrice` only to choose one deterministic contract whose quote
+history can prove that chain -> OCC symbol -> historical quote-series plumbing works.
+That selected contract is **qualification-only**. It is not an accepted historical
+contract-selection rule.
+
+For a historical date D:
+
+- `dte` is relative to D and may be used to choose a known expiration horizon;
+- chain/quote bid, ask, mid, last, volume and `underlyingPrice` are EOD-D values;
+- `strikeLimit` is a moneyness convenience based on the provider's option-chain
+  snapshot and therefore must not define an intraday-D contract universe;
+- OI remains the D-1-settled value available before D opens.
+
+A future PIT simulator adapter must derive strike bounds/target strike from the
+**ATLAS opportunity-time underlying price**, then query explicit strike/range filters
+that do not depend on the provider's later EOD-D moneyness. The provider EOD
+`underlyingPrice` may be retained for reconciliation but may not replace the
+opportunity-time price.
+
+MarketData alone cannot reconstruct an option's next-open price or intraday quote
+path. Therefore it cannot, by itself, support a faithful option replay of an
+underlying strategy whose entry or STOP/TARGET logic occurs at the open or intraday.
+A later simulation must either:
+
+1. preregister an explicitly EOD option-economics experiment whose decisions occur
+   only after the corresponding EOD fields are available; or
+2. combine the five-year EOD/OI layer with a separately qualified intraday historical
+   option source.
+
+No interpolation from EOD bid/ask/last into an intraday option path is authorized.
+
 ## Point-in-time semantics
 
 For a historical date D:
@@ -186,8 +224,10 @@ V1 uses six low-cost anchor probes spanning the rolling five-year entitlement:
 - SPY — 2026-09-01.
 
 Each anchor requests a historical chain near 30 DTE with only eight strikes, chooses
-the nearest-ATM call by provider-reported underlying price, and requests a ten-day
-historical quote series for that exact contract.
+one deterministic qualification-only call using the provider's EOD underlying price,
+and requests a ten-day historical quote series for that exact contract. This choice
+exists only to prove endpoint linkage and may not be reused as a PIT simulator
+contract-selection rule.
 
 The run records:
 
