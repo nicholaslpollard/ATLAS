@@ -153,6 +153,13 @@ runtime authority. Future acquisition must estimate cost before dispatch because
 request may overdraw the balance, and local concurrency must remain below the
 documented 50-request maximum. Trial qualification remains sequential.
 
+
+**MarketData provider-access boundary:** authenticated reads remain on the target
+workstation; no GitHub Actions/cloud runner may use the MarketData token because the
+self-service account enforces one public IP at a time. MarketData-derived market data
+may be shown only in the user's private/internal ATLAS browser surface under the
+self-service license. Public or multi-user redistribution is a later licensing gate.
+
 No historical-price, strategy, PAPER, LIVE, broker or order authority is created by
 this qualification.
 
