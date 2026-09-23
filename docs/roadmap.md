@@ -67,7 +67,7 @@ are exhausted. No scientific or authority contract changed.
 
 Before another full Czar28 quota run, ATLAS now requires the separately bounded
 `atlas-czar28-connectivity-preflight-v1`: health -> current SPY chain -> recent
-expired SPY chain -> 2016 SPY chain. A current-chain failure stops before the full
+expired SPY chain -> 2016 SPY chain -> direct 2016 SPY $200C EOD. A current-chain failure stops before the full
 qualification; a recent-history failure is classified separately; and a 2016-only
 failure is recorded as deep-history unavailability. This operational diagnostic does
 not modify the frozen Czar28 V1 scientific contract or authority. The full qualifier
@@ -4599,4 +4599,5 @@ Immediate Track A continuation after acceptance:
 
 The Strategy Evidence Register remains unchanged because this package changes
 product/account-simulation architecture only.
+Deep chain discovery and deep EOD pricing are evaluated independently. If the deep chain endpoint fails but the direct 2016 EOD contract succeeds, ATLAS classifies that as `DEEP_EOD_AVAILABLE_CHAIN_LIMITATION` rather than rejecting the provider outright. That preserves the possibility of using Czar28 for prices while sourcing historical contract identity separately.
 
