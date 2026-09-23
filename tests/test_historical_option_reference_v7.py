@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import json
+import urllib.error
 from datetime import date
 from pathlib import Path
 
@@ -322,3 +324,141 @@ def test_v7_known_conflict_preflight_fully_paginates(
     assert result[0]["current_list_page_count"] == 3
     assert result[0]["current_target_rows"] == 2
     assert result[0]["selected_cfi"] == "OCASCN"
+
+
+class _FakeResponse:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self._body = json.dumps(payload).encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def read(self) -> bytes:
+        return self._body
+
+
+class _RecordingCoordinator:
+    def __init__(self) -> None:
+        self.request_starts = 0
+        self.throttle_events = 0
+        self.cooldowns: list[float] = []
+        self.cancelled = False
+
+    def wait_for_request_slot(self) -> None:
+        self.request_starts += 1
+
+    def impose_throttle_cooldown(self, seconds: float) -> None:
+        self.throttle_events += 1
+        self.cooldowns.append(float(seconds))
+
+    def wait_backoff(self, seconds: float) -> None:
+        return None
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+
+def test_v7_request_json_coordinates_429_then_recovers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path)
+    coordinator = _RecordingCoordinator()
+    monkeypatch.setattr(acquisition, "_ACTIVE_REQUEST_COORDINATOR", coordinator)
+
+    calls = 0
+
+    def opener(request, timeout):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise urllib.error.HTTPError(
+                request.full_url,
+                429,
+                "Too Many Requests",
+                {"Retry-After": "2"},
+                io.BytesIO(b'{"status":"ERROR","error":"rate limited"}'),
+            )
+        return _FakeResponse({"status": "OK", "results": []})
+
+    monkeypatch.setattr(acquisition.urllib.request, "urlopen", opener)
+
+    payload = acquisition._request_json(
+        settings,
+        url="https://api.massive.com/v3/reference/options/contracts",
+        api_key="token",
+    )
+
+    assert payload["status"] == "OK"
+    assert calls == 2
+    assert coordinator.request_starts == 2
+    assert coordinator.throttle_events == 1
+    assert coordinator.cooldowns == [2.0]
+
+
+def test_v7_request_json_persistent_429_stops_resumable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path)
+    coordinator = _RecordingCoordinator()
+    monkeypatch.setattr(acquisition, "_ACTIVE_REQUEST_COORDINATOR", coordinator)
+
+    def opener(request, timeout):
+        raise urllib.error.HTTPError(
+            request.full_url,
+            429,
+            "Too Many Requests",
+            {},
+            io.BytesIO(b'{"status":"ERROR","error":"rate limited"}'),
+        )
+
+    monkeypatch.setattr(acquisition.urllib.request, "urlopen", opener)
+
+    with pytest.raises(
+        acquisition.HistoricalOptionReferenceV7ProviderThrottleError,
+        match="Completed V7 receipts remain reusable",
+    ):
+        acquisition._request_json(
+            settings,
+            url="https://api.massive.com/v3/reference/options/contracts",
+            api_key="token",
+        )
+
+    assert coordinator.request_starts == settings.massive.reference.max_attempts
+    assert coordinator.throttle_events == settings.massive.reference.max_attempts
+    assert all(seconds >= 60.0 for seconds in coordinator.cooldowns)
+
+
+def test_v7_bounded_worker_failure_cancels_peer_request_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    coordinator = _RecordingCoordinator()
+    monkeypatch.setattr(acquisition, "_ACTIVE_REQUEST_COORDINATOR", coordinator)
+
+    def task(item: int) -> dict[str, object]:
+        if item == 1:
+            raise acquisition.HistoricalOptionReferenceV7Error("synthetic provider failure")
+        return {"item": item}
+
+    with pytest.raises(
+        acquisition.HistoricalOptionReferenceV7Error,
+        match="synthetic provider failure",
+    ):
+        acquisition._run_bounded(
+            [1, 2],
+            workers=2,
+            task=task,
+            on_complete=lambda item, receipt, done: None,
+        )
+
+    assert coordinator.cancelled is True
+
+
+def test_v7_request_coordinator_uses_one_shared_interval() -> None:
+    coordinator = acquisition._V7RequestCoordinator(requests_per_minute=5)
+    assert coordinator.requests_per_minute == 5
+    assert coordinator.minimum_interval_seconds == pytest.approx(12.0)
