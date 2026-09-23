@@ -183,12 +183,17 @@ class ProbeBudget:
         self.provider_minute_limit: int | None = None
         self.provider_burst: int | None = None
         self._next_start = 0.0
+        self.halted = False
 
     def can_request(self) -> bool:
         return (
-            self.request_attempts < self.max_requests
+            not self.halted
+            and self.request_attempts < self.max_requests
             and self.provider_remaining != 0
         )
+
+    def halt(self) -> None:
+        self.halted = True
 
     def before_request(self) -> None:
         if not self.can_request():
@@ -598,6 +603,7 @@ def run_czar28_historical_option_qualification_v1(
             return None
         except Czar28Error as exc:
             terminal_error = f"{type(exc).__name__}: {exc}"
+            budget.halt()
             return None
         probe_summaries.append(
             _summary_record(descriptor, receipt, payload, reused=reused)
