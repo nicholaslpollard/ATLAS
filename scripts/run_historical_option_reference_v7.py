@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.data.historical_option_reference_v7 import (
+    HistoricalOptionReferenceV7Error,
     run_historical_option_reference_v7_acquisition,
 )
 from packages.data.historical_option_reference_v7_contract import (
@@ -86,10 +87,26 @@ def main() -> int:
         "no historical availability/deliverable/price or strategy/PAPER/LIVE authority"
     )
 
-    summary = run_historical_option_reference_v7_acquisition(
-        settings,
-        workers=args.workers,
-    )
+    try:
+        summary = run_historical_option_reference_v7_acquisition(
+            settings,
+            workers=args.workers,
+        )
+    except HistoricalOptionReferenceV7Error as exc:
+        print("\nHISTORICAL OPTION REFERENCE V7: STOPPED_RESUMABLE")
+        print(f"  reason: {exc}")
+        print(
+            "  completed partition receipts remain reusable; "
+            "rerun the same command after the provider condition clears"
+        )
+        return 1
+    except KeyboardInterrupt:
+        print("\nHISTORICAL OPTION REFERENCE V7: INTERRUPTED_RESUMABLE")
+        print(
+            "  completed partition receipts remain reusable; "
+            "rerun the same command to resume"
+        )
+        return 130
 
     storage = summary["storage_after"]
     print("\nHISTORICAL OPTION REFERENCE V7: COMPLETE")
