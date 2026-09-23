@@ -14,6 +14,7 @@ from packages.providers.marketdata_app import (
     array_rows,
     historical_chain,
     historical_quote_series,
+    rate_limit_snapshot,
 )
 
 
@@ -244,6 +245,7 @@ def run_marketdata_five_year_options_qualification_v1(
             "chain_required_fields": chain_fields,
             "chain_open_interest_nonnull": chain_oi,
             "chain_historical_greeks_null": chain_greeks_null,
+            "chain_rate_limit": rate_limit_snapshot(chain_response.headers),
             "chain_raw_receipt": chain_receipt,
             "selected_option_symbol": (
                 str(selected.get("optionSymbol")) if selected else None
@@ -302,6 +304,7 @@ def run_marketdata_five_year_options_qualification_v1(
                     "openInterest",
                 ),
                 "quote_historical_greeks_null": _greeks_null(quote_rows),
+                "quote_rate_limit": rate_limit_snapshot(quote_response.headers),
                 "quote_raw_receipt": quote_receipt,
             }
         )
@@ -319,11 +322,11 @@ def run_marketdata_five_year_options_qualification_v1(
         and all(int(item.get("chain_rows") or 0) > 0 for item in anchors)
     )
     all_quote_series = (
-        len(anchors) == len(CONTRACT["anchors"])
+        len(anchors) == len(active_anchors)
         and all(int(item.get("quote_rows") or 0) > 0 for item in anchors)
     )
     all_oi = (
-        len(anchors) == len(CONTRACT["anchors"])
+        len(anchors) == len(active_anchors)
         and all(
             int(item.get("chain_open_interest_nonnull") or 0) > 0
             and int(item.get("quote_open_interest_nonnull") or 0) > 0
@@ -354,6 +357,28 @@ def run_marketdata_five_year_options_qualification_v1(
             else "FAIL"
         )
 
+    observed_credit_consumed = sum(
+        int(rate.get("consumed") or 0)
+        for item in anchors
+        for rate in (
+            item.get("chain_rate_limit"),
+            item.get("quote_rate_limit"),
+        )
+        if isinstance(rate, dict)
+    )
+    last_remaining = next(
+        (
+            int(rate["remaining"])
+            for item in reversed(anchors)
+            for rate in (
+                item.get("quote_rate_limit"),
+                item.get("chain_rate_limit"),
+            )
+            if isinstance(rate, dict) and rate.get("remaining") is not None
+        ),
+        None,
+    )
+
     report: dict[str, object] = {
         "status": status,
         "contract_id": CONTRACT["contract_id"],
@@ -368,6 +393,8 @@ def run_marketdata_five_year_options_qualification_v1(
         "all_anchor_chains_nonempty": all_anchor_chains,
         "all_quote_series_nonempty": all_quote_series,
         "open_interest_present_across_anchors": all_oi,
+        "observed_api_credits_consumed": observed_credit_consumed,
+        "last_observed_api_credits_remaining": last_remaining,
         "anchors": anchors,
         "terminal_error": terminal_error,
         "authority": CONTRACT["authority"],
