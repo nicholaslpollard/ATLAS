@@ -126,7 +126,11 @@ def main(argv: list[str] | None = None) -> int:
         "  authority: diagnostic challenger only; cross-provider validation and "
         "simulator integration remain separate gates"
     )
-    return 0 if report["status"] != "FAIL" else 3
+    qualified_statuses = {
+        "QUALIFIED_FOR_STARTER_TRIAL_CAPABILITY",
+        "QUALIFIED_FOR_FIVE_YEAR_EOD_ECONOMICS_CHALLENGER",
+    }
+    return 0 if report["status"] in qualified_statuses else 3
 
 
 if __name__ == "__main__":
