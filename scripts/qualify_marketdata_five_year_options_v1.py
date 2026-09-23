@@ -88,6 +88,10 @@ def main(argv: list[str] | None = None) -> int:
         f"{report['open_interest_present_across_anchors']}"
     )
     print(
+        "  usable bid/ask across anchors: "
+        f"{report['usable_bid_ask_across_anchors']}"
+    )
+    print(
         "  required schema present across anchors: "
         f"{report['required_schema_present_across_anchors']}"
     )
@@ -109,9 +113,11 @@ def main(argv: list[str] | None = None) -> int:
             f"{item.get('date')} {item.get('root')}: "
             f"chain_rows={item.get('chain_rows')} "
             f"chain_oi={item.get('chain_open_interest_nonnull')} "
+            f"chain_bidask={item.get('chain_usable_bid_ask_rows')} "
             f"contract={item.get('selected_option_symbol')} "
             f"quote_rows={item.get('quote_rows')} "
             f"quote_oi={item.get('quote_open_interest_nonnull')} "
+            f"quote_bidask={item.get('quote_usable_bid_ask_rows')} "
             f"error={item.get('error')}"
         )
     print(f"  terminal error: {report['terminal_error']}")
