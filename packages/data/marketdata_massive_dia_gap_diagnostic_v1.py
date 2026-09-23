@@ -322,7 +322,8 @@ def _classify_day(
 ) -> dict[str, Any]:
     condition_counts: Counter[int] = Counter()
     no_condition_count = 0
-    aggregate_eligible = 0
+    price_eligible = 0
+    volume_eligible = 0
     aggregate_ineligible = 0
     aggregate_unresolved = 0
     trade_size = 0.0
@@ -347,22 +348,29 @@ def _classify_day(
             pass
 
         fields = _trade_field_eligibility(trade, conditions)
-        values = list(fields.values())
-        if any(value is True for value in values):
-            aggregate_eligible += 1
-        elif all(value is False for value in values):
+        high_low = fields["updates_high_low"]
+        open_close = fields["updates_open_close"]
+        volume = fields["updates_volume"]
+
+        if high_low is True or open_close is True:
+            price_eligible += 1
+        if volume is True:
+            volume_eligible += 1
+
+        values = [high_low, open_close, volume]
+        if all(value is False for value in values):
             aggregate_ineligible += 1
-        else:
+        elif any(value is None for value in values):
             aggregate_unresolved += 1
 
     if not trades:
         disposition = "NO_RAW_TRADES"
-    elif aggregate_eligible > 0:
-        disposition = "AGGREGATE_ELIGIBLE_RAW_TRADES_PRESENT"
+    elif price_eligible > 0:
+        disposition = "PRICE_ELIGIBLE_RAW_TRADES_WITHOUT_DAILY_BAR"
     elif aggregate_unresolved > 0:
         disposition = "RAW_TRADES_PRESENT_ELIGIBILITY_UNRESOLVED"
     else:
-        disposition = "RAW_TRADES_ALL_AGGREGATE_INELIGIBLE"
+        disposition = "NO_PRICE_ELIGIBLE_RAW_TRADES"
 
     condition_details = []
     for code, count in sorted(condition_counts.items()):
@@ -383,7 +391,8 @@ def _classify_day(
         "raw_trade_count": len(trades),
         "raw_trade_size_sum": trade_size,
         "no_condition_trade_count": no_condition_count,
-        "aggregate_eligible_trade_count": aggregate_eligible,
+        "price_eligible_trade_count": price_eligible,
+        "volume_eligible_trade_count": volume_eligible,
         "aggregate_ineligible_trade_count": aggregate_ineligible,
         "aggregate_eligibility_unresolved_trade_count": aggregate_unresolved,
         "condition_counts": dict(sorted(condition_counts.items())),
@@ -526,7 +535,8 @@ def run_marketdata_massive_dia_gap_diagnostic_v1(
         print(
             f"      md_volume={record['marketdata_volume']} "
             f"raw_trades={record['raw_trade_count']} "
-            f"eligible={record['aggregate_eligible_trade_count']} "
+            f"price_eligible={record['price_eligible_trade_count']} "
+            f"volume_eligible={record['volume_eligible_trade_count']} "
             f"ineligible={record['aggregate_ineligible_trade_count']} "
             f"unresolved={record['aggregate_eligibility_unresolved_trade_count']} "
             f"disposition={record['disposition']}",
