@@ -20,7 +20,7 @@ from packages.data.czar28_connectivity_preflight import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Run a four-step Czar28 connectivity/history preflight before the "
+            "Run a five-step Czar28 connectivity/history preflight before the "
             "full 1,000-call historical-options qualification."
         )
     )
@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> int:
         "  contract fingerprint: "
         f"{CZAR28_CONNECTIVITY_PREFLIGHT_V1_FINGERPRINT}"
     )
-    print("  probe ladder: health -> current SPY -> recent expired SPY -> 2016 SPY")
+    print("  probe ladder: health -> current SPY chain -> recent expired SPY chain -> 2016 SPY chain -> 2016 SPY $200C EOD")
     print("  max transport attempts per probe: 3")
     print("  provider writes: 0")
     print("  broker/order/PAPER/LIVE authority: false")
@@ -74,10 +74,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     print(f"  report: {report['report_path']}")
 
-    if report["classification"] == "PREFLIGHT_PASS":
+    if report["classification"] in {"PREFLIGHT_PASS", "DEEP_EOD_AVAILABLE_CHAIN_LIMITATION"}:
         print(
-            "  next: safe to proceed to the frozen 1,000-call Czar28 "
-            "historical-option qualification"
+            "  next: historical EOD availability is viable; inspect chain "
+            "classification before deciding whether to start the 1,000-call qualification"
         )
         return 0
 
