@@ -171,7 +171,13 @@ def load_current_population(settings: AtlasSettings) -> Population:
 
     mask = frame[tradable_col].fillna(False).astype(bool)
 
-    if "status" in columns:
+    if "requested_status" in columns:
+        requested_status_col = columns["requested_status"]
+        mask &= frame[requested_status_col].astype(str).str.lower().eq("active")
+        if "provider_status" in columns:
+            provider_status_col = columns["provider_status"]
+            mask &= frame[provider_status_col].astype(str).str.lower().eq("active")
+    elif "status" in columns:
         status_col = columns["status"]
         mask &= frame[status_col].astype(str).str.lower().eq("active")
     elif "active" in columns:
