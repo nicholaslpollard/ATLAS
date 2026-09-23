@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED / STARTER-TRIAL CAPABILITY PROBE PENDING / PAID-STARTER FIVE-YEAR QUALIFICATION PENDING**
+**STARTER-TRIAL CAPABILITY QUALIFIED / PAID-STARTER FIVE-YEAR QUALIFICATION PENDING**
 
 Contract:
 
@@ -40,6 +40,23 @@ A successful trial run can de-risk endpoint behavior, schema, OI, raw persistenc
 candidate-first economics at zero subscription cost. It **cannot** establish broad
 five-year entitlement for non-AAPL symbols. The paid six-anchor qualification remains
 the final five-year entitlement gate if ATLAS proceeds with Starter.
+
+The target-workstation Starter Trial run completed successfully on 2026-09-23 under
+run id `20260923T203419Z` and evidence fingerprint
+`facd9289fc56279a14294c442f8a1f256388cfd152662be1bc06f600d1bf914a`.
+All five chains and quote series were non-empty; OI, usable bid/ask geometry and all
+required schema checks passed; historical Greeks/IV were present and null; no
+terminal error occurred. The run consumed 8 observed API credits and ended with
+9,992 remaining. Broad five-year entitlement remains explicitly unproven.
+
+Accepted evidence:
+`docs/research/marketdata_starter_trial_acceptance_v1_20260923.md`.
+
+The next gate is a four-contract, zero-MarketData-read semantic overlap diagnostic
+against Massive Basic daily option aggregates for the 2026 SPY/MSFT/NVDA/QQQ
+qualification contracts. The 2021 AAPL anchor is outside Massive Basic's current
+two-year REST aggregate window and remains excluded rather than silently
+substituted.
 
 
 ## API-credit and transport controls confirmed from provider documentation
