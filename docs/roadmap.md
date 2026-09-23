@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-22 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-23 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -32,6 +32,27 @@ If the three living documents conflict, progression fails closed until they are
 reconciled. Code and tests remain the authority for actual behavior; Git history and
 accepted artifacts remain the authority for what happened. A code or research
 package with stale applicable living documents is incomplete even if its tests pass.
+
+### Current source continuation — Czar28 historical option qualification V1
+
+The current historical-options continuation is a read-only qualification of
+Czar28/PublicOptions before any paid historical-options purchase. Massive Historical
+Option Reference V7 remains preserved but broad Basic-tier REST continuation is
+paused as an operational acquisition path: the latest resumed run reached 477
+provider request starts at 5/minute with 0/149 provider-pending partitions complete
+and five still in flight after roughly 1.5–2 hours. No V7 evidence is discarded and
+no resolver/quarantine rule is weakened.
+
+Czar28 V1 is frozen as candidate-source qualification only. It may intentionally use
+up to the Free plan's 1,000 monthly requests, with ATLAS locally capped at 55/minute
+and fail-closed on observed remaining quota zero or HTTP 429. The frozen evidence
+matrix covers 30 durable US roots for standard June monthly expirations in every
+2016..2026 anchor year, representative call/put EOD histories, one-day intraday
+quotes and trades, exact repeatability probes, and deterministic useful fill probes.
+Each response is persisted before dependent work and restart reuses verified receipts.
+A successful run does not create historical price authority; Czar28 must later pass
+cross-provider overlap validation. Historical open interest is explicitly outside
+this V1 schema and remains a later separately versioned overlay study.
 
 ## 2. Mission
 
