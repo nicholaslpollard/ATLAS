@@ -94,6 +94,7 @@ def get_json(
     idempotency_key: str | None = None,
     timeout_seconds: float = 30.0,
     api_key: str | None = None,
+    authenticate: bool = True,
     max_attempts: int = CZAR28_DEFAULT_MAX_ATTEMPTS,
     initial_retry_seconds: float = CZAR28_DEFAULT_INITIAL_RETRY_SECONDS,
     max_retry_seconds: float = CZAR28_DEFAULT_MAX_RETRY_SECONDS,
@@ -104,7 +105,10 @@ def get_json(
     if initial_retry_seconds < 0 or max_retry_seconds < 0:
         raise ValueError("retry delays must be non-negative")
 
-    key = (api_key or _resolve_api_key()).strip()
+    key = ""
+    if authenticate:
+        key = (api_key or _resolve_api_key()).strip()
+
     query = urllib.parse.urlencode(
         {str(k): str(v) for k, v in (params or {}).items()}
     )
@@ -113,10 +117,11 @@ def get_json(
         url += "?" + query
 
     headers = {
-        "Authorization": f"Bearer {key}",
         "Accept": "application/json",
         "User-Agent": "ATLAS-czar28-historical-options-qualification-v1/1",
     }
+    if authenticate:
+        headers["Authorization"] = f"Bearer {key}"
     if idempotency_key:
         headers["Idempotency-Key"] = idempotency_key
 
