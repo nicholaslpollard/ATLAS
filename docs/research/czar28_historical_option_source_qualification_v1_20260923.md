@@ -138,3 +138,26 @@ exponential-backoff retries, the logical idempotency key is unchanged across ret
 attempts, HTTP 429 remains an immediate quota stop, and exhausted retries still fail
 closed. Reports now distinguish logical qualification calls from physical HTTP
 attempts. The first failed run remains preserved evidence rather than being rewritten.
+
+## Connectivity preflight and live observability
+
+After two consecutive first-probe failures on SPY 2016-06-17, ATLAS no longer starts
+the full 1,000-call qualification blindly. A separately versioned operational
+preflight checks, in order:
+
+1. /options/health;
+2. SPY 2026-10-16 current monthly chain;
+3. SPY 2025-06-20 recent expired monthly chain; and
+4. SPY 2016-06-17 deep historical monthly chain.
+
+Each probe has at most three transport attempts. If health/current access fails, the
+preflight stops before the broad qualification. If current and recent history pass
+but 2016 fails, the result is explicitly DEEP_HISTORY_UNAVAILABLE rather than a
+generic provider failure. The preflight creates no historical-data or trading
+authority and does not change the frozen qualification fingerprint.
+
+The broad qualification now prints phase transitions and a heartbeat every 10 new
+logical calls containing logical/physical request counts, observed remaining quota,
+current probe, rows returned, and elapsed time. Recovered multi-attempt requests are
+printed immediately. Failed retry attempts are included in the physical HTTP count.
+
