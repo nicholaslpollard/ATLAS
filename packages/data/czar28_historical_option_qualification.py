@@ -161,7 +161,7 @@ class Czar28LocalBudgetExhausted(Czar28QualificationError):
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class ProbeBudget:
     max_requests: int
     requests_per_minute: int
@@ -840,7 +840,7 @@ def run_czar28_historical_option_qualification_v1(
             "checked": eod_repeat_checked,
             "exact_payload_matches": eod_repeat_matches,
         },
-        "probes": probe_summies if False else probe_summaries,
+        "probes": probe_summaries,
         "authority": CZAR28_HISTORICAL_OPTION_QUALIFICATION_V1_CONTRACT["authority"],
         "interpretation": {
             "candidate_source_only": True,
