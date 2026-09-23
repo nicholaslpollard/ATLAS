@@ -92,6 +92,18 @@ After recovery, ATLAS must run the existing five-probe connectivity/history pref
 before any 1,000-call source qualification. Historical-data, strategy, PAPER, LIVE,
 broker and order authority remain unchanged.
 
+A quota-free public health watcher is available while the provider is degraded:
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\watch_czar28_health_v1.py
+~~~
+
+It checks at 60-second intervals by default, prints state changes plus periodic
+heartbeats, consumes no Czar API-key quota, and exits only when public health is
+explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
+exit is the existing five-probe preflight, not the 1,000-call qualification.
+
+
 ## 2. Mission
 
 ATLAS is the **Autonomous Trading, Learning, and Analysis System**, the greenfield
