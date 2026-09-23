@@ -7,11 +7,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 
 CZAR28_BASE_URL = "https://api.czar28.com/v1"
 CZAR28_CREDENTIAL_ENV = "CZAR_API_KEY"
+CZAR28_TRANSIENT_HTTP_STATUS = frozenset({500, 502, 503, 504})
+CZAR28_DEFAULT_MAX_ATTEMPTS = 6
+CZAR28_DEFAULT_INITIAL_RETRY_SECONDS = 2.0
+CZAR28_DEFAULT_MAX_RETRY_SECONDS = 20.0
 
 
 class Czar28Error(RuntimeError):
@@ -29,6 +33,7 @@ class Czar28Response:
     headers: dict[str, str]
     response_bytes: int
     elapsed_seconds: float
+    transport_attempts: int = 1
 
 
 def _resolve_api_key() -> str:
@@ -50,6 +55,27 @@ def _decode_json(raw: bytes) -> dict[str, Any]:
     return value
 
 
+def _safe_decode_json(raw: bytes) -> dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        return _decode_json(raw)
+    except Czar28Error:
+        return {"raw_error": raw[:500].decode("utf-8", errors="replace")}
+
+
+def _retry_after_seconds(headers: dict[str, str]) -> float | None:
+    lowered = {str(k).lower(): str(v) for k, v in headers.items()}
+    raw = lowered.get("retry-after")
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, value)
+
+
 def get_json(
     path: str,
     *,
@@ -57,7 +83,16 @@ def get_json(
     idempotency_key: str | None = None,
     timeout_seconds: float = 30.0,
     api_key: str | None = None,
+    max_attempts: int = CZAR28_DEFAULT_MAX_ATTEMPTS,
+    initial_retry_seconds: float = CZAR28_DEFAULT_INITIAL_RETRY_SECONDS,
+    max_retry_seconds: float = CZAR28_DEFAULT_MAX_RETRY_SECONDS,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> Czar28Response:
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be positive")
+    if initial_retry_seconds < 0 or max_retry_seconds < 0:
+        raise ValueError("retry delays must be non-negative")
+
     key = (api_key or _resolve_api_key()).strip()
     query = urllib.parse.urlencode(
         {str(k): str(v) for k, v in (params or {}).items()}
@@ -76,36 +111,74 @@ def get_json(
 
     request = urllib.request.Request(url, headers=headers, method="GET")
     started = time.perf_counter()
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            raw = response.read()
-            return Czar28Response(
-                http_status=int(response.status),
-                payload=_decode_json(raw),
-                headers={str(k): str(v) for k, v in response.headers.items()},
-                response_bytes=len(raw),
-                elapsed_seconds=max(0.0, time.perf_counter() - started),
+    last_error: BaseException | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                raw = response.read()
+                return Czar28Response(
+                    http_status=int(response.status),
+                    payload=_decode_json(raw),
+                    headers={str(k): str(v) for k, v in response.headers.items()},
+                    response_bytes=len(raw),
+                    elapsed_seconds=max(0.0, time.perf_counter() - started),
+                    transport_attempts=attempt,
+                )
+        except urllib.error.HTTPError as exc:
+            raw = exc.read()
+            response_headers = {str(k): str(v) for k, v in exc.headers.items()}
+            payload = _safe_decode_json(raw)
+
+            if exc.code == 429:
+                raise Czar28QuotaExhausted(
+                    f"Czar28 quota/rate limit returned HTTP 429: "
+                    f"{payload.get('error') or payload.get('message') or 'quota_exceeded'}"
+                ) from exc
+
+            if exc.code == 404:
+                return Czar28Response(
+                    http_status=404,
+                    payload=payload,
+                    headers=response_headers,
+                    response_bytes=len(raw),
+                    elapsed_seconds=max(0.0, time.perf_counter() - started),
+                    transport_attempts=attempt,
+                )
+
+            if exc.code in CZAR28_TRANSIENT_HTTP_STATUS and attempt < max_attempts:
+                retry_after = _retry_after_seconds(response_headers)
+                backoff = min(
+                    max_retry_seconds,
+                    initial_retry_seconds * (2 ** (attempt - 1)),
+                )
+                sleep(max(backoff, retry_after or 0.0))
+                last_error = exc
+                continue
+
+            suffix = (
+                f" after {attempt} transport attempts"
+                if attempt > 1
+                else ""
             )
-    except urllib.error.HTTPError as exc:
-        raw = exc.read()
-        response_headers = {str(k): str(v) for k, v in exc.headers.items()}
-        payload = _decode_json(raw) if raw else {}
-        if exc.code == 429:
-            raise Czar28QuotaExhausted(
-                f"Czar28 quota/rate limit returned HTTP 429: "
-                f"{payload.get('error') or payload.get('message') or 'quota_exceeded'}"
+            raise Czar28Error(
+                f"Czar28 HTTP {exc.code}{suffix}: "
+                f"{payload.get('error') or payload.get('message') or payload.get('raw_error') or raw[:200]!r}"
             ) from exc
-        if exc.code == 404:
-            return Czar28Response(
-                http_status=404,
-                payload=payload,
-                headers=response_headers,
-                response_bytes=len(raw),
-                elapsed_seconds=max(0.0, time.perf_counter() - started),
-            )
-        raise Czar28Error(
-            f"Czar28 HTTP {exc.code}: "
-            f"{payload.get('error') or payload.get('message') or raw[:200]!r}"
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise Czar28Error(f"Czar28 transport error: {exc}") from exc
+
+        except urllib.error.URLError as exc:
+            last_error = exc
+            if attempt < max_attempts:
+                backoff = min(
+                    max_retry_seconds,
+                    initial_retry_seconds * (2 ** (attempt - 1)),
+                )
+                sleep(backoff)
+                continue
+            raise Czar28Error(
+                f"Czar28 transport error after {attempt} attempts: {exc}"
+            ) from exc
+
+    raise Czar28Error(
+        f"Czar28 request failed after {max_attempts} attempts: {last_error}"
+    )
