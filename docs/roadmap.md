@@ -74,25 +74,23 @@ not modify the frozen Czar28 V1 scientific contract or authority. The full quali
 also exposes phase/current-probe/live quota/retry/elapsed telemetry every 10 logical
 calls and correctly counts failed transport attempts.
 
-### Czar28 workstation preflight — corroborated upstream degradation
+### Czar28 recovery gate — upstream degraded / historical depth still untested
 
-The first bounded preflight on the documented Production API host
-`https://api.czar28.com/v1` returned HTTP 503 at the health step. The user's
-dashboard showed the key active and seven requests counted, so this was not treated
-as an authentication or reachability failure.
+The user's dashboard confirms the Free account/key is active and requests are reaching
+Czar28. Direct health evidence returned `status=degraded`,
+`mdds_status=UNDETERMINED`, and upstream message `ERROR CODE: 1033`. This is
+operational upstream-health evidence only; no conclusion about 2016..2026 historical
+coverage is opened.
 
-A direct unauthenticated health call using the documented example host
-`https://czar28.com/v1/options/health` returned `status=degraded`,
-`mdds_status=UNDETERMINED`, latency 131 ms, and
-`Unexpected status payload: ERROR CODE: 1033`. Cloudflare documents error 1033 as
-a tunnel-origin failure with no healthy `cloudflared` instance. Czar's docs remain
-hostname-inconsistent: the Servers section names `api.czar28.com/v1` as Production,
-while examples use the apex host. ATLAS keeps the explicit Production host and uses
-the apex-host health response only as corroborating provider-health evidence.
+Czar28's current OpenAPI 1.2.0 declares `https://czar28.com` as Production, with
+stable endpoints beneath `/v1`, and marks the health endpoint public. ATLAS now
+pins that current machine-readable server contract and fails closed before any
+quota-consuming historical-option qualification unless public health is explicitly
+`status=ok` and `mdds_status=CONNECTED`.
 
-The 1,000-call historical-options qualification remains paused until provider health
-recovers. No historical-data, strategy, PAPER, LIVE, broker or order authority is
-created or changed.
+After recovery, ATLAS must run the existing five-probe connectivity/history preflight
+before any 1,000-call source qualification. Historical-data, strategy, PAPER, LIVE,
+broker and order authority remain unchanged.
 
 ## 2. Mission
 
