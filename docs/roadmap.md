@@ -146,6 +146,13 @@ access plus full historical access for AAPL. ATLAS therefore probes deep AAPL at
 2021-10-01 and recent SPY/MSFT/NVDA/QQQ dates within one year. A pass proves the
 candidate-first mechanics and data fields, not broad five-year entitlement.
 
+
+**MarketData runtime budget policy:** daily self-service credits reset at 09:30
+America/New_York. The provider's limit/remaining/reset/consumed response headers are
+runtime authority. Future acquisition must estimate cost before dispatch because one
+request may overdraw the balance, and local concurrency must remain below the
+documented 50-request maximum. Trial qualification remains sequential.
+
 No historical-price, strategy, PAPER, LIVE, broker or order authority is created by
 this qualification.
 
