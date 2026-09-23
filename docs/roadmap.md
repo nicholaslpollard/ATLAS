@@ -82,11 +82,13 @@ Czar28. Direct health evidence returned `status=degraded`,
 operational upstream-health evidence only; no conclusion about 2016..2026 historical
 coverage is opened.
 
-Czar28's current OpenAPI 1.2.0 declares `https://czar28.com` as Production, with
-stable endpoints beneath `/v1`, and marks the health endpoint public. ATLAS now
-pins that current machine-readable server contract and fails closed before any
-quota-consuming historical-option qualification unless public health is explicitly
-`status=ok` and `mdds_status=CONNECTED`.
+Czar28's current official surfaces disagree on the global Production host: OpenAPI
+1.2.0 declares the apex host while the human Servers table names
+`https://api.czar28.com/v1` for authenticated live traffic. ATLAS freezes
+role-specific routing: authenticated chain/EOD/intraday/trade requests use the API
+subdomain and public health uses the apex
+`https://czar28.com/v1/options/health`. Qualification fails closed unless public
+health is explicitly `status=ok` and `mdds_status=CONNECTED`.
 
 After recovery, ATLAS must run the existing five-probe connectivity/history preflight
 before any 1,000-call source qualification. Historical-data, strategy, PAPER, LIVE,
@@ -104,7 +106,7 @@ explicitly `status=ok` and `mdds_status=CONNECTED`. The next action after that
 exit is the existing five-probe preflight, not the 1,000-call qualification.
 
 
-### Active paid unblocking path — MarketData.app five-year historical options
+### Active unblocking path — MarketData.app five-year historical options
 
 ATLAS will no longer treat ten-year historical-option completeness as a global
 simulator blocker. The active paid challenger is
