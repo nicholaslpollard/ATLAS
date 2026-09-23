@@ -9,7 +9,7 @@ from typing import Any
 
 from packages.core.atomic_io import atomic_write_text
 from packages.core.settings import AtlasSettings
-from packages.data.marketdata_five_year_options_qualification import array_rows
+from packages.providers.marketdata_app import array_rows
 from packages.data.marketdata_massive_overlap_v1 import (
     _marketdata_date,
     _massive_date,
