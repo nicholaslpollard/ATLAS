@@ -40,6 +40,18 @@ CZAR28_CONNECTIVITY_PREFLIGHT_V1 = {
             "path": "options/chain",
             "params": {"root": "SPY", "exp": "20160617"},
         },
+        {
+            "name": "deep_expired_eod",
+            "path": "options/quote/eod",
+            "params": {
+                "root": "SPY",
+                "exp": "20160617",
+                "strike": "200",
+                "right": "C",
+                "start_date": "20160601",
+                "end_date": "20160617",
+            },
+        },
     ],
     "max_transport_attempts_per_probe": 3,
     "authority": {
@@ -118,6 +130,7 @@ def classify_preflight(
     current = by_name.get("current_chain")
     recent = by_name.get("recent_expired_chain")
     deep = by_name.get("deep_expired_chain")
+    deep_eod = by_name.get("deep_expired_eod")
 
     if health is None or health.status != "PASS":
         return "PROVIDER_HEALTH_UNAVAILABLE"
@@ -127,8 +140,10 @@ def classify_preflight(
         return "CURRENT_CHAIN_UNAVAILABLE"
     if recent is None or recent.status != "PASS":
         return "RECENT_HISTORY_UNAVAILABLE"
-    if deep is None or deep.status != "PASS":
+    if deep_eod is None or deep_eod.status != "PASS":
         return "DEEP_HISTORY_UNAVAILABLE"
+    if deep is None or deep.status != "PASS":
+        return "DEEP_EOD_AVAILABLE_CHAIN_LIMITATION"
     return "PREFLIGHT_PASS"
 
 
@@ -229,8 +244,8 @@ def run_czar28_connectivity_preflight_v1(
         results.append(result)
 
         # Fail early when the provider cannot answer the health/current path.
-        # Continue after recent/deep failures because their distinction is the
-        # point of the diagnostic.
+        # Continue after recent/deep-chain failures so the direct deep EOD
+        # endpoint can distinguish chain-discovery failure from price-data failure.
         if name in {"health", "current_chain"} and result.status != "PASS":
             break
 
