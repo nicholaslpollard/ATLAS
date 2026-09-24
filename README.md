@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-23 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-24 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -240,6 +240,34 @@ the sparse-case rule is actually exercised.
 
 V2 contract:
 `docs/research/marketdata_massive_disjoint_validation_v2_20260923.md`.
+
+The first V2 workstation result is preserved as **VALIDATION_FAILED** under run
+`20260924T023405Z` / evidence fingerprint
+`7461146a5c3f3f021384fea54cdfae1c4f62b509ed64f55f8a61b1b0d8d13dad`.
+All six anchors passed every anchor-level criterion and contributed **53
+positive-volume comparisons**. Across those sessions, MarketData `last` equaled
+Massive close on 100% of comparisons, MarketData `last` was inside Massive
+low/high on 100%, aggregate median relative price difference was 0%, aggregate
+median relative volume difference was 0%, and the maximum observed volume-relative
+difference was approximately 0.30%. The only failed preregistered check was
+`sparse_case_observed`: the six selected contracts produced **0 zero-volume
+MarketData sessions**. V2 therefore remains failed and will not be rerun or have its
+thresholds weakened.
+
+The next gate is a separate targeted sparse-activity confirmation,
+`atlas-marketdata-massive-sparse-activity-confirmation-v1`. It does not repeat the
+positive-volume price validation. Instead it freezes 12 new roots/dates and a
+deterministic **farthest-OTM call** selector based only on chain strike and underlying
+price, specifically to stress low-activity option paths without using quote-series
+volume to choose contracts. Every observed session counts. A pass requires at least
+10 zero-volume sessions across at least 3 anchors, at least 20 positive-volume
+control sessions across at least 3 anchors, and 100% activity concordance:
+MarketData volume 0 -> no Massive daily bar; MarketData volume >0 -> Massive daily
+bar present. This gate cannot validate zero-volume `last` or create price,
+execution, simulator, PAPER or LIVE authority.
+
+Sparse confirmation contract:
+`docs/research/marketdata_massive_sparse_activity_v1_20260924.md`.
 
 MarketData EOD last/volume, bid/ask, intraday, execution, simulator, strategy, PAPER
 and LIVE authority all remain closed.

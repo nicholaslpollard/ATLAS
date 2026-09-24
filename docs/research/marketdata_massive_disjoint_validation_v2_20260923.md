@@ -2,7 +2,7 @@
 
 ## Status
 
-**PREREGISTERED / WORKSTATION EVIDENCE PENDING**
+**VALIDATION_FAILED / FROZEN / NOT TO BE RERUN AS V2**
 
 Contract:
 
@@ -117,6 +117,58 @@ Exact MarketData-last / Massive-close equality remains descriptive only.
 
 If the complete sample contains zero sparse sessions, V2 does not pass merely on
 liquid cases; the sparse-case support requirement fails.
+
+## Workstation result — 2026-09-24
+
+Accepted V2 evidence:
+
+- run id: `20260924T023405Z`;
+- evidence fingerprint:
+  `7461146a5c3f3f021384fea54cdfae1c4f62b509ed64f55f8a61b1b0d8d13dad`;
+- status: `VALIDATION_FAILED`;
+- terminal error: none;
+- anchor pass count: 6/6;
+- positive-volume comparisons: 53;
+- zero-volume sessions: 0;
+- observed MarketData credits consumed: 10;
+- last observed MarketData credits remaining: 9,974.
+
+Every anchor passed every anchor-level criterion:
+
+| Root | Quote rows | Positive-volume | Zero-volume | Massive bars | Anchor pass |
+| --- | ---: | ---: | ---: | ---: | --- |
+| AAPL | 9 | 9 | 0 | 9 | yes |
+| TSLA | 9 | 9 | 0 | 9 | yes |
+| AMD | 9 | 9 | 0 | 9 | yes |
+| JPM | 8 | 8 | 0 | 8 | yes |
+| XLF | 9 | 9 | 0 | 9 | yes |
+| TLT | 9 | 9 | 0 | 9 | yes |
+
+Across the 53 positive-volume sessions:
+
+- exact MarketData-last / Massive-close match rate: 100%;
+- aggregate median relative last/close difference: 0%;
+- aggregate maximum relative last/close difference: 0%;
+- MarketData-last inside Massive low/high: 100%;
+- aggregate median relative volume difference: 0%;
+- aggregate maximum relative volume difference: approximately 0.29985%.
+
+The only failed aggregate check was `sparse_case_observed`. None of the six
+preregistered selected contracts produced a zero-volume MarketData session during
+its quote window.
+
+Therefore V2 remains a genuine failed validation. Its sparse-case requirement is not
+removed, its sample is not replaced, and V2 is not rerun to seek a favorable sparse
+case. No provider-semantic authority is granted by V2 despite the strong
+positive-volume agreement.
+
+The result supports a separately versioned targeted sparse-activity confirmation.
+That new experiment may deliberately stress low-activity contracts, but its
+selection rule, roots, dates and thresholds must be frozen before provider reads and
+must count every observed session.
+
+Follow-up contract:
+`docs/research/marketdata_massive_sparse_activity_v1_20260924.md`.
 
 ## Pass meaning
 
