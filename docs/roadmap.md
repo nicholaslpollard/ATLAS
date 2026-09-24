@@ -270,6 +270,31 @@ execution, simulator, PAPER or LIVE authority.
 Sparse confirmation contract:
 `docs/research/marketdata_massive_sparse_activity_v1_20260924.md`.
 
+The first sparse-activity workstation result is preserved as
+**SPARSE_ACTIVITY_CONFIRMATION_FAILED** under run `20260924T033435Z` / evidence
+fingerprint `d7ce4d184d175b6f60233f2a4470e8e4e67a27691ac8a45a082b805b9e3cce6d`.
+Across 105 MarketData sessions, 87 were zero-volume and 18 were positive-volume.
+All 105 sessions were activity-concordant with Massive: every zero-volume session
+lacked a Massive daily aggregate, every positive-volume session had one, no invalid
+volume occurred, and Massive supplied no extra dates. Zero-volume sessions appeared
+across all 12 anchors; positive-volume controls appeared across 6 anchors.
+
+The gate still failed because the preregistered positive-control floor was 20 and
+only 18 were observed. That threshold is not reduced, V1 is not rerun, and its
+selector is not altered after observation.
+
+The next gate is separately preregistered as
+`atlas-marketdata-massive-sparse-activity-confirmation-v2`. It uses 12 new roots
+and dates and retains the exact V1 support thresholds, but changes the selector
+prospectively to the **third-farthest OTM call** from the same restricted chain.
+The selector still uses only strike, underlying price and symbol; quote-series
+volume and Massive data remain unavailable at selection time. This is intended to
+produce a less-extreme mix of sparse and positive-control sessions without changing
+the activity hypothesis or support requirements.
+
+Sparse V2 contract:
+`docs/research/marketdata_massive_sparse_activity_v2_20260924.md`.
+
 MarketData EOD last/volume, bid/ask, intraday, execution, simulator, strategy, PAPER
 and LIVE authority all remain closed.
 
