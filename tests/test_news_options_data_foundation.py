@@ -11,6 +11,7 @@ from packages.data.news_options_source_preflight import (
     DOCUMENTED_SOURCE_COVERAGE,
     run_news_options_data_preflight,
 )
+from packages.data.external_storage import apply_external_storage_bindings
 from packages.data.research_storage import (
     GIB,
     ResearchStorageError,
@@ -97,3 +98,64 @@ def test_documented_coverage_keeps_quote_gap_explicit() -> None:
         == "2014-06-02"
     )
     assert DOCUMENTED_SOURCE_COVERAGE["massive_option_quotes"]["historical_start"] == "2022-03-07"
+
+
+def test_external_storage_policy_uses_external_volume_and_budget(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path / "project")
+    settings.project_root.mkdir(parents=True)
+    external = tmp_path / "external"
+    apply_external_storage_bindings(
+        settings,
+        external_root=external,
+        migrate_existing=True,
+    )
+    monkeypatch.setenv("ATLAS_EXTERNAL_DATA_ROOT", str(external))
+
+    seen: list[Path] = []
+
+    def fake_disk_usage(path):
+        seen.append(Path(path).resolve())
+        return DiskUsage(238 * GIB, 28 * GIB, 210 * GIB)
+
+    monkeypatch.setattr(
+        "packages.data.research_storage.shutil.disk_usage",
+        fake_disk_usage,
+    )
+    snapshot = inspect_research_storage(settings)
+
+    assert snapshot.storage_mode == "EXTERNAL_SECONDARY"
+    assert Path(snapshot.storage_root).resolve() == external.resolve()
+    assert snapshot.disk_free_gib == pytest.approx(210.0)
+    assert snapshot.minimum_free_gib == pytest.approx(25.0)
+    assert snapshot.warning_free_gib == pytest.approx(40.0)
+    assert snapshot.acquisition_budget_gib == pytest.approx(190.0)
+    assert snapshot.category_quota_gib["options_candidate_cache"] == pytest.approx(120.0)
+    assert seen and seen[-1] == external.resolve()
+
+
+def test_external_storage_candidate_cache_quota_is_larger_than_local(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = _settings(tmp_path / "project")
+    settings.project_root.mkdir(parents=True)
+    external = tmp_path / "external"
+    apply_external_storage_bindings(
+        settings,
+        external_root=external,
+        migrate_existing=True,
+    )
+    monkeypatch.setenv("ATLAS_EXTERNAL_DATA_ROOT", str(external))
+    monkeypatch.setattr(
+        "packages.data.research_storage.shutil.disk_usage",
+        lambda _path: DiskUsage(238 * GIB, 28 * GIB, 210 * GIB),
+    )
+
+    assert_category_acquisition_allowed(
+        settings,
+        category="options_candidate_cache",
+        projected_additional_bytes=21 * GIB,
+    )
