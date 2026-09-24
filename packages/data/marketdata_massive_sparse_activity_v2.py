@@ -350,7 +350,25 @@ def run_sparse_activity_confirmation_v2(
         raw_results = massive_payload.get("results") or []
         massive_rows = [r for r in raw_results if isinstance(r, dict)] if isinstance(raw_results, list) else []
 
-        activity = _activity_records(marketdata_rows, massive_rows)
+        try:
+            activity = _activity_records(marketdata_rows, massive_rows)
+        except Exception as exc:
+            terminal_error = f"{type(exc).__name__}: {exc}"
+            anchors.append({
+                "root": underlying,
+                "date": anchor_date,
+                "option_symbol": option_symbol,
+                "status": "COMPARISON_ERROR",
+                "marketdata_quote_rows": len(marketdata_rows),
+                "massive_aggregate_rows": len(massive_rows),
+                "chain_raw_receipt": chain_receipt,
+                "quote_raw_receipt": quote_receipt,
+                "massive_raw_receipt": massive_receipt,
+                "error": terminal_error,
+            })
+            print(f"      STOP: {terminal_error}", flush=True)
+            break
+
         zero_count = sum(r["marketdata_volume"] == 0 for r in activity["records"])
         positive_count = sum(
             isinstance(r["marketdata_volume"], (int, float))
