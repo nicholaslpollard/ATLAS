@@ -6,6 +6,29 @@ data:
     premarket_start_local: "04:00"
     after_hours_end_local: "20:00"
 
+  external_storage:
+    root_env: ATLAS_EXTERNAL_DATA_ROOT
+    marker_name: .atlas_external_storage_v1.json
+    bindings:
+      options:
+        project_subdir: data/options
+        external_subdir: options
+      news:
+        project_subdir: data/news
+        external_subdir: news
+      provider_qualification:
+        project_subdir: data/research/provider_qualification
+        external_subdir: research/provider_qualification
+      research_evidence:
+        project_subdir: data/research/evidence
+        external_subdir: research/evidence
+      fundamentals:
+        project_subdir: data/fundamentals
+        external_subdir: fundamentals
+      archives:
+        project_subdir: data/archives
+        external_subdir: archives
+
   canonical:
     stock_timeframes:
       - 1m
@@ -50,22 +73,30 @@ data:
       minimum_free_gib: 50
       warning_free_gib: 65
       acquisition_budget_gib: 40
+      external_minimum_free_gib: 25
+      external_warning_free_gib: 40
+      external_acquisition_budget_gib: 190
       categories:
         news:
           local_subdir: data/news
           quota_gib: 4
+          external_quota_gib: 15
         options_reference:
           local_subdir: data/options/reference
           quota_gib: 4
+          external_quota_gib: 15
         options_daily:
           local_subdir: data/options/daily
           quota_gib: 8
+          external_quota_gib: 30
         options_candidate_cache:
           local_subdir: data/options/candidate_cache
           quota_gib: 20
+          external_quota_gib: 120
         options_derived:
           local_subdir: data/options/derived
           quota_gib: 4
+          external_quota_gib: 10
 
     news:
       provider: alpaca
