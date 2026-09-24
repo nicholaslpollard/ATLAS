@@ -357,6 +357,10 @@ class AtlasSettings(BaseModel):
         binding = self._binding_for_relative_path(path)
         if binding is not None:
             self.assert_external_storage_binding(binding)
+            # Preserve the stable project-relative namespace even when the directory
+            # is a junction/symlink to external storage. Receipts and manifests can
+            # therefore survive drive-letter changes.
+            return Path(os.path.abspath(self.project_root / path))
         return (self.project_root / path).resolve()
 
 
