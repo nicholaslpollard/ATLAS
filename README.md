@@ -350,6 +350,35 @@ This is a transport-contract reconciliation only. Historical depth remains unpro
 while the upstream is degraded, and no provider, historical-price, strategy, PAPER,
 LIVE, broker or order authority changes.
 
+### External secondary-data storage V1 — 2026-09-24
+
+ATLAS now has an explicit external-storage boundary for large secondary datasets.
+The core repository and existing primary stock-data layout remain internal and
+unchanged, including `data/provider`, `data/canonical` (the accepted Alpaca SIP V2
+stock corpus), `data/duckdb`, and `data/checkpoints`.
+
+The external-eligible bindings are `data/options`, `data/news`,
+`data/research/provider_qualification`, `data/research/evidence`,
+`data/fundamentals`, and `data/archives`. On Windows these remain visible at their
+stable project-relative paths through directory junctions while their bytes live
+under the configured external root. This preserves legacy path/receipt compatibility
+and prevents drive-letter changes from becoming scientific-identity changes.
+
+The external root is configured with `ATLAS_EXTERNAL_DATA_ROOT` only after
+`scripts/configure_external_storage.py` reaches `READY`. The bootstrap can migrate
+existing secondary files with an explicit `--migrate-existing` gate; it never moves
+the primary stock paths. Once configured, research acquisition uses the external
+volume's free-space/quota profile and fails closed if the root/bindings are not ready
+rather than silently spilling large options/news data back onto the internal drive.
+
+For the initial ~256 GB external NVMe plan, the external profile reserves at least
+25 GiB free and caps total secondary acquisition at 190 GiB, including a 120 GiB
+candidate-options cache. The pre-existing local profile remains 40 GiB total with a
+50 GiB minimum-free-space floor when no external root is configured.
+
+Full storage contract:
+`docs/external_secondary_storage_v1_20260924.md`.
+
 ## Read this first
 
 1. Read this entire README for the current handoff.

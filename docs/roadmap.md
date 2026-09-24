@@ -446,6 +446,37 @@ production operations`
   engine. It may format and aggregate authoritative records but must not maintain a
   separate trading truth or independently recompute trading decisions.
 
+### External secondary-data storage V1 — 2026-09-24
+
+The large secondary-data path is now separated from the primary ATLAS/stock path.
+
+Primary/internal paths remain unchanged:
+`data/provider`, `data/canonical`, `data/duckdb`, `data/checkpoints`, source
+code, runtime state, and the accepted Alpaca SIP V2 stock corpus.
+
+External-eligible project bindings:
+`data/options`, `data/news`, `data/research/provider_qualification`,
+`data/research/evidence`, `data/fundamentals`, and `data/archives`.
+
+On Windows, V1 uses directory junctions so existing code continues to address stable
+project-relative paths while storage physically resides under
+`ATLAS_EXTERNAL_DATA_ROOT`. Binding setup is explicit and fail-closed. Existing
+secondary data moves only with `--migrate-existing`; conflicting targets, missing
+configured roots, or incorrect bindings block acquisition rather than fall back to C:.
+
+The initial external-volume policy is sized for the planned ~256 GB NVMe enclosure:
+190 GiB total acquisition budget, 25 GiB minimum free space, 40 GiB warning floor,
+and a 120 GiB candidate-options-cache quota. The original local 40 GiB/50 GiB safety
+policy remains active whenever no external root is configured.
+
+Hardware activation is pending. After the enclosure arrives, the next operator gate
+is to identify the assigned drive letter, format/verify the SSD, run
+`scripts/configure_external_storage.py` first in inspection mode, then apply/migrate
+and persist the external root only after the binding state is `READY`.
+
+Contract:
+`docs/external_secondary_storage_v1_20260924.md`.
+
 ### Historical News V1 acquisition — 2026-09-20
 
 Historical News V1 is the first acquisition stage under the bounded news/options

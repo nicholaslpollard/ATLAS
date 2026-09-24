@@ -83,3 +83,26 @@ def test_massive_reference_settings_are_bounded():
     settings = load_settings(ROOT, "development")
     assert settings.massive.reference.page_limit == 1000
     assert settings.massive.reference.max_attempts >= 1
+
+
+def test_external_storage_configuration_keeps_primary_stock_paths_local():
+    settings = load_settings(ROOT, "development")
+    bindings = settings.data.external_storage.bindings
+    assert settings.data.external_storage.root_env == "ATLAS_EXTERNAL_DATA_ROOT"
+    assert bindings["options"].project_subdir == Path("data/options")
+    assert bindings["news"].project_subdir == Path("data/news")
+
+    bound_paths = {Path(item.project_subdir) for item in bindings.values()}
+    assert settings.data.paths.canonical not in bound_paths
+    assert settings.data.paths.provider not in bound_paths
+    assert settings.data.paths.duckdb not in bound_paths
+    assert settings.data.paths.checkpoints not in bound_paths
+
+
+def test_external_research_budget_is_separate_from_local_budget():
+    settings = load_settings(ROOT, "development")
+    storage = settings.data.research.storage
+    assert storage.acquisition_budget_gib == 40
+    assert storage.external_acquisition_budget_gib == 190
+    assert storage.categories["options_candidate_cache"].quota_gib == 20
+    assert storage.categories["options_candidate_cache"].external_quota_gib == 120

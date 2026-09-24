@@ -47,6 +47,17 @@ class DataPaths(BaseModel):
     checkpoints: Path
 
 
+class ExternalStorageBindingConfig(BaseModel):
+    project_subdir: Path
+    external_subdir: Path
+
+
+class ExternalStorageConfig(BaseModel):
+    root_env: str = "ATLAS_EXTERNAL_DATA_ROOT"
+    marker_name: str = ".atlas_external_storage_v1.json"
+    bindings: dict[str, ExternalStorageBindingConfig] = Field(default_factory=dict)
+
+
 class CanonicalConfig(BaseModel):
     stock_timeframes: list[str]
     preserve_provider_vwap: bool = True
@@ -66,12 +77,16 @@ class StagingConfig(BaseModel):
 class ResearchStorageCategoryConfig(BaseModel):
     local_subdir: str
     quota_gib: float = Field(gt=0)
+    external_quota_gib: float | None = Field(default=None, gt=0)
 
 
 class ResearchStorageConfig(BaseModel):
     minimum_free_gib: float = Field(default=50.0, gt=0)
     warning_free_gib: float = Field(default=65.0, gt=0)
     acquisition_budget_gib: float = Field(default=40.0, gt=0)
+    external_minimum_free_gib: float = Field(default=25.0, gt=0)
+    external_warning_free_gib: float = Field(default=40.0, gt=0)
+    external_acquisition_budget_gib: float = Field(default=190.0, gt=0)
     categories: dict[str, ResearchStorageCategoryConfig] = Field(default_factory=dict)
 
 
@@ -113,6 +128,7 @@ class ResearchDataConfig(BaseModel):
 
 class DataConfig(BaseModel):
     calendar: CalendarConfig
+    external_storage: ExternalStorageConfig = Field(default_factory=ExternalStorageConfig)
     canonical: CanonicalConfig
     parquet: ParquetConfig = Field(default_factory=ParquetConfig)
     staging: StagingConfig = Field(default_factory=StagingConfig)
@@ -266,9 +282,86 @@ class AtlasSettings(BaseModel):
     tradier: TradierConfig
     logging: LoggingConfig
 
+    def external_data_root(self) -> Path | None:
+        value = os.getenv(self.data.external_storage.root_env)
+        if value is None or not value.strip():
+            return None
+        return Path(value).expanduser().resolve()
+
+    def external_storage_binding_paths(
+        self,
+        name: str,
+        *,
+        root_override: Path | None = None,
+    ) -> tuple[Path, Path]:
+        try:
+            binding = self.data.external_storage.bindings[name]
+        except KeyError as exc:
+            raise ConfigurationError(f"Unknown external-storage binding: {name}") from exc
+        external_root = (
+            Path(root_override).expanduser().resolve()
+            if root_override is not None
+            else self.external_data_root()
+        )
+        if external_root is None:
+            raise ConfigurationError(
+                f"{self.data.external_storage.root_env} is not configured"
+            )
+        project_path = Path(
+            os.path.abspath(self.project_root / binding.project_subdir)
+        )
+        external_path = (external_root / binding.external_subdir).resolve()
+        return project_path, external_path
+
+    def assert_external_storage_binding(self, name: str) -> None:
+        external_root = self.external_data_root()
+        if external_root is None:
+            return
+        if not external_root.is_dir():
+            raise ConfigurationError(
+                f"Configured external ATLAS data root is unavailable: {external_root}"
+            )
+        project_path, external_path = self.external_storage_binding_paths(name)
+        if not external_path.is_dir() or not project_path.exists():
+            raise ConfigurationError(
+                f"External-storage binding {name!r} is not ready: "
+                f"{project_path} -> {external_path}"
+            )
+        try:
+            same = os.path.samefile(project_path, external_path)
+        except OSError:
+            same = False
+        if not same:
+            raise ConfigurationError(
+                f"External-storage binding {name!r} does not point to its configured "
+                f"external target: {project_path} -> {external_path}"
+            )
+
+    def _binding_for_relative_path(self, path: Path) -> str | None:
+        if path.is_absolute():
+            return None
+        candidate = Path(*path.parts)
+        for name, binding in self.data.external_storage.bindings.items():
+            project_subdir = Path(binding.project_subdir)
+            try:
+                candidate.relative_to(project_subdir)
+            except ValueError:
+                continue
+            return name
+        return None
+
     def resolved_path(self, relative: Path | str) -> Path:
         path = Path(relative)
-        return path if path.is_absolute() else (self.project_root / path).resolve()
+        if path.is_absolute():
+            return path
+        binding = self._binding_for_relative_path(path)
+        if binding is not None:
+            self.assert_external_storage_binding(binding)
+            # Preserve the stable project-relative namespace even when the directory
+            # is a junction/symlink to external storage. Receipts and manifests can
+            # therefore survive drive-letter changes.
+            return Path(os.path.abspath(self.project_root / path))
+        return (self.project_root / path).resolve()
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:
