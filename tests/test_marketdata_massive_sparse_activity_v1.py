@@ -100,7 +100,7 @@ def test_sparse_gate_requires_support_across_multiple_anchors() -> None:
                 "concordant": True,
                 "disposition": "POSITIVE_VOLUME_WITH_MASSIVE_BAR",
             }
-            for _ in range(2)
+            for _ in range(5)
         )
         anchors.append(
             {
@@ -114,7 +114,7 @@ def test_sparse_gate_requires_support_across_multiple_anchors() -> None:
     checks = sparse._checks(anchors, summary)
     assert summary["zero_volume_sessions"] == 12
     assert summary["zero_volume_anchor_count"] == 3
-    assert summary["positive_volume_sessions"] == 24
+    assert summary["positive_volume_sessions"] == 60
     assert all(checks.values())
 
 
