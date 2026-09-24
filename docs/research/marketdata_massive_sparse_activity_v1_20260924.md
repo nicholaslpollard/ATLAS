@@ -2,7 +2,7 @@
 
 ## Status
 
-**PREREGISTERED / WORKSTATION EVIDENCE PENDING**
+**SPARSE_ACTIVITY_CONFIRMATION_FAILED / FROZEN / NOT TO BE RERUN AS V1**
 
 Contract:
 
@@ -127,6 +127,45 @@ All must pass:
 - zero extra Massive dates.
 
 The thresholds, ordered anchors and selector are frozen before any provider read.
+
+## Workstation result — 2026-09-24
+
+Accepted V1 sparse-confirmation evidence:
+
+- run id: `20260924T033435Z`;
+- evidence fingerprint:
+  `d7ce4d184d175b6f60233f2a4470e8e4e67a27691ac8a45a082b805b9e3cce6d`;
+- status: `SPARSE_ACTIVITY_CONFIRMATION_FAILED`;
+- terminal error: none;
+- total MarketData sessions: 105;
+- zero-volume sessions: 87 across 12 anchors;
+- positive-volume sessions: 18 across 6 anchors;
+- activity concordance: 100%;
+- zero zero-volume/Massive-present mismatches;
+- zero positive-volume/Massive-missing mismatches;
+- zero invalid-volume sessions;
+- zero extra Massive dates;
+- MarketData credits consumed: 24;
+- last observed MarketData credits remaining: 9,950.
+
+The activity relationship itself was exact on every observed session. The only failed
+preregistered check was `minimum_total_positive_volume_sessions`: V1 required at
+least 20 positive-volume controls and observed 18.
+
+V1 therefore remains a real failed confirmation. The positive-control floor is not
+reduced from 20 to 18, the 12 anchors are not replaced, and V1 is not rerun with a
+different selector.
+
+This failure is interpreted as a **design-support shortfall**, not a contradiction of
+the activity hypothesis. The farthest-OTM selector successfully generated abundant
+sparse cases but generated two fewer positive controls than the frozen minimum.
+
+A separately versioned V2 now uses a new disjoint sample and a prospectively frozen
+third-farthest-OTM selector while retaining the exact same support thresholds and
+100% concordance requirement.
+
+Follow-up:
+`docs/research/marketdata_massive_sparse_activity_v2_20260924.md`.
 
 ## Pass meaning
 
