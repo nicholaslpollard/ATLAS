@@ -213,6 +213,35 @@ caused by no raw trades or by raw trades whose conditions made them ineligible.
 Aggregate-surface contract:
 `docs/research/marketdata_massive_dia_aggregate_surface_v1_20260923.md`.
 
+The aggregate-surface workstation gate has now **PASSED its diagnostic
+hypothesis** under run `20260923T225713Z` / evidence fingerprint
+`dadc60d4eb1bf4f33d123cdd1b8b09d92222f8e53b4fdb3a9a28c48b1d5b1487`.
+All four dates with Massive daily bars also had one-minute aggregates, and all five
+daily-missing dates had no one-minute aggregates. More importantly, MarketData
+volume was positive on exactly the four Massive-present dates (3, 6, 41 and 1
+contracts) and zero on all five Massive-absent dates; summed Massive minute volume
+exactly matched MarketData volume on every present date.
+
+This supports a new **activity-aware** cross-provider hypothesis without changing the
+failed V1 verdict. MarketData can emit an EOD row with a `last` value on a
+zero-volume session, while Massive emits no aggregate bar when its qualifying-trade
+surface is empty. The zero-volume MarketData `last` therefore remains unvalidated
+and cannot be treated as an independently confirmed trade price.
+
+The next gate is preregistered as
+`atlas-marketdata-massive-disjoint-validation-v2` on six new roots and six new dates
+with no root/date reuse from prior cross-provider calibration or V1. V2 freezes the
+same contract selector, 10-calendar-day quote window, price/range and volume
+thresholds. The only semantic change is activity-aware coverage: MarketData
+`volume > 0` requires a Massive daily bar, while MarketData `volume == 0` requires
+that the Massive daily bar be absent. Price/volume thresholding uses only
+positive-volume sessions. Every anchor still requires at least five positive-volume
+sessions, and the complete sample must include at least one zero-volume session so
+the sparse-case rule is actually exercised.
+
+V2 contract:
+`docs/research/marketdata_massive_disjoint_validation_v2_20260923.md`.
+
 MarketData EOD last/volume, bid/ask, intraday, execution, simulator, strategy, PAPER
 and LIVE authority all remain closed.
 
