@@ -2,7 +2,7 @@
 
 ## Status
 
-**PREREGISTERED / WORKSTATION EVIDENCE PENDING**
+**AGGREGATE_SURFACES_CONSISTENT / DIAGNOSTIC COMPLETE / FROZEN**
 
 Contract:
 
@@ -85,6 +85,50 @@ Possible dispositions:
 The aggregate surfaces are classified as consistent only when every daily-present
 control has at least one minute bar and every daily-missing target date has no minute
 bars.
+
+## Workstation result — 2026-09-23
+
+Accepted diagnostic evidence:
+
+- run id: `20260923T225713Z`;
+- evidence fingerprint:
+  `dadc60d4eb1bf4f33d123cdd1b8b09d92222f8e53b4fdb3a9a28c48b1d5b1487`;
+- status: `AGGREGATE_SURFACES_CONSISTENT`;
+- terminal error: none;
+- disposition counts:
+  - `DAILY_AND_MINUTE_AGGREGATES_PRESENT`: 4;
+  - `DAILY_AND_MINUTE_AGGREGATES_ABSENT`: 5.
+
+Observed date-level relationship:
+
+| Date | MarketData volume | Massive daily | Massive minute rows | Massive minute volume |
+| --- | ---: | --- | ---: | ---: |
+| 2026-08-03 | 3 | present | 2 | 3 |
+| 2026-08-04 | 6 | present | 1 | 6 |
+| 2026-08-05 | 41 | present | 2 | 41 |
+| 2026-08-06 | 0 | absent | 0 | 0 |
+| 2026-08-07 | 0 | absent | 0 | 0 |
+| 2026-08-10 | 0 | absent | 0 | 0 |
+| 2026-08-11 | 1 | present | 1 | 1 |
+| 2026-08-12 | 0 | absent | 0 | 0 |
+| 2026-08-13 | 0 | absent | 0 | 0 |
+
+The control/target pattern is exact: every positive-volume MarketData date has both
+Massive daily and minute aggregate evidence, every zero-volume MarketData date lacks
+both Massive aggregate surfaces, and summed Massive minute volume equals MarketData
+volume on every positive-volume date.
+
+This does not prove whether the five empty aggregate dates had literally no raw
+trades or only no aggregate-eligible raw trades, because the current Massive plan
+does not expose historical option trades. It does show that the original 4/9 daily
+coverage failure is not isolated to the daily endpoint and that zero MarketData
+volume is the observed separator in this frozen case.
+
+The result justifies a separately preregistered activity-aware V2 validation on a new
+disjoint sample. It does not change V1.
+
+V2 contract:
+`docs/research/marketdata_massive_disjoint_validation_v2_20260923.md`.
 
 ## Interpretation boundary
 
