@@ -307,7 +307,9 @@ class AtlasSettings(BaseModel):
             raise ConfigurationError(
                 f"{self.data.external_storage.root_env} is not configured"
             )
-        project_path = (self.project_root / binding.project_subdir).resolve()
+        project_path = Path(
+            os.path.abspath(self.project_root / binding.project_subdir)
+        )
         external_path = (external_root / binding.external_subdir).resolve()
         return project_path, external_path
 
