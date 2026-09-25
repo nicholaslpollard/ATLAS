@@ -409,3 +409,34 @@ def test_preview_with_complete_receipt_still_never_writes_run_report(tmp_path, m
     assert report["reused"] == 1
     assert report["verified_reused_bytes"] == len(_response().raw_body)
     assert latest.read_bytes() == before
+
+
+def test_preview_does_not_run_full_storage_census(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    def census_forbidden(_settings):
+        raise AssertionError("no research-directory scan in source-only preview")
+    monkeypatch.setattr(cache_module, "inspect_research_storage", census_forbidden)
+    report = run_candidate_chain_cache(settings, _plan())
+    assert report["status"] == "PREVIEW"
+    assert report["storage_initial"] is None
+    assert report["provider_reads"] == 0
+
+
+def test_inconsistent_provider_column_vectors_are_quarantined_with_raw_bytes(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    payload = dict(_response().payload)
+    payload["optionSymbol"] = ["SPY261016C00100000", "SPY261016P00100000"]
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+    response = MarketDataResponse(
+        http_status=200, payload=payload,
+        headers=_response().headers, response_bytes=len(raw),
+        elapsed_seconds=0.01, raw_body=raw,
+    )
+    with pytest.raises(CandidateChainCacheError, match="quarantined"):
+        _authorized(settings, plan, lambda *_args: response)
+    paths = _paths(settings, plan["requests"][0]["request_identity"])
+    assert paths.body.read_bytes() == raw
+    saved = json.loads(paths.receipt.read_text(encoding="utf-8"))
+    assert saved["status"] == "QUARANTINED"
+    assert saved["failure"] == "provider response arrays inconsistent"
