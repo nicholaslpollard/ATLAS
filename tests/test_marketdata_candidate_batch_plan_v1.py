@@ -52,8 +52,8 @@ def test_fifty_pit_opportunities_share_one_historical_chain_query() -> None:
     plan = _plan(rows)
     assert plan["opportunities"] == 50
     assert plan["shared_chain_requests"] == 1
-    assert plan["minimum_historical_chain_credits"] == 1
-    assert plan["credit_estimate_is_only_a_lower_bound"] is True
+    assert plan["nominal_chain_credits_if_each_response_has_1_to_1000_billable_symbols"] == 1
+    assert plan["credit_estimate_not_guaranteed"] is True
     assert plan["provider_calls_performed"] == 0
     request = plan["requests"][0]
     assert request["endpoint"] == "options/chain/SPY/"
