@@ -106,10 +106,13 @@ broker/order authority remain false.
 ## Durable tracking, restart and efficiency contract (before first workstation run)
 
 Every authorized invocation receives a unique UTC run ID and an atomic
-checkpoint at these two locations:
+checkpoint at these two locations. The abbreviated directory is an operational
+Windows-path convention only: the complete SHA-256 remains in the authenticated
+report, source/plan identities and validation rules:
+
 
 - latest plan report: data/options/manifests/marketdata_candidate_chain_cache_v1_<plan-prefix>.json
-- per-invocation location: data/options/manifests/marketdata_candidate_chain_cache_v1/<full-plan-SHA>/runs/<run-ID>.json
+- per-invocation location: data/options/manifests/md_chain_runs/<plan-SHA-prefix>/<run-ID>.json
 
 The per-run JSON is updated atomically at initialization, before each paid
 request, after each response or failure, at each credit/storage block, and
