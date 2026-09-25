@@ -317,8 +317,34 @@ the activity hypothesis or support requirements.
 Sparse V2 contract:
 `docs/research/marketdata_massive_sparse_activity_v2_20260924.md`.
 
-MarketData EOD last/volume, bid/ask, intraday, execution, simulator, strategy, PAPER
-and LIVE authority all remain closed.
+**Sparse-activity V2 has now PASSED on its first workstation execution**:
+`SPARSE_ACTIVITY_CONCORDANCE_CONFIRMED`, run `20260925T184421Z`,
+evidence `398ca760a7e05126e18008c6e7c09fc2f9d03e8a07b5a9a95e0282891d4c2d69`.
+All 12 anchors completed: 106 MarketData sessions, 38 zero-volume across 8
+anchors and 68 positive-volume across 11 anchors. Every activity-state
+comparison matched Massive aggregate absence/presence. No mismatches, invalid
+volumes, extra Massive dates or terminal errors. All frozen checks passed; 24
+MarketData credits consumed and 9,966 remained at the last reported header.
+
+The resulting *source-semantics synthesis* keeps the earlier failed validation
+verdicts unchanged. The separate failed disjoint V2 nevertheless observed
+53 positive-volume sessions with 100% MarketData-last/Massive-close agreement
+and zero aggregate median price/volume discrepancy; fresh sparse V2 independently
+confirms activity-state behavior. These are **different samples and hypotheses**,
+not one joint price validation. Zero-volume last remains unvalidated, and bid/ask
+is quote context rather than executable-fill authority.
+
+The repeated source activity mini-campaign is now closed. Proceed to a
+PIT-safe, candidate-first historical EOD acquisition/cache adapter, using
+shared chain snapshots where possible, without whole-market downloading.
+
+First-run acceptance:
+`docs/research/marketdata_sparse_activity_v2_acceptance_20260925.md`.
+Evidence synthesis:
+`docs/research/marketdata_eod_semantics_synthesis_v1_20260925.md`.
+
+Historical executable option prices, intraday paths, option P&L, strategy,
+PAPER and LIVE authority remain closed.
 
 
 MarketData daily credit reset is 09:30 America/New_York. Runtime budget control uses
