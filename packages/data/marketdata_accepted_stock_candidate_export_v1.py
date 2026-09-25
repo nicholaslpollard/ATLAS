@@ -9,6 +9,7 @@ import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from threading import Event, RLock, Thread
 from typing import Any, Callable, Sequence
 from zoneinfo import ZoneInfo
 
@@ -41,6 +42,7 @@ MIN_YEAR = 2022
 MAX_YEAR = 2025
 MAX_PER_MONTH = 3
 SAMPLE_SALT = "ATLAS_OPTION_CHAIN_CANDIDATE_SOURCE_V1"
+HEARTBEAT_SECONDS = 45.0  # operation-only; never participates in source or plan SHA
 BUNDLE_SUBDIR = "data/research/evidence/marketdata_candidate_stock_v1"
 PLAN_SUBDIR = "data/options/manifests"
 
@@ -593,27 +595,49 @@ def export_candidate_stock_manifest(
         "no_option_price_or_pnl_authority": True,
     }
 
+    report_lock = RLock()
+    heartbeat_stop = Event()
+    heartbeat_failures: list[str] = []
+
     def checkpoint(stage: str, details: dict[str, Any]) -> None:
-        report["stage"] = stage
-        report["last_updated_at_utc"] = datetime.now(UTC).isoformat()
-        elapsed = round(max(0.0, time.monotonic() - started), 3)
-        report["elapsed_seconds"] = elapsed
-        report["stages"].append({
-            "stage": stage, "elapsed_seconds": elapsed, **details,
-        })
-        report.pop("report_fingerprint", None)
-        report["report_fingerprint"] = _hash(report)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(path, _encoded(report).decode("utf-8"))
-        print(f"  export stage={stage} elapsed={elapsed:.1f}s", flush=True)
+        with report_lock:
+            now = datetime.now(UTC).isoformat()
+            if stage == "HEARTBEAT":
+                details = {"active_stage": report.get("stage"), **details}
+            else:
+                report["stage"] = stage
+            report["last_updated_at_utc"] = now
+            elapsed = round(max(0.0, time.monotonic() - started), 3)
+            report["elapsed_seconds"] = elapsed
+            report["stages"].append({
+                "stage": stage, "at_utc": now, "elapsed_seconds": elapsed, **details,
+            })
+            report.pop("report_fingerprint", None)
+            report["report_fingerprint"] = _hash(report)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_text(path, _encoded(report).decode("utf-8"))
+            print(f"  [{now}] export stage={stage} elapsed={elapsed:.1f}s", flush=True)
+
+    def heartbeat() -> None:
+        while not heartbeat_stop.wait(HEARTBEAT_SECONDS):
+            try:
+                checkpoint("HEARTBEAT", {})
+            except (OSError, ValueError) as exc:
+                # Never lose an operational-ledger failure in a daemon thread.
+                heartbeat_failures.append(type(exc).__name__)
+                break
 
     checkpoint("STARTED", {})
+    worker = Thread(target=heartbeat, name="atlas-stock-export-heartbeat", daemon=True)
+    worker.start()
     try:
         result = _export_candidate_stock_manifest_impl(
             settings, year=year, per_month=per_month,
             duckdb_threads=duckdb_threads, progress=checkpoint,
         )
     except BaseException as exc:
+        heartbeat_stop.set()
+        worker.join()
         report["status"] = (
             "INTERRUPTED" if isinstance(exc, KeyboardInterrupt)
             else "FAILED_REVIEW_REQUIRED"
@@ -621,6 +645,13 @@ def export_candidate_stock_manifest(
         report["exception_type"] = type(exc).__name__
         checkpoint(report["status"], {})
         raise
+    heartbeat_stop.set()
+    worker.join()
+    if heartbeat_failures:
+        report["status"] = "FAILED_REVIEW_REQUIRED"
+        report["exception_type"] = "HeartbeatCheckpointError"
+        checkpoint("FAILED_REVIEW_REQUIRED", {"heartbeat_exception_type": heartbeat_failures[0]})
+        raise CandidateStockExportError("durable progress heartbeat failed; inspect saved run report")
 
     report["status"] = "SOURCE_ONLY_COMPLETE"
     report["summary"] = {
