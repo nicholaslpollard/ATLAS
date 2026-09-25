@@ -20,7 +20,10 @@ from packages.backtesting.successor_selected_daily_path_analysis import _validat
 from packages.core.atomic_io import atomic_write_text
 from packages.core.market_calendar import get_market_calendar
 from packages.core.settings import AtlasSettings
-from packages.data.marketdata_candidate_batch_plan_v1 import plan_candidate_chain_batches
+from packages.data.marketdata_candidate_batch_plan_v1 import (
+    TICKER_PATTERN,
+    plan_candidate_chain_batches,
+)
 
 
 CONTRACT = "atlas-marketdata-accepted-stock-candidate-export-v1"
@@ -80,6 +83,8 @@ def select_monthly_cohort(
             item.signal_session.year == year
             and item.native_timeframe == "1d"
             and item.direction == "LONG"
+            and isinstance(item.ticker, str)
+            and TICKER_PATTERN.fullmatch(item.ticker)
         ):
             grouped[item.signal_session.month].append(item)
     result: list[SelectedReplayOpportunity] = []
