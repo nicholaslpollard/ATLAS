@@ -4726,7 +4726,7 @@ strictly source acquisition, not option pricing or trading authority.
 
 
 Accepted stock-candidate export also writes a separate SHA-bound, per-invocation
-stage ledger under data/options/manifests/marketdata_stock_candidate_export_v1/runs.
+stage ledger under data/options/manifests/md_stock_runs.
 It reports accepted selected-source loading, the frozen cohort, native raw
 source verification **unit by unit**, output-plan construction, immutable
 artifact reuse, timings and terminal errors without changing source/plan
