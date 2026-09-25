@@ -107,8 +107,9 @@ def get_json(
         request = urllib.request.Request(url, headers=headers, method="GET")
         try:
             with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-                raw = response.read(
-                    max_response_bytes + 1 if max_response_bytes is not None else -1
+                raw = (
+                    response.read() if max_response_bytes is None
+                    else response.read(max_response_bytes + 1)
                 )
                 if max_response_bytes is not None and len(raw) > max_response_bytes:
                     raise MarketDataError("MarketData.app response exceeded bounded byte limit")
@@ -127,8 +128,9 @@ def get_json(
                     raw_body=raw,
                 )
         except urllib.error.HTTPError as exc:
-            raw = exc.read(
-                max_response_bytes + 1 if max_response_bytes is not None else -1
+            raw = (
+                exc.read() if max_response_bytes is None
+                else exc.read(max_response_bytes + 1)
             )
             if max_response_bytes is not None and len(raw) > max_response_bytes:
                 raise MarketDataError("MarketData.app error body exceeded bounded byte limit") from exc
