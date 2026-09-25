@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 from typing import Any
@@ -124,7 +123,7 @@ def _parse_opportunity(row: object) -> CandidateOpportunity:
             f"{opportunity_id}: incompatible stock price adjustment basis"
         )
 
-    if row["side"] not in {"call", "put"}:
+    if not isinstance(row["side"], str) or row["side"] not in {"call", "put"}:
         raise CandidateBatchPlanError(f"{opportunity_id}: side must be call or put")
 
     snapshot_date = _parse_date(row["snapshot_date"], "snapshot_date")
@@ -266,7 +265,7 @@ def plan_candidate_chain_batches(payload: object) -> dict[str, Any]:
                     temp_item = CandidateOpportunity(
                         opportunity_id="", ticker=right.ticker,
                         snapshot_date=right.snapshot_date,
-                        decision_at_utc=datetime.now(UTC),
+                        decision_at_utc=datetime(1970, 1, 1, tzinfo=UTC),
                         raw_underlying_price=right.minimum_pit_price,
                         expiration=right.expiration, side=right.sides[0],
                         stock_source_sha256="", lower_strike=right.lower_strike,
@@ -321,8 +320,8 @@ def plan_candidate_chain_batches(payload: object) -> dict[str, Any]:
         "broker_calls_performed": 0,
         "opportunities": len(records),
         "shared_chain_requests": len(requests),
-        "minimum_historical_chain_credits": len(requests),
-        "credit_estimate_is_only_a_lower_bound": True,
+        "nominal_chain_credits_if_each_response_has_1_to_1000_billable_symbols": len(requests),
+        "credit_estimate_not_guaranteed": True,
         "maximum_returned_contracts_per_request_for_future_executor": 1000,
         "requests": requests,
         "source_bindings": {
