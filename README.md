@@ -4688,3 +4688,21 @@ Document: docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
 The historical news/options preflight console now says *that invocation*
 performed zero bulk downloads; it no longer implies the previously acquired
 2,211,606-article news corpus is absent.
+
+
+### Accepted stock candidate export V1 — 2026-09-25
+
+The source-only bridge to the chain planner is implemented as
+packages/data/marketdata_accepted_stock_candidate_export_v1.py and
+scripts/export_marketdata_accepted_stock_candidates_v1.py. Its first
+workstation export is pending. Default 2025 one-case-per-month sampling
+takes only accepted walk-forward-selected comparable daily LONG stock
+opportunities, ranks by a fixed SHA-256 of original ID (not by realized
+outcome or option/news data), verifies existing normalized DEVELOPMENT
+lineage and raw V2 entry open, and produces an immutable evidence bundle,
+source manifest and PIT-safe bounded shared-chain plan. The plan binds
+every claimed stock SHA to the exact physical evidence bundle required
+by the gated cache. All work is offline and leaves the consumed master,
+future-blind periods, Dynamic Exit V1, option price/P&L and PAPER/LIVE
+authority untouched. First command and scientific limitations:
+docs/research/marketdata_accepted_stock_candidate_export_v1_20260925.md.
