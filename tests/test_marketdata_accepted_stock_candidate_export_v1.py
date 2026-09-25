@@ -46,7 +46,9 @@ def test_monthly_cohort_is_deterministic_independent_of_row_order_and_outcomes()
         _case(3, date(2025, 10, 13)),
         _case(4, date(2025, 10, 14), direction="SHORT"),
         _case(5, date(2025, 10, 15), timeframe="1min"),
+        _case(6, date(2025, 10, 16)),
     ]
+    rows[-1].ticker = "BAD/TICKER"
     one = exporter.select_monthly_cohort(rows, year=2025, per_month=1)
     two = exporter.select_monthly_cohort(list(reversed(rows)), year=2025, per_month=1)
     assert [x.opportunity_id for x in one] == [x.opportunity_id for x in two]
