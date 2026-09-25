@@ -116,8 +116,8 @@ def main() -> int:
         f"{int(report['bulk_downloads_performed'])}"
     )
     print(
-        "\nNo news/options history has been bulk-downloaded. "
-        "This preflight only establishes storage headroom and source entitlement."
+        "\nThis preflight performed no bulk downloads. "
+        "Existing news/options data from prior acquisition is not re-downloaded."
     )
     return 0
 
