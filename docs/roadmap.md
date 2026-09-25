@@ -498,9 +498,32 @@ retain a separate EOD-only simulator boundary. Do not download the entire option
 universe and do not block adapter development on another broad source-validation
 campaign.
 
-Sparse-activity V2 remains an unchanged separate preregistered check; no V2
-workstation result has yet been supplied. Paid entitlement does not reverse
-earlier failed validation verdicts or grant option execution/PAPER/LIVE authority.
+Sparse-activity V2 subsequently **PASSED** all ten frozen checks on its
+first run: `20260925T184421Z` /
+`398ca760a7e05126e18008c6e7c09fc2f9d03e8a07b5a9a95e0282891d4c2d69`.
+All 12 anchors completed with 38 zero-volume and 68 positive-volume MarketData
+sessions (106 total); aggregate absence/presence concordance against Massive was
+100%, with no mismatches, invalid volume, extra Massive dates or terminal errors.
+This closes the activity-semantics experiment without changing disjoint V1/V2
+or sparse V1 failed verdicts.
+
+The prior 53 positive-volume price comparisons and fresh 106-session activity
+evidence concern different samples/hypotheses. The combined descriptive
+interpretation does **not** validate zero-volume last, historical bid/ask fills,
+intraday option paths, option P&L or any strategy/PAPER/LIVE authority.
+
+The active product gate is now implementation of a bounded, repeatable,
+candidate-first five-year option acquisition/cache adapter based on PIT stock
+opportunities. Prefer shared historical chain snapshots for multiple contracts
+within one ticker/date/expiry/explicit strike range, deduplicate quote-series
+requests, budget credits and storage before calls, and preserve license/retention
+constraints. No whole-universe download or routine additional source-validation
+loop is authorized.
+
+Acceptance:
+`docs/research/marketdata_sparse_activity_v2_acceptance_20260925.md`.
+Synthesis:
+`docs/research/marketdata_eod_semantics_synthesis_v1_20260925.md`.
 
 Acceptance record:
 `docs/research/marketdata_paid_starter_acceptance_v1_20260925.md`.
