@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from packages.core.atomic_io import unique_temp_path
 from packages.core.market_calendar import get_market_calendar
 from packages.core.settings import load_settings
 from packages.data import marketdata_accepted_stock_candidate_export_v1 as exporter
@@ -124,7 +125,7 @@ def test_stock_bundle_physically_matches_plan_source_sha_and_is_reusable(tmp_pat
         assert report["stage"] == "COMPLETE"
         assert Path(item["run_report_path"]).parent.name == "md_stock_runs"
         if os.name == "nt":
-            assert len(str(exporter.unique_temp_path(
+            assert len(str(unique_temp_path(
                 Path(item["run_report_path"])
             ))) <= 248
         assert [stage["stage"] for stage in report["stages"]] == [
