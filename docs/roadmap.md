@@ -33,28 +33,33 @@ reconciled. Code and tests remain the authority for actual behavior; Git history
 accepted artifacts remain the authority for what happened. A code or research
 package with stale applicable living documents is incomplete even if its tests pass.
 
-### Current source-only validation gate — 2026-09-25
+### Active MarketData candidate-chain preview gate — 2026-09-25
 
-The accepted MarketData Starter history and the merged offline candidate batch
-planner do **not** yet connect options to simulator P&L. The next dependency is
-PR #229's bounded source-only chain cache followed by PR #230's accepted
-DEVELOPMENT stock-candidate exporter; both remain open and unaccepted pending
-exact-head Windows/CI validation. The earlier 11 Windows test failures all
-encountered an overlong atomic run-checkpoint temporary path **before any provider
-call**. The code now uses short operational run paths with the full SHA-256 inside
-the report, and includes portable regression coverage. The exporter additionally
-uses separate timestamped stage receipts and 45-second heartbeats during long
-source scans. These are implementation changes, **not yet passing acceptance**.
+PR #229's bounded historical EOD chain cache **MERGED** after all ten GitHub
+checks passed. The operator's exact-head 71-test Windows suite passed in
+6.30 seconds on combined export commit `6292b9d`. PR #230's accepted stock
+candidate export remains unmerged pending branch reconciliation/remaining CI;
+the operator nevertheless completed its separately authorized, zero-provider
+2025 source-only diagnostic under run `20260925T233304045068Z-3830a7a5`:
+546/546 normalized source parts verified, 4,685 comparable opportunities and
+113 unique training cells loaded, 12 monthly outcome-blind daily LONG cases,
+12 SHA-verified native raw daily units, 12 distinct bounded option-chain
+requests, 21 durable stages and 23.6 seconds elapsed. Source bundle SHA-256:
+`e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e`;
+plan fingerprint:
+`a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1`.
+These figures are operator-reported workstation output; full source/plan
+artifact bytes are retained on that workstation and are not in GitHub.
 
-Do not run either authenticated acquisition or simulator integration yet.
-After targeted offline tests pass, merge #229, reconcile/retest #230, execute
-the default 2025 one-per-month zero-provider-read source export, and inspect the
-zero-credit chain preview. Selected option quote histories, contract/deliverable
-qualification and conservative EOD timing/fill economics remain separate,
-unimplemented acceptance gates. Historical news source integrity V2 is accepted,
-but exact historical article-text vintage and downstream predictor authority
-remain separate gates. Protected and future-blind boundaries, previous negative
-strategy results, and PAPER/LIVE authority remain unchanged.
+**Next:** run the newly merged cache's **offline zero-credit preview** against
+the exact saved plan on `main`, inspect plan/request identities and any
+existing receipt/attempt state, then complete PR #230 CI/reconciliation.
+No authenticated MarketData acquisition, broker activity, historical option
+execution prices, news predictor authority or simulator option P&L is opened
+by source export or preview. Contract selection/deliverables, selected quote
+histories, conservative EOD fills/costs and independently PIT-qualified
+news-context joins remain separate gates. Protected and future-blind
+boundaries and previous negative strategy results are unchanged.
 
 ### Retained Czar28 historical-option qualification V1
 
@@ -5144,8 +5149,8 @@ source. No quote horizons, executable contract selection, historical option
 fill/P&L or simulator authority is opened. See
 docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
 
-The source-only stock export is implemented but still awaits first operator
-execution. Remaining separately versioned work includes bounded historical
+The first source-only stock export has completed on the operator workstation.
+Remaining separately versioned work includes bounded historical
 chain acquisition; frozen contract identity/deliverable filtering and selected
 quote-horizon acquisition; explicit EOD timing/cost modeling; news feature
 provenance and PIT joins; then stock-only versus news-context versus
@@ -5155,7 +5160,9 @@ option-economics recurrent replay without contaminating existing results.
 ### MarketData source-cohort export V1 — 2026-09-25
 
 The first accepted-source bridge into the candidate-first option chain
-planner is now implemented, with no workstation result yet. The default
+planner is now implemented; its first workstation source-only run completed
+under the run ID and source/plan fingerprints recorded in the active gate.
+The default
 first bounded cohort is 2025, one deterministic SHA-ranked eligible
 daily LONG opportunity per month (maximum twelve), with selection
 independent of realized returns/options/news. The package reuses accepted
@@ -5167,9 +5174,8 @@ offline chain plan. No option contract selection, quote history, price
 authority or simulator P&L is opened. See
 docs/research/marketdata_accepted_stock_candidate_export_v1_20260925.md.
 
-Next operator gate after CI: run the source-only export on the target
-workstation, inspect its artifact counts/paths, then preview the bounded
-chain cache without provider calls. Actual historical chain reads
+Next operator gate: preview the saved bounded chain plan from merged main
+without provider calls, and reconcile PR #230 against main. Actual historical chain reads
 remain separately authorized, workstation-only and budget-bound.
 
 
@@ -5189,5 +5195,5 @@ The source-cohort export now also has an atomic per-run stage ledger, including
 each independently verified native raw daily unit, source/plan fingerprints,
 counts, elapsed time and terminal failure type. Its scientific artifacts are
 byte-stable between reruns; measurements stay outside the source bundle.
-The next operator gate is a small mocked local test suite, followed by the
-first SOURCE-ONLY export and zero-credit chain preview, not live acquisition.
+The 71-test targeted Windows suite and first SOURCE-ONLY export passed.
+The next gate is the zero-credit chain preview, not live acquisition.
