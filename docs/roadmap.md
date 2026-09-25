@@ -5105,3 +5105,25 @@ is not placed in public GitHub; the provenance/authority record is
 No Trader/OPRA upgrade is prerequisite for the separately qualified five-year
 historical EOD acquisition branch. No full-SIP/NBBO, execution quote, intraday
 option path, trading or option-P&L authority follows from dashboard badges.
+
+
+### Candidate chain cache V1 — 2026-09-25 implementation gate
+
+The offline planner's separately versioned source-acquisition successor now
+implements exact-raw MarketData historical EOD **chain** caching. The first
+operator execution is still pending. It rebuilds the stock-source-bound
+plan, verifies physical source-file SHA values before a real query,
+requires paid Starter/private/internal/read flags, limits new shared-chain
+requests to ten per run, enforces local or READY external research budgets,
+and atomically records/re-verifies exact HTTP bodies plus hash-bound receipts.
+Credit/size/schema anomalies fail closed and never overwrite retained
+source. No quote horizons, executable contract selection, historical option
+fill/P&L or simulator authority is opened. See
+docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
+
+The following separately versioned work remains: export an accepted
+stock-opportunity manifest with exact PIT/source binding; run bounded
+historical chains; frozen contract identity/deliverable filter and selected
+quote-horizon acquisition; explicit EOD timing/cost model; news feature
+provenance and PIT join; then stock-only versus news-context versus
+option-economics recurrent replay without contaminating existing results.
