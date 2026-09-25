@@ -4,10 +4,12 @@ import gzip
 import hashlib
 import json
 import math
+import time
+import uuid
 from collections import defaultdict
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Callable, Sequence
 from zoneinfo import ZoneInfo
 
 import duckdb
@@ -372,12 +374,13 @@ def _preserve_exact(path: Path, payload: bytes) -> None:
     atomic_write_text(path, payload.decode("utf-8"))
 
 
-def export_candidate_stock_manifest(
+def _export_candidate_stock_manifest_impl(
     settings: AtlasSettings,
     *,
     year: int = 2025,
     per_month: int = 1,
     duckdb_threads: int = 4,
+    progress: Callable[[str, dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     if not MIN_YEAR <= year <= MAX_YEAR or not 1 <= per_month <= MAX_PER_MONTH:
         raise CandidateStockExportError("invalid bounded candidate cohort selection")
@@ -386,12 +389,20 @@ def export_candidate_stock_manifest(
     period_start = date(year, 1, 1)
     period_end = date(year, 12, 31)
 
+    if progress is not None:
+        progress("ACCEPTED_SOURCE_LOADING", {"year": year, "duckdb_threads": duckdb_threads})
+
     opportunities, source = load_selected_replay_opportunities(
         settings.project_root,
         start_session=period_start,
         end_session=period_end,
         duckdb_threads=duckdb_threads,
     )
+    if progress is not None:
+        progress("ACCEPTED_SOURCE_LOADED", {
+            "accepted_selected_opportunities": len(opportunities),
+            "source_integrity_fingerprint": source.get("source_integrity_fingerprint"),
+        })
     cohort = select_monthly_cohort(opportunities, year=year, per_month=per_month)
     if not cohort:
         raise CandidateStockExportError("accepted cohort has no daily LONG opportunities")
@@ -401,7 +412,18 @@ def export_candidate_stock_manifest(
         "selection uses identifiers, not outcomes", flush=True,
     )
 
+    if progress is not None:
+        progress("COHORT_SELECTED", {
+            "selected_opportunities": len(cohort),
+            "months_represented": len({item.signal_session.month for item in cohort}),
+        })
+        progress("NATIVE_RAW_SOURCE_VERIFYING", {"selected_opportunities": len(cohort)})
     raw_opens, daily_source = _read_entry_opens(settings.project_root, cohort)
+    if progress is not None:
+        progress("NATIVE_RAW_SOURCE_VERIFIED", {
+            "verified_native_raw_units": daily_source["native_raw_source"]["verified_native_raw_unit_count"],
+            "accepted_research_daily_source_fingerprint": daily_source["source_fingerprint"],
+        })
     if not source.get("source_integrity_fingerprint"):
         raise CandidateStockExportError("accepted selected-opportunity source fingerprint missing")
     bundle_rows: list[dict[str, str]] = []
@@ -463,6 +485,14 @@ def export_candidate_stock_manifest(
     }
     plan = plan_candidate_chain_batches(payload)
 
+    if progress is not None:
+        progress("CHAIN_PLAN_READY", {
+            "selected_opportunities": len(cohort),
+            "shared_chain_requests": plan["shared_chain_requests"],
+            "saved_duplicate_requests": len(cohort) - plan["shared_chain_requests"],
+            "plan_fingerprint": plan["plan_fingerprint"],
+        })
+
     cohort_identity = _hash({
         "contract": CONTRACT,
         "year": year,
@@ -482,6 +512,13 @@ def export_candidate_stock_manifest(
     _preserve_exact(source_path, bundle_bytes)
     _preserve_exact(opportunities_path, _encoded(payload))
     _preserve_exact(plan_path, _encoded(plan))
+    if progress is not None:
+        progress("ARTIFACTS_WRITTEN", {
+            "source_file": str(source_path),
+            "stock_source_sha256": bundle_sha,
+            "plan_file": str(plan_path),
+            "plan_fingerprint": plan["plan_fingerprint"],
+        })
     return {
         "status": "EXPORTED_SOURCE_ONLY",
         "verified_native_raw_units": daily_source["native_raw_source"]["verified_native_raw_unit_count"],
@@ -508,3 +545,82 @@ def export_candidate_stock_manifest(
         "provider_reads": 0,
         "no_option_price_or_pnl_authority": True,
     }
+
+
+
+def export_candidate_stock_manifest(
+    settings: AtlasSettings,
+    *,
+    year: int = 2025,
+    per_month: int = 1,
+    duckdb_threads: int = 4,
+) -> dict[str, Any]:
+    """Durable source-only progress separate from deterministic frozen artifacts."""
+    # Keep scientific/cohort validation in the actual exporter; this wrapper
+    # records state without injecting timestamps or paths into bundle identity.
+    started = time.monotonic()
+    run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid.uuid4().hex[:8]
+    path = settings.resolved_path(
+        f"{PLAN_SUBDIR}/marketdata_stock_candidate_export_v1/runs/{run_id}.json"
+    )
+    report: dict[str, Any] = {
+        "contract": CONTRACT,
+        "run_id": run_id,
+        "run_report_path": str(path),
+        "status": "RUNNING",
+        "started_at_utc": datetime.now(UTC).isoformat(),
+        "year": year,
+        "per_month": per_month,
+        "duckdb_threads": duckdb_threads,
+        "stages": [],
+        "provider_reads": 0,
+        "broker_reads_writes": 0,
+        "protected_master_return_rows_read": 0,
+        "no_option_price_or_pnl_authority": True,
+    }
+
+    def checkpoint(stage: str, details: dict[str, Any]) -> None:
+        report["stage"] = stage
+        report["last_updated_at_utc"] = datetime.now(UTC).isoformat()
+        elapsed = round(max(0.0, time.monotonic() - started), 3)
+        report["elapsed_seconds"] = elapsed
+        report["stages"].append({
+            "stage": stage, "elapsed_seconds": elapsed, **details,
+        })
+        report.pop("report_fingerprint", None)
+        report["report_fingerprint"] = _hash(report)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(path, _encoded(report).decode("utf-8"))
+        print(f"  export stage={stage} elapsed={elapsed:.1f}s", flush=True)
+
+    checkpoint("STARTED", {})
+    try:
+        result = _export_candidate_stock_manifest_impl(
+            settings, year=year, per_month=per_month,
+            duckdb_threads=duckdb_threads, progress=checkpoint,
+        )
+    except BaseException as exc:
+        report["status"] = (
+            "INTERRUPTED" if isinstance(exc, KeyboardInterrupt)
+            else "FAILED_REVIEW_REQUIRED"
+        )
+        report["exception_type"] = type(exc).__name__
+        checkpoint(report["status"], {})
+        raise
+
+    report["status"] = "SOURCE_ONLY_COMPLETE"
+    report["summary"] = {
+        "selected_opportunities": result["selected_opportunities"],
+        "shared_chain_requests": result["shared_chain_requests"],
+        "verified_native_raw_units": result["verified_native_raw_units"],
+        "source_sha256": result["stock_source_sha256"],
+        "plan_fingerprint": result["plan_fingerprint"],
+        "stock_source_file": result["stock_source_file"],
+        "plan_file": result["plan_file"],
+    }
+    checkpoint("COMPLETE", {})
+    result["run_report_path"] = str(path)
+    result["elapsed_seconds"] = report["elapsed_seconds"]
+    result["source_only_run_id"] = run_id
+    result["stages_completed"] = len(report["stages"])
+    return result
