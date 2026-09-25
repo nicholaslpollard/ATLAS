@@ -44,6 +44,13 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  cohort identity: {report['cohort_identity']}")
     print(f"  selected opportunities: {report['selected_opportunities']}")
     print(f"  shared chains: {report['shared_chain_requests']}")
+    for item in report["sample"]:
+        print(
+            f"    {item['signal_session']} {item['ticker']} "
+            f"entry_open={item['entry_price']} "
+            f"candidate_expiry={item['candidate_expiration']}",
+            flush=True,
+        )
     print(f"  accepted-source bundle SHA256: {report['stock_source_sha256']}")
     print(f"  plan fingerprint: {report['plan_fingerprint']}")
     print(f"  stock source file: {report['stock_source_file']}")
