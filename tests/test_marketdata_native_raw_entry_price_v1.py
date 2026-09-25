@@ -58,6 +58,11 @@ def test_raw_native_open_not_split_adjusted_open(tmp_path, monkeypatch):
     unit_id = "b" * 64
     partition = Path("year=2025") / "batch=0001"
     canonical = layout.canonical_daily / partition / f"{unit_id[:20]}.parquet"
+    record = {
+        "unit_id": unit_id, "year": 2025, "batch_index": 1,
+        "symbols": ["SPY"], "policy_sha256": "c" * 64,
+        "universe_sha256": "d" * 64,
+    }
     def create_native(closing: float) -> None:
         _parquet(canonical, pd.DataFrame([{
             "symbol": "SPY", "session_date": session,
@@ -72,18 +77,13 @@ def test_raw_native_open_not_split_adjusted_open(tmp_path, monkeypatch):
         checkpoint.write_text(json.dumps({
             "contract": exporter.UNIT_CONTRACT, "status": "COMPLETE",
             "unit_id": unit_id, "policy_sha256": "c" * 64,
-            "universe_sha256": "d" * 64,
+            "universe_sha256": "d" * 64, "unit": record,
             "canonical": {
                 "path": str(canonical.absolute()),
                 "sha256": hashlib.sha256(canonical.read_bytes()).hexdigest(),
             },
             "provider_rejections": [],
         }))
-    record = {
-        "unit_id": unit_id, "year": 2025, "batch_index": 1,
-        "symbols": ["SPY"], "policy_sha256": "c" * 64,
-        "universe_sha256": "d" * 64,
-    }
     monkeypatch.setattr(
         exporter, "_accepted_native_plan",
         lambda *_args: (
