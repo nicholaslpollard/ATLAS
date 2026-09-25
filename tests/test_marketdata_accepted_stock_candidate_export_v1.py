@@ -89,7 +89,7 @@ def test_stock_bundle_physically_matches_plan_source_sha_and_is_reusable(tmp_pat
     )
     monkeypatch.setattr(
         exporter, "_read_entry_opens",
-        lambda _project, _cohort: (
+        lambda _project, _cohort, **_kwargs: (
             {row.opportunity_id: 100.0 for row in _cohort},
             {
                 "source_fingerprint": "d" * 64,
