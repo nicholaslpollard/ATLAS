@@ -95,6 +95,11 @@ def test_stock_bundle_physically_matches_plan_source_sha_and_is_reusable(tmp_pat
                 "source_fingerprint": "d" * 64,
                 "manifest_sha256": "e" * 64,
                 "protected_master_return_rows_read": 0,
+                "native_raw_source": {
+                    "native_acceptance_fingerprint": "f" * 64,
+                    "verified_native_raw_unit_count": 1,
+                    "verified_native_raw_unit_bindings": [{"unit_id": "fixture", "year": 2025, "canonical_sha256": "a" * 64}],
+                },
             },
         ),
     )
@@ -102,6 +107,7 @@ def test_stock_bundle_physically_matches_plan_source_sha_and_is_reusable(tmp_pat
     two = exporter.export_candidate_stock_manifest(settings, year=2025, per_month=1)
     assert one == two
     assert one["selected_opportunities"] == 2
+    assert one["verified_native_raw_units"] == 1
     source = Path(one["stock_source_file"])
     assert hashlib.sha256(source.read_bytes()).hexdigest() == one["stock_source_sha256"]
     plan = json.loads(Path(one["plan_file"]).read_text())
