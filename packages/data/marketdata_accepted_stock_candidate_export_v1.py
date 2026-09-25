@@ -28,7 +28,7 @@ from packages.data.alpaca_v2_postbuild import NATIVE_ACCEPTANCE_CONTRACT
 from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.core.atomic_io import atomic_write_text
 from packages.core.market_calendar import get_market_calendar
-from packages.core.settings import AtlasSettings
+from packages.core.settings import AtlasSettings, load_settings
 from packages.data.marketdata_candidate_batch_plan_v1 import (
     TICKER_PATTERN,
     plan_candidate_chain_batches,
