@@ -5,6 +5,7 @@ import json
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 import os
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -188,3 +189,30 @@ def test_export_failure_retains_last_stage_and_error_type_without_source_data(tm
     assert report["provider_reads"] == 0
     assert report["stages"][-2]["stage"] == "ACCEPTED_SOURCE_LOADING"
     assert "fixture source unavailable" not in reports[0].read_text(encoding="utf-8")
+
+
+def test_long_source_load_gets_durable_heartbeat_without_provider_reads(tmp_path, monkeypatch):
+    monkeypatch.delenv("ATLAS_EXTERNAL_DATA_ROOT", raising=False)
+    project = tmp_path / "project"
+    project.mkdir()
+    settings = load_settings(ROOT, "development").model_copy(update={"project_root": project})
+    monkeypatch.setattr(exporter, "HEARTBEAT_SECONDS", 0.02)
+
+    def slow_loader(*_args, **_kwargs):
+        time.sleep(0.12)
+        raise RuntimeError("intentional offline loader failure")
+
+    monkeypatch.setattr(exporter, "load_selected_replay_opportunities", slow_loader)
+    with pytest.raises(RuntimeError, match="intentional offline loader failure"):
+        exporter.export_candidate_stock_manifest(settings, year=2025, per_month=1)
+    reports = list(settings.resolved_path(
+        "data/options/manifests/md_stock_runs"
+    ).glob("*.json"))
+    assert len(reports) == 1
+    report = json.loads(reports[0].read_text(encoding="utf-8"))
+    assert report["status"] == "FAILED_REVIEW_REQUIRED"
+    assert report["stage"] == "FAILED_REVIEW_REQUIRED"
+    beats = [stage for stage in report["stages"] if stage["stage"] == "HEARTBEAT"]
+    assert beats and all(stage["active_stage"] == "ACCEPTED_SOURCE_LOADING" for stage in beats)
+    assert all(stage["at_utc"] for stage in report["stages"])
+    assert report["provider_reads"] == 0
