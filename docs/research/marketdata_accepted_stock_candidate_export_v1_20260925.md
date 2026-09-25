@@ -99,3 +99,31 @@ executable fills, download quote histories, infer intraday option
 STOP/TARGET paths, or integrate news/options into recurrent account P&L.
 Those require new preregistered packages. The earlier negative exit
 evidence and consumed protected master remain unchanged.
+
+
+## Durable source-export run tracking and efficiency
+
+Each invocation writes a separate atomic local run report at
+data/options/manifests/marketdata_stock_candidate_export_v1/runs/<run-ID>.json.
+Its status is updated before the expensive accepted source load, after source
+verification, after outcome-blind cohort selection, before native-raw loading,
+after **each** separately hash-verified native raw unit, after the raw-price
+lineage gate, when the chain plan is ready, when all three artifacts are
+persisted, and on COMPLETE or FAILED_REVIEW_REQUIRED/INTERRUPTED. It contains
+a run ID, stage times, selected-case/unit/group counts, source and plan hashes,
+immutable output paths and the exception **type** when failed; it does not
+record credentials, provider data or a failure's raw message. CLI progress
+also reports elapsed seconds, the verified native-unit count and shared-chain
+request savings.
+
+The scientific stock bundle and chain-plan fingerprints do **not** include
+nondeterministic runtime measurements. Rerunning the identical accepted input
+creates a new progress report but checks/reuses byte-identical existing
+outputs without overwriting conflicting artifacts. Native units are
+deduplicated by exact unit ID before reading. The cohort is capped at three
+eligible daily LONG cases per month, and shared-chain batching is performed
+once per cohort; the accepted selected-source loader uses the caller's
+explicit 1..8 DuckDB thread budget (default four). Native unit hash
+verification and development/PIT boundaries are mandatory and are never
+short-circuited merely to improve throughput. Source export makes **zero**
+market-data requests, so it is safe outside market hours.
