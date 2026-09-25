@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--max-new-requests", type=int, default=0)
+    parser.add_argument("--stock-source-file", type=Path, action="append", default=[], help="Exact accepted DEVELOPMENT stock artifact(s) whose SHA values appear in the plan; mandatory for live reads.")
     parser.add_argument("--authorize-provider-reads", action="store_true")
     parser.add_argument("--confirm-paid-starter", action="store_true")
     parser.add_argument("--confirm-private-internal-use", action="store_true")
@@ -38,6 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             authorize_provider_reads=args.authorize_provider_reads,
             confirm_paid_starter=args.confirm_paid_starter,
             confirm_private_internal_use=args.confirm_private_internal_use,
+            stock_source_files=tuple(args.stock_source_file),
         )
     except (OSError, ValueError, CandidateChainCacheError) as exc:
         print(f"CANDIDATE CHAIN CACHE BLOCKED: {type(exc).__name__}: {exc}", flush=True)
@@ -47,6 +49,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  status: {report['status']}")
     print(f"  plan fingerprint: {report['plan_fingerprint']}")
     print(f"  storage mode: {report['storage_mode']}")
+    print(f"  verified stock source files: {len(report['verified_stock_source_sha256'])}")
     print(f"  planned shared chains: {report['planned_chain_requests']}")
     print(f"  verified existing receipts: {report['reused']}")
     print(f"  new complete receipts: {report['new_complete']}")
