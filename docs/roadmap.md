@@ -5121,11 +5121,11 @@ source. No quote horizons, executable contract selection, historical option
 fill/P&L or simulator authority is opened. See
 docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
 
-The following separately versioned work remains: export an accepted
-stock-opportunity manifest with exact PIT/source binding; run bounded
-historical chains; frozen contract identity/deliverable filter and selected
-quote-horizon acquisition; explicit EOD timing/cost model; news feature
-provenance and PIT join; then stock-only versus news-context versus
+The source-only stock export is implemented but still awaits first operator
+execution. Remaining separately versioned work includes bounded historical
+chain acquisition; frozen contract identity/deliverable filtering and selected
+quote-horizon acquisition; explicit EOD timing/cost modeling; news feature
+provenance and PIT joins; then stock-only versus news-context versus
 option-economics recurrent replay without contaminating existing results.
 
 
@@ -5160,3 +5160,11 @@ ETA and reason-coded blocked/failed states. Cached requests checkpoint
 every ten; no unbounded API retry or speculative concurrent spending.
 A source-only preview does not need a full disk census. See
 docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
+
+
+The source-cohort export now also has an atomic per-run stage ledger, including
+each independently verified native raw daily unit, source/plan fingerprints,
+counts, elapsed time and terminal failure type. Its scientific artifacts are
+byte-stable between reruns; measurements stay outside the source bundle.
+The next operator gate is a small mocked local test suite, followed by the
+first SOURCE-ONLY export and zero-credit chain preview, not live acquisition.
