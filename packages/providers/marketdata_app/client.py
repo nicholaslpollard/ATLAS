@@ -147,6 +147,7 @@ def get_json(
                     headers={str(k): str(v) for k, v in exc.headers.items()},
                     response_bytes=len(raw),
                     elapsed_seconds=max(0.0, time.perf_counter() - started),
+                    raw_body=raw,
                 )
 
             if exc.code in {400, 401, 402, 403}:
