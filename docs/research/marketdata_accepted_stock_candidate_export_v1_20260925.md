@@ -2,7 +2,7 @@
 
 ## Status
 
-**SOURCE-ONLY EXPORT IMPLEMENTED / FIRST WORKSTATION EXPORT PENDING.**
+**SOURCE-ONLY EXPORT IMPLEMENTED / FIRST WORKSTATION DIAGNOSTIC COMPLETE / MERGE GATE PENDING.**
 Contract: atlas-marketdata-accepted-stock-candidate-export-v1.
 
 The prior chain planner and gated source cache are now connected to accepted
@@ -74,7 +74,7 @@ been acquired from immutable accepted native data**, never as a price-derivation
 or strike-selection input. It is not proof of historical option pricing or an independent
 provider entitlement query.
 
-## First workstation command
+## First workstation command and observed source-only result
 
 This command is local, offline and can be run outside market hours:
 
@@ -88,6 +88,47 @@ and reconstruct accepted source context; it does not redo the Dynamic Exit
 V1 experiment or call a market-data provider. Keep the printed
 stock-source-file and plan-file paths; the next command is the dry-run
 chain-cache preview using --plan. No live acquisition is implied.
+
+
+
+## First workstation evidence — 2026-09-25
+
+The operator executed this V1 source-only export on combined PR #230
+workstation commit \`6292b9de6cd74e2c46dbb467df56648fd304b396\`,
+default \`--year 2025 --per-month 1 --duckdb-threads 4\`. The operator
+reported:
+
+- status: \`EXPORTED_SOURCE_ONLY\`; cohort identity: \`d6c924cf5006d295\`;
+- 546/546 normalized source parts SHA-verified, 4,685 comparable selected
+  opportunities and 113 distinct training cells loaded;
+- 12 daily LONG stock cases from 12 different 2025 months, independently
+  sampled without inspecting future outcomes, news or option outcomes;
+- 12 separately SHA-verified native raw source units and 12 distinct bounded
+  historical EOD chain requests (zero duplicate calls to eliminate);
+- 21 durably recorded stages, elapsed time 23.6 seconds, zero provider reads,
+  zero broker reads/writes and zero option P&L authority;
+- source evidence bundle SHA-256:
+  \`e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e\`;
+- chain plan fingerprint:
+  \`a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1\`;
+- run ID: \`20260925T233304045068Z-3830a7a5\`.
+
+Logical local artifact paths (workstation-resident, not GitHub files):
+\`data/research/evidence/marketdata_candidate_stock_v1/d6c924cf5006d295.json\`,
+\`data/options/manifests/marketdata_stock_opportunities_v1_d6c924cf5006d295.json\`,
+\`data/options/manifests/marketdata_candidate_batch_plan_v1_d6c924cf5006d295.json\`,
+\`data/options/manifests/md_stock_runs/20260925T233304045068Z-3830a7a5.json\`.
+
+The observed tickers by source month were SRRK, TSLA, OLLI, FSLY, TEM,
+DAKT, BANF, AGIO, ATRC, LNT, AMGN and ISRG. This is a bounded provider
+availability cohort, not a performance-selected portfolio and not yet
+a set of verified, historically available or executable option contracts.
+
+This is an operator-supplied terminal observation. It has not been
+independently reconstructed from the private source/plan files in GitHub.
+The immediate next verification is the merged chain cache's offline
+zero-credit \`--plan\` preview. PR #230 implementation is still a separate
+merge/CI gate; no chain acquisition is authorized by this report.
 
 ## Authority boundary
 
