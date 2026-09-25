@@ -2,7 +2,7 @@
 
 ## Status
 
-**PREREGISTERED / WORKSTATION EVIDENCE PENDING**
+**PREREGISTERED BEFORE EXECUTION / FIRST-RUN V2 PASSED 2026-09-25**
 
 Contract:
 
@@ -151,3 +151,20 @@ a pass.
 - provider/malformed-data errors prevent a pass;
 - sparse V1 and disjoint validations V1/V2 remain immutable failures regardless of
   this result.
+
+## First-run workstation acceptance — 2026-09-25
+
+The frozen V2 test returned `SPARSE_ACTIVITY_CONCORDANCE_CONFIRMED`,
+run `20260925T184421Z` / fingerprint
+`398ca760a7e05126e18008c6e7c09fc2f9d03e8a07b5a9a95e0282891d4c2d69`.
+All 12 anchors produced 106 observations: 38 zero-volume over 8 anchors,
+68 positive-volume over 11 anchors, and 106/106 concordance against independent
+Massive aggregate absence/presence. Every frozen check passed; mismatches, invalid
+volume, extra Massive dates, and terminal errors were all zero. Observed MarketData
+credit consumption was 24, with 9,966 remaining in the last header. Preserve the
+first-run result without alteration or reread.
+
+Acceptance and full anchor counts:
+`docs/research/marketdata_sparse_activity_v2_acceptance_20260925.md`.
+Conservative joint interpretation and unchanged historical failed verdicts:
+`docs/research/marketdata_eod_semantics_synthesis_v1_20260925.md`.
