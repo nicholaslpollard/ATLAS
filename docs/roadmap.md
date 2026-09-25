@@ -5127,3 +5127,24 @@ historical chains; frozen contract identity/deliverable filter and selected
 quote-horizon acquisition; explicit EOD timing/cost model; news feature
 provenance and PIT join; then stock-only versus news-context versus
 option-economics recurrent replay without contaminating existing results.
+
+
+### MarketData source-cohort export V1 — 2026-09-25
+
+The first accepted-source bridge into the candidate-first option chain
+planner is now implemented, with no workstation result yet. The default
+first bounded cohort is 2025, one deterministic SHA-ranked eligible
+daily LONG opportunity per month (maximum twelve), with selection
+independent of realized returns/options/news. The package reuses accepted
+conditioning and raw V2 DEVELOPMENT source validators and derives
+prior-session EOD chain requests from observed, raw next-session
+stock-open prices known by a +5-minute decision clock. It writes a
+small physical SHA-bound source bundle, opportunity manifest and exact
+offline chain plan. No option contract selection, quote history, price
+authority or simulator P&L is opened. See
+docs/research/marketdata_accepted_stock_candidate_export_v1_20260925.md.
+
+Next operator gate after CI: run the source-only export on the target
+workstation, inspect its artifact counts/paths, then preview the bounded
+chain cache without provider calls. Actual historical chain reads
+remain separately authorized, workstation-only and budget-bound.
