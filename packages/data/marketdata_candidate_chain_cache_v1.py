@@ -8,6 +8,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Callable
 
@@ -168,6 +169,35 @@ def _paths(settings: AtlasSettings, request_identity: str) -> ChainCachePaths:
     )
 
 
+def _rows_match_explicit_request(
+    rows: tuple[dict[str, Any], ...], request: dict[str, Any],
+) -> bool:
+    """Every chain row must stay inside the exact server-side query envelope."""
+    try:
+        lo_text, hi_text = request["params"]["strike"].split("-")
+        lo, hi = Decimal(lo_text), Decimal(hi_text)
+        if not lo.is_finite() or not hi.is_finite() or lo > hi:
+            return False
+        symbols: set[str] = set()
+        for row in rows:
+            symbol = row.get("optionSymbol")
+            if not isinstance(symbol, str) or not symbol or symbol in symbols:
+                return False
+            symbols.add(symbol)
+            strike = Decimal(str(row.get("strike")))
+            if (
+                row.get("underlying") != request["ticker"]
+                or row.get("expiration") != request["params"]["expiration"]
+                or row.get("side") not in {"call", "put"}
+                or not strike.is_finite()
+                or not lo <= strike <= hi
+            ):
+                return False
+    except (KeyError, ValueError, InvalidOperation, TypeError):
+        return False
+    return True
+
+
 def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str, Any] | None:
     body_exists = paths.body.exists()
     receipt_exists = paths.receipt.exists()
@@ -204,8 +234,9 @@ def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str,
         or payload.get("s") != "ok"
     ):
         raise CandidateChainCacheError("chain cache receipt/source mismatch: never overwrite")
-    if receipt.get("row_count") != len(array_rows(payload)):
-        raise CandidateChainCacheError("chain cache row count no longer reconciles")
+    rows = array_rows(payload)
+    if receipt.get("row_count") != len(rows) or not _rows_match_explicit_request(rows, request):
+        raise CandidateChainCacheError("chain cache rows no longer match explicit source request")
     return receipt
 
 
@@ -224,16 +255,26 @@ def _write_raw_and_receipt(
     if json.loads(raw.decode("utf-8")) != response.payload:
         raise CandidateChainCacheError("exact HTTP body differs from decoded provider payload")
 
-    rows = array_rows(response.payload)
+    schema_failure = False
+    try:
+        rows = array_rows(response.payload)
+    except (ValueError, TypeError):
+        # Preserve exact raw bytes even when provider column vectors disagree.
+        rows = ()
+        schema_failure = True
     required = ("optionSymbol", "underlying", "expiration", "side", "strike")
     status = "COMPLETE"
     failure: str | None = None
-    if response.http_status not in {200, 203} or response.payload.get("s") != "ok":
+    if schema_failure:
+        status, failure = "QUARANTINED", "provider response arrays inconsistent"
+    elif response.http_status not in {200, 203} or response.payload.get("s") != "ok":
         status, failure = "QUARANTINED", "unexpected provider response status"
     elif not 1 <= len(rows) <= MAX_CHAIN_ROWS:
         status, failure = "QUARANTINED", "historical chain empty or oversized"
     elif any(not all(key in row for key in required) for row in rows):
         status, failure = "QUARANTINED", "required chain identity fields missing"
+    elif not _rows_match_explicit_request(rows, request):
+        status, failure = "QUARANTINED", "chain rows violate ticker, expiry, strike or identity envelope"
 
     rates = rate_limit_snapshot(response.headers)
     if rates["remaining"] is None or rates["consumed"] is None:
