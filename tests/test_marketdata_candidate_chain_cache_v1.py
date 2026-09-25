@@ -197,3 +197,22 @@ def test_rejects_unbounded_call_count(tmp_path, monkeypatch):
     settings = _settings(tmp_path, monkeypatch)
     with pytest.raises(CandidateChainCacheError, match=f"0..{MAX_NEW_REQUESTS}"):
         run_candidate_chain_cache(settings, _plan(), max_new_requests=MAX_NEW_REQUESTS + 1)
+
+
+def test_live_source_hash_must_match_physical_file(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    file = settings.project_root / "data/source.json"
+    file.parent.mkdir()
+    file.write_bytes(b"wrong source")
+    with pytest.raises(CandidateChainCacheError, match="does not match any declared"):
+        run_candidate_chain_cache(
+            settings, plan, max_new_requests=1,
+            authorize_provider_reads=True,
+            confirm_paid_starter=True,
+            confirm_private_internal_use=True,
+            stock_source_files=(file,),
+            provider_read=lambda *_args: (_ for _ in ()).throw(
+                AssertionError("provider call before source hash verification")
+            ),
+        )
