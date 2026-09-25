@@ -2022,6 +2022,36 @@ Dynamic Exit V1 first produces selector diagnostics only. Portfolio competition,
 position admission, recurrent account compounding, and account return are deliberately
 deferred until the selector passes this anti-lookahead gate.
 
+### Dynamic Exit V1 first-run closeout — 2026-09-25
+
+The frozen DEVELOPMENT-only Dynamic Exit V1 completed its original run under
+`560b35765e82b2ab5fb59f8b00cc641f28112232bf89a994fdb0637f069a2b5b`.
+It verified all 546 source parts and evaluated 22,604 usable daily LONG cases
+over 32 folds. It selected 535 cases (2.37%), abstained 22,069, and chose
+only STOP 2%/TARGET 5% (49) or STOP 3%/TARGET 5% (486). The selected-case
+realized net mean was -0.058%, median -2.099%, P(positive) 41.31%.
+The 2025 selected mean was +0.147% across 354 cases, but the later Jan–Apr
+2026 mean was -0.468% across 176 cases. These are trade diagnostics, not
+account returns, and do not support dynamic-exit promotion or modification
+of prior failed exit decisions.
+
+The read-only command below shows the stored breakdown of insufficient
+training-context support versus supported cells with no positive robust LCB.
+It validates the first-run summary without repeating the large source scan
+or consuming provider credits:
+
+~~~powershell
+git checkout main; git pull
+.\.venv\Scripts\python.exe scripts\inspect_recurrent_successor_dynamic_exit_v1.py
+~~~
+
+Original retained report:
+`data/research/recurrent_successor_dynamic_exit_v1/db538c8cc72189d4/560b35765e82b2ab/dynamic_exit_v1_summary.json`.
+Record and disposition:
+`docs/research/recurrent_successor_dynamic_exit_v1_acceptance_20260925.md`.
+This does not block a separately preregistered news/options challenger; it
+does prevent treating V1 as an accepted exit policy.
+
 ## 2026-09-19 — 2026 forward exit confirmation failed; regime map frozen
 
 The chronologically forward DEVELOPMENT confirmation for the two frozen 2025

@@ -765,3 +765,42 @@ anti-lookahead behavior before binding actions into the recurrent account engine
 Historical supported modern alpha remains zero. Dynamic Exit V1 grants no selector,
 exit-policy, portfolio, PAPER, or LIVE promotion authority.
 
+### Dynamic Exit V1 first-run result — 2026-09-25
+
+Frozen contract fingerprint:
+`db538c8cc72189d4fcdb06b854ac8c8bf44e5b5b2798745dd0128f20b8f7cd9a`.
+First-run fingerprint:
+`560b35765e82b2ab5fb59f8b00cc641f28112232bf89a994fdb0637f069a2b5b`.
+
+All 546 source parts verified, and the complete DEVELOPMENT-only daily LONG selector
+ran over 22,604 usable cases (32 folds); another 3,013 of 25,617 selected daily
+LONG cases lacked sufficient prior path support. It selected 535 (2.37%) and
+abstained 22,069. Its selected-case realized net trade diagnostics were mean
+-0.058%, median -2.099%, P(positive) 41.31%. The only selected actions were
+STOP 2% / TARGET 5% (49) and STOP 3% / TARGET 5% (486). Selection was
+concentrated in 2019 (5), 2025 (354) and 2026 Jan–Apr (176). Selected 2025
+mean was +0.147%; chronologically later 2026 Jan–Apr mean was -0.468%.
+
+The first-run report is a selector diagnostic and **does not** compute account
+returns, capital competition, portfolio drawdown or compounding. Its zero
+promotion flags remain in force. The frozen positive-LCB/positive-trade-mean
+rule must not be weakened or reselected using this result. The large abstention
+share and negative later selected cohort do not substantiate advancing the
+chosen exit actions to recurrent-account promotion. Neither V1 nor failed
+static geometries are rescued by retrospective changes.
+
+The saved report contains both abstention causes and their annual counts. The
+read-only `scripts/inspect_recurrent_successor_dynamic_exit_v1.py` verifies
+the retained report and prints them without replay or provider calls; they
+must be inspected before attributing abstention to one cause.
+
+**Disposition:** `DYNAMIC_EXIT_V1_DIAGNOSTIC_COMPLETE / NO_GENERALIZATION /
+NO_PROMOTION / READ_ONLY_CAUSE_CLOSEOUT`.
+
+Accepted first-run record:
+`docs/research/recurrent_successor_dynamic_exit_v1_acceptance_20260925.md`.
+Historical supported modern alpha remains zero. A future news/options
+conditioning or alternative exit hypothesis requires a separately
+preregistered contract and PIT-safe source/price authority.
+
+
