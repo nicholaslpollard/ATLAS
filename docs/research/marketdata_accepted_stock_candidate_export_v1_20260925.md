@@ -110,7 +110,8 @@ verification, after outcome-blind cohort selection, before native-raw loading,
 after **each** separately hash-verified native raw unit, after the raw-price
 lineage gate, when the chain plan is ready, when all three artifacts are
 persisted, and on COMPLETE or FAILED_REVIEW_REQUIRED/INTERRUPTED. It contains
-a run ID, stage times, selected-case/unit/group counts, source and plan hashes,
+a run ID, timestamped stage times, a durable 45-second heartbeat during long
+source loading/verification, selected-case/unit/group counts, source and plan hashes,
 immutable output paths and the exception **type** when failed; it does not
 record credentials, provider data or a failure's raw message. CLI progress
 also reports elapsed seconds, the verified native-unit count and shared-chain
