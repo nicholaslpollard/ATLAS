@@ -16,28 +16,33 @@ Profit is an objective, never a guarantee. Activity, alerts, attractive charts, 
 profitable backtests are not substitutes for positive expected value after costs,
 controlled risk, prospective evidence, and reliable operation.
 
-### Current source-only validation gate — 2026-09-25
+### Active MarketData candidate-chain preview gate — 2026-09-25
 
-The accepted MarketData Starter history and the merged offline candidate batch
-planner do **not** yet connect options to simulator P&L. The next dependency is
-PR #229's bounded source-only chain cache followed by PR #230's accepted
-DEVELOPMENT stock-candidate exporter; both remain open and unaccepted pending
-exact-head Windows/CI validation. The earlier 11 Windows test failures all
-encountered an overlong atomic run-checkpoint temporary path **before any provider
-call**. The code now uses short operational run paths with the full SHA-256 inside
-the report, and includes portable regression coverage. The exporter additionally
-uses separate timestamped stage receipts and 45-second heartbeats during long
-source scans. These are implementation changes, **not yet passing acceptance**.
+PR #229's bounded historical EOD chain cache **MERGED** after all ten GitHub
+checks passed. The operator's exact-head 71-test Windows suite passed in
+6.30 seconds on combined export commit `6292b9d`. PR #230's accepted stock
+candidate export remains unmerged pending branch reconciliation/remaining CI;
+the operator nevertheless completed its separately authorized, zero-provider
+2025 source-only diagnostic under run `20260925T233304045068Z-3830a7a5`:
+546/546 normalized source parts verified, 4,685 comparable opportunities and
+113 unique training cells loaded, 12 monthly outcome-blind daily LONG cases,
+12 SHA-verified native raw daily units, 12 distinct bounded option-chain
+requests, 21 durable stages and 23.6 seconds elapsed. Source bundle SHA-256:
+`e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e`;
+plan fingerprint:
+`a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1`.
+These figures are operator-reported workstation output; full source/plan
+artifact bytes are retained on that workstation and are not in GitHub.
 
-Do not run either authenticated acquisition or simulator integration yet.
-After targeted offline tests pass, merge #229, reconcile/retest #230, execute
-the default 2025 one-per-month zero-provider-read source export, and inspect the
-zero-credit chain preview. Selected option quote histories, contract/deliverable
-qualification and conservative EOD timing/fill economics remain separate,
-unimplemented acceptance gates. Historical news source integrity V2 is accepted,
-but exact historical article-text vintage and downstream predictor authority
-remain separate gates. Protected and future-blind boundaries, previous negative
-strategy results, and PAPER/LIVE authority remain unchanged.
+**Next:** run the newly merged cache's **offline zero-credit preview** against
+the exact saved plan on `main`, inspect plan/request identities and any
+existing receipt/attempt state, then complete PR #230 CI/reconciliation.
+No authenticated MarketData acquisition, broker activity, historical option
+execution prices, news predictor authority or simulator option P&L is opened
+by source export or preview. Contract selection/deliverables, selected quote
+histories, conservative EOD fills/costs and independently PIT-qualified
+news-context joins remain separate gates. Protected and future-blind
+boundaries and previous negative strategy results are unchanged.
 
 ### Retained Czar28 historical-options challenger (not simulator critical path)
 
@@ -4718,7 +4723,8 @@ performed zero bulk downloads; it no longer implies the previously acquired
 The source-only bridge to the chain planner is implemented as
 packages/data/marketdata_accepted_stock_candidate_export_v1.py and
 scripts/export_marketdata_accepted_stock_candidates_v1.py. Its first
-workstation export is pending. Default 2025 one-case-per-month sampling
+source-only workstation export succeeded as detailed above. Default 2025
+one-case-per-month sampling
 takes only accepted walk-forward-selected comparable daily LONG stock
 opportunities, ranks by a fixed SHA-256 of original ID (not by realized
 outcome or option/news data), verifies existing normalized DEVELOPMENT
