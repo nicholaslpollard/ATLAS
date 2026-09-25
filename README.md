@@ -4723,3 +4723,12 @@ avoid filesystem churn. Offline preview skips the full disk quota census.
 All provider calls remain serial, capped at ten and single-attempt, and
 fail closed on credit/storage or source-identity anomalies. This remains
 strictly source acquisition, not option pricing or trading authority.
+
+
+Accepted stock-candidate export also writes a separate SHA-bound, per-invocation
+stage ledger under data/options/manifests/marketdata_stock_candidate_export_v1/runs.
+It reports accepted selected-source loading, the frozen cohort, native raw
+source verification **unit by unit**, output-plan construction, immutable
+artifact reuse, timings and terminal errors without changing source/plan
+fingerprints. The default source pass uses four DuckDB threads and only
+the bounded 2025 eligible cohort. No API call is made by export.
