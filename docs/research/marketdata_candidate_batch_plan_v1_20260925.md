@@ -4,7 +4,7 @@
 
 **OFFLINE PLANNER IMPLEMENTED / NO PROVIDER ACQUISITION OR OPTION-P&L AUTHORITY**
 
-Contract: \`atlas-marketdata-candidate-chain-batch-plan-v1\`.
+Contract: `atlas-marketdata-candidate-chain-batch-plan-v1`.
 
 The first step after source-semantics closeout is a small, testable planning
 surface that turns a stock-opportunity manifest into bounded shared historical
@@ -12,31 +12,31 @@ chain requests **without making any API calls**. This is not a simulator.
 
 ## Input and PIT requirement
 
-The JSON manifest has purpose \`SOURCE_ACQUISITION_ONLY\` and an
-\`opportunities\` array. Every row must have exactly:
+The JSON manifest has purpose `SOURCE_ACQUISITION_ONLY` and an
+`opportunities` array. Every row must have exactly:
 
-- \`opportunity_id\`: unique stable identity;
-- \`ticker\`: uppercase canonical underlying;
-- \`snapshot_date\`: historical EOD chain as-of date;
-- \`decision_at_utc\`: timezone-aware UTC decision timestamp;
-- \`raw_underlying_price\`: price already known from the stock opportunity;
-- \`underlying_price_basis\`: literal \`RAW_AS_TRADED\`;
-- \`expiration\`: known candidate expiration date;
-- \`side\`: \`call\` or \`put\`;
-- \`stock_source_sha256\`: the real hash of the accepted source artifact.
+- `opportunity_id`: unique stable identity;
+- `ticker`: uppercase canonical underlying;
+- `snapshot_date`: historical EOD chain as-of date;
+- `decision_at_utc`: timezone-aware UTC decision timestamp;
+- `raw_underlying_price`: price already known from the stock opportunity;
+- `underlying_price_basis`: literal `RAW_AS_TRADED`;
+- `expiration`: known candidate expiration date;
+- `side`: `call` or `put`;
+- `stock_source_sha256`: the real hash of the accepted source artifact.
 
 The decision date in America/New_York must be strictly **after** the chain
 snapshot date. This conservative V1 avoids same-day EOD lookahead by design.
 The snapshot must not be in the future and expiration must be 7–75 calendar
 days after it. The stock source SHA-256 and raw price basis are mandatory.
 The caller must prove that the supplied price was known by decision time;
-the planner does not invent it from a later provider \`underlyingPrice\`.
+the planner does not invent it from a later provider `underlyingPrice`.
 
 ## Batching and cost model
 
 Each opportunity receives a bounded strike interval of +/-8% around its
 PIT stock price, rounded outward to cents. The planner groups by
-\`ticker + snapshot_date + expiration\`, then merges overlapping windows
+`ticker + snapshot_date + expiration`, then merges overlapping windows
 only if their combined width is <=25% of the smallest PIT stock price.
 Calls and puts can share the same chain request because the endpoint can
 return both sides; selection by requested side is a later local step.
@@ -73,9 +73,9 @@ With a real accepted stock-opportunity manifest:
 ~~~
 
 By default, the small plan is written to the configured project-visible
-\`data/options/manifests/marketdata_candidate_batch_plan_v1.json\`. When
+`data/options/manifests/marketdata_candidate_batch_plan_v1.json`. When
 external storage is activated, that path is physically on the external
-NVMe. An explicit \`--output\` path can be supplied.
+NVMe. An explicit `--output` path can be supplied.
 
 This command is **offline** and needs no provider key or license activation.
 It does not fetch or create historical option quotes, select an executable
