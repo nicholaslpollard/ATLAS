@@ -4688,3 +4688,20 @@ Document: docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
 The historical news/options preflight console now says *that invocation*
 performed zero bulk downloads; it no longer implies the previously acquired
 2,211,606-article news corpus is absent.
+
+
+### MarketData run tracking and bounded efficiency — 2026-09-25
+
+Historical chain cache V1 now records an atomic per-run checkpoint and a
+stable per-plan latest report, including UTC run ID, stage/status,
+planned/processed/reused/new/pending requests, SHA-verified reused bytes,
+new raw bytes, observed provider-credit use/remaining, initial/current
+research headroom, elapsed time, throughput and approximate ETA. A fsynced
+per-request attempt marker is written **before** each billable call,
+and an exclusive plan lock prevents parallel duplicate paid acquisition.
+An ambiguous attempt is never blindly replayed; completed SHA receipts
+are reused, and free cache hits are checkpointed in groups of ten to
+avoid filesystem churn. Offline preview skips the full disk quota census.
+All provider calls remain serial, capped at ten and single-attempt, and
+fail closed on credit/storage or source-identity anomalies. This remains
+strictly source acquisition, not option pricing or trading authority.
