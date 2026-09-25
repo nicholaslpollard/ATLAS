@@ -477,6 +477,34 @@ and persist the external root only after the binding state is `READY`.
 Contract:
 `docs/external_secondary_storage_v1_20260924.md`.
 
+### Paid Starter five-year options entitlement accepted — 2026-09-25
+
+The **first** paid-Starter V1 qualification run returned
+`QUALIFIED_FOR_FIVE_YEAR_EOD_ECONOMICS_CHALLENGER`, run
+`20260925T182731Z` / evidence fingerprint
+`f7a0c78e6812e59bf1b7efd243ce9c66c0325aa7241fd5a46868b3fc2224747a`.
+Six cross-year anchors returned 96 restricted-chain rows and 50 selected-contract
+quote rows; OI, bid/ask, schema and null historical Greeks passed at every anchor.
+Oldest non-AAPL SPY history (2021-10-01) was available. The run consumed 10
+observed credits and ended with 9,990 remaining; raw receipts/report are retained
+on the workstation under the existing provider-qualification secondary-data path.
+
+**Next product package:** implement bounded, restart-safe, candidate-first option
+acquisition/cache from PIT stock opportunities. It must select contracts from an
+opportunity-time underlying price, not EOD-D provider moneyness; distinguish
+D-1-settled OI from EOD-D option price/volume; preserve raw receipts; respect
+current subscription/retention permissions and local credit/storage budgets; and
+retain a separate EOD-only simulator boundary. Do not download the entire options
+universe and do not block adapter development on another broad source-validation
+campaign.
+
+Sparse-activity V2 remains an unchanged separate preregistered check; no V2
+workstation result has yet been supplied. Paid entitlement does not reverse
+earlier failed validation verdicts or grant option execution/PAPER/LIVE authority.
+
+Acceptance record:
+`docs/research/marketdata_paid_starter_acceptance_v1_20260925.md`.
+
 ### Historical News V1 acquisition — 2026-09-20
 
 Historical News V1 is the first acquisition stage under the bounded news/options
