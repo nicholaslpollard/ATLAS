@@ -216,3 +216,19 @@ def test_live_source_hash_must_match_physical_file(tmp_path, monkeypatch):
                 AssertionError("provider call before source hash verification")
             ),
         )
+
+
+def test_404_provider_body_is_quarantined_not_cached_as_success(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    raw = b'{"s":"no_data","errmsg":"not found"}'
+    response = MarketDataResponse(
+        http_status=404, payload=json.loads(raw), response_bytes=len(raw),
+        elapsed_seconds=0.01, raw_body=raw,
+        headers={"X-Api-Ratelimit-Remaining": "9960", "X-Api-Ratelimit-Consumed": "1"},
+    )
+    with pytest.raises(CandidateChainCacheError, match="quarantined"):
+        _authorized(settings, plan, lambda *_args: response)
+    paths = _paths(settings, plan["requests"][0]["request_identity"])
+    assert paths.body.read_bytes() == raw
+    assert json.loads(paths.receipt.read_text())["status"] == "QUARANTINED"
