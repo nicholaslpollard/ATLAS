@@ -44,6 +44,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  cohort identity: {report['cohort_identity']}")
     print(f"  selected opportunities: {report['selected_opportunities']}")
     print(f"  shared chains: {report['shared_chain_requests']}")
+    print(f"  duplicate requests eliminated: {report['selected_opportunities'] - report['shared_chain_requests']}")
+    print(f"  SHA-verified native raw source units: {report['verified_native_raw_units']}")
     for item in report["sample"]:
         print(
             f"    {item['signal_session']} {item['ticker']} "
@@ -56,6 +58,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  stock source file: {report['stock_source_file']}")
     print(f"  opportunity manifest: {report['opportunities_file']}")
     print(f"  chain plan: {report['plan_file']}")
+    print(f"  run ID: {report['source_only_run_id']}")
+    print(f"  stages recorded: {report['stages_completed']}")
+    print(f"  elapsed seconds: {report['elapsed_seconds']:.1f}")
+    print(f"  durable run report: {report['run_report_path']}")
     print("  provider reads: 0")
     print("  broker reads/writes: 0")
     print("  option P&L or strategy promotion authority: false")
