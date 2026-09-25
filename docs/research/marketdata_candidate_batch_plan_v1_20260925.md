@@ -49,9 +49,10 @@ or disjoint price windows correctly remain separate requests.
 
 The documented MarketData historical-chain credit basis is one credit per
 1,000 returned option symbols, not automatically one credit per HTTP
-request. V1 reports only a **lower bound** equal to the planned request
-count; the provider's actual returned symbol count and observed rate-limit
-headers remain authoritative. No unbounded all-expiration chain is planned.
+request. V1 reports a **nominal one-credit-per-group estimate** if each response returns
+1–1,000 billable symbols. It is not a guaranteed lower or upper bound: free
+examples and responses above 1,000 symbols may change actual charges. The
+provider's observed rate-limit headers remain authoritative. No unbounded all-expiration chain is planned.
 
 Source documentation:
 - https://www.marketdata.app/docs/api/options/chain/
