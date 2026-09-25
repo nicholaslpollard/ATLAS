@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-24 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-25 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -33,7 +33,30 @@ reconciled. Code and tests remain the authority for actual behavior; Git history
 accepted artifacts remain the authority for what happened. A code or research
 package with stale applicable living documents is incomplete even if its tests pass.
 
-### Current source continuation — Czar28 historical option qualification V1
+### Current source-only validation gate — 2026-09-25
+
+The accepted MarketData Starter history and the merged offline candidate batch
+planner do **not** yet connect options to simulator P&L. The next dependency is
+PR #229's bounded source-only chain cache followed by PR #230's accepted
+DEVELOPMENT stock-candidate exporter; both remain open and unaccepted pending
+exact-head Windows/CI validation. The earlier 11 Windows test failures all
+encountered an overlong atomic run-checkpoint temporary path **before any provider
+call**. The code now uses short operational run paths with the full SHA-256 inside
+the report, and includes portable regression coverage. The exporter additionally
+uses separate timestamped stage receipts and 45-second heartbeats during long
+source scans. These are implementation changes, **not yet passing acceptance**.
+
+Do not run either authenticated acquisition or simulator integration yet.
+After targeted offline tests pass, merge #229, reconcile/retest #230, execute
+the default 2025 one-per-month zero-provider-read source export, and inspect the
+zero-credit chain preview. Selected option quote histories, contract/deliverable
+qualification and conservative EOD timing/fill economics remain separate,
+unimplemented acceptance gates. Historical news source integrity V2 is accepted,
+but exact historical article-text vintage and downstream predictor authority
+remain separate gates. Protected and future-blind boundaries, previous negative
+strategy results, and PAPER/LIVE authority remain unchanged.
+
+### Retained Czar28 historical-option qualification V1
 
 The current historical-options continuation is a read-only qualification of
 Czar28/PublicOptions before any paid historical-options purchase. Massive Historical
@@ -2701,7 +2724,7 @@ Every closeout reports:
 - negative results and unresolved risks;
 - next highest-value coherent package.
 
-## 21. Current active continuation — Historical Option Reference V4 acquisition
+## 21. Retained Historical Option Reference V4 acquisition record — not the active gate
 
 The V3 ACHI diagnostic is complete under evidence fingerprint
 `b655282ff5f1da7bd3c2d7ac931a34b37650ffaa57354c6ac47efdfe746f81d1`.
@@ -5105,3 +5128,37 @@ is not placed in public GitHub; the provenance/authority record is
 No Trader/OPRA upgrade is prerequisite for the separately qualified five-year
 historical EOD acquisition branch. No full-SIP/NBBO, execution quote, intraday
 option path, trading or option-P&L authority follows from dashboard badges.
+
+
+### Candidate chain cache V1 — 2026-09-25 implementation gate
+
+The offline planner's separately versioned source-acquisition successor now
+implements exact-raw MarketData historical EOD **chain** caching. The first
+operator execution is still pending. It rebuilds the stock-source-bound
+plan, verifies physical source-file SHA values before a real query,
+requires paid Starter/private/internal/read flags, limits new shared-chain
+requests to ten per run, enforces local or READY external research budgets,
+and atomically records/re-verifies exact HTTP bodies plus hash-bound receipts.
+Credit/size/schema anomalies fail closed and never overwrite retained
+source. No quote horizons, executable contract selection, historical option
+fill/P&L or simulator authority is opened. See
+docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
+
+The following separately versioned work remains: export an accepted
+stock-opportunity manifest with exact PIT/source binding; run bounded
+historical chains; frozen contract identity/deliverable filter and selected
+quote-horizon acquisition; explicit EOD timing/cost model; news feature
+provenance and PIT join; then stock-only versus news-context versus
+option-economics recurrent replay without contaminating existing results.
+
+
+### Run observability and efficiency closure — 2026-09-25
+
+Source acquisition now durably checkpoints before any possibly charged
+request and after each response/failure, with independent attempt markers,
+a plan-concurrency lock, verified-cache reuse and credit/storage telemetry.
+The manifest provides a structured run ID, progress, bytes, rate, approximate
+ETA and reason-coded blocked/failed states. Cached requests checkpoint
+every ten; no unbounded API retry or speculative concurrent spending.
+A source-only preview does not need a full disk census. See
+docs/research/marketdata_candidate_chain_cache_v1_20260925.md.

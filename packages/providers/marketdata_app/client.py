@@ -35,6 +35,7 @@ class MarketDataResponse:
     headers: dict[str, str]
     response_bytes: int
     elapsed_seconds: float
+    raw_body: bytes | None = None
 
 
 def _resolve_token() -> str:
@@ -78,7 +79,10 @@ def get_json(
     initial_retry_seconds: float = 0.5,
     max_retry_seconds: float = 8.0,
     sleep: Callable[[float], None] = time.sleep,
+    max_response_bytes: int | None = None,
 ) -> MarketDataResponse:
+    if max_response_bytes is not None and max_response_bytes < 1:
+        raise ValueError("max_response_bytes must be positive")
     if max_attempts < 1:
         raise ValueError("max_attempts must be positive")
 
@@ -103,7 +107,12 @@ def get_json(
         request = urllib.request.Request(url, headers=headers, method="GET")
         try:
             with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-                raw = response.read()
+                raw = (
+                    response.read() if max_response_bytes is None
+                    else response.read(max_response_bytes + 1)
+                )
+                if max_response_bytes is not None and len(raw) > max_response_bytes:
+                    raise MarketDataError("MarketData.app response exceeded bounded byte limit")
                 status = int(response.status)
                 if status not in {200, 203}:
                     raise MarketDataError(
@@ -116,9 +125,15 @@ def get_json(
                     headers={str(k): str(v) for k, v in response.headers.items()},
                     response_bytes=len(raw),
                     elapsed_seconds=max(0.0, time.perf_counter() - started),
+                    raw_body=raw,
                 )
         except urllib.error.HTTPError as exc:
-            raw = exc.read()
+            raw = (
+                exc.read() if max_response_bytes is None
+                else exc.read(max_response_bytes + 1)
+            )
+            if max_response_bytes is not None and len(raw) > max_response_bytes:
+                raise MarketDataError("MarketData.app error body exceeded bounded byte limit") from exc
             payload: dict[str, Any] = {}
             try:
                 payload = _decode_json(raw) if raw else {}
@@ -138,6 +153,7 @@ def get_json(
                     headers={str(k): str(v) for k, v in exc.headers.items()},
                     response_bytes=len(raw),
                     elapsed_seconds=max(0.0, time.perf_counter() - started),
+                    raw_body=raw,
                 )
 
             if exc.code in {400, 401, 402, 403}:

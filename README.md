@@ -16,7 +16,30 @@ Profit is an objective, never a guarantee. Activity, alerts, attractive charts, 
 profitable backtests are not substitutes for positive expected value after costs,
 controlled risk, prospective evidence, and reliable operation.
 
-### Active historical-options source gate — Czar28 V1
+### Current source-only validation gate — 2026-09-25
+
+The accepted MarketData Starter history and the merged offline candidate batch
+planner do **not** yet connect options to simulator P&L. The next dependency is
+PR #229's bounded source-only chain cache followed by PR #230's accepted
+DEVELOPMENT stock-candidate exporter; both remain open and unaccepted pending
+exact-head Windows/CI validation. The earlier 11 Windows test failures all
+encountered an overlong atomic run-checkpoint temporary path **before any provider
+call**. The code now uses short operational run paths with the full SHA-256 inside
+the report, and includes portable regression coverage. The exporter additionally
+uses separate timestamped stage receipts and 45-second heartbeats during long
+source scans. These are implementation changes, **not yet passing acceptance**.
+
+Do not run either authenticated acquisition or simulator integration yet.
+After targeted offline tests pass, merge #229, reconcile/retest #230, execute
+the default 2025 one-per-month zero-provider-read source export, and inspect the
+zero-credit chain preview. Selected option quote histories, contract/deliverable
+qualification and conservative EOD timing/fill economics remain separate,
+unimplemented acceptance gates. Historical news source integrity V2 is accepted,
+but exact historical article-text vintage and downstream predictor authority
+remain separate gates. Protected and future-blind boundaries, previous negative
+strategy results, and PAPER/LIVE authority remain unchanged.
+
+### Retained Czar28 historical-options challenger (not simulator critical path)
 
 The broad Massive Historical Option Reference V7 contract remains preserved, but its
 current Basic-tier provider continuation is operationally paused after a resumed run
@@ -4665,3 +4688,43 @@ The screenshot remains outside the public repo; its custody and bounded reading
 are recorded in `docs/research/marketdata_starter_dashboard_evidence_20260925.md`.
 This changes neither the separately accepted five-year historical EOD options
 qualification nor any historical fill, simulator, PAPER or LIVE authority.
+
+
+### Candidate-first MarketData exact-raw chain cache V1 — 2026-09-25
+
+The first separately bounded provider executor after the offline batch planner
+is now implemented in packages/data/marketdata_candidate_chain_cache_v1.py
+with CLI scripts/run_marketdata_candidate_chain_cache_v1.py. **First real
+workstation acquisition is pending.** The default run is an offline preview.
+It rebuilds the PIT plan from source bindings, verifies exact claimed source
+SHA values against explicitly supplied physical DEVELOPMENT stock artifacts
+before any authorized provider call, and executes at most ten new bounded
+shared historical-chain reads per run only under paid/private/explicit-read
+flags. C: research-budget and READY-external storage policies are enforced.
+The authenticated client captures bounded exact HTTP body bytes, and atomic
+SHA-256 receipts are verified before reuse. Anomalies are preserved as
+quarantined evidence rather than overwritten or treated as accepted rows.
+No whole-market acquisition, quote-series calls, contract selection, historical
+option fill/P&L, provider mutation, broker action or PAPER/LIVE authority exists.
+Document: docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
+
+The historical news/options preflight console now says *that invocation*
+performed zero bulk downloads; it no longer implies the previously acquired
+2,211,606-article news corpus is absent.
+
+
+### MarketData run tracking and bounded efficiency — 2026-09-25
+
+Historical chain cache V1 now records an atomic per-run checkpoint and a
+stable per-plan latest report, including UTC run ID, stage/status,
+planned/processed/reused/new/pending requests, SHA-verified reused bytes,
+new raw bytes, observed provider-credit use/remaining, initial/current
+research headroom, elapsed time, throughput and approximate ETA. A fsynced
+per-request attempt marker is written **before** each billable call,
+and an exclusive plan lock prevents parallel duplicate paid acquisition.
+An ambiguous attempt is never blindly replayed; completed SHA receipts
+are reused, and free cache hits are checkpointed in groups of ten to
+avoid filesystem churn. Offline preview skips the full disk quota census.
+All provider calls remain serial, capped at ten and single-attempt, and
+fail closed on credit/storage or source-identity anomalies. This remains
+strictly source acquisition, not option pricing or trading authority.
