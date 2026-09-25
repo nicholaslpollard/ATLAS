@@ -43,6 +43,15 @@ def main(argv: list[str] | None = None) -> int:
         )
     except (OSError, ValueError, CandidateChainCacheError) as exc:
         print(f"CANDIDATE CHAIN CACHE BLOCKED: {type(exc).__name__}: {exc}", flush=True)
+        if isinstance(locals().get("plan"), dict):
+            fingerprint = plan.get("plan_fingerprint")
+            if isinstance(fingerprint, str) and len(fingerprint) == 64:
+                print(
+                    "  inspect any checkpoint at: "
+                    f"data/options/manifests/marketdata_candidate_chain_cache_v1_{fingerprint[:16]}.json",
+                    flush=True,
+                )
+        print("  do not automatically replay an ambiguous provider attempt", flush=True)
         return 3
 
     print("ATLAS MarketData Candidate Chain Cache V1")
@@ -50,10 +59,26 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  plan fingerprint: {report['plan_fingerprint']}")
     print(f"  storage mode: {report['storage_mode']}")
     print(f"  verified stock source files: {len(report['verified_stock_source_sha256'])}")
+    print(f"  planned stock opportunities: {report['planned_opportunities']}")
     print(f"  planned shared chains: {report['planned_chain_requests']}")
+    print(f"  shared-chain dedup savings: {report['planned_opportunities'] - report['planned_chain_requests']}")
     print(f"  verified existing receipts: {report['reused']}")
     print(f"  new complete receipts: {report['new_complete']}")
-    print(f"  provider reads: {report['provider_reads']}")
+    print(f"  provider read attempts: {report['provider_reads']}")
+    print(f"  credits consumed observed this invocation: {report['observed_credits_consumed_this_run']}")
+    print(f"  credit consumption uncertain: {report['credits_unknown_after_failed_request']}")
+    print(f"  provider credits remaining last observed: {report['last_observed_provider_credits_remaining']}")
+    print(f"  verified reused bytes: {report['verified_reused_bytes']:,}")
+    print(f"  new raw bytes: {report['new_raw_bytes']:,}")
+    print(f"  quarantined responses: {report['quarantined']}")
+    print(f"  elapsed seconds: {report['elapsed_seconds']:.1f}")
+    if report.get("processed_per_second") is not None:
+        print(f"  processed requests/second: {report['processed_per_second']}")
+    if report.get("estimated_remaining_seconds") is not None:
+        print(f"  rough remaining seconds: {report['estimated_remaining_seconds']}")
+    if report.get("latest_report_path"):
+        print(f"  checkpoint: {report['latest_report_path']}")
+        print(f"  archived run report: {report['run_report_path']}")
     print(f"  pending: {report['pending']}")
     print("  option quote-series reads: 0")
     print("  broker reads/writes: 0")
