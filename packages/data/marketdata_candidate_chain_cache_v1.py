@@ -23,7 +23,7 @@ from packages.data.research_storage import (
     assert_category_acquisition_allowed,
     inspect_research_storage,
 )
-from packages.providers.marketdata_app import MarketDataResponse, array_rows, rate_limit_snapshot
+from packages.providers.marketdata_app import MarketDataError, MarketDataResponse, array_rows, rate_limit_snapshot
 from packages.providers.marketdata_app.client import get_json
 
 
@@ -258,7 +258,7 @@ def _write_raw_and_receipt(
     schema_failure = False
     try:
         rows = array_rows(response.payload)
-    except (ValueError, TypeError):
+    except (MarketDataError, ValueError, TypeError):
         # Preserve exact raw bytes even when provider column vectors disagree.
         rows = ()
         schema_failure = True
