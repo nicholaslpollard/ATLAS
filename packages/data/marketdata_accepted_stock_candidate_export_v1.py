@@ -279,6 +279,16 @@ def export_candidate_stock_manifest(
         "cohort_identity": cohort_identity,
         "selected_opportunities": len(cohort),
         "shared_chain_requests": plan["shared_chain_requests"],
+        "sample": [
+            {
+                "ticker": row["ticker"],
+                "signal_session": row["signal_session"],
+                "entry_price": row["raw_underlying_price"],
+                "candidate_expiration": row["expiration"],
+                "opportunity_id": row["opportunity_id"],
+            }
+            for row in bundle_rows
+        ],
         "stock_source_sha256": bundle_sha,
         "plan_fingerprint": plan["plan_fingerprint"],
         "stock_source_file": str(source_path),
