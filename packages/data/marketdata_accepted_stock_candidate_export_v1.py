@@ -572,8 +572,10 @@ def export_candidate_stock_manifest(
     # records state without injecting timestamps or paths into bundle identity.
     started = time.monotonic()
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid.uuid4().hex[:8]
+    # Operational stage reports must remain Windows-short; all scientific
+    # lineage and immutable output hashes stay in the report and bundle.
     path = settings.resolved_path(
-        f"{PLAN_SUBDIR}/marketdata_stock_candidate_export_v1/runs/{run_id}.json"
+        f"{PLAN_SUBDIR}/md_stock_runs/{run_id}.json"
     )
     report: dict[str, Any] = {
         "contract": CONTRACT,
