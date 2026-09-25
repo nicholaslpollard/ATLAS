@@ -42,7 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     print("ATLAS MarketData Candidate Chain Batch Plan V1")
     print(f"  opportunity count: {plan['opportunities']}")
     print(f"  shared historical-chain requests: {plan['shared_chain_requests']}")
-    print(f"  minimum historical-chain credits (not a charge guarantee): {plan['minimum_historical_chain_credits']}")
+    print(f"  nominal chain credits at 1-1000 billable symbols/request (not guaranteed): {plan['nominal_chain_credits_if_each_response_has_1_to_1000_billable_symbols']}")
     print("  provider reads: 0")
     print("  broker reads/writes: 0")
     print("  historical option P&L authority: false")
