@@ -127,7 +127,11 @@ def get_json(
                     raw_body=raw,
                 )
         except urllib.error.HTTPError as exc:
-            raw = exc.read()
+            raw = exc.read(
+                max_response_bytes + 1 if max_response_bytes is not None else -1
+            )
+            if max_response_bytes is not None and len(raw) > max_response_bytes:
+                raise MarketDataError("MarketData.app error body exceeded bounded byte limit") from exc
             payload: dict[str, Any] = {}
             try:
                 payload = _decode_json(raw) if raw else {}
