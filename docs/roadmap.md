@@ -4861,6 +4861,45 @@ not influence the choice. If coherent, the next package will bind those frozen
 assignments into the recurrent account simulator with capital competition, risk caps,
 mark-to-market drawdown, and compounding.
 
+### Dynamic Exit V1 closeout and separate news/options continuation — 2026-09-25
+
+The frozen Dynamic Exit V1 first-run selector diagnostic completed under
+`560b35765e82b2ab5fb59f8b00cc641f28112232bf89a994fdb0637f069a2b5b`.
+22,604 usable DEVELOPMENT daily LONG cases across 32 folds yielded
+535 selected / 22,069 abstained (2.37% selection). Selected realized net
+mean -0.058%, median -2.099%, positive rate 41.31%; later 2026 Jan–Apr
+selected mean -0.468% (176 cases). This is not an account return, and
+a decision-bound recurrent dynamic-exit portfolio replay is **not**
+automatically authorized by this result.
+
+The stored first-run summary includes the specific abstain-reason split.
+The read-only `scripts/inspect_recurrent_successor_dynamic_exit_v1.py`
+must be used to inspect/reconcile it without repeating the 546-part
+source scan or post-result parameter selection. V1, its outcome and its
+failed generalization evidence remain immutable.
+
+**Separate product/data path:** retain the working stock simulator as its
+unmodified baseline. The paid MarketData Starter five-year source gate,
+passing sparse-activity V2, and offline shared-chain batch planner are
+available as research foundation. Build the *real-stock-opportunity manifest*
+adapter from accepted PIT stock data before any authenticated candidate
+acquisition. An acquisition executor then needs explicit authorization,
+idempotent raw/cache receipts, credit/space controls and external-storage
+routing. Historical news joins must respect accepted conservative
+`max(created_at, updated_at)` PIT availability; options EOD-D bid/ask/last/
+volume cannot be used for open/intraday-D decisions or fictitious STOP/TARGET
+paths. The option simulator must be separately timed/versioned and may not
+retroactively add news/options to Dynamic Exit V1.
+
+The initial C: local 40 GiB acquisition budget may support bounded staging
+until the NVMe arrives. The existing E: exFAT thumb drive should not be
+treated as the permanent heavy-write active option database. Once the NVMe
+is verified and activated, secondary data goes externally while ATLAS and
+the primary Alpaca SIP V2 stock corpus remain internal.
+
+Acceptance:
+`docs/research/recurrent_successor_dynamic_exit_v1_acceptance_20260925.md`.
+
 ## 2026 forward confirmation failure and static-exit regime map — 2026-09-19
 
 The frozen 2%/5% and 3%/5% candidates were evaluated unchanged over
