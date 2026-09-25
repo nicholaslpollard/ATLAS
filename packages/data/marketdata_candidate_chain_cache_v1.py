@@ -111,15 +111,22 @@ def _verify_stock_source_files(
             "live acquisition requires --stock-source-file for every claimed source SHA"
         )
     verified: set[str] = set()
-    data_root = (settings.project_root / "data").resolve()
+    # The accepted bundle lives beneath a project-visible logical binding.
+    # Preserve that logical path on Windows: resolving its parent junction
+    # would incorrectly reject a healthy external NVMe evidence directory.
+    allowed = settings.resolved_path(
+        "data/research/evidence/marketdata_candidate_stock_v1"
+    )
     for supplied in paths:
-        source = Path(supplied).resolve()
-        try:
-            source.relative_to(data_root)
-        except ValueError as exc:
+        source = Path(os.path.abspath(supplied))
+        if source.parent != allowed:
             raise CandidateChainCacheError(
-                "stock source artifact must be inside the ATLAS data tree"
-            ) from exc
+                "stock source file must be an exact exported candidate evidence bundle"
+            )
+        # resolved_path already checked the configured external binding itself.
+        # Neither a nested unexpected link nor a symlinked evidence file is allowed.
+        if source.parent.is_symlink():
+            raise CandidateChainCacheError("source bundle directory cannot be a symlink")
         if not source.is_file() or source.is_symlink():
             raise CandidateChainCacheError(f"stock source artifact is missing/invalid: {source}")
         hasher = hashlib.sha256()
