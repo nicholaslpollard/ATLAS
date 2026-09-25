@@ -527,9 +527,12 @@ def run_candidate_chain_cache(
         "data/options/manifests/"
         f"marketdata_candidate_chain_cache_v1_{fingerprint[:16]}.json"
     )
+    # Keep the physical checkpoint short enough for legacy Windows path APIs.
+    # The full 64-character plan fingerprint remains inside the signed report;
+    # runtime directory names are non-authoritative and need no full SHA.
     run_path = settings.resolved_path(
-        "data/options/manifests/marketdata_candidate_chain_cache_v1/"
-        f"{fingerprint}/runs/{run_id}.json"
+        "data/options/manifests/md_chain_runs/"
+        f"{fingerprint[:16]}/{run_id}.json"
     )
     lock_path = latest_path.with_suffix(".lock")
     latest_path.parent.mkdir(parents=True, exist_ok=True)
