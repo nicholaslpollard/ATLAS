@@ -101,3 +101,59 @@ model and PIT news/option joins must precede recurrent simulator integration.
 Strategy Evidence Register intentionally unchanged. Historical price/execution
 authority, strategy/selector/promotion authority, PAPER, LIVE, confluence and
 broker/order authority remain false.
+
+
+## Durable tracking, restart and efficiency contract (before first workstation run)
+
+Every authorized invocation receives a unique UTC run ID and an atomic
+checkpoint at these two locations:
+
+- latest plan report: data/options/manifests/marketdata_candidate_chain_cache_v1_<plan-prefix>.json
+- per-invocation location: data/options/manifests/marketdata_candidate_chain_cache_v1/<full-plan-SHA>/runs/<run-ID>.json
+
+The per-run JSON is updated atomically at initialization, before each paid
+request, after each response or failure, at each credit/storage block, and
+at finalization. Free cache hits checkpoint every ten rather than on every
+row to reduce filesystem churn. A zero-provider-read PREVIEW performs no
+manifest writes and skips the full research-directory quota census; a
+configured external cache path still must pass its binding guard.
+
+The cumulative status records the plan/source fingerprints, exact run ID,
+timestamps, current status, requests planned/processed/completed/pending,
+verified cache hits and bytes, new exact-raw bytes, quarantined responses,
+provider **attempts** (including uncertain failures), provider-reported
+credits consumed/remaining, unknown-credit flags, initial/latest storage
+headroom and category quotas, elapsed seconds, observed throughput and a
+clearly approximate ETA. It never records credentials or raw response bodies
+in a public file. Per-request body hashes and statuses are retained in the
+run JSON, while raw provider bytes remain in the private cache.
+
+Immediately before a potentially billable call, an exclusive, fsynced
+request-identity attempt JSON is created beside the cache body. Its existence
+without a verified COMPLETE receipt blocks automatic reuse/re-request after
+timeout, interruption or process death. **No blind retry** or invented
+zero-credit assertion is allowed for an ambiguous response. The original
+attempt must be reconciled with provider usage and local receipts by the
+operator. One exclusive plan lock prevents two concurrent processes from
+acquiring the same plan; a hard crash may leave a stale lock for deliberate
+inspection. Ordinary failure releases the lock but retains all per-request
+attempt markers and source bytes.
+
+The executor validates complete receipt/body pairs on restart, reuses them
+without spending credits, and checks that provider chain rows actually
+match the requested underlying, expiration, strike envelope, option-side
+schema and unique contract IDs. Bad provider arrays and mismatched rows are
+preserved as exact-raw QUARANTINED evidence, never promoted. Success is
+not option price/execution authority.
+
+Efficiency is **bounded and auditable**, not maximal raw throughput:
+shared chain batching eliminates redundant requests, at most ten new calls
+are allowed per invocation, new calls are serial to preserve credit-state
+decisions, max_attempts=1 prevents automatic duplicate charges, response
+bodies are capped at eight MiB, source SHA verification occurs once per
+invocation and complete cache receipts are reused. The existing research
+budget is rechecked before each new call. Explicit blocked states include
+PARTIAL_CREDIT_FLOOR and PARTIAL_STORAGE_BLOCKED. A PARTIAL_RESUMABLE run
+may be invoked again under explicit authority after the operator reviews
+the latest checkpoint; unresolved attempt or quarantine is never
+automatically retried.
