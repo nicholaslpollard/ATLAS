@@ -74,7 +74,7 @@ def _response(*, headers: bool = True):
 
 
 def _authorized(settings, plan, reader, **extra):
-    source = settings.project_root / "data/accepted_fixture/source.json"
+    source = settings.project_root / "data/research/evidence/marketdata_candidate_stock_v1/source.json"
     source.parent.mkdir(parents=True, exist_ok=True)
     source.write_bytes(SOURCE_BYTES)
     return run_candidate_chain_cache(
@@ -202,8 +202,8 @@ def test_rejects_unbounded_call_count(tmp_path, monkeypatch):
 def test_live_source_hash_must_match_physical_file(tmp_path, monkeypatch):
     settings = _settings(tmp_path, monkeypatch)
     plan = _plan()
-    file = settings.project_root / "data/source.json"
-    file.parent.mkdir()
+    file = settings.project_root / "data/research/evidence/marketdata_candidate_stock_v1/source.json"
+    file.parent.mkdir(parents=True)
     file.write_bytes(b"wrong source")
     with pytest.raises(CandidateChainCacheError, match="does not match any declared"):
         run_candidate_chain_cache(
