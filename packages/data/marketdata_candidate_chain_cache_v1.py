@@ -4,6 +4,9 @@ import hashlib
 import json
 import os
 import re
+import time
+import uuid
+from datetime import UTC, datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -150,6 +153,7 @@ def _verify_stock_source_files(
 class ChainCachePaths:
     body: Path
     receipt: Path
+    attempt: Path
 
 
 def _paths(settings: AtlasSettings, request_identity: str) -> ChainCachePaths:
@@ -160,6 +164,7 @@ def _paths(settings: AtlasSettings, request_identity: str) -> ChainCachePaths:
     return ChainCachePaths(
         body=directory / f"{request_identity}.json",
         receipt=directory / f"{request_identity}.receipt.json",
+        attempt=directory / f"{request_identity}.attempt.json",
     )
 
 
@@ -167,6 +172,11 @@ def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str,
     body_exists = paths.body.exists()
     receipt_exists = paths.receipt.exists()
     if not body_exists and not receipt_exists:
+        if paths.attempt.exists():
+            raise CandidateChainCacheError(
+                "unresolved provider attempt: inspect saved attempt and provider usage; "
+                "do not automatically spend credits again"
+            )
         return None
     if not body_exists or not receipt_exists:
         raise CandidateChainCacheError("partial chain cache: raw body/receipt mismatch")
