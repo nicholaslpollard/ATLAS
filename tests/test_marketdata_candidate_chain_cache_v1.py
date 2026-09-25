@@ -4,6 +4,7 @@ import hashlib
 import json
 from copy import deepcopy
 from pathlib import Path
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -290,6 +291,14 @@ def test_run_checkpoint_and_exact_intent_exist_before_provider_call(tmp_path, mo
     assert result["new_raw_bytes"] == len(_response().raw_body)
     assert result["elapsed_seconds"] >= 0
     assert result["request_results"][0]["status"] == "NEW_COMPLETE"
+    # The previous deep <full-plan-SHA>/runs directory exceeded legacy Windows
+    # MAX_PATH after atomic temp suffixes were added on the operator's host.
+    assert "md_chain_runs" in Path(result["run_report_path"]).parts
+    assert result["plan_fingerprint"] == plan["plan_fingerprint"]
+    if os.name == "nt":
+        assert len(str(cache_module.unique_temp_path(
+            Path(result["run_report_path"])
+        ))) <= 248
     assert result["report_fingerprint"] == cache_module._fingerprint({
         k: v for k, v in result.items() if k != "report_fingerprint"
     })
@@ -440,3 +449,18 @@ def test_inconsistent_provider_column_vectors_are_quarantined_with_raw_bytes(tmp
     saved = json.loads(paths.receipt.read_text(encoding="utf-8"))
     assert saved["status"] == "QUARANTINED"
     assert saved["failure"] == "provider response arrays inconsistent"
+
+
+def test_compact_plan_run_path_is_not_a_scientific_identity(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    result = _authorized(settings, plan, lambda *_args: _response())
+    archived = Path(result["run_report_path"])
+    report = json.loads(archived.read_text(encoding="utf-8"))
+    assert report["plan_fingerprint"] == plan["plan_fingerprint"]
+    assert archived.parent.name == plan["plan_fingerprint"][:16]
+    assert archived.parent.parent.name == "md_chain_runs"
+    assert report["report_fingerprint"] == cache_module._fingerprint({
+        k: v for k, v in report.items() if k != "report_fingerprint"
+    })
+    assert archived.is_file()
