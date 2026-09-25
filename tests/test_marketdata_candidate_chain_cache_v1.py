@@ -259,3 +259,153 @@ def test_actual_storage_gate_blocks_provider_when_below_minimum(tmp_path, monkey
             settings, _plan(),
             lambda *_args: (_ for _ in ()).throw(AssertionError("no API call permitted")),
         )
+
+
+def test_run_checkpoint_and_exact_intent_exist_before_provider_call(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan(count=50)
+    latest = settings.resolved_path(
+        "data/options/manifests/"
+        f"marketdata_candidate_chain_cache_v1_{plan['plan_fingerprint'][:16]}.json"
+    )
+    paths = _paths(settings, plan["requests"][0]["request_identity"])
+
+    def reader(_endpoint, _params):
+        assert paths.attempt.is_file()
+        intent = json.loads(paths.attempt.read_text(encoding="utf-8"))
+        assert intent["request_identity"] == plan["requests"][0]["request_identity"]
+        checkpoint = json.loads(latest.read_text(encoding="utf-8"))
+        assert checkpoint["status"] == "RUNNING"
+        assert checkpoint["provider_reads"] == 1
+        assert checkpoint["request_results"][-1]["status"] == "REQUEST_STARTED_CHARGE_UNKNOWN"
+        assert Path(checkpoint["run_report_path"]).is_file()
+        return _response()
+
+    result = _authorized(settings, plan, reader)
+    assert result["status"] == "COMPLETE"
+    assert result["processed_requests"] == 1
+    assert result["completed_chains"] == 1
+    assert result["observed_credits_consumed_this_run"] == 1
+    assert result["last_observed_provider_credits_remaining"] == 9965
+    assert result["new_raw_bytes"] == len(_response().raw_body)
+    assert result["elapsed_seconds"] >= 0
+    assert result["request_results"][0]["status"] == "NEW_COMPLETE"
+    assert result["report_fingerprint"] == cache_module._fingerprint({
+        k: v for k, v in result.items() if k != "report_fingerprint"
+    })
+    persisted = json.loads(Path(result["run_report_path"]).read_text(encoding="utf-8"))
+    assert persisted == result
+    assert json.loads(latest.read_text(encoding="utf-8")) == result
+    assert not latest.with_suffix(".lock").exists()
+
+    second = _authorized(settings, plan, lambda *_args: (_ for _ in ()).throw(
+        AssertionError("accepted source should be reused without another paid request")
+    ))
+    assert second["status"] == "COMPLETE"
+    assert second["provider_reads"] == 0
+    assert second["reused"] == 1
+    assert second["verified_reused_bytes"] == len(_response().raw_body)
+    assert paths.attempt.is_file()
+
+
+def test_ambiguous_transport_failure_persists_and_never_auto_retries(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    calls = 0
+
+    def uncertain(_endpoint, _params):
+        nonlocal calls
+        calls += 1
+        raise TimeoutError("provider may have charged the request")
+
+    with pytest.raises(TimeoutError):
+        _authorized(settings, plan, uncertain)
+    assert calls == 1
+    request = plan["requests"][0]
+    paths = _paths(settings, request["request_identity"])
+    assert paths.attempt.is_file()
+    assert not paths.body.exists()
+    latest = settings.resolved_path(
+        "data/options/manifests/"
+        f"marketdata_candidate_chain_cache_v1_{plan['plan_fingerprint'][:16]}.json"
+    )
+    checkpoint = json.loads(latest.read_text(encoding="utf-8"))
+    assert checkpoint["status"] == "FAILED_REVIEW_REQUIRED"
+    assert checkpoint["provider_reads"] == 1
+    assert checkpoint["credits_unknown_after_failed_request"] is True
+    assert checkpoint["request_results"][-1]["exception_type"] == "TimeoutError"
+    assert not latest.with_suffix(".lock").exists()
+    with pytest.raises(CandidateChainCacheError, match="unresolved provider attempt"):
+        _authorized(settings, plan, uncertain)
+    assert calls == 1
+    assert json.loads(Path(checkpoint["run_report_path"]).read_text()) == checkpoint
+
+
+def test_existing_plan_lock_prevents_concurrent_spending(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    latest = settings.resolved_path(
+        "data/options/manifests/"
+        f"marketdata_candidate_chain_cache_v1_{plan['plan_fingerprint'][:16]}.json"
+    )
+    latest.parent.mkdir(parents=True, exist_ok=True)
+    latest.with_suffix(".lock").write_text("another process", encoding="utf-8")
+    with pytest.raises(CandidateChainCacheError, match="plan lock"):
+        _authorized(settings, plan, lambda *_args: (_ for _ in ()).throw(
+            AssertionError("concurrent reader must not be called")
+        ))
+    assert not _paths(settings, plan["requests"][0]["request_identity"]).attempt.exists()
+
+
+def test_mismatched_provider_chain_identity_is_quarantined(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    baseline = _response()
+    payload = dict(baseline.payload)
+    payload["underlying"] = ["QQQ"]
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+    response = MarketDataResponse(
+        http_status=200, payload=payload, headers=baseline.headers,
+        response_bytes=len(raw), elapsed_seconds=0.01, raw_body=raw,
+    )
+    with pytest.raises(CandidateChainCacheError, match="quarantined"):
+        _authorized(settings, plan, lambda *_args: response)
+    paths = _paths(settings, plan["requests"][0]["request_identity"])
+    saved = json.loads(paths.receipt.read_text(encoding="utf-8"))
+    assert saved["status"] == "QUARANTINED"
+    assert saved["failure"] == "chain rows violate ticker, expiry, strike or identity envelope"
+    assert paths.body.read_bytes() == raw
+
+
+def test_storage_gate_is_tracked_without_calling_provider(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    def blocked(*_args, **_kwargs):
+        raise cache_module.ResearchStorageError("test quota")
+    monkeypatch.setattr(cache_module, "assert_category_acquisition_allowed", blocked)
+    report = _authorized(settings, plan, lambda *_args: (_ for _ in ()).throw(
+        AssertionError("storage guard must stop before a provider call")
+    ))
+    assert report["status"] == "PARTIAL_STORAGE_BLOCKED"
+    assert report["provider_reads"] == 0
+    assert report["pending"] == 1
+    assert report["request_results"][0]["status"] == "BLOCKED_STORAGE"
+    assert Path(report["run_report_path"]).is_file()
+
+
+def test_preview_with_complete_receipt_still_never_writes_run_report(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    _authorized(settings, plan, lambda *_args: _response())
+    latest = settings.resolved_path(
+        "data/options/manifests/"
+        f"marketdata_candidate_chain_cache_v1_{plan['plan_fingerprint'][:16]}.json"
+    )
+    before = latest.read_bytes()
+    report = run_candidate_chain_cache(settings, plan, provider_read=lambda *_args: (
+        _ for _ in ()
+    ).throw(AssertionError("preview must not call API")))
+    assert report["status"] == "PREVIEW"
+    assert report["reused"] == 1
+    assert report["verified_reused_bytes"] == len(_response().raw_body)
+    assert latest.read_bytes() == before
