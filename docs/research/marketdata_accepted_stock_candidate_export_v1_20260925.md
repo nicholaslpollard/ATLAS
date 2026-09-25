@@ -20,7 +20,9 @@ eligible opportunity in each month with at least one qualifying case
 (12 rows at most). The score hashes a fixed V1 salt and exact pre-existing
 opportunity identifier. It is deterministic, independent of input row order,
 news, options and realized trade outcome. The source population is the
-already accepted walk-forward selected, comparable, daily LONG stock cases.
+already accepted walk-forward selected, comparable, daily LONG stock cases
+with canonical tickers admissible under the frozen chain planner's literal
+symbol grammar; no provider-native symbol is guessed or rewritten.
 SHORT funding, minute-entry options and new strategy selection are not
 invented. The user can explicitly choose 1..3 rows/month and a year in
 2022..2026; 2026 is hard-limited to April 30 within DEVELOPMENT.
