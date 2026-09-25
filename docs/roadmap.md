@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-24 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-25 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -33,7 +33,30 @@ reconciled. Code and tests remain the authority for actual behavior; Git history
 accepted artifacts remain the authority for what happened. A code or research
 package with stale applicable living documents is incomplete even if its tests pass.
 
-### Current source continuation — Czar28 historical option qualification V1
+### Current source-only validation gate — 2026-09-25
+
+The accepted MarketData Starter history and the merged offline candidate batch
+planner do **not** yet connect options to simulator P&L. The next dependency is
+PR #229's bounded source-only chain cache followed by PR #230's accepted
+DEVELOPMENT stock-candidate exporter; both remain open and unaccepted pending
+exact-head Windows/CI validation. The earlier 11 Windows test failures all
+encountered an overlong atomic run-checkpoint temporary path **before any provider
+call**. The code now uses short operational run paths with the full SHA-256 inside
+the report, and includes portable regression coverage. The exporter additionally
+uses separate timestamped stage receipts and 45-second heartbeats during long
+source scans. These are implementation changes, **not yet passing acceptance**.
+
+Do not run either authenticated acquisition or simulator integration yet.
+After targeted offline tests pass, merge #229, reconcile/retest #230, execute
+the default 2025 one-per-month zero-provider-read source export, and inspect the
+zero-credit chain preview. Selected option quote histories, contract/deliverable
+qualification and conservative EOD timing/fill economics remain separate,
+unimplemented acceptance gates. Historical news source integrity V2 is accepted,
+but exact historical article-text vintage and downstream predictor authority
+remain separate gates. Protected and future-blind boundaries, previous negative
+strategy results, and PAPER/LIVE authority remain unchanged.
+
+### Retained Czar28 historical-option qualification V1
 
 The current historical-options continuation is a read-only qualification of
 Czar28/PublicOptions before any paid historical-options purchase. Massive Historical
@@ -2701,7 +2724,7 @@ Every closeout reports:
 - negative results and unresolved risks;
 - next highest-value coherent package.
 
-## 21. Current active continuation — Historical Option Reference V4 acquisition
+## 21. Retained Historical Option Reference V4 acquisition record — not the active gate
 
 The V3 ACHI diagnostic is complete under evidence fingerprint
 `b655282ff5f1da7bd3c2d7ac931a34b37650ffaa57354c6ac47efdfe746f81d1`.
