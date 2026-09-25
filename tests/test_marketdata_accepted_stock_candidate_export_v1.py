@@ -4,6 +4,7 @@ import hashlib
 import json
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -121,6 +122,11 @@ def test_stock_bundle_physically_matches_plan_source_sha_and_is_reusable(tmp_pat
         assert report["summary"]["source_sha256"] == one["stock_source_sha256"]
         assert report["summary"]["plan_fingerprint"] == one["plan_fingerprint"]
         assert report["stage"] == "COMPLETE"
+        assert Path(item["run_report_path"]).parent.name == "md_stock_runs"
+        if os.name == "nt":
+            assert len(str(exporter.unique_temp_path(
+                Path(item["run_report_path"])
+            ))) <= 248
         assert [stage["stage"] for stage in report["stages"]] == [
             "STARTED", "ACCEPTED_SOURCE_LOADING", "ACCEPTED_SOURCE_LOADED",
             "COHORT_SELECTED", "NATIVE_RAW_SOURCE_VERIFYING",
@@ -170,7 +176,7 @@ def test_export_failure_retains_last_stage_and_error_type_without_source_data(tm
         exporter.export_candidate_stock_manifest(settings, year=2025, per_month=1)
     reports = list(
         settings.resolved_path(
-            "data/options/manifests/marketdata_stock_candidate_export_v1/runs"
+            "data/options/manifests/md_stock_runs"
         ).glob("*.json")
     )
     assert len(reports) == 1
