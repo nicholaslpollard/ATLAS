@@ -104,7 +104,7 @@ evidence and consumed protected master remain unchanged.
 ## Durable source-export run tracking and efficiency
 
 Each invocation writes a separate atomic local run report at
-data/options/manifests/marketdata_stock_candidate_export_v1/runs/<run-ID>.json.
+data/options/manifests/md_stock_runs/<run-ID>.json.
 Its status is updated before the expensive accepted source load, after source
 verification, after outcome-blind cohort selection, before native-raw loading,
 after **each** separately hash-verified native raw unit, after the raw-price
