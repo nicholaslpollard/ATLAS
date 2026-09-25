@@ -95,6 +95,50 @@ def verify_candidate_plan(plan: object) -> dict[str, Any]:
     return reconstructed
 
 
+def _verify_stock_source_files(
+    settings: AtlasSettings,
+    plan: dict[str, Any],
+    paths: tuple[Path, ...],
+) -> tuple[str, ...]:
+    """Proof that each claimed plan SHA binds to an explicit on-disk stock artifact.
+
+    This verifies bytes only. Whether the files are accepted DEVELOPMENT evidence
+    remains a separate upstream contract and is not inferred from a SHA alone.
+    """
+    required = {row["stock_source_sha256"] for row in plan["source_bindings"].values()}
+    if not paths:
+        raise CandidateChainCacheError(
+            "live acquisition requires --stock-source-file for every claimed source SHA"
+        )
+    verified: set[str] = set()
+    data_root = (settings.project_root / "data").resolve()
+    for supplied in paths:
+        source = Path(supplied).resolve()
+        try:
+            source.relative_to(data_root)
+        except ValueError as exc:
+            raise CandidateChainCacheError(
+                "stock source artifact must be inside the ATLAS data tree"
+            ) from exc
+        if not source.is_file() or source.is_symlink():
+            raise CandidateChainCacheError(f"stock source artifact is missing/invalid: {source}")
+        hasher = hashlib.sha256()
+        with source.open("rb") as handle:
+            while chunk := handle.read(4 * 1024 * 1024):
+                hasher.update(chunk)
+        digest = hasher.hexdigest()
+        if digest not in required:
+            raise CandidateChainCacheError(
+                "stock source file SHA does not match any declared plan source binding"
+            )
+        verified.add(digest)
+    if verified != required:
+        raise CandidateChainCacheError(
+            "one or more claimed stock source SHA values lack matching physical files"
+        )
+    return tuple(sorted(verified))
+
+
 @dataclass(frozen=True, slots=True)
 class ChainCachePaths:
     body: Path
@@ -236,6 +280,7 @@ def run_candidate_chain_cache(
     confirm_private_internal_use: bool = False,
     max_new_requests: int = 0,
     provider_read: Callable[[str, dict[str, str]], MarketDataResponse] | None = None,
+    stock_source_files: tuple[Path, ...] = (),
 ) -> dict[str, Any]:
     """Bounded, restart-safe source acquisition. No quote, selector, P&L or trading."""
     verified = verify_candidate_plan(plan)
@@ -251,6 +296,10 @@ def run_candidate_chain_cache(
     if authorize_provider_reads and not live:
         raise CandidateChainCacheError("authorization requires an explicit positive max_new_requests")
 
+    verified_sources = (
+        _verify_stock_source_files(settings, verified, stock_source_files)
+        if live else ()
+    )
     storage = inspect_research_storage(settings)
     if storage.status == "BLOCKED_MINIMUM_FREE_SPACE":
         raise CandidateChainCacheError("storage minimum free-space gate blocked")
@@ -258,6 +307,7 @@ def run_candidate_chain_cache(
         "contract": CONTRACT,
         "plan_fingerprint": verified["plan_fingerprint"],
         "storage_mode": storage.storage_mode,
+        "verified_stock_source_sha256": list(verified_sources),
         "status": "PREVIEW" if not live else "IN_PROGRESS",
         "planned_chain_requests": len(verified["requests"]),
         "provider_reads": 0,
