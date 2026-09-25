@@ -392,6 +392,25 @@ def _checkpoint_report(report: dict[str, Any], *, run_path: Path,
     atomic_write_text(latest_path, encoded)
 
 
+def _storage_metrics(snapshot: object) -> dict[str, Any] | None:
+    if snapshot is None:
+        return None
+    return {
+        "status": getattr(snapshot, "status", None),
+        "mode": getattr(snapshot, "storage_mode", None),
+        "disk_free_gib": getattr(snapshot, "disk_free_gib", None),
+        "minimum_free_gib": getattr(snapshot, "minimum_free_gib", None),
+        "remaining_acquisition_budget_gib": getattr(
+            snapshot, "remaining_acquisition_budget_gib", None
+        ),
+        "maximum_safe_additional_gib": getattr(
+            snapshot, "maximum_safe_additional_gib", None
+        ),
+        "category_usage_gib": getattr(snapshot, "category_usage_gib", None),
+        "category_quota_gib": getattr(snapshot, "category_quota_gib", None),
+    }
+
+
 def run_candidate_chain_cache(
     settings: AtlasSettings,
     plan: object,
@@ -426,8 +445,10 @@ def run_candidate_chain_cache(
         _verify_stock_source_files(settings, verified, stock_source_files)
         if live else ()
     )
-    storage = inspect_research_storage(settings)
-    if storage.status == "BLOCKED_MINIMUM_FREE_SPACE":
+    # A zero-network preview verifies exact cached receipts but does not need
+    # an expensive full research-directory quota census.
+    storage = inspect_research_storage(settings) if live else None
+    if storage is not None and storage.status == "BLOCKED_MINIMUM_FREE_SPACE":
         raise CandidateChainCacheError("storage minimum free-space gate blocked")
 
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ") + "-" + uuid.uuid4().hex[:8]
@@ -437,7 +458,13 @@ def run_candidate_chain_cache(
         "run_id": run_id,
         "started_at_utc": _utc_now(),
         "plan_fingerprint": fingerprint,
-        "storage_mode": storage.storage_mode,
+        "storage_mode": (
+            storage.storage_mode if storage is not None
+            else "EXTERNAL_SECONDARY" if settings.external_data_root() is not None
+            else "PROJECT_LOCAL"
+        ),
+        "storage_initial": _storage_metrics(storage),
+        "storage_latest": _storage_metrics(storage),
         "verified_stock_source_sha256": list(verified_sources),
         "status": "PREVIEW" if not live else "RUNNING",
         "planned_opportunities": verified["opportunities"],
@@ -560,10 +587,12 @@ def run_candidate_chain_cache(
                     )
                     break
                 try:
-                    assert_category_acquisition_allowed(
+                    storage_before = assert_category_acquisition_allowed(
                         settings, category="options_candidate_cache",
                         projected_additional_bytes=MAX_RAW_BYTES + 16384,
                     )
+                    if storage_before is not None:
+                        report["storage_latest"] = _storage_metrics(storage_before)
                 except ResearchStorageError:
                     report["status"] = "PARTIAL_STORAGE_BLOCKED"
                     report["request_results"].append({
