@@ -4,10 +4,12 @@ import hashlib
 import json
 from copy import deepcopy
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from packages.core.settings import load_settings
+import packages.data.marketdata_candidate_chain_cache_v1 as cache_module
 from packages.data.marketdata_candidate_batch_plan_v1 import plan_candidate_chain_batches
 from packages.data.marketdata_candidate_chain_cache_v1 import (
     CACHE_SUBDIR,
@@ -29,6 +31,16 @@ def _settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("ATLAS_EXTERNAL_DATA_ROOT", raising=False)
     project = tmp_path / "project"
     project.mkdir()
+    # CI Windows runner has less than ATLAS's 50-GiB production floor.
+    # Mock only the external disk quota sensor, never relax runtime policy.
+    monkeypatch.setattr(
+        cache_module, "inspect_research_storage",
+        lambda _settings: SimpleNamespace(status="SAFE", storage_mode="PROJECT_LOCAL"),
+    )
+    monkeypatch.setattr(
+        cache_module, "assert_category_acquisition_allowed",
+        lambda *_args, **_kwargs: None,
+    )
     return load_settings(ROOT, "development").model_copy(update={"project_root": project})
 
 
@@ -232,3 +244,18 @@ def test_404_provider_body_is_quarantined_not_cached_as_success(tmp_path, monkey
     paths = _paths(settings, plan["requests"][0]["request_identity"])
     assert paths.body.read_bytes() == raw
     assert json.loads(paths.receipt.read_text())["status"] == "QUARANTINED"
+
+
+def test_actual_storage_gate_blocks_provider_when_below_minimum(tmp_path, monkeypatch):
+    settings = _settings(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        cache_module, "inspect_research_storage",
+        lambda _settings: SimpleNamespace(
+            status="BLOCKED_MINIMUM_FREE_SPACE", storage_mode="PROJECT_LOCAL"
+        ),
+    )
+    with pytest.raises(CandidateChainCacheError, match="minimum free-space"):
+        _authorized(
+            settings, _plan(),
+            lambda *_args: (_ for _ in ()).throw(AssertionError("no API call permitted")),
+        )
