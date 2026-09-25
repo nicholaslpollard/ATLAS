@@ -25,11 +25,20 @@ with canonical tickers admissible under the frozen chain planner's literal
 symbol grammar; no provider-native symbol is guessed or rewritten.
 SHORT funding, minute-entry options and new strategy selection are not
 invented. The user can explicitly choose 1..3 rows/month and a year in
-2022..2026; 2026 is hard-limited to April 30 within DEVELOPMENT.
+2022..2025. A signal whose next executable entry falls in another year is
+excluded. The 2026 native-daily partitions remain prohibited for this V1
+until a separately accepted, protected-safe raw source adapter exists.
 
-Each selected row binds its accepted instrument/session to the exact raw,
-as-traded V2 next-session stock OPEN using the existing protected-data-safe
-source adapter. The source entry-open timestamp is the accepted XNYS
+Each selected row first binds its accepted instrument/session through the
+split-adjusted research view solely for identity and independent raw-close
+reconciliation. The OPEN in that research view is **not** an as-traded price.
+The exporter instead verifies the corresponding accepted V2 native acquisition
+plan, native acceptance fingerprint, exact unit checkpoint, canonical raw daily
+unit SHA-256 and provider-native source identity, then reads the exact raw
+as-traded next-session OPEN. The raw native same-session CLOSE must equal the
+research view's `unadjusted_close`, and every selected pair must be present.
+Only pre-2026 native daily units are eligible; no protected or future daily
+partition may be opened. The source entry-open timestamp is the accepted XNYS
 regular open; candidate planning decision is fixed five minutes later
 to avoid treating an opening print as known before its occurrence.
 The chain snapshot is the *prior signal session* EOD, never the same
@@ -52,14 +61,17 @@ plan from that manifest, and the gated chain cache can physically verify
 this same bundle via --stock-source-file before an actual provider request.
 
 All three artifacts use a deterministic cohort ID and reject conflicting
-existing bytes. The bundle lives under data/research/evidence and the
+existing bytes. The bundle lives under data/research/evidence/marketdata_candidate_stock_v1 and the
 opportunity/chain plans under data/options/manifests, so an activated
 external-storage binding relocates only eligible secondary outputs.
 The accepted stock corpus and ATLAS installation stay internal.
 
 The bundle SHA verifies bytes of the exported selection, while source
-acceptance relies on the upstream hash-validated conditioning and raw-daily
-adapters. It is not proof of historical option pricing or an independent
+acceptance relies on upstream hash-validated conditioning, research-daily and
+independently SHA-verified native raw unit receipts. Same-entry-date raw-close
+information is used only as a **source integrity cross-check after raw OPEN has
+been acquired from immutable accepted native data**, never as a price-derivation
+or strike-selection input. It is not proof of historical option pricing or an independent
 provider entitlement query.
 
 ## First workstation command
