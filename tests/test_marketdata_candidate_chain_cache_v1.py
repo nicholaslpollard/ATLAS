@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -20,6 +21,8 @@ from packages.providers.marketdata_app import MarketDataResponse
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SOURCE_BYTES = b"accepted DEVELOPMENT source fixture"
+SOURCE_SHA = hashlib.sha256(SOURCE_BYTES).hexdigest()
 
 
 def _settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -39,7 +42,7 @@ def _plan(*, count: int = 1):
         "underlying_price_basis": "RAW_AS_TRADED",
         "expiration": "2026-10-16",
         "side": "call" if index % 2 else "put",
-        "stock_source_sha256": "a" * 64,
+        "stock_source_sha256": SOURCE_SHA,
     } for index in range(count)]
     return plan_candidate_chain_batches({
         "purpose": "SOURCE_ACQUISITION_ONLY", "opportunities": rows,
@@ -71,10 +74,13 @@ def _response(*, headers: bool = True):
 
 
 def _authorized(settings, plan, reader, **extra):
+    source = settings.project_root / "data/accepted_fixture/source.json"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(SOURCE_BYTES)
     return run_candidate_chain_cache(
         settings, plan, max_new_requests=1, provider_read=reader,
         authorize_provider_reads=True, confirm_paid_starter=True,
-        confirm_private_internal_use=True, **extra,
+        confirm_private_internal_use=True, stock_source_files=(source,), **extra,
     )
 
 
