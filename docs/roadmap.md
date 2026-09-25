@@ -5148,3 +5148,15 @@ Next operator gate after CI: run the source-only export on the target
 workstation, inspect its artifact counts/paths, then preview the bounded
 chain cache without provider calls. Actual historical chain reads
 remain separately authorized, workstation-only and budget-bound.
+
+
+### Run observability and efficiency closure — 2026-09-25
+
+Source acquisition now durably checkpoints before any possibly charged
+request and after each response/failure, with independent attempt markers,
+a plan-concurrency lock, verified-cache reuse and credit/storage telemetry.
+The manifest provides a structured run ID, progress, bytes, rate, approximate
+ETA and reason-coded blocked/failed states. Cached requests checkpoint
+every ten; no unbounded API retry or speculative concurrent spending.
+A source-only preview does not need a full disk census. See
+docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
