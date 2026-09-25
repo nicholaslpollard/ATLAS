@@ -428,6 +428,33 @@ candidate-options cache. The pre-existing local profile remains 40 GiB total wit
 Full storage contract:
 `docs/external_secondary_storage_v1_20260924.md`.
 
+### Candidate-first MarketData historical-chain batching V1 — offline planner
+
+The next product package now includes an **offline, zero-provider-call batch
+planner** under `atlas-marketdata-candidate-chain-batch-plan-v1`.
+`packages/data/marketdata_candidate_batch_plan_v1.py` and
+`scripts/plan_marketdata_candidate_batches_v1.py` turn accepted stock
+opportunity inputs into bounded shared historical-chain requests.
+
+The planner uses the stock opportunity's own raw/PIT price, requires a source
+SHA-256 and a decision date strictly after the EOD chain snapshot, and groups
+overlapping explicit-strike windows by underlying, snapshot date and expiration.
+Calls and puts may share one returned chain. Fifty same-root/date/expiration
+opportunities with nearby prices can therefore yield **one planned historical
+chain request**, not fifty duplicate requests. Different roots, dates, expirations
+or disjoint strike windows stay separate. Nominal credit estimates are not
+guaranteed; actual provider credits and returned symbols remain authoritative.
+
+This is **planning only**: zero API reads, zero option quote-history requests,
+no option selection/fill/P&L authority, and no stock-storage relocation.
+The provider acquisition/cache executor remains a subsequent separately gated
+package; it must verify external storage, paid license, quota/concurrency,
+SHA-bound restart reuse, and the zero-volume and EOD/PIT restrictions already
+recorded in the source-semantics synthesis.
+
+Contract and operator input format:
+`docs/research/marketdata_candidate_batch_plan_v1_20260925.md`.
+
 ## Read this first
 
 1. Read this entire README for the current handoff.
