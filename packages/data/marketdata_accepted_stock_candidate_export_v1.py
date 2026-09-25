@@ -18,7 +18,8 @@ from packages.backtesting.recurrent_successor_outcome_replay import (
     load_selected_replay_opportunities,
 )
 from packages.backtesting.successor_selected_daily_path_analysis import _validated_daily_source
-from packages.backtesting.b35_development_source import _validate_native_plan_record
+from packages.backtesting.b35_development_source import _assert_native_path, _validate_native_plan_record
+from packages.backtesting.successor_runner_contract import canonical_sha256
 from packages.backtesting.reference_v2_lake_adapter import ReferenceV2DailyLakeAdapter
 from packages.data.alpaca_v2_acquisition import ACQUISITION_CONTRACT, UNIT_CONTRACT
 from packages.data.alpaca_v2_postbuild import NATIVE_ACCEPTANCE_CONTRACT
@@ -275,6 +276,14 @@ def _read_entry_opens(
         prefix = unit_id[:20]
         checkpoint_path = layout.checkpoints / "native_units" / "1d" / part / f"{prefix}.json"
         canonical_path = layout.canonical_daily / part / f"{prefix}.parquet"
+        _assert_native_path(
+            checkpoint_path, expected=checkpoint_path, root=layout.root,
+            label="candidate native daily checkpoint",
+        )
+        _assert_native_path(
+            canonical_path, expected=canonical_path, root=layout.root,
+            label="candidate native daily raw canonical",
+        )
         checkpoint = _read_json(checkpoint_path, "exact native daily unit checkpoint")
         if checkpoint.get("contract") != UNIT_CONTRACT or checkpoint.get("status") not in {
             "COMPLETE", "COMPLETE_WITH_QUARANTINE",
@@ -284,6 +293,7 @@ def _read_entry_opens(
             checkpoint.get("unit_id") != unit_id,
             checkpoint.get("policy_sha256") != record.get("policy_sha256"),
             checkpoint.get("universe_sha256") != record.get("universe_sha256"),
+            canonical_sha256(checkpoint.get("unit")) != canonical_sha256(record),
         )):
             raise CandidateStockExportError("native checkpoint plan binding drifted")
         canonical = checkpoint.get("canonical")
