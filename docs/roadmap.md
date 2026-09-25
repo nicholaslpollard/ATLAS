@@ -528,6 +528,35 @@ Synthesis:
 Acceptance record:
 `docs/research/marketdata_paid_starter_acceptance_v1_20260925.md`.
 
+### MarketData candidate-first chain batching V1 — 2026-09-25
+
+The offline batch-planning foundation is implemented. Accepted stock opportunity
+inputs must supply immutable `stock_source_sha256`, RAW_AS_TRADED PIT price,
+UTC decision timestamp, prior-session EOD snapshot date, expiration, side and
+stable opportunity identity. The planner rejects same-day EOD decisions and
+unbounded/invalid inputs, then groups overlapping explicit strike intervals
+by underlying + snapshot date + expiration. Calls and puts may share a chain
+response. A test case with 50 nearby-price opportunities creates one planned
+chain request. Different roots/dates/expirations or disjoint windows are not
+spuriously pooled.
+
+This phase is **zero-network** and emits a deterministic, SHA-fingerprinted
+plan with nominal (not guaranteed) historical-chain credit estimate. It makes
+no provider or broker calls, downloads no option rows, and grants no option
+selection, fill, P&L or strategy authority.
+
+The immediately following code package is the authorized candidate-first
+**executor/cache**: budget actual returned symbols/credits, store immutable raw
+chains and receipts, select exact local contracts using opportunity PIT context,
+fetch only missing selected quote histories, preserve licensing/retention and
+zero-volume exclusions, and remain restart-safe under the external-volume
+quota/mount checks. The executor must be built/tested offline in CI;
+authenticated provider reads occur only on the operator's workstation after
+explicit CLI authorization. No full-universe bulk download.
+
+Contract:
+`docs/research/marketdata_candidate_batch_plan_v1_20260925.md`.
+
 ### Historical News V1 acquisition — 2026-09-20
 
 Historical News V1 is the first acquisition stage under the bounded news/options
