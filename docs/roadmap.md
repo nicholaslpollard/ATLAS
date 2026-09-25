@@ -5091,3 +5091,17 @@ The Strategy Evidence Register remains unchanged because this package changes
 product/account-simulation architecture only.
 Deep chain discovery and deep EOD pricing are evaluated independently. If the deep chain endpoint fails but the direct 2016 EOD contract succeeds, ATLAS classifies that as `DEEP_EOD_AVAILABLE_CHAIN_LIMITATION` rather than rejecting the provider outright. That preserves the possibility of using Czar28 for prices while sourcing historical contract identity separately.
 
+
+### Operator MarketData dashboard snapshot — 2026-09-25
+
+A private screenshot, SHA-256
+`1357a70a9c154f9171eac1ec976abaa647834d613a6f88b8129e4e3f266775bd`,
+records verified paid Starter, IEX real-time stock entitlement, UTP consolidated
+candle entitlement, **no OPRA real-time options entitlement**, and displayed
+34/10,000 API credits consumed. The 34 agrees with independently observed
+10-credit paid qualification plus 24-credit sparse V2 reads. The private image
+is not placed in public GitHub; the provenance/authority record is
+`docs/research/marketdata_starter_dashboard_evidence_20260925.md`.
+No Trader/OPRA upgrade is prerequisite for the separately qualified five-year
+historical EOD acquisition branch. No full-SIP/NBBO, execution quote, intraday
+option path, trading or option-P&L authority follows from dashboard badges.
