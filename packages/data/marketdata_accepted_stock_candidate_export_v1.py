@@ -209,6 +209,8 @@ def _accepted_native_plan(
 def _read_entry_opens(
     project_root: Path,
     cohort: Sequence[SelectedReplayOpportunity],
+    *,
+    progress: Callable[[str, dict[str, Any]], None] | None = None,
 ) -> tuple[dict[str, float], dict[str, object]]:
     calendar = get_market_calendar()
     requests: list[dict[str, object]] = []
@@ -270,7 +272,7 @@ def _read_entry_opens(
     records, native_source, layout = _accepted_native_plan(settings, source_report, set(reference))
     result_by_key: dict[tuple[str, date], float] = {}
     unit_bindings: list[dict[str, object]] = []
-    for record in sorted(records, key=lambda r: str(r["unit_id"])):
+    for unit_number, record in enumerate(sorted(records, key=lambda r: str(r["unit_id"])), start=1):
         year, batch, unit_id = int(record["year"]), int(record["batch_index"]), str(record["unit_id"])
         if year > 2025:
             raise CandidateStockExportError("protected/2026 native unit forbidden")
@@ -354,6 +356,14 @@ def _read_entry_opens(
                 raise CandidateStockExportError("native raw close disagrees with accepted research raw close")
             result_by_key[key] = raw_open
         unit_bindings.append({"unit_id": unit_id, "year": year, "canonical_sha256": expected_sha})
+        if progress is not None:
+            progress("NATIVE_RAW_UNIT_VERIFIED", {
+                "verified_units": unit_number,
+                "total_units": len(records),
+                "unit_id": unit_id,
+                "year": year,
+                "canonical_sha256": expected_sha,
+            })
     if set(result_by_key) != set(reference):
         raise CandidateStockExportError("native raw opening-price coverage incomplete")
     native_source["verified_native_raw_unit_bindings"] = unit_bindings
@@ -418,7 +428,9 @@ def _export_candidate_stock_manifest_impl(
             "months_represented": len({item.signal_session.month for item in cohort}),
         })
         progress("NATIVE_RAW_SOURCE_VERIFYING", {"selected_opportunities": len(cohort)})
-    raw_opens, daily_source = _read_entry_opens(settings.project_root, cohort)
+    raw_opens, daily_source = _read_entry_opens(
+        settings.project_root, cohort, progress=progress,
+    )
     if progress is not None:
         progress("NATIVE_RAW_SOURCE_VERIFIED", {
             "verified_native_raw_units": daily_source["native_raw_source"]["verified_native_raw_unit_count"],
