@@ -105,7 +105,33 @@ def test_stock_bundle_physically_matches_plan_source_sha_and_is_reusable(tmp_pat
     )
     one = exporter.export_candidate_stock_manifest(settings, year=2025, per_month=1)
     two = exporter.export_candidate_stock_manifest(settings, year=2025, per_month=1)
-    assert one == two
+    # The source bundle and chain plan are immutable across reruns, while each
+    # invocation gets its own independently traceable run ID and stage report.
+    for key in (
+        "cohort_identity", "stock_source_sha256", "plan_fingerprint",
+        "stock_source_file", "opportunities_file", "plan_file",
+        "selected_opportunities", "shared_chain_requests",
+    ):
+        assert one[key] == two[key]
+    assert one["source_only_run_id"] != two["source_only_run_id"]
+    assert one["run_report_path"] != two["run_report_path"]
+    for item in (one, two):
+        report = json.loads(Path(item["run_report_path"]).read_text(encoding="utf-8"))
+        assert report["status"] == "SOURCE_ONLY_COMPLETE"
+        assert report["summary"]["source_sha256"] == one["stock_source_sha256"]
+        assert report["summary"]["plan_fingerprint"] == one["plan_fingerprint"]
+        assert report["stage"] == "COMPLETE"
+        assert [stage["stage"] for stage in report["stages"]] == [
+            "STARTED", "ACCEPTED_SOURCE_LOADING", "ACCEPTED_SOURCE_LOADED",
+            "COHORT_SELECTED", "NATIVE_RAW_SOURCE_VERIFYING",
+            "NATIVE_RAW_SOURCE_VERIFIED", "CHAIN_PLAN_READY",
+            "ARTIFACTS_WRITTEN", "COMPLETE",
+        ]
+        assert report["provider_reads"] == 0
+        assert report["report_fingerprint"] == exporter._hash({
+            k: v for k, v in report.items() if k != "report_fingerprint"
+        })
+        assert item["elapsed_seconds"] >= 0
     assert one["selected_opportunities"] == 2
     assert one["verified_native_raw_units"] == 1
     source = Path(one["stock_source_file"])
@@ -128,3 +154,30 @@ def test_rejected_cohort_controls():
         exporter.select_monthly_cohort([], year=2025, per_month=10)
     with pytest.raises(exporter.CandidateStockExportError, match="year"):
         exporter.select_monthly_cohort([], year=2020, per_month=1)
+
+
+def test_export_failure_retains_last_stage_and_error_type_without_source_data(tmp_path, monkeypatch):
+    monkeypatch.delenv("ATLAS_EXTERNAL_DATA_ROOT", raising=False)
+    project = tmp_path / "project"
+    project.mkdir()
+    settings = load_settings(ROOT, "development").model_copy(update={"project_root": project})
+
+    def fail_loader(*_args, **_kwargs):
+        raise RuntimeError("fixture source unavailable")
+
+    monkeypatch.setattr(exporter, "load_selected_replay_opportunities", fail_loader)
+    with pytest.raises(RuntimeError, match="fixture source unavailable"):
+        exporter.export_candidate_stock_manifest(settings, year=2025, per_month=1)
+    reports = list(
+        settings.resolved_path(
+            "data/options/manifests/marketdata_stock_candidate_export_v1/runs"
+        ).glob("*.json")
+    )
+    assert len(reports) == 1
+    report = json.loads(reports[0].read_text(encoding="utf-8"))
+    assert report["status"] == "FAILED_REVIEW_REQUIRED"
+    assert report["exception_type"] == "RuntimeError"
+    assert report["stage"] == "FAILED_REVIEW_REQUIRED"
+    assert report["provider_reads"] == 0
+    assert report["stages"][-2]["stage"] == "ACCEPTED_SOURCE_LOADING"
+    assert "fixture source unavailable" not in reports[0].read_text(encoding="utf-8")
