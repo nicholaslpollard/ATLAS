@@ -61,7 +61,10 @@ prices or unqualified nonstandard deliverables.
 Prior independent vendor evidence is preserved without changing its verdicts:
 disjoint validation V1/V2 both failed their frozen gates, the sparse V1 run failed
 its positive-control floor despite complete observed activity concordance, and
-sparse-activity confirmation V2 remains preregistered but not yet observed.
+sparse-activity confirmation V2 subsequently passed on its first run under
+`398ca760a7e05126e18008c6e7c09fc2f9d03e8a07b5a9a95e0282891d4c2d69`.
+That later activity result does not retroactively change the earlier failed verdicts.
+See `docs/research/marketdata_eod_semantics_synthesis_v1_20260925.md`.
 
 ## Next engineering package
 
