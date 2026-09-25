@@ -138,12 +138,12 @@ historical chain and a ten-day quote series for one selected contract. Passing t
 gate creates challenger-source evidence only; cross-provider validation and a
 separate simulator adapter remain required.
 
-The user's current **Starter Trial** is now used before any purchase. Trial mode
+The original **Starter Trial** was used before paid activation. Trial mode
 (`--starter-trial`) exploits the documented full-history AAPL exception for
 a 2021-10-01 deep probe and uses SPY/MSFT/NVDA/QQQ anchors inside the trial's normal
 one-year limit. This can prove endpoint/schema/OI/quote-series mechanics without
 spending $30, but it cannot prove broad five-year entitlement for non-AAPL symbols.
-The paid six-anchor gate remains distinct.
+The paid six-anchor gate was separately executed and accepted on 2026-09-25.
 
 The workstation Starter Trial qualification has now **PASSED** under run id
 `20260923T203419Z` / evidence fingerprint
