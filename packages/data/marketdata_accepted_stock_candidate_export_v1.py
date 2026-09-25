@@ -89,6 +89,7 @@ def select_monthly_cohort(
             item.signal_session.year == year
             and item.native_timeframe == "1d"
             and item.direction == "LONG"
+            and item.entry_utc.astimezone(EASTERN).year == year
             and isinstance(item.ticker, str)
             and TICKER_PATTERN.fullmatch(item.ticker)
         ):
