@@ -4,6 +4,7 @@ import hashlib
 import json
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 import duckdb
 import pandas as pd
@@ -22,7 +23,7 @@ def _parquet(path: Path, frame: pd.DataFrame) -> None:
     connection = duckdb.connect()
     try:
         connection.register("source_rows", frame)
-        connection.execute("COPY source_rows TO ? (FORMAT PARQUET)", [str(path)])
+        connection.execute("COPY source_rows TO '" + path.as_posix().replace("'", "''") + "' (FORMAT PARQUET)")
     finally:
         connection.close()
 
@@ -34,9 +35,7 @@ def test_raw_native_open_not_split_adjusted_open(tmp_path, monkeypatch):
     monkeypatch.setattr(exporter, "load_settings", lambda *_a, **_kw: settings)
     layout = V2Layout.beneath((project / "data").resolve())
     session = date(2025, 9, 16)
-    item = __import__(
-        "types", fromlist=["SimpleNamespace"]
-    ).SimpleNamespace(
+    item = SimpleNamespace(
         opportunity_id="accepted-1", instrument_id="inst-1",
         ticker="SPY", signal_session=date(2025, 9, 15),
         entry_utc=exporter.get_market_calendar().regular_open_close(session)[0],
