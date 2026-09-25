@@ -4665,3 +4665,26 @@ The screenshot remains outside the public repo; its custody and bounded reading
 are recorded in `docs/research/marketdata_starter_dashboard_evidence_20260925.md`.
 This changes neither the separately accepted five-year historical EOD options
 qualification nor any historical fill, simulator, PAPER or LIVE authority.
+
+
+### Candidate-first MarketData exact-raw chain cache V1 — 2026-09-25
+
+The first separately bounded provider executor after the offline batch planner
+is now implemented in packages/data/marketdata_candidate_chain_cache_v1.py
+with CLI scripts/run_marketdata_candidate_chain_cache_v1.py. **First real
+workstation acquisition is pending.** The default run is an offline preview.
+It rebuilds the PIT plan from source bindings, verifies exact claimed source
+SHA values against explicitly supplied physical DEVELOPMENT stock artifacts
+before any authorized provider call, and executes at most ten new bounded
+shared historical-chain reads per run only under paid/private/explicit-read
+flags. C: research-budget and READY-external storage policies are enforced.
+The authenticated client captures bounded exact HTTP body bytes, and atomic
+SHA-256 receipts are verified before reuse. Anomalies are preserved as
+quarantined evidence rather than overwritten or treated as accepted rows.
+No whole-market acquisition, quote-series calls, contract selection, historical
+option fill/P&L, provider mutation, broker action or PAPER/LIVE authority exists.
+Document: docs/research/marketdata_candidate_chain_cache_v1_20260925.md.
+
+The historical news/options preflight console now says *that invocation*
+performed zero bulk downloads; it no longer implies the previously acquired
+2,211,606-article news corpus is absent.
