@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _parquet(path: Path, frame: pd.DataFrame) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    path.unlink(missing_ok=True)  # isolated test fixture rewrite only
     connection = duckdb.connect()
     try:
         connection.register("source_rows", frame)
