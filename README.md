@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-24 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-25 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -138,12 +138,12 @@ historical chain and a ten-day quote series for one selected contract. Passing t
 gate creates challenger-source evidence only; cross-provider validation and a
 separate simulator adapter remain required.
 
-The user's current **Starter Trial** is now used before any purchase. Trial mode
+The original **Starter Trial** was used before paid activation. Trial mode
 (`--starter-trial`) exploits the documented full-history AAPL exception for
 a 2021-10-01 deep probe and uses SPY/MSFT/NVDA/QQQ anchors inside the trial's normal
 one-year limit. This can prove endpoint/schema/OI/quote-series mechanics without
 spending $30, but it cannot prove broad five-year entitlement for non-AAPL symbols.
-The paid six-anchor gate remains distinct.
+The paid six-anchor gate was separately executed and accepted on 2026-09-25.
 
 The workstation Starter Trial qualification has now **PASSED** under run id
 `20260923T203419Z` / evidence fingerprint
@@ -153,6 +153,29 @@ required schema and the expected historical-Greeks-null behavior. It consumed on
 8 observed API credits and ended at 9,992 remaining. This accepts MarketData as a
 **qualified Starter-Trial capability source**, not as five-year historical-price
 authority.
+
+The paid **Starter five-year qualification has now PASSED on its first workstation
+run**, `20260925T182731Z` / evidence fingerprint
+`f7a0c78e6812e59bf1b7efd243ce9c66c0325aa7241fd5a46868b3fc2224747a`.
+All six frozen anchors from 2021-10-01 SPY through 2026-09-01 SPY returned
+nonempty restricted chains and selected-contract quote series (96 chain rows,
+50 quote rows total). Required schema, OI, usable bid/ask and expected null
+historical Greeks passed; the oldest non-AAPL SPY history was available.
+Observed consumption was 10 credits, with 9,990 remaining at the last header;
+there was no terminal error. The original workstation report/raw SHA receipts
+are retained under
+`data/research/provider_qualification/marketdata_app/historical_options_v1/20260925T182731Z/`.
+
+This **closes the sampled paid-plan entitlement/source gate**, not exhaustive
+contract coverage and not intraday/execution/option-P&L authority. With the
+external-storage architecture merged and hardware binding pending, the next
+engineering package is a bounded **candidate-first acquisition and cache
+adapter** driven by PIT stock opportunities. No whole-universe options download
+is authorized. Earlier source-validation failure verdicts remain immutable;
+sparse-activity V2 is frozen and still has no workstation result.
+
+Accepted run record:
+`docs/research/marketdata_paid_starter_acceptance_v1_20260925.md`.
 
 The first independent overlap calibration is now complete under run id
 `20260923T205206Z` / evidence fingerprint

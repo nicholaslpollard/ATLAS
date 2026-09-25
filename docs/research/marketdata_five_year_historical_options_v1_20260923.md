@@ -2,7 +2,7 @@
 
 ## Status
 
-**STARTER-TRIAL CAPABILITY QUALIFIED / PAID-STARTER FIVE-YEAR QUALIFICATION PENDING**
+**STARTER-TRIAL CAPABILITY QUALIFIED / PAID-STARTER FIVE-YEAR QUALIFICATION PASSED**
 
 Contract:
 
@@ -51,6 +51,21 @@ terminal error occurred. The run consumed 8 observed API credits and ended with
 
 Accepted evidence:
 `docs/research/marketdata_starter_trial_acceptance_v1_20260923.md`.
+
+The operator subsequently activated the paid Starter plan and executed the
+**first paid six-anchor qualification** successfully on 2026-09-25. Run
+`20260925T182731Z` / evidence fingerprint
+`f7a0c78e6812e59bf1b7efd243ce9c66c0325aa7241fd5a46868b3fc2224747a`
+returned `QUALIFIED_FOR_FIVE_YEAR_EOD_ECONOMICS_CHALLENGER`. The six anchors
+returned 96 chain rows and 50 selected-contract quote rows in aggregate;
+all required checks passed, including sampled 2021-10-01 SPY access independent
+of the earlier trial-only AAPL historical exception. Observed provider consumption
+was 10 credits and last reported remaining was 9,990, with no terminal error.
+This satisfies the bounded paid entitlement qualification, not exhaustive provider
+coverage or historical executable-price/simulator authority.
+
+Accepted paid run:
+`docs/research/marketdata_paid_starter_acceptance_v1_20260925.md`.
 
 The first independent overlap calibration is now complete under run id
 `20260923T205206Z` / evidence fingerprint
@@ -312,13 +327,13 @@ This uses only the documented deep-AAPL exception plus general-ticker dates insi
 trial's one-year history limit. It does not intentionally issue a known-to-fail
 out-of-entitlement request for another ticker.
 
-Only if ATLAS later activates the paid Starter plan should the broad five-year
-qualification be run:
+The paid Starter qualification command was executed successfully on its first
+workstation run (2026-09-25) and must not be rerun for result selection:
 
 ~~~powershell
 git checkout main; git pull
 .\.venv\Scripts\python.exe scripts\qualify_marketdata_five_year_options_v1.py --authorize-provider-reads
 ~~~
 
-If the paid run passes, the next package is the candidate-first five-year acquisition
-adapter. No whole-market bulk download is authorized by V1.
+The next engineering package is the candidate-first five-year acquisition adapter.
+No whole-market bulk download is authorized by V1.
