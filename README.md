@@ -16,7 +16,30 @@ Profit is an objective, never a guarantee. Activity, alerts, attractive charts, 
 profitable backtests are not substitutes for positive expected value after costs,
 controlled risk, prospective evidence, and reliable operation.
 
-### Active historical-options source gate — Czar28 V1
+### Current source-only validation gate — 2026-09-25
+
+The accepted MarketData Starter history and the merged offline candidate batch
+planner do **not** yet connect options to simulator P&L. The next dependency is
+PR #229's bounded source-only chain cache followed by PR #230's accepted
+DEVELOPMENT stock-candidate exporter; both remain open and unaccepted pending
+exact-head Windows/CI validation. The earlier 11 Windows test failures all
+encountered an overlong atomic run-checkpoint temporary path **before any provider
+call**. The code now uses short operational run paths with the full SHA-256 inside
+the report, and includes portable regression coverage. The exporter additionally
+uses separate timestamped stage receipts and 45-second heartbeats during long
+source scans. These are implementation changes, **not yet passing acceptance**.
+
+Do not run either authenticated acquisition or simulator integration yet.
+After targeted offline tests pass, merge #229, reconcile/retest #230, execute
+the default 2025 one-per-month zero-provider-read source export, and inspect the
+zero-credit chain preview. Selected option quote histories, contract/deliverable
+qualification and conservative EOD timing/fill economics remain separate,
+unimplemented acceptance gates. Historical news source integrity V2 is accepted,
+but exact historical article-text vintage and downstream predictor authority
+remain separate gates. Protected and future-blind boundaries, previous negative
+strategy results, and PAPER/LIVE authority remain unchanged.
+
+### Retained Czar28 historical-options challenger (not simulator critical path)
 
 The broad Massive Historical Option Reference V7 contract remains preserved, but its
 current Basic-tier provider continuation is operationally paused after a resumed run
