@@ -217,6 +217,149 @@ def _rows_match_explicit_request(
     return True
 
 
+
+NO_DATA_CONTRACT = "atlas-marketdata-exact-query-no-data-v1"
+
+
+def _no_data_path(paths: ChainCachePaths) -> Path:
+    return paths.receipt.with_name(paths.receipt.name.replace(".receipt.json", ".no_data.json"))
+
+
+def _expected_no_data_proof(
+    paths: ChainCachePaths,
+    request: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate unchanged local 404/no_data evidence, never infer broader absence.
+
+    A zero-credit, explicitly reviewed response can be terminal for this EXACT
+    planned query without masquerading as a successful nonempty chain. The
+    original QUARANTINED receipt, raw JSON and attempt remain unmodified.
+    """
+    if paths.recovery.exists():
+        raise CandidateChainCacheError("no-data and successful-recovery proofs cannot coexist")
+    if any(p.is_symlink() for p in (paths.body, paths.receipt, paths.attempt)):
+        raise CandidateChainCacheError("no-data original evidence contains unexpected file link")
+    if not (paths.body.is_file() and paths.receipt.is_file() and paths.attempt.is_file()):
+        raise CandidateChainCacheError("no-data source body, quarantine receipt or attempt missing")
+    try:
+        raw = paths.body.read_bytes()
+        receipt = json.loads(paths.receipt.read_text(encoding="utf-8"))
+        payload = json.loads(raw.decode("utf-8"))
+        attempt = json.loads(paths.attempt.read_text(encoding="utf-8"))
+        receipt_body = dict(receipt)
+        receipt_fingerprint = receipt_body.pop("receipt_fingerprint")
+        attempt_body = dict(attempt)
+        attempt_fingerprint = attempt_body.pop("intent_fingerprint")
+        credits = receipt["rate_limit"]
+        consumed, remaining = credits["consumed"], credits["remaining"]
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise CandidateChainCacheError("no-data original evidence unreadable") from exc
+    if (
+        not isinstance(payload, dict)
+        or payload.get("s") != "no_data"
+        or any(isinstance(v, list) and len(v) for v in payload.values())
+        or receipt_fingerprint != _fingerprint(receipt_body)
+        or attempt_fingerprint != _fingerprint(attempt_body)
+        or receipt.get("contract") != CONTRACT
+        or receipt.get("status") != "QUARANTINED"
+        or receipt.get("failure") != "unexpected provider response status"
+        or receipt.get("http_status") != 404
+        or receipt.get("row_count") != 0
+        or receipt.get("raw_http_body_exact") is not True
+        or receipt.get("body_bytes") != len(raw)
+        or receipt.get("body_sha256") != _sha256(raw)
+        or receipt.get("request_identity") != request["request_identity"]
+        or receipt.get("endpoint") != request["endpoint"]
+        or receipt.get("params") != request["params"]
+        or attempt.get("contract") != CONTRACT
+        or attempt.get("status") != "REQUEST_STARTED_CHARGE_UNKNOWN_UNTIL_RECEIPT"
+        or attempt.get("request_identity") != request["request_identity"]
+        or attempt.get("endpoint") != request["endpoint"]
+        or attempt.get("params") != request["params"]
+        or attempt.get("automatic_retry_permitted") is not False
+        or not SHA256_RE.fullmatch(str(attempt.get("plan_fingerprint", "")))
+        or type(consumed) is not int or consumed != 0
+        or type(remaining) is not int or remaining < 0
+    ):
+        raise CandidateChainCacheError("exact-query no-data evidence does not meet strict contract")
+    proof = {
+        "contract": NO_DATA_CONTRACT,
+        "status": "VERIFIED_NO_DATA",
+        "scope": "EXACT_QUERY_ONLY_NOT_A_COMPLETE_CHAIN",
+        "plan_fingerprint": attempt["plan_fingerprint"],
+        "request_identity": request["request_identity"],
+        "endpoint": request["endpoint"],
+        "params": request["params"],
+        "original_receipt_fingerprint": receipt_fingerprint,
+        "original_attempt_fingerprint": attempt_fingerprint,
+        "body_sha256": _sha256(raw),
+        "body_bytes": len(raw),
+        "http_status": 404,
+        "provider_payload_status": "no_data",
+        "row_count": 0,
+        "provider_credits_consumed_reported": 0,
+        "provider_credits_remaining_reported": remaining,
+        "no_historical_contract_absence_or_price_authority": True,
+        "automatic_retry_permitted": False,
+    }
+    proof["proof_fingerprint"] = _fingerprint(proof)
+    return proof
+
+
+def _verified_no_data(
+    paths: ChainCachePaths,
+    request: dict[str, Any],
+) -> dict[str, Any] | None:
+    path = _no_data_path(paths)
+    if not path.exists():
+        return None
+    if not path.is_file() or path.is_symlink():
+        raise CandidateChainCacheError("no-data proof path invalid; never overwrite")
+    expected = _expected_no_data_proof(paths, request)
+    try:
+        actual = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError) as exc:
+        raise CandidateChainCacheError("no-data proof unreadable; never overwrite") from exc
+    if actual != expected:
+        raise CandidateChainCacheError("no-data proof/source mismatch; never overwrite")
+    return actual
+
+
+def record_exact_query_no_data(
+    settings: AtlasSettings,
+    plan: object,
+    request_identity: str,
+    *,
+    authorize_offline_classification: bool = False,
+) -> dict[str, Any]:
+    """Opt-in, zero-network sidecar; originals stay byte-for-byte immutable."""
+    verified = verify_candidate_plan(plan)
+    matches = [r for r in verified["requests"] if r["request_identity"] == request_identity]
+    if len(matches) != 1:
+        raise CandidateChainCacheError("no-data identity absent/ambiguous in frozen plan")
+    request = matches[0]
+    paths = _paths(settings, request_identity)
+    expected = _expected_no_data_proof(paths, request)
+    if expected["plan_fingerprint"] != verified["plan_fingerprint"]:
+        raise CandidateChainCacheError("no-data attempt not bound to this frozen plan")
+    existing = _verified_no_data(paths, request)
+    if existing is not None:
+        return {"action": "REUSED_VERIFIED_NO_DATA_PROOF", "proof": existing}
+    if not authorize_offline_classification:
+        return {"action": "PREVIEW_ONLY_NO_WRITES", "proof": expected}
+    path = _no_data_path(paths)
+    try:
+        with path.open("x", encoding="utf-8", newline="") as handle:
+            handle.write(json.dumps(expected, indent=2, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as exc:
+        raise CandidateChainCacheError("no-data proof appeared concurrently; inspect original") from exc
+    if _verified_no_data(paths, request) != expected:
+        raise CandidateChainCacheError("new no-data sidecar verification failed; preserve evidence")
+    return {"action": "RECORDED_VERIFIED_NO_DATA", "proof": expected}
+
+
 def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str, Any] | None:
     body_exists = paths.body.exists()
     receipt_exists = paths.receipt.exists()
@@ -239,6 +382,12 @@ def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str,
         expected_hash = expected_receipt.pop("receipt_fingerprint")
     except (OSError, ValueError, TypeError, KeyError) as exc:
         raise CandidateChainCacheError("cache receipt/body cannot be read or decoded") from exc
+
+    if receipt.get("status") == "QUARANTINED":
+        no_data = _verified_no_data(paths, request)
+        if no_data is not None:
+            return {"status": "VERIFIED_NO_DATA", "body_bytes": no_data["body_bytes"],
+                    "body_sha256": no_data["body_sha256"], "no_data_proof": no_data["proof_fingerprint"]}
 
     if receipt.get("status") == "QUARANTINED" and paths.recovery.is_file():
         try:
@@ -424,8 +573,9 @@ def _checkpoint_report(report: dict[str, Any], *, run_path: Path,
     report["elapsed_seconds"] = round(max(0.0, time.monotonic() - started), 3)
     report["processed_requests"] = len(report["request_results"])
     report["completed_chains"] = report["reused"] + report["new_complete"]
+    report["verified_no_data_queries"] = report["no_data_verified"]
     report["pending"] = (
-        report["planned_chain_requests"] - report["completed_chains"]
+        report["planned_chain_requests"] - report["completed_chains"] - report["no_data_verified"]
     )
     elapsed = report["elapsed_seconds"]
     report["processed_per_second"] = (
@@ -527,6 +677,8 @@ def run_candidate_chain_cache(
         "reused": 0,
         "new_complete": 0,
         "quarantined": 0,
+        "no_data_verified": 0,
+        "verified_no_data_bytes": 0,
         "verified_reused_bytes": 0,
         "new_raw_bytes": 0,
         "provider_response_bytes_observed": 0,
@@ -552,6 +704,15 @@ def run_candidate_chain_cache(
                 report["request_results"].append({
                     "request_identity": request["request_identity"], "status": "PENDING",
                 })
+            elif receipt["status"] == "VERIFIED_NO_DATA":
+                report["no_data_verified"] += 1
+                report["verified_no_data_bytes"] += receipt["body_bytes"]
+                report["request_results"].append({
+                    "request_identity": request["request_identity"],
+                    "status": "SOURCE_NO_DATA_VERIFIED",
+                    "body_sha256": receipt["body_sha256"],
+                    "no_data_proof": receipt["no_data_proof"],
+                })
             else:
                 report["reused"] += 1
                 report["verified_reused_bytes"] += receipt["body_bytes"]
@@ -563,12 +724,12 @@ def run_candidate_chain_cache(
             if index % 25 == 0 or index == len(verified["requests"]):
                 print(
                     f"  preview {index}/{len(verified['requests'])}: "
-                    f"verified={report['reused']}, pending={index-report['reused']}",
+                    f"verified={report['reused']}, pending={index-report['reused']-report['no_data_verified']}",
                     flush=True,
                 )
         report["processed_requests"] = len(report["request_results"])
         report["completed_chains"] = report["reused"]
-        report["pending"] = report["planned_chain_requests"] - report["reused"]
+        report["pending"] = report["planned_chain_requests"] - report["reused"] - report["no_data_verified"]
         report["elapsed_seconds"] = round(max(0.0, time.monotonic() - started), 3)
         report["report_fingerprint"] = _fingerprint(report)
         return report
@@ -613,15 +774,25 @@ def run_candidate_chain_cache(
                 paths = _paths(settings, request["request_identity"])
                 receipt = _valid_receipt(paths, request)
                 if receipt is not None:
-                    report["reused"] += 1
-                    report["verified_reused_bytes"] += receipt["body_bytes"]
-                    report["request_results"].append({
-                        "request_identity": request["request_identity"],
-                        "status": "REUSED_VERIFIED",
-                        "body_sha256": receipt["body_sha256"],
-                    })
-                    # Avoid hundreds of repeated manifest writes for free cache hits.
-                    if report["reused"] % 10 == 0 or index == len(verified["requests"]):
+                    if receipt["status"] == "VERIFIED_NO_DATA":
+                        report["no_data_verified"] += 1
+                        report["verified_no_data_bytes"] += receipt["body_bytes"]
+                        report["request_results"].append({
+                            "request_identity": request["request_identity"],
+                            "status": "SOURCE_NO_DATA_VERIFIED",
+                            "body_sha256": receipt["body_sha256"],
+                            "no_data_proof": receipt["no_data_proof"],
+                        })
+                    else:
+                        report["reused"] += 1
+                        report["verified_reused_bytes"] += receipt["body_bytes"]
+                        report["request_results"].append({
+                            "request_identity": request["request_identity"],
+                            "status": "REUSED_VERIFIED",
+                            "body_sha256": receipt["body_sha256"],
+                        })
+                    # Avoid hundreds of repeated manifest writes for free local hits.
+                    if (report["reused"] + report["no_data_verified"]) % 10 == 0 or index == len(verified["requests"]):
                         _checkpoint_report(
                             report, run_path=run_path, latest_path=latest_path,
                             started=started,
@@ -729,8 +900,11 @@ def run_candidate_chain_cache(
                     flush=True,
                 )
             if report["status"] == "RUNNING":
+                unresolved = (report["planned_chain_requests"] - report["reused"]
+                              - report["new_complete"] - report["no_data_verified"])
                 report["status"] = (
-                    "COMPLETE" if report["pending"] == 0 else "PARTIAL_RESUMABLE"
+                    "COMPLETE_WITH_SOURCE_GAPS" if unresolved == 0 and report["no_data_verified"] else
+                    "COMPLETE" if unresolved == 0 else "PARTIAL_RESUMABLE"
                 )
             _checkpoint_report(
                 report, run_path=run_path, latest_path=latest_path, started=started,
