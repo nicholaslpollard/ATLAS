@@ -496,7 +496,7 @@ def test_numeric_expiration_and_occ_identity_match_historical_response(tmp_path,
 def test_offline_recovery_preserves_original_quarantine_and_reuses_without_network(tmp_path, monkeypatch):
     from scripts.recover_marketdata_candidate_chain_v1 import recover
     settings = _settings(tmp_path, monkeypatch)
-    monkeypatch.setattr("scripts.recover_marketdata_candidate_chain_v1.PROJECT_ROOT", settings.project_root)
+    monkeypatch.setattr("scripts.recover_marketdata_candidate_chain_v1.load_settings", lambda *_args: settings)
     plan = _plan()
     request = plan["requests"][0]
     source = settings.project_root / "data/research/evidence/marketdata_candidate_stock_v1/source.json"
@@ -519,7 +519,7 @@ def test_offline_recovery_preserves_original_quarantine_and_reuses_without_netwo
         _authorized(settings, plan, lambda *_: response)
     monkeypatch.undo()
     # Restore test-local settings after undoing the deliberate validator fault.
-    monkeypatch.setattr("scripts.recover_marketdata_candidate_chain_v1.PROJECT_ROOT", settings.project_root)
+    monkeypatch.setattr("scripts.recover_marketdata_candidate_chain_v1.load_settings", lambda *_args: settings)
     monkeypatch.setattr(
         cache_module, "inspect_research_storage",
         lambda _settings: SimpleNamespace(status="SAFE", storage_mode="PROJECT_LOCAL"),
