@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import scripts.classify_marketdata_candidate_2025_fsly_no_data_v1 as classifier
+import scripts.run_marketdata_candidate_2025_pilot as pilot
 
 
 def _fixture(monkeypatch, *, valid=True):
@@ -12,7 +13,7 @@ def _fixture(monkeypatch, *, valid=True):
         "ticker": "FSLY", "request_identity": classifier.FSLY_NO_DATA_REQUEST_ID,
         "params": {"date": "2025-04-09", "expiration": "2025-05-16", "strike": "5.14-6.04"},
     }
-    plan = {"requests": [{"ticker": "AGIO", "request_identity": "a" * 64}] +
+    plan = {"requests": [{"ticker": "AGIO", "request_identity": pilot.AGIO_REQUEST_ID}] +
             [{"ticker": "OTHER", "request_identity": f"{i:064x}"} for i in range(1, 5)] +
             [request] + [{"ticker": "OTHER", "request_identity": f"{i:064x}"}
                          for i in range(6, 12)]}
@@ -39,7 +40,7 @@ def _fixture(monkeypatch, *, valid=True):
             "planned_chain_requests": 12, "reused": 5, "no_data_verified": 1,
             "pending": 6,
             "request_results": [
-                {"request_identity": "a" * 64, "status": "REUSED_VERIFIED"},
+                {"request_identity": pilot.AGIO_REQUEST_ID, "status": "REUSED_VERIFIED"},
                 *[{"request_identity": f"{i:064x}", "status": "REUSED_VERIFIED"}
                   for i in range(1, 5)],
                 {"request_identity": classifier.FSLY_NO_DATA_REQUEST_ID,
