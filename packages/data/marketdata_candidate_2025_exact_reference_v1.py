@@ -377,6 +377,8 @@ def run_reference_dossiers(
                 raise CandidateChainCacheError("stored reference quarantine; do not retry")
             items.append({"ticker": ticket["ticker"], "option_symbol": ticket["option_symbol"],
                           "status": result["classification"],
+                          "http_status": result["http_status"],
+                          "safe_terms": result["safe_terms"],
                           "receipt_fingerprint": result["receipt_fingerprint"],
                           "new_provider_attempt": False})
             continue
@@ -402,7 +404,8 @@ def run_reference_dossiers(
             status, raw = getter(url, api_key)
         except Exception as exc:
             raise CandidateChainCacheError(
-                "reference transport failed after attempt marker; preserve and review, no automatic retry"
+                f"{ticket['ticker']} original reference attempt {ticket['request_identity']}: "
+                "transport failed after durable marker; preserve and review, no automatic retry"
             ) from exc
         if not isinstance(raw, bytes) or len(raw) > MAX_BODY_BYTES or not (100 <= status <= 599):
             raise CandidateChainCacheError("unbounded/invalid provider response after attempt; preserve")
@@ -428,12 +431,15 @@ def run_reference_dossiers(
         new += 1
         items.append({
             "ticker": ticket["ticker"], "option_symbol": ticket["option_symbol"],
-            "status": classification, "receipt_fingerprint": receipt["receipt_fingerprint"],
+            "status": classification, "http_status": status, "safe_terms": safe,
+            "receipt_fingerprint": receipt["receipt_fingerprint"],
             "new_provider_attempt": True,
         })
         if receipt["status"] != "COMPLETE_REFERENCE_RECEIPT":
             raise CandidateChainCacheError(
-                "reference response quarantined: " + classification + "; no automatic retry"
+                f"{ticket['ticker']} original reference response quarantined: "
+                f"HTTP {status} / {classification}; body_sha256={receipt['body_sha256']}; "
+                "no automatic retry"
             )
 
     report = {
