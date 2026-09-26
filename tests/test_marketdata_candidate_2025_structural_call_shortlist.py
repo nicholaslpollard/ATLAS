@@ -82,7 +82,8 @@ def _case(tmp_path, monkeypatch, *, wrong_gap=False):
                 "status": "VERIFIED_NO_DATA", "body_sha256": mod.FROZEN_FSLY_BODY,
                 "no_data_proof": mod.FROZEN_FSLY_PROOF,
             } if gap else {
-                "status": "COMPLETE", "body_sha256": orig_requests[idx]["raw_body_sha256"],
+                "status": "COMPLETE",
+                "body_sha256": hashlib.sha256(bodies[req["request_identity"]].read_bytes()).hexdigest(),
                 "row_count": 3,
             }
         )
