@@ -155,6 +155,7 @@ class ChainCachePaths:
     body: Path
     receipt: Path
     attempt: Path
+    recovery: Path
 
 
 def _paths(settings: AtlasSettings, request_identity: str) -> ChainCachePaths:
@@ -166,34 +167,52 @@ def _paths(settings: AtlasSettings, request_identity: str) -> ChainCachePaths:
         body=directory / f"{request_identity}.json",
         receipt=directory / f"{request_identity}.receipt.json",
         attempt=directory / f"{request_identity}.attempt.json",
+        recovery=directory / f"{request_identity}.recovery.json",
     )
+
+
+def _expiration_date(value: object) -> str:
+    """Normalize provider UTC epoch seconds or an ISO date; reject other shapes."""
+    if type(value) is int and 0 < value < 4102444800:
+        return datetime.fromtimestamp(value, UTC).date().isoformat()
+    if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
+    raise ValueError("invalid option expiration")
 
 
 def _rows_match_explicit_request(
     rows: tuple[dict[str, Any], ...], request: dict[str, Any],
 ) -> bool:
-    """Every chain row must stay inside the exact server-side query envelope."""
+    """Validate response columns AND OCC identities against the exact query."""
     try:
         lo_text, hi_text = request["params"]["strike"].split("-")
         lo, hi = Decimal(lo_text), Decimal(hi_text)
+        expiry = request["params"]["expiration"]
         if not lo.is_finite() or not hi.is_finite() or lo > hi:
             return False
         symbols: set[str] = set()
         for row in rows:
             symbol = row.get("optionSymbol")
-            if not isinstance(symbol, str) or not symbol or symbol in symbols:
+            if not isinstance(symbol, str) or symbol in symbols:
                 return False
             symbols.add(symbol)
             strike = Decimal(str(row.get("strike")))
+            side = row.get("side")
+            match = re.fullmatch(r"([A-Z0-9.]+)(\d{6})([CP])(\d{8})", symbol)
             if (
-                row.get("underlying") != request["ticker"]
-                or row.get("expiration") != request["params"]["expiration"]
-                or row.get("side") not in {"call", "put"}
+                match is None
+                or row.get("underlying") != request["ticker"]
+                or _expiration_date(row.get("expiration")) != expiry
+                or side not in {"call", "put"}
                 or not strike.is_finite()
                 or not lo <= strike <= hi
+                or match.group(1) != request["ticker"]
+                or "20" + match.group(2)[:2] + "-" + match.group(2)[2:4] + "-" + match.group(2)[4:] != expiry
+                or match.group(3) != ("C" if side == "call" else "P")
+                or Decimal(match.group(4)) / 1000 != strike
             ):
                 return False
-    except (KeyError, ValueError, InvalidOperation, TypeError):
+    except (KeyError, ValueError, InvalidOperation, TypeError, OverflowError, OSError):
         return False
     return True
 
@@ -220,6 +239,40 @@ def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str,
         expected_hash = expected_receipt.pop("receipt_fingerprint")
     except (OSError, ValueError, TypeError, KeyError) as exc:
         raise CandidateChainCacheError("cache receipt/body cannot be read or decoded") from exc
+
+    if receipt.get("status") == "QUARANTINED" and paths.recovery.is_file():
+        try:
+            recovery = json.loads(paths.recovery.read_text(encoding="utf-8"))
+            recovery_hash = recovery.pop("recovery_fingerprint")
+            if (
+                recovery_hash != _fingerprint(recovery)
+                or recovery.get("contract") != "atlas-marketdata-chain-offline-recovery-v1"
+                or recovery.get("original_receipt_fingerprint") != receipt.get("receipt_fingerprint")
+                or recovery.get("body_sha256") != _sha256(raw)
+                or recovery.get("plan_fingerprint") != json.loads(paths.attempt.read_text(encoding="utf-8")).get("plan_fingerprint")
+                or recovery.get("row_count") != receipt.get("row_count")
+                or receipt.get("body_sha256") != _sha256(raw)
+                or receipt.get("body_bytes") != len(raw)
+                or expected_hash != _fingerprint(expected_receipt)
+                or receipt.get("endpoint") != request["endpoint"]
+                or receipt.get("params") != request["params"]
+                or receipt.get("raw_http_body_exact") is not True
+                or recovery.get("request_identity") != request["request_identity"]
+                or recovery.get("status") != "RECOVERED_VERIFIED"
+                or not paths.attempt.is_file()
+                or receipt.get("failure") != "chain rows violate ticker, expiry, strike or identity envelope"
+                or receipt.get("http_status") not in {200, 203}
+                or receipt.get("rate_limit", {}).get("consumed") is None
+                or receipt.get("rate_limit", {}).get("remaining") is None
+            ):
+                raise ValueError("recovery proof mismatch")
+            rows = array_rows(payload)
+            if (payload.get("s") != "ok" or receipt.get("row_count") != len(rows)
+                    or not _rows_match_explicit_request(rows, request)):
+                raise ValueError("recovered rows do not match request")
+            return {**receipt, "status": "COMPLETE", "offline_recovery": True}
+        except (OSError, ValueError, TypeError, KeyError, MarketDataError) as exc:
+            raise CandidateChainCacheError("offline recovery evidence invalid; never overwrite") from exc
 
     if (
         receipt.get("contract") != CONTRACT
