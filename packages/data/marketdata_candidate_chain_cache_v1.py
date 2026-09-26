@@ -360,7 +360,10 @@ def record_exact_query_no_data(
     return {"action": "RECORDED_VERIFIED_NO_DATA", "proof": expected}
 
 
-def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str, Any] | None:
+def _valid_receipt(
+    paths: ChainCachePaths, request: dict[str, Any], *,
+    expected_plan_fingerprint: str | None = None,
+) -> dict[str, Any] | None:
     body_exists = paths.body.exists()
     receipt_exists = paths.receipt.exists()
     if _no_data_path(paths).exists() and not (body_exists and receipt_exists):
@@ -390,6 +393,9 @@ def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str,
     if receipt.get("status") == "QUARANTINED":
         no_data = _verified_no_data(paths, request)
         if no_data is not None:
+            if (expected_plan_fingerprint is not None
+                    and no_data["plan_fingerprint"] != expected_plan_fingerprint):
+                raise CandidateChainCacheError("no-data proof belongs to another frozen plan")
             return {"status": "VERIFIED_NO_DATA", "body_bytes": no_data["body_bytes"],
                     "body_sha256": no_data["body_sha256"], "no_data_proof": no_data["proof_fingerprint"]}
 
@@ -703,7 +709,8 @@ def run_candidate_chain_cache(
         # Preview: no lock, cache modification, manifests, credentials or API calls.
         for index, request in enumerate(verified["requests"], start=1):
             _assert_request_shape(request)
-            receipt = _valid_receipt(_paths(settings, request["request_identity"]), request)
+            receipt = _valid_receipt(_paths(settings, request["request_identity"]), request,
+                                     expected_plan_fingerprint=fingerprint)
             if receipt is None:
                 report["request_results"].append({
                     "request_identity": request["request_identity"], "status": "PENDING",
@@ -776,7 +783,7 @@ def run_candidate_chain_cache(
             for index, request in enumerate(verified["requests"], start=1):
                 _assert_request_shape(request)
                 paths = _paths(settings, request["request_identity"])
-                receipt = _valid_receipt(paths, request)
+                receipt = _valid_receipt(paths, request, expected_plan_fingerprint=fingerprint)
                 if receipt is not None:
                     if receipt["status"] == "VERIFIED_NO_DATA":
                         report["no_data_verified"] += 1
