@@ -33,7 +33,7 @@ plan fingerprint:
 These figures are operator-reported workstation output; full source/plan
 artifact bytes are retained on that workstation and are not in GitHub.
 
-**Next:** verify READY secondary-volume research accounting, then run the
+**Next:** run the
 merged cache's **offline zero-credit preview** against the exact saved plan
 on `main`. Inspect plan/request identities and any existing receipt/attempt
 state before separately authorizing historical option-chain requests.
@@ -453,8 +453,10 @@ SSD at `D:/ATLAS_DATA`, rather than the unrecognized external NVMe enclosure.
 All six junction bindings reached READY, and 2,122 migrated files (2.521 GiB)
 passed SHA-256 verification through the logical project paths. The existing
 secondary profile reserves at least 25 GiB free and caps total acquisition at
-190 GiB, including a 120 GiB candidate-options cache. A separate runtime
-research-storage preflight remains the next check. The pre-existing local profile remains 40 GiB total with a
+190 GiB, including a 120 GiB candidate-options cache. The runtime
+research-storage preflight subsequently passed: D: had 227.07 GiB free,
+status SAFE, 190.00 GiB budget / 187.62 GiB remaining, and 25/40 GiB
+minimum/warning thresholds. The pre-existing local profile remains 40 GiB total with a
 50 GiB minimum-free-space floor when no external root is configured.
 
 Full storage contract:
