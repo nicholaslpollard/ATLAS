@@ -125,3 +125,16 @@ After reviewing exact-proof metadata, explicit zero-provider-call classification
 ~~~
 
 The offline classifying command must produce an independent result of exactly **5 complete / 1 exact-query no-data / 6 pending**, zero provider reads and no original evidence mutation. Later authorized pilot acquisition may issue up to six NEW requests; it must never replay FSLY, widen FSLY's original strike/expiry or falsely count its source gap as a completed chain. A successful remainder is **11 complete + 1 exact-query source gap + 0 pending**, explicitly `COMPLETE_WITH_SOURCE_GAPS`, not twelve complete. Any new abnormal provider response remains quarantined and stops the run. Do not automatically classify other 404s or infer that no alternative options existed for FSLY.
+
+
+## 2026-09-26 workstation offline classification acceptance
+
+Operator returned `RECORDED_VERIFIED_NO_DATA` for frozen FSLY, proof fingerprint `6d2e3d17fbcb0f39d88af9ed025d71757c84e97ac00b75d130d189c6ac0f083f`, original quarantine receipt fingerprint `afd9bc9135c575351f14f6bad3c769083d9331019c06dd7e0a1b1df0941f1748`, 404/no_data/0 rows/0 consumed credits/9995 last remaining. Independent physical preview confirmed **five complete, one exact-query no-data and six pending**. Original raw body, receipt, attempt and frozen plan unchanged; classification issued zero provider calls.
+
+Next separately authorized, six-new-request maximum (not an automatic retry):
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\run_marketdata_candidate_2025_pilot.py --authorize-provider-reads --confirm-paid-starter --confirm-private-internal-use --max-total-new-requests 6
+~~~
+
+A new abnormal response must stop the run. Do not replay an attempted request; use immutable evidence diagnosis before any subsequent acquisition. Successful source-only terminal accounting is 11 complete, 1 exact-query FSLY no-data, 0 pending. No option quote/fill/P&L or promotion authority.
