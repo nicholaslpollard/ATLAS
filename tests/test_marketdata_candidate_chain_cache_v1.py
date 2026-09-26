@@ -42,7 +42,11 @@ def _settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         cache_module, "assert_category_acquisition_allowed",
         lambda *_args, **_kwargs: None,
     )
-    return load_settings(ROOT, "development").model_copy(update={"project_root": project})
+    base = load_settings(ROOT, "development")
+    isolated_data = base.data.model_copy(update={
+        "external_storage": base.data.external_storage.model_copy(update={"bindings": {}}),
+    })
+    return base.model_copy(update={"project_root": project, "data": isolated_data})
 
 
 def _plan(*, count: int = 1):
