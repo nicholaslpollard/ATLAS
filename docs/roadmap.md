@@ -5197,3 +5197,10 @@ counts, elapsed time and terminal failure type. Its scientific artifacts are
 byte-stable between reruns; measurements stay outside the source bundle.
 The 71-test targeted Windows suite and first SOURCE-ONLY export passed.
 The next gate is the zero-credit chain preview, not live acquisition.
+
+
+### MarketData chain recovery acceptance and next operator gate — 2026-09-26
+
+PR #232 branch `fix/marketdata-chain-expiration-recovery-20260926` corrected the numeric epoch-expiration validation and added separate offline recovery evidence for an immutable quarantined response. Operator Windows targeted tests: 22 passed. Authorized offline AGIO recovery verified two rows and the original SHA-bound evidence, with zero additional provider calls/credits. The subsequent zero-network preview on plan `a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1` reported `reused=1`, `pending=11`, `verified_reused_bytes=608`, `provider_reads=0`, and `EXTERNAL_SECONDARY`. This replaces the earlier 'first execution pending' status for this bounded cohort; historical sections above remain retained records, not current status. PR #232 merge status must be checked independently before claiming main contains the fix.
+
+The uploaded accepted stock-source artifact SHA-256 is `e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e`; the uploaded plan has twelve requests and binds this same SHA to every opportunity. Next: ensure the exact physical stock-source file is supplied to the cache, check PR/CI status, then run at most ten new requests followed by at most one, with explicit authorization and per-request durable accounting. An attempted eleven-request command was rejected before any provider call by the 0..10 cap. Do not loosen that cap merely to avoid a second invocation; preserve crash ambiguity, credit/storage floors, external storage bindings, and exclusive plan lock. After acquisition, inspect all receipts and separate source coverage from selected quote history and price authority. The workstation root example is `C:\\Users\\cyberdyne\\Desktop\\ATLAS`; never infer external secondary paths from this root.
