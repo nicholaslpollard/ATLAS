@@ -804,3 +804,8 @@ conditioning or alternative exit hypothesis requires a separately
 preregistered contract and PIT-safe source/price authority.
 
 
+
+
+### MarketData candidate-chain source recovery — 2026-09-26 (infrastructure only)
+
+The first AGIO historical EOD chain was offline-recovered from its original quarantined HTTP 203 raw body using separately SHA-bound proof. Operator-reported local verification: 22/22 targeted tests passed, two contract rows verified, zero additional provider calls/credits, and a subsequent preview reused one 608-byte receipt with eleven of twelve planned requests still pending. Accepted stock-source bundle SHA-256 `e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e`; plan fingerprint `a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1`. The remaining eleven have **not** been represented as acquired. This source-integrity recovery neither changes nor promotes strategy evidence, historical option pricing, fills, P&L, selector authority, PAPER or LIVE. All existing negative and protected/future-blind findings remain unchanged.
