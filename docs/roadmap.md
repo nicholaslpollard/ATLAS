@@ -5227,3 +5227,10 @@ After source-only acquisition: freeze historical contract identity and adjusted-
 
 
 **2026-09-26 validation/merge confirmation:** Junction-safe operator pilot PR #233 passed all ten recorded GitHub workflow runs, including complete Linux and Windows ATLAS tests, and was squash-merged into `main` at `0ac607d6ed47e8ed8810ef6bee82f09428618724`. This is a source-acquisition workflow fix only. The current workstation gate is the exact-path, zero-network-first wrapper; original AGIO evidence remains immutable and 11 pending chains have not yet been represented as acquired.
+
+
+### 2026-09-26 — FSLY response triage before remaining chain coverage
+
+The first authorized accepted 2025 pilot batch successfully reused AGIO and acquired AMGN, ATRC, BANF and DAKT, then stopped at FSLY with the exact raw response quarantined for unexpected provider response status. Remaining contracts are not all acquired; failed-response HTTP/status and consumed credits must be read from the preserved receipt rather than inferred from an exception string. The second 1-request batch was not entered.
+
+The next gate is a strictly offline inspection using `scripts/inspect_marketdata_candidate_2025_pilot.py`. Verify saved receipt, attempt and raw-body hashes and show only status and numeric credit metadata. Decide whether to preserve a verified source-coverage gap under a new version, diagnose provider failure, or separately approve further bounded acquisition only after that evidence. Neither blanket retry nor retroactive strike/expiry expansion is authorized. Historical option P&L, strategy and PAPER/LIVE authority remain unchanged.

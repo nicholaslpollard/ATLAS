@@ -4791,3 +4791,10 @@ MarketData's published subscription terms require deleting downloaded data after
 
 
 **2026-09-26 validation/merge confirmation:** Junction-safe operator pilot PR #233 passed all ten recorded GitHub workflow runs, including complete Linux and Windows ATLAS tests, and was squash-merged into `main` at `0ac607d6ed47e8ed8810ef6bee82f09428618724`. This is a source-acquisition workflow fix only. The current workstation gate is the exact-path, zero-network-first wrapper; original AGIO evidence remains immutable and 11 pending chains have not yet been represented as acquired.
+
+
+### 2026-09-26 — First authorized chain batch stopped on FSLY quarantine
+
+After verified original source/plan and reused offline-recovered AGIO (608 bytes), the bounded 10-new-request batch saved four new complete responses (AMGN, ATRC, BANF, DAKT), each reporting one consumed credit; last observed successful remaining was 9995. The next request, FSLY on the frozen 2025-04-09 snapshot/2025-05-16 expiry/5.14–6.04 strikes, was preserved as QUARANTINED due to unexpected provider response status. The terminal output does not establish the failed response's HTTP status, payload `s` or charged credits. No second batch ran. This is **not** an accepted missing-contract inference, a complete chain or a reason to retry/delete the original.
+
+Read-only next action: run `scripts/inspect_marketdata_candidate_2025_pilot.py` after its CI-validated merge. It validates physical source/plan lineage and original saved body/receipt/attempt fingerprints, and prints only sanitized status/credit metadata. No API requests, data edits, retry, option fills/P&L or strategy authority. See the pilot operator research contract.

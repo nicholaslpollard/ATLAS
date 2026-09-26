@@ -89,3 +89,18 @@ historical EOD quote horizons and conservative EOD timing/cost modeling.
 Preserve news chronology as max(created_at, updated_at). Only then compare
 stock-only, news-context and option-economics recurrent DEVELOPMENT
 replays. No alpha or PAPER/LIVE promotion is authorized.
+
+
+## 2026-09-26 first bounded continuation — quarantined FSLY response
+
+The authorized source-only continuation verified the exact exporter bundle at its original D:-junction-visible project path, reused the original 608-byte AGIO response, and durably completed four **new** chains (AMGN, ATRC, BANF, DAKT). Those four provider responses each reported one consumed credit, with the latest successful response reporting 9995 credits remaining. The following frozen FSLY request (2025-04-09 historical snapshot, 2025-05-16 expiry, strike 5.14–6.04) stopped the first ten-request batch with `provider chain quarantined with exact raw receipt: unexpected provider response status`. The failed request's HTTP status, provider payload status, billed credits and meaning **are not established by terminal output**. No second paid batch ran. The other six never-attempted requests stay pending. Original FSLY body, receipt and attempt marker must remain.
+
+Read-only next operator step, from merged `main`:
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\inspect_marketdata_candidate_2025_pilot.py
+~~~
+
+This inspector directly verifies original stock source and saved plan SHA, reads only local bodies/attempts/receipts, verifies SHA and fingerprints, and reports the quarantined request's HTTP status, allowlisted payload `s`, recorded row count and provider numeric consumed/remaining headers. It never prints `errmsg`, `message`, raw JSON, tokens or headers other than those numeric credit fields. It also displays current physical receipt status independent of the latest historical run checkpoint. No provider reads, credit charges, writes, recovery, deletion, widened strikes or retry are permitted.
+
+A 404 / `no_data` would be a candidate-source coverage observation, **not** a cache hit, a proven historical contract absence at all alternative expiries/strikes, or permission to replay a possibly charged request. A 401/403/429, unexpected provider schema, or unknown credit state requires different remediation. Do not make a versioned skip/continue or alternate-source decision until original saved response metadata and credit evidence are reviewed. Original aggregate strategy/exit evidence and PAPER/LIVE boundaries remain untouched.
