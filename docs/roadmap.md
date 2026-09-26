@@ -50,10 +50,10 @@ plan fingerprint:
 These figures are operator-reported workstation output; full source/plan
 artifact bytes are retained on that workstation and are not in GitHub.
 
-**Next:** verify READY secondary-volume research accounting, then run the
-merged cache's **offline zero-credit preview** against the exact saved plan
-on `main`. Inspect plan/request identities and any existing receipt/attempt
-state before separately authorizing historical option-chain requests.
+**Next:** inspect the 12-request plan identities and confirm source-file,
+paid/private-use and credit conditions before a separately authorized
+one-request historical-chain canary; then verify the new receipt before
+continuing. The external-volume preflight and zero-credit preview passed.
 No authenticated MarketData acquisition, broker activity, historical option
 execution prices, news predictor authority or simulator option P&L is opened
 by source export or preview. Contract selection/deliverables, selected quote
@@ -505,8 +505,13 @@ inventory of 2,122 source files (2.521 GiB) is retained under
 `data/manifests/secondary_migration_20260926_132952_before.csv` on C:.
 All files passed SHA-256 verification after moving to D: through their original
 project-visible paths. The stock database and primary internal paths did not move.
-The next operator gate is the external-mode research-storage preflight, followed
-by the zero-credit chain-plan preview; no bulk provider acquisition is implied.
+The subsequent external-mode preflight passed with D: free 227.07 GiB,
+SAFE, research budget 190.00/187.62 GiB total/remaining and 25/40 GiB
+minimum/warning thresholds. The exact saved plan's zero-credit preview
+reported EXTERNAL_SECONDARY, 12 opportunities/12 shared chains, 12 pending,
+zero provider reads/credits, no new receipts, and report fingerprint
+`c83f7464dbdccd5dc7c1242e926cc5598d16a79f1e38bf5130bee714befc9538`.
+Actual historical chain reads remain a separately authorized workstation gate.
 
 Contract:
 `docs/external_secondary_storage_v1_20260924.md`.
