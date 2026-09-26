@@ -5264,3 +5264,8 @@ Next versioned DEVELOPMENT stage: consume that accepted closeout once; read alre
 
 
 **2026-09-26 PR #237 merge/next operator gate:** The outcome-blind structural CALL shortlist was CI-validated (all ten workflows; 2,600 tests plus four subtests on both Linux and Windows) and squash-merged at `9cc16d5de6ffaca439c92212193b441a9b4d2c38`. The accepted source closeout is already written; do not rerun it. Next local action is **one new computation**: `scripts/select_marketdata_candidate_2025_structural_calls_v1.py --write-local-shortlist`. It reads the frozen private closeout/chain receipts and produces the new provisional CALL shortlist on D:, with zero provider reads/credits. This GitHub merge is not a claim about actual provisional symbols until the workstation returns the new local artifact. Historical deliverable, executable quote and option P&L authority remain withheld.
+
+
+### 2026-09-26 — Exact historical contract reference dossier gate
+
+Accepted provisional shortlist: 11 real symbols, 65 observed CALL rows, FSLY source abstention, fingerprint `e5a8347fa346934d908d925b9fdbf667d7a458d010bf51ce8e27324fbbc01268`. The old MarketData chain pilot and source closeout are complete; do not re-run. Next, freeze 11 exact Massive historical Contract Overview requests keyed to each prior-session EOD snapshot, and acquire them only under an explicit max-11 sequential read budget (>=13s/request-start spacing; previously observed 5/min throttle). Persist each original response, intent and fingerprinted classification; quarantine 404/429/schema/identity mismatch and do not automatically replay. Independent dynamic deliverable proof and quote/cost feasibility remain separate subsequent gates, no strategy/PAPER/LIVE authority.
