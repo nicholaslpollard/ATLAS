@@ -185,7 +185,10 @@ def build_structural_call_shortlist(
                 raise CandidateChainCacheError("decision clock must be explicit UTC")
             snapshot = date.fromisoformat(request["params"]["date"])
             expiry = date.fromisoformat(request["params"]["expiration"])
-            decision_day = decision.astimezone(EASTERN).date()
+            decision_local = decision.astimezone(EASTERN)
+            decision_day = decision_local.date()
+            if (decision_local.hour, decision_local.minute, decision_local.second, decision_local.microsecond) != (9, 35, 0, 0):
+                raise CandidateChainCacheError("frozen decision must be 09:35 Eastern after raw stock OPEN")
             if not snapshot < decision_day <= expiry:
                 raise CandidateChainCacheError("chain EOD must predate decision and expiry")
             raw_open = _positive_decimal(source["raw_underlying_price"], label="accepted raw stock OPEN")
