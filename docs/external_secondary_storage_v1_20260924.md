@@ -167,6 +167,15 @@ credits consumed and no new receipts; report fingerprint:
 These are operator-reported workstation results. They do not independently
 verify provider entitlement or authorize acquisition, trading or strategy changes.
 
+## Provider-specific retention controls
+
+Secondary-volume capacity does not itself confer long-term data rights.
+The current MarketData subscription terms state that downloaded data must
+be deleted when the subscription ends. All source/cached copies and backups
+must be tracked by provider and license. Confirm terms directly with
+MarketData before proposing continued use after subscription expiry:
+https://www.marketdata.app/terms/ .
+
 ## Authority
 
 This is product/storage architecture only.
