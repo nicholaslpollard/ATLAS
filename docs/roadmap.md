@@ -33,33 +33,17 @@ reconciled. Code and tests remain the authority for actual behavior; Git history
 accepted artifacts remain the authority for what happened. A code or research
 package with stale applicable living documents is incomplete even if its tests pass.
 
-### Active MarketData candidate-chain preview gate — 2026-09-26
+### Active MarketData accepted-source chain pilot — 2026-09-26
 
-PR #229's bounded historical EOD chain cache and PR #230's accepted-stock
-candidate export are both **MERGED** on main after ten passing GitHub workflows
-per PR. The operator's exact-head 71-test Windows suite passed in 6.30 seconds
-on combined export commit `6292b9d`. The operator completed a zero-provider
-2025 source-only diagnostic under run `20260925T233304045068Z-3830a7a5`:
-546/546 normalized source parts verified, 4,685 comparable opportunities and
-113 unique training cells loaded, 12 monthly outcome-blind daily LONG cases,
-12 SHA-verified native raw daily units, 12 distinct bounded option-chain
-requests, 21 durable stages and 23.6 seconds elapsed. Source bundle SHA-256:
-`e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e`;
-plan fingerprint:
-`a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1`.
-These figures are operator-reported workstation output; full source/plan
-artifact bytes are retained on that workstation and are not in GitHub.
+PRs #229, #230, #231 and #232 are merged. The workstation's accepted DEVELOPMENT stock export selected 12 outcome-blind 2025 daily LONG opportunities, with 12 immutable SHA-bound native raw unit references and 12 bounded historical option-chain requests. Stock-source SHA-256 `e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e`; plan fingerprint `a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1`.
 
-**Next:** inspect the 12-request plan identities and confirm source-file,
-paid/private-use and credit conditions before a separately authorized
-one-request historical-chain canary; then verify the new receipt before
-continuing. The external-volume preflight and zero-credit preview passed.
-No authenticated MarketData acquisition, broker activity, historical option
-execution prices, news predictor authority or simulator option P&L is opened
-by source export or preview. Contract selection/deliverables, selected quote
-histories, conservative EOD fills/costs and independently PIT-qualified
-news-context joins remain separate gates. Protected and future-blind
-boundaries and previous negative strategy results are unchanged.
+The first paid AGIO chain returned HTTP 203 and two rows, but the initial validator quarantined its numeric epoch expiration. PR #232 corrected validation and separately recovered the *original* immutable body offline, without a second paid call. Latest direct workstation zero-network preview: 1 verified reused receipt (608 bytes), 11 pending, 0 provider calls and 0 additional credits. An old FAILED_REVIEW_REQUIRED checkpoint is retained as first-run history, not the current cache status.
+
+The verified secondary research root is now the internal Samsung 860 EVO at `D:/ATLAS_DATA` behind the original project-visible junctions; core ATLAS and accepted Alpaca SIP V2 stock data remain on C:. The prior recursive PowerShell `Get-ChildItem .\data -Recurse` source discovery could skip the junction and incorrectly report a missing accepted stock bundle. The proper direct source path is `data/research/evidence/marketdata_candidate_stock_v1/d6c924cf5006d295.json`. Do not delete, re-export or overwrite it because of that scan.
+
+The next workstation gate is the read-only default `scripts/run_marketdata_candidate_2025_pilot.py`. It validates the exact source/plan bytes, frozen cohort, AGIO recovery and current receipts. Only separately explicit paid/private/read authorization permits two sequential cache batches of at most 10+1 new calls with independent receipt previews. See `docs/research/marketdata_candidate_2025_pilot_operator_v1_20260926.md`. No contract-selection, historical option price/fill/P&L, news predictor, strategy promotion, PAPER or LIVE authority follows.
+
+MarketData terms require deletion of downloaded subscription data upon termination. Archive capacity must not be treated as post-cancellation license rights. Provider provenance/retention and written clarification are separate prerequisites for the longer-term dataset plan.
 
 ### Retained Czar28 historical-option qualification V1
 
@@ -5231,3 +5215,12 @@ The uploaded accepted stock-source artifact SHA-256 is `e7d90ce3162475ecbfc442d3
 
 
 **2026-09-26 merge confirmation:** PR #232 was squash-merged into `main` at commit `f95b639a4f78d8d4d8c78d3b87ad33546f77ec4b` after its ten recorded GitHub workflow runs completed successfully. The offline recovery remains the sole accepted AGIO source; paid continuation requires the exact stock bundle and per-run bounded authorization. This updates the earlier pre-merge wording without rewriting the retained chronology.
+
+
+### 2026-09-26 — Accepted pilot handoff and source-path correction
+
+PR #231's D: Samsung 860 EVO secondary-storage record was merged. The accepted stock bundle under `data/research/evidence/marketdata_candidate_stock_v1` is on a Windows junction. A recursive PowerShell `Get-ChildItem .\data -Recurse` may skip the junction and was not a valid direct source-path test. The latest zero-credit preview independently recognized the recovered AGIO receipt (1 verified, 608 bytes; 11 pending). The original failed checkpoint is retained as historical evidence.
+
+The new `scripts/run_marketdata_candidate_2025_pilot.py` checks the deterministic source-path/SHA and plan before a read-only preview; only explicit authorization permits 10+1 sequential new chain requests with an independent receipt preview after each batch. Never auto-replay quarantines or unresolved attempts. See `docs/research/marketdata_candidate_2025_pilot_operator_v1_20260926.md`.
+
+After source-only acquisition: freeze historical contract identity and adjusted-deliverable validation, selected quote horizons, conservative decision-clock EOD economics and PIT news joins, then versioned recurrent DEVELOPMENT comparisons. MarketData subscription deletion terms mean an SSD archive cannot be assumed usable after cancellation; maintain per-provider licensing and seek written clarification. No strategy/P&L/PAPER/LIVE authority changed.
