@@ -114,7 +114,8 @@ def _inspect_request(settings: Any, request: dict[str, Any],
 
     if receipt.get("status") == "COMPLETE" or exists["recovery"]:
         try:
-            verified = _valid_receipt(paths, request)
+            verified = _valid_receipt(paths, request,
+                                      expected_plan_fingerprint=plan_fingerprint)
         except CandidateChainCacheError:
             result["status"] = "RECEIPT_VALIDATION_FAILED_PRESERVE"
             return result
