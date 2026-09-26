@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Explicit offline disposition of the immutable 2025 FSLY 404/no_data.
 
-No provider import, credentials, network, existing-cache overwrite or plan
+No provider requests, credentials printed, network, existing-cache overwrite or plan
 modification. Creates only a separately fingerprinted, exclusive source-gap
 sidecar when explicitly authorized, then independently previews the cohort.
 """
@@ -21,6 +21,9 @@ from packages.data.marketdata_candidate_chain_cache_v1 import (
     CandidateChainCacheError, record_exact_query_no_data,
     run_candidate_chain_cache,
 )
+EXPECTED_FSLY_BODY_SHA256 = "54e3e162845e54a24f015e4faaff70531c0707baf1f492fcebd5c35922f5971a"
+EXPECTED_FSLY_BODY_BYTES = 47
+
 from scripts.run_marketdata_candidate_2025_pilot import (
     FSLY_NO_DATA_REQUEST_ID, TOTAL_REQUESTS, _assert_preview, preflight,
 )
@@ -44,10 +47,21 @@ def main(argv: list[str] | None = None) -> int:
         if (original["ticker"] != "FSLY"
                 or original["request_identity"] != FSLY_NO_DATA_REQUEST_ID):
             raise CandidateChainCacheError("frozen FSLY request identity mismatch")
-        result = record_exact_query_no_data(
+        preview_result = record_exact_query_no_data(
             settings, plan, FSLY_NO_DATA_REQUEST_ID,
-            authorize_offline_classification=args.authorize_exact_no_data_record,
         )
+        proof = preview_result["proof"]
+        if (proof["body_sha256"] != EXPECTED_FSLY_BODY_SHA256
+                or proof["body_bytes"] != EXPECTED_FSLY_BODY_BYTES
+                or proof["provider_credits_consumed_reported"] != 0
+                or proof["provider_credits_remaining_reported"] != 9995):
+            raise CandidateChainCacheError(
+                "saved FSLY original response differs from frozen inspected evidence"
+            )
+        result = (record_exact_query_no_data(
+            settings, plan, FSLY_NO_DATA_REQUEST_ID,
+            authorize_offline_classification=True,
+        ) if args.authorize_exact_no_data_record else preview_result)
         proof = result["proof"]
         print("ATLAS MarketData 2025 FSLY Exact-Query No-Data Disposition")
         print(f"  exact source verified: {source}")
