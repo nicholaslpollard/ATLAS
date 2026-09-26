@@ -186,3 +186,12 @@ def test_existing_closeout_fingerprint_is_bound_without_rerunning_closeout(tmp_p
     path.write_text(json.dumps(changed))
     with pytest.raises(CandidateChainCacheError, match="identity/status"):
         mod.read_frozen_source_closeout(settings)
+
+
+def test_decision_must_remain_0935_eastern_after_raw_stock_open(tmp_path, monkeypatch):
+    settings, plan, closeout, _ = _case(tmp_path, monkeypatch)
+    candidate = plan["source_bindings"]["op-00"]
+    candidate["decision_at_utc"] = "2025-01-03T14:30:00+00:00"
+    closeout["opportunities"][0]["decision_at_utc"] = candidate["decision_at_utc"]
+    with pytest.raises(CandidateChainCacheError, match="09:35 Eastern"):
+        mod.build_structural_call_shortlist(settings, plan, closeout)
