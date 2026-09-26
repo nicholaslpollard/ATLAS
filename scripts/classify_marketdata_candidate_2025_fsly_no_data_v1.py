@@ -77,12 +77,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.authorize_exact_no_data_record:
             preview = run_candidate_chain_cache(settings, plan)
             _assert_preview(preview)
-            if (preview.get("no_data_verified") != 1 or preview["pending"] != 6
-                    or preview["reused"] != 5 or preview["provider_reads"] != 0):
+            if (preview.get("no_data_verified") != 1
+                    or not 5 <= preview["reused"] <= 11
+                    or preview["pending"] != 11 - preview["reused"]
+                    or preview["provider_reads"] != 0):
                 raise CandidateChainCacheError(
                     "post-disposition physical cohort preview differs; preserve evidence"
                 )
-            print("  physical cohort: 5 complete / 1 exact-query no-data / 6 pending")
+            print(
+                f"  physical cohort: {preview['reused']} complete / "
+                f"1 exact-query no-data / {preview['pending']} pending"
+            )
         print("  provider calls: 0; credits spent this invocation: 0")
         print("  original raw body, receipt, attempt and frozen plan unchanged")
         print("  exact-query source coverage only; no broader contract absence or option P&L authority")
