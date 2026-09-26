@@ -103,7 +103,8 @@ def _assert_preview(preview: dict[str, Any]) -> None:
     ):
         raise CandidateChainCacheError("unexpected pilot cache preview; no paid reads authorized")
     if no_data and (
-        preview["request_results"][5]["request_identity"] != FSLY_NO_DATA_REQUEST_ID
+        len(preview["request_results"]) != TOTAL_REQUESTS
+        or preview["request_results"][5]["request_identity"] != FSLY_NO_DATA_REQUEST_ID
         or preview["request_results"][5]["status"] != "SOURCE_NO_DATA_VERIFIED"
     ):
         raise CandidateChainCacheError("unexpected no-data classification in pilot; no paid reads")
