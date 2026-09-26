@@ -41,7 +41,7 @@ Original AGIO raw evidence was recovered offline and four subsequent chains comp
 
 **Current independently verified physical status: 11 complete chain source receipts / 1 exact-query FSLY no-data / 0 pending.** Terminal CLI `status=PREVIEW` is the independent zero-provider-read receipt reconciliation after completion, not a pending acquisition. The original failed-run checkpoint remains historical evidence, not current receipt status. The frozen pilot is closed; do not re-request FSLY or attempt further pilot calls.
 
-**Current offline workstation gate — merged PR #236:** the local, read-only-first source closeout independently revalidates original receipts/proof and computes observed CALL/PUT structural counts for each request, without copying provider raw bodies or selecting an executable contract. Later contract identity/deliverable and quote-history acquisition are separate preregistered and provider-authorized work. No historical option fill/P&L, strategy, PAPER, LIVE, broker/order or promotion authority is granted. Provider-specific licensing and retention limits still apply.
+**Source closeout accepted; next point-in-time structural CALL shortlist:** the local, read-only-first source closeout independently revalidates original receipts/proof and computes observed CALL/PUT structural counts for each request, without copying provider raw bodies or selecting an executable contract. Later contract identity/deliverable and quote-history acquisition are separate preregistered and provider-authorized work. No historical option fill/P&L, strategy, PAPER, LIVE, broker/order or promotion authority is granted. Provider-specific licensing and retention limits still apply.
 
 ### Retained Czar28 historical-option qualification V1
 
@@ -5254,3 +5254,10 @@ Versioned next gate: only explicit offline creation of a separate exact-query no
 
 
 **2026-09-26 PR #236 merged confirmation:** CI passed all ten GitHub checks, including Linux and Windows full suites (2,592 tests and four subtests on each), and source-only closeout was merged as `3fb8d50ffca9926e240a0a5e0c714817775527fc`. This is code/contract acceptance, not proof a local closeout manifest has been generated. Next operator command runs the exact frozen source/receipt preflight and independently verifies 11 complete, one FSLY source gap and zero pending with no provider calls, then creates only the D:-bound local metadata closeout through an explicit CLI flag. Original provider bytes and provenance remain private and immutable.
+
+
+### 2026-09-26 — Source-closeout acceptance → PIT structural CALL discovery
+
+Operator confirmed private source closeout fingerprint `98b47179a2e563fb9d97ed16fec02d9a962f8f8788e88952f64c022f34a49daa` and 11 complete / 1 FSLY exact-query gap / zero pending, with 11 credits observed across complete original receipts. This closes the source pilot. It should not be rerun merely to establish status again.
+
+Next versioned DEVELOPMENT stage: consume that accepted closeout once; read already-acquired historical CALL identities; rank by absolute strike proximity to accepted next-session as-traded stock OPEN at 09:35 ET, tie favor OTM, without using option EOD prices or outcomes. Preserve all ranked alternatives and FSLY abstention in a new private, immutable D: metadata shortlist. No independent standard-deliverable proof yet: provisional shortlist is not a final contract selector or execution model. Separate follow-on: historical deliverable/reference qualification, then selected-contract EOD quote-horizon cost plan and independently authorized acquisition. No change to negative strategy evidence or PAPER/LIVE authority.
