@@ -24,7 +24,7 @@ Original AGIO raw evidence was recovered offline and four subsequent chains comp
 
 **Current independently verified physical status: 11 complete chain source receipts / 1 exact-query FSLY no-data / 0 pending.** Terminal CLI `status=PREVIEW` is the independent zero-provider-read receipt reconciliation after completion, not a pending acquisition. The original failed-run checkpoint remains historical evidence, not current receipt status. The frozen pilot is closed; do not re-request FSLY or attempt further pilot calls.
 
-**Current offline workstation gate — merged PR #236:** the local, read-only-first source closeout independently revalidates original receipts/proof and computes observed CALL/PUT structural counts for each request, without copying provider raw bodies or selecting an executable contract. Later contract identity/deliverable and quote-history acquisition are separate preregistered and provider-authorized work. No historical option fill/P&L, strategy, PAPER, LIVE, broker/order or promotion authority is granted. Provider-specific licensing and retention limits still apply.
+**Source closeout accepted; next point-in-time structural CALL shortlist:** the local, read-only-first source closeout independently revalidates original receipts/proof and computes observed CALL/PUT structural counts for each request, without copying provider raw bodies or selecting an executable contract. Later contract identity/deliverable and quote-history acquisition are separate preregistered and provider-authorized work. No historical option fill/P&L, strategy, PAPER, LIVE, broker/order or promotion authority is granted. Provider-specific licensing and retention limits still apply.
 
 ### Retained Czar28 historical-options challenger (not simulator critical path)
 
@@ -4818,3 +4818,10 @@ An explicit, offline, separately SHA-bound source-gap proof can now be recorded 
 
 
 **2026-09-26 PR #236 merged confirmation:** CI passed all ten GitHub checks, including Linux and Windows full suites (2,592 tests and four subtests on each), and source-only closeout was merged as `3fb8d50ffca9926e240a0a5e0c714817775527fc`. This is code/contract acceptance, not proof a local closeout manifest has been generated. Next operator command runs the exact frozen source/receipt preflight and independently verifies 11 complete, one FSLY source gap and zero pending with no provider calls, then creates only the D:-bound local metadata closeout through an explicit CLI flag. Original provider bytes and provenance remain private and immutable.
+
+
+### 2026-09-26 — 2025 source closeout accepted; structural CALL shortlist
+
+The operator reported `COMPLETE_WITH_SOURCE_GAPS`, 11 complete original chains, one FSLY exact-query no-data, zero pending, 11 reported credits across complete receipts, and `WRITTEN_AND_REVERIFIED` for the private source closeout fingerprint `98b47179a2e563fb9d97ed16fec02d9a962f8f8788e88952f64c022f34a49daa`. The underlying stock/option source is closed; no further source-pilot runs are needed.
+
+New `scripts/select_marketdata_candidate_2025_structural_calls_v1.py` uses that *existing manifest* plus original historical chain identities for an outcome-blind nearest-ATM CALL shortlist at the accepted 09:35 ET decision, ranked from the PIT raw stock OPEN (equal-distance tie favors OTM). FSLY remains an abstention. It does not rank by historical quote/last, OI, volume, Greeks, future returns or news; all symbols are provisional with independent standard-deliverable and historical pricing still unverified. Output is private under D:-bound options manifests; no new provider reads/credits or final option P&L/PAPER/LIVE authority. See `docs/research/marketdata_2025_pit_structural_call_shortlist_v1_20260926.md`.
