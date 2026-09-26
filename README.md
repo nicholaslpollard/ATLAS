@@ -4801,3 +4801,10 @@ Read-only next action: run `scripts/inspect_marketdata_candidate_2025_pilot.py` 
 
 
 **2026-09-26 PR #234 merge confirmation:** All ten recorded GitHub workflows succeeded, including full Linux and Windows ATLAS test suites. The metadata-only offline pilot quarantine inspector is merged into `main` at commit `e898af60850ef907b6f372db064e05e21f494eb1`. Workstation next gate is a zero-provider-read run of `scripts/inspect_marketdata_candidate_2025_pilot.py`, not another acquisition. HTTP/payload status and possible billing of the preserved FSLY response remain unresolved until that inspection. No original raw bytes or receipts were modified by the GitHub change.
+
+
+### 2026-09-26 — Exact-query FSLY no-data coverage, independently classified
+
+The offline receipt inspection confirmed the original FSLY 2025-04-09 / 2025-05-16 / $5.14–$6.04 request returned HTTP 404, provider `s=no_data`, zero rows, an intact 47-byte raw body, zero credits consumed **in that response's headers** and 9995 remaining. The original attempt, raw response, quarantine receipt, and original FAILED_REVIEW_REQUIRED run checkpoint remain unchanged. The other six requests were never attempted. This is exact-query noncoverage, not a determination that FSLY had no eligible options at alternative strikes/expiries.
+
+An explicit, offline, separately SHA-bound source-gap proof can now be recorded with `scripts/classify_marketdata_candidate_2025_fsly_no_data_v1.py --authorize-exact-no-data-record`. It is NOT created merely by a read-only preview or HTTP 404. The cache verifies the original response, attempt, proof and exact plan before treating FSLY as a terminal source gap, never a successful chain. The pilot then allows acquisition of only six pending untouched queries through the original bounded credit/storage/attempt/lock guards. Target coverage is 11 complete, one exact-query no-data, zero pending; this is `COMPLETE_WITH_SOURCE_GAPS`, not twelve completed options chains. No broader contract-absence, option pricing/fill/P&L, strategy, PAPER or LIVE authority.
