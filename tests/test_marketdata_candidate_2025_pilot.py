@@ -201,6 +201,8 @@ def test_frozen_fsly_no_data_is_not_counted_as_a_complete_chain(tmp_path, monkey
                    "status": "PENDING"} for i in range(1, 5)],
                 {"request_identity": plan["requests"][5]["request_identity"],
                  "status": "SOURCE_NO_DATA_VERIFIED"},
+                *[{"request_identity": plan["requests"][i]["request_identity"],
+                   "status": "PENDING"} for i in range(6, 12)],
             ],
         }
     monkeypatch.setattr(pilot, "run_candidate_chain_cache", fake)
