@@ -4795,3 +4795,12 @@ The physical accepted stock source bundle was subsequently supplied for independ
 
 
 **2026-09-26 merge confirmation:** PR #232 was squash-merged into `main` at commit `f95b639a4f78d8d4d8c78d3b87ad33546f77ec4b` after its ten recorded GitHub workflow runs completed successfully. The offline recovery remains the sole accepted AGIO source; paid continuation requires the exact stock bundle and per-run bounded authorization. This updates the earlier pre-merge wording without rewriting the retained chronology.
+
+
+### 2026-09-26 — Junction-safe accepted 2025 option-chain pilot
+
+The project-visible `data/research/evidence` and `data/options` paths are Windows junctions to the verified internal D: secondary SSD. A previous operator command recursively searched `.\data` with PowerShell and incorrectly interpreted its failure to descend through junctions as a missing stock-source bundle. Test the exact exporter file directly at `data/research/evidence/marketdata_candidate_stock_v1/d6c924cf5006d295.json`; its SHA-256 and the plan SHA/fingerprint are frozen. The latest read-only preview verified one offline-recovered AGIO receipt (608 bytes), eleven pending and zero API calls. Do not delete or overwrite original raw, attempt, quarantine, recovery or receipt evidence.
+
+`scripts/run_marketdata_candidate_2025_pilot.py` provides a zero-network default preflight and an explicitly authorized sequential 10+1 source-only acquisition, with direct junction-safe source resolution and independent post-batch receipt previews rather than stale-checkpoint assumptions. All existing credit, storage and fail-closed guards remain. See `docs/research/marketdata_candidate_2025_pilot_operator_v1_20260926.md`. No historical option pricing/fill/P&L, strategy, PAPER or LIVE promotion.
+
+MarketData's published subscription terms require deleting downloaded data after subscription termination. D: capacity does not imply perpetual post-cancellation data rights; track provider-license provenance and seek written clarification before any retention plan. PR #231 documenting the actual D: Samsung 860 EVO and six READY junctions was merged.
