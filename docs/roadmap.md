@@ -1,6 +1,6 @@
 # ATLAS Master Roadmap and Research/Product Source of Truth
 
-**Current as of 2026-09-25 (UTC). This roadmap, the root `README.md`, and
+**Current as of 2026-09-26 (UTC). This roadmap, the root `README.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents.**
 
 This document replaces the pre-Review roadmap after ATLAS Review Chat 3. It keeps
@@ -33,13 +33,12 @@ reconciled. Code and tests remain the authority for actual behavior; Git history
 accepted artifacts remain the authority for what happened. A code or research
 package with stale applicable living documents is incomplete even if its tests pass.
 
-### Active MarketData candidate-chain preview gate — 2026-09-25
+### Active MarketData candidate-chain preview gate — 2026-09-26
 
-PR #229's bounded historical EOD chain cache **MERGED** after all ten GitHub
-checks passed. The operator's exact-head 71-test Windows suite passed in
-6.30 seconds on combined export commit `6292b9d`. PR #230's accepted stock
-candidate export remains unmerged pending branch reconciliation/remaining CI;
-the operator nevertheless completed its separately authorized, zero-provider
+PR #229's bounded historical EOD chain cache and PR #230's accepted-stock
+candidate export are both **MERGED** on main after ten passing GitHub workflows
+per PR. The operator's exact-head 71-test Windows suite passed in 6.30 seconds
+on combined export commit `6292b9d`. The operator completed a zero-provider
 2025 source-only diagnostic under run `20260925T233304045068Z-3830a7a5`:
 546/546 normalized source parts verified, 4,685 comparable opportunities and
 113 unique training cells loaded, 12 monthly outcome-blind daily LONG cases,
@@ -51,9 +50,10 @@ plan fingerprint:
 These figures are operator-reported workstation output; full source/plan
 artifact bytes are retained on that workstation and are not in GitHub.
 
-**Next:** run the newly merged cache's **offline zero-credit preview** against
-the exact saved plan on `main`, inspect plan/request identities and any
-existing receipt/attempt state, then complete PR #230 CI/reconciliation.
+**Next:** inspect the 12-request plan identities and confirm source-file,
+paid/private-use and credit conditions before a separately authorized
+one-request historical-chain canary; then verify the new receipt before
+continuing. The external-volume preflight and zero-credit preview passed.
 No authenticated MarketData acquisition, broker activity, historical option
 execution prices, news predictor authority or simulator option P&L is opened
 by source export or preview. Contract selection/deliverables, selected quote
@@ -492,18 +492,41 @@ project-relative paths while storage physically resides under
 secondary data moves only with `--migrate-existing`; conflicting targets, missing
 configured roots, or incorrect bindings block acquisition rather than fall back to C:.
 
-The initial external-volume policy is sized for the planned ~256 GB NVMe enclosure:
-190 GiB total acquisition budget, 25 GiB minimum free space, 40 GiB warning floor,
-and a 120 GiB candidate-options-cache quota. The original local 40 GiB/50 GiB safety
+The secondary-volume policy is unchanged at 190 GiB total acquisition budget,
+25 GiB minimum free space, 40 GiB warning floor, and a 120 GiB
+candidate-options-cache quota. The actual activated volume is a 250 GB Samsung
+860 EVO SATA SSD, NTFS `D:/ATLAS_DATA`, rather than the failed-to-enumerate
+external NVMe enclosure. The original local 40 GiB/50 GiB safety
 policy remains active whenever no external root is configured.
 
-Hardware activation is pending. After the enclosure arrives, the next operator gate
-is to identify the assigned drive letter, format/verify the SSD, run
-`scripts/configure_external_storage.py` first in inspection mode, then apply/migrate
-and persist the external root only after the binding state is `READY`.
+Hardware binding completed on 2026-09-26: six junctions READY and
+`ATLAS_EXTERNAL_DATA_ROOT` persisted to `.env`. A pre-migration SHA-256
+inventory of 2,122 source files (2.521 GiB) is retained under
+`data/manifests/secondary_migration_20260926_132952_before.csv` on C:.
+All files passed SHA-256 verification after moving to D: through their original
+project-visible paths. The stock database and primary internal paths did not move.
+The subsequent external-mode preflight passed with D: free 227.07 GiB,
+SAFE, research budget 190.00/187.62 GiB total/remaining and 25/40 GiB
+minimum/warning thresholds. The exact saved plan's zero-credit preview
+reported EXTERNAL_SECONDARY, 12 opportunities/12 shared chains, 12 pending,
+zero provider reads/credits, no new receipts, and report fingerprint
+`c83f7464dbdccd5dc7c1242e926cc5598d16a79f1e38bf5130bee714befc9538`.
+Actual historical chain reads remain a separately authorized workstation gate.
 
 Contract:
 `docs/external_secondary_storage_v1_20260924.md`.
+
+### Provider data-retention boundary — 2026-09-26
+
+The activated 250 GB D: secondary SSD supports bounded local historical
+caching but does not replace MarketData's subscription license. The
+provider's published terms require deletion of downloaded data when the
+subscription ends (https://www.marketdata.app/terms/). Track provider lineage
+for raw/normalized/cached and backup copies, and obtain written permission
+before treating them as usable after expiry. Starter's 10,000 daily API credits
+and five-year history are acquisition permissions, not perpetual retention.
+Historical chains charge by returned contract count. One candidate-chain
+canary was authorized; the full market remains outside this acquisition scope.
 
 ### Paid Starter five-year options entitlement accepted — 2026-09-25
 
@@ -5174,9 +5197,10 @@ offline chain plan. No option contract selection, quote history, price
 authority or simulator P&L is opened. See
 docs/research/marketdata_accepted_stock_candidate_export_v1_20260925.md.
 
-Next operator gate: preview the saved bounded chain plan from merged main
-without provider calls, and reconcile PR #230 against main. Actual historical chain reads
-remain separately authorized, workstation-only and budget-bound.
+Next operator gate: after secondary-volume research-storage preflight,
+preview the saved bounded chain plan from merged main without provider calls.
+PR #230 is merged. Actual historical chain reads remain separately authorized,
+workstation-only and budget-bound.
 
 
 ### Run observability and efficiency closure — 2026-09-25

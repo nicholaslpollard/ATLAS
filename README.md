@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-25 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-26 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -16,13 +16,12 @@ Profit is an objective, never a guarantee. Activity, alerts, attractive charts, 
 profitable backtests are not substitutes for positive expected value after costs,
 controlled risk, prospective evidence, and reliable operation.
 
-### Active MarketData candidate-chain preview gate — 2026-09-25
+### Active MarketData candidate-chain preview gate — 2026-09-26
 
-PR #229's bounded historical EOD chain cache **MERGED** after all ten GitHub
-checks passed. The operator's exact-head 71-test Windows suite passed in
-6.30 seconds on combined export commit `6292b9d`. PR #230's accepted stock
-candidate export remains unmerged pending branch reconciliation/remaining CI;
-the operator nevertheless completed its separately authorized, zero-provider
+PR #229's bounded historical EOD chain cache and PR #230's accepted-stock
+candidate export are both **MERGED** on main after ten passing GitHub workflows
+per PR. The operator's exact-head 71-test Windows suite passed in 6.30 seconds
+on combined export commit `6292b9d`. The operator completed a zero-provider
 2025 source-only diagnostic under run `20260925T233304045068Z-3830a7a5`:
 546/546 normalized source parts verified, 4,685 comparable opportunities and
 113 unique training cells loaded, 12 monthly outcome-blind daily LONG cases,
@@ -34,9 +33,10 @@ plan fingerprint:
 These figures are operator-reported workstation output; full source/plan
 artifact bytes are retained on that workstation and are not in GitHub.
 
-**Next:** run the newly merged cache's **offline zero-credit preview** against
-the exact saved plan on `main`, inspect plan/request identities and any
-existing receipt/attempt state, then complete PR #230 CI/reconciliation.
+**Next:** run the
+merged cache's **offline zero-credit preview** against the exact saved plan
+on `main`. Inspect plan/request identities and any existing receipt/attempt
+state before separately authorizing historical option-chain requests.
 No authenticated MarketData acquisition, broker activity, historical option
 execution prices, news predictor authority or simulator option P&L is opened
 by source export or preview. Contract selection/deliverables, selected quote
@@ -196,7 +196,7 @@ are retained under
 
 This **closes the sampled paid-plan entitlement/source gate**, not exhaustive
 contract coverage and not intraday/execution/option-P&L authority. With the
-external-storage architecture merged and hardware binding pending, the next
+external-storage architecture merged and the secondary SSD bindings READY, the next
 engineering package is a bounded **candidate-first acquisition and cache
 adapter** driven by PIT stock opportunities. No whole-universe options download
 is authorized. Earlier source-validation failure verdicts remain immutable;
@@ -427,6 +427,24 @@ This is a transport-contract reconciliation only. Historical depth remains unpro
 while the upstream is degraded, and no provider, historical-price, strategy, PAPER,
 LIVE, broker or order authority changes.
 
+### MarketData license boundary for local caches — 2026-09-26
+
+The current published MarketData Terms of Service license downloaded data only
+for the subscription term and require deletion when the subscription ends.
+The local exact-raw chain cache reduces repeat API reads while licensed; filling
+the secondary SSD is NOT authority for indefinite use after cancellation.
+Provider documentation confirms Starter's five-year historical access and
+10,000 daily credits, and historical chain charges of one credit per 1,000
+returned option symbols. Before any broad source-acquisition campaign, confirm
+current provider retention terms in writing, maintain provider-specific
+license lineage for raw/normalized/cache copies and backups, and distinguish
+independently licensed durable data from subscription-bound data. Do not
+treat a free-tier downgrade as grandfathered rights to paid-download archives.
+Current source-only 12-case canary authorization does not authorize a
+whole-universe campaign. Provider terms:
+https://www.marketdata.app/terms/ ;
+https://www.marketdata.app/docs/api/options/chain/ .
+
 ### External secondary-data storage V1 — 2026-09-24
 
 ATLAS now has an explicit external-storage boundary for large secondary datasets.
@@ -448,9 +466,15 @@ the primary stock paths. Once configured, research acquisition uses the external
 volume's free-space/quota profile and fails closed if the root/bindings are not ready
 rather than silently spilling large options/news data back onto the internal drive.
 
-For the initial ~256 GB external NVMe plan, the external profile reserves at least
-25 GiB free and caps total secondary acquisition at 190 GiB, including a 120 GiB
-candidate-options cache. The pre-existing local profile remains 40 GiB total with a
+The 2026-09-26 workstation activation uses the internal Samsung 860 EVO SATA
+SSD at `D:/ATLAS_DATA`, rather than the unrecognized external NVMe enclosure.
+All six junction bindings reached READY, and 2,122 migrated files (2.521 GiB)
+passed SHA-256 verification through the logical project paths. The existing
+secondary profile reserves at least 25 GiB free and caps total acquisition at
+190 GiB, including a 120 GiB candidate-options cache. The runtime
+research-storage preflight subsequently passed: D: had 227.07 GiB free,
+status SAFE, 190.00 GiB budget / 187.62 GiB remaining, and 25/40 GiB
+minimum/warning thresholds. The pre-existing local profile remains 40 GiB total with a
 50 GiB minimum-free-space floor when no external root is configured.
 
 Full storage contract:
