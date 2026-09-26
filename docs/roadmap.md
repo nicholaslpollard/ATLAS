@@ -5237,3 +5237,10 @@ The next gate is a strictly offline inspection using `scripts/inspect_marketdata
 
 
 **2026-09-26 PR #234 merge confirmation:** All ten recorded GitHub workflows succeeded, including full Linux and Windows ATLAS test suites. The metadata-only offline pilot quarantine inspector is merged into `main` at commit `e898af60850ef907b6f372db064e05e21f494eb1`. Workstation next gate is a zero-provider-read run of `scripts/inspect_marketdata_candidate_2025_pilot.py`, not another acquisition. HTTP/payload status and possible billing of the preserved FSLY response remain unresolved until that inspection. No original raw bytes or receipts were modified by the GitHub change.
+
+
+### 2026-09-26 — FSLY provider noncoverage classification and six-only continuation
+
+Independent physical inspection confirmed FSLY HTTP 404 / `s=no_data`, 0 rows, exact 47-byte raw response SHA, intact original attempt, reported credits consumed 0 and 9995 remaining. The run-level uncertainty field is retained as historical failure telemetry; request-specific signed response headers are preserved for its zero-credit accounting. Five requests have valid chain bodies (AGIO, AMGN, ATRC, BANF, DAKT); six are never attempted.
+
+Versioned next gate: only explicit offline creation of a separate exact-query no-data proof sidecar, after SHA/receipt/attempt/plan checks. Read-only preview never creates the proof. The original quarantine and attempt remain immutable. Independent post-proof preview must read 5 complete / 1 no-data / 6 pending, with zero provider reads. Later separately authorized acquisition permits only the six untouched requests; no FSLY re-request and no artificial twelve-chain success. Expected terminal state if those six succeed is `COMPLETE_WITH_SOURCE_GAPS`, with 11 complete receipts and one narrowly defined source gap. Further contract selection, alternative FSLY options discovery, historical quote paths and economics require separate versioned research contracts. Existing negative strategy and PAPER/LIVE authority unchanged.
