@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.data.marketdata_candidate_chain_cache_v1 import (
-    CONTRACT, CandidateChainCacheError, _fingerprint, _paths, _valid_receipt,
+    CONTRACT, CandidateChainCacheError, _fingerprint, _paths, _valid_receipt, _no_data_path,
 )
 from scripts.run_marketdata_candidate_2025_pilot import (
     PLAN_FINGERPRINT, preflight,
@@ -114,7 +114,8 @@ def _inspect_request(settings: Any, request: dict[str, Any],
 
     if receipt.get("status") == "COMPLETE" or exists["recovery"]:
         try:
-            verified = _valid_receipt(paths, request)
+            verified = _valid_receipt(paths, request,
+                                      expected_plan_fingerprint=plan_fingerprint)
         except CandidateChainCacheError:
             result["status"] = "RECEIPT_VALIDATION_FAILED_PRESERVE"
             return result
@@ -131,6 +132,22 @@ def _inspect_request(settings: Any, request: dict[str, Any],
 
     if receipt.get("status") != "QUARANTINED":
         result["status"] = "UNKNOWN_RECEIPT_STATUS_PRESERVE"
+        return result
+    if _no_data_path(paths).exists():
+        try:
+            verified = _valid_receipt(paths, request)
+        except CandidateChainCacheError:
+            result["status"] = "NO_DATA_PROOF_INVALID_PRESERVE"
+            return result
+        if verified is None or verified.get("status") != "VERIFIED_NO_DATA":
+            result["status"] = "NO_DATA_PROOF_INVALID_PRESERVE"
+            return result
+        result.update({
+            "status": "SOURCE_NO_DATA_VERIFIED",
+            "raw_bytes": len(raw),
+            "body_sha256": verified["body_sha256"],
+            "no_data_proof": verified["no_data_proof"],
+        })
         return result
 
     status = payload.get("s")
@@ -196,9 +213,10 @@ def inspect_pilot(settings: Any, plan: dict[str, Any]) -> dict[str, Any]:
         "contract": "atlas-marketdata-candidate-2025-offline-inspection-v1",
         "plan_fingerprint": plan["plan_fingerprint"],
         "verified_complete": statuses.count("REUSED_VERIFIED"),
+        "verified_no_data": statuses.count("SOURCE_NO_DATA_VERIFIED"),
         "verified_quarantined": statuses.count("QUARANTINED_VERIFIED_REVIEW_REQUIRED"),
         "never_attempted": statuses.count("PENDING_NEVER_ATTEMPTED"),
-        "requires_review": any(s not in {"REUSED_VERIFIED", "PENDING_NEVER_ATTEMPTED"} for s in statuses),
+        "requires_review": any(s not in {"REUSED_VERIFIED", "SOURCE_NO_DATA_VERIFIED", "PENDING_NEVER_ATTEMPTED"} for s in statuses),
         "requests": rows,
         "latest_saved_run_observation_only": checkpoint,
         "provider_reads_this_inspection": 0,
@@ -238,12 +256,15 @@ def main(argv: list[str] | None = None) -> int:
                 "has_error_text",
             ):
                 print(f"      {key}: {row[key]}")
+        elif row["status"] == "SOURCE_NO_DATA_VERIFIED":
+            print(f"      exact-query no-data proof: {row['no_data_proof']}")
         elif row["status"] not in {"REUSED_VERIFIED", "PENDING_NEVER_ATTEMPTED"}:
             print(f"      request_identity: {row['request_identity']}")
             if "attempt_verified" in row:
                 print(f"      attempt_verified: {row['attempt_verified']}")
     print(
         f"  totals: complete={result['verified_complete']} "
+        f"exact_query_no_data={result['verified_no_data']} "
         f"quarantined={result['verified_quarantined']} "
         f"never_attempted={result['never_attempted']} "
         f"review_required={result['requires_review']}"

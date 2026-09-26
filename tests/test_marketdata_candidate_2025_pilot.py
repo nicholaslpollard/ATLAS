@@ -38,6 +38,7 @@ def _fixture(tmp_path, monkeypatch, *, include_source=True):
                     [{"request_identity": f"{i:064x}", "ticker": f"T{i}"} for i in range(1, 12)],
         "source_bindings": {x: {"stock_source_sha256": source_sha} for x in ids},
     }
+    plan["requests"][5]["ticker"] = "FSLY"
     plan_bytes = (json.dumps(plan, sort_keys=True) + "\n").encode()
     plan_path = settings.resolved_path(pilot.PLAN_REL)
     plan_path.parent.mkdir(parents=True, exist_ok=True)
@@ -50,6 +51,7 @@ def _fixture(tmp_path, monkeypatch, *, include_source=True):
     monkeypatch.setattr(pilot, "SOURCE_SHA256", source_sha)
     monkeypatch.setattr(pilot, "PLAN_FINGERPRINT", plan["plan_fingerprint"])
     monkeypatch.setattr(pilot, "AGIO_REQUEST_ID", plan["requests"][0]["request_identity"])
+    monkeypatch.setattr(pilot, "FSLY_NO_DATA_REQUEST_ID", plan["requests"][5]["request_identity"])
     monkeypatch.setattr(pilot, "verify_candidate_plan", lambda x: x)
     return settings, plan, source_path
 
@@ -168,3 +170,64 @@ def test_incomplete_authority_and_oversized_budget_fail_before_preflight(tmp_pat
         pilot.run_pilot(settings, authorize_provider_reads=True)
     with pytest.raises(CandidateChainCacheError, match="1..11"):
         pilot.run_pilot(settings, max_total_new_requests=12)
+
+
+def test_frozen_fsly_no_data_is_not_counted_as_a_complete_chain(tmp_path, monkeypatch):
+    settings, plan, source = _fixture(tmp_path, monkeypatch)
+    calls = []
+    complete = 5
+    def fake(_settings, _plan, **kwargs):
+        nonlocal complete
+        size = kwargs.get("max_new_requests", 0)
+        calls.append(size)
+        if size:
+            assert size == 6
+            assert kwargs["stock_source_files"] == (source,)
+            complete += size
+            return {
+                "status": "COMPLETE_WITH_SOURCE_GAPS",
+                "new_complete": size, "provider_reads": size,
+                "credits_unknown_after_failed_request": False, "quarantined": 0,
+            }
+        return {
+            "status": "PREVIEW", "provider_reads": 0, "new_complete": 0,
+            "quarantined": 0, "planned_chain_requests": 12,
+            "reused": complete, "no_data_verified": 1,
+            "pending": 11 - complete,
+            "request_results": [
+                {"request_identity": plan["requests"][0]["request_identity"],
+                 "status": "REUSED_VERIFIED"},
+                *[{"request_identity": plan["requests"][i]["request_identity"],
+                   "status": "PENDING"} for i in range(1, 5)],
+                {"request_identity": plan["requests"][5]["request_identity"],
+                 "status": "SOURCE_NO_DATA_VERIFIED"},
+                *[{"request_identity": plan["requests"][i]["request_identity"],
+                   "status": "PENDING"} for i in range(6, 12)],
+            ],
+        }
+    monkeypatch.setattr(pilot, "run_candidate_chain_cache", fake)
+    result = pilot.run_pilot(
+        settings, authorize_provider_reads=True,
+        confirm_paid_starter=True, confirm_private_internal_use=True,
+    )
+    assert calls == [0, 6, 0]
+    assert result["reused"] == 11
+    assert result["no_data_verified"] == 1
+    assert result["pending"] == 0
+
+
+def test_unrelated_no_data_proof_refuses_pilot_authorization(tmp_path, monkeypatch):
+    settings, plan, _ = _fixture(tmp_path, monkeypatch)
+    wrong = _fake_preview(plan, 5)
+    wrong["pending"] = 6
+    wrong["no_data_verified"] = 1
+    wrong["request_results"] += [
+        {"request_identity": plan["requests"][5]["request_identity"],
+         "status": "REUSED_VERIFIED"}
+    ]
+    monkeypatch.setattr(pilot, "run_candidate_chain_cache", lambda *_a, **_k: wrong)
+    with pytest.raises(CandidateChainCacheError, match="unexpected no-data"):
+        pilot.run_pilot(
+            settings, authorize_provider_reads=True,
+            confirm_paid_starter=True, confirm_private_internal_use=True,
+        )

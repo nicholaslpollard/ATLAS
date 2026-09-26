@@ -33,6 +33,7 @@ PLAN_FILE_SHA256 = "fe7b85272212d9ba5584b4e964d7e46e3ac128cf449604786bdee7e9441e
 SOURCE_SHA256 = "e7d90ce3162475ecbfc442d35e0ffbca18fca38434e658b0ee8bd7633021362e"
 PLAN_FINGERPRINT = "a830ab16e6ebce9b509ec88efad8b6c8e08e2951db8682aa8d5e34ffc96886e1"
 AGIO_REQUEST_ID = "85fafd7c2ac2ddd61a1436a791c1bee5a654a279ce1f714fdc919b3bbb1d84ce"
+FSLY_NO_DATA_REQUEST_ID = "6886b1d35d7a1ea2e1a9f555cd0f778905ad1029175bec953fc52d5289a643d8"
 TOTAL_REQUESTS = 12
 MAX_PILOT_NEW_REQUESTS = 11
 
@@ -61,6 +62,9 @@ def preflight(settings: AtlasSettings) -> tuple[dict[str, Any], Path]:
         raise CandidateChainCacheError("saved plan source bindings differ from accepted export")
     if plan["requests"][0]["request_identity"] != AGIO_REQUEST_ID:
         raise CandidateChainCacheError("saved plan no longer begins with the AGIO canary")
+    if (plan["requests"][5]["ticker"] != "FSLY"
+            or plan["requests"][5]["request_identity"] != FSLY_NO_DATA_REQUEST_ID):
+        raise CandidateChainCacheError("frozen FSLY request identity no longer matches evidence")
 
     # Direct path, not a recursive Get-ChildItem scan: data/research/evidence is
     # a Windows junction to the secondary SSD on the operator workstation.
@@ -85,17 +89,25 @@ def preflight(settings: AtlasSettings) -> tuple[dict[str, Any], Path]:
 
 
 def _assert_preview(preview: dict[str, Any]) -> None:
+    no_data = preview.get("no_data_verified", 0)
     if (
         preview["status"] != "PREVIEW"
         or preview["provider_reads"] != 0
         or preview["new_complete"] != 0
         or preview["quarantined"] != 0
         or preview["planned_chain_requests"] != TOTAL_REQUESTS
-        or preview["pending"] + preview["reused"] != TOTAL_REQUESTS
+        or no_data not in (0, 1)
+        or preview["pending"] + preview["reused"] + no_data != TOTAL_REQUESTS
         or preview["request_results"][0]["request_identity"] != AGIO_REQUEST_ID
         or preview["request_results"][0]["status"] != "REUSED_VERIFIED"
     ):
         raise CandidateChainCacheError("unexpected pilot cache preview; no paid reads authorized")
+    if no_data and (
+        len(preview["request_results"]) != TOTAL_REQUESTS
+        or preview["request_results"][5]["request_identity"] != FSLY_NO_DATA_REQUEST_ID
+        or preview["request_results"][5]["status"] != "SOURCE_NO_DATA_VERIFIED"
+    ):
+        raise CandidateChainCacheError("unexpected no-data classification in pilot; no paid reads")
 
 
 def run_pilot(
@@ -117,7 +129,7 @@ def run_pilot(
     preview = run_candidate_chain_cache(settings, plan, provider_read=provider_read)
     _assert_preview(preview)
     print(
-        f"  zero-credit preflight: verified={preview['reused']} pending={preview['pending']} "
+        f"  zero-credit preflight: complete={preview['reused']} no_data={preview.get('no_data_verified', 0)} pending={preview['pending']} "
         "provider_reads=0",
         flush=True,
     )
@@ -141,7 +153,7 @@ def run_pilot(
         # A failed/quarantined/ambiguous or credit/storage-blocked run never
         # automatically proceeds to a second batch. Return receipts for review.
         if (
-            report["status"] not in {"COMPLETE", "PARTIAL_RESUMABLE"}
+            report["status"] not in {"COMPLETE", "PARTIAL_RESUMABLE", "COMPLETE_WITH_SOURCE_GAPS"}
             or report["new_complete"] != batch_size
             or report["provider_reads"] != batch_size
             or report["credits_unknown_after_failed_request"]
@@ -153,12 +165,13 @@ def run_pilot(
         budget -= report["new_complete"]
         next_preview = run_candidate_chain_cache(settings, plan, provider_read=provider_read)
         _assert_preview(next_preview)
-        if next_preview["reused"] != preview["reused"] + report["new_complete"]:
-            raise CandidateChainCacheError("post-batch zero-credit receipt reconciliation failed")
+        if (next_preview["reused"] != preview["reused"] + report["new_complete"]
+                or next_preview.get("no_data_verified", 0) != preview.get("no_data_verified", 0)):
+            raise CandidateChainCacheError("post-batch zero-credit receipt/coverage reconciliation failed")
         preview = next_preview
         print(
-            f"  independently verified: {preview['reused']}/{TOTAL_REQUESTS}; "
-            f"pending={preview['pending']}",
+            f"  independently verified complete={preview['reused']}/{TOTAL_REQUESTS} "
+            f"no_data={preview.get('no_data_verified', 0)} pending={preview['pending']}",
             flush=True,
         )
     return preview
@@ -166,7 +179,7 @@ def run_pilot(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Read-only by default; junction-safe accepted 2025 MarketData pilot, with guarded 10+1 acquisition."
+        description="Read-only by default; junction-safe accepted 2025 MarketData pilot; preserve reviewed no-data gaps."
     )
     parser.add_argument("--authorize-provider-reads", action="store_true")
     parser.add_argument("--confirm-paid-starter", action="store_true")
@@ -187,7 +200,8 @@ def main(argv: list[str] | None = None) -> int:
         print("  No automatic retry; preserve exact raw bodies, receipts and attempt markers.", flush=True)
         return 3
     print(
-        f"ATLAS pilot: verified={report['reused']}/{TOTAL_REQUESTS} pending={report['pending']} "
+        f"ATLAS pilot: verified_complete={report['reused']}/{TOTAL_REQUESTS} "
+        f"verified_no_data={report.get('no_data_verified', 0)} pending={report['pending']} "
         f"status={report['status']} provider_reads_in_final_preview=0",
         flush=True,
     )

@@ -139,7 +139,7 @@ def test_unresolved_attempt_and_complete_reuse_are_distinct(tmp_path, monkeypatc
     }
     saved["receipt_fingerprint"] = _fingerprint(saved)
     receipt_path.write_text(json.dumps(saved))
-    monkeypatch.setattr(inspector, "_valid_receipt", lambda *_args: None)
+    monkeypatch.setattr(inspector, "_valid_receipt", lambda *_args, **_kwargs: None)
     assert inspector.inspect_pilot(settings, plan)["requests"][5]["status"] == (
         "RECEIPT_VALIDATION_FAILED_PRESERVE"
     )

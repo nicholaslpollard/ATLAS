@@ -104,3 +104,24 @@ Read-only next operator step, from merged `main`:
 This inspector directly verifies original stock source and saved plan SHA, reads only local bodies/attempts/receipts, verifies SHA and fingerprints, and reports the quarantined request's HTTP status, allowlisted payload `s`, recorded row count and provider numeric consumed/remaining headers. It never prints `errmsg`, `message`, raw JSON, tokens or headers other than those numeric credit fields. It also displays current physical receipt status independent of the latest historical run checkpoint. No provider reads, credit charges, writes, recovery, deletion, widened strikes or retry are permitted.
 
 A 404 / `no_data` would be a candidate-source coverage observation, **not** a cache hit, a proven historical contract absence at all alternative expiries/strikes, or permission to replay a possibly charged request. A 401/403/429, unexpected provider schema, or unknown credit state requires different remediation. Do not make a versioned skip/continue or alternate-source decision until original saved response metadata and credit evidence are reviewed. Original aggregate strategy/exit evidence and PAPER/LIVE boundaries remain untouched.
+
+
+## 2026-09-26 — Verified FSLY 404/no_data and separate source-gap disposition V1
+
+Physical read-only inspection established that the frozen FSLY request `6886b1d35d7a1ea2e1a9f555cd0f778905ad1029175bec953fc52d5289a643d8` returned HTTP 404 with `s=no_data`, zero recorded rows, 47 exact HTTP body bytes (SHA-256 `54e3e162845e54a24f015e4faaff70531c0707baf1f492fcebd5c35922f5971a`), provider-reported zero consumed credits and 9995 remaining. Its original attempt and raw receipt passed fingerprint/integrity verification. The failed run-level checkpoint conservatively flags credit uncertainty, but the immutable request-specific headers resolve **this request's observed charge as zero**; the original checkpoint is not rewritten. Confirmed source totals before disposition: five complete chains (AGIO plus four), one preserved FSLY quarantine and six untouched requests.
+
+Separate no-data proof V1 is explicitly opt-in and strictly exact-query scoped. It requires the original signed/quarantined 404/no_data response, unchanged SHA-verified raw bytes, a fingerprinted matching attempt on the same frozen plan, zero reported consumption, zero rows and no successful-recovery sidecar. The classification is written exclusively to a new `.no_data.json` sidecar with a fingerprint; the original body, receipt, attempt and plan remain immutable. Merely inspecting a 404 does NOT automatically authorize a skip. The cache treats the sidecar as a terminal *source-coverage observation* only after independent full-byte/proof/plan verification. It is **not** a complete chain and does not grant historical availability, quote-price, fills, option P&L or PAPER/LIVE authority.
+
+Offline operator gate (default preview performs no writes and no provider reads):
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\classify_marketdata_candidate_2025_fsly_no_data_v1.py
+~~~
+
+After reviewing exact-proof metadata, explicit zero-provider-call classification:
+
+~~~powershell
+.\.venv\Scripts\python.exe scripts\classify_marketdata_candidate_2025_fsly_no_data_v1.py --authorize-exact-no-data-record
+~~~
+
+The offline classifying command must produce an independent result of exactly **5 complete / 1 exact-query no-data / 6 pending**, zero provider reads and no original evidence mutation. Later authorized pilot acquisition may issue up to six NEW requests; it must never replay FSLY, widen FSLY's original strike/expiry or falsely count its source gap as a completed chain. A successful remainder is **11 complete + 1 exact-query source gap + 0 pending**, explicitly `COMPLETE_WITH_SOURCE_GAPS`, not twelve complete. Any new abnormal provider response remains quarantined and stops the run. Do not automatically classify other 404s or infer that no alternative options existed for FSLY.
