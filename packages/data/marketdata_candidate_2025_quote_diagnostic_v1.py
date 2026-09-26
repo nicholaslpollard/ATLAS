@@ -51,7 +51,7 @@ def _read_exact_plan(settings: AtlasSettings, rebuilt: dict[str, Any]) -> None:
     except (ValueError, TypeError, OSError) as exc:
         raise CandidateChainCacheError("original quote plan cannot be read") from exc
     if saved != rebuilt:
-        raise CandidateChainCacheError("private quote plan differs from frozen saved plan")
+        raise CandidateChainCacheError("original quote plan differs from frozen saved plan")
 
 
 def _observations(ticket: dict[str, Any], body: bytes) -> dict[str, Any]:
