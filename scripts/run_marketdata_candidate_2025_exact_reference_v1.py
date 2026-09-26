@@ -52,7 +52,15 @@ def main(argv: list[str] | None = None) -> int:
             api_key=os.getenv(settings.massive.credentials.api_key_env, "").strip(),
         )
         for item in report["results"]:
-            print(f"  {item['ticker']:<5} {item['option_symbol']} {item['status']}")
+            if item["status"] == "PENDING_NEVER_ATTEMPTED":
+                print(f"  {item['ticker']:<5} {item['option_symbol']} PENDING_NEVER_ATTEMPTED")
+                continue
+            terms = item["safe_terms"]
+            print(
+                f"  {item['ticker']:<5} {item['option_symbol']} HTTP={item['http_status']} "
+                f"{item['status']} shares={terms['shares_per_contract']} "
+                f"style={terms['exercise_style']} extras={terms['additional_underlyings']}"
+            )
         print(f"  result: {report['status']}; new GET starts: {report['new_provider_attempts_this_run']}")
         print(f"  remaining: {report['pending']}; report fingerprint: {report['report_fingerprint']}")
         print("  historical deliverable verified: 0; executable contracts: 0; option P&L: none")
