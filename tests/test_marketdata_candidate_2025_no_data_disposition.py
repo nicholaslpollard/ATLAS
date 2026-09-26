@@ -44,6 +44,8 @@ def _fixture(monkeypatch, *, valid=True):
                   for i in range(1, 5)],
                 {"request_identity": classifier.FSLY_NO_DATA_REQUEST_ID,
                  "status": "SOURCE_NO_DATA_VERIFIED"},
+                *[{"request_identity": f"{i:064x}", "status": "PENDING"}
+                  for i in range(6, 12)],
             ],
         }
     monkeypatch.setattr(classifier, "load_settings", lambda *_args: object())
