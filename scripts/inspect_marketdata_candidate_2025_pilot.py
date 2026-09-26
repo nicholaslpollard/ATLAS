@@ -142,12 +142,12 @@ def _inspect_request(settings: Any, request: dict[str, Any],
         "status": "QUARANTINED_VERIFIED_REVIEW_REQUIRED",
         "http_status": receipt.get("http_status")
                        if type(receipt.get("http_status")) is int else None,
-        "payload_status": status if status in SAFE_PAYLOAD_STATUS else "OTHER_OR_ABSENT",
+        "payload_status": status if isinstance(status, str) and status in SAFE_PAYLOAD_STATUS else "OTHER_OR_ABSENT",
         "row_count_recorded": receipt.get("row_count")
                               if type(receipt.get("row_count")) is int else None,
         "raw_bytes": len(raw),
         "body_sha256": _sha(raw),
-        "failure_category": failure if failure in SAFE_FAILURE else "OTHER",
+        "failure_category": failure if isinstance(failure, str) and failure in SAFE_FAILURE else "OTHER",
         "credit_consumed_in_response_headers": rates.get("consumed")
                     if type(rates.get("consumed")) is int else None,
         "credits_remaining_in_response_headers": rates.get("remaining")
