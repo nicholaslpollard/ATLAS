@@ -516,6 +516,18 @@ Actual historical chain reads remain a separately authorized workstation gate.
 Contract:
 `docs/external_secondary_storage_v1_20260924.md`.
 
+### Provider data-retention boundary — 2026-09-26
+
+The activated 250 GB D: secondary SSD supports bounded local historical
+caching but does not replace MarketData's subscription license. The
+provider's published terms require deletion of downloaded data when the
+subscription ends (https://www.marketdata.app/terms/). Track provider lineage
+for raw/normalized/cached and backup copies, and obtain written permission
+before treating them as usable after expiry. Starter's 10,000 daily API credits
+and five-year history are acquisition permissions, not perpetual retention.
+Historical chains charge by returned contract count. One candidate-chain
+canary was authorized; the full market remains outside this acquisition scope.
+
 ### Paid Starter five-year options entitlement accepted — 2026-09-25
 
 The **first** paid-Starter V1 qualification run returned
