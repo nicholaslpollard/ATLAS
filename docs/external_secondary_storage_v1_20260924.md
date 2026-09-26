@@ -2,15 +2,15 @@
 
 ## Status
 
-**IMPLEMENTED / HARDWARE BINDING PENDING**
+**IMPLEMENTED / WORKSTATION SSD BINDING READY (2026-09-26)**
 
 Contract:
 
 `atlas-external-secondary-storage-v1`
 
-This package makes large secondary ATLAS datasets capable of living on a removable
-or external SSD without relocating the core ATLAS installation or the accepted stock
-market corpus.
+This package makes large secondary ATLAS datasets capable of living on a
+separate storage volume (internal SATA SSD or an eligible external SSD) without
+relocating the core ATLAS installation or the accepted stock market corpus.
 
 ## Non-negotiable primary-storage boundary
 
@@ -50,9 +50,12 @@ The external root is selected with:
 
 `ATLAS_EXTERNAL_DATA_ROOT`
 
-Example:
+Current workstation root:
 
-`ATLAS_EXTERNAL_DATA_ROOT=F:/ATLAS_DATA`
+`ATLAS_EXTERNAL_DATA_ROOT=D:/ATLAS_DATA`
+
+The `external` setting name denotes a secondary data root distinct from the
+project storage; the active workstation volume is an internal SATA SSD.
 
 The variable should be persisted only after the binding setup reaches `READY`.
 
@@ -116,19 +119,47 @@ When the external root is configured and READY, the external-volume profile beco
 - candidate-options cache quota: 120 GiB;
 - options derived quota: 10 GiB.
 
-These limits are intentionally appropriate for the initial approximately 256 GB NVMe
-enclosure plan. A future larger SSD can receive a separately reviewed quota increase
-without changing the primary stock-storage boundary.
+These limits also fit the activated 250 GB Samsung 860 EVO SATA SSD.
+A future larger SSD can receive a separately reviewed quota increase without
+changing the primary stock-storage boundary.
 
 ## Portability
 
 The external storage layer deliberately preserves the project-visible namespace.
-Replacing the external SSD later therefore requires rebinding the same logical paths
-to a new external root rather than rewriting stock paths or scientific identities.
+Replacing the secondary SSD later therefore requires rebinding the same logical
+paths to a new secondary root rather than rewriting stock paths or scientific identities.
 
 The current 120 GB USB flash drive is not the active database target in this
 architecture. It remains suitable for cold archives, backups, frozen evidence copies,
 or other low-I/O material.
+
+## 2026-09-26 workstation activation evidence
+
+The operator installed and quick-formatted a Samsung 860 EVO 250 GB SATA SSD as
+`D:` (`ATLAS_SECONDARY`, NTFS). Initial Windows volume inspection reported
+232.28 GiB capacity and 232.18 GiB free. The dry inspection identified four
+populated secondary project directories and two unbound destinations. All six
+target directories were empty before migration.
+
+The pre-migration SHA-256 inventory is retained on C: at
+`data/manifests/secondary_migration_20260926_132952_before.csv`. It covered
+2,122 files / 2.521 GiB across `data/options`, `data/news`,
+`data/research/provider_qualification`, and `data/research/evidence`;
+`data/fundamentals` and `data/archives` had no source files.
+
+The operator ran `scripts/configure_external_storage.py --root
+D:/ATLAS_DATA --apply --migrate-existing --persist-env`; the resulting
+inspection reported all six bindings `READY`, and a subsequent SHA-256
+verification through the original project-visible paths passed for all
+2,122 inventoried files. `ATLAS_EXTERNAL_DATA_ROOT` was persisted in `.env`.
+The stock database and primary data paths were not moved. These are
+operator-reported workstation results, not GitHub CI observations.
+
+**Next verification:** run the actual news/options storage preflight with no
+provider probes, confirm `EXTERNAL_SECONDARY` accounting and 190 GiB policy,
+then preview the previously generated chain plan with zero new requests.
+No option-chain acquisition or change in research/trading authority follows
+from the filesystem migration.
 
 ## Authority
 
