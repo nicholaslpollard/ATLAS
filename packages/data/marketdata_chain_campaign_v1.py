@@ -72,7 +72,7 @@ def run_chain_campaign(
             })
         year_result = runner(
             settings, plan, source,
-            max_total_new_requests=remaining_calls if max_total_new_requests else 0,
+            max_total_new_requests=min(50, remaining_calls) if max_total_new_requests else 0,
             max_observed_credits=max(1, remaining_credits),
             authorize=authorize, paid=paid, private=private,
             classify_no_data=classify_no_data,
@@ -111,7 +111,7 @@ def run_chain_campaign(
                           or total_credits >= max_observed_credits
                       ) else "PARTIAL_COHORT_REQUIRES_REVIEW")
             break
-        if max_total_new_requests and total_credits >= max_observed_credits:
+        if max_total_new_requests and total_credits >= max_observed_credits and year != years[-1]:
             status = "PARTIAL_CAMPAIGN_BUDGET"
             break
     if max_total_new_requests and len(year_reports) < len(years) and status == "COMPLETE":
