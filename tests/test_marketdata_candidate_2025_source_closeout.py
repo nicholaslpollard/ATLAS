@@ -99,6 +99,7 @@ def test_local_closeout_no_write_default_and_exclusive_idempotent(tmp_path, monk
 
 def test_wrong_gap_identity_fails_closed(tmp_path, monkeypatch):
     settings, plan, _ = _fixture(tmp_path, monkeypatch, gap_index=4)
+    monkeypatch.setattr(closeout, "FROZEN_FSLY", "f" * 64)
     with pytest.raises(CandidateChainCacheError, match="accepted FSLY proof"):
         closeout.build_source_closeout(settings, plan, source_sha256="a" * 64)
 
