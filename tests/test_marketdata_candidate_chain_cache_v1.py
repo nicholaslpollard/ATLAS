@@ -464,3 +464,70 @@ def test_compact_plan_run_path_is_not_a_scientific_identity(tmp_path, monkeypatc
         k: v for k, v in report.items() if k != "report_fingerprint"
     })
     assert archived.is_file()
+
+def test_numeric_expiration_and_occ_identity_match_historical_response(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    from packages.data.marketdata_candidate_chain_cache_v1 import _rows_match_explicit_request
+    from packages.providers.marketdata_app import array_rows
+    request = {
+        "ticker": "AGIO",
+        "params": {"expiration": "2025-10-17", "strike": "36.10-42.38"},
+    }
+    payload = {
+        "s": "ok",
+        "optionSymbol": ["AGIO251017C00040000", "AGIO251017P00040000"],
+        "underlying": ["AGIO", "AGIO"],
+        "expiration": [1760731200, 1760731200],
+        "side": ["call", "put"],
+        "strike": [40, 40],
+    }
+    assert _rows_match_explicit_request(array_rows(payload), request)
+    payload["optionSymbol"][0] = "AGIO251017C00041000"
+    assert not _rows_match_explicit_request(array_rows(payload), request)
+    payload["optionSymbol"][0] = "AGIO251017C00040000"
+    payload["expiration"][0] = 1760817600
+    assert not _rows_match_explicit_request(array_rows(payload), request)
+
+
+def test_offline_recovery_preserves_original_quarantine_and_reuses_without_network(tmp_path, monkeypatch):
+    from scripts.recover_marketdata_candidate_chain_v1 import recover
+    settings = _settings(tmp_path, monkeypatch)
+    monkeypatch.setattr("scripts.recover_marketdata_candidate_chain_v1.PROJECT_ROOT", settings.project_root)
+    plan = _plan()
+    request = plan["requests"][0]
+    source = settings.project_root / "data/research/evidence/marketdata_candidate_stock_v1/source.json"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_bytes(SOURCE_BYTES)
+    payload = {
+        "s": "ok", "optionSymbol": ["SPY261016C00100000"],
+        "underlying": ["SPY"], "expiration": [1792180800],
+        "side": ["call"], "strike": [100],
+    }
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+    response = MarketDataResponse(
+        http_status=203, payload=payload, raw_body=raw, response_bytes=len(raw),
+        elapsed_seconds=0.01,
+        headers={"X-Api-Ratelimit-Remaining": "9999", "X-Api-Ratelimit-Consumed": "1"},
+    )
+    # Simulate the historical validator quarantine while retaining exact evidence.
+    monkeypatch.setattr(cache_module, "_rows_match_explicit_request", lambda *_: False)
+    with pytest.raises(CandidateChainCacheError, match="quarantined"):
+        _authorized(settings, plan, lambda *_: response)
+    monkeypatch.undo()
+    # Restore test-local settings after undoing the deliberate validator fault.
+    monkeypatch.setattr("scripts.recover_marketdata_candidate_chain_v1.PROJECT_ROOT", settings.project_root)
+    monkeypatch.setattr(
+        cache_module, "inspect_research_storage",
+        lambda _settings: SimpleNamespace(status="SAFE", storage_mode="PROJECT_LOCAL"),
+    )
+    monkeypatch.setattr(cache_module, "assert_category_acquisition_allowed", lambda *_a, **_k: None)
+    paths = _paths(settings, request["request_identity"])
+    original = paths.receipt.read_bytes()
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan))
+    assert recover(plan_path, request["request_identity"])["action"] == "PREVIEW_ONLY"
+    assert not paths.recovery.exists()
+    assert recover(plan_path, request["request_identity"], authorize=True)["action"] == "RECOVERED_OFFLINE"
+    assert paths.receipt.read_bytes() == original
+    assert paths.attempt.exists()
+    assert _authorized(settings, plan, lambda *_: (_ for _ in ()).throw(AssertionError("no network")))["reused"] == 1
