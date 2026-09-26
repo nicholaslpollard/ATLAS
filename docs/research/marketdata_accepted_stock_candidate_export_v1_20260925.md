@@ -126,9 +126,22 @@ a set of verified, historically available or executable option contracts.
 
 This is an operator-supplied terminal observation. It has not been
 independently reconstructed from the private source/plan files in GitHub.
-The immediate next verification is the merged chain cache's offline
-zero-credit \`--plan\` preview. PR #230 implementation is still a separate
-merge/CI gate; no chain acquisition is authorized by this report.
+## 2026-09-26 continuation — source plan preview
+
+PR #230 subsequently merged after ten passing GitHub workflows. Following
+the verified migration of secondary research paths to the internal Samsung
+860 EVO at D:/ATLAS_DATA, the operator ran the exact saved chain plan with
+max-new-requests zero. The output reported PREVIEW, EXTERNAL_SECONDARY,
+12 planned opportunities, 12 distinct shared chains, 12 pending, zero
+verified existing receipts, zero new complete receipts, zero provider
+reads and zero observed credits consumed. The plan fingerprint was
+unchanged; preview report fingerprint:
+c83f7464dbdccd5dc7c1242e926cc5598d16a79f1e38bf5130bee714befc9538.
+A zero-read preview intentionally does not re-hash physical stock source
+files; the live acquisition gate requires an exact stock-source-file SHA
+match as an independent step. This is operator-reported evidence, not
+independent GitHub artifact reconstruction. No chain acquisition or
+strategy authority is opened by this preview.
 
 ## Authority boundary
 
