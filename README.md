@@ -4828,3 +4828,10 @@ New `scripts/select_marketdata_candidate_2025_structural_calls_v1.py` uses that 
 
 
 **2026-09-26 PR #237 merge/next operator gate:** The outcome-blind structural CALL shortlist was CI-validated (all ten workflows; 2,600 tests plus four subtests on both Linux and Windows) and squash-merged at `9cc16d5de6ffaca439c92212193b441a9b4d2c38`. The accepted source closeout is already written; do not rerun it. Next local action is **one new computation**: `scripts/select_marketdata_candidate_2025_structural_calls_v1.py --write-local-shortlist`. It reads the frozen private closeout/chain receipts and produces the new provisional CALL shortlist on D:, with zero provider reads/credits. This GitHub merge is not a claim about actual provisional symbols until the workstation returns the new local artifact. Historical deliverable, executable quote and option P&L authority remain withheld.
+
+
+### 2026-09-26 — Frozen 11 CALL symbols enter independent historical reference stage
+
+The operator produced and saved a *new* PIT structural CALL shortlist (fingerprint `e5a8347fa346934d908d925b9fdbf667d7a458d010bf51ce8e27324fbbc01268`): 65 historical CALL rows examined, 11 provisional symbols and one unchanged FSLY abstention, without provider reads. The source pilot/11+1 closeout is closed and must not be repeated.
+
+`scripts/run_marketdata_candidate_2025_exact_reference_v1.py` is the next new DEVELOPMENT source stage: freeze those exact eleven symbols and query Massive's contract overview at the original historical snapshot/as-of date, not the present-day contract record. A new D:-bound private reference plan and separate immutable raw/receipt/attempt cache are created; authorized GETs are sequential with >=13s pacing and no automatic replay. Identity, shares, exercise style, extra underlying and CFI evidence are recorded. A matching reference alone never establishes a dynamically correct historical 100-share deliverable or execution price. No option fill/P&L, PAPER/LIVE, broker or promotion authority. See `docs/research/marketdata_2025_exact_historical_reference_v1_20260926.md`.
