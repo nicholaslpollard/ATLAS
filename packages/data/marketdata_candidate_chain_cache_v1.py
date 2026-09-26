@@ -363,6 +363,8 @@ def record_exact_query_no_data(
 def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str, Any] | None:
     body_exists = paths.body.exists()
     receipt_exists = paths.receipt.exists()
+    if _no_data_path(paths).exists() and not (body_exists and receipt_exists):
+        raise CandidateChainCacheError("orphaned no-data proof; never re-request original")
     if not body_exists and not receipt_exists:
         if paths.attempt.exists():
             raise CandidateChainCacheError(
@@ -383,6 +385,8 @@ def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str,
     except (OSError, ValueError, TypeError, KeyError) as exc:
         raise CandidateChainCacheError("cache receipt/body cannot be read or decoded") from exc
 
+    if _no_data_path(paths).exists() and receipt.get("status") != "QUARANTINED":
+        raise CandidateChainCacheError("no-data proof conflicts with original receipt status")
     if receipt.get("status") == "QUARANTINED":
         no_data = _verified_no_data(paths, request)
         if no_data is not None:
