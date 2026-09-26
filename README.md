@@ -427,6 +427,24 @@ This is a transport-contract reconciliation only. Historical depth remains unpro
 while the upstream is degraded, and no provider, historical-price, strategy, PAPER,
 LIVE, broker or order authority changes.
 
+### MarketData license boundary for local caches — 2026-09-26
+
+The current published MarketData Terms of Service license downloaded data only
+for the subscription term and require deletion when the subscription ends.
+The local exact-raw chain cache reduces repeat API reads while licensed; filling
+the secondary SSD is NOT authority for indefinite use after cancellation.
+Provider documentation confirms Starter's five-year historical access and
+10,000 daily credits, and historical chain charges of one credit per 1,000
+returned option symbols. Before any broad source-acquisition campaign, confirm
+current provider retention terms in writing, maintain provider-specific
+license lineage for raw/normalized/cache copies and backups, and distinguish
+independently licensed durable data from subscription-bound data. Do not
+treat a free-tier downgrade as grandfathered rights to paid-download archives.
+Current source-only 12-case canary authorization does not authorize a
+whole-universe campaign. Provider terms:
+https://www.marketdata.app/terms/ ;
+https://www.marketdata.app/docs/api/options/chain/ .
+
 ### External secondary-data storage V1 — 2026-09-24
 
 ATLAS now has an explicit external-storage boundary for large secondary datasets.
