@@ -535,3 +535,117 @@ def test_offline_recovery_preserves_original_quarantine_and_reuses_without_netwo
     assert paths.receipt.read_bytes() == original
     assert paths.attempt.exists()
     assert _authorized(settings, plan, lambda *_: (_ for _ in ()).throw(AssertionError("no network")))["reused"] == 1
+
+
+
+def _no_data_response(*, consumed: int = 0, provider_status: str = "no_data"):
+    payload = {"s": provider_status, "nextTime": None}
+    raw = json.dumps(payload, separators=(",", ":")).encode()
+    return MarketDataResponse(
+        http_status=404, payload=payload, raw_body=raw, response_bytes=len(raw),
+        elapsed_seconds=0.01,
+        headers={"X-Api-Ratelimit-Remaining": "9995",
+                 "X-Api-Ratelimit-Consumed": str(consumed)},
+    )
+
+
+def test_exact_query_no_data_separate_proof_preserves_original_evidence(tmp_path, monkeypatch):
+    from packages.data.marketdata_candidate_chain_cache_v1 import (
+        _no_data_path, record_exact_query_no_data,
+    )
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    request = plan["requests"][0]
+    with pytest.raises(CandidateChainCacheError, match="quarantined"):
+        _authorized(settings, plan, lambda *_: _no_data_response())
+    paths = _paths(settings, request["request_identity"])
+    originals = [(path, path.read_bytes()) for path in (paths.body, paths.receipt, paths.attempt)]
+    assert not _no_data_path(paths).exists()
+    preview_result = record_exact_query_no_data(settings, plan, request["request_identity"])
+    assert preview_result["action"] == "PREVIEW_ONLY_NO_WRITES"
+    assert not _no_data_path(paths).exists()
+    with pytest.raises(CandidateChainCacheError, match="never overwrite"):
+        run_candidate_chain_cache(settings, plan)
+    written = record_exact_query_no_data(
+        settings, plan, request["request_identity"],
+        authorize_offline_classification=True,
+    )
+    assert written["action"] == "RECORDED_VERIFIED_NO_DATA"
+    assert written["proof"]["scope"] == "EXACT_QUERY_ONLY_NOT_A_COMPLETE_CHAIN"
+    assert written["proof"]["provider_credits_consumed_reported"] == 0
+    reused = record_exact_query_no_data(
+        settings, plan, request["request_identity"],
+        authorize_offline_classification=True,
+    )
+    assert reused["action"] == "REUSED_VERIFIED_NO_DATA_PROOF"
+    assert [(path, path.read_bytes()) for path, _ in originals] == originals
+
+    def prohibited(*_args):
+        raise AssertionError("never replay the already billed/observed request")
+    preview = run_candidate_chain_cache(settings, plan, provider_read=prohibited)
+    assert preview["no_data_verified"] == 1
+    assert preview["reused"] == 0
+    assert preview["completed_chains"] == 0
+    assert preview["pending"] == 0
+    assert preview["provider_reads"] == 0
+    assert preview["request_results"][0]["status"] == "SOURCE_NO_DATA_VERIFIED"
+    result = _authorized(settings, plan, prohibited)
+    assert result["status"] == "COMPLETE_WITH_SOURCE_GAPS"
+    assert result["new_complete"] == 0
+    assert result["no_data_verified"] == 1
+    assert result["completed_chains"] == 0
+    assert result["provider_reads"] == 0
+    assert result["pending"] == 0
+    assert [(path, path.read_bytes()) for path, _ in originals] == originals
+
+
+@pytest.mark.parametrize("consumed,provider_status", [(1, "no_data"), (0, "error")])
+def test_no_data_proof_refuses_charged_or_non_no_data_responses(
+    tmp_path, monkeypatch, consumed, provider_status,
+):
+    from packages.data.marketdata_candidate_chain_cache_v1 import (
+        _no_data_path, record_exact_query_no_data,
+    )
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    request = plan["requests"][0]
+    with pytest.raises(CandidateChainCacheError, match="quarantined"):
+        _authorized(settings, plan, lambda *_: _no_data_response(
+            consumed=consumed, provider_status=provider_status,
+        ))
+    paths = _paths(settings, request["request_identity"])
+    with pytest.raises(CandidateChainCacheError, match="strict contract"):
+        record_exact_query_no_data(
+            settings, plan, request["request_identity"],
+            authorize_offline_classification=True,
+        )
+    assert not _no_data_path(paths).exists()
+
+
+def test_no_data_proof_tamper_never_becomes_automatic_skip(tmp_path, monkeypatch):
+    from packages.data.marketdata_candidate_chain_cache_v1 import (
+        _no_data_path, record_exact_query_no_data,
+    )
+    settings = _settings(tmp_path, monkeypatch)
+    plan = _plan()
+    request = plan["requests"][0]
+    with pytest.raises(CandidateChainCacheError, match="quarantined"):
+        _authorized(settings, plan, lambda *_: _no_data_response())
+    paths = _paths(settings, request["request_identity"])
+    record_exact_query_no_data(
+        settings, plan, request["request_identity"],
+        authorize_offline_classification=True,
+    )
+    path = _no_data_path(paths)
+    before = paths.body.read_bytes(), paths.receipt.read_bytes(), paths.attempt.read_bytes()
+    proof = json.loads(path.read_text())
+    proof["provider_credits_remaining_reported"] = 9996
+    path.write_text(json.dumps(proof))
+    with pytest.raises(CandidateChainCacheError, match="no-data proof/source mismatch"):
+        run_candidate_chain_cache(settings, plan)
+    with pytest.raises(CandidateChainCacheError, match="no-data proof/source mismatch"):
+        record_exact_query_no_data(settings, plan, request["request_identity"],
+                                   authorize_offline_classification=True)
+    assert before == (
+        paths.body.read_bytes(), paths.receipt.read_bytes(), paths.attempt.read_bytes(),
+    )
