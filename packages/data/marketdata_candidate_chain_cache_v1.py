@@ -175,7 +175,7 @@ def _expiration_date(value: object) -> str:
     """Normalize provider UTC epoch seconds or an ISO date; reject other shapes."""
     if type(value) is int and 0 < value < 4102444800:
         return datetime.fromtimestamp(value, UTC).date().isoformat()
-    if isinstance(value, str) and re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", value):
+    if isinstance(value, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
         return datetime.strptime(value, "%Y-%m-%d").date().isoformat()
     raise ValueError("invalid option expiration")
 
@@ -198,7 +198,7 @@ def _rows_match_explicit_request(
             symbols.add(symbol)
             strike = Decimal(str(row.get("strike")))
             side = row.get("side")
-            match = re.fullmatch(r"([A-Z0-9.]+)(\\d{6})([CP])(\\d{8})", symbol)
+            match = re.fullmatch(r"([A-Z0-9.]+)(\d{6})([CP])(\d{8})", symbol)
             if (
                 match is None
                 or row.get("underlying") != request["ticker"]
