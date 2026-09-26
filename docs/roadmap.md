@@ -5231,3 +5231,12 @@ The uploaded accepted stock-source artifact SHA-256 is `e7d90ce3162475ecbfc442d3
 
 
 **2026-09-26 merge confirmation:** PR #232 was squash-merged into `main` at commit `f95b639a4f78d8d4d8c78d3b87ad33546f77ec4b` after its ten recorded GitHub workflow runs completed successfully. The offline recovery remains the sole accepted AGIO source; paid continuation requires the exact stock bundle and per-run bounded authorization. This updates the earlier pre-merge wording without rewriting the retained chronology.
+
+
+### 2026-09-26 — Accepted pilot handoff and source-path correction
+
+PR #231's D: Samsung 860 EVO secondary-storage record was merged. The accepted stock bundle under `data/research/evidence/marketdata_candidate_stock_v1` is on a Windows junction. A recursive PowerShell `Get-ChildItem .\data -Recurse` may skip the junction and was not a valid direct source-path test. The latest zero-credit preview independently recognized the recovered AGIO receipt (1 verified, 608 bytes; 11 pending). The original failed checkpoint is retained as historical evidence.
+
+The new `scripts/run_marketdata_candidate_2025_pilot.py` checks the deterministic source-path/SHA and plan before a read-only preview; only explicit authorization permits 10+1 sequential new chain requests with an independent receipt preview after each batch. Never auto-replay quarantines or unresolved attempts. See `docs/research/marketdata_candidate_2025_pilot_operator_v1_20260926.md`.
+
+After source-only acquisition: freeze historical contract identity and adjusted-deliverable validation, selected quote horizons, conservative decision-clock EOD economics and PIT news joins, then versioned recurrent DEVELOPMENT comparisons. MarketData subscription deletion terms mean an SSD archive cannot be assumed usable after cancellation; maintain per-provider licensing and seek written clarification. No strategy/P&L/PAPER/LIVE authority changed.
