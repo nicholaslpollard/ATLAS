@@ -212,10 +212,31 @@ def _assert_intact(ticket: dict[str, Any], paths: tuple[Path, Path, Path],
             or intent.get("plan_fingerprint") != plan_fingerprint
             or receipt.get("request_identity") != ticket["request_identity"]
             or intent.get("request_identity") != ticket["request_identity"]
+            or receipt.get("option_symbol") != ticket["option_symbol"]
+            or intent.get("option_symbol") != ticket["option_symbol"]
+            or receipt.get("as_of") != ticket["as_of"]
+            or intent.get("as_of") != ticket["as_of"]
+            or receipt.get("plan_fingerprint") != plan_fingerprint
+            or receipt.get("raw_http_body_exact") is not True
             or receipt.get("body_sha256") != _sha(raw)
             or receipt.get("body_bytes") != len(raw)
             or intent.get("automatic_retry_permitted") is not False):
         raise CandidateChainCacheError("reference evidence/plan hash mismatch; preserve originals")
+    status = receipt.get("http_status")
+    if type(status) is not int:
+        raise CandidateChainCacheError("reference receipt lacks exact HTTP status")
+    expected_status, expected_terms = _classify_reference(ticket, raw, status)
+    expected_receipt_status = (
+        "COMPLETE_REFERENCE_RECEIPT"
+        if status == 200 and expected_status in (
+            "PIT_REFERENCE_TERMS_CONSISTENT_DELIVERABLE_UNVERIFIED",
+            "HISTORICAL_TERMS_ADJUSTED_OR_AMBIGUOUS",
+        ) else "QUARANTINED_REVIEW_REQUIRED"
+    )
+    if (receipt.get("classification") != expected_status
+            or receipt.get("safe_terms") != expected_terms
+            or receipt.get("status") != expected_receipt_status):
+        raise CandidateChainCacheError("reference classification no longer matches original raw response")
     return receipt
 
 
@@ -323,10 +344,17 @@ def run_reference_dossiers(
     """Read-only default; one new durable reference attempt per frozen symbol."""
     base = dict(plan)
     signature = base.pop("plan_fingerprint", None)
-    expected = build_exact_reference_plan({"shortlist_fingerprint": FROZEN_SHORTLIST, "opportunities": [
-        # Reconstructing from the current plan's own tickets is not authority.
-    ]}) if False else None
-    if signature != _fingerprint(base) or plan.get("contract") != CONTRACT or len(plan.get("requests", [])) != 11:
+    if (signature != _fingerprint(base)
+            or plan.get("contract") != CONTRACT
+            or plan.get("shortlist_fingerprint") != FROZEN_SHORTLIST
+            or plan.get("frozen_stock_plan_fingerprint") != FROZEN_PLAN
+            or plan.get("automatic_retries_allowed") is not False
+            or not isinstance(plan.get("requests"), list)
+            or len(plan["requests"]) != 11
+            or {t.get("ticker") for t in plan["requests"]} != set(FROZEN_SYMBOLS) - {"FSLY"}
+            or any(t.get("option_symbol") != FROZEN_SYMBOLS.get(t.get("ticker"))
+                   or t.get("request_identity") != _fingerprint({k: v for k, v in t.items() if k != "request_identity"})
+                   for t in plan["requests"])):
         raise CandidateChainCacheError("exact frozen reference plan is malformed")
     if not 0 <= max_new_requests <= MAX_NEW_REQUESTS:
         raise CandidateChainCacheError("new reference request budget outside 0..11")
