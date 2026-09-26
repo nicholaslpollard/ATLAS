@@ -249,6 +249,14 @@ def _valid_receipt(paths: ChainCachePaths, request: dict[str, Any]) -> dict[str,
                 or recovery.get("contract") != "atlas-marketdata-chain-offline-recovery-v1"
                 or recovery.get("original_receipt_fingerprint") != receipt.get("receipt_fingerprint")
                 or recovery.get("body_sha256") != _sha256(raw)
+                or recovery.get("plan_fingerprint") != json.loads(paths.attempt.read_text(encoding="utf-8")).get("plan_fingerprint")
+                or recovery.get("row_count") != receipt.get("row_count")
+                or receipt.get("body_sha256") != _sha256(raw)
+                or receipt.get("body_bytes") != len(raw)
+                or expected_hash != _fingerprint(expected_receipt)
+                or receipt.get("endpoint") != request["endpoint"]
+                or receipt.get("params") != request["params"]
+                or receipt.get("raw_http_body_exact") is not True
                 or recovery.get("request_identity") != request["request_identity"]
                 or recovery.get("status") != "RECOVERED_VERIFIED"
                 or not paths.attempt.is_file()
