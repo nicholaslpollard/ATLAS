@@ -155,11 +155,17 @@ verification through the original project-visible paths passed for all
 The stock database and primary data paths were not moved. These are
 operator-reported workstation results, not GitHub CI observations.
 
-**Next verification:** run the actual news/options storage preflight with no
-provider probes, confirm `EXTERNAL_SECONDARY` accounting and 190 GiB policy,
-then preview the previously generated chain plan with zero new requests.
-No option-chain acquisition or change in research/trading authority follows
-from the filesystem migration.
+The subsequent news/options storage preflight (no provider probes) returned
+fingerprint `38560d038795e7994a253a1d2c191e0dfb403c0f17bd1a07e17b048eaf0d7f88`,
+227.07 GiB free, status SAFE, 190.00 GiB total / 187.62 GiB remaining budget,
+and 25/40 GiB minimum/warning free-space thresholds. Existing source usage
+remained news 1.931 GiB and options reference 0.446 GiB, with zero bulk downloads.
+The exact saved candidate-chain preview returned EXTERNAL_SECONDARY, 12 planned
+opportunities and distinct requests, 12 pending, zero provider calls, zero
+credits consumed and no new receipts; report fingerprint:
+`c83f7464dbdccd5dc7c1242e926cc5598d16a79f1e38bf5130bee714befc9538`.
+These are operator-reported workstation results. They do not independently
+verify provider entitlement or authorize acquisition, trading or strategy changes.
 
 ## Authority
 
