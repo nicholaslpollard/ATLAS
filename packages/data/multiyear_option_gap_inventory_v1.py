@@ -12,6 +12,7 @@ from collections import Counter, defaultdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
+import re
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
@@ -33,6 +34,7 @@ EASTERN = ZoneInfo("America/New_York")
 STRIKE_FRACTION = Decimal("0.08")
 MAX_UNION_FRACTION = Decimal("0.25")
 CENT = Decimal("0.01")
+OCC = re.compile(r"^([A-Z0-9.]+)(\\d{6})([CP])(\\d{8})$")
 AUTHORITY = {
     "provider_requests": 0,
     "new_paid_request_authority": False,
@@ -207,10 +209,14 @@ def freeze_option_source_gap_inventory(
             elif year == "2022":
                 rank = index["rank_zero"].get(oid)
                 if rank is not None:
+                    occ = OCC.fullmatch(rank["option_symbol"])
                     if (
                         Decimal(rank["original_raw_open"]) != Decimal(row["raw_underlying_price"])
                         or rank["original_expiration"] != (expiry + timedelta(days=1)).isoformat()
-                        or not rank["option_symbol"].startswith(row["ticker"])
+                        or occ is None or occ.group(1) != row["ticker"]
+                        or occ.group(3) != "C"
+                        or "20" + occ.group(2)[:2] + "-" + occ.group(2)[2:4]
+                           + "-" + occ.group(2)[4:6] != expiry.isoformat()
                     ):
                         raise MultiYearOptionInventoryError(
                             "rank-zero prior source original price/expiry identity differs"
