@@ -283,7 +283,9 @@ def build_casebook(
     if progress:
         progress({"stage": "NEWS_2022_NORMALIZED_METADATA", "month_partitions": 12,
                   "ticker_universe": len(tickers), "provider_requests": 0})
-    news = OfflineNewsContext.from_accepted_2022(settings, tickers, threads=news_threads)
+    news = OfflineNewsContext.from_accepted_2022(
+        settings, tickers, threads=news_threads, progress=progress,
+    )
     return assemble_casebook(reference, sources, news, progress=progress)
 
 
