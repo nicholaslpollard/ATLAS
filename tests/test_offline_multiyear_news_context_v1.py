@@ -74,7 +74,7 @@ def test_2020_dec_prior_news_counts_for_early_2021_and_future_revision_unavailab
             "updated_at TIMESTAMPTZ, symbols_json VARCHAR)"
         )
         conn.executemany("INSERT INTO news VALUES (?, ?, ?, ?)", [
-            ("dec", "2020-12-31T12:00:00Z", "2020-12-31T12:00:00Z", '["TEST"]'),
+            ("dec", "2020-12-31T16:00:00Z", "2020-12-31T16:00:00Z", '["TEST"]'),
             ("revised", "2020-12-31T12:00:00Z", "2021-01-06T12:00:00Z", '["TEST"]'),
             ("revised", "2020-12-31T12:00:00Z", "2021-01-01T12:00:00Z", '["TEST"]'),
             ("other", "2021-01-03T13:00:00Z", "2021-01-03T13:00:00Z", '["OTHER"]'),
