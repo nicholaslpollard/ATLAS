@@ -379,6 +379,6 @@ def build_option_source_gap_inventory(
             raise MultiYearOptionInventoryError("existing immutable option inventory differs")
         return result,path,"REUSED_IDENTICAL_OPTION_INVENTORY"
     _exclusive(path,result)
-    if _verified_existing(path,native) != result:
+    if _verified_existing(path,native,rolling_floor=rolling_floor) != result:
         raise MultiYearOptionInventoryError("new options source gap inventory readback differs")
     return result,path,"WRITTEN_NEW_OPTIONS_SOURCE_GAP_INVENTORY"
