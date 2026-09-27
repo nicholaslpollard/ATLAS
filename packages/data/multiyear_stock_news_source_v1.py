@@ -101,6 +101,11 @@ def join_stock_pit_news(
             "NEWS_SOURCE_NOT_ACQUIRED_THROUGH_DECISION",
         }:
             raise StockNewsSourceError("unknown original PIT-news source status")
+        if (
+            (decision.astimezone(UTC).date() <= news.coverage_end)
+            != (status == "VERIFIED_SOURCE_COVERAGE_AT_DECISION")
+        ):
+            raise StockNewsSourceError("news coverage status disagrees with accepted cutoff")
         d24 = context["unique_articles_available_prior_24h"]
         d7 = context["unique_articles_available_prior_7d"]
         if status == "VERIFIED_SOURCE_COVERAGE_AT_DECISION":
