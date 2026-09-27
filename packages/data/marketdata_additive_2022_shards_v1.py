@@ -135,11 +135,22 @@ def prepare_additive_shard(
     runner: Callable[..., dict[str, Any]] = run_candidate_chain_cache,
     preparer: Callable[..., Any] = prepare_cohort,
     progress: Callable[[dict[str, Any]], None] | None = None,
+    verified_prior: tuple[dict[str, Any], set[str], set[tuple[str, str, str]]] | None = None,
 ) -> tuple[dict[str, Any], Path, dict[str, Any], str]:
     if not 0 <= shard_index <= MAX_SHARD_INDEX or not 1 <= duckdb_threads <= 8:
         raise CandidateChainCacheError("additive shard index/threads outside registered bounds")
     _require_external(settings)
-    prior, old_ids, old_keys = _prior(settings, runner=runner, preparer=preparer)
+    # Bulk orchestration may pass a once-verified immutable original cohort.
+    # The ordinary per-shard caller still performs the full _prior() audit.
+    if verified_prior is None:
+        prior, old_ids, old_keys = _prior(settings, runner=runner, preparer=preparer)
+    else:
+        prior, old_ids, old_keys = verified_prior
+        if (prior.get("plan_fingerprint") != FROZEN_PRIOR_PLAN
+                or prior.get("shared_chain_requests") != 36
+                or type(old_ids) is not set or len(old_ids) != 36
+                or type(old_keys) is not set or not 1 <= len(old_keys) <= 36):
+            raise CandidateChainCacheError("supplied original prior cohort is not verified")
     bound = _binding_path(settings, shard_index)
     if bound.exists() or bound.is_symlink():
         result = _read_bound(settings, shard_index, prior["plan_fingerprint"])

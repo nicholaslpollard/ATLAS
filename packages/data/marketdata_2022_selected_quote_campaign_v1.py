@@ -335,6 +335,7 @@ def run_selected_quote_histories(
     settings: AtlasSettings, plan: dict[str, Any], *,
     max_new_requests: int = 0, max_observed_credits: int = 1500,
     workers: int = 16, authorize: bool = False, paid: bool = False, private: bool = False,
+    adaptive_workers: bool = False, worker_ceiling: int = MAX_WORKERS,
     token: str | None = None,
     transport: Callable[[dict[str, Any], str], tuple[int, bytes, dict[str, str]]] = quote_transport,
     progress: Callable[[dict[str, Any]], None] | None = None,
@@ -358,6 +359,8 @@ def run_selected_quote_histories(
         raise CandidateChainCacheError("quote observed credit target outside 1..3500")
     if not 1 <= workers <= MAX_WORKERS:
         raise CandidateChainCacheError("quote workers outside 1..24")
+    if type(adaptive_workers) is not bool or not workers <= worker_ceiling <= MAX_WORKERS:
+        raise CandidateChainCacheError("quote adaptive concurrency ceiling invalid")
     if max_new_requests and not (authorize and paid and private):
         raise CandidateChainCacheError("all paid/private/provider confirmations required")
     if not max_new_requests and (authorize or paid or private):
@@ -386,8 +389,11 @@ def run_selected_quote_histories(
     attempts = credits = 0
     last_remaining = None
     run_started = time.perf_counter()
+    active_workers = workers
+    last_worker_rate: float | None = None
+    last_worker_level = workers
     if max_new_requests:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        with ThreadPoolExecutor(max_workers=worker_ceiling if adaptive_workers else workers) as pool:
             while pending and attempts < max_new_requests and credits < max_observed_credits:
                 remaining_budget = max_observed_credits - credits
                 if last_remaining is not None and last_remaining < MIN_REMAINING_CREDITS:
@@ -396,7 +402,7 @@ def run_selected_quote_histories(
                 # triggering another batch. Each full series is <=500 rows;
                 # reserve one observed credit per new request, then enforce
                 # actual provider header charges after all in-flight receipts.
-                size = min(workers, len(pending), max_new_requests - attempts,
+                size = min(active_workers, len(pending), max_new_requests - attempts,
                            max(1, remaining_budget))
                 assert_category_acquisition_allowed(
                     settings, category="options_candidate_cache",
@@ -425,14 +431,33 @@ def run_selected_quote_histories(
                         complete += 1
                     else:
                         gaps += 1
+                batch_seconds = max(0.000001, time.perf_counter() - batch_started)
+                measured_rate = size / batch_seconds
+                used_workers = active_workers
+                if adaptive_workers and error is None and pending:
+                    # One original-intent batch must finish before any next
+                    # batch. Raise concurrency conservatively; if the measured
+                    # rate deteriorates at a higher level, back off and hold.
+                    if (last_worker_rate is not None and used_workers > last_worker_level
+                            and measured_rate < last_worker_rate * 0.85):
+                        active_workers = last_worker_level
+                        last_worker_rate = None
+                    elif used_workers < worker_ceiling:
+                        last_worker_rate = measured_rate
+                        last_worker_level = used_workers
+                        active_workers = min(worker_ceiling, used_workers + 4)
+                    else:
+                        last_worker_rate = measured_rate
+                        last_worker_level = used_workers
                 if progress:
-                    batch_seconds = max(0.000001, time.perf_counter() - batch_started)
                     elapsed_seconds = max(0.000001, time.perf_counter() - run_started)
                     progress({"stage": "BOUNDED_QUOTE_BATCH", "new_attempts": attempts,
                               "observed_credits": credits,
                               "complete_source_series": complete, "exact_source_gaps": gaps,
                               "remaining": last_remaining, "raw_body_bytes": raw_bytes,
                               "pending": len(pending), "configured_workers": workers,
+                              "active_workers": used_workers,
+                              "next_workers": active_workers,
                               "batch_size": size, "batch_elapsed_seconds": round(batch_seconds, 3),
                               "cumulative_elapsed_seconds": round(elapsed_seconds, 3),
                               "new_gets_per_second": round(attempts / elapsed_seconds, 2)})

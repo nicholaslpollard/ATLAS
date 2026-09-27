@@ -447,3 +447,45 @@ def test_local_quote_coverage_audit_verified_receipts_gaps_and_zero_provider_rea
     path.write_text(json.dumps(tampered), encoding="utf-8")
     with pytest.raises(CandidateChainCacheError, match="fingerprint"):
         audit.audit_frozen_quote_coverage(settings, last_shard_inclusive=0)
+
+
+
+def test_adaptive_quote_network_workers_ramp_inside_a_single_immutable_run(
+    tmp_path, monkeypatch,
+):
+    monkeypatch.setattr(q, "_require_external", lambda *_: None)
+    monkeypatch.setattr(q, "assert_category_acquisition_allowed", lambda *a, **kw: None)
+    settings = SimpleNamespace(resolved_path=lambda p: tmp_path / p)
+    symbols = [f"ABC220318C{(100 + n) * 1000:08d}" for n in range(52)]
+    plan = _bare_quote_plan(symbols)
+    progress = []
+    seen = set()
+    lock = __import__("threading").Lock()
+
+    def transport(ticket, token):
+        with lock:
+            assert ticket["option_symbol"] not in seen
+            seen.add(ticket["option_symbol"])
+        return 200, _fake_quote_raw(ticket["option_symbol"]), {
+            "X-Api-Ratelimit-Consumed": "1",
+            "X-Api-Ratelimit-Remaining": "9000",
+        }
+
+    report = q.run_selected_quote_histories(
+        settings, plan, max_new_requests=52, max_observed_credits=70,
+        workers=16, adaptive_workers=True, worker_ceiling=24,
+        authorize=True, paid=True, private=True, token="synthetic",
+        transport=transport, progress=progress.append,
+    )
+    assert report["pending"] == 0
+    assert report["new_provider_attempts"] == 52
+    assert len(seen) == 52
+    batches = [x for x in progress if x["stage"] == "BOUNDED_QUOTE_BATCH"]
+    assert batches[0]["active_workers"] == 16
+    assert batches[0]["next_workers"] == 20
+    assert any(x["active_workers"] > 16 for x in batches[1:])
+    assert all(1 <= x["batch_size"] <= x["active_workers"] <= 24 for x in batches)
+    assert q.run_selected_quote_histories(settings, plan)["pending"] == 0
+    with pytest.raises(CandidateChainCacheError, match="adaptive concurrency"):
+        q.run_selected_quote_histories(settings, plan, workers=16,
+                                       adaptive_workers=True, worker_ceiling=25)

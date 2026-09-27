@@ -24,3 +24,10 @@ This first combined range is a **bounded research wave**, not a claim to have do
 \`\`\`
 
 The operator must explicitly run it; CI and docs-only work do **not** spend provider credits. A source/quote partial result is not paper/live approval. If the command fails, report full original console output rather than invoking another command blindly.
+
+
+### 2026-09-27 — Combined 16–25 success and one-command 2022 remaining bulk
+
+Operator accepted source campaign 16–25: 400 original chain GETs, 378 complete, 22 strictly proven exact source gaps, zero pending, 377 credits. Total additive 0–25 = 979 complete + 61 narrow source gaps among 1,040 original physical keys. V2 frozen quote plan through25: 2,725/2,725 complete exact CALL full EOD histories, 1,016 newly downloaded and 1,709 reused, zero quote gaps/pending, 1,010 new quote credits; both stages 1,387 observed credits, last remaining 6,909. Quote response bytes all 2,725 = 31,361,769; D: candidate cache 0.023→0.036 GiB. Result \`01bc9b6e3187161d6cc296cabe54e1ca5c993b89cdbfde962ef5cfc63876163b\`.
+
+The new \`scripts/run_marketdata_2022_bulk_acquisition_v1.py\` replaces individual 10-shard operator handoffs **for the remaining frozen 2022 additive shards 26–70 only**: once-only accepted source load/prior check, frozen SHA-bound 45-shard source manifest, disjoint original chain shard network concurrency 4→8 based on observed throughput, then full V2 exact CALL quote sources with 16→24 adaptive I/O workers, always reusing completed paid receipts and respecting shared credit/D: limits. At full source+quote completion, the script performs a single offline EOD quality/volume audit. It makes no claim of 09:35 executable option prices or any outcome/PAPER/LIVE authority. See \`docs/research/marketdata_2022_bulk_local_first_v1_20260927.md\`.
