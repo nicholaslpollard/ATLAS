@@ -231,3 +231,31 @@ def test_same_physical_group_keeps_all_accepted_ids_with_one_native_raw_read(tmp
     assert bundle["representative_policy"] == (
         "LEXICOGRAPHIC_FIRST_ID_PER_PHYSICAL_KEY_NO_OUTCOMES"
     )
+
+
+
+def test_bulk_once_verified_prior_skips_redundant_full_storage_census(
+    tmp_path, monkeypatch,
+):
+    scans = []
+    monkeypatch.setattr(additive, "_require_external", lambda *_: scans.append(1))
+    settings, prep, prior_preview, loader, native, loads, calls, _ = _fixture(tmp_path)
+    original = additive._prior(settings, runner=prior_preview, preparer=prep)
+    first = additive.prepare_additive_shard(
+        settings, shard_index=0, preparer=prep, runner=prior_preview,
+        verified_prior=original, loader=loader, native_reader=native,
+    )
+    second = additive.prepare_additive_shard(
+        settings, shard_index=1, preparer=prep, runner=prior_preview,
+        verified_prior=original, loader=loader, native_reader=native,
+    )
+    assert first[3] == second[3] == "WRITTEN_NEW_ADDITIVE_SHARD"
+    assert scans == []
+    # Standalone source preparation without already verified original evidence
+    # still performs its independent D: quota/readiness preflight.
+    additive.prepare_additive_shard(
+        settings, shard_index=1, preparer=prep, runner=prior_preview,
+        loader=lambda *_a, **_k: pytest.fail("bound shard should reuse source"),
+        native_reader=native,
+    )
+    assert scans == [1]
