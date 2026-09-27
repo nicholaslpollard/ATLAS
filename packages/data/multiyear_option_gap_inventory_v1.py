@@ -9,7 +9,7 @@ Never create a paid GET while exact prior-chain/2025-pilot reconciliation is due
 """
 
 from collections import Counter, defaultdict
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_FLOOR
 from pathlib import Path
 from typing import Any, Callable
@@ -208,9 +208,8 @@ def freeze_option_source_gap_inventory(
                 rank = index["rank_zero"].get(oid)
                 if rank is not None:
                     if (
-                        rank["original_raw_open"] != row["raw_underlying_price"]
-                        or rank["original_expiration"] != (expiry.toordinal() and
-                            (expiry.fromordinal(expiry.toordinal()+1)).isoformat())
+                        Decimal(rank["original_raw_open"]) != Decimal(row["raw_underlying_price"])
+                        or rank["original_expiration"] != (expiry + timedelta(days=1)).isoformat()
                         or not rank["option_symbol"].startswith(row["ticker"])
                     ):
                         raise MultiYearOptionInventoryError(
