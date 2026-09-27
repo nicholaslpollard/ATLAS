@@ -177,6 +177,9 @@ def prepare_additive_shard(
             excluded_prior_key += 1
             continue
         new_by_key[key].append(item)
+    expiry_window_exclusions.sort(key=lambda row: (
+        row["snapshot_date"], row["ticker"], row["opportunity_id"],
+    ))
     keys = sorted(new_by_key, key=lambda k: (
         _fingerprint({"salt": SALT, "key": k}), k
     ))
@@ -186,9 +189,12 @@ def prepare_additive_shard(
     if shard_index >= shards:
         raise CandidateChainCacheError(f"requested shard {shard_index} beyond {shards} accepted shards")
     chosen_keys = keys[shard_index * KEYS_PER_SHARD:(shard_index + 1) * KEYS_PER_SHARD]
-    selected = [item for key in chosen_keys for item in sorted(
-        new_by_key[key], key=lambda row: row.opportunity_id
-    )]
+    chosen_members = {
+        key: sorted(new_by_key[key], key=lambda item: item.opportunity_id)
+        for key in chosen_keys
+    }
+    selected = [members[0] for members in chosen_members.values()]
+    additional_covered_ids = sum(len(members) - 1 for members in chosen_members.values())
     if len(selected) > 10000:
         raise CandidateChainCacheError("additive shard exceeds planner source upper bound")
     if progress is not None:
