@@ -150,6 +150,10 @@ def _fixtures():
         "rows":native_rows,
     }
     native["source_fingerprint"]=_fingerprint(native)
+    inventory["original_native_stock_source_fingerprint"]=native["source_fingerprint"]
+    inventory["inventory_fingerprint"]=_fingerprint({
+        k:v for k,v in inventory.items() if k!="inventory_fingerprint"
+    })
     sources={
         "pilot_members":pilot22, "pilot_by_key":pilot_by_key,
         "additive_representatives":reps,
