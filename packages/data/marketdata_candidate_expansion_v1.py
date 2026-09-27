@@ -22,6 +22,7 @@ from packages.data.marketdata_candidate_chain_cache_v1 import (
     verify_candidate_plan,
 )
 from packages.data.research_storage import inspect_research_storage
+from packages.data.marketdata_candidate_batch_plan_v1 import MAX_CHAIN_GROUPS
 
 CONTRACT = "atlas-marketdata-candidate-expansion-2022-2024-v1"
 BINDING_REL = "data/options/manifests/marketdata_candidate_expansion_v1"
@@ -194,7 +195,7 @@ def run_expansion(
         raise CandidateChainCacheError("authorization flags require a positive request budget")
     verified = verify_candidate_plan(plan)
     if (verified["plan_fingerprint"] != plan["plan_fingerprint"]
-            or not 1 <= len(verified["requests"]) <= 36
+            or not 1 <= len(verified["requests"]) <= MAX_CHAIN_GROUPS
             or not source.is_file() or source.is_symlink()):
         raise CandidateChainCacheError("expanded chain plan/source is not accepted")
     if max_total_new_requests:
