@@ -139,7 +139,11 @@ def prepare_additive_shard(
 ) -> tuple[dict[str, Any], Path, dict[str, Any], str]:
     if not 0 <= shard_index <= MAX_SHARD_INDEX or not 1 <= duckdb_threads <= 8:
         raise CandidateChainCacheError("additive shard index/threads outside registered bounds")
-    _require_external(settings)
+    # Bulk orchestration already performed the full D: quota/readiness preflight.
+    # Do not rescan every research directory for each of 45 OFFLINE source
+    # plan binds. Live GETs still perform their own up-to-date quota/free checks.
+    if verified_prior is None:
+        _require_external(settings)
     # The bulk orchestrator can pass the once-verified original source.
     # This is source-only; every bound shard still verifies original SHA/plan.
     if verified_prior is None:
