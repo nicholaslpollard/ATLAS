@@ -47,6 +47,7 @@ def _native():
             **_case("late2025",2025,"12-31","12-31","2026-02-20",None,
                     "DEFERRED_ENTRY_2026_NATIVE_SOURCE_NOT_READ"),
             "entry_session":"2026-01-02",
+            "expiration":"2026-02-20",
             "planned_option_decision_at_utc":"2026-01-02T14:35:00+00:00",
         },
     ]
