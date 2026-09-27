@@ -32,6 +32,8 @@ from packages.data.marketdata_2022_broad_quote_campaign_v2 import (
 from packages.data.marketdata_2022_selected_quote_campaign_v1 import (
     MAX_NEW_QUOTE_REQUESTS, MAX_OBSERVED_CREDITS as QUOTE_CREDIT_CAP,
 )
+from packages.data.marketdata_2022_native_batch_v1 import batched_native_reader
+from packages.data.marketdata_2022_quote_coverage_audit_v1 import audit_frozen_quote_coverage
 from packages.data.research_storage import assert_category_acquisition_allowed
 
 CONTRACT = "atlas-2022-complete-additive-source-and-call-eod-bulk-v1"
@@ -71,9 +73,11 @@ def run_complete_2022_bulk(
     prior_reader: Callable[..., Any] = shards._prior,
     preparer: Callable[..., Any] = prepare_additive_shard,
     loader: Callable[..., Any] = load_selected_replay_opportunities,
+    native_batch_builder: Callable[..., Any] = batched_native_reader,
     source_runner: Callable[..., dict[str, Any]] = run_expansion,
     plan_builder: Callable[..., dict[str, Any]] = freeze_broad_quote_plan,
     quote_runner: Callable[..., dict[str, Any]] = run_broad_quote_histories,
+    coverage_auditor: Callable[..., dict[str, Any]] = audit_frozen_quote_coverage,
     progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     if (type(max_total_new_chain_requests) is not int or not 0 <= max_total_new_chain_requests <= MAX_CHAIN_GETS
@@ -145,13 +149,20 @@ def run_complete_2022_bulk(
             source_loads += 1
         return cached_source
 
-    # Plan/source materialization is sequential and CPU/SSD bounded. Each
-    # new original shard shares the one accepted training/source load.
+    # Only the production preparer accepts the once-batched native source.
+    # Injected synthetic preparers retain their old test contract.
+    native_subset = (native_batch_builder(
+        settings, load_once, prior, duckdb_threads=duckdb_threads,
+        progress=lambda row: emit("NATIVE_BATCH", **{
+            k: v for k, v in row.items() if k != "stage"
+        }, native_stage=row.get("stage")),
+    ) if preparer is prepare_additive_shard else None)
     source_tasks: list[tuple[int, dict[str, Any], Path, str, int]] = []
     for index in range(FIRST_NEW_SHARD, LAST_SHARD + 1):
         plan, path, bound, action = preparer(
             settings, shard_index=index, duckdb_threads=duckdb_threads,
             loader=load_once, verified_prior=prior,
+            **({"native_reader": native_subset} if native_subset is not None else {}),
             progress=lambda item, idx=index: emit("SHARD_PREPARATION", shard_index=idx, source_event=item),
         )
         source = _read_object(path)
@@ -376,6 +387,25 @@ def run_complete_2022_bulk(
             "last_provider_remaining": last_remaining, "quote_plan_fingerprint": plan["plan_fingerprint"],
             "original_paid_receipts_replayed": 0,
         }
+    # One local full-corpus audit only at terminal quote coverage, never
+    # between paid batches. SHA/receipt checks are inherited from the reader.
+    coverage = None
+    if quote_report.get("status") == "COMPLETE_SOURCE_ONLY" and quote_report.get("pending") == 0:
+        coverage = coverage_auditor(settings, last_shard_inclusive=LAST_SHARD)
+        if (coverage.get("status") != "COMPLETE_SOURCE_ONLY"
+                or coverage.get("frozen_plan_fingerprint") != plan["plan_fingerprint"]
+                or coverage.get("unique_exact_quote_series") != plan["unique_exact_quote_series"]
+                or coverage.get("complete_exact_histories") != quote_report["complete_source_series"]
+                or coverage.get("exact_quote_no_data_gaps") != quote_report["exact_source_gaps"]
+                or coverage.get("pending_exact_histories") != 0
+                or coverage.get("provider_requests_this_audit") != 0):
+            raise CandidateChainCacheError("terminal local EOD audit disagrees with original receipts")
+        emit("FULL_2022_LOCAL_COVERAGE", audit_fingerprint=coverage["audit_fingerprint"],
+             reported_eod_rows=coverage["total_observed_eod_rows"],
+             positive_volume_rows=coverage["rows_with_positive_reported_volume"],
+             zero_volume_rows=coverage["rows_with_zero_reported_volume"],
+             histories_without_positive_volume=coverage["histories_with_no_positive_reported_volume"],
+             provider_reads=0)
     result = {
         "contract": CONTRACT,
         "status": ("COMPLETE_FROZEN_2022_SOURCE_AND_QUOTE_CORPUS"
@@ -397,6 +427,10 @@ def run_complete_2022_bulk(
         "last_provider_remaining": last_remaining,
         "verified_original_quote_body_bytes": quote_report["verified_and_new_raw_body_bytes"],
         "original_paid_receipts_replayed": 0,
+        "terminal_local_audit_fingerprint": coverage["audit_fingerprint"] if coverage else None,
+        "terminal_observed_eod_rows": coverage["total_observed_eod_rows"] if coverage else None,
+        "terminal_positive_volume_rows": coverage["rows_with_positive_reported_volume"] if coverage else None,
+        "terminal_zero_volume_rows": coverage["rows_with_zero_reported_volume"] if coverage else None,
         "source_only_no_0935_option_fill_pnl_paper_live_or_broker_authority": True,
     }
     result["report_fingerprint"] = _fingerprint(result)
