@@ -464,9 +464,16 @@ def reconcile_original_sources(
                     source=sources["additive_same_key"][oid]
                     rep_id=source["representative_id"]
                     gap=sources["additive_gaps"].get(rep_id)
+                    pointer=next((x for x in sources["gap_linked_same_key_members"]
+                                  if x["case_id"]==oid),None)
                     if (source["source_key"]!=key or gap not in {
                         "NO_CALL_IN_COMPLETED_CHAIN", "EXACT_QUERY_NO_DATA"
-                    } or oid not in {x["case_id"] for x in sources["gap_linked_same_key_members"]}):
+                    } or pointer is None
+                        or pointer["representative_id"]!=rep_id
+                        or pointer["representative_source_gap"]!=gap
+                        or pointer["source_key"]!=list(key)
+                        or pointer["source_sha256"]!=source["source_sha256"]
+                        or pointer["shard_index"]!=source["shard_index"]):
                         raise OriginalCrosswalkError("2022 gap-linked same-key source drifted")
                     classification="ORIGINAL_2022_GAP_LINKED_SAME_KEY_"+gap
                     linked={**source,
