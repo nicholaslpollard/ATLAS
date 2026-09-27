@@ -27,8 +27,15 @@ def main() -> int:
         )
         print(f"  result: {action} / {path}", flush=True)
         print(f"  original stock case denominator: {result['case_denominator']}", flush=True)
-        print(f"  original 2022 reconciled: {result['2022_total_original_cases_reconciled']}", flush=True)
-        print(f"  original 2022 unmatched: {result['2022_unmatched_cases_remaining']}", flush=True)
+        print(f"  original 2022 cases accounted: {result['2022_total_original_cases_reconciled']}", flush=True)
+        print(f"  original 2022 exact source membership gaps: {result['2022_unmatched_cases_remaining']}", flush=True)
+        for case in result["2022_unmatched_original_source_cases"]:
+            print(f"    uncovered ID={case['case_id']} ticker={case['ticker']} snapshot={case['signal_session']} expiry={case['expiration']} status={case['classification']} prior_key_representatives={case['same_key_existing_physical_representatives']}",flush=True)
+        print(f"  original 2022 source-only additive representatives outside frozen case census: {len(result['2022_source_only_original_additive_representatives'])}",flush=True)
+        for item in result["2022_source_only_original_additive_representatives"]:
+            print(f"    old-only representative ID={item['case_id']} original_key={item['source_key']} shard={item['shard_index']}",flush=True)
+        print(f"  original 2022 source-only pilot representatives outside frozen case census: {len(result['2022_source_only_original_pilot_representatives'])}",flush=True)
+        print(f"  original 2022 pilot-key overlaps: {result['2022_pilot_same_key_other_cases']} IDs={result['2022_pilot_same_key_other_case_ids']}",flush=True)
         print(f"  original 2022 additive representatives: {result['2022_original_additive_representatives']}", flush=True)
         print(f"  original 2022 same-key members: {result['2022_original_additive_same_key_members']}", flush=True)
         print(f"  original 2022 accepted gap-linked same-key members: {result['2022_gap_linked_same_key_member_count']}", flush=True)
