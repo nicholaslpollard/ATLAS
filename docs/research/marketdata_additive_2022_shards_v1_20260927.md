@@ -40,3 +40,20 @@ The repaired latest action is **only the new additive 2022 shard**, not the orig
 ```
 
 The next user output must establish actual total additional eligible source keys/shard count, recorded expiration exclusions, duplicate-member coverage, provider credit cost and outcome of shard 0 before broader paid acquisition. None of this evidence is at-decision 09:35 option execution/P&L, deliverable proof, strategy promotion, PAPER/LIVE or broker authority.
+
+
+## Operator source-freeze acceptance and executor cap repair — 2026-09-27
+
+The repaired additive 2022 source scan accepted **2,897 DEVELOPMENT daily LONG cases** from the retained selected comparable source; 36 original pilot IDs were excluded, zero further physical old-query groups collided, and **20 out-of-window expiry cases were recorded** under exclusion-list fingerprint `3d97f2113baa32ed7a77cc4d447690acec885acc8df61eaea979ebb78b99335f`. It produced **2,812 new physical query keys across 71 fixed 40-key shards**. First shard held 40 representative source opportunities, plus one covered same-key alternate. These figures come from operator output, not an extrapolation. The original 2022 sample remains 33 complete+three proven exact 404 gaps/zero pending.
+
+The operator's first additive run durably wrote the original D:-bound source bundle, plan, and shard binding *before any provider GET*. Frozen source bundle SHA256 `438418f9e50f58ba66501e5935d3a857cedadddc2c668dd6ea69baf119c89030`; shard cohort `2b72a84e6341953d`; original planned 40-chain fingerprint `9df6a0c6db48c9617a99d1decab35b84ceffd5677090516cb7a8b31095512fd8`. It then failed on the generic expansion executor's inherited monthly-pilot guard `len(requests) <= 36` with `expanded chain plan/source is not accepted`. **No added billable provider request occurred.** This was an executor-envelope mismatch, not corrupt source data or an opportunity to regenerate the source.
+
+The narrow correction imports the existing 250-group upper bound from the fully PIT-reconstructing `marketdata_candidate_batch_plan_v1` validator into `run_expansion`. It does **not** change `prepare_cohort`'s original 36-case/monthly sampler, the request plan, source hash, cache receipt shape, underlying ten-request physical batch ceiling, 50-new-GET per-invocation bound, observed credit ceiling, D: quota, source-gap proof, protected data permissions, or any scientific policy. Tests run a full synthetic 40-group plan through four ten-request batches, preview the unchanged 250-group planner limit, reject 251 before the cache, and assert original monthly limits.
+
+**Next operator action after merge is only additive shard 0**, with its previously frozen source and plan revalidated and reused:
+
+```powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }; git pull --ff-only; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed. Stop.' }; & .\.venv\Scripts\python.exe scripts\run_marketdata_additive_2022_shard_v1.py --shard-index 0 --duckdb-threads 4 --max-total-new-requests 40 --max-observed-credits 80 --authorize-provider-reads --confirm-paid-starter --confirm-private-internal-use --classify-exact-no-data; if ($LASTEXITCODE -ne 0) { throw 'Additive shard stopped. Preserve original evidence; no blind retries.' } }
+```
+
+The desired next output is `source: REUSED_IMMUTABLE_ADDITIVE_SHARD`, original frozen plan fingerprint, acquisition counts, verified no-data, and credits. No EOD chain evidence proves 09:35 option prices, contract deliverable, execution, options P&L, PAPER/LIVE or broker authority. Later shards are separate intentional operator requests, not automatic looping over 71 without observing provider credit and storage usage.
