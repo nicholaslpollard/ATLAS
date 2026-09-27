@@ -19,7 +19,7 @@ from packages.data.marketdata_candidate_expansion_v1 import _exclusive, _read_ob
 from packages.data.marketdata_2022_selected_quote_campaign_v1 import (
     PLAN_REL, freeze_quote_plan, run_selected_quote_histories,
 )
-from packages.data.research_storage import ResearchStorageError
+from packages.data.research_storage import ResearchStorageError, inspect_research_storage
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -60,6 +60,10 @@ def main(argv: list[str] | None = None) -> int:
               f"{plan['selected_candidate_memberships']} / {plan['unique_exact_quote_series']}", flush=True)
         print(f"  quote query: 2022-01-01 through exact OCC expiration inclusive, once per symbol", flush=True)
         print(f"  plan fingerprint: {plan['plan_fingerprint']}", flush=True)
+        before = inspect_research_storage(settings)
+        print(f"  D: before: free={before.disk_free_gib:.3f} GiB "
+              f"candidate_cache={before.category_usage_gib['options_candidate_cache']:.3f}/"
+              f"{before.category_quota_gib['options_candidate_cache']:.3f} GiB", flush=True)
         result = run_selected_quote_histories(
             settings, plan, max_new_requests=a.max_new_requests,
             max_observed_credits=a.max_observed_credits, workers=a.workers,
@@ -70,6 +74,10 @@ def main(argv: list[str] | None = None) -> int:
                 "  quotes: " + " ".join(f"{k}={v}" for k, v in row.items()), flush=True
             ),
         )
+        after = inspect_research_storage(settings)
+        print(f"  D: after: free={after.disk_free_gib:.3f} GiB "
+              f"candidate_cache={after.category_usage_gib['options_candidate_cache']:.3f}/"
+              f"{after.category_quota_gib['options_candidate_cache']:.3f} GiB", flush=True)
         print(f"  result: {result['status']}", flush=True)
         print(f"  complete histories / exact no-data / pending: "
               f"{result['complete_source_series']} / {result['exact_source_gaps']} / "

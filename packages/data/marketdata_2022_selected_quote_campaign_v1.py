@@ -108,6 +108,12 @@ def freeze_quote_plan(
             raise CandidateChainCacheError("selected quote source shard immutable lineage changed")
         cohort_census = census
         source_by_id = {x["opportunity_id"]: x for x in source["rows"]}
+        same_key_members = {
+            (x["ticker"], x["snapshot_date"], x["expiration"]): x["all_accepted_member_ids"]
+            for x in source.get("chosen_key_member_ids", [])
+        }
+        if len(same_key_members) != len(source["rows"]):
+            raise CandidateChainCacheError("same-key accepted opportunity membership ledger missing")
         if len(source_by_id) != len(source["rows"]):
             raise CandidateChainCacheError("duplicate source opportunity IDs")
         source_plans.append({
@@ -150,6 +156,11 @@ def freeze_quote_plan(
                         "opportunity_id": oid, "classification": "NO_CALL_IN_COMPLETED_CHAIN",
                     })
                     continue
+                original_key = (original["ticker"], original["snapshot_date"], original["expiration"])
+                covered_ids = same_key_members.get(original_key)
+                if (not isinstance(covered_ids, list) or oid not in covered_ids
+                        or any(not isinstance(x, str) for x in covered_ids)):
+                    raise CandidateChainCacheError("original same-key member ledger differs")
                 for rank, candidate in enumerate(candidates):
                     symbol = candidate["option_symbol"]
                     expiry = date.fromisoformat(original["expiration"])
@@ -180,6 +191,7 @@ def freeze_quote_plan(
                         "selected_call_strike": candidate["strike"],
                         "chain_request_identity": request["request_identity"],
                         "chain_body_sha256": receipt["body_sha256"],
+                        "all_accepted_same_key_opportunity_ids": covered_ids,
                     })
                     total_memberships += 1
     requests = []

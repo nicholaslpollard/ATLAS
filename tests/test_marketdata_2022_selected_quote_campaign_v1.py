@@ -28,6 +28,11 @@ def _fixture(tmp_path, *, status=200):
         "global": "x", "protected_master_return_rows_read": 0,
         "original_prior_plan_fingerprint": "old-plan",
         "all_additive_query_keys_fingerprint": "a" * 64,
+        "chosen_key_member_ids": [{
+            "ticker": "ABC", "snapshot_date": "2022-01-03",
+            "expiration": "2022-03-18",
+            "all_accepted_member_ids": ["test-1", "test-1-alt-policy"],
+        }],
         "rows": [
             {"opportunity_id": "test-1", "ticker": "ABC", "snapshot_date": "2022-01-03",
              "expiration": "2022-03-18", "raw_underlying_price": "100"},
@@ -82,6 +87,7 @@ def test_frozen_plan_uses_original_chain_receipt_and_three_exact_quote_series(tm
     assert {r["from_inclusive"] for r in plan["requests"]} == {"2022-01-01"}
     assert {r["to_exclusive"] for r in plan["requests"]} == {"2022-03-19"}
     assert all(len(r["source_shard_memberships"]) == 1 for r in plan["requests"])
+    assert all(r["source_shard_memberships"][0]["all_accepted_same_key_opportunity_ids"] == ["test-1", "test-1-alt-policy"] for r in plan["requests"])
 
 
 def _fake_quote_raw(symbol, *, s="ok"):
