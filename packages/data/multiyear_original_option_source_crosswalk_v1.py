@@ -370,8 +370,11 @@ def reconcile_original_sources(
             elif pre=="ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED":
                 if oid in sources["additive_representatives"]:
                     source=sources["additive_representatives"][oid]
-                    if oid not in sources["additive_gaps"] or source["source_key"]!=key:
-                        raise OriginalCrosswalkError("old 2022 source gap has no original classification")
+                    if (
+                        oid not in sources["additive_gaps"] or source["source_key"]!=key
+                        or not _price_equal(source["raw_open"],_case_raw_price(native_by_id,oid))
+                    ):
+                        raise OriginalCrosswalkError("old 2022 source gap has no matching original evidence")
                     classification="ORIGINAL_2022_"+sources["additive_gaps"][oid]
                     linked={**source,"exact_query_no_data_proof":
                         sources["additive_exact_no_data_proofs"].get(oid)}
@@ -416,7 +419,8 @@ def reconcile_original_sources(
                     raise OriginalCrosswalkError("2025 original pilot no longer matches full accepted stock source")
                 if pilot["source_status"]=="EXACT_QUERY_NO_DATA":
                     if (
-                        pilot["provisional_nearest_atm_call"] is not None
+                        row["ticker"]!="FSLY"
+                        or pilot["provisional_nearest_atm_call"] is not None
                         or original["source_coverage"]!="SOURCE_NO_DATA_VERIFIED"
                     ):
                         raise OriginalCrosswalkError("pilot exact-query FSLY gap changed")
