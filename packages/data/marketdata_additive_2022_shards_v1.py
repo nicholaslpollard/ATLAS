@@ -111,6 +111,14 @@ def _read_bound(settings: AtlasSettings, shard_index: int, prior_fp: str) -> tup
             or source.get("protected_master_return_rows_read") != 0
             or source.get("authority", {}).get("provider_reads") is not False
             or len(source.get("rows", [])) != binding["selected_opportunities"]
+            or source.get("monthly_expiry_window_exclusions_fingerprint") != _fingerprint(
+                source.get("monthly_expiry_window_exclusions"))
+            or source.get("excluded_monthly_expiry_window_cases") != len(
+                source.get("monthly_expiry_window_exclusions", []))
+            or source.get("covered_same_key_alternate_opportunity_ids") != binding.get(
+                "covered_same_key_alternate_opportunity_ids")
+            or source.get("excluded_monthly_expiry_window_cases") != binding.get(
+                "excluded_monthly_expiry_window_cases")
             or plan["plan_fingerprint"] != binding["plan_fingerprint"]
             or plan["opportunities"] != binding["selected_opportunities"]
             or plan["shared_chain_requests"] != binding["shared_chains"]
@@ -204,6 +212,9 @@ def prepare_additive_shard(
             "excluded_entire_original_query_key": excluded_prior_key,
             "new_candidate_keys": len(keys), "total_shards": shards,
             "selected_shard_keys": len(chosen_keys), "selected_shard_opportunities": len(selected),
+            "additional_ids_covered_by_selected_keys": additional_covered_ids,
+            "excluded_no_monthly_expiry_in_window": len(expiry_window_exclusions),
+            "expiry_exclusion_fingerprint": _fingerprint(expiry_window_exclusions),
         })
     opens, daily_source = native_reader(settings.project_root, selected)
     if set(opens) != {x.opportunity_id for x in selected}:
@@ -242,6 +253,16 @@ def prepare_additive_shard(
         "eligible_daily_long_cases": len(eligible),
         "excluded_original_opportunity_ids": excluded_id,
         "excluded_colliding_original_query_keys": excluded_prior_key,
+        "excluded_monthly_expiry_window_cases": len(expiry_window_exclusions),
+        "monthly_expiry_window_exclusions": expiry_window_exclusions,
+        "monthly_expiry_window_exclusions_fingerprint": _fingerprint(expiry_window_exclusions),
+        "covered_same_key_alternate_opportunity_ids": additional_covered_ids,
+        "chosen_key_member_ids": [
+            {"ticker": key[0], "snapshot_date": key[1], "expiration": key[2],
+             "all_accepted_member_ids": [x.opportunity_id for x in chosen_members[key]]}
+            for key in chosen_keys
+        ],
+        "representative_policy": "LEXICOGRAPHIC_FIRST_ID_PER_PHYSICAL_KEY_NO_OUTCOMES",
         "original_prior_plan_fingerprint": prior["plan_fingerprint"],
         "source_selected_opportunity_integrity_fingerprint": source["source_integrity_fingerprint"],
         "source_conditioning_analysis_fingerprint": source.get("conditioning_analysis_fingerprint"),
@@ -284,6 +305,8 @@ def prepare_additive_shard(
         "prior_plan_fingerprint": prior["plan_fingerprint"],
         "source_sha256": source_sha, "plan_fingerprint": plan["plan_fingerprint"],
         "selected_opportunities": len(selected), "shared_chains": len(plan["requests"]),
+        "excluded_monthly_expiry_window_cases": len(expiry_window_exclusions),
+        "covered_same_key_alternate_opportunity_ids": additional_covered_ids,
         "source_role": "ACCEPTED_NATIVE_RAW_DEVELOPMENT_ONLY",
         "provider_reads": 0, "no_option_fill_or_pnl_authority": True,
     }
