@@ -74,7 +74,8 @@ def _fixtures():
         }
         gaps[row["case_id"]]="NO_CALL_IN_COMPLETED_CHAIN"
     for k in range(2):
-        row=add(2022,f"gap-alt{k:02d}","ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED")
+        row=add(2022,f"gap-alt{k:02d}","ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED",
+                price="51" if k==0 else "50")
         rep_id=f"2022-gap{k:03d}"
         alt[row["case_id"]]={
             **reps[rep_id], "representative_id":rep_id,
@@ -362,4 +363,7 @@ def test_gap_linked_exact_query_no_data_stays_exact_scope():
     assert row["original_reconciliation"]=="ORIGINAL_2022_GAP_LINKED_SAME_KEY_EXACT_QUERY_NO_DATA"
     assert row["original_source_pointer"]["exact_query_no_data_proof"]=="proof-fingerprint"
     assert row["original_source_pointer"]["own_preferred_call_not_selected"] is True
+    assert row["original_source_pointer"]["representative_raw_open"]=="50"
+    assert row["original_source_pointer"]["member_native_raw_open"]=="51"
+    assert row["original_source_pointer"]["strike_coverage"]=="ORIGINAL_STRIKE_ENVELOPE_PARTIAL_FOR_THIS_RAW_OPEN"
     assert row["new_paid_request_authority"] is False
