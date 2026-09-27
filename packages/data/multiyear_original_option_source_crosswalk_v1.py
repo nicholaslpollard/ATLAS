@@ -449,9 +449,8 @@ def reconcile_original_sources(
         if oid not in accepted_2022
     ]
     original_source_only_pilot=[
-        {"case_id":oid,"source_key":list(_source_key({
-            "ticker":key[0],"signal_session":key[1],"expiration":key[2]
-        })),"request_identity":source["request_identity"],
+        {"case_id":oid,"source_key":list(key),
+         "request_identity":source["request_identity"],
          "original_chain_sha256":source["original_chain_sha256"]}
         for key,source in sorted(sources["pilot_by_key"].items())
         for oid in [source["representative_id"]] if oid not in accepted_2022
@@ -653,6 +652,22 @@ def reconcile_original_sources(
             progress({"stage":"ORIGINAL_CROSS_YEAR_SOURCE_RECONCILIATION",
                       "cases_processed":idx,"total_cases":len(inventory["cases"]),
                       "provider_requests":0})
+    if progress:
+        progress({
+            "stage":"ORIGINAL_2022_EXACT_PHYSICAL_SOURCE_ACCOUNTING",
+            "accepted_cases":len(all2022),
+            "original_pilot_same_key_other_cases":len(prior_key_colliders),
+            "original_pilot_same_key_other_case_ids":sorted(prior_key_colliders),
+            "unmatched_original_source_cases":len(unresolved_2022),
+            "unmatched_details":unresolved_2022,
+            "historical_source_only_additive_representatives":
+                len(original_source_only_reps),
+            "historical_source_only_additive_details":original_source_only_reps,
+            "historical_source_only_pilot_representatives":
+                len(original_source_only_pilot),
+            "historical_source_only_pilot_details":original_source_only_pilot,
+            "provider_requests":0,
+        })
     if (
         len(all2022)!=2900 or len(reconciled_2022)!=2900
         or len(used25)!=12
