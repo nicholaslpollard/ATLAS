@@ -420,8 +420,9 @@ def run_demand_cache(
             "started_at_utc": datetime.now(UTC).isoformat(),
             "manual_review_required_if_aborted": True,
         })
+        clean_close = False
         try:
-            with ThreadPoolExecutor(max_workers=workers) as pool:
+            with ThreadPoolExecutor(max_workers=min(workers, max(1, (os.cpu_count() or 4) - 2))) as pool:
                 while pending and attempts < max_new_requests and credits < max_observed_credits:
                     reserve_remaining = (
                         user_asserted_remaining if latest_remaining is None
@@ -492,18 +493,22 @@ def run_demand_cache(
                         raise MultiYearQuoteCacheError(
                             "observed provider credit bound/floor violated; STOP paid acquisition"
                         )
+            clean_close = True
         finally:
-            # A clean/handled final path has persisted all reported source
-            # receipts. If process terminates abruptly, lock survives for review.
-            lock.unlink(missing_ok=True)
+            # A failure/uncertain original provider attempt must leave the
+            # account-level paid-session lock for explicit operator review.
+            # Completed sources retain their own immutable raw/body receipts.
+            if clean_close:
+                lock.unlink(missing_ok=True)
     report = {
         "contract": CONTRACT, "plan_fingerprint": signature,
         "status": (
-            "ALL_DEMAND_SOURCES_ACCOUNTED" if not pending
+            "ALL_ELIGIBLE_SOURCE_QUERIES_ACCOUNTED" if not pending
             else "PREVIEW_ONLY_NO_PROVIDER_GETS" if not paid else "PARTIAL_HARD_BUDGET"
         ),
         "original_requested_case_denominator": plan["requested_case_denominator"],
         "unique_physical_quote_queries": len(requests),
+        "ineligible_original_cases": sum(x["disposition"] != "SOURCE_DEMAND_READY" for x in plan["memberships"]),
         "reused_original_2022": reused_original,
         "new_cache_complete": completed, "exact_source_gaps": gap,
         "pending": len(pending), "new_provider_attempts": attempts,
