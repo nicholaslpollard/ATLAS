@@ -49,9 +49,15 @@ POLICY = "NEAREST_PIT_RAW_OPEN_CALL_AND_UP_TO_TWO_NEAREST_DISTINCT_ALTERNATES_NO
 
 
 def _clean_call_candidates(
-    rows: tuple[dict[str, Any], ...], raw_open: object,
+    rows: tuple[dict[str, Any], ...], raw_open: object, *,
+    max_candidates: int | None = 3,
+    strike_window: Decimal | None = None,
 ) -> tuple[dict[str, Any], ...]:
     """Select a bounded CALL candidate set from *prior-session* identities only."""
+    if max_candidates is not None and (type(max_candidates) is not int or not 1 <= max_candidates <= 1000):
+        raise CandidateChainCacheError('CALL candidate limit outside 1..1000')
+    if strike_window is not None and (not isinstance(strike_window, Decimal) or not strike_window.is_finite() or not Decimal('0') < strike_window <= Decimal('0.08')):
+        raise CandidateChainCacheError('PIT price window outside (0, 8%]')
     try:
         price = Decimal(str(raw_open))
         if not price.is_finite() or price <= 0:
@@ -67,6 +73,8 @@ def _clean_call_candidates(
                     or strike <= 0 or symbol in seen):
                 raise ValueError("invalid or duplicate CALL identity")
             seen.add(symbol)
+            if strike_window is not None and abs(strike - price) > price * strike_window:
+                continue
             calls.append({"option_symbol": symbol, "strike": str(strike)})
         if not calls:
             return ()
@@ -75,7 +83,7 @@ def _clean_call_candidates(
             Decimal(x["strike"]) < price,  # out-of-the-money wins exact tie
             Decimal(x["strike"]), x["option_symbol"],
         ))
-        return tuple(calls[:3])
+        return tuple(calls[:max_candidates] if max_candidates is not None else calls)
     except (InvalidOperation, TypeError, ValueError) as exc:
         raise CandidateChainCacheError("PIT raw-open CALL selection malformed") from exc
 
@@ -83,6 +91,9 @@ def _clean_call_candidates(
 def freeze_quote_plan(
     settings: AtlasSettings, *, last_shard_inclusive: int,
     preparer: Callable[..., Any] = prepare_additive_shard,
+    candidate_limit: int | None = 3,
+    strike_window: Decimal | None = None,
+    quote_selection_policy: str = POLICY,
 ) -> dict[str, Any]:
     """Needs already-complete source shards only. ZERO provider requests."""
     if type(last_shard_inclusive) is not int or not 0 <= last_shard_inclusive < MAX_SHARDS:
@@ -148,7 +159,7 @@ def freeze_quote_plan(
                         or original["ticker"] != request["ticker"]
                         or member["side"] != "call"):
                     raise CandidateChainCacheError("original stock/PIT source mapping changed")
-                candidates = _clean_call_candidates(rows, original["raw_underlying_price"])
+                candidates = _clean_call_candidates(rows, original["raw_underlying_price"], max_candidates=candidate_limit, strike_window=strike_window)
                 if not candidates:
                     source_gaps.append({
                         "shard_index": index, "chain_request_identity": request["request_identity"],
@@ -207,7 +218,7 @@ def freeze_quote_plan(
         "year": YEAR,
         "first_shard": 0, "last_shard_inclusive": last_shard_inclusive,
         "global_2022_query_keys_fingerprint": cohort_census,
-        "selection_policy": POLICY,
+        "selection_policy": quote_selection_policy,
         "historical_quote_from": HISTORICAL_FROM.isoformat(),
         "source_plans": source_plans,
         "source_gaps": source_gaps,
