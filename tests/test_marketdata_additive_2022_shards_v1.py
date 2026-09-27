@@ -149,3 +149,85 @@ def test_prior_missing_binding_refuses_without_implicit_export(tmp_path, monkeyp
     with pytest.raises(CandidateChainCacheError, match="has not been exported"):
         _build(settings, prep, prev, loader, native)
     assert not loads
+
+
+def test_real_2022_holiday_shift_has_no_frozen_28_to_60_day_expiry():
+    # March 18 is a trading Friday; April's standard expiration shifts to
+    # April 14 for Good Friday (27 days), then May 20 is 63 days away.
+    item = SimpleNamespace(ticker="SPY", signal_session=date(2022, 3, 18))
+    with pytest.raises(exporter.CandidateStockExportError, match="no bounded exchange monthly expiry"):
+        additive._key(item)
+
+
+def test_expiry_gap_is_accounted_for_not_silently_erased(tmp_path, monkeypatch):
+    monkeypatch.setattr(additive, "_require_external", lambda *_: None)
+    settings, prep, prev, loader, native, loads, calls, _ = _fixture(tmp_path)
+    original_key = additive._key
+
+    def key_with_one_known_gap(item):
+        if item.opportunity_id == "add-00":
+            raise exporter.CandidateStockExportError("no bounded exchange monthly expiry is available")
+        return original_key(item)
+
+    monkeypatch.setattr(additive, "_key", key_with_one_known_gap)
+    plan, source_path, binding, _ = _build(settings, prep, prev, loader, native)
+    bundle = json.loads(source_path.read_text())
+    assert bundle["eligible_daily_long_cases"] == 47
+    assert bundle["excluded_monthly_expiry_window_cases"] == 1
+    assert bundle["monthly_expiry_window_exclusions"] == [{
+        "opportunity_id": "add-00",
+        "ticker": "Z000",
+        "snapshot_date": "2022-01-03",
+        "reason": "NO_MONTHLY_EXPIRY_IN_28_TO_60_DAY_WINDOW",
+    }]
+    assert bundle["monthly_expiry_window_exclusions_fingerprint"] == additive._fingerprint(
+        bundle["monthly_expiry_window_exclusions"]
+    )
+    assert "add-00" not in {row["opportunity_id"] for row in bundle["rows"]}
+    assert binding["excluded_monthly_expiry_window_cases"] == 1
+    assert plan["opportunities"] == 40
+
+
+def test_unrelated_source_calendar_error_is_not_excluded(tmp_path, monkeypatch):
+    monkeypatch.setattr(additive, "_require_external", lambda *_: None)
+    settings, prep, prev, loader, native, loads, calls, _ = _fixture(tmp_path)
+    def unexpected_error(item):
+        raise exporter.CandidateStockExportError("unexpected accepted-calendar mismatch")
+    monkeypatch.setattr(additive, "_key", unexpected_error)
+    with pytest.raises(exporter.CandidateStockExportError, match="unexpected accepted-calendar mismatch"):
+        _build(settings, prep, prev, loader, native)
+    assert not calls
+    assert not additive._binding_path(settings, 0).exists()
+
+
+def test_same_physical_group_keeps_all_accepted_ids_with_one_native_raw_read(tmp_path, monkeypatch):
+    monkeypatch.setattr(additive, "_require_external", lambda *_: None)
+    settings, prep, prev, loader, native, loads, calls, _ = _fixture(tmp_path)
+
+    def duplicate_loader(*args, **kwargs):
+        rows, report = loader(*args, **kwargs)
+        duplicated = []
+        for row in rows:
+            duplicated.append(row)
+            if row.opportunity_id.startswith("add-"):
+                clone = SimpleNamespace(**vars(row))
+                clone.opportunity_id = row.opportunity_id + "-alternate-policy"
+                clone.instrument_id = "alternate-" + row.instrument_id
+                duplicated.append(clone)
+        return duplicated, report
+
+    plan, source_path, binding, _ = _build(
+        settings, prep, prev, duplicate_loader, native,
+    )
+    bundle = json.loads(source_path.read_text())
+    assert bundle["eligible_daily_long_cases"] == 92
+    assert binding["selected_opportunities"] == 40
+    assert binding["covered_same_key_alternate_opportunity_ids"] == 40
+    assert bundle["covered_same_key_alternate_opportunity_ids"] == 40
+    assert len(calls) == 1 and len(calls[0]) == 40
+    assert all(len(group["all_accepted_member_ids"]) == 2
+               for group in bundle["chosen_key_member_ids"])
+    assert plan["shared_chain_requests"] == 40
+    assert bundle["representative_policy"] == (
+        "LEXICOGRAPHIC_FIRST_ID_PER_PHYSICAL_KEY_NO_OUTCOMES"
+    )
