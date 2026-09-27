@@ -120,8 +120,14 @@ def test_prepare_one_prior_and_one_native_load_and_immutable_source_plan(tmp_pat
         return plan, path, {"source_sha256": sha,
                              "plan_fingerprint": plan["plan_fingerprint"]}, "REUSED"
 
+    def fake_batch_builder(s, load, verified_prior, **kwargs):
+        assert s is setting
+        assert load() == ("verified-native", {"source_integrity_fingerprint": "synthetic"})
+        return lambda *_a, **_k: ({}, {"protected_master_return_rows_read": 0})
+
     first, sources = bulk.prepare_frozen_bulk_sources(
         setting, prior_reader=prior, preparer=actual_preparer, loader=native,
+        native_batch_builder=fake_batch_builder,
     )
     assert len(sources) == 45
     assert first["new_physical_chain_keys"] == 45
@@ -130,6 +136,7 @@ def test_prepare_one_prior_and_one_native_load_and_immutable_source_plan(tmp_pat
     assert saved == first
     second, _ = bulk.prepare_frozen_bulk_sources(
         setting, prior_reader=prior, preparer=actual_preparer, loader=native,
+        native_batch_builder=fake_batch_builder,
     )
     assert second == first
     assert calls["native"] == 2 and calls["prior"] == 2
@@ -382,3 +389,74 @@ def test_original_bulk_process_lock_is_not_removed_if_another_process_owns_it(
                         lambda *_a, **_kw: pytest.fail("must refuse concurrent process"))
     assert cli.main([]) == 3
     assert lock.read_text(encoding="utf-8") == "pid=someone-else"
+
+
+
+def test_batch_native_source_reads_all_unfrozen_new_shards_once(tmp_path, monkeypatch):
+    from datetime import UTC, date, datetime
+    setting = SimpleNamespace(project_root=tmp_path, resolved_path=lambda p: tmp_path / p)
+    cases = [
+        SimpleNamespace(
+            opportunity_id=f"case-{i:05d}",
+            ticker="ABCD", native_timeframe="1d", direction="LONG",
+            signal_session=date(2022, 1, 3),
+            entry_utc=datetime(2022, 1, 4, tzinfo=UTC),
+        )
+        for i in range(2812)
+    ]
+    monkeypatch.setattr(bulk.shards, "_key",
+                        lambda item: ("ABCD", item.opportunity_id, "2022-03-18"))
+    keys = sorted(
+        [(x.ticker, x.opportunity_id, "2022-03-18") for x in cases],
+        key=lambda k: (bulk.shards._fingerprint({"salt": bulk.shards.SALT, "key": k}), k),
+    )
+    monkeypatch.setattr(
+        bulk, "FROZEN_GLOBAL_2022_KEYS_FINGERPRINT", bulk.shards._fingerprint(keys),
+    )
+    prior = ({"plan_fingerprint": bulk.shards.FROZEN_PRIOR_PLAN},
+             {f"old-{i}" for i in range(36)}, {("OLD", "test", "2022-03-18")})
+    loader_calls = []
+    native_calls = []
+    selected_ids = []
+    def loader(*a, **kw):
+        loader_calls.append(1)
+        return cases, {"source_integrity_fingerprint": "verified-replay"}
+    def native(root, reps):
+        assert root == tmp_path
+        native_calls.append(1)
+        selected_ids.extend(x.opportunity_id for x in reps)
+        return {x.opportunity_id: 100.0 for x in reps}, {
+            "source_fingerprint": "accepted-stock-daily",
+            "protected_master_return_rows_read": 0,
+            "native_raw_source": {"verified_native_raw_unit_bindings": ["original-sha"]},
+        }
+    progress = []
+    reader = bulk._batched_native_open_reader(
+        setting, loader, prior, native_reader=native, progress=progress.append,
+    )
+    assert len(loader_calls) == len(native_calls) == 1
+    assert len(selected_ids) == 1772
+    result, source = reader(tmp_path, [cases[0]]) if cases[0].opportunity_id in selected_ids else (
+        reader(tmp_path, [next(x for x in cases if x.opportunity_id in selected_ids)]))
+    assert len(result) == 1
+    assert source["protected_master_return_rows_read"] == 0
+    assert progress[0]["stage"] == "BULK_NATIVE_RAW_ONCE"
+    assert progress[0]["unique_native_opens"] == 1772
+    with pytest.raises(CandidateChainCacheError, match="unverified opportunity"):
+        reader(tmp_path, [SimpleNamespace(opportunity_id="unseen")])
+    with pytest.raises(CandidateChainCacheError, match="project path"):
+        reader(tmp_path / "elsewhere", [])
+
+    # All original bound shards now exist: subsequent resume skips both
+    # stock replay/native-unit scans and uses existing original SHA bindings.
+    for i in range(26, 71):
+        path = bulk.shards._binding_path(setting, i)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("original-intact-source-binding", encoding="utf-8")
+    reader2 = bulk._batched_native_open_reader(
+        setting,
+        lambda *_a, **_k: pytest.fail("native replay must be skipped on fully bound resume"),
+        prior,
+        native_reader=native,
+    )
+    assert reader2 is native

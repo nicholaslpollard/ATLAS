@@ -10,7 +10,10 @@ adaptive within the existing fail-closed full-series executor.
 
 import os
 import time
+import math
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import UTC, date
 from pathlib import Path
 from typing import Any, Callable
 
@@ -44,6 +47,105 @@ MAX_QUOTE_GETS = 6000
 MAX_TOTAL_CREDITS = 6500
 MIN_SAFE_ACCOUNT_REMAINING = 400
 PLAN_REL_PATH = "data/options/manifests/marketdata_bulk_2022_26_70_v1.json"
+FROZEN_GLOBAL_2022_KEYS_FINGERPRINT = "dabca20038131947b5ee4cb586e7fe6c1fa9e376d4666c01967f30e88866410c"
+
+
+def _batched_native_open_reader(
+    settings: AtlasSettings,
+    load_once: Callable[..., Any],
+    prior: tuple[dict[str, Any], set[str], set[tuple[str, str, str]]],
+    *,
+    native_reader: Callable[..., Any] = shards.exporter._read_entry_opens,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+) -> Callable[..., Any]:
+    """Verify all new raw opens/canonical unit SHAs once; retain per-shard identity."""
+    # All original source bindings already exist on resume: do not scan native
+    # stock material just to rehash unchanged original source/quote receipts.
+    if all(shards._binding_path(settings, i).is_file()
+           for i in range(FROZEN_LAST_DONE_SHARD+1, FINAL_SHARD+1)):
+        return native_reader
+    opportunities, source = load_once(
+        settings.project_root, start_session=date(shards.YEAR, 1, 1),
+        end_session=date(shards.YEAR, 12, 31), duckdb_threads=4,
+    )
+    if not source.get("source_integrity_fingerprint"):
+        raise CandidateChainCacheError("bulk source replay integrity absent")
+    eligible = [
+        x for x in opportunities
+        if (x.signal_session.year == shards.YEAR and x.native_timeframe == "1d"
+            and x.direction == "LONG"
+            and x.entry_utc.astimezone(shards.EASTERN).year == shards.YEAR
+            and isinstance(x.ticker, str)
+            and shards.TICKER_PATTERN.fullmatch(x.ticker))
+    ]
+    if not eligible or len({x.opportunity_id for x in eligible}) != len(eligible):
+        raise CandidateChainCacheError("bulk eligible daily LONG cohort empty/duplicate")
+    new_by_key: dict[tuple[str, str, str], list[Any]] = defaultdict(list)
+    excluded_expiry: list[dict[str, str]] = []
+    for item in eligible:
+        if item.opportunity_id in prior[1]:
+            continue
+        try:
+            key = shards._key(item)
+        except shards.exporter.CandidateStockExportError as exc:
+            if str(exc) != "no bounded exchange monthly expiry is available":
+                raise
+            excluded_expiry.append({
+                "opportunity_id": item.opportunity_id,
+                "ticker": item.ticker,
+                "snapshot_date": item.signal_session.isoformat(),
+                "reason": "NO_MONTHLY_EXPIRY_IN_28_TO_60_DAY_WINDOW",
+            })
+            continue
+        if key not in prior[2]:
+            new_by_key[key].append(item)
+    keys = sorted(new_by_key, key=lambda key: (
+        shards._fingerprint({"salt": shards.SALT, "key": key}), key,
+    ))
+    if (len(keys) != 2812
+            or math.ceil(len(keys)/shards.KEYS_PER_SHARD) != FINAL_SHARD+1
+            or shards._fingerprint(keys) != FROZEN_GLOBAL_2022_KEYS_FINGERPRINT):
+        raise CandidateChainCacheError("batch native cohort disagrees with frozen 2812-key 2022 universe")
+    # Only exact representative opportunity ids for previously UNFROZEN shards.
+    wanted_indices = [
+        i for i in range(FROZEN_LAST_DONE_SHARD+1, FINAL_SHARD+1)
+        if not shards._binding_path(settings, i).is_file()
+    ]
+    wanted_keys = [
+        key for i in wanted_indices
+        for key in keys[i*shards.KEYS_PER_SHARD:(i+1)*shards.KEYS_PER_SHARD]
+    ]
+    representatives = [
+        min(new_by_key[key], key=lambda x: x.opportunity_id) for key in wanted_keys
+    ]
+    if not representatives or len({x.opportunity_id for x in representatives}) != len(representatives):
+        raise CandidateChainCacheError("batch native selected representatives absent/duplicate")
+    raw_opens, daily_source = native_reader(settings.project_root, representatives)
+    expected = {x.opportunity_id for x in representatives}
+    if (set(raw_opens) != expected
+            or daily_source.get("protected_master_return_rows_read") != 0
+            or not daily_source.get("source_fingerprint")
+            or not daily_source.get("native_raw_source")):
+        raise CandidateChainCacheError("batch native open coverage/lineage differs")
+    if progress:
+        progress({
+            "stage": "BULK_NATIVE_RAW_ONCE",
+            "source_units_verified_once_for_new_shards": True,
+            "unfrozen_shards": len(wanted_indices),
+            "unique_native_opens": len(raw_opens),
+            "accepted_replay_fingerprint": source["source_integrity_fingerprint"],
+            "protected_master_return_rows_read": 0,
+        })
+
+    def read_subset(root: Path, subset: Any) -> tuple[dict[str, float], dict[str, Any]]:
+        if Path(root).resolve() != settings.project_root.resolve():
+            raise CandidateChainCacheError("bulk native reader project path changed")
+        ids = [x.opportunity_id for x in subset]
+        if len(ids) != len(set(ids)) or not set(ids).issubset(raw_opens):
+            raise CandidateChainCacheError("bulk native source requested unverified opportunity")
+        return ({ident: raw_opens[ident] for ident in ids}, daily_source)
+
+    return read_subset
 
 
 def prepare_frozen_bulk_sources(
@@ -52,6 +154,7 @@ def prepare_frozen_bulk_sources(
     prior_reader: Callable[..., Any] = shards._prior,
     preparer: Callable[..., Any] = shards.prepare_additive_shard,
     loader: Callable[..., Any] = load_selected_replay_opportunities,
+    native_batch_builder: Callable[..., Any] = _batched_native_open_reader,
     progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> tuple[dict[str, Any], dict[int, tuple[dict[str, Any], Path, dict[str, Any]]]]:
     """Verify original cohort once, read native DEVELOPMENT once, freeze all new shards."""
@@ -71,13 +174,17 @@ def prepare_frozen_bulk_sources(
                 progress({"stage": "ONE_ACCEPTED_2022_NATIVE_SOURCE_LOADED"})
         return cached_native
 
+    native_subset_reader = native_batch_builder(
+        settings, one_native_load, prior, progress=progress,
+    )
     bound: dict[int, tuple[dict[str, Any], Path, dict[str, Any]]] = {}
     seen: set[tuple[str, str, str]] = set()
     global_fp: str | None = None
     for index in range(FROZEN_LAST_DONE_SHARD + 1, FINAL_SHARD + 1):
         plan, path, binding, action = preparer(
             settings, shard_index=index, duckdb_threads=duckdb_threads,
-            loader=one_native_load, verified_prior=prior,
+            loader=one_native_load, native_reader=native_subset_reader,
+            verified_prior=prior,
         )
         source = _read_object(path)
         keys = source.get("selected_query_keys")
@@ -125,6 +232,7 @@ def prepare_frozen_bulk_sources(
         "quote_policy": "FULL_CAPTURED_PRIOR_SESSION_CALL_8_PERCENT_SINGLE_MONTHLY_EXPIRY",
         "protected_master_return_rows_read": 0,
         "provider_reads_in_planning": 0,
+        "native_raw_source_preparation": "ONE_BATCH_SHA_VERIFIED_FOR_ALL_UNFROZEN_SHARDS",
         "no_0935_option_fill_or_pnl_authority": True,
     }
     manifest["manifest_fingerprint"] = _fingerprint(manifest)
