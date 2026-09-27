@@ -11,6 +11,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime, timedelta
 from math import floor, isfinite
+import re
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
@@ -162,6 +163,14 @@ def compare_case(
         opt_exit_stamp = None
     if case.stock_raw_price_basis_verified is not True:
         raise CommonClockScenarioError("stock raw-as-traded basis unverified")
+    if case.stock_entry is not None and case.stock_entry.source_kind != "NATIVE_RAW_EOD_STOCK_MARK":
+        raise CommonClockScenarioError("stock entry is not a native raw EOD mark")
+    if case.stock_exit is not None and case.stock_exit.source_kind != "NATIVE_RAW_EOD_STOCK_MARK":
+        raise CommonClockScenarioError("stock exit is not a native raw EOD mark")
+    if case.option_entry_ask is not None and case.option_entry_ask.source_kind != "HISTORICAL_OPTION_EOD_ASK":
+        raise CommonClockScenarioError("option entry is not a historical EOD ask")
+    if case.option_exit_bid is not None and case.option_exit_bid.source_kind != "HISTORICAL_OPTION_EOD_BID":
+        raise CommonClockScenarioError("option exit is not a historical EOD bid")
     if stock:
         assert entry_stamp is not None and exit_stamp is not None
         if (
@@ -191,6 +200,13 @@ def compare_case(
         result["option_status"] = "NO_STRUCTURALLY_SELECTED_CONTRACT"
     elif option:
         assert opt_entry_stamp is not None and opt_exit_stamp is not None
+        match = re.fullmatch(r"([A-Z0-9.]+)(\\d{6})([CP])(\\d{8})", case.option_symbol)
+        if (
+            match is None or case.option_expiration is None
+            or match.group(2) != case.option_expiration.strftime("%y%m%d")
+            or match.group(3) != {"call": "C", "put": "P"}.get(case.option_right)
+        ):
+            raise CommonClockScenarioError("original OCC option right/expiry changed")
         if (
             case.option_right not in ("call", "put")
             or case.option_expiration is None
