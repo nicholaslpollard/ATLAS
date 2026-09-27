@@ -117,7 +117,7 @@ def _validate(x: ObservedOptionInputs) -> float:
         or not isinstance(x.expiration_utc, datetime)
         or x.observation_utc.tzinfo is None or x.expiration_utc.tzinfo is None
     ):
-        raise HistoricalGreeksError("observed quote and expiration need aware UTC times")
+        raise HistoricalGreeksError("observed quote and expiration need timezone-aware UTC times")
     if not x.deliverable_is_standard_100_shares or not x.stock_price_is_raw_as_traded:
         raise HistoricalGreeksError("adjusted/unknown contract deliverable or price basis")
     if not x.historical_rates_source_id or not x.historical_dividends_source_id:
