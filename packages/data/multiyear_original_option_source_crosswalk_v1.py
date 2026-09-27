@@ -456,8 +456,12 @@ def reconcile_original_sources(
                     or source["representative_id"] in sources["additive_gaps"]):
                     raise OriginalCrosswalkError("accepted 2022 preferred same-key source member drifted")
                 classification="ORIGINAL_2022_SAME_KEY_CHAIN_REUSED_OWN_RANK_NOT_SELECTED"
-                linked={**source,"strike_coverage":
-                    _strike_coverage(source["chain_strike_window"],_case_raw_price(native_by_id,oid))}
+                member_open=_case_raw_price(native_by_id,oid)
+                linked={**source,
+                    "representative_raw_open":source["raw_open"],
+                    "member_native_raw_open":member_open,
+                    "strike_coverage":_strike_coverage(source["chain_strike_window"],member_open),
+                    "own_preferred_call_not_selected":True}
                 reconciled_2022.add(oid)
             elif pre=="ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED":
                 if oid in sources["additive_same_key"]:
@@ -476,12 +480,15 @@ def reconcile_original_sources(
                         or pointer["shard_index"]!=source["shard_index"]):
                         raise OriginalCrosswalkError("2022 gap-linked same-key source drifted")
                     classification="ORIGINAL_2022_GAP_LINKED_SAME_KEY_"+gap
+                    member_open=_case_raw_price(native_by_id,oid)
                     linked={**source,
+                        "representative_raw_open":source["raw_open"],
+                        "member_native_raw_open":member_open,
                         "representative_source_gap":gap,
                         "exact_query_no_data_proof":
                             sources["additive_exact_no_data_proofs"].get(rep_id),
                         "strike_coverage":_strike_coverage(
-                            source["chain_strike_window"], _case_raw_price(native_by_id,oid)),
+                            source["chain_strike_window"], member_open),
                         "own_preferred_call_not_selected":True}
                 elif oid in sources["additive_representatives"]:
                     source=sources["additive_representatives"][oid]
