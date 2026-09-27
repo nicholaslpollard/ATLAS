@@ -55,7 +55,7 @@ def _census():
 
 class FakeNews:
     lineage = {"accepted_v2_fingerprint": "c" * 64}
-    coverage_end = date(2026, 9, 19)
+    coverage_end = date(2025, 1, 1)
     scanned_articles = 20
     duplicate_article_rows = 1
 
