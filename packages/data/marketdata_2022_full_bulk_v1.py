@@ -249,12 +249,14 @@ def run_full_bulk(
         remaining_sources: list[tuple[int, dict[str, Any], Path, int]] = []
         source_terminal = 0
         source_gaps = 0
+        prior_gaps: dict[int, int] = {}
         for index, plan, path, physical in plans:
             census = chain_runner(settings, plan, path)
             if (census["completed_chains"] + census["proven_exact_query_gaps"]
                     + census["pending"] != physical):
                 raise CandidateChainCacheError("read-only source shard receipt census malformed")
-            source_gaps += census["proven_exact_query_gaps"]
+            prior_gaps[index] = census["proven_exact_query_gaps"]
+            source_gaps += prior_gaps[index]
             if census["pending"]:
                 remaining_sources.append((index, plan, path, census["pending"]))
             else:
@@ -323,8 +325,8 @@ def run_full_bulk(
                 charge = result["observed_provider_credits_this_invocation"]
                 if (type(calls) is not int or not 0 <= calls <= need
                         or type(charge) is not int or charge < 0
-                        or result["pending"] or result["completed_chains"] +
-                        result["proven_exact_query_gaps"] != len(plan["requests"])):
+                        or result["completed_chains"] + result["proven_exact_query_gaps"]
+                        + result["pending"] != len(plan["requests"])):
                     raise CandidateChainCacheError("chain wave original receipt accounting inconsistent")
                 state["new_chain_gets"] += calls
                 state["observed_chain_credits"] += charge
@@ -335,9 +337,24 @@ def run_full_bulk(
                         remain if state["last_provider_remaining"] is None else
                         min(state["last_provider_remaining"], remain)
                     )
-                source_gaps += result["proven_exact_query_gaps"]
-                source_terminal += 1
-            remaining_sources = remaining_sources[len(wave):]
+                gap_delta = result["proven_exact_query_gaps"] - prior_gaps[index]
+                if gap_delta < 0:
+                    raise CandidateChainCacheError("previously proved source gap disappeared")
+                source_gaps += gap_delta
+                prior_gaps[index] = result["proven_exact_query_gaps"]
+                if result["pending"]:
+                    # Valid terminal-free partial (e.g. provider floor). Never
+                    # replay an original attempted GET; reentry verifies receipts.
+                    if (result["pending"] >= need
+                            or result["last_observed_credits_remaining"] is None):
+                        raise CandidateChainCacheError("partial source made no safely explainable progress")
+                else:
+                    source_terminal += 1
+            unresolved = [
+                (index, plan, path, outcomes[index]["pending"])
+                for index, plan, path, need in wave if outcomes[index]["pending"]
+            ]
+            remaining_sources = unresolved + remaining_sources[len(wave):]
             state["source_shards_complete_26_to_70"] = source_terminal
             state["source_exact_gaps_26_to_70"] = source_gaps
             state["source_shards_pending"] = len(remaining_sources)
