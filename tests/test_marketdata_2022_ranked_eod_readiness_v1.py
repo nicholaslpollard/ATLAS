@@ -82,14 +82,14 @@ def _fixture(tmp_path, monkeypatch):
                 {"source_sha256": f"sha{i}"})
 
     def quote(s, ticket):
-        assert s is settings and ticket is tickets[0]
+        assert s is settings and ticket["request_identity"] == tickets[0]["request_identity"]
         return {"status": "COMPLETE_SOURCE_ONLY", "safe_summary": {"observed_rows": 4}}
 
     def timestamp(year, month, day):
         return int(datetime(year, month, day, 21, tzinfo=UTC).timestamp())
 
     def raw(s, ticket):
-        assert s is settings and ticket is tickets[0]
+        assert s is settings and ticket["request_identity"] == tickets[0]["request_identity"]
         # March 2 EOD is future relative to the original 09:35 decision and
         # MUST be excluded as an entry observation.
         return json.dumps({
