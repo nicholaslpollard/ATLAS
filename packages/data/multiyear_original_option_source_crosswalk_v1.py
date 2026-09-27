@@ -12,6 +12,7 @@ body scan. The 71 small original 2022 source bundles are SHA checked once.
 """
 
 from collections import Counter, defaultdict
+import json
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -441,6 +442,10 @@ def reconcile_original_sources(
             else:
                 classification="ORIGINAL_2025_NOT_IN_TWELVE_CASE_PILOT"
         by_year[year][classification]+=1
+        if linked is not None:
+            # Original source-key tuples must be JSON arrays before a signed,
+            # byte-reverified immutable D: artifact is written.
+            linked=json.loads(json.dumps(linked,sort_keys=True))
         out.append({
             **row,
             "original_reconciliation":classification,
