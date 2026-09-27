@@ -23,3 +23,30 @@ Use from clean main after merge. It starts with already-complete shard zero (reu
 ```
 
 Follow actual output before authorizing the following bounded range (e.g. shards 6–10). Do not automatically loop over all 71 shards or assume a historical chain establishes a priced selected CALL. Selected-contract EOD quote histories and independent historical deliverable/entry-timing feasibility remain subsequent acquisition/simulator stages. Source retention is governed by provider license terms.
+
+
+## Accepted full operator result: shards 0–5 — 2026-09-27
+
+The previous “first live campaign command” above is **completed and superseded**, not a command to run again. Operator result: \`COMPLETE_CAMPAIGN_RANGE\`, accepted global census \`dabca20038131947b5ee4cb586e7fe6c1fa9e376d4666c01967f30e88866410c\`, campaign fingerprint \`85ef3deb1f72a8161669b6df2f3e48d02e0544df5cff084e87a578d6b64ac892\`. Original shard 0 reused with zero new GETs. Shards 1–5: 200 new provider attempts, 189 observed credits, last remaining 9,647. **Six-shard cumulative: 229 complete historical EOD chain sources, 11 strictly verified exact 404/no_data gaps, zero pending.** Individual results:
+
+| Shard | Complete chain sources | Exact no-data gaps | Pending | New requests | Observed credits |
+|---|---:|---:|---:|---:|---:|
+| 0 | 39 | 1 | 0 | 0 | 0 |
+| 1 | 39 | 1 | 0 | 40 | 39 |
+| 2 | 39 | 1 | 0 | 40 | 39 |
+| 3 | 39 | 1 | 0 | 40 | 39 |
+| 4 | 35 | 5 | 0 | 40 | 34 |
+| 5 | 38 | 2 | 0 | 40 | 38 |
+| **Total** | **229** | **11** | **0** | **200** | **189** |
+
+The accepted 2022 source loader was invoked exactly once; its 546-part source integrity scan and 3,789 selected comparable opportunity construction were not repeated once per new shard. Five requested new shards were fully acquired within the 200-request cap, proving the existing ten-request internal provider batch and offline exact-gap sidecars can scale with immutable per-shard receipts. This does not measure total physical D: bytes: check the storage preflight before making capacity or subscription-retention claims.
+
+### Next explicit acquisition: shards 6–15
+
+Use the **already merged existing script** with maximum supported ten consecutive shards and 400 new requests. Original completed shards 0–5 are excluded from this range, while the anchor shard-0 source census is locally reused with zero paid calls. Observed credits are checked after provider responses; 450 is a cumulative stopping target, not an exact pre-response invoice guarantee. Every per-shard D: quota, disk floor, physical query identity, native raw source SHA, receipt and no-retry gate remains active. On an uncertain response stop; do not automatically retry a potentially billed attempt.
+
+\`\`\`powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }; git pull --ff-only; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed. Stop.' }; & .\\.venv\\Scripts\\python.exe scripts\\run_marketdata_additive_2022_campaign_v1.py --start-shard 6 --max-shards 10 --duckdb-threads 4 --max-total-new-requests 400 --max-observed-credits 450 --authorize-provider-reads --confirm-paid-starter --confirm-private-internal-use --classify-exact-no-data; if ($LASTEXITCODE -ne 0) { throw 'Acquisition stopped; preserve original source/attempt/receipt evidence. No blind retries.' } }
+\`\`\`
+
+This is further *chain source acquisition*, not selected option quote histories or a 09:35 option simulator; those must be separate PIT-safe downstream stages. The secondary SSD was installed for larger retained options data, but size should follow real demand and licensed retention terms, never an arbitrary fill target.
