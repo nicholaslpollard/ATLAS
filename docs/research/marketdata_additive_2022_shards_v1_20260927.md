@@ -57,3 +57,8 @@ The narrow correction imports the existing 250-group upper bound from the fully 
 ```
 
 The desired next output is `source: REUSED_IMMUTABLE_ADDITIVE_SHARD`, original frozen plan fingerprint, acquisition counts, verified no-data, and credits. No EOD chain evidence proves 09:35 option prices, contract deliverable, execution, options P&L, PAPER/LIVE or broker authority. Later shards are separate intentional operator requests, not automatic looping over 71 without observing provider credit and storage usage.
+
+
+## Shard zero actual source result and new acquisition campaign — 2026-09-27
+
+The operator completed the original shard-zero 40-key plan with 39 intact historical chain sources, one exact, independently proven zero-credit 404/no_data source gap and zero pending. Source plan remains \`9df6a0c6db48c9617a99d1decab35b84ceffd5677090516cb7a8b31095512fd8\` and original source SHA \`438418f9e50f58ba66501e5935d3a857cedadddc2c668dd6ea69baf119c89030\`. Original report fingerprint \`64bfde3f86876e457dcee6f582b065000eee6558f46b638253a49b567468b1e9\`, 40 original GETs, 39 observed credits, last remaining 9,836. The earlier instruction to rerun shard zero is now **superseded**. Next stage is consecutive, bounded new shards with one accepted-source load per campaign invocation. See \`docs/research/marketdata_additive_2022_campaign_v1_20260927.md\`.
