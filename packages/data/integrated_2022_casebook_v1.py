@@ -98,9 +98,9 @@ def _accepted_stock_source(
     progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[tuple[int, str], dict[str, Any]]:
     """Verify original source bindings only; do NOT rerun candidate selection."""
-    indices = sorted({row["shard_index"] for row in reference_rows})
-    if indices != list(range(71)):
-        raise IntegratedCasebookError("complete accepted additive shard census changed")
+    indices = list(range(71))
+    if any(row["shard_index"] not in indices for row in reference_rows):
+        raise IntegratedCasebookError("original reference points outside accepted additive shards")
     sources: dict[tuple[int, str], dict[str, Any]] = {}
     for n, i in enumerate(indices, 1):
         _, source_path, binding = shard_reader(settings, i, shards.FROZEN_PRIOR_PLAN)
