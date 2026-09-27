@@ -181,3 +181,77 @@ def test_quote_campaign_rejects_missing_confirmation_before_any_provider_call(tm
     plan = _bare_quote_plan(["ABC220318C00100000"])
     with pytest.raises(CandidateChainCacheError, match="confirmations"):
         q.run_selected_quote_histories(settings, plan, max_new_requests=10, token="synthetic")
+
+
+def test_broad_envelope_uses_all_prior_session_strikes_and_preserves_original_v1_plan(
+    tmp_path, monkeypatch,
+):
+    from decimal import Decimal
+    import packages.data.marketdata_2022_broad_quote_campaign_v2 as wide
+    settings, fake = _fixture(tmp_path)
+    symbols = [92, 95, 100, 103, 108, 110, 90]
+    chain = {
+        "s": "ok",
+        "optionSymbol": [f"ABC220318C{n * 1000:08d}" for n in symbols]
+            + ["ABC220318P00100000"],
+        "side": ["call"] * len(symbols) + ["put"],
+        "strike": symbols + [100],
+        "volume": [99999, 0, 0, 0, 0, 0, 0, 99999],
+    }
+    (tmp_path / "chain.json").write_text(json.dumps(chain))
+    monkeypatch.setattr(q, "chain_paths", fake["chain_paths"])
+    monkeypatch.setattr(q, "intact_chain_receipt", fake["receipt"])
+    old = q.freeze_quote_plan(settings, last_shard_inclusive=0, preparer=fake["preparer"])
+    new = wide.freeze_broad_quote_plan(settings, last_shard_inclusive=0, preparer=fake["preparer"])
+    assert old["unique_exact_quote_series"] == 3
+    assert new["unique_exact_quote_series"] == 5
+    assert new["selected_candidate_memberships"] == 5
+    assert new["selection_policy"] == wide.WIDE_POLICY
+    assert new["broad_acquisition_envelope_v2"]["alternate_expiration_sources_acquired"] is False
+    assert new["broad_acquisition_envelope_v2"]["original_monthly_pilot_in_this_additive_plan"] is False
+    assert new["plan_fingerprint"] == wide._fingerprint({
+        k: v for k, v in new.items() if k != "plan_fingerprint"
+    })
+    # Both versions use identical exact-series physical cache identity for shared calls.
+    old_ident = {x["option_symbol"]: x["request_identity"] for x in old["requests"]}
+    new_ident = {x["option_symbol"]: x["request_identity"] for x in new["requests"]}
+    assert all(new_ident[s] == k for s, k in old_ident.items())
+    assert new["provider_reads_in_planning"] == 0
+    assert len(new["source_plans"]) == 1
+
+
+def test_wide_selector_rejects_outside_window_and_ignores_later_volume():
+    from decimal import Decimal
+    rows = [
+        {"optionSymbol": f"ABC220318C{n * 1000:08d}", "side": "call",
+         "strike": n, "volume": 999999 if n == 110 else 0}
+        for n in [110, 103, 95, 90, 92, 108, 100]
+    ]
+    a = q._clean_call_candidates(tuple(rows), 100, max_candidates=None,
+                                  strike_window=Decimal("0.08"))
+    b = q._clean_call_candidates(tuple(reversed(rows)), 100, max_candidates=None,
+                                  strike_window=Decimal("0.08"))
+    assert a == b
+    assert [Decimal(x["strike"]) for x in a] == [100, 103, 95, 108, 92]
+    for kw in ({"max_candidates": 0}, {"max_candidates": 1001},
+               {"strike_window": Decimal("0.10")}, {"strike_window": Decimal("-0.01")}):
+        with pytest.raises(CandidateChainCacheError):
+            q._clean_call_candidates(tuple(rows), 100, **kw)
+
+
+def test_broad_run_validates_policy_before_existing_cache_or_provider(tmp_path, monkeypatch):
+    import packages.data.marketdata_2022_broad_quote_campaign_v2 as wide
+    settings, fake = _fixture(tmp_path)
+    monkeypatch.setattr(q, "chain_paths", fake["chain_paths"])
+    monkeypatch.setattr(q, "intact_chain_receipt", fake["receipt"])
+    plan = wide.freeze_broad_quote_plan(settings, last_shard_inclusive=0, preparer=fake["preparer"])
+    called = []
+    monkeypatch.setattr(wide, "run_selected_quote_histories",
+                        lambda *a, **kw: called.append(1) or {"reused": True})
+    assert wide.run_broad_quote_histories(settings, plan)["reused"] is True
+    assert called == [1]
+    mutated = json.loads(json.dumps(plan))
+    mutated["broad_acquisition_envelope_v2"]["alternate_expiration_sources_acquired"] = True
+    with pytest.raises(CandidateChainCacheError, match="envelope"):
+        wide.run_broad_quote_histories(settings, mutated, max_new_requests=1)
+    assert called == [1]
