@@ -158,6 +158,14 @@ def _fixtures():
         "pilot_members":pilot22, "pilot_by_key":pilot_by_key,
         "additive_representatives":reps,
         "additive_same_key":alt, "additive_gaps":gaps,
+        "prior_only_same_key_members":[
+            {"case_id":f"old-only-{k}",
+             "status":"PRIOR_SOURCE_ONLY_NOT_IN_FROZEN_ACCEPTED_STOCK_CENSUS",
+             "source_key":["TEST","2022-03-01","2022-04-15"],
+             "representative_id":"2022-rank0000",
+             "source_sha256":"b"*64,"shard_index":0}
+            for k in range(2)
+        ],
         "additive_exact_no_data_proofs":{},
         "original_preferred_calls":preferred,
         "original_2022_quote_plan_fingerprint":m.ACCEPTED_2022_QUOTE_PLAN,
@@ -187,6 +195,10 @@ def test_all_14902_cases_2022_2900_exact_and_original_2025_12():
     assert result["2022_unmatched_cases_remaining"]==0
     assert result["2022_original_additive_representatives"]==2812
     assert result["2022_original_additive_same_key_members"]==27
+    assert result["2022_prior_only_same_key_member_count"]==2
+    assert [x["case_id"] for x in result["2022_prior_only_same_key_members"]]==[
+        "old-only-0","old-only-1"
+    ]
     assert result["2022_original_additive_source_abstentions"]==169
     assert result["2022_original_pilot_representatives"]==36
     assert result["2022_pilot_same_key_other_cases"]==5
@@ -278,3 +290,53 @@ def test_build_reuses_crosswalk_without_old_shard_or_pilot_reads(tmp_path,monkey
     first[1].write_text("{}",encoding="utf-8")
     with pytest.raises(m.OriginalCrosswalkError,match="changed"):
         m.build_original_source_crosswalk(settings)
+
+def test_old_source_extras_outside_frozen_denominator_are_proven_and_preserved():
+    inventory,sources,_,_,_=_fixtures()
+    old=dict(sources["additive_same_key"])
+    for k in range(2):
+        old[f"old-only-{k}"]={
+            **next(iter(old.values())),
+            "representative_id":"2022-rank0000",
+            "shard_index":0,
+        }
+    accepted,prior_only=m._partition_prior_same_key_members(
+        old,inventory,represented_ids=set(sources["additive_representatives"]),
+        pilot_ids=set(sources["pilot_members"]),
+    )
+    assert set(accepted)==set(sources["additive_same_key"])
+    assert [r["case_id"] for r in prior_only]==["old-only-0","old-only-1"]
+    assert all(r["status"]=="PRIOR_SOURCE_ONLY_NOT_IN_FROZEN_ACCEPTED_STOCK_CENSUS"
+               for r in prior_only)
+
+
+def test_extra_member_matching_an_in_scope_case_stops_with_exact_id():
+    inventory,sources,_,_,_=_fixtures()
+    old=dict(sources["additive_same_key"])
+    old["2022-gap000"]={
+        **next(iter(old.values())), "representative_id":"2022-rank0000",
+    }
+    old["old-only-0"]={
+        **next(iter(old.values())), "representative_id":"2022-rank0000",
+    }
+    with pytest.raises(m.OriginalCrosswalkError,match="2022-gap000"):
+        m._partition_prior_same_key_members(
+            old,inventory,represented_ids=set(sources["additive_representatives"]),
+            pilot_ids=set(sources["pilot_members"]),
+        )
+
+
+def test_prior_member_reused_as_physical_representative_stops():
+    inventory,sources,_,_,_=_fixtures()
+    old=dict(sources["additive_same_key"])
+    old["2022-rank0001"]={
+        **next(iter(old.values())), "representative_id":"2022-rank0000",
+    }
+    old["old-only-0"]={
+        **next(iter(old.values())), "representative_id":"2022-rank0000",
+    }
+    with pytest.raises(m.OriginalCrosswalkError,match="physical_role_overlap"):
+        m._partition_prior_same_key_members(
+            old,inventory,represented_ids=set(sources["additive_representatives"]),
+            pilot_ids=set(sources["pilot_members"]),
+        )

@@ -31,6 +31,9 @@ def main() -> int:
         print(f"  original 2022 unmatched: {result['2022_unmatched_cases_remaining']}", flush=True)
         print(f"  original 2022 additive representatives: {result['2022_original_additive_representatives']}", flush=True)
         print(f"  original 2022 same-key members: {result['2022_original_additive_same_key_members']}", flush=True)
+        print(f"  old-source only members, excluded from accepted case denominator: {result['2022_prior_only_same_key_member_count']}", flush=True)
+        for member in result["2022_prior_only_same_key_members"]:
+            print(f"    prior-only ID={member['case_id']} original_key={member['source_key']} representative={member['representative_id']} shard={member['shard_index']}", flush=True)
         print(f"  original 2022 no-CALL/exact-query abstentions: {result['2022_original_additive_source_abstentions']}", flush=True)
         print(f"  original 2022 pilot representatives: {result['2022_original_pilot_representatives']}", flush=True)
         print(f"  original 2022 pilot other same-key cases: {result['2022_pilot_same_key_other_cases']}", flush=True)

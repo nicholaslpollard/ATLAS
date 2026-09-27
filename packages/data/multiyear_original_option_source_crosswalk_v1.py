@@ -111,9 +111,66 @@ def _source_request_lookup(plan: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return by_id
 
 
+
+def _partition_prior_same_key_members(
+    same_key: dict[str, dict[str, Any]],
+    inventory: dict[str, Any],
+    *, represented_ids: set[str], pilot_ids: set[str],
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    """Account for every prior membership without widening the accepted cohort.
+
+    An old source-only ID may be outside the current frozen stock census, but an
+    in-census alternative with a different status, or a dual physical role, is
+    evidence drift. Neither is silently counted or discarded.
+    """
+    inventory = _inventory(inventory)
+    entire_census = {row["case_id"]: row for row in inventory["cases"]}
+    current = {oid: row for oid, row in entire_census.items() if row["year"] == "2022"}
+    expected = {
+        oid for oid, row in current.items()
+        if row["source_disposition"] == "ORIGINAL_2022_SAME_KEY_RECONCILIATION_REQUIRED"
+    }
+    observed = set(same_key)
+    missing = sorted(expected - observed)
+    unexpected = sorted(observed - expected)
+    role_overlap = sorted(observed & (represented_ids | pilot_ids))
+    in_census_elsewhere = [
+        (oid, entire_census[oid]["year"], entire_census[oid]["source_disposition"])
+        for oid in unexpected if oid in entire_census
+    ]
+    if (
+        len(current) != 2900 or len(expected) != 27 or len(observed) != 29
+        or len(unexpected) != 2 or missing or role_overlap or in_census_elsewhere
+    ):
+        details = [{
+            "case_id": oid,
+            "census_disposition": entire_census[oid]["source_disposition"] if oid in entire_census
+                                  else "ABSENT_FROM_ACCEPTED_2022_CENSUS",
+            "source_key": list(same_key[oid]["source_key"]),
+            "representative_id": same_key[oid]["representative_id"],
+            "shard_index": same_key[oid]["shard_index"],
+        } for oid in unexpected]
+        raise OriginalCrosswalkError(
+            "original 2022 alternate membership mismatch; "
+            f"expected={len(expected)} observed={len(observed)} "
+            f"missing={missing} physical_role_overlap={role_overlap} "
+            f"unexpected_in_census={in_census_elsewhere} extra_members={details}"
+        )
+    legacy = [{
+        "case_id": oid,
+        "status": "PRIOR_SOURCE_ONLY_NOT_IN_FROZEN_ACCEPTED_STOCK_CENSUS",
+        "source_key": list(same_key[oid]["source_key"]),
+        "representative_id": same_key[oid]["representative_id"],
+        "source_sha256": same_key[oid]["source_sha256"],
+        "shard_index": same_key[oid]["shard_index"],
+    } for oid in unexpected]
+    return {oid: same_key[oid] for oid in sorted(expected)}, legacy
+
+
 def read_2022_original_memberships(
     settings: AtlasSettings,
     quote_plan: dict[str, Any], *,
+    inventory: dict[str, Any],
     progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
     """Read 71 source bundles plus 36 original pilot receipts; NOT quote bodies."""
@@ -265,23 +322,34 @@ def read_2022_original_memberships(
     claimed.update({("request",i,rid) for (i,rid) in gap_by_request})
     if consumed_gaps!=claimed:
         raise OriginalCrosswalkError("original no-CALL/exact-no-data gap ledger cannot be mapped")
+    in_scope_same_key, prior_only = _partition_prior_same_key_members(
+        same_key, inventory, represented_ids=set(represented),
+        pilot_ids=set(pilot_by_id),
+    )
+    if progress:
+        progress({"stage":"ORIGINAL_2022_PRIOR_ONLY_MEMBERS_AUDITED",
+                  "prior_only_count":len(prior_only),
+                  "case_ids":[x["case_id"] for x in prior_only],
+                  "accepted_same_key_members":len(in_scope_same_key),
+                  "provider_requests":0})
     if (
-        len(represented)!=2812 or len(same_key)!=27
+        len(represented)!=2812 or len(in_scope_same_key)!=27
         or len(gaps)!=169 or len(preferred["rank_zero"])!=2643
         or set(gaps)!=set(represented)-set(preferred["rank_zero"])
-        or set(same_key)&set(represented)
+        or set(in_scope_same_key)&set(represented)
         or set(represented)&set(pilot_by_id)
     ):
         raise OriginalCrosswalkError(
             f"original 2022 source census differs: reps={len(represented)} "
-            f"alternates={len(same_key)} gaps={len(gaps)} "
+            f"alternates={len(in_scope_same_key)} prior_only={len(prior_only)} gaps={len(gaps)} "
             f"preferred={len(preferred['rank_zero'])}"
         )
     return {
         "pilot_members":pilot_status,
         "pilot_by_key":pilot_by_key,
         "additive_representatives":represented,
-        "additive_same_key":same_key,
+        "additive_same_key":in_scope_same_key,
+        "prior_only_same_key_members":prior_only,
         "additive_gaps":gaps,
         "additive_exact_no_data_proofs":no_data,
         "original_preferred_calls":preferred["rank_zero"],
@@ -494,6 +562,8 @@ def reconcile_original_sources(
         "2025_original_pilot_source_statuses":dict(sorted(original25status.items())),
         "2022_original_additive_representatives":len(sources["additive_representatives"]),
         "2022_original_additive_same_key_members":len(sources["additive_same_key"]),
+        "2022_prior_only_same_key_members":sources["prior_only_same_key_members"],
+        "2022_prior_only_same_key_member_count":len(sources["prior_only_same_key_members"]),
         "2022_original_additive_source_abstentions":len(sources["additive_gaps"]),
         "2022_original_pilot_representatives":len(sources["pilot_members"]),
         "existing_2022_quote_series_plan_count":6398,
@@ -564,7 +634,7 @@ def build_original_source_crosswalk(
     if plan_path.is_symlink() or not plan_path.is_file():
         raise OriginalCrosswalkError("original accepted 2022 source plan missing")
     plan=_read_object(plan_path)
-    sources=read_2022_original_memberships(settings,plan,progress=progress)
+    sources=read_2022_original_memberships(settings,plan,inventory=inventory,progress=progress)
     shortlist=read_accepted_shortlist(settings)
     closeout=read_frozen_source_closeout(settings)
     native,_,native_action=build_multiyear_native_raw_open_source(settings,progress=progress)
