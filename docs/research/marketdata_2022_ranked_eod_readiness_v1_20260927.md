@@ -19,3 +19,8 @@ Writes a new small deterministic private metadata manifest under D: \`data/optio
 \`\`\`
 
 Separately, the supported native-raw DEVELOPMENT years 2023–25 still require their own source-universe freeze, exact-query deduplicated acquisition, and one operator-authorized resumable paid campaign. Do not copy the 2022's 2,812-key count into later years, spend the remaining reported 1,601 credits on speculative probes, or imply historical 2021 native readiness. MarketData entitlement/retention and protected holdout controls remain unchanged.
+
+
+### 2026-09-27 — Accepted rank-zero readiness and EOD reference-value successor
+
+Operator's offline rank-zero readiness result \`8f561664c6ee0bc11aed44bfe4a84606701e93a9aa8a3cbd7f4b53a102452efc\` joins 2,643 original stock opportunities to 2,227 preferred CALL histories, 0 lacking later EOD rows, 5 lacking later two-sided context, 2,638 with later two-sided context, 2,629 with at least two later two-sided dates and 2,435 with some later positive-volume row; zero new paid reads. That gate is accepted and must not be repeated simply for reconfirmation. Next distinct zero-credit artifact is a *hypothetical price reference only*: first strictly-later dated valid two-sided observed ask versus next strictly-later dated valid bid, with original updated timestamp, availability/volume and fully reported original denominator, no future-dependent contract selection or cash P&L. See \`docs/research/marketdata_2022_rank0_later_eod_reference_v1_20260927.md\`. The C: project options namespace is a verified junction to D: physical options; never duplicate raw data on C:.
