@@ -12,6 +12,7 @@ import json
 import math
 import os
 import re
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, date, timedelta
 from decimal import Decimal, InvalidOperation
@@ -40,7 +41,7 @@ CONTRACT = "atlas-marketdata-2022-additive-selected-call-eod-quote-v1"
 PLAN_REL = "data/options/manifests/marketdata_2022_additive_quote_plans_v1"
 CACHE_REL = "data/options/candidate_cache/quotes/marketdata_2022_additive_v1"
 MAX_SHARDS = 71
-MAX_WORKERS = 4
+MAX_WORKERS = 24
 MAX_NEW_QUOTE_REQUESTS = 3000
 MAX_OBSERVED_CREDITS = 3500
 MAX_SOURCE_ROWS = 500
@@ -333,7 +334,7 @@ def _one_exact_request(
 def run_selected_quote_histories(
     settings: AtlasSettings, plan: dict[str, Any], *,
     max_new_requests: int = 0, max_observed_credits: int = 1500,
-    workers: int = 4, authorize: bool = False, paid: bool = False, private: bool = False,
+    workers: int = 16, authorize: bool = False, paid: bool = False, private: bool = False,
     token: str | None = None,
     transport: Callable[[dict[str, Any], str], tuple[int, bytes, dict[str, str]]] = quote_transport,
     progress: Callable[[dict[str, Any]], None] | None = None,
@@ -356,7 +357,7 @@ def run_selected_quote_histories(
     if not 1 <= max_observed_credits <= MAX_OBSERVED_CREDITS:
         raise CandidateChainCacheError("quote observed credit target outside 1..3500")
     if not 1 <= workers <= MAX_WORKERS:
-        raise CandidateChainCacheError("quote workers outside 1..4")
+        raise CandidateChainCacheError("quote workers outside 1..24")
     if max_new_requests and not (authorize and paid and private):
         raise CandidateChainCacheError("all paid/private/provider confirmations required")
     if not max_new_requests and (authorize or paid or private):
@@ -384,15 +385,17 @@ def run_selected_quote_histories(
                   "verified_original_body_bytes": raw_bytes})
     attempts = credits = 0
     last_remaining = None
+    run_started = time.perf_counter()
     if max_new_requests:
         with ThreadPoolExecutor(max_workers=workers) as pool:
             while pending and attempts < max_new_requests and credits < max_observed_credits:
                 remaining_budget = max_observed_credits - credits
                 if last_remaining is not None and last_remaining < MIN_REMAINING_CREDITS:
                     break
-                # At most four in-flight original requests. Reserve one observed
-                # credit per <=500-row quote series; extra charges are monitored
-                # after the batch and stop any further dispatch.
+                # Bounded batches keep one uncertain original response from
+                # triggering another batch. Each full series is <=500 rows;
+                # reserve one observed credit per new request, then enforce
+                # actual provider header charges after all in-flight receipts.
                 size = min(workers, len(pending), max_new_requests - attempts,
                            max(1, remaining_budget))
                 assert_category_acquisition_allowed(
@@ -401,6 +404,7 @@ def run_selected_quote_histories(
                 )
                 batch = pending[:size]
                 pending = pending[size:]
+                batch_started = time.perf_counter()
                 futures = [pool.submit(_one_exact_request, settings, t, token or "", transport) for t in batch]
                 error = None
                 for f in as_completed(futures):
@@ -422,11 +426,16 @@ def run_selected_quote_histories(
                     else:
                         gaps += 1
                 if progress:
+                    batch_seconds = max(0.000001, time.perf_counter() - batch_started)
+                    elapsed_seconds = max(0.000001, time.perf_counter() - run_started)
                     progress({"stage": "BOUNDED_QUOTE_BATCH", "new_attempts": attempts,
                               "observed_credits": credits,
                               "complete_source_series": complete, "exact_source_gaps": gaps,
                               "remaining": last_remaining, "raw_body_bytes": raw_bytes,
-                              "pending": len(pending)})
+                              "pending": len(pending), "configured_workers": workers,
+                              "batch_size": size, "batch_elapsed_seconds": round(batch_seconds, 3),
+                              "cumulative_elapsed_seconds": round(elapsed_seconds, 3),
+                              "new_gets_per_second": round(attempts / elapsed_seconds, 2)})
                 if error is not None:
                     raise CandidateChainCacheError(
                         "one or more original quotes uncertain/quarantined; review original receipt and intent; no retry"

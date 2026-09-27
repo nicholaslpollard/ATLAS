@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--shards-through", type=int, default=15)
     p.add_argument("--max-new-requests", type=int, default=0)
     p.add_argument("--max-observed-credits", type=int, default=2100)
-    p.add_argument("--workers", type=int, default=4)
+    p.add_argument("--workers", type=int, default=16, help="bounded concurrent network requests (1..24; recommended 16)")
     p.add_argument("--authorize-provider-reads", action="store_true")
     p.add_argument("--confirm-paid-starter", action="store_true")
     p.add_argument("--confirm-private-internal-use", action="store_true")
