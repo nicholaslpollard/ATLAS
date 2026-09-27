@@ -119,7 +119,6 @@ def freeze_quote_plan(
         source_plans.append({
             "shard_index": index, "source_sha256": binding["source_sha256"],
             "chain_plan_fingerprint": plan["plan_fingerprint"],
-            "source_action": action,
         })
         for request in plan["requests"]:
             receipt = intact_chain_receipt(

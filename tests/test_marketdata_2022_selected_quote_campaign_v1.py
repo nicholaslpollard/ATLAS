@@ -84,6 +84,7 @@ def test_frozen_plan_uses_original_chain_receipt_and_three_exact_quote_series(tm
     assert plan["unique_exact_quote_series"] == 3
     assert plan["selected_candidate_memberships"] == 3
     assert plan["provider_reads_in_planning"] == 0
+    assert all("source_action" not in row for row in plan["source_plans"])
     assert {r["from_inclusive"] for r in plan["requests"]} == {"2022-01-01"}
     assert {r["to_exclusive"] for r in plan["requests"]} == {"2022-03-19"}
     assert all(len(r["source_shard_memberships"]) == 1 for r in plan["requests"])
