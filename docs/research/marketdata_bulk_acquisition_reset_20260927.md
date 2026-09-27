@@ -31,3 +31,8 @@ For a separate bulk provider, Massive lists options minute-aggregate flat files 
 ## Immediate operator transition
 
 The 2022 shards 6–15 campaign already started under the previous explicit authorization; do not start a second process concurrently, interrupt a completed-source/receipt write, or blanket repeat paid calls. Capture its final output. **Before authorizing another chain-only campaign, implement and test the generalized selected-contract quote acquisition and unified cost/storage ledger**. The next workstation handoff should progress both new chain coverage and historical quote-history coverage within one budget. Record actual D: bytes and the remaining subscription rights before any cancellation decision.
+
+
+### 2026-09-27 — Operator subscription and simulation scope clarified
+
+The operator explicitly confirmed this historical options dataset is for **private ATLAS simulator/research use**, and the paid MarketData subscription will remain active for as long as needed to run those strategies. The intended workflow is reusable local D: historical chain plus selected-contract EOD quote source, not immediate subscription cancellation. The existing terms-of-service requirement for eventual termination still applies; this is not a perpetual offline-license assumption. Prioritize complete source coverage needed by scenario design, deduplication of paid requests, actual receipt bytes and credit-ledger observability. Chain-only snapshots must not masquerade as priced options simulations. Do not start an overlapping provider job while the previously authorized 2022 shard 6–15 campaign is active.
