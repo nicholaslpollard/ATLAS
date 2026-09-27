@@ -118,7 +118,7 @@ def test_invalid_source_identity_or_original_group_fails_closed():
     cross["crosswalk_fingerprint"]=_fingerprint({
         k:v for k,v in cross.items() if k!="crosswalk_fingerprint"
     })
-    with pytest.raises(m.PhysicalSourceDemandError,match="source group membership"):
+    with pytest.raises(m.PhysicalSourceDemandError,match="physical preview key/membership"):
         m.freeze_physical_chain_source_demand(cross,inv)
     cross,inv=_inputs()
     cross["provider_requests"]=1
