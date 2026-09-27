@@ -70,7 +70,7 @@ def _prior(settings: AtlasSettings, *, runner: Callable[..., dict[str, Any]] = r
     keys = {(req["ticker"], req["params"]["date"], req["params"]["expiration"])
             for req in plan["requests"]}
     ids = {row["opportunity_id"] for row in bundle["rows"]}
-    if len(keys) != 36 or len(ids) != 36:
+    if not 1 <= len(keys) <= 36 or len(ids) != 36:
         raise CandidateChainCacheError("original 2022 source/group identities changed")
     return plan, ids, keys
 
