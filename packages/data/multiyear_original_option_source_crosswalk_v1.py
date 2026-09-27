@@ -422,12 +422,47 @@ def reconcile_original_sources(
     close25={x["opportunity_id"]:x for x in closeout["opportunities"]}
     if len(pilot25)!=12 or set(pilot25)!=set(close25):
         raise OriginalCrosswalkError("original 2025 pilot case IDs differ")
+    accepted_2022={
+        x["case_id"]:x for x in inventory["cases"] if x["year"]=="2022"
+    }
+    if len(accepted_2022)!=2900:
+        raise OriginalCrosswalkError("accepted 2022 case denominator changed")
+    preferred_outside=sorted(set(sources["original_preferred_calls"])-set(accepted_2022))
+    if preferred_outside:
+        raise OriginalCrosswalkError(
+            f"accepted preferred CALL IDs absent from frozen 2022 census: {preferred_outside}"
+        )
+    # The earlier 3-pilot-collision prediction was an arithmetic inference, not
+    # a physical source ledger. Account for missing exact IDs explicitly instead.
+    by_additive_key:dict[tuple[str,str,str],list[tuple[str,dict[str,Any]]]]=defaultdict(list)
+    for rep_id,original in sources["additive_representatives"].items():
+        by_additive_key[original["source_key"]].append((rep_id,original))
+    for matches in by_additive_key.values():
+        matches.sort(key=lambda item:item[0])
+    original_source_only_reps=[
+        {"case_id":oid,"source_key":list(source["source_key"]),
+         "source_sha256":source["source_sha256"],
+         "chain_request_identity":source["chain_request_identity"],
+         "shard_index":source["shard_index"],
+         "original_source_gap":sources["additive_gaps"].get(oid)}
+        for oid,source in sorted(sources["additive_representatives"].items())
+        if oid not in accepted_2022
+    ]
+    original_source_only_pilot=[
+        {"case_id":oid,"source_key":list(_source_key({
+            "ticker":key[0],"signal_session":key[1],"expiration":key[2]
+        })),"request_identity":source["request_identity"],
+         "original_chain_sha256":source["original_chain_sha256"]}
+        for key,source in sorted(sources["pilot_by_key"].items())
+        for oid in [source["representative_id"]] if oid not in accepted_2022
+    ]
     original25status=Counter()
     by_year={str(year):Counter() for year in range(2021,2027)}
     out=[]
     reconciled_2022=set()
     used25=set()
     prior_key_colliders=set()
+    unresolved_2022=[]
     all2022=set()
     for idx,row in enumerate(inventory["cases"],1):
         oid=row["case_id"];year=row["year"];pre=row["source_disposition"]
@@ -516,7 +551,41 @@ def reconcile_original_sources(
                     linked={**source,"strike_coverage":_strike_coverage(
                         source["strike_window"],_case_raw_price(native_by_id,oid))}
                 else:
-                    raise OriginalCrosswalkError("unexplained 2022 case outside all original physical source keys")
+                    member_open=_case_raw_price(native_by_id,oid)
+                    physical=by_additive_key.get(key,[])
+                    if physical:
+                        classification="ORIGINAL_2022_ADDITIVE_KEY_UNLISTED_MEMBER_SOURCE_ONLY"
+                        linked={
+                            "original_physical_key":list(key),
+                            "member_native_raw_open":member_open,
+                            "source_membership_not_in_original_bundle":True,
+                            "own_preferred_call_not_selected":True,
+                            "possible_original_representatives":[{
+                                **prior,
+                                "representative_id":rep_id,
+                                "representative_source_gap":
+                                    sources["additive_gaps"].get(rep_id),
+                                "strike_coverage":_strike_coverage(
+                                    prior["chain_strike_window"],member_open),
+                            } for rep_id,prior in physical],
+                        }
+                    else:
+                        classification="ORIGINAL_2022_NO_ORIGINAL_PHYSICAL_CHAIN_KEY"
+                        linked={
+                            "original_source_gap_key":list(key),
+                            "member_native_raw_open":member_open,
+                            "original_physical_query_found":False,
+                            "provider_market_absence_proven":False,
+                        }
+                    unresolved_2022.append({
+                        "case_id":oid,"ticker":row["ticker"],
+                        "signal_session":row["signal_session"],
+                        "expiration":row["expiration"],
+                        "decision_at_utc":row["decision_at_utc"],
+                        "classification":classification,
+                        "same_key_existing_physical_representatives":
+                            [x[0] for x in physical],
+                    })
                 reconciled_2022.add(oid)
             elif pre=="NO_BOUNDED_MONTHLY_EXPIRATION":
                 classification="ORIGINAL_2022_FROZEN_MONTHLY_EXPIRY_GAP"
@@ -586,7 +655,6 @@ def reconcile_original_sources(
                       "provider_requests":0})
     if (
         len(all2022)!=2900 or len(reconciled_2022)!=2900
-        or len(prior_key_colliders)!=3
         or len(used25)!=12
         or original25status!={
             "ORIGINAL_2025_PILOT_PREFERRED_CALL_POINTER_REUSED":11,
@@ -602,7 +670,7 @@ def reconcile_original_sources(
         )
     result={
         "contract":CONTRACT,
-        "status":"COMPLETE_ORIGINAL_2022_2025_SOURCE_IDENTITY_RECONCILIATION_ONLY",
+        "status":"COMPLETE_ORIGINAL_SOURCE_ACCOUNTING_WITH_EXPLICIT_UNCOVERED_2022_CASES",
         "source_inventory_fingerprint":inventory["inventory_fingerprint"],
         "original_2022_quote_plan_fingerprint":sources["original_2022_quote_plan_fingerprint"],
         "original_2022_pilot_plan_fingerprint":sources["original_pilot_plan_fingerprint"],
@@ -610,8 +678,12 @@ def reconcile_original_sources(
         "original_2025_structural_shortlist_fingerprint":shortlist["shortlist_fingerprint"],
         "case_denominator":14902,
         "2022_total_original_cases_reconciled":len(reconciled_2022),
-        "2022_unmatched_cases_remaining":2900-len(reconciled_2022),
+        "2022_unmatched_cases_remaining":len(unresolved_2022),
+        "2022_unmatched_original_source_cases":unresolved_2022,
+        "2022_source_only_original_additive_representatives":original_source_only_reps,
+        "2022_source_only_original_pilot_representatives":original_source_only_pilot,
         "2022_pilot_same_key_other_cases":len(prior_key_colliders),
+        "2022_pilot_same_key_other_case_ids":sorted(prior_key_colliders),
         "2025_original_pilot_matched_cases":len(used25),
         "2025_original_pilot_source_statuses":dict(sorted(original25status.items())),
         "2022_original_additive_representatives":len(sources["additive_representatives"]),
@@ -657,7 +729,7 @@ def _verified_existing(path: Path, inventory: dict[str,Any]) -> dict[str,Any]|No
     if (
         fp!=_fingerprint(unsigned)
         or doc.get("contract")!=CONTRACT
-        or doc.get("status")!="COMPLETE_ORIGINAL_2022_2025_SOURCE_IDENTITY_RECONCILIATION_ONLY"
+        or doc.get("status")!="COMPLETE_ORIGINAL_SOURCE_ACCOUNTING_WITH_EXPLICIT_UNCOVERED_2022_CASES"
         or doc.get("source_inventory_fingerprint")!=inventory["inventory_fingerprint"]
         or doc.get("case_denominator")!=14902
         or len(doc.get("cases",[]))!=14902
