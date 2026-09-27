@@ -24,3 +24,10 @@ This first combined range is a **bounded research wave**, not a claim to have do
 \`\`\`
 
 The operator must explicitly run it; CI and docs-only work do **not** spend provider credits. A source/quote partial result is not paper/live approval. If the command fails, report full original console output rather than invoking another command blindly.
+
+
+### 2026-09-27 — Accepted coordinated 2022 16–25 closeout; transition to one 2022 bulk command
+
+New operator result \`01bc9b6e3187161d6cc296cabe54e1ca5c993b89cdbfde962ef5cfc63876163b\`: 400 new physical chain GETs, 378 original complete, 22 exact proved gaps, 0 pending, 377 chain credits. Total additive physical source 0–25 is 979 complete / 61 exact 404 gaps across 1040 keys (separate original 36-source pilot not included). Exact EOD CALL histories 2,725 complete/0 gaps/0 pending, including 1,709 prior reused + 1,016 new, quote credits 1,010. Aggregate credits1,387; last observed6,909. Quote throughput 2.84 GET/s with16 workers, original chain stage serial. Source/quote data on D:; 31,361,769 verified raw quote bytes, candidate cache 0.023→0.036 GiB.
+
+The successor \`scripts/run_marketdata_2022_complete_bulk_v1.py\` is one explicit 2022 remaining-shards26–70 campaign: original prior verification once, one accepted native stock load, independent source-plan waves starting8 network workers and adapting to max24, strict all-source-complete barrier, then 24-worker original exact quote cache through70, up to6500 new requests within aggregate observed-credit target6400 and protected provider/D: floors. Every paid response is persisted with original attempt/receipt; source/QC complete later. It automatically reuses all 2725 original saved quote histories and 1040 physical source keys, does not acquire non-monthly expiries/other years, and cannot infer 09:35 fills. Detailed runbook \`docs/research/marketdata_2022_complete_bulk_v1_20260927.md\`.

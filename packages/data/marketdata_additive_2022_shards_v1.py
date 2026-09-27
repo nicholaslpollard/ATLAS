@@ -135,11 +135,24 @@ def prepare_additive_shard(
     runner: Callable[..., dict[str, Any]] = run_candidate_chain_cache,
     preparer: Callable[..., Any] = prepare_cohort,
     progress: Callable[[dict[str, Any]], None] | None = None,
+    verified_prior: tuple[dict[str, Any], set[str], set[tuple[str, str, str]]] | None = None,
 ) -> tuple[dict[str, Any], Path, dict[str, Any], str]:
     if not 0 <= shard_index <= MAX_SHARD_INDEX or not 1 <= duckdb_threads <= 8:
         raise CandidateChainCacheError("additive shard index/threads outside registered bounds")
     _require_external(settings)
-    prior, old_ids, old_keys = _prior(settings, runner=runner, preparer=preparer)
+    # The bulk orchestrator can pass the once-verified original source.
+    # This is source-only; every bound shard still verifies original SHA/plan.
+    if verified_prior is None:
+        prior, old_ids, old_keys = _prior(settings, runner=runner, preparer=preparer)
+    else:
+        if (not isinstance(verified_prior, tuple) or len(verified_prior) != 3
+                or not isinstance(verified_prior[0], dict)
+                or verified_prior[0].get("plan_fingerprint") != FROZEN_PRIOR_PLAN
+                or not isinstance(verified_prior[1], set) or len(verified_prior[1]) != 36
+                or not isinstance(verified_prior[2], set)
+                or not 1 <= len(verified_prior[2]) <= 36):
+            raise CandidateChainCacheError("bulk verified prior reference malformed")
+        prior, old_ids, old_keys = verified_prior
     bound = _binding_path(settings, shard_index)
     if bound.exists() or bound.is_symlink():
         result = _read_bound(settings, shard_index, prior["plan_fingerprint"])
