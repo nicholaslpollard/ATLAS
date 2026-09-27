@@ -34,7 +34,7 @@ EASTERN = ZoneInfo("America/New_York")
 STRIKE_FRACTION = Decimal("0.08")
 MAX_UNION_FRACTION = Decimal("0.25")
 CENT = Decimal("0.01")
-OCC = re.compile(r"^([A-Z0-9.]+)(\\d{6})([CP])(\\d{8})$")
+OCC = re.compile(r"^([A-Z0-9.]+)(\d{6})([CP])(\d{8})$")
 AUTHORITY = {
     "provider_requests": 0,
     "new_paid_request_authority": False,
