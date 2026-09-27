@@ -33,6 +33,9 @@ def _base(tmp_path, monkeypatch):
     location.parent.mkdir(parents=True, exist_ok=True)
     location.write_text(json.dumps(plan), encoding="utf-8")
     monkeypatch.setattr(bulk, "_require_external", lambda *_: None)
+    # Real implementation reserves the ENTIRE source wave on D:. Synthetic
+    # settings have no storage policy and must not bypass the production guard.
+    monkeypatch.setattr(bulk, "assert_category_acquisition_allowed", lambda *_a, **_kw: None)
     return root
 
 
