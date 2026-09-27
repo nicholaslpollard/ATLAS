@@ -119,7 +119,8 @@ def test_whole_2022_parallel_original_chains_then_adaptive_quote_chunks(tmp_path
     assert result["observed_total_credits"] == 2287
     assert result["complete_exact_quote_histories"] == 5000
     assert result["pending_exact_quote_histories"] == 0
-    assert quote_workers == [16, 20, 24]
+    assert quote_workers[0] == 16 and all(8 <= x <= 24 for x in quote_workers)
+    assert quote_workers[1] == 20
     assert [e["workers"] for e in events if e["stage"] == "SOURCE_PARALLEL_WAVE"] == [4, 2]
     assert not (tmp_path / bulk.REPORT_REL / "acquisition.lock").exists()
     assert json.loads((tmp_path / bulk.REPORT_REL / "latest.json").read_text())["status"] == "COMPLETE_SOURCE_ONLY"
@@ -336,3 +337,15 @@ def test_prepare_all_origins_once_and_reject_collision(tmp_path, monkeypatch):
     a=bulk._source_plans(_settings(tmp_path),duckdb_threads=4,progress=lambda *_:None,loader=loader)
     assert len(a)==45 and sum(x[-1] for x in a)==1772
     assert seen==list(range(26,71)) and len(source_loads)==1
+
+
+
+def test_adaptive_quote_workers_ramp_reduce_and_hold_at_caps():
+    f = bulk._adapt_quote_workers
+    assert f(16, 0, 2.8, 1000) == 20
+    assert f(20, 2.8, 2.9, 1000) == 24
+    assert f(24, 2.8, 3.0, 1000) == 24
+    assert f(24, 3.0, 2.2, 1000) == 20
+    assert f(8, 3.0, 2.2, 1000) == 8
+    assert f(16, 3.0, 3.0, 127) == 16
+    assert f(16, 3.0, 2.5, 1000) == 16

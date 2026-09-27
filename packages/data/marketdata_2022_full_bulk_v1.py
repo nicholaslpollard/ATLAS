@@ -55,6 +55,18 @@ def _next_reset(now: datetime) -> datetime:
     return target
 
 
+def _adapt_quote_workers(workers: int, previous_gets_per_second: float,
+                         current_gets_per_second: float, observed_gets: int) -> int:
+    """Conservative cross-chunk AIMD; cap account-wide headroom at 24."""
+    if observed_gets < 128:
+        return workers
+    if previous_gets_per_second and current_gets_per_second < previous_gets_per_second * 0.80:
+        return max(8, workers - 4)
+    if not previous_gets_per_second or current_gets_per_second >= previous_gets_per_second * 0.90:
+        return min(MAX_QUOTE_WORKERS, workers + 4)
+    return workers
+
+
 def _check_lock(settings: AtlasSettings, run_id: str) -> Path:
     path = settings.resolved_path(f"{REPORT_REL}/acquisition.lock")
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -453,10 +465,7 @@ def run_full_bulk(
                 save("PARTIAL_QUOTE_NO_PROGRESS")
                 return state
             if calls >= 128:
-                if last_speed and speed < last_speed * 0.80:
-                    quote_workers = max(8, quote_workers - 4)
-                elif not last_speed or speed >= last_speed * 0.90:
-                    quote_workers = min(MAX_QUOTE_WORKERS, quote_workers + 4)
+                quote_workers = _adapt_quote_workers(quote_workers, last_speed, speed, calls)
                 last_speed = speed
                 state["quote_workers"] = quote_workers
     except BaseException as exc:
