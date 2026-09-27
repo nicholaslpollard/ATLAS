@@ -2,7 +2,7 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-**Current as of 2026-09-26 (UTC). The root README, `docs/roadmap.md`, and
+**Current as of 2026-09-27 (UTC). The root README, `docs/roadmap.md`, and
 `docs/strategy_evidence_register.md` are the three living project documents. Every
 continuation chat must read all three in full before making recommendations or changes.**
 
@@ -4950,3 +4950,12 @@ Operator's completed read-only full-2022 audit \`f1adec38fbffa2fa2612dda0e3f68ca
 ### 2026-09-27 — Accepted rank-zero readiness and EOD reference-value successor
 
 Operator's offline rank-zero readiness result \`8f561664c6ee0bc11aed44bfe4a84606701e93a9aa8a3cbd7f4b53a102452efc\` joins 2,643 original stock opportunities to 2,227 preferred CALL histories, 0 lacking later EOD rows, 5 lacking later two-sided context, 2,638 with later two-sided context, 2,629 with at least two later two-sided dates and 2,435 with some later positive-volume row; zero new paid reads. That gate is accepted and must not be repeated simply for reconfirmation. Next distinct zero-credit artifact is a *hypothetical price reference only*: first strictly-later dated valid two-sided observed ask versus next strictly-later dated valid bid, with original updated timestamp, availability/volume and fully reported original denominator, no future-dependent contract selection or cash P&L. See \`docs/research/marketdata_2022_rank0_later_eod_reference_v1_20260927.md\`. The C: project options namespace is a verified junction to D: physical options; never duplicate raw data on C:.
+
+
+### 2026-09-27 — Accepted cross-year stock/news/native data bridge; original option gap census implemented
+
+The workstation completed \`scripts/build_multiyear_stock_news_source_v1.py\` on the accepted 2021–2025 DEVELOPMENT source: 14,902 selected daily LONG stock cases, broken out as 5,491 in 2021, 2,900 in 2022, 1,601 in 2023, 1,390 in 2024, and 3,520 in 2025. The original 2026 accepted-DEVELOPMENT source count is explicitly zero pending separately qualified prospective evidence, not an assumption that there were no market opportunities. All 70 historical news partitions were SHA verified; 1,426,704 normalized article rows scanned. Exactly 3,002 cases had at least one prior-24h article and 8,121 had at least one prior-7d article under conservative original revision chronology. Feature-join fingerprint: \`0f42e414031837242d9838f88b00f6a1e55ca77ff0e1a208050aa3fbeb7a4a69\`. These counts describe source evidence only; no trades or option P&L.
+
+Original native stock-open binder PR #273 merged (main SHA \`2a5753918f4f04392d52332e8c00292927ecb7ac\`) after all 20 checks passed. Operator verified 1,692 accepted original C:-native raw units, yielding 14,885 exact native raw-as-traded opening prices, 17 deferred late-2025 signals with 2026 entry, and 20 2022 cases without a qualifying frozen monthly expiry; full 14,902-case denominator preserved. Accepted derived native evidence SHA fingerprint: \`e0b29569ece159208cfa0303b7d94b596b6e08299a509367d0b0538939ae8e64\`. All research derived files resolve through D:-bound research evidence, options and news; stock base stays C:. No provider calls in these three local stages. The 1Day raw OPEN is not an executable 09:35 stock or option fill.
+
+The new \`scripts/build_multiyear_option_gap_inventory_v1.py\` implements the next zero-GET source-inventory gate: preserve every actual 2021–2025 case, test exact 2022 preferred rank-zero option-plan member IDs and raw-open/OCC/expiry against the frozen 6,398-history original quote plan, report same-key and not-yet-reconciled 2022 source cases distinctly, acknowledge 2021 pre-rolling-floor decisions, and mark 2025 pilot and deferred 2026 cases for independent source reconciliation. It emits a provisional full-year raw-open ±8% physical chain-query *size preview*, not permission to spend paid credits or proof of historical option fill. Operator inventory result is still pending; do not infer new-call counts from the original 2022 2,643 reference denominator or reacquire the original 2022 corpus. Future source work must reconcile exact original 2022/2025 chain receipts first, then choose true missing PIT contracts, reuse original quote histories, and independently establish matched-clock stock/option marks, contract terms, costs and model-derived Greeks.
