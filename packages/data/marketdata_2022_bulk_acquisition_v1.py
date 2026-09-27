@@ -21,8 +21,8 @@ from packages.data.marketdata_2022_broad_quote_campaign_v2 import (
     PLAN_REL, freeze_broad_quote_plan, run_broad_quote_histories,
 )
 from packages.data.marketdata_candidate_chain_cache_v1 import (
-    CandidateChainCacheError, MIN_REMAINING_CREDITS, _fingerprint,
-    run_candidate_chain_cache,
+    CandidateChainCacheError, MIN_REMAINING_CREDITS, MAX_RAW_BYTES as CHAIN_MAX_RAW_BYTES,
+    _fingerprint, run_candidate_chain_cache,
 )
 from packages.data.marketdata_candidate_expansion_v1 import (
     _exclusive, _read_object, _require_external, run_expansion,
@@ -31,6 +31,7 @@ from packages.data.marketdata_2022_selected_quote_campaign_v1 import (
     MAX_NEW_QUOTE_REQUESTS, MAX_OBSERVED_CREDITS as QUOTE_CREDIT_CAP,
 )
 from packages.data.marketdata_2022_quote_coverage_audit_v1 import audit_frozen_quote_coverage
+from packages.data.research_storage import assert_category_acquisition_allowed
 
 CONTRACT = "atlas-marketdata-2022-bulk-local-first-v1"
 FROZEN_LAST_DONE_SHARD = 25
@@ -248,6 +249,12 @@ def run_bulk_2022(
             if per_shard_gets < 1:
                 break
             indices = pending[:n]
+            # Concurrent per-shard preflights alone could each approve against
+            # the same free bytes. Reserve the entire wave BEFORE dispatch.
+            assert_category_acquisition_allowed(
+                settings, category="options_candidate_cache",
+                projected_additional_bytes=n * per_shard_gets * (CHAIN_MAX_RAW_BYTES + 16384),
+            )
             started_wave = time.perf_counter()
             jobs = {
                 pool.submit(
