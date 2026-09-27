@@ -200,7 +200,7 @@ def compare_case(
         result["option_status"] = "NO_STRUCTURALLY_SELECTED_CONTRACT"
     elif option:
         assert opt_entry_stamp is not None and opt_exit_stamp is not None
-        match = re.fullmatch(r"([A-Z0-9.]+)(\\d{6})([CP])(\\d{8})", case.option_symbol)
+        match = re.fullmatch(r"([A-Z0-9.]+)(\d{6})([CP])(\d{8})", case.option_symbol)
         if (
             match is None or case.option_expiration is None
             or match.group(2) != case.option_expiration.strftime("%y%m%d")
