@@ -156,11 +156,23 @@ def prepare_additive_shard(
         raise CandidateChainCacheError("accepted 2022 daily LONG identity census empty/duplicate")
     new_by_key: dict[tuple[str, str, str], list[Any]] = defaultdict(list)
     excluded_id = excluded_prior_key = 0
+    expiry_window_exclusions: list[dict[str, str]] = []
     for item in eligible:
         if item.opportunity_id in old_ids:
             excluded_id += 1
             continue
-        key = _key(item)
+        try:
+            key = _key(item)
+        except exporter.CandidateStockExportError as exc:
+            if str(exc) != "no bounded exchange monthly expiry is available":
+                raise
+            expiry_window_exclusions.append({
+                "opportunity_id": item.opportunity_id,
+                "ticker": item.ticker,
+                "snapshot_date": item.signal_session.isoformat(),
+                "reason": "NO_MONTHLY_EXPIRY_IN_28_TO_60_DAY_WINDOW",
+            })
+            continue
         if key in old_keys:
             excluded_prior_key += 1
             continue
