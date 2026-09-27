@@ -124,7 +124,8 @@ def _partition_prior_same_key_members(
     evidence drift. Neither is silently counted or discarded.
     """
     inventory = _inventory(inventory)
-    current = {row["case_id"]: row for row in inventory["cases"] if row["year"] == "2022"}
+    entire_census = {row["case_id"]: row for row in inventory["cases"]}
+    current = {oid: row for oid, row in entire_census.items() if row["year"] == "2022"}
     expected = {
         oid for oid, row in current.items()
         if row["source_disposition"] == "ORIGINAL_2022_SAME_KEY_RECONCILIATION_REQUIRED"
@@ -134,7 +135,8 @@ def _partition_prior_same_key_members(
     unexpected = sorted(observed - expected)
     role_overlap = sorted(observed & (represented_ids | pilot_ids))
     in_census_elsewhere = [
-        (oid, current[oid]["source_disposition"]) for oid in unexpected if oid in current
+        (oid, entire_census[oid]["year"], entire_census[oid]["source_disposition"])
+        for oid in unexpected if oid in entire_census
     ]
     if (
         len(current) != 2900 or len(expected) != 27 or len(observed) != 29
@@ -142,7 +144,7 @@ def _partition_prior_same_key_members(
     ):
         details = [{
             "case_id": oid,
-            "census_disposition": current[oid]["source_disposition"] if oid in current
+            "census_disposition": entire_census[oid]["source_disposition"] if oid in entire_census
                                   else "ABSENT_FROM_ACCEPTED_2022_CENSUS",
             "source_key": list(same_key[oid]["source_key"]),
             "representative_id": same_key[oid]["representative_id"],
