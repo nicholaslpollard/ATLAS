@@ -23,3 +23,20 @@ The same PowerShell block first completes the existing 2022 original requests an
 ```
 
 **Authority boundary:** historical EOD chains alone establish identities and source coverage, never at-decision 09:35 option prices/fills, exact adjusted deliverability or option P&L. No scientific promotion, protected post-May-11-2026 holdout, PAPER, LIVE, brokerage or order rights. Licensed data retention remains conditional on provider terms.
+
+
+## 2026-09-27 operator result and narrow offline source-census repair (supersedes paired gate above)
+
+The original 2022 cohort has **already completed** (33 intact chains, three exact zero-credit no-data proofs, zero pending), with 17 additional reported credits and last remaining 9,875. Its campaign fingerprint is `525716e578891c6080b3623183e41c2bf6c671a322d42e89a1d9dde1a369ec55`. Do **not** rerun the original 2022 paid stage: the paired command above documents the previous transition, not the current operator action.
+
+The additive source load verified all 546 source parts and returned 3,789 selected comparable opportunities, but before any additional provider request, `_monthly_expiration` raised the exact `CandidateStockExportError: no bounded exchange monthly expiry is available`. This is a possible exchange-calendar edge case under the frozen 28..60 calendar-day monthly expiry rule: for example 2022-03-18 is a regular Friday, April's expiry is Thursday 2022-04-14 (Good Friday is a closure) at 27 days, and May 2022-05-20 is 63 days away. The operator's specific offending opportunity/date was not printed, so this is an explanatory test case, not a claim that it was the observed row.
+
+The additive exporter now handles **only this exact absence** as a deterministic, outcome-blind, publicly enumerable source exclusion rather than silently broadening DTE. An immutable source ledger includes every omitted opportunity's identifier, ticker, snapshot date and reason, an independently fingerprinted list and count, and a run progress summary. Unrelated calendar/source errors still fail closed. All accepted cases sharing one physical `(ticker,snapshot,expiration)` key are represented in `chosen_key_member_ids`; one lexicographically selected ID per key supplies the one unique raw-open lookup for its chain, avoiding duplicate (ticker,session) joins while preserving the covered opportunity IDs in the source bundle. This selection has no outcome, return, quote or liquidity criteria. Existing prior-plan source/receipt data are never rewritten.
+
+The repaired latest action is **only the new additive 2022 shard**, not the original 2022 paid campaign. It targets at most 40 new historical chains and 80 observed credits, keeps the old 2025 pilot untouched, uses D: external storage and strictly proven exact-zero-credit 404 sidecars, and stops on any other uncertainty:
+
+```powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }; git pull --ff-only; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed. Stop.' }; & .\.venv\Scripts\python.exe scripts\run_marketdata_additive_2022_shard_v1.py --shard-index 0 --duckdb-threads 4 --max-total-new-requests 40 --max-observed-credits 80 --authorize-provider-reads --confirm-paid-starter --confirm-private-internal-use --classify-exact-no-data; if ($LASTEXITCODE -ne 0) { throw 'Additive shard stopped. Preserve original evidence; no blind retries.' } }
+```
+
+The next user output must establish actual total additional eligible source keys/shard count, recorded expiration exclusions, duplicate-member coverage, provider credit cost and outcome of shard 0 before broader paid acquisition. None of this evidence is at-decision 09:35 option execution/P&L, deliverable proof, strategy promotion, PAPER/LIVE or broker authority.
