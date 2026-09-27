@@ -12,7 +12,7 @@ from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import duckdb
 
@@ -163,6 +163,7 @@ class OfflineNewsContext:
     def from_accepted_2022(
         cls, settings: AtlasSettings, tickers: set[str],
         *, threads: int = 4,
+        progress: Callable[[dict[str, Any]], None] | None = None,
     ) -> "OfflineNewsContext":
         if not tickers or any(not s or not isinstance(s, str) for s in tickers):
             raise OfflineNewsContextError("explicit nonempty ticker universe required")
@@ -185,6 +186,9 @@ class OfflineNewsContext:
             while rows := con.fetchmany(8192):
                 for article_id, created, updated, symbols_json in rows:
                     scanned += 1
+                    if progress and scanned % 50_000 == 0:
+                        progress({"stage": "NEWS_METADATA_SCAN",
+                                  "articles_scanned": scanned, "provider_requests": 0})
                     if not isinstance(article_id, str) or not article_id:
                         raise OfflineNewsContextError("article ID missing")
                     effective = effective_pit_available_at(
@@ -206,6 +210,9 @@ class OfflineNewsContext:
             raise OfflineNewsContextError("local news Parquet read failed") from exc
         finally:
             con.close()
+        if progress:
+            progress({"stage": "NEWS_METADATA_SCAN",
+                      "articles_scanned": scanned, "provider_requests": 0})
         events: dict[str, list[datetime]] = defaultdict(list)
         for available, symbols in chosen.values():
             for ticker in symbols:
