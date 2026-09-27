@@ -367,3 +367,77 @@ def test_gap_linked_exact_query_no_data_stays_exact_scope():
     assert row["original_source_pointer"]["member_native_raw_open"]=="51"
     assert row["original_source_pointer"]["strike_coverage"]=="ORIGINAL_STRIKE_ENVELOPE_PARTIAL_FOR_THIS_RAW_OPEN"
     assert row["new_paid_request_authority"] is False
+
+
+def _resign_frozen_originals(inventory,native):
+    native["source_fingerprint"]=_fingerprint({
+        k:v for k,v in native.items() if k!="source_fingerprint"
+    })
+    inventory["original_native_stock_source_fingerprint"]=native["source_fingerprint"]
+    inventory["inventory_fingerprint"]=_fingerprint({
+        k:v for k,v in inventory.items() if k!="inventory_fingerprint"
+    })
+
+
+def test_original_unlisted_key_membership_and_absent_key_are_explicit_not_fills():
+    inventory,sources,shortlist,closeout,native=_fixtures()
+    missing={x["case_id"]:x for x in inventory["cases"]}
+    missing["2022-prior-alt00"]["ticker"]="TEST"
+    missing["2022-prior-alt01"]["ticker"]="NOTINSOURCE"
+    _resign_frozen_originals(inventory,native)
+    result=m.reconcile_original_sources(
+        inventory,sources,shortlist,closeout,native=native,
+    )
+    assert result["case_denominator"]==14902
+    assert result["2022_total_original_cases_reconciled"]==2900
+    assert result["2022_unmatched_cases_remaining"]==2
+    assert result["2022_pilot_same_key_other_cases"]==1
+    assert result["2022_source_only_original_additive_representatives"]==[]
+    assert result["2022_source_only_original_pilot_representatives"]==[]
+    cases={x["case_id"]:x for x in result["cases"]}
+    exact=cases["2022-prior-alt00"]
+    assert exact["original_reconciliation"]=="ORIGINAL_2022_ADDITIVE_KEY_UNLISTED_MEMBER_SOURCE_ONLY"
+    assert exact["original_source_pointer"]["source_membership_not_in_original_bundle"] is True
+    assert len(exact["original_source_pointer"]["possible_original_representatives"])==2812
+    assert exact["original_source_pointer"]["own_preferred_call_not_selected"] is True
+    absent=cases["2022-prior-alt01"]
+    assert absent["original_reconciliation"]=="ORIGINAL_2022_NO_ORIGINAL_PHYSICAL_CHAIN_KEY"
+    assert absent["original_source_pointer"]["original_physical_query_found"] is False
+    assert absent["original_source_pointer"]["provider_market_absence_proven"] is False
+    assert all(not c["historical_option_fill_verified"] and
+               not c["new_paid_request_authority"] and
+               not c["new_2022_chain_get_needed_proven"]
+               for c in (exact,absent))
+    assert result["new_paid_requests"]==result["provider_requests"]==0
+
+
+def test_older_source_representative_missing_current_case_does_not_mask_new_case():
+    inventory,sources,shortlist,closeout,native=_fixtures()
+    old="2022-gap168"
+    new="2022-added-signal"
+    assert old in sources["additive_representatives"]
+    next(x for x in inventory["cases"] if x["case_id"]==old)["case_id"]=new
+    next(x for x in native["rows"] if x["case_id"]==old)["case_id"]=new
+    _resign_frozen_originals(inventory,native)
+    result=m.reconcile_original_sources(
+        inventory,sources,shortlist,closeout,native=native,
+    )
+    assert result["2022_unmatched_cases_remaining"]==1
+    assert result["2022_pilot_same_key_other_cases"]==3
+    assert [x["case_id"] for x in
+            result["2022_source_only_original_additive_representatives"]]==[old]
+    row=next(x for x in result["cases"] if x["case_id"]==new)
+    assert row["original_reconciliation"]=="ORIGINAL_2022_ADDITIVE_KEY_UNLISTED_MEMBER_SOURCE_ONLY"
+    assert row["original_source_pointer"]["own_preferred_call_not_selected"] is True
+    assert row["new_paid_request_authority"] is False
+
+
+def test_preferred_call_outside_frozen_stock_census_fails_closed():
+    inventory,sources,shortlist,closeout,native=_fixtures()
+    old="2022-rank0000"
+    new="2022-unexpected-rank0000"
+    next(x for x in inventory["cases"] if x["case_id"]==old)["case_id"]=new
+    next(x for x in native["rows"] if x["case_id"]==old)["case_id"]=new
+    _resign_frozen_originals(inventory,native)
+    with pytest.raises(m.OriginalCrosswalkError,match="preferred CALL IDs absent"):
+        m.reconcile_original_sources(inventory,sources,shortlist,closeout,native=native)
