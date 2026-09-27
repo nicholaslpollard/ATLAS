@@ -215,7 +215,10 @@ def run_coordinated_batch(
         "observed_chain_credits": chain_credits,
         "observed_quote_credits": quote_credits,
         "observed_total_credits": total,
-        "last_provider_remaining": quote["last_observed_provider_remaining"] or remaining_header,
+        "last_provider_remaining": (
+            quote["last_observed_provider_remaining"]
+            if quote["last_observed_provider_remaining"] is not None else remaining_header
+        ),
         "verified_original_quote_body_bytes": quote["verified_and_new_raw_body_bytes"],
         "original_paid_receipts_replayed": 0,
         "source_only_no_0935_option_fill_pnl_paper_live_or_broker_authority": True,

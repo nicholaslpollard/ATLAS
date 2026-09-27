@@ -193,3 +193,12 @@ def test_quote_budget_partial_is_visible_and_request_limits_checked(tmp_path, mo
         _run(tmp_path, monkeypatch, max_new_chain_requests=401)
     with pytest.raises(CandidateChainCacheError, match="worker"):
         _run(tmp_path, monkeypatch, workers=25)
+
+
+
+def test_zero_remaining_after_quote_does_not_fall_back_to_stale_chain_header(tmp_path, monkeypatch):
+    p = _plan()
+    final = _quote(p)
+    final["last_observed_provider_remaining"] = 0
+    result = _run(tmp_path, monkeypatch, quote=final)
+    assert result["last_provider_remaining"] == 0
