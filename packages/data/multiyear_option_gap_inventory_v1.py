@@ -327,7 +327,7 @@ def _target(settings: AtlasSettings, native: dict[str, Any]) -> Path:
     )
 
 
-def _verified_existing(path: Path, native: dict[str, Any]) -> dict[str, Any] | None:
+def _verified_existing(path: Path, native: dict[str, Any], *, rolling_floor: date) -> dict[str, Any] | None:
     if not path.exists() and not path.is_symlink():
         return None
     if path.is_symlink() or not path.is_file():
@@ -342,6 +342,7 @@ def _verified_existing(path: Path, native: dict[str, Any]) -> dict[str, Any] | N
         or doc.get("new_paid_requests") != 0
         or doc.get("original_native_stock_source_fingerprint") != native["source_fingerprint"]
         or doc.get("accepted_original_2022_quote_plan_fingerprint") != ACCEPTED_2022_QUOTE_PLAN
+        or doc.get("rolling_five_year_floor") != rolling_floor.isoformat()
         or doc.get("case_denominator") != len(native["rows"])
         or len(doc.get("cases",[])) != len(native["rows"])
         or len(doc.get("provisional_chain_groups",[])) != doc.get("provisional_group_count")
@@ -363,7 +364,7 @@ def build_option_source_gap_inventory(
         progress({"stage":"REUSE_VERIFIED_ORIGINAL_NATIVE_STOCK",
                   "source_action":action,"cases":len(native["rows"]),"provider_requests":0})
     path = _target(settings,native)
-    existing = _verified_existing(path,native)
+    existing = _verified_existing(path,native,rolling_floor=rolling_floor)
     if existing is not None:
         return existing,path,"REUSED_VERIFIED_OPTION_INVENTORY_NO_SOURCE_RESCAN"
     frozen_path = settings.resolved_path(f"{PLAN_REL}/through_shard_070.json")
@@ -374,7 +375,7 @@ def build_option_source_gap_inventory(
         native,index,rolling_floor=rolling_floor,progress=progress
     )
     if path.exists() or path.is_symlink():
-        if _verified_existing(path,native) != result:
+        if _verified_existing(path,native,rolling_floor=rolling_floor) != result:
             raise MultiYearOptionInventoryError("existing immutable option inventory differs")
         return result,path,"REUSED_IDENTICAL_OPTION_INVENTORY"
     _exclusive(path,result)
