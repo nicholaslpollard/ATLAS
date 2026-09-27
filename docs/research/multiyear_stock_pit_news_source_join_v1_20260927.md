@@ -1,0 +1,13 @@
+# First actual six-year-visible stock + PIT news source join — 2026-09-27
+
+The simulator has a shared 2021–2026 scope and cross-instrument reference calculation. This new prep command connects **actual accepted 2021–2025 daily LONG signal IDs, ticker, policy, original close/next-open/09:35 decision clocks** with the accepted local Alpaca historical news corpus. It emits explicit 2026 missing original-signal-source status, not synthetic backfilled strategy results. It is a stock/news **feature source**, not a traded six-year strategy-performance report.
+
+One invocation:
+- Reuses an existing validated multi-year stock-signal census on D:, or loads the accepted DEVELOPMENT selection once if none exists. All case IDs and year populations remain intact; no historical return/outcome fields enter the projection. A second source generation is not guessed: multiple local census fingerprints fail closed.
+- Reuses the accepted V2 news chronology source and SHA-bound monthly Parquets from December 2020 through September 2026, processing four provider metadata fields for only the selected ticker universe. A final revised article becomes available conservatively at max(created_at, updated_at). Early January 2021 has a real seven-day predecision lookback.
+- Joins per-signal prior 24-hour/seven-day unique article counts to the original 09:35 decision cutoff, with no text-sentiment inference. Unacquired news dates get explicit null counts, never artificial zero. It records article, duplicate, year/source status and original source SHA lineage.
+- Persists one compact immutable derived JSON on D:-bound \`data/research/evidence\`; subsequent runs reuse its verified fingerprint without scanning the 70 news months or reloading the expensive accepted conditioning selection. Underlying raw news, stock, options and all prior receipts are unchanged.
+
+The next data gate is physical native stock raw OPEN/EOD marks on their corresponding accepted instrument+session, and original point-in-time option chain selections for actual per-year cases. The existing exact-history demand cache can then plan only the missing quote series and reuse existing 2022 body/receipts under a bounded operator-approved credit budget. Model-derived IV/Greeks require verified actual quote, underlying, rate, dividends and contract terms. The matched EOD reference comparator and separately qualified 09:35 intraday execution stay different clocks. Do not reclassify used protected 2026 results as new development data.
+
+**Zero MarketData GETs, zero broker actions, no PAPER/LIVE or trading/P&L authority.** The program reports progress at native selection, 12-month partition SHA intervals, 50,000-article intervals and 1,000-signal join intervals.
