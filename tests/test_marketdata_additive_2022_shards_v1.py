@@ -231,3 +231,32 @@ def test_same_physical_group_keeps_all_accepted_ids_with_one_native_raw_read(tmp
     assert bundle["representative_policy"] == (
         "LEXICOGRAPHIC_FIRST_ID_PER_PHYSICAL_KEY_NO_OUTCOMES"
     )
+
+
+
+def test_internal_bulk_source_preflight_does_not_repeat_expensive_storage_census(
+    tmp_path, monkeypatch,
+):
+    checks = []
+    monkeypatch.setattr(additive, "_require_external", lambda *_: checks.append(1))
+    s, prep, prior_runner, loader, native, loads, native_calls, state = _fixture(tmp_path)
+    prior = additive._prior(s, runner=prior_runner, preparer=prep)
+    assert len(checks) == 0
+    a = additive.prepare_additive_shard(
+        s, shard_index=0, verified_prior=prior, external_preflight_done=True,
+        runner=prior_runner, preparer=prep, loader=loader, native_reader=native,
+    )
+    b = additive.prepare_additive_shard(
+        s, shard_index=1, verified_prior=prior, external_preflight_done=True,
+        runner=prior_runner, preparer=prep, loader=loader, native_reader=native,
+    )
+    assert a[3] == b[3] == "WRITTEN_NEW_ADDITIVE_SHARD"
+    assert not checks
+    additive.prepare_additive_shard(
+        s, shard_index=1, runner=prior_runner, preparer=prep,
+        loader=lambda *x, **kw: pytest.fail("reused source must not reload"),
+        native_reader=native,
+    )
+    assert len(checks) == 1
+    with pytest.raises(CandidateChainCacheError, match="marker"):
+        additive.prepare_additive_shard(s, external_preflight_done="yes")

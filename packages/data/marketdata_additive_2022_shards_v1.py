@@ -136,10 +136,14 @@ def prepare_additive_shard(
     preparer: Callable[..., Any] = prepare_cohort,
     progress: Callable[[dict[str, Any]], None] | None = None,
     verified_prior: tuple[dict[str, Any], set[str], set[tuple[str, str, str]]] | None = None,
+    external_preflight_done: bool = False,
 ) -> tuple[dict[str, Any], Path, dict[str, Any], str]:
     if not 0 <= shard_index <= MAX_SHARD_INDEX or not 1 <= duckdb_threads <= 8:
         raise CandidateChainCacheError("additive shard index/threads outside registered bounds")
-    _require_external(settings)
+    if type(external_preflight_done) is not bool:
+        raise CandidateChainCacheError("external source preflight marker malformed")
+    if not external_preflight_done:
+        _require_external(settings)
     if verified_prior is None:
         prior, old_ids, old_keys = _prior(settings, runner=runner, preparer=preparer)
     else:

@@ -133,6 +133,7 @@ def _source_plans(
             plan, source_path, binding, action = shards.prepare_additive_shard(
                 settings, shard_index=index, duckdb_threads=duckdb_threads,
                 loader=load_once, verified_prior=prior,
+                external_preflight_done=True,
                 progress=lambda row, i=index: progress({"shard_index": i, **row})
                 if row.get("stage") == "SHARD_SOURCE_WRITTEN" else None,
             )
