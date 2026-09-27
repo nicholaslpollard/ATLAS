@@ -193,6 +193,8 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Allow", allow)
         for name, value in (extra_headers or {}).items():
             self.send_header(name, value)
+        if self.close_connection:
+            self.send_header("Connection", "close")
         self.end_headers()
         if self.command != "HEAD":
             self.wfile.write(raw)
@@ -656,6 +658,24 @@ class AtlasControlPlaneRequestHandler(BaseHTTPRequestHandler):
         if not self._authorized_local_request():
             self._send_json(HTTPStatus.FORBIDDEN, {"error": "LOCAL_HOST_REQUIRED"})
             return
+        # A rejected POST/PUT/PATCH can still carry a body. Leaving those bytes
+        # unread before closing HTTP/1.1 is observable as WinError 10053 on
+        # Windows rather than the intended 405 response. Drain only a bounded,
+        # declared body, then explicitly close the connection. Do not parse it
+        # or grant any action authority.
+        self.close_connection = True
+        raw_length = self.headers.get("Content-Length")
+        if raw_length is not None:
+            try:
+                length = int(raw_length)
+            except ValueError:
+                length = -1
+            if 0 < length <= MAX_JSON_BODY_BYTES:
+                try:
+                    self.connection.settimeout(1.0)
+                    self.rfile.read(length)
+                except OSError:
+                    pass
         self._send_json(
             HTTPStatus.METHOD_NOT_ALLOWED,
             {
