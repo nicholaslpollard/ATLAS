@@ -18,7 +18,7 @@ SOURCE = "b" * 64
 
 def _item(year, *, signal=None, ident=None, timeframe="1d", direction="LONG"):
     cal = get_market_calendar()
-    signal = signal or date(year, 3, 1)
+    signal = signal or cal.sessions_in_range(date(year, 3, 1), date(year, 3, 7))[0]
     assert cal.is_session(signal)
     next_session = cal.sessions_in_range(signal + timedelta(days=1),
                                          signal + timedelta(days=8))[0]
