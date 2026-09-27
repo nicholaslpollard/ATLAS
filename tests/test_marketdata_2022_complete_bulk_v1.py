@@ -131,8 +131,26 @@ def _rig(tmp_path, monkeypatch, *, fail_shard=None, low_remaining=False):
             "verified_and_new_raw_body_bytes": 55_000_000,
         }
 
+    def audit(s, *, last_shard_inclusive):
+        assert s is settings and last_shard_inclusive == 70
+        metrics["audit_calls"] = metrics.get("audit_calls", 0) + 1
+        return {
+            "status": "COMPLETE_SOURCE_ONLY",
+            "frozen_plan_fingerprint": plan["plan_fingerprint"],
+            "unique_exact_quote_series": 6000,
+            "complete_exact_histories": 6000,
+            "exact_quote_no_data_gaps": 0, "pending_exact_histories": 0,
+            "provider_requests_this_audit": 0,
+            "audit_fingerprint": "synthetic-audit",
+            "total_observed_eod_rows": 300000,
+            "rows_with_positive_reported_volume": 100000,
+            "rows_with_zero_reported_volume": 200000,
+            "histories_with_no_positive_reported_volume": 400,
+        }
+
     kwargs = dict(prior_reader=prior, preparer=prepare, loader=loader,
-                  source_runner=source, plan_builder=planner, quote_runner=quotes)
+                  source_runner=source, plan_builder=planner, quote_runner=quotes,
+                  coverage_auditor=audit)
     return settings, kwargs, metrics, complete_sources
 
 
@@ -155,6 +173,8 @@ def test_full_single_command_adapts_network_workers_and_reuses_full_quote_cache(
     assert out["observed_total_credits"] == 5047
     assert out["complete_exact_histories_including_reused"] == 6000
     assert out["pending_quote_histories"] == 0
+    assert out["terminal_local_audit_fingerprint"] == "synthetic-audit"
+    assert out["terminal_observed_eod_rows"] == 300000
     assert out["original_paid_receipts_replayed"] == 0
     assert m["prior_calls"] == m["loader_calls"] == 1
     assert m["peak"] >= 8
@@ -172,6 +192,7 @@ def test_full_single_command_adapts_network_workers_and_reuses_full_quote_cache(
     assert resumed["new_chain_requests"] == resumed["new_quote_requests"] == 0
     assert resumed["status"] == "COMPLETE_FROZEN_2022_SOURCE_AND_QUOTE_CORPUS"
     assert m["quote_calls"] == 3  # read-only original quote census, zero HTTP GET
+    assert m["audit_calls"] == 2  # local only; no provider charge
 
 
 def test_budgeted_source_stop_does_not_plan_or_call_quotes(tmp_path, monkeypatch):
