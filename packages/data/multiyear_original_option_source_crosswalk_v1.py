@@ -116,55 +116,77 @@ def _partition_prior_same_key_members(
     same_key: dict[str, dict[str, Any]],
     inventory: dict[str, Any],
     *, represented_ids: set[str], pilot_ids: set[str],
+    gaps: dict[str, str] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
-    """Account for every prior membership without widening the accepted cohort.
+    """Classify all original source members by exact frozen case ID and role.
 
-    An old source-only ID may be outside the current frozen stock census, but an
-    in-census alternative with a different status, or a dual physical role, is
-    evidence drift. Neither is silently counted or discarded.
+    The original 2022 quote plan lists only alternate members whose physical
+    representative selected a CALL. The *source* ledger also carries alternates
+    linked to physical representatives with source gaps. Those remain part of
+    the same accepted 2,900 cases, never prior-only or new paid demand.
     """
     inventory = _inventory(inventory)
+    gaps = gaps or {}
     entire_census = {row["case_id"]: row for row in inventory["cases"]}
     current = {oid: row for oid, row in entire_census.items() if row["year"] == "2022"}
-    expected = {
+    selected = {
         oid for oid, row in current.items()
         if row["source_disposition"] == "ORIGINAL_2022_SAME_KEY_RECONCILIATION_REQUIRED"
     }
     observed = set(same_key)
-    missing = sorted(expected - observed)
-    unexpected = sorted(observed - expected)
+    missing = sorted(selected - observed)
+    unexpected = sorted(observed - selected)
     role_overlap = sorted(observed & (represented_ids | pilot_ids))
     in_census_elsewhere = [
         (oid, entire_census[oid]["year"], entire_census[oid]["source_disposition"])
-        for oid in unexpected if oid in entire_census
+        for oid in unexpected if oid in entire_census and
+        entire_census[oid]["source_disposition"] != "ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED"
     ]
-    if (
-        len(current) != 2900 or len(expected) != 27 or len(observed) != 29
-        or len(unexpected) != 2 or missing or role_overlap or in_census_elsewhere
-    ):
-        details = [{
+    gap_linked: list[dict[str, Any]] = []
+    invalid_gap_members: list[dict[str, Any]] = []
+    for oid in unexpected:
+        source = same_key[oid]
+        row = current.get(oid)
+        rep_id = source["representative_id"]
+        rep_gap = gaps.get(rep_id)
+        rep_source = same_key.get(rep_id)
+        if (row is None or
+            row["source_disposition"] != "ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED" or
+            rep_id not in represented_ids or rep_id in pilot_ids or
+            rep_gap not in {"NO_CALL_IN_COMPLETED_CHAIN", "EXACT_QUERY_NO_DATA"} or
+            tuple(source["source_key"]) != _source_key(row) or
+            tuple(source["member_source_key"]) != _source_key(row) or
+            rep_source is not None):
+            invalid_gap_members.append({
+                "case_id": oid, "representative_id": rep_id,
+                "representative_source_gap": rep_gap,
+                "source_key": list(source["source_key"]),
+                "inventory_key": list(_source_key(row)) if row else None,
+                "inventory_disposition": row["source_disposition"] if row else None,
+                "shard_index": source["shard_index"],
+            })
+            continue
+        gap_linked.append({
             "case_id": oid,
-            "census_disposition": entire_census[oid]["source_disposition"] if oid in entire_census
-                                  else "ABSENT_FROM_ACCEPTED_2022_CENSUS",
-            "source_key": list(same_key[oid]["source_key"]),
-            "representative_id": same_key[oid]["representative_id"],
-            "shard_index": same_key[oid]["shard_index"],
-        } for oid in unexpected]
+            "status": "ORIGINAL_2022_GAP_LINKED_SAME_KEY_SOURCE_ONLY",
+            "representative_id": rep_id, "representative_source_gap": rep_gap,
+            "source_key": list(source["source_key"]),
+            "source_sha256": source["source_sha256"],
+            "shard_index": source["shard_index"],
+        })
+    if (
+        len(current) != 2900 or len(selected) != 27 or len(observed) != 29
+        or len(unexpected) != 2 or missing or role_overlap or in_census_elsewhere
+        or invalid_gap_members or len(gap_linked) != 2
+    ):
         raise OriginalCrosswalkError(
-            "original 2022 alternate membership mismatch; "
-            f"expected={len(expected)} observed={len(observed)} "
+            "original 2022 source/quote alternate membership mismatch; "
+            f"quote_plan_expected={len(selected)} source_observed={len(observed)} "
             f"missing={missing} physical_role_overlap={role_overlap} "
-            f"unexpected_in_census={in_census_elsewhere} extra_members={details}"
+            f"unexpected_elsewhere={in_census_elsewhere} "
+            f"gap_linked={gap_linked} invalid_gap_members={invalid_gap_members}"
         )
-    legacy = [{
-        "case_id": oid,
-        "status": "PRIOR_SOURCE_ONLY_NOT_IN_FROZEN_ACCEPTED_STOCK_CENSUS",
-        "source_key": list(same_key[oid]["source_key"]),
-        "representative_id": same_key[oid]["representative_id"],
-        "source_sha256": same_key[oid]["source_sha256"],
-        "shard_index": same_key[oid]["shard_index"],
-    } for oid in unexpected]
-    return {oid: same_key[oid] for oid in sorted(expected)}, legacy
+    return same_key, sorted(gap_linked, key=lambda x: x["case_id"])
 
 
 def read_2022_original_memberships(
@@ -322,18 +344,18 @@ def read_2022_original_memberships(
     claimed.update({("request",i,rid) for (i,rid) in gap_by_request})
     if consumed_gaps!=claimed:
         raise OriginalCrosswalkError("original no-CALL/exact-no-data gap ledger cannot be mapped")
-    in_scope_same_key, prior_only = _partition_prior_same_key_members(
+    in_scope_same_key, gap_linked = _partition_prior_same_key_members(
         same_key, inventory, represented_ids=set(represented),
-        pilot_ids=set(pilot_by_id),
+        pilot_ids=set(pilot_by_id), gaps=gaps,
     )
     if progress:
-        progress({"stage":"ORIGINAL_2022_PRIOR_ONLY_MEMBERS_AUDITED",
-                  "prior_only_count":len(prior_only),
-                  "case_ids":[x["case_id"] for x in prior_only],
+        progress({"stage":"ORIGINAL_2022_SOURCE_GAP_MEMBERS_AUDITED",
+                  "gap_linked_count":len(gap_linked),
+                  "case_ids":[x["case_id"] for x in gap_linked],
                   "accepted_same_key_members":len(in_scope_same_key),
                   "provider_requests":0})
     if (
-        len(represented)!=2812 or len(in_scope_same_key)!=27
+        len(represented)!=2812 or len(in_scope_same_key)!=29
         or len(gaps)!=169 or len(preferred["rank_zero"])!=2643
         or set(gaps)!=set(represented)-set(preferred["rank_zero"])
         or set(in_scope_same_key)&set(represented)
@@ -341,7 +363,7 @@ def read_2022_original_memberships(
     ):
         raise OriginalCrosswalkError(
             f"original 2022 source census differs: reps={len(represented)} "
-            f"alternates={len(in_scope_same_key)} prior_only={len(prior_only)} gaps={len(gaps)} "
+            f"alternates={len(in_scope_same_key)} gap_linked={len(gap_linked)} gaps={len(gaps)} "
             f"preferred={len(preferred['rank_zero'])}"
         )
     return {
@@ -349,7 +371,7 @@ def read_2022_original_memberships(
         "pilot_by_key":pilot_by_key,
         "additive_representatives":represented,
         "additive_same_key":in_scope_same_key,
-        "prior_only_same_key_members":prior_only,
+        "gap_linked_same_key_members":gap_linked,
         "additive_gaps":gaps,
         "additive_exact_no_data_proofs":no_data,
         "original_preferred_calls":preferred["rank_zero"],
@@ -429,14 +451,32 @@ def reconcile_original_sources(
                 reconciled_2022.add(oid)
             elif pre=="ORIGINAL_2022_SAME_KEY_RECONCILIATION_REQUIRED":
                 source=sources["additive_same_key"].get(oid)
-                if source is None or source["source_key"]!=key:
-                    raise OriginalCrosswalkError("accepted 2022 same-key source member drifted")
+                if (source is None or source["source_key"]!=key
+                    or source["representative_id"] not in sources["original_preferred_calls"]
+                    or source["representative_id"] in sources["additive_gaps"]):
+                    raise OriginalCrosswalkError("accepted 2022 preferred same-key source member drifted")
                 classification="ORIGINAL_2022_SAME_KEY_CHAIN_REUSED_OWN_RANK_NOT_SELECTED"
                 linked={**source,"strike_coverage":
                     _strike_coverage(source["chain_strike_window"],_case_raw_price(native_by_id,oid))}
                 reconciled_2022.add(oid)
             elif pre=="ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED":
-                if oid in sources["additive_representatives"]:
+                if oid in sources["additive_same_key"]:
+                    source=sources["additive_same_key"][oid]
+                    rep_id=source["representative_id"]
+                    gap=sources["additive_gaps"].get(rep_id)
+                    if (source["source_key"]!=key or gap not in {
+                        "NO_CALL_IN_COMPLETED_CHAIN", "EXACT_QUERY_NO_DATA"
+                    } or oid not in {x["case_id"] for x in sources["gap_linked_same_key_members"]}):
+                        raise OriginalCrosswalkError("2022 gap-linked same-key source drifted")
+                    classification="ORIGINAL_2022_GAP_LINKED_SAME_KEY_"+gap
+                    linked={**source,
+                        "representative_source_gap":gap,
+                        "exact_query_no_data_proof":
+                            sources["additive_exact_no_data_proofs"].get(rep_id),
+                        "strike_coverage":_strike_coverage(
+                            source["chain_strike_window"], _case_raw_price(native_by_id,oid)),
+                        "own_preferred_call_not_selected":True}
+                elif oid in sources["additive_representatives"]:
                     source=sources["additive_representatives"][oid]
                     if (
                         oid not in sources["additive_gaps"] or source["source_key"]!=key
@@ -532,7 +572,7 @@ def reconcile_original_sources(
                       "provider_requests":0})
     if (
         len(all2022)!=2900 or len(reconciled_2022)!=2900
-        or len(prior_key_colliders)!=5
+        or len(prior_key_colliders)!=3
         or len(used25)!=12
         or original25status!={
             "ORIGINAL_2025_PILOT_PREFERRED_CALL_POINTER_REUSED":11,
@@ -562,8 +602,8 @@ def reconcile_original_sources(
         "2025_original_pilot_source_statuses":dict(sorted(original25status.items())),
         "2022_original_additive_representatives":len(sources["additive_representatives"]),
         "2022_original_additive_same_key_members":len(sources["additive_same_key"]),
-        "2022_prior_only_same_key_members":sources["prior_only_same_key_members"],
-        "2022_prior_only_same_key_member_count":len(sources["prior_only_same_key_members"]),
+        "2022_gap_linked_same_key_members":sources["gap_linked_same_key_members"],
+        "2022_gap_linked_same_key_member_count":len(sources["gap_linked_same_key_members"]),
         "2022_original_additive_source_abstentions":len(sources["additive_gaps"]),
         "2022_original_pilot_representatives":len(sources["pilot_members"]),
         "existing_2022_quote_series_plan_count":6398,
