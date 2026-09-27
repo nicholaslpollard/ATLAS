@@ -34,6 +34,7 @@ from packages.data.marketdata_candidate_2025_structural_call_shortlist_v1 import
     read_frozen_source_closeout,
 )
 from packages.data.marketdata_2022_broad_quote_campaign_v2 import PLAN_REL
+from packages.data.multiyear_native_stock_open_v1 import build_multiyear_native_raw_open_source
 from packages.data.multiyear_option_gap_inventory_v1 import (
     ACCEPTED_2022_QUOTE_PLAN,
     AUTHORITY as INVENTORY_AUTHORITY,
@@ -307,10 +308,18 @@ def _strike_coverage(window: str, opening: object) -> str:
 
 def reconcile_original_sources(
     inventory: dict[str,Any], sources: dict[str,Any], shortlist: dict[str,Any],
-    closeout: dict[str,Any], *,
+    closeout: dict[str,Any], *, native: dict[str,Any],
     progress: Callable[[dict[str,Any]],None]|None=None,
 ) -> dict[str,Any]:
     inventory=_inventory(inventory)
+    native=_valid_native(native)
+    if (
+        native["source_fingerprint"]!=inventory["original_native_stock_source_fingerprint"]
+        or len(native["rows"])!=len(inventory["cases"])
+        or [x["case_id"] for x in native["rows"]] != [x["case_id"] for x in inventory["cases"]]
+    ):
+        raise OriginalCrosswalkError("original native case identities/lineage changed")
+    native_by_id={x["case_id"]:x for x in native["rows"]}
     if (
         shortlist.get("stock_opportunities")!=12
         or shortlist.get("provisional_structural_symbols")!=11
@@ -342,7 +351,7 @@ def reconcile_original_sources(
                 if (
                     source is None or preferred is None
                     or source["source_key"]!=key
-                    or not _price_equal(source["raw_open"],_case_raw_price(inventory,oid))
+                    or not _price_equal(source["raw_open"],_case_raw_price(native_by_id,oid))
                     or source["chain_request_identity"]!=preferred["original_chain_request_identity"]
                 ):
                     raise OriginalCrosswalkError("accepted 2022 preferred source member drifted")
@@ -355,7 +364,7 @@ def reconcile_original_sources(
                     raise OriginalCrosswalkError("accepted 2022 same-key source member drifted")
                 classification="ORIGINAL_2022_SAME_KEY_CHAIN_REUSED_OWN_RANK_NOT_SELECTED"
                 linked={**source,"strike_coverage":
-                    _strike_coverage(source["chain_strike_window"],_case_raw_price(inventory,oid))}
+                    _strike_coverage(source["chain_strike_window"],_case_raw_price(native_by_id,oid))}
                 reconciled_2022.add(oid)
             elif pre=="ORIGINAL_2022_CHAIN_RECONCILIATION_REQUIRED":
                 if oid in sources["additive_representatives"]:
@@ -369,7 +378,7 @@ def reconcile_original_sources(
                     source=sources["pilot_members"][oid]
                     if (
                         sources["pilot_by_key"].get(key) is None
-                        or not _price_equal(source["raw_open"],_case_raw_price(inventory,oid))
+                        or not _price_equal(source["raw_open"],_case_raw_price(native_by_id,oid))
                     ):
                         raise OriginalCrosswalkError("original 2022 pilot member changed")
                     classification="ORIGINAL_2022_PILOT_"+source["source_status"]
@@ -379,7 +388,7 @@ def reconcile_original_sources(
                     classification="ORIGINAL_2022_PILOT_KEY_OTHER_CASE_OWN_RANK_REQUIRED"
                     prior_key_colliders.add(oid)
                     linked={**source,"strike_coverage":_strike_coverage(
-                        source["strike_window"],_case_raw_price(inventory,oid))}
+                        source["strike_window"],_case_raw_price(native_by_id,oid))}
                 else:
                     raise OriginalCrosswalkError("unexplained 2022 case outside all original physical source keys")
                 reconciled_2022.add(oid)
@@ -401,7 +410,7 @@ def reconcile_original_sources(
                     or pilot["stock_decision_at_utc"]!=row["decision_at_utc"]
                     or original["request_identity"]!=pilot["request_identity"]
                     or not _price_equal(pilot["accepted_raw_stock_open"],
-                                         _case_raw_price(inventory,oid))
+                                         _case_raw_price(native_by_id,oid))
                 ):
                     raise OriginalCrosswalkError("2025 original pilot no longer matches full accepted stock source")
                 if pilot["source_status"]=="EXACT_QUERY_NO_DATA":
@@ -491,11 +500,11 @@ def reconcile_original_sources(
     return result
 
 
-def _case_raw_price(inventory: dict[str,Any], case_id: str) -> str:
-    # The inventory intentionally omits prices from its public-facing case ledger.
-    # Original native source binds exact raw OPEN independently in the caller.
-    # Replaced by read original native cases, never inferred from original chain.
-    raise OriginalCrosswalkError("native raw source mapping is required")
+def _case_raw_price(native_by_id: dict[str,dict[str,Any]], case_id: str) -> str:
+    original=native_by_id.get(case_id)
+    if original is None or original["raw_underlying_price"] is None:
+        raise OriginalCrosswalkError("original verified native raw stock price missing")
+    return original["raw_underlying_price"]
 
 
 def _target(settings: AtlasSettings, inventory: dict[str,Any]) -> Path:
@@ -549,9 +558,14 @@ def build_original_source_crosswalk(
     sources=read_2022_original_memberships(settings,plan,progress=progress)
     shortlist=read_accepted_shortlist(settings)
     closeout=read_frozen_source_closeout(settings)
-    # Caller binds complete raw OPEN via the immutable original native source,
-    # not via a date- or ticker-level estimate.
-    result=reconcile_original_sources(inventory,sources,shortlist,closeout,progress=progress)
+    native,_,native_action=build_multiyear_native_raw_open_source(settings,progress=progress)
+    if progress:
+        progress({"stage":"REUSE_ORIGINAL_NATIVE_PRICE_IDENTITY",
+                  "action":native_action,"cases":native["case_denominator"],
+                  "provider_requests":0})
+    result=reconcile_original_sources(
+        inventory,sources,shortlist,closeout,native=native,progress=progress
+    )
     _exclusive(path,result)
     if _verified_existing(path,inventory)!=result:
         raise OriginalCrosswalkError("new original source crosswalk readback differs")
