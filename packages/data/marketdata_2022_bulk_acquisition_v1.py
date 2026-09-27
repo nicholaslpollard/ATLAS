@@ -63,6 +63,10 @@ def _batched_native_open_reader(
     # stock material just to rehash unchanged original source/quote receipts.
     if all(shards._binding_path(settings, i).is_file()
            for i in range(FROZEN_LAST_DONE_SHARD+1, FINAL_SHARD+1)):
+        if progress:
+            progress({"stage": "BULK_NATIVE_ALREADY_BOUND_SKIP_REPLAY",
+                      "bound_shards": FINAL_SHARD-FROZEN_LAST_DONE_SHARD,
+                      "provider_requests": 0})
         return native_reader
     opportunities, source = load_once(
         settings.project_root, start_session=date(shards.YEAR, 1, 1),
@@ -81,7 +85,6 @@ def _batched_native_open_reader(
     if not eligible or len({x.opportunity_id for x in eligible}) != len(eligible):
         raise CandidateChainCacheError("bulk eligible daily LONG cohort empty/duplicate")
     new_by_key: dict[tuple[str, str, str], list[Any]] = defaultdict(list)
-    excluded_expiry: list[dict[str, str]] = []
     for item in eligible:
         if item.opportunity_id in prior[1]:
             continue
@@ -90,12 +93,6 @@ def _batched_native_open_reader(
         except shards.exporter.CandidateStockExportError as exc:
             if str(exc) != "no bounded exchange monthly expiry is available":
                 raise
-            excluded_expiry.append({
-                "opportunity_id": item.opportunity_id,
-                "ticker": item.ticker,
-                "snapshot_date": item.signal_session.isoformat(),
-                "reason": "NO_MONTHLY_EXPIRY_IN_28_TO_60_DAY_WINDOW",
-            })
             continue
         if key not in prior[2]:
             new_by_key[key].append(item)
@@ -120,7 +117,22 @@ def _batched_native_open_reader(
     ]
     if not representatives or len({x.opportunity_id for x in representatives}) != len(representatives):
         raise CandidateChainCacheError("batch native selected representatives absent/duplicate")
-    raw_opens, daily_source = native_reader(settings.project_root, representatives)
+    if progress:
+        progress({"stage": "BULK_NATIVE_RAW_SHA_PREFLIGHT",
+                  "unfrozen_shards": len(wanted_indices),
+                  "unique_native_opens_to_verify": len(representatives),
+                  "provider_requests": 0})
+
+    def native_progress(stage: str, details: dict[str, Any]) -> None:
+        if progress and (stage != "NATIVE_RAW_UNIT_VERIFIED"
+                         or details.get("verified_units", 0) % 10 == 0
+                         or details.get("verified_units") == details.get("total_units")):
+            progress({"stage": "BULK_NATIVE_RAW_UNIT_PROGRESS",
+                      "native_stage": stage, **details})
+
+    raw_opens, daily_source = native_reader(
+        settings.project_root, representatives, progress=native_progress,
+    )
     expected = {x.opportunity_id for x in representatives}
     if (set(raw_opens) != expected
             or daily_source.get("protected_master_return_rows_read") != 0

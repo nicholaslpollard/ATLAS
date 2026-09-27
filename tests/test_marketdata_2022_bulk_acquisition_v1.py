@@ -424,7 +424,7 @@ def test_batch_native_source_reads_all_unfrozen_new_shards_once(tmp_path, monkey
     def loader(*a, **kw):
         loader_calls.append(1)
         return cases, {"source_integrity_fingerprint": "verified-replay"}
-    def native(root, reps):
+    def native(root, reps, *, progress=None):
         assert root == tmp_path
         native_calls.append(1)
         selected_ids.extend(x.opportunity_id for x in reps)
@@ -443,8 +443,10 @@ def test_batch_native_source_reads_all_unfrozen_new_shards_once(tmp_path, monkey
         reader(tmp_path, [next(x for x in cases if x.opportunity_id in selected_ids)]))
     assert len(result) == 1
     assert source["protected_master_return_rows_read"] == 0
-    assert progress[0]["stage"] == "BULK_NATIVE_RAW_ONCE"
-    assert progress[0]["unique_native_opens"] == 1772
+    assert progress[0]["stage"] == "BULK_NATIVE_RAW_SHA_PREFLIGHT"
+    assert progress[0]["unique_native_opens_to_verify"] == 1772
+    assert progress[-1]["stage"] == "BULK_NATIVE_RAW_ONCE"
+    assert progress[-1]["unique_native_opens"] == 1772
     with pytest.raises(CandidateChainCacheError, match="unverified opportunity"):
         reader(tmp_path, [SimpleNamespace(opportunity_id="unseen")])
     with pytest.raises(CandidateChainCacheError, match="project path"):
