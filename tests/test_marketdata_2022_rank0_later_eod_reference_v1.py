@@ -89,7 +89,7 @@ def _fixture(tmp_path, monkeypatch):
     readiness["readiness_fingerprint"] = _fingerprint(readiness)
     monkeypatch.setattr(m, "EXPECTED_READINESS", readiness["readiness_fingerprint"])
     readiness_path = tmp_path / f"{m.READINESS_REL}_{m.EXPECTED_PLAN[:16]}.json"
-    readiness_path.parent.mkdir(parents=True)
+    readiness_path.parent.mkdir(parents=True, exist_ok=True)
     readiness_path.write_text(json.dumps(readiness))
 
     def timestamp(day):
