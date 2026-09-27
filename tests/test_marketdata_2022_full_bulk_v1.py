@@ -360,3 +360,36 @@ def test_adaptive_source_workers_use_measured_gets_per_second():
     assert f(8, 2.4, 1.6) == 6
     assert f(4, 2.4, 2.0) == 4
     assert f(2, 2.0, 1.0) == 2
+
+
+
+def test_quote_progress_is_visible_during_large_chunk(tmp_path, monkeypatch):
+    monkeypatch.setattr(bulk, "_require_external", lambda *_: None)
+    plan = _full_plan(unique=3000)
+    progress = []
+
+    def quote(settings, source_plan, **kw):
+        kw["progress"]({
+            "stage": "BOUNDED_QUOTE_BATCH", "new_attempts": 16, "batch_size": 16,
+            "new_gets_per_second": 2.5, "pending": 259,
+        })
+        kw["progress"]({
+            "stage": "BOUNDED_QUOTE_BATCH", "new_attempts": 128, "batch_size": 16,
+            "new_gets_per_second": 3.0, "pending": 147,
+        })
+        kw["progress"]({
+            "stage": "BOUNDED_QUOTE_BATCH", "new_attempts": 275, "batch_size": 3,
+            "new_gets_per_second": 2.9, "pending": 0,
+        })
+        return _fake_quote(source_plan, 275, complete=3000)
+
+    state = bulk.run_full_bulk(
+        _settings(tmp_path), authorize=True, paid=True, private=True,
+        token="synthetic", max_credit_windows=1,
+        prepare_sources=lambda *_a, **_kw: _plans(tmp_path),
+        chain_runner=lambda s,p,path,**kw: _chain(p,0),
+        plan_builder=lambda *_: plan, quote_runner=quote,
+        progress=progress.append,
+    )
+    assert state["status"] == "COMPLETE_SOURCE_ONLY"
+    assert [e["new_attempts"] for e in progress if e["stage"] == "QUOTE_DOWNLOAD_PROGRESS"] == [16,128,275]

@@ -427,17 +427,24 @@ def run_full_bulk(
                 save("PARTIAL_PROVIDER_CREDIT_FLOOR")
                 return state
             chunk = min(QUOTE_CHUNK, remaining_gets, remaining_target)
-            speeds: list[float] = []
+            def quote_progress(row: dict[str, Any]) -> None:
+                if row.get("stage") != "BOUNDED_QUOTE_BATCH":
+                    return
+                attempts = row.get("new_attempts")
+                if (type(attempts) is int
+                        and (attempts == row.get("batch_size")
+                             or attempts % 128 == 0
+                             or row.get("pending") == 0)):
+                    emit({"stage": "QUOTE_DOWNLOAD_PROGRESS", **{
+                        k: v for k, v in row.items() if k != "stage"
+                    }})
+
             start = time.perf_counter()
             quote = quote_runner(
                 settings, plan, max_new_requests=chunk,
                 max_observed_credits=min(3500, remaining_target),
                 workers=quote_workers, authorize=True, paid=True, private=True, token=token,
-                progress=lambda row: (
-                    speeds.append(float(row["new_gets_per_second"]))
-                    if row.get("stage") == "BOUNDED_QUOTE_BATCH"
-                       and row.get("new_gets_per_second") is not None else None
-                ),
+                progress=quote_progress,
             )
             calls = quote["new_provider_attempts"]
             charge = quote["observed_credits_this_invocation"]
