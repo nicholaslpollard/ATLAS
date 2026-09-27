@@ -38,9 +38,17 @@ def _sample():
             "selection_never_uses_later_liquidity": True,
             "reference_status": status,
             "first_later_two_sided_session": entry,
+            "first_later_quote_updated_at_utc": (
+                "2022-03-04T21:00:00+00:00" if entry else None
+            ),
             "first_later_eod_ask_reference_per_share": "1.2" if entry else None,
+            "first_later_reported_positive_volume": bool(entry),
             "subsequent_two_sided_session": next_day,
+            "subsequent_quote_updated_at_utc": (
+                "2022-03-07T21:00:00+00:00" if next_day else None
+            ),
             "subsequent_eod_bid_reference_per_share": "1.1" if next_day else None,
+            "subsequent_reported_positive_volume": bool(next_day),
             "hypothetical_ask_to_next_bid_reference_fraction":
                 "-0.083333" if next_day else None,
         })
@@ -80,6 +88,7 @@ def test_full_original_denominator_is_preserved_and_never_calls_a_provider(tmp_p
                for row in report["rows"])
     assert report["rows"][0]["first_later_option_eod_session"] is None
     assert report["rows"][-1]["next_later_option_eod_session"] == "2022-03-07"
+    assert report["rows"][-1]["first_later_option_updated_at_utc"] == "2022-03-04T21:00:00+00:00"
     assert progress[-1]["opportunities"] == 2643
     assert report["casebook_fingerprint"] == _fingerprint({
         k: v for k, v in report.items() if k != "casebook_fingerprint"
