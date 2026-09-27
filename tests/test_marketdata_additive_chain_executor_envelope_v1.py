@@ -52,3 +52,39 @@ def test_exact_forty_request_plan_uses_existing_ten_call_batches(tmp_path, monke
     assert result["status"] == "COMPLETE"
     assert result["completed_chains"] == result["new_provider_attempts_this_invocation"] == 40
     assert source.read_text() == "{}"
+
+
+def test_planner_upper_bound_250_uses_read_only_receipt_preview(tmp_path):
+    source = tmp_path / "source.json"
+    source.write_text("{}")
+    plan = _plan(MAX_CHAIN_GROUPS)
+    report = expansion.run_expansion(
+        object(), plan, source,
+        runner=lambda *args, **kwargs: {
+            "pending": MAX_CHAIN_GROUPS,
+            "planned_chain_requests": MAX_CHAIN_GROUPS,
+            "reused": 0, "no_data_verified": 0,
+        },
+    )
+    assert report["planned_requests"] == MAX_CHAIN_GROUPS
+    assert report["status"] == "PREVIEW_NO_PROVIDER_READS"
+
+
+def test_251_groups_rejected_before_any_cache_call(tmp_path, monkeypatch):
+    source = tmp_path / "source.json"
+    source.write_text("{}")
+    plan = _plan(1)
+    invalid = dict(plan, requests=[{}] * (MAX_CHAIN_GROUPS + 1))
+    monkeypatch.setattr(expansion, "verify_candidate_plan", lambda _: invalid)
+    with pytest.raises(CandidateChainCacheError, match="plan/source is not accepted"):
+        expansion.run_expansion(
+            object(), plan, source,
+            runner=lambda *args, **kwargs: pytest.fail("cache must not run"),
+        )
+
+
+def test_original_monthly_export_guard_and_ten_call_cache_unchanged():
+    assert expansion.MAX_PER_MONTH == 3
+    assert expansion.MAX_TOTAL_NEW_REQUESTS == 50
+    assert expansion.MAX_NEW_REQUESTS == 10
+    assert MAX_CHAIN_GROUPS == 250
