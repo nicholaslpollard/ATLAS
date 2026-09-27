@@ -255,3 +255,92 @@ def test_broad_run_validates_policy_before_existing_cache_or_provider(tmp_path, 
     with pytest.raises(CandidateChainCacheError, match="envelope"):
         wide.run_broad_quote_histories(settings, mutated, max_new_requests=1)
     assert called == [1]
+
+
+
+def test_network_workers_reach_eight_in_flight_without_duplicate_paid_queries(tmp_path, monkeypatch):
+    """Real threads prove this is network concurrency, not multiprocessing."""
+    import threading
+    import time
+    monkeypatch.setattr(q, "_require_external", lambda *_: None)
+    monkeypatch.setattr(q, "assert_category_acquisition_allowed", lambda *a, **kw: None)
+    settings = SimpleNamespace(resolved_path=lambda p: tmp_path / p)
+    symbols = [f"ABC220318C{(100 + n) * 1000:08d}" for n in range(8)]
+    plan = _bare_quote_plan(symbols)
+    barrier = threading.Barrier(8, timeout=8)
+    lock = threading.Lock()
+    active = peak = 0
+    seen = set()
+    progress = []
+
+    def transport(ticket, token):
+        nonlocal active, peak
+        with lock:
+            assert ticket["option_symbol"] not in seen
+            seen.add(ticket["option_symbol"])
+            active += 1
+            peak = max(peak, active)
+        try:
+            barrier.wait()
+            time.sleep(0.01)
+            return 200, _fake_quote_raw(ticket["option_symbol"]), {
+                "X-Api-Ratelimit-Consumed": "1",
+                "X-Api-Ratelimit-Remaining": "9000",
+            }
+        finally:
+            with lock:
+                active -= 1
+
+    report = q.run_selected_quote_histories(
+        settings, plan, max_new_requests=8, max_observed_credits=12,
+        workers=8, authorize=True, paid=True, private=True, token="synthetic",
+        transport=transport, progress=progress.append,
+    )
+    assert peak == 8
+    assert len(seen) == 8
+    assert report["new_provider_attempts"] == report["complete_source_series"] == 8
+    assert report["pending"] == 0
+    metric = progress[-1]
+    assert metric["configured_workers"] == metric["batch_size"] == 8
+    assert metric["batch_elapsed_seconds"] > 0
+    assert metric["new_gets_per_second"] > 0
+    assert q.run_selected_quote_histories(settings, plan, workers=24)["pending"] == 0
+    assert len(seen) == 8  # read-only resume makes ZERO additional paid GETs
+
+
+def test_24_worker_ceiling_and_no_new_batch_after_ambiguous_original(tmp_path, monkeypatch):
+    monkeypatch.setattr(q, "_require_external", lambda *_: None)
+    monkeypatch.setattr(q, "assert_category_acquisition_allowed", lambda *a, **kw: None)
+    settings = SimpleNamespace(resolved_path=lambda p: tmp_path / p)
+    symbols = [f"ABC220318C{(100 + n) * 1000:08d}" for n in range(12)]
+    plan = _bare_quote_plan(symbols)
+    with pytest.raises(CandidateChainCacheError, match="1..24"):
+        q.run_selected_quote_histories(settings, plan, workers=25)
+    seen = set()
+
+    def transport(ticket, token):
+        symbol = ticket["option_symbol"]
+        seen.add(symbol)
+        if symbol == symbols[0]:
+            raise TimeoutError("synthetic uncertain original")
+        return 200, _fake_quote_raw(symbol), {
+            "X-Api-Ratelimit-Consumed": "1",
+            "X-Api-Ratelimit-Remaining": "9000",
+        }
+
+    with pytest.raises(CandidateChainCacheError, match="uncertain/quarantined"):
+        q.run_selected_quote_histories(
+            settings, plan, max_new_requests=12, max_observed_credits=24,
+            workers=8, authorize=True, paid=True, private=True,
+            token="synthetic", transport=transport,
+        )
+    assert set(seen) == set(symbols[:8])
+    assert not any(symbol in seen for symbol in symbols[8:])
+    # Original ambiguous attempt remains an irreversible barrier to auto-retry.
+    with pytest.raises(CandidateChainCacheError, match="unresolved quote"):
+        q.run_selected_quote_histories(
+            settings, plan, max_new_requests=12, max_observed_credits=24,
+            workers=8, authorize=True, paid=True, private=True,
+            token="synthetic",
+            transport=lambda *_: pytest.fail("do not retry an uncertain paid attempt"),
+        )
