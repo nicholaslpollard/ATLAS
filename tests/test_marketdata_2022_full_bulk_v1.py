@@ -349,3 +349,14 @@ def test_adaptive_quote_workers_ramp_reduce_and_hold_at_caps():
     assert f(8, 3.0, 2.2, 1000) == 8
     assert f(16, 3.0, 3.0, 127) == 16
     assert f(16, 3.0, 2.5, 1000) == 16
+
+
+
+def test_adaptive_source_workers_use_measured_gets_per_second():
+    f = bulk._adapt_chain_workers
+    assert f(4, 0.0, 1.2) == 6
+    assert f(6, 1.2, 2.0) == 8
+    assert f(8, 2.0, 2.4) == 8
+    assert f(8, 2.4, 1.6) == 6
+    assert f(4, 2.4, 2.0) == 4
+    assert f(2, 2.0, 1.0) == 2

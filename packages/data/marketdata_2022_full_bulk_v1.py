@@ -55,6 +55,16 @@ def _next_reset(now: datetime) -> datetime:
     return target
 
 
+def _adapt_chain_workers(workers: int, previous_gets_per_second: float,
+                         current_gets_per_second: float) -> int:
+    """Use whole-wave GETs/s to adapt concurrent independent shard jobs."""
+    if previous_gets_per_second and current_gets_per_second < previous_gets_per_second * 0.80:
+        return max(2, workers - 2)
+    if not previous_gets_per_second or current_gets_per_second >= previous_gets_per_second * 0.90:
+        return min(MAX_CHAIN_WORKERS, workers + 2)
+    return workers
+
+
 def _adapt_quote_workers(workers: int, previous_gets_per_second: float,
                          current_gets_per_second: float, observed_gets: int) -> int:
     """Conservative cross-chunk AIMD; cap account-wide headroom at 24."""
@@ -280,6 +290,7 @@ def run_full_bulk(
               "already_complete_shards": source_terminal, "source_gaps": source_gaps})
         save("SOURCE_ACQUIRING")
         shard_workers = initial_chain_workers
+        last_source_speed = 0.0
         while remaining_sources:
             remaining_gets = max_new_requests - state["new_chain_gets"] - state["new_quote_gets"]
             remaining_target = max_total_observed_credits - state["observed_total_credits"]
@@ -379,8 +390,13 @@ def run_full_bulk(
                   "remaining_source_shards": len(remaining_sources),
                   "completed_per_second": round(sum(x[3] for x in wave) / elapsed, 2)})
             save("SOURCE_ACQUIRING")
-            if len(wave) == shard_workers and shard_workers < MAX_CHAIN_WORKERS:
-                shard_workers = min(MAX_CHAIN_WORKERS, shard_workers + 2)
+            if len(wave) == shard_workers:
+                current_source_speed = sum(x[3] for x in wave) / elapsed
+                shard_workers = _adapt_chain_workers(
+                    shard_workers, last_source_speed, current_source_speed,
+                )
+                last_source_speed = current_source_speed
+                state["chain_workers"] = shard_workers
         state["source_shards_complete_26_to_70"] = END_SHARD - START_SHARD + 1
         emit({"stage": "ALL_2022_ADDITIVE_CHAINS_TERMINAL",
               "new_chain_gets": state["new_chain_gets"],
