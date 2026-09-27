@@ -122,6 +122,8 @@ def test_bad_news_counts_refused_instead_of_fabricating_zero():
     census = _census()
     class BadNews(FakeNews):
         def prior_counts(self, ticker, *, decision_utc):
+            if decision_utc.year == 2021:
+                return super().prior_counts(ticker, decision_utc=decision_utc)
             return {
                 "coverage_status": "NEWS_SOURCE_NOT_ACQUIRED_THROUGH_DECISION",
                 "unique_articles_available_prior_24h": 0,
