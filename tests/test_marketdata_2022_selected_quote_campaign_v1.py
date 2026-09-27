@@ -344,3 +344,106 @@ def test_24_worker_ceiling_and_no_new_batch_after_ambiguous_original(tmp_path, m
             token="synthetic",
             transport=lambda *_: pytest.fail("do not retry an uncertain paid attempt"),
         )
+
+
+
+def test_broad_default_preparer_validates_prior_once_and_each_original_bound(monkeypatch):
+    import packages.data.marketdata_2022_broad_quote_campaign_v2 as wide
+    calls = []
+    settings = object()
+    def prior(s):
+        assert s is settings
+        calls.append(("prior",))
+        return {"plan_fingerprint": "verified-prior"}, set(), set()
+
+    def bound(s, shard, fp):
+        assert s is settings and fp == "verified-prior"
+        calls.append(("bound", shard))
+        return {"shard_index": shard}, Path(f"source-{shard}"), {"shard_index": shard}
+
+    def fake_freeze(s, *, last_shard_inclusive, preparer, candidate_limit,
+                    strike_window, quote_selection_policy):
+        assert s is settings and last_shard_inclusive == 3
+        assert candidate_limit is None and strike_window == wide.WINDOW
+        assert quote_selection_policy == wide.WIDE_POLICY
+        for index in range(4):
+            assert preparer(s, shard_index=index, duckdb_threads=4)[3] == "REUSED_IMMUTABLE_ADDITIVE_SHARD"
+        return {"contract": wide.V1_CACHE_CONTRACT, "selection_policy": wide.WIDE_POLICY,
+                "plan_fingerprint": "superseded-by-v2"}
+
+    monkeypatch.setattr(wide.frozen_shards, "_prior", prior)
+    monkeypatch.setattr(wide.frozen_shards, "_read_bound", bound)
+    monkeypatch.setattr(wide, "freeze_quote_plan", fake_freeze)
+    plan = wide.freeze_broad_quote_plan(settings, last_shard_inclusive=3)
+    assert plan["plan_fingerprint"] == wide._fingerprint({
+        k: v for k, v in plan.items() if k != "plan_fingerprint"
+    })
+    assert calls == [("prior",)] + [("bound", x) for x in range(4)]
+
+
+def test_local_quote_coverage_audit_verified_receipts_gaps_and_zero_provider_reads(
+    tmp_path, monkeypatch,
+):
+    import packages.data.marketdata_2022_broad_quote_campaign_v2 as wide
+    import packages.data.marketdata_2022_quote_coverage_audit_v1 as audit
+    settings, fake = _fixture(tmp_path)
+    monkeypatch.setattr(q, "chain_paths", fake["chain_paths"])
+    monkeypatch.setattr(q, "intact_chain_receipt", fake["receipt"])
+    monkeypatch.setattr(q, "_require_external", lambda *_: None)
+    monkeypatch.setattr(q, "assert_category_acquisition_allowed", lambda *a, **kw: None)
+    plan = wide.freeze_broad_quote_plan(settings, last_shard_inclusive=0, preparer=fake["preparer"])
+    path = tmp_path / audit.PLAN_REL / "through_shard_000.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    before = audit.audit_frozen_quote_coverage(settings, last_shard_inclusive=0)
+    assert before["status"] == "PARTIAL_PENDING"
+    assert before["pending_exact_histories"] == 3
+    assert before["provider_requests_this_audit"] == 0
+
+    symbols = [x["option_symbol"] for x in plan["requests"]]
+    requests = []
+
+    def fake_transport(ticket, token):
+        sym = ticket["option_symbol"]
+        requests.append(sym)
+        if sym == symbols[2]:
+            return (404, b'{"s":"no_data"}', {
+                "X-Api-Ratelimit-Consumed": "0",
+                "X-Api-Ratelimit-Remaining": "9000",
+            })
+        body = json.loads(_fake_quote_raw(sym))
+        body["volume"] = [0 if sym == symbols[1] else 5]
+        return 200, json.dumps(body).encode(), {
+            "X-Api-Ratelimit-Consumed": "1",
+            "X-Api-Ratelimit-Remaining": "9000",
+        }
+
+    original = q.run_selected_quote_histories(
+        settings, plan, max_new_requests=3, max_observed_credits=5,
+        workers=3, authorize=True, paid=True, private=True,
+        token="synthetic", transport=fake_transport,
+    )
+    assert original["complete_source_series"] == 2
+    assert original["exact_source_gaps"] == 1
+    after = audit.audit_frozen_quote_coverage(settings, last_shard_inclusive=0)
+    assert after["status"] == "COMPLETE_SOURCE_ONLY"
+    assert after["unique_exact_quote_series"] == 3
+    assert after["complete_exact_histories"] == 2
+    assert after["exact_quote_no_data_gaps"] == 1
+    assert after["pending_exact_histories"] == 0
+    assert after["total_observed_eod_rows"] == 2
+    assert after["rows_with_positive_reported_volume"] == 1
+    assert after["rows_with_zero_reported_volume"] == 1
+    assert after["histories_with_no_positive_reported_volume"] == 1
+    assert after["sum_original_provider_reported_charges"] == 2
+    assert after["verified_original_raw_body_bytes"] > 0
+    assert after["source_gap_ledger_entries_not_physical_404_count"] == 0
+    assert after["provider_requests_this_audit"] == 0
+    assert sorted(requests) == sorted(symbols)
+    assert audit.audit_frozen_quote_coverage(settings, last_shard_inclusive=0) == after
+    assert len(requests) == 3
+    tampered = json.loads(path.read_text(encoding="utf-8"))
+    tampered["selected_candidate_memberships"] += 1
+    path.write_text(json.dumps(tampered), encoding="utf-8")
+    with pytest.raises(CandidateChainCacheError, match="fingerprint"):
+        audit.audit_frozen_quote_coverage(settings, last_shard_inclusive=0)

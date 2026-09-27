@@ -10,6 +10,7 @@ from decimal import Decimal
 from typing import Any, Callable
 
 from packages.core.settings import AtlasSettings
+from packages.data import marketdata_additive_2022_shards_v1 as frozen_shards
 from packages.data.marketdata_additive_2022_shards_v1 import prepare_additive_shard
 from packages.data.marketdata_candidate_chain_cache_v1 import CandidateChainCacheError, _fingerprint
 from packages.data.marketdata_2022_selected_quote_campaign_v1 import (
@@ -37,9 +38,29 @@ def freeze_broad_quote_plan(
     """
     if type(last_shard_inclusive) is not int or not 0 <= last_shard_inclusive <= MAX_LAST_SHARD:
         raise CandidateChainCacheError("broad quote shard bound outside 0..70")
+    source_preparer = preparer
+    if preparer is prepare_additive_shard:
+        # All quote inputs must ALREADY be bound. Verify the original prior
+        # cohort once, then validate each immutable shard independently using
+        # its full binding fingerprint, raw source SHA and native plan checks.
+        # Avoid re-running the 36-original-source preview for every shard.
+        prior, _, _ = frozen_shards._prior(settings)
+        original_plan_fp = prior["plan_fingerprint"]
+
+        def reuse_bound_shard(
+            candidate_settings: AtlasSettings, *, shard_index: int, duckdb_threads: int,
+        ) -> tuple[Any, ...]:
+            if candidate_settings is not settings or duckdb_threads != 4:
+                raise CandidateChainCacheError("broad quote bound-shard preparation changed")
+            verified = frozen_shards._read_bound(
+                candidate_settings, shard_index, original_plan_fp,
+            )
+            return (*verified, "REUSED_IMMUTABLE_ADDITIVE_SHARD")
+
+        source_preparer = reuse_bound_shard
     plan = freeze_quote_plan(
         settings, last_shard_inclusive=last_shard_inclusive,
-        preparer=preparer, candidate_limit=None, strike_window=WINDOW,
+        preparer=source_preparer, candidate_limit=None, strike_window=WINDOW,
         quote_selection_policy=WIDE_POLICY,
     )
     if plan["contract"] != V1_CACHE_CONTRACT or plan["selection_policy"] != WIDE_POLICY:
