@@ -211,6 +211,11 @@ def test_enter_only_one_valid_later_quote_is_not_a_return(tmp_path, monkeypatch)
             "volume": [0, 12, 0],
         }).encode()
     kw["raw_reader"] = raw
+    kw["quote_reader"] = lambda ss, ticket: {
+        "status": "COMPLETE_SOURCE_ONLY",
+        "safe_summary": {"observed_rows": 3},
+        "body_sha256": __import__("hashlib").sha256(raw(ss, ticket)).hexdigest(),
+    }
     output = m.build_rank0_later_eod_reference(s, **kw)
     assert output["entry_reference_only_no_subsequent_reference"] == 1
     assert output["median_hypothetical_ask_to_next_bid_reference_fraction"] is None
