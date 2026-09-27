@@ -155,6 +155,7 @@ class OfflineMultiYearNewsContext:
         paths, lineage = verified_news_partition_paths(settings, progress=progress)
         chosen: dict[str, tuple[datetime, tuple[str, ...]]] = {}
         scanned = 0
+        relevant_rows = 0
         con = duckdb.connect(database=":memory:")
         try:
             con.execute(f"PRAGMA threads={threads}")
@@ -178,6 +179,7 @@ class OfflineMultiYearNewsContext:
                     relevant = tuple(s for s in _symbol_list(symbols_json) if s in tickers)
                     if not relevant:
                         continue
+                    relevant_rows += 1
                     candidate = (effective, relevant)
                     previous = chosen.get(article_id)
                     if previous is None or candidate > previous:
@@ -193,7 +195,7 @@ class OfflineMultiYearNewsContext:
         prior = OfflineNewsContext(dict(by_symbol), lineage, scanned)
         return cls(
             prior, coverage_end=MAX_VERIFIED_COVERAGE,
-            duplicate_article_rows=scanned - len(chosen),
+            duplicate_article_rows=relevant_rows - len(chosen),
         )
 
     @property
