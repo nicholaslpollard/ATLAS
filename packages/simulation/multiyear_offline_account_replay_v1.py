@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Deterministic long-only stock/CALL/PUT account mechanics for synthetic fixtures.
+"""No-lookahead long-only stock/CALL/PUT account mechanics for synthetic fixtures.
 
 This engine is deliberately separate from historical source admission. Current
 dated source casebooks do not certify synchronized observations, contract
@@ -95,24 +95,29 @@ class ReplayLeg:
     symbol: str
     kind: Literal["STOCK", "CALL", "PUT"]
     entry_at_utc: datetime
-    exit_at_utc: datetime
+    exit_at_utc: datetime | None
     entry_per_share: str
-    exit_per_share: str
+    exit_per_share: str | None
     multiplier: int
     expiration: date | None
     source_integrity_qualified: bool
     observation_clock_qualified: bool
     standard_deliverable_verified: bool
+    exit_source_integrity_qualified: bool | None = None
+    exit_observation_clock_qualified: bool | None = None
 
     def validate(self, signal_at_utc: datetime, ticker: str) -> None:
         start = _stamp(self.entry_at_utc, "leg entry")
-        end = _stamp(self.exit_at_utc, "leg exit")
-        if start <= signal_at_utc or end <= start:
+        end = _stamp(self.exit_at_utc, "leg exit") if self.exit_at_utc is not None else None
+        if start <= signal_at_utc or (end is not None and end <= start):
             raise OfflineAccountReplayError("nonchronological synthetic decision/entry/exit")
         if self.kind not in ("STOCK", "CALL", "PUT") or not self.symbol:
             raise OfflineAccountReplayError("instrument identity invalid")
         _decimal(self.entry_per_share, "entry side")
-        _decimal(self.exit_per_share, "exit side", allow_zero=self.kind != "STOCK")
+        if (end is None) != (self.exit_per_share is None):
+            raise OfflineAccountReplayError("exit source price and clock must be paired")
+        if self.exit_per_share is not None:
+            _decimal(self.exit_per_share, "exit side", allow_zero=self.kind != "STOCK")
         if self.kind == "STOCK":
             if self.symbol != ticker or self.multiplier != 1 or self.expiration is not None:
                 raise OfflineAccountReplayError("stock contract identity changed")
@@ -135,7 +140,11 @@ class ReplayLeg:
         for flag in (self.source_integrity_qualified, self.observation_clock_qualified,
                      self.standard_deliverable_verified):
             if type(flag) is not bool:
-                raise OfflineAccountReplayError("admission gate must be boolean")
+                raise OfflineAccountReplayError("entry admission gate must be boolean")
+        for flag in (self.exit_source_integrity_qualified,
+                     self.exit_observation_clock_qualified):
+            if flag is not None and type(flag) is not bool:
+                raise OfflineAccountReplayError("exit source gate must be boolean or absent")
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,18 +182,18 @@ def _admission(leg: ReplayLeg | None, mode: Mode) -> str:
         return "UNQUALIFIED_OBSERVATION_CLOCK"
     if not leg.standard_deliverable_verified or (leg.kind != "STOCK" and leg.multiplier != 100):
         return "UNVERIFIED_CONTRACT_DELIVERABLE"
-    if leg.kind != "STOCK" and (
-        leg.entry_at_utc.astimezone(EASTERN).date() > leg.expiration
-        or leg.exit_at_utc.astimezone(EASTERN).date() > leg.expiration
-    ):
-        return "UNRESOLVED_OPTION_EXPIRY_OR_ASSIGNMENT"
-    return "ELIGIBLE_SYNTHETIC_PRICED_PATH"
+    if leg.kind != "STOCK" and leg.entry_at_utc.astimezone(EASTERN).date() > leg.expiration:
+        return "EXPIRED_BEFORE_ENTRY"
+    return "ELIGIBLE_SYNTHETIC_ENTRY"
 
 
 def _unit_terms(leg: ReplayLeg, policy: ReplayPolicy) -> tuple[Decimal, Decimal, Decimal, Decimal]:
     """Per-unit entry debit, exit credit, entry fee and exit fee in dollars."""
     entry = _decimal(leg.entry_per_share, "entry")
-    exit_ = _decimal(leg.exit_per_share, "exit", allow_zero=leg.kind != "STOCK")
+    # A missing future exit is not priced as a free/worthless hypothetical fill.
+    # Zero below is private fee-estimation arithmetic; no exit event is emitted.
+    exit_ = (_decimal(leg.exit_per_share, "exit", allow_zero=leg.kind != "STOCK")
+             if leg.exit_per_share is not None else Decimal(0))
     if leg.kind == "STOCK":
         bps = _decimal(policy.stock_slippage_bps, "stock slippage", allow_zero=True)
         debit = _money(entry * (Decimal(1) + bps / Decimal(10000)))
@@ -205,14 +214,17 @@ def _unit_terms(leg: ReplayLeg, policy: ReplayPolicy) -> tuple[Decimal, Decimal,
 def replay_synthetic_account(
     signals: list[ReplaySignal], *, mode: Mode,
     policy: ReplayPolicy | None = None,
+    as_of_utc: datetime | None = None,
 ) -> dict[str, Any]:
-    """One chronological cash-only account, no provider and no historical P&L claim.
+    """Chronological entry-first cash ledger with optional as-of knowledge boundary.
 
-    A candidate requires an independently qualified modeled entry AND exit path
-    before taking cash. No unobserved exit or expiry settlement is invented.
+    Synthetic fixtures can open positions without an observed exit. No next-session
+    quote may decide whether an earlier entry was admitted. Open contracts have
+    NULL equity when an independently qualified terminal mark is unavailable.
     """
     policy = policy or ReplayPolicy()
     policy.validate()
+    cutoff = _stamp(as_of_utc, "as-of") if as_of_utc is not None else None
     if mode not in MODES or not isinstance(signals, list) or not signals:
         raise OfflineAccountReplayError("nonempty fixture cohort and explicit mode required")
     if len(signals) > 100000:
@@ -231,17 +243,31 @@ def replay_synthetic_account(
     ledger: list[dict[str, Any]] = []
     by_year: dict[str, Counter[str]] = {str(y): Counter() for y in range(2021, 2027)}
     events: list[tuple[datetime, int, str, ReplayLeg]] = []
+    selected: dict[str, ReplayLeg] = {}
     for signal in signals:
         leg = getattr(signal, mode.lower()) if mode != "ABSTAIN" else None
-        status = "ABSTAIN_BY_POLICY" if mode == "ABSTAIN" else _admission(leg, mode)
+        if cutoff is not None and _stamp(signal.decision_at_utc, "decision") > cutoff:
+            status = "FUTURE_SIGNAL_NOT_REACHED"
+        else:
+            status = "ABSTAIN_BY_POLICY" if mode == "ABSTAIN" else _admission(leg, mode)
+            if (status == "ELIGIBLE_SYNTHETIC_ENTRY" and cutoff is not None
+                    and _stamp(leg.entry_at_utc, "entry") > cutoff):
+                status = "FUTURE_ENTRY_NOT_REACHED"
         decisions[signal.case_id] = {
             "case_id": signal.case_id, "year": signal.year,
             "ticker": signal.ticker, "mode": mode, "status": status,
             "units": 0, "modeled_net_pnl": None,
         }
-        if status == "ELIGIBLE_SYNTHETIC_PRICED_PATH":
+        if status == "ELIGIBLE_SYNTHETIC_ENTRY":
+            selected[signal.case_id] = leg
             events.append((_stamp(leg.entry_at_utc, "entry"), 1, signal.case_id, leg))
-            events.append((_stamp(leg.exit_at_utc, "exit"), 0, signal.case_id, leg))
+            if (leg.exit_at_utc is not None and leg.exit_per_share is not None
+                    and (cutoff is None or _stamp(leg.exit_at_utc, "exit") <= cutoff)
+                    and leg.exit_source_integrity_qualified is not False
+                    and leg.exit_observation_clock_qualified is not False
+                    and (leg.kind == "STOCK" or
+                         leg.exit_at_utc.astimezone(EASTERN).date() <= leg.expiration)):
+                events.append((_stamp(leg.exit_at_utc, "exit"), 0, signal.case_id, leg))
     # Release existing positions before admitting new ones at an identical stamp.
     for at, priority, cid, leg in sorted(events, key=lambda e: (e[0], e[1], e[2])):
         row = decisions[cid]
@@ -271,7 +297,7 @@ def replay_synthetic_account(
                 "units": units, "debit": cost, "reserved_exit_fee": reserve, "entry_at": at,
                 "kind": leg.kind, "symbol": leg.symbol,
             }
-            row["status"] = "SYNTHETIC_ROUND_TRIP_MODELED"
+            row["status"] = "OPEN_UNMARKED_NO_QUALIFIED_EXIT"
             row["units"] = units
             ledger.append({
                 "kind": "MODELED_ENTRY", "case_id": cid,
@@ -290,6 +316,7 @@ def replay_synthetic_account(
                 raise OfflineAccountReplayError("modeled exit violates cash or fee escrow")
             pnl = _money(proceeds - position["debit"])
             row["modeled_net_pnl"] = str(pnl)
+            row["status"] = "SYNTHETIC_ROUND_TRIP_MODELED"
             ledger.append({
                 "kind": "MODELED_EXIT", "case_id": cid,
                 "at_utc": at.isoformat(), "instrument": leg.symbol,
@@ -297,12 +324,29 @@ def replay_synthetic_account(
                 "cash_after": str(cash), "exit_fees_reserved": str(reserved_exit_fees),
                 "modeled_net_pnl": str(pnl),
             })
-    if positions or reserved_exit_fees != 0:
-        raise OfflineAccountReplayError("synthetic scheduled exit left unresolved position or fee reserve")
+    if reserved_exit_fees != sum(
+        (p["reserved_exit_fee"] for p in positions.values()), Decimal(0)
+    ):
+        raise OfflineAccountReplayError("modeled open-position fee escrow does not reconcile")
+    for cid, position in positions.items():
+        leg = selected[cid]
+        if leg.kind != "STOCK" and (
+            (cutoff is not None and cutoff.astimezone(EASTERN).date() >= leg.expiration)
+            or (leg.exit_at_utc is not None
+                and leg.exit_at_utc.astimezone(EASTERN).date() > leg.expiration)
+        ):
+            decisions[cid]["status"] = "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"
+        elif (leg.exit_source_integrity_qualified is False
+              or leg.exit_observation_clock_qualified is False):
+            decisions[cid]["status"] = "OPEN_UNQUALIFIED_EXIT_SOURCE"
     for signal in signals:
         by_year[str(signal.year)][decisions[signal.case_id]["status"]] += 1
     rows = [decisions[s.case_id] for s in sorted(signals, key=lambda s: (s.decision_at_utc, s.case_id))]
     round_trips = sum(x["status"] == "SYNTHETIC_ROUND_TRIP_MODELED" for x in rows)
+    realized_pnl = sum(
+        (Decimal(x["modeled_net_pnl"]) for x in rows if x["modeled_net_pnl"] is not None),
+        Decimal(0),
+    )
     result = {
         "contract": CONTRACT,
         "status": "SYNTHETIC_ACCOUNT_MECHANICS_ONLY_NOT_HISTORICAL",
@@ -312,10 +356,26 @@ def replay_synthetic_account(
         },
         "original_case_denominator": len(signals),
         "synthetic_round_trips": round_trips,
+        "as_of_utc": cutoff.isoformat() if cutoff is not None else None,
         "initial_cash": str(initial_cash),
         "ending_cash": str(cash),
-        "modeled_realized_cash_change": str(_money(cash - initial_cash)),
-        "end_open_positions": 0, "ending_reserved_exit_fees": str(reserved_exit_fees),
+        "modeled_cash_flow_change": str(_money(cash - initial_cash)),
+        "modeled_realized_pnl": str(_money(realized_pnl)),
+        "modeled_realized_cash_change": (
+            str(_money(cash - initial_cash)) if not positions else None
+        ),
+        "ending_equity": str(cash) if not positions else None,
+        "end_open_positions": len(positions),
+        "ending_reserved_exit_fees": str(reserved_exit_fees),
+        "open_positions": [
+            {
+                "case_id": cid, "symbol": p["symbol"], "kind": p["kind"],
+                "units": p["units"], "entry_debit": str(p["debit"]),
+                "reserved_exit_fee": str(p["reserved_exit_fee"]),
+                "terminal_market_mark": None, "unrealized_pnl": None,
+            }
+            for cid, p in sorted(positions.items())
+        ],
         "by_year": {
             y: {"original_cases": sum(counts.values()),
                 "statuses": dict(sorted(counts.items()))}
