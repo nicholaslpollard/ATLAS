@@ -22,6 +22,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-new-requests", type=int, default=0,
                    help="0 means a free local preview; positive needs all confirmations")
     p.add_argument("--max-observed-credits", type=int, default=0)
+    p.add_argument("--min-remaining-credits", type=int, default=500,
+                   help="Explicit minimum provider credits left for later runs (default 500)")
     p.add_argument("--workers", type=int, default=16)
     p.add_argument("--authorize-provider-reads", action="store_true")
     p.add_argument("--confirm-paid-starter", action="store_true")
@@ -34,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
         result = run_campaign(
             settings, max_new_requests=a.max_new_requests,
             max_observed_credits=a.max_observed_credits, workers=a.workers,
+            min_remaining_credits=a.min_remaining_credits,
             authorize_provider_reads=a.authorize_provider_reads,
             confirm_paid_starter=a.confirm_paid_starter,
             confirm_private_internal_use=a.confirm_private_internal_use,
