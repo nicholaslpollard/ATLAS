@@ -24,6 +24,9 @@ from packages.data.multiyear_option_stock_eod_preflight_v1 import (
 from packages.data.multiyear_native_eod_close_source_v1 import (
     resolve_native_eod_closes, persist_native_eod_closes,
 )
+from packages.data.multiyear_verified_stock_option_source_casebook_v1 import (
+    build_verified_source_casebook, persist_source_casebook,
+)
 
 SELECTION = Path(
     "data/options/manifests/"
@@ -126,6 +129,16 @@ def main() -> int:
         print(f"    native_daily_bar_gaps={closes['exact_daily_bar_gaps']}", flush=True)
         print(f"    native_close_source={s4} / {p4}", flush=True)
         print(f"    native_close_source_fingerprint={closes['source_fingerprint']}", flush=True)
+        print("  stage=FULL_COHORT_VERIFIED_DATED_STOCK_OPTION_SOURCE_CASEBOOK", flush=True)
+        casebook = build_verified_source_casebook(handoff, timeline, stock_needs, closes)
+        p5, s5 = persist_source_casebook(settings, casebook)
+        print(f"    original_stock_cases={casebook['original_case_denominator']}", flush=True)
+        print(f"    original_right_memberships={casebook['original_right_memberships']}", flush=True)
+        print(f"    dated_option_and_stock_source_rights={casebook['dated_option_and_stock_source_rights']}", flush=True)
+        for year, counts in casebook["by_year"].items():
+            print(f"    casebook_{year}={counts}", flush=True)
+        print(f"    source_casebook={s5} / {p5}", flush=True)
+        print(f"    source_casebook_fingerprint={casebook['casebook_fingerprint']}", flush=True)
         print("  No paid GET, historical 09:35 fill, synchronized stock-option"
               " timestamp claim, unverified deliverable, account return or"
               " strategy promotion.", flush=True)
