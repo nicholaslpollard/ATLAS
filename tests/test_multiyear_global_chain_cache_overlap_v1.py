@@ -163,8 +163,16 @@ def test_signed_metadata_and_orphan_index_do_not_reopen_raw_chain(tmp_path):
     by_key,orphan,catalog,counts=m._metadata_index(root)
     assert len(by_key[("AAPL","2025-07-01","2025-08-15")])==1
     assert orphan=={}
-    assert counts=={"receipts":1,"attempts":1,"orphan_attempts":0}
+    assert counts=={"receipts":1,"attempts":1,"orphan_attempts":0,
+                    "signed_proof_or_recovery_sidecars":0}
     assert len(catalog)==64
+    sidecar={"request_identity":rid,"contract":"test-signed-sidecar",
+             "status":"METADATA_ONLY_FIXTURE"}
+    sidecar["recovery_fingerprint"]=_fingerprint(sidecar)
+    paths.recovery.write_text(json.dumps(sidecar),encoding="utf-8")
+    _,_,catalog_after,counts_after=m._metadata_index(root)
+    assert counts_after["signed_proof_or_recovery_sidecars"]==1
+    assert catalog_after!=catalog
     receipt["row_count"]=9
     paths.receipt.write_text(json.dumps(receipt),encoding="utf-8")
     with pytest.raises(m.GlobalChainOverlapError,match="receipt structure changed"):
