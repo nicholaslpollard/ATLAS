@@ -179,7 +179,7 @@ def build_verified_source_casebook(
     query_list = needs["requests"]
     query_by_id = {x["request_identity"]: x for x in query_list}
     if (
-        len(historical) != right_count or set(historical) != set(observations) != set(demand)
+        len(historical) != right_count or set(historical) != set(observations) or set(historical) != set(demand)
         or len(native) != len(query_list) or len(query_by_id) != len(query_list)
         or set(native) != set(query_by_id)
     ):
