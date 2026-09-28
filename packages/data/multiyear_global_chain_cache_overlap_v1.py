@@ -257,6 +257,37 @@ def _metadata_index(
         if rid not in index:
             pending[rid]=item
         signatures.append(["attempt",rid,item["intent_fingerprint"]])
+    sidecars=0
+    # An offline no-data proof or recovery may be added without altering the
+    # original receipt/attempt. Include signed sidecar metadata in the snapshot
+    # identity so an old source-overlap report is never silently reused.
+    for pattern,kind,field in (
+        ("*.no_data.json","no_data","proof_fingerprint"),
+        ("*.recovery.json","recovery","recovery_fingerprint"),
+    ):
+        for path in sorted(root.rglob(pattern)) if root.exists() else []:
+            if path.is_symlink() or not path.is_file():
+                raise GlobalChainOverlapError("original source recovery/proof sidecar linked")
+            try:
+                original=_read_object(path)
+                unsigned=dict(original)
+                fp=unsigned.pop(field)
+                rid=original["request_identity"]
+                canonical=_paths_root(root,rid)
+                expected=(
+                    canonical.receipt.with_name(canonical.receipt.name.replace(
+                        ".receipt.json",".no_data.json"
+                    )) if kind=="no_data" else canonical.recovery
+                )
+            except (OSError,ValueError,TypeError,KeyError) as exc:
+                raise GlobalChainOverlapError("original chain proof/recovery metadata unreadable") from exc
+            if (
+                fp!=_fingerprint(unsigned) or path!=expected
+                or rid not in index or not isinstance(fp,str) or len(fp)!=64
+            ):
+                raise GlobalChainOverlapError("orphaned or changed chain proof/recovery metadata")
+            signatures.append([kind,rid,fp])
+            sidecars+=1
     for key in by_key:
         by_key[key].sort(key=lambda x:x["request_identity"])
     catalog=_fingerprint({
@@ -264,7 +295,8 @@ def _metadata_index(
         "signed_metadata":sorted(signatures),
     })
     counts={"receipts":len(receipts),"attempts":len(attempts),
-            "orphan_attempts":len(pending)}
+            "orphan_attempts":len(pending),
+            "signed_proof_or_recovery_sidecars":sidecars}
     return by_key,pending,catalog,counts
 
 
