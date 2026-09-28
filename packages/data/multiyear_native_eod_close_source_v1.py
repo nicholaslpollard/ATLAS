@@ -110,10 +110,15 @@ def _read_one_unit(
             f"alpaca:sip:1Day:raw:asof=-:v2:unit={unit_id}",
         ):
             raise NativeEodCloseError("original daily bar source provenance changed")
-        if any(isinstance(v, bool) or not isinstance(v, (int,float))
-               or not math.isfinite(v) or v <= 0 for v in (opening, closing)):
+        if any(isinstance(v, bool) or v is None for v in (opening, closing)):
             raise NativeEodCloseError("invalid native raw open/close")
-        observed[key] = (str(opening), str(closing))
+        try:
+            raw_open, raw_close = float(opening), float(closing)
+        except (ValueError, TypeError, OverflowError) as exc:
+            raise NativeEodCloseError("native raw price cannot be represented") from exc
+        if not all(math.isfinite(v) and v > 0 for v in (raw_open, raw_close)):
+            raise NativeEodCloseError("invalid native raw open/close")
+        observed[key] = (str(raw_open), str(raw_close))
     output = []
     for item in wanted:
         key = (item["ticker"], date.fromisoformat(item["session_et"]))
@@ -179,10 +184,11 @@ def resolve_native_eod_closes(
         raise NativeEodCloseError("original accepted native source provenance missing")
     records, accepted, layout = _accepted_native_plan(settings, source_report, pairs)
     by_pair = {}
+    sought = {(ticker, day.year) for ticker, day in pairs}
     for record in records:
         for symbol in record["symbols"]:
             key = (str(symbol), int(record["year"]))
-            if key in {(ticker, day.year) for ticker, day in pairs}:
+            if key in sought:
                 if key in by_pair:
                     raise NativeEodCloseError("same symbol/year has ambiguous native units")
                 by_pair[key] = record
