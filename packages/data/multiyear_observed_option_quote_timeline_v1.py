@@ -58,8 +58,13 @@ def _utc(value: object) -> datetime:
     return stamp.astimezone(UTC)
 
 
-def _observation(row: dict[str, Any], request: dict[str, Any]) -> dict[str, Any]:
-    """Normalize a previously classified raw EOD source row, not an EOD fill."""
+def _observation(row: dict[str, Any]) -> dict[str, Any]:
+    """Check a fully receipt-verified physical EOD row, not a simulated fill.
+
+    A covering original source can begin before the narrower selected request.
+    Check every original row first; restrict the view to the selected frozen
+    window only after original full-source receipt/body validation.
+    """
     day = row["day"]
     if not isinstance(day, date) or isinstance(day, datetime):
         raise ObservedOptionTimelineError("option observation session missing")
@@ -68,8 +73,6 @@ def _observation(row: dict[str, Any], request: dict[str, Any]) -> dict[str, Any]
     valid = bid is not None and ask is not None and bid > 0 and ask >= bid
     if (
         stamp.astimezone(EASTERN).date() != day
-        or not date.fromisoformat(request["from_inclusive"]) <= day
-            < date.fromisoformat(request["to_exclusive"])
         or row["two_sided"] is not valid
         or type(row["positive_volume"]) is not bool
     ):
@@ -179,11 +182,21 @@ def build_observed_option_timeline(
                 original = read_verified_observations(request, slot)
                 if not isinstance(original, list) or len(original) != slot["observed_quote_rows"]:
                     raise ObservedOptionTimelineError("raw quote observations differ from receipt")
-                normalized = [_observation(o, request) for o in original]
+                # The receipt protects the complete original source (including
+                # any prior-year dates); validate every row, not merely the
+                # subset exposed by the narrower immutable demand request.
+                normalized = [_observation(o) for o in original]
                 sessions = [x["session_et"] for x in normalized]
                 if len(set(sessions)) != len(sessions):
                     raise ObservedOptionTimelineError("duplicate historical option session")
-                observed[source_id] = sorted(normalized, key=lambda x: x["session_et"])
+                first = date.fromisoformat(request["from_inclusive"])
+                end = date.fromisoformat(request["to_exclusive"])
+                if first >= end:
+                    raise ObservedOptionTimelineError("frozen quote window invalid")
+                observed[source_id] = [
+                    x for x in sorted(normalized, key=lambda x: x["session_et"])
+                    if first <= date.fromisoformat(x["session_et"]) < end
+                ]
             signal = _utc(picked["decision_at_utc"]).astimezone(EASTERN).date()
             expiry = date.fromisoformat(picked["expiration"])
             later = [
