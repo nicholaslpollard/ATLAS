@@ -158,3 +158,45 @@ def test_rolling_window_date_boundary() -> None:
     assert campaign._floor(date(2026, 9, 27)) == date(2021, 9, 27)
     assert campaign._floor(date(2026, 9, 28)) == date(2021, 9, 28)
     assert campaign._floor(date(2028, 2, 29)) == date(2023, 2, 28)
+
+
+def test_explicit_486_floor_uses_smaller_waves_near_1500_credit_cap() -> None:
+    wave = campaign._next_wave_size
+    assert wave(
+        outstanding=7574, workers=24, observed_credits=0,
+        max_observed_credits=1500, remaining=None,
+        min_remaining_credits=486,
+    ) == (1, None)
+    assert wave(
+        outstanding=7573, workers=24, observed_credits=1,
+        max_observed_credits=1500, remaining=1985,
+        min_remaining_credits=486,
+    ) == (24, None)
+    assert wave(
+        outstanding=6000, workers=24, observed_credits=1477,
+        max_observed_credits=1500, remaining=509,
+        min_remaining_credits=486,
+    ) == (11, None)
+    assert wave(
+        outstanding=6000, workers=24, observed_credits=1497,
+        max_observed_credits=1500, remaining=489,
+        min_remaining_credits=486,
+    ) == (1, None)
+    assert wave(
+        outstanding=6000, workers=24, observed_credits=1499,
+        max_observed_credits=1500, remaining=487,
+        min_remaining_credits=486,
+    ) == (0, "PARTIAL_OBSERVED_CREDIT_BUDGET")
+    assert wave(
+        outstanding=6000, workers=24, observed_credits=1498,
+        max_observed_credits=1500, remaining=486,
+        min_remaining_credits=486,
+    ) == (0, "PARTIAL_PROVIDER_CREDIT_FLOOR")
+
+
+def test_credit_floor_not_permitted_to_exceed_provider_balance() -> None:
+    assert campaign._next_wave_size(
+        outstanding=20, workers=24, observed_credits=1,
+        max_observed_credits=1500, remaining=480,
+        min_remaining_credits=486,
+    ) == (0, "PARTIAL_PROVIDER_CREDIT_FLOOR")

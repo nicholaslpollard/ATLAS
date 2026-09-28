@@ -203,10 +203,28 @@ def _capture(
     }
 
 
+def _next_wave_size(
+    *, outstanding: int, workers: int, observed_credits: int,
+    max_observed_credits: int, remaining: int | None,
+    min_remaining_credits: int,
+) -> tuple[int, str | None]:
+    """Reserve two potential credits per in-flight GET, shrinking the final wave."""
+    budget_slots = (max_observed_credits - observed_credits) // 2
+    if budget_slots < 1:
+        return 0, "PARTIAL_OBSERVED_CREDIT_BUDGET"
+    if remaining is not None:
+        provider_slots = (remaining - min_remaining_credits) // 2
+        if provider_slots < 1:
+            return 0, "PARTIAL_PROVIDER_CREDIT_FLOOR"
+        budget_slots = min(budget_slots, provider_slots)
+    return min(outstanding, workers if remaining is not None else 1, budget_slots), None
+
+
 def run_campaign(
     settings: AtlasSettings, *,
     max_new_requests: int = 0, max_observed_credits: int = 0,
-    workers: int = 16, authorize_provider_reads: bool = False,
+    workers: int = 16, min_remaining_credits: int = MIN_REMAINING,
+    authorize_provider_reads: bool = False,
     confirm_paid_starter: bool = False, confirm_private_internal_use: bool = False,
     token: str | None = None,
     reader: Callable[[str, dict[str, str]], MarketDataResponse] | None = None,
@@ -222,6 +240,8 @@ def run_campaign(
         or not 0 <= max_observed_credits <= MAX_NEW_REQUESTS * 2
         or (max_new_requests == 0) != (max_observed_credits == 0)
         or type(workers) is not int or not 1 <= workers <= MAX_WORKERS
+        or type(min_remaining_credits) is not int
+        or not 0 <= min_remaining_credits <= 10000
     ):
         raise MultiYearChainCampaignError("invalid explicit request/credit/worker ceilings")
     live = max_new_requests > 0
@@ -271,6 +291,7 @@ def run_campaign(
         "last_reported_remaining": None,
         "max_new_requests": max_new_requests,
         "max_observed_credits": max_observed_credits,
+        "min_remaining_credits": min_remaining_credits,
         "workers": workers,
         "provider_calls_in_preview": 0,
         "2026_new_accepted_replay_cases": 0,
@@ -333,18 +354,20 @@ def run_campaign(
         }
         offset = 0
         while offset < len(selected):
-            # Establish a current authoritative provider balance with ONE
-            # initial paid request before dispatching a wider concurrent wave.
-            wave_size = 1 if remaining is None else workers
+            # First GET establishes the authoritative balance. Thereafter
+            # shrink the final wave instead of refusing a full 24-worker batch.
+            # Two credits are reserved per request despite typically lower
+            # charges; a final 1-credit fragment remains unspent unless proven safe.
+            wave_size, blocked = _next_wave_size(
+                outstanding=len(selected) - offset, workers=workers,
+                observed_credits=report["observed_credits"],
+                max_observed_credits=max_observed_credits, remaining=remaining,
+                min_remaining_credits=min_remaining_credits,
+            )
+            if blocked is not None:
+                report["status"] = blocked
+                break
             wave = selected[offset:offset + wave_size]
-            # Reserve worst-case raw bytes and a conservative credit exposure
-            # for every in-flight request; never infer budget from final averages.
-            if report["observed_credits"] + len(wave) * 2 > max_observed_credits:
-                report["status"] = "PARTIAL_OBSERVED_CREDIT_BUDGET"
-                break
-            if remaining is not None and remaining < MIN_REMAINING + len(wave) * 2:
-                report["status"] = "PARTIAL_PROVIDER_CREDIT_FLOOR"
-                break
             worst = len(wave) * (MAX_RAW_BYTES + 16384)
             if (
                 report["new_raw_bytes"] + worst > available_bytes
