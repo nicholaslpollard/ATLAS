@@ -426,7 +426,7 @@ def run_demand_cache(
         })
         clean_close = False
         try:
-            with ThreadPoolExecutor(max_workers=min(workers, max(1, (os.cpu_count() or 4) - 2))) as pool:
+            with ThreadPoolExecutor(max_workers=min(workers, MAX_WORKERS)) as pool:
                 while pending and attempts < max_new_requests and credits < max_observed_credits:
                     reserve_remaining = (
                         user_asserted_remaining if latest_remaining is None
