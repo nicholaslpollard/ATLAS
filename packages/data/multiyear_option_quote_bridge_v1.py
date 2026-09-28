@@ -20,6 +20,7 @@ from packages.data.marketdata_candidate_chain_cache_v1 import (
     _fingerprint, _paths, _valid_receipt,
 )
 from packages.data.marketdata_candidate_expansion_v1 import _exclusive, _read_object
+from packages.data.offline_option_history_v1 import OfflineOptionHistoryStore
 from packages.data.multiyear_chain_campaign_v1 import (
     DEMAND_FP, OVERLAP_FP, read_accepted_source,
 )
@@ -210,6 +211,7 @@ def assemble_case_selections(
     demand: dict[str, Any], overlap: dict[str, Any], *,
     right: str,
     source_reader: Callable[..., tuple[str, tuple[dict[str, Any], ...], str | None]],
+    accepted_original_2022_symbols: set[str] | None = None,
     expected_case_denominator: int = MAX_ROWS,
     expected_physical_source_count: int = 7646,
 ) -> dict[str, Any]:
@@ -286,12 +288,33 @@ def assemble_case_selections(
                     if (old["year"] == "2022"
                         and old.get("original_2022_chain_body_sha256_pointer") is None):
                         raise MultiYearQuoteBridgeError("unbound original 2022 source")
-                    chosen = {
+                    if (old["year"] == "2022"
+                        and (accepted_original_2022_symbols is None
+                             or pointer_symbol not in accepted_original_2022_symbols)):
+                        raise MultiYearQuoteBridgeError(
+                            "original 2022 CALL pointer not in accepted 6398-series plan"
+                        )
+                    if old["year"] == "2025":
+                        source_id = pointer_id
+                        source_status, rows, verified_sha = source_reader(
+                            source_id, ticker=row["ticker"], signal=signal.isoformat(),
+                            expiry=expiry_text, expected_sha=pointer_sha, memo=memo,
+                        )
+                        if source_status != "VERIFIED_PIT_CHAIN":
+                            status = source_status
+                            chosen = None
+                        elif not any(x.get("optionSymbol") == pointer_symbol for x in rows):
+                            raise MultiYearQuoteBridgeError("2025 original CALL not in source body")
+                        else:
+                            source_sha = verified_sha
+                    if status is None:
+                        chosen = {
                         "option_symbol": pointer_symbol,
                         "strike": str(Decimal(OCC.fullmatch(pointer_symbol).group(4)) / 1000),
                     }
-                    source_id, source_sha = pointer_id, pointer_sha
-                    status = "SELECTED_ACCEPTED_ORIGINAL_PIT_CALL_POINTER"
+                        source_id = pointer_id
+                        source_sha = source_sha or pointer_sha
+                        status = "SELECTED_ACCEPTED_ORIGINAL_PIT_CALL_POINTER"
                 elif ticket is not None:
                     identity = ticket["physical_request_identity"]
                     audited = overlap_by_id[identity]
@@ -386,8 +409,12 @@ def assemble_case_selections(
 
 def build_local_bridge(settings: AtlasSettings, *, right: str = "both") -> dict[str, Any]:
     native, crosswalk, demand, overlap = read_accepted_cases(settings)
+    # Index 6398 original OCC identities ONCE; never reopen 6398 raw quote bodies
+    # during selection. Each actual use verifies the original exact receipt.
+    old_2022 = OfflineOptionHistoryStore(settings)
     return assemble_case_selections(
         native, crosswalk, demand, overlap, right=right,
+        accepted_original_2022_symbols=set(old_2022._tickets),
         source_reader=lambda identity, **kwargs: _verified_chain(
             settings, identity, **kwargs,
         ),
