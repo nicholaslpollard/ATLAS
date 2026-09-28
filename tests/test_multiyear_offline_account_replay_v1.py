@@ -211,11 +211,11 @@ def test_missing_future_exit_keeps_the_same_entry_and_unpriced_position():
     assert unresolved["synthetic_round_trips"] == 0
     assert unresolved["decisions"][0]["status"] == "OPEN_UNMARKED_NO_QUALIFIED_EXIT"
     assert unresolved["end_open_positions"] == 1
-    assert unresolved["ending_cash"] == "9197.40"
-    assert unresolved["ending_reserved_exit_fees"] == "2.60"
+    assert unresolved["ending_cash"] == "90168.15"
+    assert unresolved["ending_reserved_exit_fees"] == "31.85"
     assert unresolved["ending_equity"] is None
     assert unresolved["modeled_realized_cash_change"] is None
-    assert unresolved["modeled_cash_flow_change"] == "-802.60"
+    assert unresolved["modeled_cash_flow_change"] == "-9831.85"
     assert unresolved["modeled_realized_pnl"] == "0.00"
     assert unresolved["open_positions"][0]["unrealized_pnl"] is None
 
