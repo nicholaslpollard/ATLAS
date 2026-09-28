@@ -32,7 +32,7 @@ def main()->int:
         print(f"  underlying accepted stock cases: {result['accepted_case_denominator']}",flush=True)
         print(f"  candidate source-case memberships: {result['candidate_case_memberships']}",flush=True)
         print(f"  local receipt metadata: {result['source_cache_metadata_counts']}",flush=True)
-        print(f"  matched source bodies independently verified: {result['source_bodies_verified_for_relevant_overlaps']}",flush=True)
+        print(f"  matched source bodies independently verified: {result['source_bodies_or_no_data_proofs_inspected_for_relevant_overlaps']}",flush=True)
         print(f"  physical source states: {result['by_status']}",flush=True)
         for year,status in result["by_year_query_status"].items():
             print(f"  {year} physical queries: {status}",flush=True)
