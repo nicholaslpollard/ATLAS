@@ -267,6 +267,7 @@ def run_campaign(
         "exact_no_data": 0,
         "observed_credits": 0,
         "new_raw_bytes": 0,
+        "new_complete_by_year": {},
         "last_reported_remaining": None,
         "max_new_requests": max_new_requests,
         "max_observed_credits": max_observed_credits,
@@ -289,6 +290,8 @@ def run_campaign(
     if available_gib <= 0:
         raise MultiYearChainCampaignError("D: candidate cache budget exhausted")
     available_bytes = int(available_gib * 1024**3)
+    report["D_initial_free_gib"] = storage.disk_free_gib
+    report["D_initial_candidate_cache_gib"] = storage.category_usage_gib["options_candidate_cache"]
     root = settings.resolved_path(MANIFEST_REL)
     lock = root / "multiyear_chain_campaign_v1.lock"
     run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ") + "_" + uuid.uuid4().hex[:8]
@@ -324,6 +327,10 @@ def run_campaign(
         report["run_report_path"] = str(run_path)
         checkpoint()
         selected = queued[:max_new_requests]
+        year_for_identity = {
+            request["request_identity"]: request["params"]["date"][:4]
+            for request in selected
+        }
         offset = 0
         while offset < len(selected):
             # Establish a current authoritative provider balance with ONE
@@ -370,6 +377,11 @@ def run_campaign(
             )
             for item in results:
                 report["new_complete"] += item["status"] == "NEW_COMPLETE"
+                if item["status"] == "NEW_COMPLETE":
+                    year = year_for_identity[item["request_identity"]]
+                    report["new_complete_by_year"][year] = (
+                        report["new_complete_by_year"].get(year, 0) + 1
+                    )
                 report["exact_no_data"] += item["status"] == "EXACT_QUERY_NO_DATA_PROVEN"
                 if type(item["credits"]) is int:
                     report["observed_credits"] += item["credits"]
@@ -382,6 +394,9 @@ def run_campaign(
                         else min(remaining, item["remaining"])
                     )
             report["last_reported_remaining"] = remaining
+            report["D_latest_free_gib"] = round(
+                shutil.disk_usage(settings.external_data_root()).free / 1024**3, 3
+            )
             checkpoint()
             if progress:
                 progress({
@@ -389,6 +404,8 @@ def run_campaign(
                     "complete": report["new_complete"], "exact_no_data": report["exact_no_data"],
                     "credits": report["observed_credits"], "provider_remaining": remaining,
                     "batch_errors": len(errors), "D_new_raw_bytes": report["new_raw_bytes"],
+                    "D_free_gib": report["D_latest_free_gib"],
+                    "new_complete_by_year": dict(sorted(report["new_complete_by_year"].items())),
                 })
             offset += len(wave)
             if errors:
