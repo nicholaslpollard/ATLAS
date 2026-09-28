@@ -88,6 +88,7 @@ def test_full_case_join_reuses_original_2022_and_new_2023_with_both_rights() -> 
     result = bridge.assemble_case_selections(
         native, crosswalk, demand, overlap, right="both",
         source_reader=reader,
+        accepted_original_2022_symbols={"ADNT220218C00049000"},
         expected_case_denominator=2, expected_physical_source_count=1,
     )
     assert result["original_case_denominator"] == 2
@@ -108,6 +109,7 @@ def test_right_policy_does_not_preselect_unrequested_put() -> None:
     result = bridge.assemble_case_selections(
         native, crosswalk, demand, overlap, right="call",
         source_reader=lambda *args, **kwargs: ("VERIFIED_PIT_CHAIN", _rows(), "d" * 64),
+        accepted_original_2022_symbols={"ADNT220218C00049000"},
         expected_case_denominator=2, expected_physical_source_count=1,
     )
     assert len(result["cases"]) == 2
@@ -120,6 +122,7 @@ def test_bridge_output_is_valid_existing_exact_quote_demand() -> None:
     result = bridge.assemble_case_selections(
         native, crosswalk, demand, overlap, right="call",
         source_reader=lambda *args, **kwargs: ("VERIFIED_PIT_CHAIN", _rows(), "d" * 64),
+        accepted_original_2022_symbols={"ADNT220218C00049000"},
         expected_case_denominator=2, expected_physical_source_count=1,
     )
     quote = freeze_quote_demand(
@@ -140,6 +143,7 @@ def test_no_date_or_occ_identity_backdating() -> None:
         bridge.assemble_case_selections(
             native, crosswalk, demand, overlap, right="call",
             source_reader=lambda *args, **kwargs: ("VERIFIED_PIT_CHAIN", _rows(), "d" * 64),
+        accepted_original_2022_symbols={"ADNT220218C00049000"},
             expected_case_denominator=2, expected_physical_source_count=1,
         )
     with pytest.raises(bridge.MultiYearQuoteBridgeError, match="OCC"):
