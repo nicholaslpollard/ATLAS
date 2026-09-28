@@ -90,6 +90,7 @@ def test_expired_option_path_is_skipped_not_fabricated_expiry_or_assignment():
     signal = _fixture()[0]
     changed = replace(signal, call=replace(
         signal.call, expiration=date(2022, 1, 4),
+        symbol="O:TEST220104C00100000",
     ))
     result = replay_synthetic_account([changed], mode="CALL")
     assert result["decisions"][0]["status"] == "UNRESOLVED_OPTION_EXPIRY_OR_ASSIGNMENT"
@@ -175,3 +176,23 @@ def test_option_fee_reservation_prevents_overcommit_to_second_entry():
     assert output["by_year"]["2022"]["statuses"]["INSUFFICIENT_CASH_FOR_ONE_UNIT"] == 1
     assert output["end_open_positions"] == 0
     assert output["ending_reserved_exit_fees"] == "0.00"
+
+
+def test_occ_right_and_expiration_cannot_masquerade_as_other_contract():
+    signal = _fixture()[0]
+    with pytest.raises(OfflineAccountReplayError, match="OCC identity or right"):
+        replay_synthetic_account([replace(signal, call=replace(
+            signal.call, symbol="O:TEST220121P00100000",
+        ))], mode="CALL")
+    with pytest.raises(OfflineAccountReplayError, match="OCC expiry"):
+        replay_synthetic_account([replace(signal, call=replace(
+            signal.call, symbol="O:TEST220122C00100000",
+        ))], mode="CALL")
+
+
+def test_nonstandard_multiplier_not_modeled_as_standard_deliverable():
+    signal = _fixture()[0]
+    changed = replace(signal, call=replace(signal.call, multiplier=50))
+    output = replay_synthetic_account([changed], mode="CALL")
+    assert output["synthetic_round_trips"] == 0
+    assert output["decisions"][0]["status"] == "UNVERIFIED_CONTRACT_DELIVERABLE"
