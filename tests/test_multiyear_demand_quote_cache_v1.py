@@ -92,7 +92,7 @@ def test_preview_does_not_contact_provider_and_paid_requires_credit_reserve(tmp_
     )
     assert report["pending"] == 1 and report["new_provider_attempts"] == 0
     assert called == [] and report["status"] == "PREVIEW_ONLY_NO_PROVIDER_GETS"
-    with pytest.raises(m.MultiYearQuoteCacheError, match="500-credit"):
+    with pytest.raises(m.MultiYearQuoteCacheError, match="explicit minimum remaining"):
         m.run_demand_cache(
             s, plan, max_new_requests=2, max_observed_credits=200,
             authorize_provider=True, confirm_paid_starter=True,
@@ -139,7 +139,7 @@ def test_provider_uncertainty_preserves_intent_and_paid_lock(tmp_path, monkeypat
         raise TimeoutError("simulated prior attempt uncertain")
     with pytest.raises(m.MultiYearQuoteCacheError, match="preserved original"):
         m.run_demand_cache(
-            s, plan, max_new_requests=1, max_observed_credits=1,
+            s, plan, max_new_requests=1, max_observed_credits=2,
             authorize_provider=True, confirm_paid_starter=True,
             confirm_private_internal_use=True, token="test",
             user_asserted_remaining=1700, transport=uncertain,
@@ -173,3 +173,44 @@ def test_reuse_accepted_2022_stores_no_second_raw_copy(tmp_path, monkeypatch):
     assert result["reused_original_2022"] == 1
     assert result["new_provider_attempts"] == 0
     assert result["pending"] == 0
+
+def test_large_user_owned_quote_budget_and_explicit_zero_reserve_are_bounded(tmp_path, monkeypatch):
+    plan = m.freeze_quote_demand([_case(2023)], asof_utc=ASOF, last_completed_session=LAST)
+    s = _settings(tmp_path)
+    monkeypatch.setattr(m, "_require_external", lambda settings: None)
+    monkeypatch.setattr(m, "assert_category_acquisition_allowed", lambda *a, **kw: None)
+    result = m.run_demand_cache(
+        s, plan, max_new_requests=4393, max_observed_credits=2,
+        user_asserted_remaining=2, min_remaining_credits=0,
+        workers=24, authorize_provider=True, confirm_paid_starter=True,
+        confirm_private_internal_use=True, token="test",
+        transport=lambda ticket, token: _response(ticket, consumed=2, remaining=0),
+    )
+    assert result["new_provider_attempts"] == 1
+    assert result["observed_credits"] == 2
+    assert result["last_observed_provider_remaining"] == 0
+    assert result["pending"] == 0
+    assert m.MAX_REQUESTS >= 4393 and m.MAX_WORKERS >= 24
+    # Re-running the same verified source never spends again.
+    reused = m.run_demand_cache(
+        s, plan, transport=lambda *a: pytest.fail("no duplicate provider call"),
+    )
+    assert reused["new_provider_attempts"] == 0
+    assert reused["new_cache_complete"] == 1
+
+
+def test_first_get_requires_two_credit_reservation_and_no_other_budget(tmp_path, monkeypatch):
+    plan = m.freeze_quote_demand([_case(2023)], asof_utc=ASOF, last_completed_session=LAST)
+    s = _settings(tmp_path)
+    monkeypatch.setattr(m, "_require_external", lambda settings: None)
+    called = []
+    r = m.run_demand_cache(
+        s, plan, max_new_requests=1, max_observed_credits=1,
+        user_asserted_remaining=1, min_remaining_credits=0,
+        authorize_provider=True, confirm_paid_starter=True,
+        confirm_private_internal_use=True, token="test",
+        transport=lambda *a: called.append(1) or pytest.fail("no credit reservation"),
+    )
+    assert called == []
+    assert r["pending"] == 1 and r["new_provider_attempts"] == 0
+    assert r["status"] == "PARTIAL_HARD_BUDGET"

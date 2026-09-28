@@ -65,7 +65,9 @@ def main() -> int:
     parser.add_argument("--max-new-requests", type=int, default=0)
     parser.add_argument("--max-observed-credits", type=int, default=0)
     parser.add_argument("--user-asserted-remaining", type=int)
-    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--min-remaining-credits", type=int, default=500,
+                        help="Explicit minimum credits to retain (default 500; 0 only by choice)")
     parser.add_argument("--authorize-provider", action="store_true")
     parser.add_argument("--confirm-paid-starter", action="store_true")
     parser.add_argument("--confirm-private-internal-use", action="store_true")
@@ -92,6 +94,7 @@ def main() -> int:
             confirm_paid_starter=args.confirm_paid_starter,
             confirm_private_internal_use=args.confirm_private_internal_use,
             token=token, workers=args.workers,
+            min_remaining_credits=args.min_remaining_credits,
             progress=lambda row: print(
                 "  " + " ".join(f"{k}={v}" for k, v in row.items()), flush=True
             ),
