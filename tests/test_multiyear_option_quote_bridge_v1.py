@@ -143,7 +143,7 @@ def test_no_date_or_occ_identity_backdating() -> None:
         bridge.assemble_case_selections(
             native, crosswalk, demand, overlap, right="call",
             source_reader=lambda *args, **kwargs: ("VERIFIED_PIT_CHAIN", _rows(), "d" * 64),
-        accepted_original_2022_symbols={"ADNT220218C00049000"},
+            accepted_original_2022_symbols={"ADNT220218C00049000"},
             expected_case_denominator=2, expected_physical_source_count=1,
         )
     with pytest.raises(bridge.MultiYearQuoteBridgeError, match="OCC"):
