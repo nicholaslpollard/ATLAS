@@ -517,8 +517,6 @@ def run_demand_cache(
         "new_cache_complete": completed, "exact_source_gaps": gap,
         "pending": len(pending), "new_provider_attempts": attempts,
         "observed_credits": credits, "last_observed_provider_remaining": latest_remaining,
-        "min_remaining_credits": min_remaining_credits,
-        "per_inflight_credit_reservation": CREDITS_PER_INFLIGHT_REQUEST,
         "provider_read_authority_only_not_strategy_or_pnl": True,
         "source_entries": sorted(rows, key=lambda r: r["request_identity"]),
     }
