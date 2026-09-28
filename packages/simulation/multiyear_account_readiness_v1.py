@@ -57,6 +57,7 @@ def build_replay_readiness(
     }
     counts: Counter[str] = Counter()
     seen = set()
+    readiness_rows = []
     for row in rows:
         cid, case, right, year = (
             row["case_right_id"], row["original_case_id"], row["right"], row["year"]
@@ -97,6 +98,13 @@ def build_replay_readiness(
             raise AccountReadinessError("unknown source status")
         by_year[year][blocker] += 1
         counts[blocker] += 1
+        readiness_rows.append({
+            "case_right_id": cid, "original_case_id": case,
+            "year": year, "right": right, "ticker": row["ticker"],
+            "option_symbol": row["option_symbol"],
+            "source_join_status": status, "replay_blocker": blocker,
+            "historical_trade_admitted": False,
+        })
     if (
         len(seen) != expected_slots
         or len(by_case) != expected_cases
@@ -116,6 +124,7 @@ def build_replay_readiness(
         "actual_same_clock_qualified_rights": 0,
         "actual_executable_option_trades": 0,
         "by_blocker": dict(sorted(counts.items())),
+        "rows": sorted(readiness_rows, key=lambda x: x["case_right_id"]),
         "by_year": {
             str(y): {"original_right_slots": sum(by_year[str(y)].values()),
                      "blockers": dict(sorted(by_year[str(y)].items()))}
