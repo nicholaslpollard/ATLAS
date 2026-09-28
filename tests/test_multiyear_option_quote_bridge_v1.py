@@ -84,6 +84,10 @@ def test_full_case_join_reuses_original_2022_and_new_2023_with_both_rights() -> 
     calls = []
     def reader(identity, **kwargs):
         calls.append((identity, kwargs))
+        if kwargs["ticker"] == "ADNT":
+            return "VERIFIED_PIT_CHAIN", (
+                {"optionSymbol": "ADNT220218C00049000", "side": "call", "strike": 49},
+            ), "a" * 64
         return "VERIFIED_PIT_CHAIN", _rows(), "d" * 64
     result = bridge.assemble_case_selections(
         native, crosswalk, demand, overlap, right="both",
@@ -99,9 +103,9 @@ def test_full_case_join_reuses_original_2022_and_new_2023_with_both_rights() -> 
     assert by_id["case23:C"]["option_symbol"] == "ABCD230217C00102000"
     assert by_id["case23:P"]["option_symbol"] == "ABCD230217P00100000"
     assert all(x["source_body_sha256"] for x in result["cases"])
-    assert result["by_status"]["NO_ORIGINAL_PHYSICAL_CHAIN_IDENTITY"] == 1
+    assert result["by_status"]["VERIFIED_CHAIN_NO_MATCHING_RIGHT"] == 1
     assert result["provider_requests"] == 0
-    assert len(calls) == 2  # same source memo is caller supplied reader contract
+    assert len(calls) == 3  # original 2022 PUT and two newly selected 2023 rights
 
 
 def test_right_policy_does_not_preselect_unrequested_put() -> None:
