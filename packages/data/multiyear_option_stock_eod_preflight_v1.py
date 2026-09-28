@@ -226,7 +226,7 @@ def preview_pilot_quote_overlap(
             "candidate_full_coverage_sources": 0,
             "candidate_partial_overlap_sources": 0,
             "by_status": {}, "rows": [], "provider_requests": 0,
-            "requires_no_paid_download_for_exactly_verified_pilot_only": True,
+            "paid_provider_reads_authorized": False,
         }
     pilot = _read_object(source)
     _check_signature(pilot, "plan_fingerprint")
@@ -293,7 +293,7 @@ def preview_pilot_quote_overlap(
         "by_status": dict(sorted(counts.items())),
         "rows": rows,
         "provider_requests": 0,
-        "requires_no_paid_download_for_exactly_verified_pilot_only": True,
+        "paid_provider_reads_authorized": False,
     }
     result["overlap_fingerprint"] = _fingerprint(result)
     return result
