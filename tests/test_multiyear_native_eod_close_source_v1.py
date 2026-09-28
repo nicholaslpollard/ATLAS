@@ -73,7 +73,7 @@ def test_read_bounded_original_unit_preserves_exact_missing_gap(tmp_path):
             '1d'::VARCHAR AS timeframe, 'regular'::VARCHAR AS session_segment,
             FALSE AS is_adjusted, ?::VARCHAR AS source_id
         """, [f"alpaca:sip:1Day:raw:asof=-:v2:unit={uid}"])
-        con.execute("COPY original TO ? (FORMAT PARQUET)", [str(canonical)])
+        con.execute("COPY original TO '" + str(canonical).replace("'", "''") + "' (FORMAT PARQUET)")
     finally:
         con.close()
     cp = {
