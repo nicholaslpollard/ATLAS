@@ -134,7 +134,7 @@ def build_execution_proof_demand(
         or readiness.get("historical_account_pnl_authority") is not False
         or casebook.get("account_pnl_authority") is not False
     ):
-        raise HistoricalExecutionRequirementsError("signed original population or authority changed")
+        raise HistoricalExecutionRequirementsError("signed source lineage, population or authority changed")
     rows = casebook.get("rows")
     blockers = readiness.get("rows")
     if not isinstance(rows, list) or not isinstance(blockers, list):
