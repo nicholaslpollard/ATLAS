@@ -21,6 +21,9 @@ from packages.data.multiyear_option_stock_eod_preflight_v1 import (
     build_native_eod_needs, preview_pilot_quote_overlap,
     persist_pilot_overlap, persist_source_needs,
 )
+from packages.data.multiyear_native_eod_close_source_v1 import (
+    resolve_native_eod_closes, persist_native_eod_closes,
+)
 
 SELECTION = Path(
     "data/options/manifests/"
@@ -46,6 +49,8 @@ def main() -> int:
     parser.add_argument("--selection", type=Path, default=SELECTION)
     parser.add_argument("--plan", type=Path, default=QUOTE_PLAN)
     parser.add_argument("--handoff", type=Path, default=HANDOFF)
+    parser.add_argument("--native-workers", type=int, default=3,
+                        help="Original native daily-unit verification (1..4 workers)")
     args = parser.parse_args()
     print("ATLAS MULTIYEAR OPTIONS + NATIVE STOCK EOD PREFLIGHT — ZERO PROVIDER GETs",
           flush=True)
@@ -108,9 +113,22 @@ def main() -> int:
         print(f"    native_stock_demand_fingerprint={stock_needs['demand_fingerprint']}",
               flush=True)
         print(f"    pilot_overlap_fingerprint={overlap.get('overlap_fingerprint')}", flush=True)
-        print("  No paid GET, historical 09:35 fill, native stock CLOSE read, "
-              "unverified deliverable, account return or strategy promotion.",
-              flush=True)
+        print("  stage=TARGETED_ORIGINAL_C_NATIVE_RAW_DAILY_CLOSE_SOURCE", flush=True)
+        closes = resolve_native_eod_closes(
+            settings, native, stock_needs, workers=args.native_workers,
+            progress=lambda row: print(
+                "    " + " ".join(f"{k}={v}" for k,v in row.items()), flush=True
+            ),
+        )
+        p4, s4 = persist_native_eod_closes(settings, closes)
+        print(f"    original_native_units_verified={closes['unique_native_daily_units_verified']}", flush=True)
+        print(f"    exact_native_daily_closes={closes['verified_exact_native_raw_closes']}", flush=True)
+        print(f"    native_daily_bar_gaps={closes['exact_daily_bar_gaps']}", flush=True)
+        print(f"    native_close_source={s4} / {p4}", flush=True)
+        print(f"    native_close_source_fingerprint={closes['source_fingerprint']}", flush=True)
+        print("  No paid GET, historical 09:35 fill, synchronized stock-option"
+              " timestamp claim, unverified deliverable, account return or"
+              " strategy promotion.", flush=True)
         return 0
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
         print(f"INTEGRATED OFFLINE PREFLIGHT STOPPED: {type(exc).__name__}: {exc}",
