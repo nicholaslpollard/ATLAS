@@ -218,7 +218,7 @@ def resolve_native_eod_closes(
                 bindings.append(binding)
             except Exception as exc:
                 errors.append((futures[future], exc))
-            if progress and (completed % 20 == 0 or completed == len(futures)):
+            if progress and (completed == 1 or completed % 20 == 0 or completed == len(futures)):
                 progress({
                     "stage": "TARGETED_NATIVE_UNIT_CLOSE_READ",
                     "verified_units": completed, "total_needed_units": len(futures),
@@ -226,7 +226,10 @@ def resolve_native_eod_closes(
                 })
     if errors:
         unit, error = errors[0]
-        raise NativeEodCloseError(f"original native unit verification stopped: {unit}") from error
+        raise NativeEodCloseError(
+            f"original native unit verification stopped: {unit} / "
+            f"{type(error).__name__}: {error}"
+        ) from error
     if len(results) != len(needed) or {x["request_identity"] for x in results} != query_ids:
         raise NativeEodCloseError("native requested daily CLOSE coverage or uniqueness changed")
     statuses = Counter(x["status"] for x in results)
