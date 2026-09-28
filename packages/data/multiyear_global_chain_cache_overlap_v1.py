@@ -286,16 +286,29 @@ def _candidate(
             },
             "request_identity":rid,
         }
-        try:
-            proof=_valid_receipt(_paths(settings,rid),source)
-        except (CandidateChainCacheError,OSError,ValueError,TypeError,KeyError) as exc:
-            raise GlobalChainOverlapError(
-                f"intersecting historical source {rid} is incomplete or quarantined; no retry"
-            ) from exc
-        if proof is None:
-            raise GlobalChainOverlapError(
-                f"original indexed receipt vanished before verification: {rid}"
-            )
+        paths=_paths(settings,rid)
+        if (
+            candidate["original_status"]=="QUARANTINED"
+            and not paths.recovery.exists()
+            and not paths.receipt.with_name(
+                paths.receipt.name.replace(".receipt.json",".no_data.json")
+            ).exists()
+        ):
+            # An old quarantined attempt is not a reusable source and must not
+            # be retried. Preserve the exact identity in the blocker report.
+            proof={"status":"UNRESOLVED_QUARANTINED_ORIGINAL",
+                   "body_sha256":None}
+        else:
+            try:
+                proof=_valid_receipt(paths,source)
+            except (CandidateChainCacheError,OSError,ValueError,TypeError,KeyError) as exc:
+                raise GlobalChainOverlapError(
+                    f"intersecting historical source {rid} is incomplete or quarantined; no retry"
+                ) from exc
+            if proof is None:
+                raise GlobalChainOverlapError(
+                    f"original indexed receipt vanished before verification: {rid}"
+                )
         old25=accepted25.get(rid)
         if old25 is not None:
             if (
@@ -314,8 +327,9 @@ def _candidate(
         "source_body_sha256":proof["body_sha256"],
         "source_receipt_fingerprint":candidate["receipt_fingerprint"],
         "source_strike_window":[str(v) for v in candidate["strike_window"]],
-        "original_observed_rows":candidate["row_count"],
-        "source_bytes":candidate["body_bytes"],
+        "original_receipt_claimed_rows":candidate["row_count"],
+        "original_receipt_claimed_bytes":candidate["body_bytes"],
+        "source_raw_body_verified":proof["status"] in {"COMPLETE","VERIFIED_NO_DATA"},
         "source_2025_pilot":rid in accepted25,
         "original_2025_no_data_proof":proof.get("no_data_proof"),
     }
@@ -354,8 +368,8 @@ def freeze_global_overlap(
             x for x in orphan_by_key.get(key,[])
             if x["strike_window"][0]<=high and x["strike_window"][1]>=low
         ]
-        # A complete covering original chain is usable irrespective of any
-        # unrelated earlier uncertain query. No changed source gets retried.
+        # A complete covering original chain is reusable even if a different
+        # exact query was uncertain. No original attempt is retried.
         verified=[]
         for item in overlapping:
             pointer=verify_source(item)
@@ -433,7 +447,7 @@ def freeze_global_overlap(
         "candidate_case_memberships":7838,
         "unique_physical_preview_queries":7646,
         "source_cache_metadata_counts":metadata_counts,
-        "verified_relevant_complete_or_no_data_source_count":len(matched_sources),
+        "relevant_intersecting_source_identity_count":len(matched_sources),
         "by_status":dict(sorted(statuses.items())),
         "by_year_query_status":{k:dict(sorted(v.items())) for k,v in yearly.items()},
         "by_year_case_status":{k:dict(sorted(v.items())) for k,v in cases_by_year.items()},
@@ -526,7 +540,7 @@ def build_global_chain_cache_overlap(
         preview,by_key,pending,verify_source=verify,
         catalog_fingerprint=catalog,metadata_counts=counts,
     )
-    doc["source_bodies_verified_for_relevant_overlaps"]=inspected
+    doc["source_bodies_or_no_data_proofs_inspected_for_relevant_overlaps"]=inspected
     # Re-sign after adding a verified diagnostic, keeping originals immutable.
     doc.pop("overlap_fingerprint")
     doc["overlap_fingerprint"]=_fingerprint(doc)
