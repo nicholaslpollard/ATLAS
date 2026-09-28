@@ -191,3 +191,91 @@ def test_missing_exact_source_never_invokes_reader_and_prior_work_immutable(tmp_
     path.write_text("tampered", encoding="utf-8")
     with pytest.raises(ValueError):
         persist_observed_option_timeline(settings, out)
+
+def test_covering_original_history_filters_older_rows_only_after_full_validation():
+    """Original 2022 source can contain legitimate rows before selected demand."""
+    selection, plan, handoff = make_inputs()
+    plan["requests"][0]["from_inclusive"] = "2022-03-03"
+    plan = signed(
+        {k: v for k, v in plan.items() if k != "plan_fingerprint"},
+        "plan_fingerprint",
+    )
+    handoff = signed(
+        {k: v for k, v in handoff.items() if k != "handoff_fingerprint"}
+        | {"quote_plan_fingerprint": plan["plan_fingerprint"]},
+        "handoff_fingerprint",
+    )
+    calls = []
+    def covering_reader(request, slot):
+        calls.append(slot["quote_source_request_identity"])
+        return records()  # first original row predates the narrower demand
+    out = build_observed_option_timeline(
+        selection, plan, handoff, read_verified_observations=covering_reader,
+        expected_original_cases=2,
+    )
+    assert calls == ["c" * 64]
+    valid = [r for r in out["rows"] if r["timeline_status"] ==
+             "TWO_OR_MORE_LATER_TWO_SIDED_SOURCE_DATES"]
+    assert len(valid) == 2
+    assert all(r["first_later_observed_quote"]["session_et"] == "2022-03-03"
+               for r in valid)
+    bad = records()
+    # Original source validity is checked before requested-range filtering:
+    # a bad timestamp from the earlier covering period still fails closed.
+    bad[0]["updated_at_utc"] = "2022-03-03T21:00:00+00:00"
+    with pytest.raises(ObservedOptionTimelineError, match="timing"):
+        build_observed_option_timeline(
+            selection, plan, handoff,
+            read_verified_observations=lambda *_: bad,
+            expected_original_cases=2,
+        )
+
+
+def test_original_2022_full_series_can_cover_2023_exact_demand():
+    """The three accepted 2023 memberships follow this original-source shape."""
+    selection, plan, handoff = make_inputs()
+    for c in selection["cases"]:
+        c["option_symbol"] = c["option_symbol"].replace("220318", "230318")
+        c["decision_at_utc"] = "2023-03-02T14:35:00+00:00"
+        c["expiration"] = "2023-03-18"
+    selection = signed(
+        {k: v for k, v in selection.items() if k != "selection_fingerprint"},
+        "selection_fingerprint",
+    )
+    for req in plan["requests"]:
+        req["option_symbol"] = req["option_symbol"].replace("220318", "230318")
+        req["from_inclusive"] = "2023-01-01"
+        req["to_exclusive"] = "2023-03-19"
+    plan = signed(
+        {k: v for k, v in plan.items() if k != "plan_fingerprint"},
+        "plan_fingerprint",
+    )
+    for row in handoff["rows"]:
+        row["year"] = "2023"
+        if row["option_symbol"]:
+            row["option_symbol"] = row["option_symbol"].replace("220318", "230318")
+    handoff = signed(
+        {k: v for k, v in handoff.items() if k != "handoff_fingerprint"}
+        | {"selection_fingerprint": selection["selection_fingerprint"],
+           "quote_plan_fingerprint": plan["plan_fingerprint"]},
+        "handoff_fingerprint",
+    )
+    source_rows = [
+        source("2022-03-04", 1, 1.2),  # verified original, before requested year
+        source("2023-03-02", 1, 1.2),  # decision-day EOD, not 09:35
+        source("2023-03-03", 1.1, 1.3),
+        source("2023-03-07", 0.8, 1.0),
+    ]
+    out = build_observed_option_timeline(
+        selection, plan, handoff,
+        read_verified_observations=lambda *_: source_rows,
+        expected_original_cases=2,
+    )
+    assert out["unique_verified_physical_histories_decoded"] == 1
+    assert out["by_year"]["2023"]["TWO_OR_MORE_LATER_TWO_SIDED_SOURCE_DATES"] == 2
+    relevant = [r for r in out["rows"] if r["option_symbol"] ==
+                "TEST230318C00100000"]
+    assert len(relevant) == 2
+    assert all(r["first_later_observed_quote"]["session_et"] == "2023-03-03"
+               for r in relevant)
+    assert out["provider_requests"] == 0 and out["account_pnl_authority"] is False
