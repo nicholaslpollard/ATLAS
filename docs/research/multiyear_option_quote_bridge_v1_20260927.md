@@ -46,3 +46,17 @@ Run in ATLAS PowerShell after merging this documentation update:
 ~~~
 
 No `--max-new-requests`, credit budget, token, or paid authorization flag is specified. The returned census distinguishes original 2022 covering-history reuse, verified new cache, exact no-data quote results and genuinely pending full quote histories. Reconcile that output before any new paid authorization; the existing executor has a static 500-credit floor and per-run 250-request/250-credit caps that need a separately reviewed budget-contract change if larger user-authorized batches are desired. The original 63 chain-query 404s must not be conflated with 468 per-right source no-data slots or later quote history no-data. Do not re-run chain acquisition merely because a separate price history is absent.
+
+## Accepted quote cache reuse and source-to-replay handoff — 2026-09-27 local
+
+The offline quote executor returned signed report fingerprint `09b634c4392f4ac326e9e58c6722ad0774d2cb565304ad11beea7438080b229c`: 6,622 unique requests, 2,229 verified covering original 2022 sources, zero completed multiyear-v1 cache series, zero exact quote 404s, and 4,393 pending in the *currently checked cache namespaces*. No provider credits were spent. Treat the latter as currently unindexed or pending, not proven absent across all old D: archives. This is not a repeat of the original 6,398-complete 2022 corpus audit.
+
+`scripts/prepare_multiyear_option_quote_reuse_handoff_v1.py` compiles a new immutable, SHA-signed, D:-bound **full case/right** map. It consumes the frozen source-selection file and quote plan, invokes the existing zero-paid receipt census to verify every reused source, and joins the 29,804 original slots to a verified quote body SHA/pointer or an explicit gap. It emits per-year status counts without re-reading the entire 2022 corpus or inventing a fill. The map is the next integration input to the existing same-clock and local-Greeks research modules. No present option mark or source receipt establishes a 09:35 trade.
+
+Single command from repository root, after CI and merge:
+
+~~~powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }; git pull --ff-only; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }; & .\\.venv\\Scripts\\python.exe scripts\\prepare_multiyear_option_quote_reuse_handoff_v1.py; if ($LASTEXITCODE -ne 0) { throw 'Offline quote reuse handoff stopped; paste complete output.' } }
+~~~
+
+This command does not include provider authorization or any paid GET. The requested data stays under the configured D: physical binding. Next work must index original 2025 historical series with exact from/to coverage checks and valid original receipts before considering 4,393 as truly missing, and must normalize source observations for later EOD account replay rather than acquiring another chain-only batch.
