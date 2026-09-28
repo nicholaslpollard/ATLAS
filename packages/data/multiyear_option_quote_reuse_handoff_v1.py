@@ -181,31 +181,21 @@ def assemble_quote_reuse_handoff(
             ),
             "observed_quote_rows": entry.get("cached_observed_rows") if entry else None,
         })
+    expected_reused = sum(
+        len(by_request[e["request_identity"]]["member_case_ids"])
+        for e in entries if e["status"] in (
+            "REUSED_ACCEPTED_2022_FULL_SERIES", "COMPLETE_SOURCE_ONLY"
+        )
+    )
     if (
         len(seen_original) != expected_original_cases
         or len(seen_slot) != expected_original_cases * 2
-        or sum(by_status[k] for k in AVAILABLE.values())
-            != census["reused_original_2022"] + census["new_cache_complete"]
-            - sum(
-                max(0, len(by_request[e["request_identity"]]["member_case_ids"]) - 1)
-                for e in entries if e["status"] in AVAILABLE
-            )
+        or sum(by_status[k] for k in (
+            "VERIFIED_ORIGINAL_2022_QUOTE_HISTORY",
+            "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY",
+        )) != expected_reused
     ):
-        # The RHS above is not generally a valid membership count when requests
-        # share multiple cases. Cross-check by direct row mapping instead.
-        expected_reused = sum(
-            len(by_request[e["request_identity"]]["member_case_ids"])
-            for e in entries if e["status"] in (
-                "REUSED_ACCEPTED_2022_FULL_SERIES", "COMPLETE_SOURCE_ONLY"
-            )
-        )
-        if len(seen_original) != expected_original_cases or len(seen_slot) != expected_original_cases * 2 or (
-            sum(by_status[k] for k in (
-                "VERIFIED_ORIGINAL_2022_QUOTE_HISTORY",
-                "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY"
-            )) != expected_reused
-        ):
-            raise QuoteReuseHandoffError("full-case or reused-membership accounting mismatch")
+        raise QuoteReuseHandoffError("full-case or reused-membership accounting mismatch")
     report = {
         "contract": CONTRACT,
         "status": "OFFLINE_SOURCE_REUSE_HANDOFF_NO_TRADE_AUTHORITY",
