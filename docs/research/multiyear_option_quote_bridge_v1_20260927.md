@@ -78,3 +78,17 @@ The result is an immutable D:-bound `data/options/derived/multiyear_observed_opt
 ### Offline timeline first-run failure and narrow-window fix
 
 The first workstation timeline execution failed closed before output with `ObservedOptionTimelineError: quote timing, spread or source classification changed`. The original 2022 accepted cache has full-length physical histories that may **cover** a narrower selected request; three 2023 case/right memberships reuse a covering original 2022 physical quote history. V1 accidentally rejected legitimate older rows when testing the full original body against the narrower selected range. The revised adapter first verifies the complete original physical source receipt/body and validates every decoded observation (including out-of-request older source rows), then slices the normalized, already validated rows to the immutable from/to demand interval. Neither a later EOD mark at the original intraday decision nor a crossed source quote becomes an executable fill. Original receipts, full-case selection, quote demand and 29,804-slot handoff are unchanged; no paid fallback. Regression tests include an older invalid row, same-year narrower request, and original 2022 source covering a 2023 request. Repeat the existing zero-GET timeline command only after the fix is merged.
+
+## Consolidated next offline step after observed quote window correction
+
+PR #287 corrected the earlier failure where the selected demand window was narrower than its intact covering original 2022 quote history. The original full raw source and receipts are checked, including earlier original records, then only the selected demand window is exposed to the scenario source. No original evidence was changed.
+
+Run this **one command** from the ATLAS root on `main`, after the combined preflight PR merges:
+
+~~~powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }; git pull --ff-only; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }; & .\.venv\Scripts\python.exe scripts\run_multiyear_option_stock_eod_preflight_v1.py; if ($LASTEXITCODE -ne 0) { throw 'Integrated offline source preflight stopped; paste complete output. Do not run a paid command.' } }
+~~~
+
+This replaces re-running separate quote timeline and small overlap audits. It prints and writes three independently signed D:-bound artifacts: corrected full-case option quote observation timeline; exact-contract original 2025 pilot historical-quote reuse/partial-window census; and de-duplicated accepted native raw 1Day CLOSE requests for the actual later-session option source dates. It does NOT scan the entire C: native stock corpus to answer each option case individually; the next source reader can load only identified native daily units. The first-/next-observed quote marks remain provider EOD references, **not** 09:35, historical executable fills, a matched stock/option 16:00 clock, confirmed contract multiplier, or portfolio P&L. All 14,902 original cases, 29,804 right slots and protected 2026 boundary remain visible.
+
+The separate paid quote executor now accepts larger safe batches and an explicit operator `--min-remaining-credits` (default 500), with two potential credit reservations per in-flight GET. This consolidated command does not authorize or call it in paid mode. Any new paid acquisition must exclude correctly verified original full-coverage reuse and account for partial legacy overlap before spending.
