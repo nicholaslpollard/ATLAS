@@ -14,7 +14,8 @@ if str(ROOT) not in sys.path:
 from packages.core.settings import load_settings
 from packages.data.marketdata_candidate_expansion_v1 import _read_object
 from packages.simulation.multiyear_account_readiness_v1 import (
-    AccountReadinessError, build_replay_readiness, persist_replay_readiness,
+    AccountReadinessError, EXPECTED_SOURCE_FP,
+    build_replay_readiness, persist_replay_readiness,
 )
 from packages.simulation.multiyear_offline_account_replay_v1 import (
     OfflineAccountReplayError, ReplayLeg, ReplayPolicy, ReplaySignal,
@@ -62,6 +63,8 @@ def main() -> int:
         description="ATLAS strict zero-GET full-population replay readiness and synthetic engine"
     )
     parser.add_argument("--casebook", type=Path, default=CASEBOOK)
+    parser.add_argument("--expected-source-fingerprint", default=EXPECTED_SOURCE_FP,
+                        help="Exact approved immutable casebook SHA for a later new source cohort")
     parser.add_argument("--synthetic-smoke", action="store_true",
                         help="Additionally run all four account modes with invented test prices")
     args = parser.parse_args()
@@ -70,7 +73,9 @@ def main() -> int:
         settings = load_settings(ROOT, "development")
         settings.assert_external_storage_binding("options")
         book = _read_object(args.casebook)
-        report = build_replay_readiness(book)
+        report = build_replay_readiness(
+            book, expected_source_fp=args.expected_source_fingerprint,
+        )
         path, status = persist_replay_readiness(settings, report)
         print(f"  signed_source={report['source_casebook_fingerprint']}", flush=True)
         print(f"  original_cases={report['original_case_denominator']}", flush=True)
