@@ -71,12 +71,18 @@ def _observation(row: dict[str, Any]) -> dict[str, Any]:
     stamp = _utc(row["updated_at_utc"])
     bid, ask = row["bid"], row["ask"]
     valid = bid is not None and ask is not None and bid > 0 and ask >= bid
-    if (
-        stamp.astimezone(EASTERN).date() != day
-        or row["two_sided"] is not valid
-        or type(row["positive_volume"]) is not bool
-    ):
-        raise ObservedOptionTimelineError("quote timing, spread or source classification changed")
+    if stamp.astimezone(EASTERN).date() != day:
+        raise ObservedOptionTimelineError(
+            f"source quote timing/Eastern session mismatch on {day.isoformat()}"
+        )
+    if row["two_sided"] is not valid:
+        raise ObservedOptionTimelineError(
+            f"source quote bid/ask spread classification mismatch on {day.isoformat()}"
+        )
+    if type(row["positive_volume"]) is not bool:
+        raise ObservedOptionTimelineError(
+            f"source quote reported volume flag invalid on {day.isoformat()}"
+        )
     return {
         "session_et": day.isoformat(),
         "provider_updated_at_utc": stamp.isoformat(),
