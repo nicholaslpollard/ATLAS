@@ -38,10 +38,12 @@ CONTRACT = "atlas-multiyear-demand-driven-option-eod-quote-source-v1"
 CACHE_REL = "data/options/candidate_cache/quotes/multiyear_demand_v1"
 PLAN_REL = "data/options/manifests/multiyear_demand_quote_v1"
 EASTERN = ZoneInfo("America/New_York")
-MAX_REQUESTS = 250
-MAX_CREDITS = 250
+MAX_REQUESTS = 10000
+MAX_CREDITS = 20000
 MIN_REMAINING = 500
-MAX_WORKERS = 8
+MAX_WORKERS = 24
+# Two credits of potential exposure reserved for every in-flight bounded history.
+CREDITS_PER_INFLIGHT_REQUEST = 2
 MAX_PRICE_ROWS = 500
 OCC = re.compile(r"^([A-Z0-9.]+)(\d{6})([CP])(\d{8})$")
 
@@ -329,7 +331,7 @@ def run_demand_cache(
     authorize_provider: bool = False, confirm_paid_starter: bool = False,
     confirm_private_internal_use: bool = False,
     token: str | None = None,
-    workers: int = 4,
+    workers: int = 8, min_remaining_credits: int = MIN_REMAINING,
     transport: Callable[[dict[str, Any], str], tuple[int, bytes, dict[str, str]]] = quote_transport,
     progress: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
@@ -359,6 +361,8 @@ def run_demand_cache(
         or not 0 <= max_observed_credits <= MAX_CREDITS
         or (max_new_requests == 0) != (max_observed_credits == 0)
         or type(workers) is not int or not 1 <= workers <= MAX_WORKERS
+        or type(min_remaining_credits) is not int
+        or not 0 <= min_remaining_credits <= 10000
     ):
         raise MultiYearQuoteCacheError("request, credit or concurrency cap invalid")
     paid = max_new_requests > 0
@@ -366,10 +370,10 @@ def run_demand_cache(
         authorize_provider and confirm_paid_starter and confirm_private_internal_use
         and isinstance(token, str) and token.strip()
         and type(user_asserted_remaining) is int
-        and user_asserted_remaining >= max_observed_credits + MIN_REMAINING
+        and user_asserted_remaining >= max_observed_credits + min_remaining_credits
     ):
         raise MultiYearQuoteCacheError(
-            "paid authorization, token, user-asserted credits and 500-credit reserve required"
+            "paid authorization, token, user-asserted credits and explicit minimum remaining required"
         )
     if not paid and (authorize_provider or confirm_paid_starter or confirm_private_internal_use):
         raise MultiYearQuoteCacheError("paid flags without positive bounded budget")
@@ -432,8 +436,8 @@ def run_demand_cache(
                     batch_size = min(
                         1 if latest_remaining is None else workers,
                         len(pending), max_new_requests - attempts,
-                        max_observed_credits - credits,
-                        max(0, reserve_remaining - MIN_REMAINING),
+                        max(0, (max_observed_credits - credits) // CREDITS_PER_INFLIGHT_REQUEST),
+                        max(0, (reserve_remaining - min_remaining_credits) // CREDITS_PER_INFLIGHT_REQUEST),
                     )
                     if batch_size < 1:
                         break
@@ -488,7 +492,7 @@ def run_demand_cache(
                     if (
                         credits > max_observed_credits
                         or latest_remaining is None
-                        or latest_remaining < MIN_REMAINING
+                        or latest_remaining < min_remaining_credits
                     ):
                         raise MultiYearQuoteCacheError(
                             "observed provider credit bound/floor violated; STOP paid acquisition"
@@ -513,6 +517,8 @@ def run_demand_cache(
         "new_cache_complete": completed, "exact_source_gaps": gap,
         "pending": len(pending), "new_provider_attempts": attempts,
         "observed_credits": credits, "last_observed_provider_remaining": latest_remaining,
+        "min_remaining_credits": min_remaining_credits,
+        "per_inflight_credit_reservation": CREDITS_PER_INFLIGHT_REQUEST,
         "provider_read_authority_only_not_strategy_or_pnl": True,
         "source_entries": sorted(rows, key=lambda r: r["request_identity"]),
     }
