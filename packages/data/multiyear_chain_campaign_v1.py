@@ -324,8 +324,12 @@ def run_campaign(
         report["run_report_path"] = str(run_path)
         checkpoint()
         selected = queued[:max_new_requests]
-        for offset in range(0, len(selected), workers):
-            wave = selected[offset:offset + workers]
+        offset = 0
+        while offset < len(selected):
+            # Establish a current authoritative provider balance with ONE
+            # initial paid request before dispatching a wider concurrent wave.
+            wave_size = 1 if remaining is None else workers
+            wave = selected[offset:offset + wave_size]
             # Reserve worst-case raw bytes and a conservative credit exposure
             # for every in-flight request; never infer budget from final averages.
             if report["observed_credits"] + len(wave) * 2 > max_observed_credits:
@@ -360,7 +364,10 @@ def run_campaign(
                             f"{request['request_identity']}: {type(exc).__name__}: {exc}"
                         )
             # The whole started wave finishes and persists before any next wave.
-            report["new_attempts"] += len(wave)
+            report["new_attempts"] += (
+                sum(item["status"] != "REUSED_EXISTING_EXACT_SOURCE" for item in results)
+                + len(errors)
+            )
             for item in results:
                 report["new_complete"] += item["status"] == "NEW_COMPLETE"
                 report["exact_no_data"] += item["status"] == "EXACT_QUERY_NO_DATA_PROVEN"
@@ -383,6 +390,7 @@ def run_campaign(
                     "credits": report["observed_credits"], "provider_remaining": remaining,
                     "batch_errors": len(errors), "D_new_raw_bytes": report["new_raw_bytes"],
                 })
+            offset += len(wave)
             if errors:
                 report["status"] = "STOP_UNCERTAIN_OR_QUARANTINED_OR_INVALID_RESPONSE"
                 report["error_summaries"] = errors[:24]
