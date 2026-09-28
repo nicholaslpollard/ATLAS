@@ -27,6 +27,7 @@ def _inputs():
         row.update(ticker=ticker,signal_session="2022-12-30",
                    entry_session="2023-01-03",expiration="2023-02-17",
                    decision_at_utc="2023-01-03T14:35:00+00:00")
+    inv["rolling_five_year_floor"]="2021-09-27"
     inv["inventory_fingerprint"]=_fingerprint({
         k:v for k,v in inv.items() if k!="inventory_fingerprint"
     })
