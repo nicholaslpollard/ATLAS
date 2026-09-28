@@ -528,7 +528,7 @@ def build_global_chain_cache_overlap(
             {},item,settings=settings,
             accepted25=accepted25,validated=verified,
         )
-        if len(verified)!=prior:
+        if len(verified)!=prior and result["source_raw_body_verified"]:
             inspected+=1
             if progress and inspected%25==0:
                 progress({"stage":"RELEVANT_CHAIN_BODY_VALIDATION",
