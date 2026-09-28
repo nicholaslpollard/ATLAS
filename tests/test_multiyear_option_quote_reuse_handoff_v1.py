@@ -123,8 +123,13 @@ def test_changed_plan_census_selection_and_membership_fail_closed():
                        {"memberships": [{**plan["memberships"][0],
                                          "option_symbol": "CHANGED"}] + plan["memberships"][1:]},
                        "plan_fingerprint")
+    matching_census = _signed(
+        {k: v for k, v in census.items() if k != "report_fingerprint"} |
+        {"plan_fingerprint": bad_plan["plan_fingerprint"]},
+        "report_fingerprint",
+    )
     with pytest.raises(QuoteReuseHandoffError, match="membership"):
-        assemble_quote_reuse_handoff(selection, bad_plan, census, expected_original_cases=2)
+        assemble_quote_reuse_handoff(selection, bad_plan, matching_census, expected_original_cases=2)
 
 
 def test_persist_immutable_and_no_duplicate_write(tmp_path):
