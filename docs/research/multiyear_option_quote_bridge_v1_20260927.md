@@ -107,3 +107,18 @@ One operator action after merge, from ATLAS PowerShell root:
 ~~~
 
 Next: inspect actual one-pass source counts and gaps before authorizing paid exact series; account-level simulation requires independent clock, original deliverable, commissions/fees, expiry and fill semantics, plus the accepted signed source population. Do not re-run earlier successful census/selection/acquisition stages merely for another status check.
+
+
+### 2026-09-28 — Offline multiyear account mechanics and actual source-admission census
+
+A separate, zero-provider account-mechanics kernel now supports four alternatives (STOCK, CALL, PUT, ABSTAIN) on **the same original synthetic signal cohort**. It orders events chronologically, releases exits before same-timestamp entries, enforces cash-only long positions, allocation fractions, maximum concurrent positions and units, adverse stock slippage, option ask-to-enter/bid-to-exit plus separate per-contract entry/exit fees, and reserves exit fees before new admissions. Every omitted leg, insufficient cash, unqualified clock/source, unknown option deliverable and expiry/assignment uncertainty is an explicit nontrade rather than a fabricated exit. Complete modeled exits return an auditable cash ledger and per-year status counts; no intraday mark/drawdown, historical fill or portfolio-return authority is claimed. Historical data **cannot** be smuggled into this fixture engine by merely setting a proof flag: the kernel admits `SYNTHETIC_FIXTURE_ONLY` source origin, while actual evidence requires its own later verified admission adapter.
+
+The new `multiyear_account_readiness_v1` accepts the operator's original immutable signed `176aa0427a9ec34f...` 29,804-right casebook without decoding the historical raw corpus again. It checks the original case/right denominator, all C/P memberships, D: source fingerprint and unchanged source-only/unsynchronized authority; labels exactly why each historical right cannot yet enter a true replay. The current 2,648 **date-matched but unsynchronized** source pairs remain in the population, with zero qualified historical trades and NULL historical P&L; the 11 native-close gaps, 4,393 previously pending exact histories and 2026 protected/absent population are not silently promoted. Report is immutable and stored on the configured D:-bound options derived path, while the stock database and simulation code stay C:-resident. Neither operation issues a MarketData GET, touches the accepted receipts, or asserts that an option provider update equals the native stock close clock.
+
+One future offline operator step after merge (from ATLAS repository root) audits the actual source-admission census and executes a **clearly labeled fabricated-price** smoke scenario for all four account modes:
+
+~~~powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }; git pull --ff-only origin main; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed. Stop.' }; & .\.venv\Scripts\python.exe scripts\run_multiyear_offline_account_replay_v1.py --synthetic-smoke; if ($LASTEXITCODE -ne 0) { throw 'Offline account source-admission/synthetic-engine run stopped; paste complete output.' } }
+~~~
+
+Next real-source integration: independently qualify option/publication and native underlying clock, verified historical deliverable/multiplier, source-proven entry/exit side plus cost/expiry policy; then add a receipt-bound historical adapter to the account kernel. Do not report the synthetic smoke P&L as historical performance or use same-date (unsynchronized) data as exact-minute execution. Paid exact-history acquisition remains a separate user-authorized, credit-capped preparation stage, not a hidden replay fallback.
