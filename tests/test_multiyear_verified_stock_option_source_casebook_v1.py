@@ -105,9 +105,7 @@ def fixture_reports() -> tuple[dict, dict, dict, dict]:
         "protected_2026_outcomes_read": 0,
         "option_fill_or_portfolio_pnl_authority": False,
         "provider_option_update_is_not_verified_stock_close_clock": True,
-        "rows": [
-            {"**x": None} for x in []
-        ] + [{
+        "rows": [{
             **x, "status": "VERIFIED_NATIVE_RAW_EOD_CLOSE",
             "raw_as_traded_open": "99.0", "raw_as_traded_close": "101.0",
             "native_unit_id": "native-v2-unit", "native_canonical_sha256": "b" * 64,
