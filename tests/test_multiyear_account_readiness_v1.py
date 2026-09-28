@@ -11,6 +11,9 @@ from packages.data.multiyear_verified_stock_option_source_casebook_v1 import (
 from packages.simulation.multiyear_account_readiness_v1 import (
     AccountReadinessError, build_replay_readiness,
 )
+from packages.simulation.multiyear_historical_execution_requirements_v1 import (
+    HistoricalExecutionRequirementsError, build_execution_proof_demand,
+)
 
 
 def sample_casebook():
@@ -117,3 +120,113 @@ def test_no_pair_with_selected_unacquired_quote_classifies_exact_gap():
     report = build_replay_readiness(doc, expected_cases=2, expected_source_fp=None)
     assert report["by_blocker"]["EXACT_OPTION_QUOTE_HISTORY_NOT_ACQUIRED"] == 1
     assert report["actual_executable_option_trades"] == 0
+
+
+def proof_fixture():
+    source = sample_casebook()
+    row = source["rows"][0]
+    row["original_quote_body_sha256"] = "a" * 64
+    row["quote_request_identity"] = "frozen-physical-window"
+    row["first_later_option_source"] = {
+        "session_et": "2022-01-04",
+        "provider_updated_at_utc": "2022-01-04T21:00:00+00:00",
+        "observed_bid_per_share": "2.00",
+        "observed_ask_per_share": "2.20",
+        "two_sided_source": True,
+        "publication_and_stock_close_clock_unproven": True,
+    }
+    row["next_later_option_source"] = {
+        "session_et": "2022-01-05",
+        "provider_updated_at_utc": "2022-01-05T21:00:00+00:00",
+        "observed_bid_per_share": "2.70",
+        "observed_ask_per_share": "3.00",
+        "two_sided_source": True,
+        "publication_and_stock_close_clock_unproven": True,
+    }
+    for name, day, close in (
+        ("entry_session_native_source", "2022-01-04", "100.00"),
+        ("next_session_native_source", "2022-01-05", "101.00"),
+    ):
+        row[name] = {
+            "status": "VERIFIED_NATIVE_RAW_EOD_CLOSE",
+            "session_et": day, "request_identity": name,
+            "native_unit_id": "original-native-unit",
+            "native_canonical_sha256": "b" * 64,
+            "raw_as_traded_close": close,
+            "actual_close_observation_timestamp_unavailable": True,
+        }
+    resign(source)
+    ready = build_replay_readiness(source, expected_cases=2, expected_source_fp=None)
+    return source, ready
+
+
+def test_proof_demand_full_denominator_pair_sources_and_unique_work_targets():
+    source, ready = proof_fixture()
+    demand = build_execution_proof_demand(source, ready, expected_cases=2)
+    assert demand["original_case_denominator"] == 2
+    assert demand["original_right_memberships"] == 4
+    assert demand["dated_pair_work_items"] == 1
+    assert demand["dated_pair_source_marks"] == 2
+    assert demand["distinct_option_observations"] == 2
+    assert demand["distinct_original_native_close_queries"] == 2
+    assert len(demand["rows"]) == 1
+    assert demand["historical_option_trades"] == 0
+    assert demand["historical_account_pnl"] is None
+    assert demand["provider_requests"] == 0
+    assert demand["by_year"]["2021"] == {}
+    assert sum(demand["by_year"]["2022"].values()) == 4
+    entry = demand["rows"][0]["entry_source"]
+    assert entry["source_ask_per_share_not_fill"] == "2.20"
+    assert entry["raw_daily_close_not_synchronized_mark"] == "100.00"
+    assert entry["publication_availability_verified"] is False
+    assert entry["historical_trade_execution_authority"] is False
+    assert demand["rows"][0]["historical_entry_admitted"] is False
+
+
+def test_proof_demand_reuses_exact_frozen_output_without_future_liquidity_selection():
+    source, ready = proof_fixture()
+    a = build_execution_proof_demand(source, ready, expected_cases=2)
+    b = build_execution_proof_demand(deepcopy(source), deepcopy(ready), expected_cases=2)
+    assert a == b
+    assert a["proof_demand_fingerprint"] == b["proof_demand_fingerprint"]
+    assert a["rows"][0]["entry_source"]["session_et"] < a["rows"][0]["later_source"]["session_et"]
+
+
+@pytest.mark.parametrize("field,value,expected", [
+    ("publication_and_stock_close_clock_unproven", False, "promoted"),
+    ("observed_bid_per_share", "3.20", "crossed"),
+    ("observed_ask_per_share", "NaN", "invalid"),
+    ("session_et", "2022-01-09", "date-mismatched"),
+])
+def test_future_option_source_must_not_forge_historical_clock_or_spread(field, value, expected):
+    source, _ = proof_fixture()
+    source["rows"][0]["first_later_option_source"][field] = value
+    resign(source)
+    ready = build_replay_readiness(source, expected_cases=2, expected_source_fp=None)
+    with pytest.raises(HistoricalExecutionRequirementsError, match=expected):
+        build_execution_proof_demand(source, ready, expected_cases=2)
+
+
+def test_proof_demand_requires_original_quote_body_sha_and_native_sha():
+    source, _ = proof_fixture()
+    source["rows"][0]["original_quote_body_sha256"] = None
+    resign(source)
+    ready = build_replay_readiness(source, expected_cases=2, expected_source_fp=None)
+    with pytest.raises(HistoricalExecutionRequirementsError, match="quote provenance"):
+        build_execution_proof_demand(source, ready, expected_cases=2)
+    source, _ = proof_fixture()
+    source["rows"][0]["entry_session_native_source"]["native_canonical_sha256"] = ""
+    resign(source)
+    ready = build_replay_readiness(source, expected_cases=2, expected_source_fp=None)
+    with pytest.raises(HistoricalExecutionRequirementsError, match="native stock provenance"):
+        build_execution_proof_demand(source, ready, expected_cases=2)
+
+
+def test_source_and_readiness_fingerprints_cannot_be_crosswired():
+    source, ready = proof_fixture()
+    ready["source_casebook_fingerprint"] = "0" * 64
+    ready["readiness_fingerprint"] = _fingerprint({
+        k: v for k, v in ready.items() if k != "readiness_fingerprint"
+    })
+    with pytest.raises(HistoricalExecutionRequirementsError, match="lineage"):
+        build_execution_proof_demand(source, ready, expected_cases=2)
