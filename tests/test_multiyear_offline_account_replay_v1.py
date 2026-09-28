@@ -86,15 +86,17 @@ def test_unqualified_clock_or_source_is_not_an_executable_synthetic_path():
         assert report["synthetic_round_trips"] == 0
 
 
-def test_expired_option_path_is_skipped_not_fabricated_expiry_or_assignment():
+def test_option_entry_is_not_retroactively_cancelled_by_future_expiry():
     signal = _fixture()[0]
     changed = replace(signal, call=replace(
         signal.call, expiration=date(2022, 1, 4),
         symbol="O:TEST220104C00100000",
     ))
     result = replay_synthetic_account([changed], mode="CALL")
-    assert result["decisions"][0]["status"] == "UNRESOLVED_OPTION_EXPIRY_OR_ASSIGNMENT"
-    assert result["ledger"] == []
+    assert result["decisions"][0]["status"] == "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"
+    assert [x["kind"] for x in result["ledger"]] == ["MODELED_ENTRY"]
+    assert result["ending_equity"] is None
+    assert result["synthetic_round_trips"] == 0
 
 
 def test_zero_option_exit_bid_is_valid_worthless_bid_with_realized_synthetic_loss():
@@ -196,3 +198,117 @@ def test_nonstandard_multiplier_not_modeled_as_standard_deliverable():
     output = replay_synthetic_account([changed], mode="CALL")
     assert output["synthetic_round_trips"] == 0
     assert output["decisions"][0]["status"] == "UNVERIFIED_CONTRACT_DELIVERABLE"
+
+
+def test_missing_future_exit_keeps_the_same_entry_and_unpriced_position():
+    signal = _fixture()[0]
+    no_exit = replace(signal, call=replace(
+        signal.call, exit_at_utc=None, exit_per_share=None,
+    ))
+    completed = replay_synthetic_account([signal], mode="CALL")
+    unresolved = replay_synthetic_account([no_exit], mode="CALL")
+    assert [e for e in completed["ledger"] if e["kind"] == "MODELED_ENTRY"] == unresolved["ledger"]
+    assert unresolved["synthetic_round_trips"] == 0
+    assert unresolved["decisions"][0]["status"] == "OPEN_UNMARKED_NO_QUALIFIED_EXIT"
+    assert unresolved["end_open_positions"] == 1
+    assert unresolved["ending_cash"] == "90168.15"
+    assert unresolved["ending_reserved_exit_fees"] == "31.85"
+    assert unresolved["ending_equity"] is None
+    assert unresolved["modeled_realized_cash_change"] is None
+    assert unresolved["modeled_cash_flow_change"] == "-9831.85"
+    assert unresolved["modeled_realized_pnl"] == "0.00"
+    assert unresolved["open_positions"][0]["unrealized_pnl"] is None
+
+
+def test_quote_exit_clock_failure_cannot_cancel_preexisting_entry():
+    signal = _fixture()[0]
+    changed = replace(signal, call=replace(
+        signal.call, exit_observation_clock_qualified=False,
+    ))
+    result = replay_synthetic_account([changed], mode="CALL")
+    baseline = replay_synthetic_account([signal], mode="CALL")
+    assert result["ledger"] == [baseline["ledger"][0]]
+    assert result["decisions"][0]["status"] == "OPEN_UNQUALIFIED_EXIT_SOURCE"
+    assert result["historical_account_pnl_authority"] is False
+
+
+def test_asof_causality_keeps_full_cohort_and_never_leaks_future_exit_cash():
+    signal = _fixture()[0]
+    horizon = datetime(2022, 1, 4, 21, 0, tzinfo=UTC)
+    in_progress = replay_synthetic_account(
+        [signal], mode="CALL", as_of_utc=horizon,
+    )
+    assert len(in_progress["ledger"]) == 1
+    assert in_progress["end_open_positions"] == 1
+    assert in_progress["ending_equity"] is None
+    assert in_progress["as_of_utc"] == horizon.isoformat()
+    after = replay_synthetic_account(
+        [signal], mode="CALL",
+        as_of_utc=datetime(2022, 1, 5, 21, 0, tzinfo=UTC),
+    )
+    assert len(after["ledger"]) == 2
+    assert after["ending_equity"] == after["ending_cash"]
+    assert after["modeled_realized_pnl"] == after["modeled_realized_cash_change"]
+
+
+def test_future_signal_and_future_entry_remain_in_full_denominator():
+    a, b = _fixture()
+    horizon = datetime(2022, 1, 3, 18, 0, tzinfo=UTC)
+    report = replay_synthetic_account([a, b], mode="CALL", as_of_utc=horizon)
+    assert report["original_case_denominator"] == 2
+    assert report["by_year"]["2022"]["statuses"] == {
+        "FUTURE_ENTRY_NOT_REACHED": 1, "NO_SYNTHETIC_CALL_LEG": 1,
+    }
+    assert report["ledger"] == []
+    too_early = replay_synthetic_account(
+        [a], mode="CALL",
+        as_of_utc=datetime(2022, 1, 3, 14, 0, tzinfo=UTC),
+    )
+    assert too_early["decisions"][0]["status"] == "FUTURE_SIGNAL_NOT_REACHED"
+    assert too_early["ending_cash"] == too_early["initial_cash"]
+
+
+def test_exit_timestamp_and_price_are_atomic_not_made_up():
+    signal = _fixture()[0]
+    for key in ("exit_at_utc", "exit_per_share"):
+        changed = replace(signal, call=replace(signal.call, **{key: None}))
+        with pytest.raises(OfflineAccountReplayError, match="exit source price and clock"):
+            replay_synthetic_account([changed], mode="CALL")
+    with pytest.raises(OfflineAccountReplayError, match="exit source gate"):
+        replay_synthetic_account([replace(signal, call=replace(
+            signal.call, exit_source_integrity_qualified="yes",
+        ))], mode="CALL")
+
+
+def test_no_hindsight_entry_after_expiry_and_no_fabricated_settlement():
+    signal = _fixture()[0]
+    changed = replace(signal, call=replace(
+        signal.call, expiration=date(2022, 1, 3),
+        symbol="O:TEST220103C00100000",
+    ))
+    result = replay_synthetic_account([changed], mode="CALL")
+    assert result["decisions"][0]["status"] == "EXPIRED_BEFORE_ENTRY"
+    assert result["ledger"] == []
+    expired_open = replay_synthetic_account([replace(
+        signal, call=replace(signal.call, exit_at_utc=None, exit_per_share=None),
+    )], mode="CALL", as_of_utc=datetime(2022, 1, 22, 21, 0, tzinfo=UTC))
+    assert expired_open["decisions"][0]["status"] == "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"
+    assert expired_open["modeled_realized_pnl"] == "0.00"
+    assert expired_open["ending_equity"] is None
+
+
+def test_unqualified_future_exit_does_not_change_entry_capital_competition():
+    a, b = _fixture()
+    changed = replace(a, call=replace(
+        a.call, exit_source_integrity_qualified=False,
+    ))
+    report = replay_synthetic_account(
+        [changed, replace(b, call=replace(
+            a.call, symbol="O:XYZ220121C00100000",
+        ))], mode="CALL", policy=ReplayPolicy(max_open_positions=1),
+    )
+    assert report["end_open_positions"] == 1
+    assert report["by_year"]["2022"]["statuses"] == {
+        "MAX_CONCURRENT_POSITIONS_REACHED": 1, "OPEN_UNQUALIFIED_EXIT_SOURCE": 1,
+    }
+    assert report["synthetic_round_trips"] == 0
