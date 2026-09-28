@@ -213,6 +213,7 @@ def replay_synthetic_account(
         raise OfflineAccountReplayError("duplicate original case identity")
     cash = _decimal(policy.initial_cash, "initial cash")
     initial_cash = cash
+    reserved_exit_fees = Decimal("0.00")
     positions: dict[str, dict[str, Any]] = {}
     decisions: dict[str, dict[str, Any]] = {}
     ledger: list[dict[str, Any]] = []
@@ -237,21 +238,25 @@ def replay_synthetic_account(
             if len(positions) >= policy.max_open_positions:
                 row["status"] = "MAX_CONCURRENT_POSITIONS_REACHED"
                 continue
-            budget = _money(cash * _decimal(policy.fraction_of_available_cash, "fraction"))
-            per_unit = debit + fee_in
+            available = _money(cash - reserved_exit_fees)
+            budget = _money(available * _decimal(policy.fraction_of_available_cash, "fraction"))
+            # Reserve the exit fee before allocating another cash-only position.
+            per_unit_liquidity = debit + fee_in + fee_out
             units = min(
                 policy.maximum_units_per_position,
-                int(min(cash, budget) // per_unit),
+                int(min(available, budget) // per_unit_liquidity),
             )
             if units < 1:
                 row["status"] = "INSUFFICIENT_CASH_FOR_ONE_UNIT"
                 continue
-            cost = per_unit * units
+            cost = (debit + fee_in) * units
+            reserve = fee_out * units
             cash = _money(cash - cost)
-            if cash < 0:
-                raise OfflineAccountReplayError("cash-only account overdraft")
+            reserved_exit_fees = _money(reserved_exit_fees + reserve)
+            if cash < reserved_exit_fees:
+                raise OfflineAccountReplayError("cash-only account overdraft or unfunded exit fees")
             positions[cid] = {
-                "units": units, "debit": cost, "entry_at": at,
+                "units": units, "debit": cost, "reserved_exit_fee": reserve, "entry_at": at,
                 "kind": leg.kind, "symbol": leg.symbol,
             }
             row["status"] = "SYNTHETIC_ROUND_TRIP_MODELED"
@@ -260,7 +265,7 @@ def replay_synthetic_account(
                 "kind": "MODELED_ENTRY", "case_id": cid,
                 "at_utc": at.isoformat(), "instrument": leg.symbol,
                 "units": units, "cash_delta": str(-cost),
-                "cash_after": str(cash),
+                "cash_after": str(cash), "exit_fees_reserved": str(reserved_exit_fees),
             })
         elif cid in positions:
             position = positions.pop(cid)
@@ -268,16 +273,20 @@ def replay_synthetic_account(
                 raise OfflineAccountReplayError("modeled position identity changed")
             proceeds = (credit - fee_out) * position["units"]
             cash = _money(cash + proceeds)
+            reserved_exit_fees = _money(reserved_exit_fees - position["reserved_exit_fee"])
+            if cash < reserved_exit_fees or reserved_exit_fees < 0:
+                raise OfflineAccountReplayError("modeled exit violates cash or fee escrow")
             pnl = _money(proceeds - position["debit"])
             row["modeled_net_pnl"] = str(pnl)
             ledger.append({
                 "kind": "MODELED_EXIT", "case_id": cid,
                 "at_utc": at.isoformat(), "instrument": leg.symbol,
                 "units": position["units"], "cash_delta": str(proceeds),
-                "cash_after": str(cash), "modeled_net_pnl": str(pnl),
+                "cash_after": str(cash), "exit_fees_reserved": str(reserved_exit_fees),
+                "modeled_net_pnl": str(pnl),
             })
-    if positions:
-        raise OfflineAccountReplayError("synthetic scheduled exit left unresolved position")
+    if positions or reserved_exit_fees != 0:
+        raise OfflineAccountReplayError("synthetic scheduled exit left unresolved position or fee reserve")
     for signal in signals:
         by_year[str(signal.year)][decisions[signal.case_id]["status"]] += 1
     rows = [decisions[s.case_id] for s in sorted(signals, key=lambda s: (s.decision_at_utc, s.case_id))]
@@ -294,7 +303,7 @@ def replay_synthetic_account(
         "initial_cash": str(initial_cash),
         "ending_cash": str(cash),
         "modeled_realized_cash_change": str(_money(cash - initial_cash)),
-        "end_open_positions": 0,
+        "end_open_positions": 0, "ending_reserved_exit_fees": str(reserved_exit_fees),
         "by_year": {
             y: {"original_cases": sum(counts.values()),
                 "statuses": dict(sorted(counts.items()))}
