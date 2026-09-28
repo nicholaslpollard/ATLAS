@@ -22,7 +22,7 @@ ORIGIN = "SYNTHETIC_FIXTURE_ONLY"
 MODES = ("STOCK", "CALL", "PUT", "ABSTAIN")
 CENTS = Decimal("0.01")
 EASTERN = ZoneInfo("America/New_York")
-OCC = re.compile(r"^O:([A-Z0-9.]{1,6})(\\d{6})([CP])(\\d{8})$")
+OCC = re.compile(r"^O:([A-Z0-9.]{1,6})(\d{6})([CP])(\d{8})$")
 Mode = Literal["STOCK", "CALL", "PUT", "ABSTAIN"]
 
 
