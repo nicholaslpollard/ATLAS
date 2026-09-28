@@ -29,6 +29,9 @@ HANDOFF = Path(
     "data/options/manifests/"
     "multiyear_option_quote_reuse_handoff_v1_46e4c27c3d203581.json"
 )
+EXPECTED_HANDOFF_FP = "46e4c27c3d203581ae92c2f0ff653c9c3e65b1fa07f093a195dca2ecd8aff8cd"
+EXPECTED_SELECTION_FP = "3fa478312734f9c2"  # accepted immutable filename prefix
+EXPECTED_PLAN_FP = "dbe759955e48946b"  # accepted immutable filename prefix
 
 
 def main() -> int:
@@ -46,6 +49,12 @@ def main() -> int:
         selection = _read_object(args.selection)
         plan = _read_object(args.plan)
         handoff = _read_object(args.handoff)
+        if (
+            handoff.get("handoff_fingerprint") != EXPECTED_HANDOFF_FP
+            or not str(selection.get("selection_fingerprint", "")).startswith(EXPECTED_SELECTION_FP)
+            or not str(plan.get("plan_fingerprint", "")).startswith(EXPECTED_PLAN_FP)
+        ):
+            raise ValueError("not the accepted original selection, quote plan and handoff")
         report = build_observed_option_timeline(
             selection, plan, handoff,
             read_verified_observations=local_verified_quote_reader(settings, plan),
