@@ -11,6 +11,7 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import re
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
@@ -21,6 +22,7 @@ ORIGIN = "SYNTHETIC_FIXTURE_ONLY"
 MODES = ("STOCK", "CALL", "PUT", "ABSTAIN")
 CENTS = Decimal("0.01")
 EASTERN = ZoneInfo("America/New_York")
+OCC = re.compile(r"^O:([A-Z0-9.]{1,6})(\\d{6})([CP])(\\d{8})$")
 Mode = Literal["STOCK", "CALL", "PUT", "ABSTAIN"]
 
 
@@ -120,6 +122,16 @@ class ReplayLeg:
             or isinstance(self.expiration, datetime)
         ):
             raise OfflineAccountReplayError("option multiplier or expiration invalid")
+        if self.kind != "STOCK":
+            match = OCC.fullmatch(self.symbol)
+            if not match or match.group(3) != ("C" if self.kind == "CALL" else "P"):
+                raise OfflineAccountReplayError("option OCC identity or right invalid")
+            try:
+                occ_expiry = datetime.strptime(match.group(2), "%y%m%d").date()
+            except ValueError as exc:
+                raise OfflineAccountReplayError("option OCC expiration invalid") from exc
+            if occ_expiry != self.expiration or int(match.group(4)) <= 0:
+                raise OfflineAccountReplayError("option OCC expiry or strike mismatch")
         for flag in (self.source_integrity_qualified, self.observation_clock_qualified,
                      self.standard_deliverable_verified):
             if type(flag) is not bool:
@@ -159,7 +171,7 @@ def _admission(leg: ReplayLeg | None, mode: Mode) -> str:
         return "UNQUALIFIED_SOURCE_INTEGRITY"
     if not leg.observation_clock_qualified:
         return "UNQUALIFIED_OBSERVATION_CLOCK"
-    if not leg.standard_deliverable_verified:
+    if not leg.standard_deliverable_verified or (leg.kind != "STOCK" and leg.multiplier != 100):
         return "UNVERIFIED_CONTRACT_DELIVERABLE"
     if leg.kind != "STOCK" and (
         leg.entry_at_utc.astimezone(EASTERN).date() > leg.expiration
