@@ -60,3 +60,17 @@ Single command from repository root, after CI and merge:
 ~~~
 
 This command does not include provider authorization or any paid GET. The requested data stays under the configured D: physical binding. Next work must index original 2025 historical series with exact from/to coverage checks and valid original receipts before considering 4,393 as truly missing, and must normalize source observations for later EOD account replay rather than acquiring another chain-only batch.
+
+## Accepted offline quote-reuse handoff and new observed-source timeline — 2026-09-27 local
+
+The operator handoff is accepted: `multiyear_option_quote_reuse_handoff_v1_46e4c27c3d203581.json`, fingerprint `46e4c27c3d203581ae92c2f0ff653c9c3e65b1fa07f093a195dca2ecd8aff8cd`. It preserves the full 29,804 case/right slots. Its 2,673 selected memberships with reusable historical quotes share only **2,229 physical original 2022 receipts**; 5,115 other selected memberships map to **4,393 unique pending** full quote histories in the currently indexed caches. Three 2023 selected memberships are covered by older original-2022 exact histories. The original 2021 source floor and protected 2026 rows remain explicit; nothing has been promoted to a 2021–2026 strategy result.
+
+The new `multiyear_observed_option_quote_timeline_v1` adapter verifies original raw/intent/receipt hashes of only referenced histories, decodes each unique source once, joins all source-gap slots and reports actual first and subsequent valid observed **later-session** two-sided option quote source records. Same-session EOD may never impersonate original 09:35. The source `updated` timestamp is not verified historical publication time or synchronized 16:00 ET option/stock observation. A complete full quote history can still have zero or only one usable later observation. Unknown actual contract multiplier/deliverable, no matched raw stock EOD, spread/cost and no-fill rules remain gates to account-level simulation. Any broken SHA, receipt, timestamp or physical-query identity fails closed. Missing data never causes an automatic GET.
+
+Operator step, after PR merge, from ATLAS root:
+
+~~~powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }; git pull --ff-only; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }; & .\\.venv\\Scripts\\python.exe scripts\\prepare_multiyear_observed_option_quote_timeline_v1.py; if ($LASTEXITCODE -ne 0) { throw 'Observed option quote timeline stopped; paste complete output.' } }
+~~~
+
+The result is an immutable D:-bound `data/options/derived/multiyear_observed_option_quote_timeline_v1_<fingerprint>.json`, year/status counts and **zero provider GETs**. The next component must reconcile independent same-session stock EOD marks and prove option quote clock compatibility before any scenario reference, and keep all nonpaired original cases in its denominator.
