@@ -210,6 +210,8 @@ def assemble_case_selections(
     demand: dict[str, Any], overlap: dict[str, Any], *,
     right: str,
     source_reader: Callable[..., tuple[str, tuple[dict[str, Any], ...], str | None]],
+    expected_case_denominator: int = MAX_ROWS,
+    expected_physical_source_count: int = 7646,
 ) -> dict[str, Any]:
     """Pure full-denominator join; source_reader enforces local SHA/receipt identity."""
     if right not in (*RIGHTS, "both"):
@@ -221,7 +223,8 @@ def assemble_case_selections(
         raise MultiYearQuoteBridgeError("not the accepted frozen research cohort")
     raw_by_id = {x["case_id"]: x for x in native["rows"]}
     old_by_id = {x["case_id"]: x for x in crosswalk["cases"]}
-    if (len(raw_by_id) != MAX_ROWS or len(old_by_id) != MAX_ROWS
+    if (len(raw_by_id) != expected_case_denominator
+        or len(old_by_id) != expected_case_denominator
         or set(raw_by_id) != set(old_by_id)):
         raise MultiYearQuoteBridgeError("full source case mapping changed")
     physical: dict[str, dict[str, Any]] = {}
@@ -231,7 +234,7 @@ def assemble_case_selections(
                 raise MultiYearQuoteBridgeError("duplicate physical membership")
             physical[case_id] = ticket
     overlap_by_id = {x["physical_request_identity"]: x for x in overlap["rows"]}
-    if len(overlap_by_id) != 7646:
+    if len(overlap_by_id) != expected_physical_source_count:
         raise MultiYearQuoteBridgeError("accepted physical source count changed")
     rights = tuple(RIGHTS) if right == "both" else (right,)
     selected: list[dict[str, Any]] = []
@@ -359,9 +362,9 @@ def assemble_case_selections(
     report = {
         "contract": CONTRACT,
         "status": "OFFLINE_PIT_CONTRACT_IDENTITIES_ONLY",
-        "original_case_denominator": MAX_ROWS,
+        "original_case_denominator": expected_case_denominator,
         "right_policy": right,
-        "original_right_memberships": MAX_ROWS * len(rights),
+        "original_right_memberships": expected_case_denominator * len(rights),
         "signed_native_source": NATIVE_FP,
         "signed_original_crosswalk": CROSSWALK_FP,
         "signed_physical_source_demand": DEMAND_FP,
