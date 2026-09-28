@@ -309,9 +309,11 @@ def assemble_case_selections(
                             source_sha = verified_sha
                     if status is None:
                         chosen = {
-                        "option_symbol": pointer_symbol,
-                        "strike": str(Decimal(OCC.fullmatch(pointer_symbol).group(4)) / 1000),
-                    }
+                            "option_symbol": pointer_symbol,
+                            "strike": str(
+                                Decimal(OCC.fullmatch(pointer_symbol).group(4)) / 1000
+                            ),
+                        }
                         source_id = pointer_id
                         source_sha = source_sha or pointer_sha
                         status = "SELECTED_ACCEPTED_ORIGINAL_PIT_CALL_POINTER"
