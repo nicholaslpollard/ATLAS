@@ -28,6 +28,7 @@ def sample_casebook():
         rows.append({
             "case_right_id": case + (":C" if right == "call" else ":P"),
             "original_case_id": case, "right": right, "year": "2022",
+            "ticker": "ABC",
             "option_symbol": option, "original_quote_history_status": source,
             "source_join_status": status,
             "first_later_option_source": {"observed_ask_per_share": "2"} if status != NO_PAIR else None,
@@ -64,6 +65,8 @@ def test_full_right_slot_census_never_infers_trades_from_dated_pair():
     )
     assert output["original_case_denominator"] == 2
     assert output["original_right_memberships"] == 4
+    assert len(output["rows"]) == 4
+    assert all(row["historical_trade_admitted"] is False for row in output["rows"])
     assert output["dated_option_stock_source_rights"] == 1
     assert output["actual_same_clock_qualified_rights"] == 0
     assert output["actual_executable_option_trades"] == 0
