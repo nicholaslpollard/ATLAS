@@ -34,6 +34,7 @@ from packages.data.multiyear_physical_chain_source_demand_v1 import (
 )
 
 CONTRACT="atlas-multiyear-global-chain-cache-overlap-v1"
+ACCEPTED_PHYSICAL_DEMAND="7890c81e62905307fb1cc2c1bf3f2205eece3dfdf04b712ee1b8a09d419f084c"
 OUTPUT_REL="data/options/manifests/multiyear_global_chain_cache_overlap_v1"
 PREVIEW_STATUS="FROZEN_OFFLINE_FULL_DENOMINATOR_CHAIN_SOURCE_DEMAND_PREVIEW"
 REUSE="REUSED_VERIFIED_LOCAL_COMPLETE_CHAIN_FULL_STRIKE_COVERAGE"
@@ -100,11 +101,12 @@ def _validate_demand(doc:dict[str,Any])->None:
         or doc.get("status")!=PREVIEW_STATUS
         or doc.get("case_denominator")!=14902
         or doc.get("new_stock_source_case_denominator_needing_preview")!=7838
-        or doc.get("unique_unreconciled_physical_preview_queries")!=7646
+        or not 7600<=doc.get("unique_unreconciled_physical_preview_queries",0)<=7657
         or doc.get("authority")!=DEMAND_AUTHORITY
         or doc.get("provider_requests")!=0
         or doc.get("new_paid_requests_proven")!=0
-        or not isinstance(requests,list) or len(requests)!=7646
+        or not isinstance(requests,list)
+        or len(requests)!=doc["unique_unreconciled_physical_preview_queries"]
     ):
         raise GlobalChainOverlapError("accepted full-scope source preview changed")
     seen=set()
@@ -430,7 +432,8 @@ def freeze_global_overlap(
             "historical_option_fill_verified":False,
         })
         source_ids.add(request["physical_request_identity"])
-    if len(rows)!=7646 or len(source_ids)!=7646 or sum(statuses.values())!=7646:
+    expected=len(preview["requests"])
+    if len(rows)!=expected or len(source_ids)!=expected or sum(statuses.values())!=expected:
         raise GlobalChainOverlapError("source coverage count no longer matches accepted preview")
     if sum(sum(x.values()) for x in cases_by_year.values())!=7838:
         raise GlobalChainOverlapError("source case membership count changed")
@@ -445,7 +448,7 @@ def freeze_global_overlap(
         "local_cache_metadata_catalog_fingerprint":catalog_fingerprint,
         "accepted_case_denominator":14902,
         "candidate_case_memberships":7838,
-        "unique_physical_preview_queries":7646,
+        "unique_physical_preview_queries":expected,
         "source_cache_metadata_counts":metadata_counts,
         "relevant_intersecting_source_identity_count":len(matched_sources),
         "by_status":dict(sorted(statuses.items())),
@@ -482,8 +485,8 @@ def _existing(path:Path,preview:dict[str,Any],catalog:str)->dict[str,Any]|None:
         or doc.get("local_cache_metadata_catalog_fingerprint")!=catalog
         or doc.get("accepted_case_denominator")!=14902
         or doc.get("candidate_case_memberships")!=7838
-        or doc.get("unique_physical_preview_queries")!=7646
-        or len(doc.get("rows",[]))!=7646
+        or doc.get("unique_physical_preview_queries")!=preview["unique_unreconciled_physical_preview_queries"]
+        or len(doc.get("rows",[]))!=preview["unique_unreconciled_physical_preview_queries"]
         or doc.get("authority")!=AUTHORITY
         or doc.get("provider_requests")!=0
         or doc.get("new_paid_requests_authorized")!=0
@@ -499,9 +502,12 @@ def build_global_chain_cache_overlap(
     settings.assert_external_storage_binding("options")
     preview,_,action=build_physical_chain_source_demand(settings,progress=progress)
     _validate_demand(preview)
+    if (preview["demand_fingerprint"]!=ACCEPTED_PHYSICAL_DEMAND
+        or preview["unique_unreconciled_physical_preview_queries"]!=7646):
+        raise GlobalChainOverlapError("workstation accepted physical-source preview changed")
     if progress:
         progress({"stage":"REUSE_ACCEPTED_PHYSICAL_PREVIEW","action":action,
-                  "physical_keys":7646,"provider_requests":0})
+                  "physical_keys":len(preview["requests"]),"provider_requests":0})
     # A frozen closeout is small and contains accepted 2025 original 11+1
     # source hashes. No original chain/quote bodies are reopened just to plan.
     closeout=read_frozen_source_closeout(settings)
@@ -551,6 +557,6 @@ def build_global_chain_cache_overlap(
         progress({"stage":"GLOBAL_PHYSICAL_CACHE_OVERLAP_COMPLETE",
                   "metadata_receipts":counts["receipts"],
                   "relevant_source_bodies_verified":inspected,
-                  "physical_previews":7646,"by_status":doc["by_status"],
+                  "physical_previews":len(preview["requests"]),"by_status":doc["by_status"],
                   "provider_requests":0})
     return doc,path,"WRITTEN_NEW_GLOBAL_LOCAL_SOURCE_REUSE_AUDIT"
