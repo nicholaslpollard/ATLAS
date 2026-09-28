@@ -83,9 +83,9 @@ def test_full_exact_and_wider_reuse_without_any_paid_requests(demand):
         assert row["historical_option_fill_verified"] is False
     assert out["accepted_case_denominator"]==14902
     assert out["candidate_case_memberships"]==7838
-    assert out["unique_physical_preview_queries"]==7646
+    assert out["unique_physical_preview_queries"]==len(demand["requests"])
     assert out["provider_requests"]==out["new_paid_requests_authorized"]==0
-    assert out["by_status"][m.MISSING]==7644
+    assert out["by_status"][m.MISSING]==len(demand["requests"])-2
     assert out["overlap_fingerprint"]==_fingerprint({
         k:v for k,v in out.items() if k!="overlap_fingerprint"
     })
@@ -137,7 +137,7 @@ def test_orphaned_attempt_blocks_same_key_but_not_unrelated_query(demand):
     assert row["source_status"]==m.UNRESOLVED
     assert row["intersecting_orphan_attempt_ids"]==[old["request_identity"]]
     assert row["eligible_for_automatic_paid_retry"] is False
-    assert out["by_status"][m.MISSING]==7645
+    assert out["by_status"][m.MISSING]==len(demand["requests"])-1
 
 
 def test_signed_metadata_and_orphan_index_do_not_reopen_raw_chain(tmp_path):
