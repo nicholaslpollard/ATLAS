@@ -17,6 +17,10 @@ from packages.simulation.multiyear_account_readiness_v1 import (
     AccountReadinessError, EXPECTED_SOURCE_FP,
     build_replay_readiness, persist_replay_readiness,
 )
+from packages.simulation.multiyear_historical_execution_requirements_v1 import (
+    HistoricalExecutionRequirementsError, build_execution_proof_demand,
+    persist_execution_proof_demand,
+)
 from packages.simulation.multiyear_offline_account_replay_v1 import (
     OfflineAccountReplayError, ReplayLeg, ReplayPolicy, ReplaySignal,
     compare_synthetic_modes,
@@ -86,6 +90,14 @@ def main() -> int:
             print(f"  year_{year}={counts}", flush=True)
         print(f"  source_readiness={status} / {path}", flush=True)
         print(f"  readiness_fingerprint={report['readiness_fingerprint']}", flush=True)
+        proof = build_execution_proof_demand(book, report)
+        proof_path, proof_status = persist_execution_proof_demand(settings, proof)
+        print(f"  dated_pair_clock_proof_work_items={proof['dated_pair_work_items']}", flush=True)
+        print(f"  dated_pair_source_marks={proof['dated_pair_source_marks']}", flush=True)
+        print(f"  distinct_option_mark_proof_targets={proof['distinct_option_observations']}", flush=True)
+        print(f"  distinct_native_close_clock_proof_targets={proof['distinct_original_native_close_queries']}", flush=True)
+        print(f"  execution_proof_demand={proof_status} / {proof_path}", flush=True)
+        print(f"  execution_proof_demand_fingerprint={proof['proof_demand_fingerprint']}", flush=True)
         if args.synthetic_smoke:
             print("  SYNTHETIC FIXTURE ACCOUNT MECHANICS — NOT HISTORICAL PRICES", flush=True)
             simulated = compare_synthetic_modes(
@@ -101,7 +113,8 @@ def main() -> int:
                 )
         print("  Historical P&L remains NULL; no fabricated same-clock evidence or fills.", flush=True)
         return 0
-    except (AccountReadinessError, OfflineAccountReplayError, ValueError,
+    except (AccountReadinessError, HistoricalExecutionRequirementsError,
+            OfflineAccountReplayError, ValueError,
             KeyError, TypeError, OSError) as exc:
         print(f"OFFLINE ACCOUNT REPLAY GATE STOPPED: {type(exc).__name__}: {exc}",
               flush=True)
