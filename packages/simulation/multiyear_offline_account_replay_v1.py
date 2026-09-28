@@ -187,29 +187,40 @@ def _admission(leg: ReplayLeg | None, mode: Mode) -> str:
     return "ELIGIBLE_SYNTHETIC_ENTRY"
 
 
-def _unit_terms(leg: ReplayLeg, policy: ReplayPolicy) -> tuple[Decimal, Decimal, Decimal, Decimal]:
-    """Per-unit entry debit, exit credit, entry fee and exit fee in dollars."""
+def _entry_unit_terms(
+    leg: ReplayLeg, policy: ReplayPolicy,
+) -> tuple[Decimal, Decimal, Decimal]:
+    """Only entry-observed price and known entry/exit fees are read at admission."""
     entry = _decimal(leg.entry_per_share, "entry")
-    # A missing future exit is not priced as a free/worthless hypothetical fill.
-    # Zero below is private fee-estimation arithmetic; no exit event is emitted.
-    exit_ = (_decimal(leg.exit_per_share, "exit", allow_zero=leg.kind != "STOCK")
-             if leg.exit_per_share is not None else Decimal(0))
     if leg.kind == "STOCK":
         bps = _decimal(policy.stock_slippage_bps, "stock slippage", allow_zero=True)
         debit = _money(entry * (Decimal(1) + bps / Decimal(10000)))
-        credit = _money(exit_ * (Decimal(1) - bps / Decimal(10000)))
         fee_in = _money(_decimal(policy.stock_entry_fee, "entry fee", allow_zero=True))
         fee_out = _money(_decimal(policy.stock_exit_fee, "exit fee", allow_zero=True))
     else:
         slip = _decimal(policy.option_slippage_per_share, "option slippage", allow_zero=True)
         debit = _money((entry + slip) * leg.multiplier)
-        credit = _money(max(Decimal(0), exit_ - slip) * leg.multiplier)
         fee_in = _money(_decimal(policy.option_entry_fee_per_contract, "entry fee", allow_zero=True))
         fee_out = _money(_decimal(policy.option_exit_fee_per_contract, "exit fee", allow_zero=True))
-    if debit <= 0 or credit < 0 or fee_in < 0 or fee_out < 0:
-        raise OfflineAccountReplayError("invalid modeled unit economics")
-    return debit, credit, fee_in, fee_out
+    if debit <= 0 or fee_in < 0 or fee_out < 0:
+        raise OfflineAccountReplayError("invalid modeled entry economics")
+    return debit, fee_in, fee_out
 
+
+def _observed_exit_credit(leg: ReplayLeg, policy: ReplayPolicy) -> Decimal:
+    """Access the future exit price only when a qualified exit event is reached."""
+    if leg.exit_at_utc is None or leg.exit_per_share is None:
+        raise OfflineAccountReplayError("unqualified or absent future exit cannot settle position")
+    exit_ = _decimal(leg.exit_per_share, "exit", allow_zero=leg.kind != "STOCK")
+    if leg.kind == "STOCK":
+        bps = _decimal(policy.stock_slippage_bps, "stock slippage", allow_zero=True)
+        credit = _money(exit_ * (Decimal(1) - bps / Decimal(10000)))
+    else:
+        slip = _decimal(policy.option_slippage_per_share, "option slippage", allow_zero=True)
+        credit = _money(max(Decimal(0), exit_ - slip) * leg.multiplier)
+    if credit < 0:
+        raise OfflineAccountReplayError("invalid modeled exit economics")
+    return credit
 
 def replay_synthetic_account(
     signals: list[ReplaySignal], *, mode: Mode,
@@ -271,7 +282,7 @@ def replay_synthetic_account(
     # Release existing positions before admitting new ones at an identical stamp.
     for at, priority, cid, leg in sorted(events, key=lambda e: (e[0], e[1], e[2])):
         row = decisions[cid]
-        debit, credit, fee_in, fee_out = _unit_terms(leg, policy)
+        debit, fee_in, fee_out = _entry_unit_terms(leg, policy)
         if priority == 1:
             if len(positions) >= policy.max_open_positions:
                 row["status"] = "MAX_CONCURRENT_POSITIONS_REACHED"
@@ -309,6 +320,7 @@ def replay_synthetic_account(
             position = positions.pop(cid)
             if position["kind"] != leg.kind or position["symbol"] != leg.symbol:
                 raise OfflineAccountReplayError("modeled position identity changed")
+            credit = _observed_exit_credit(leg, policy)
             proceeds = (credit - fee_out) * position["units"]
             cash = _money(cash + proceeds)
             reserved_exit_fees = _money(reserved_exit_fees - position["reserved_exit_fee"])
