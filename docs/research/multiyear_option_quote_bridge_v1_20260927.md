@@ -32,3 +32,17 @@ The command prints its source selection path, quote-plan path, original 14,902-c
 4. Evaluate strategy hypotheses and tuning across chronological DEVELOPMENT/walk-forward regimes, then protect the original holdout. Do not force or target a return percentage.
 
 The architecture is: stock/news/native-open → PIT contract selection → verified D: quote cache → common-clock observed source → offline account simulator. Missing data should be requested **once per immutable exact series** by the preparation/acquisition layer and saved to D:, not one GET per candidate stop-loss or backtest iteration. All paid requests are explicit and receipt-bounded; no broker/PAPER/LIVE authority.
+
+## Accepted operator execution — 2026-09-27 America/New_York
+
+The first real after-merge workstation run completed without a provider call. It wrote source selection `multiyear_pit_selected_option_quotes_v1_3fa478312734f9c2.json` and frozen quote demand `multiyear_demand_quote_v1_dbe759955e48946b.json` under `data/options/manifests` (physically D: via the configured ATLAS binding). All **14,902 original cases / 29,804 right slots** were retained. **7,788 selected memberships** are: original accepted CALL pointer 2,654; verified original chain 2,712; verified new chain 2,422. Remaining right-slot categories: exact source query no-data 468; missing chain 13,126; no frozen expiry/native OPEN 40; no physical source identity 72; old-2021 rolling gap 8,276; protected-2026 entry 34. The quote plan has **6,622 unique exact OCC/from/to requests**, all with `SOURCE_DEMAND_READY` plan disposition; this describes request eligibility, **not cached quote coverage**. D: reported 225.212 GiB free. No option fill or P&L was created.
+
+### Next zero-credit workstation step
+
+Run in ATLAS PowerShell after merging this documentation update:
+
+~~~powershell
+& { $ErrorActionPreference = 'Stop'; if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }; git pull --ff-only; if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }; & .\\.venv\\Scripts\\python.exe scripts\\run_multiyear_demand_quote_cache_v1.py --plan .\\data\\options\\manifests\\multiyear_demand_quote_v1_dbe759955e48946b.json; if ($LASTEXITCODE -ne 0) { throw 'Offline quote-cache census stopped; paste complete output.' } }
+~~~
+
+No `--max-new-requests`, credit budget, token, or paid authorization flag is specified. The returned census distinguishes original 2022 covering-history reuse, verified new cache, exact no-data quote results and genuinely pending full quote histories. Reconcile that output before any new paid authorization; the existing executor has a static 500-credit floor and per-run 250-request/250-credit caps that need a separately reviewed budget-contract change if larger user-authorized batches are desired. The original 63 chain-query 404s must not be conflated with 468 per-right source no-data slots or later quote history no-data. Do not re-run chain acquisition merely because a separate price history is absent.
