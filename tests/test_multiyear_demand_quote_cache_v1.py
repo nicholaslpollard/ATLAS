@@ -214,3 +214,88 @@ def test_first_get_requires_two_credit_reservation_and_no_other_budget(tmp_path,
     assert called == []
     assert r["pending"] == 1 and r["new_provider_attempts"] == 0
     assert r["status"] == "PARTIAL_HARD_BUDGET"
+
+
+def test_reset_day_skips_stale_2021_exact_request_but_acquires_2023_without_rewrite(tmp_path, monkeypatch):
+    """The signed old 2021 FROM may no longer be within today's Starter window."""
+    oldest = {
+        "case_id": "2021-expiring",
+        "ticker": "TEST",
+        "option_symbol": "TEST211015C00100000",
+        "right": "call",
+        "expiration": "2021-10-15",
+        "decision_at_utc": "2021-09-27T13:35:00+00:00",
+        "selected_at_utc": "2021-09-27T13:34:00+00:00",
+        "accepted_stock_source_sha256": "a" * 64,
+    }
+    plan = m.freeze_quote_demand(
+        [oldest, _case(2023)],
+        asof_utc=ASOF, last_completed_session=LAST,
+    )
+    assert plan["unique_physical_quote_queries"] == 2
+    frozen_fp = plan["plan_fingerprint"]
+    old_query = next(r for r in plan["requests"] if r["from_inclusive"].startswith("2021-"))
+    assert old_query["from_inclusive"] == "2021-09-27"
+    monkeypatch.setattr(m, "_floor", lambda _: date(2021, 9, 29))
+    monkeypatch.setattr(m, "_require_external", lambda _: None)
+    monkeypatch.setattr(m, "assert_category_acquisition_allowed", lambda *a, **kw: None)
+    s = _settings(tmp_path)
+    calls = []
+    stages = []
+
+    def transport(ticket, token):
+        calls.append(ticket["request_identity"])
+        assert token == "test" and ticket["from_inclusive"].startswith("2023-")
+        return _response(ticket, consumed=1, remaining=9999)
+
+    report = m.run_demand_cache(
+        s, plan, max_new_requests=2, max_observed_credits=4,
+        user_asserted_remaining=10000, min_remaining_credits=0,
+        authorize_provider=True, confirm_paid_starter=True,
+        confirm_private_internal_use=True, token="test",
+        transport=transport, progress=stages.append,
+    )
+    assert plan["plan_fingerprint"] == frozen_fp
+    assert report["original_requested_case_denominator"] == 2
+    assert report["rolling_floor_stale_pending"] == 1
+    assert report["current_paid_rolling_floor_et"] == "2021-09-29"
+    assert report["pending"] == 1
+    assert report["new_cache_complete"] == 1
+    assert report["new_provider_attempts"] == 1
+    assert report["observed_credits"] == 1
+    assert report["status"] == "PARTIAL_HARD_BUDGET"
+    assert len(calls) == 1 and calls[0] != old_query["request_identity"]
+    assert m._path(s, old_query)[2].exists() is False
+    assert any(stage["stage"] == "CURRENT_STARTER_ROLLING_FLOOR_PREFLIGHT"
+               and stage["exact_frozen_queries_now_outside_floor"] == 1
+               for stage in stages)
+    assert not (tmp_path / "data/options/manifests/.multiyear_paid_get.lock").exists()
+
+
+def test_entirely_stale_frozen_plan_still_counts_original_gap_without_any_provider_call(
+    tmp_path, monkeypatch,
+):
+    oldest = {
+        "case_id": "2021-expiring",
+        "ticker": "TEST",
+        "option_symbol": "TEST211015C00100000",
+        "right": "call",
+        "expiration": "2021-10-15",
+        "decision_at_utc": "2021-09-27T13:35:00+00:00",
+        "selected_at_utc": "2021-09-27T13:34:00+00:00",
+        "accepted_stock_source_sha256": "a" * 64,
+    }
+    plan = m.freeze_quote_demand([oldest], asof_utc=ASOF, last_completed_session=LAST)
+    monkeypatch.setattr(m, "_floor", lambda _: date(2021, 9, 29))
+    monkeypatch.setattr(m, "_require_external", lambda _: None)
+    report = m.run_demand_cache(
+        _settings(tmp_path), plan, max_new_requests=1,
+        max_observed_credits=2, user_asserted_remaining=10000,
+        min_remaining_credits=0, authorize_provider=True,
+        confirm_paid_starter=True, confirm_private_internal_use=True, token="test",
+        transport=lambda *a: pytest.fail("stale frozen history must never cost a credit"),
+    )
+    assert report["pending"] == report["rolling_floor_stale_pending"] == 1
+    assert report["new_provider_attempts"] == report["observed_credits"] == 0
+    assert report["status"] == "PARTIAL_HARD_BUDGET"
+    assert report["original_requested_case_denominator"] == 1
