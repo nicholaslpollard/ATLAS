@@ -102,6 +102,7 @@ def main() -> int:
         for key in (
             "status", "ineligible_original_cases", "reused_original_2022",
             "new_cache_complete", "exact_source_gaps", "pending",
+            "rolling_floor_stale_pending", "current_paid_rolling_floor_et",
             "new_provider_attempts", "observed_credits",
             "last_observed_provider_remaining", "report_fingerprint",
         ):

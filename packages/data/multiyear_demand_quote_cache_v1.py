@@ -412,6 +412,28 @@ def run_demand_cache(
             "new_cache_complete": completed, "exact_gaps": gap,
             "pending_new_queries": len(pending), "provider_requests": 0,
         })
+    # The immutable 2026-09-27 demand may outlive the rolling Starter window.
+    # Reuse intact receipts first, but never spend a GET on an exact query whose
+    # frozen FROM date has since fallen outside current entitlement. Do not
+    # silently change its signed from/to identity or discard original cases.
+    rolling_floor_stale: list[dict[str, Any]] = []
+    current_paid_floor: str | None = None
+    if paid:
+        current_paid_floor = _floor(datetime.now(UTC).astimezone(EASTERN).date()).isoformat()
+        eligible: list[dict[str, Any]] = []
+        for ticket in pending:
+            (rolling_floor_stale if ticket["from_inclusive"] < current_paid_floor
+             else eligible).append(ticket)
+        pending = eligible
+        if progress:
+            progress({
+                "stage": "CURRENT_STARTER_ROLLING_FLOOR_PREFLIGHT",
+                "current_floor_et": current_paid_floor,
+                "exact_frozen_queries_now_outside_floor": len(rolling_floor_stale),
+                "remaining_eligible_exact_queries": len(pending),
+                "original_case_denominator_unchanged": plan["requested_case_denominator"],
+                "provider_requests": 0,
+            })
     attempts = credits = 0
     latest_remaining: int | None = None
     started = time.monotonic()
@@ -507,7 +529,7 @@ def run_demand_cache(
     report = {
         "contract": CONTRACT, "plan_fingerprint": signature,
         "status": (
-            "ALL_ELIGIBLE_SOURCE_QUERIES_ACCOUNTED" if not pending
+            "ALL_ELIGIBLE_SOURCE_QUERIES_ACCOUNTED" if not pending and not rolling_floor_stale
             else "PREVIEW_ONLY_NO_PROVIDER_GETS" if not paid else "PARTIAL_HARD_BUDGET"
         ),
         "original_requested_case_denominator": plan["requested_case_denominator"],
@@ -515,7 +537,10 @@ def run_demand_cache(
         "ineligible_original_cases": sum(x["disposition"] != "SOURCE_DEMAND_READY" for x in plan["memberships"]),
         "reused_original_2022": reused_original,
         "new_cache_complete": completed, "exact_source_gaps": gap,
-        "pending": len(pending), "new_provider_attempts": attempts,
+        "pending": len(pending) + len(rolling_floor_stale),
+        "rolling_floor_stale_pending": len(rolling_floor_stale),
+        "current_paid_rolling_floor_et": current_paid_floor,
+        "new_provider_attempts": attempts,
         "observed_credits": credits, "last_observed_provider_remaining": latest_remaining,
         "provider_read_authority_only_not_strategy_or_pnl": True,
         "source_entries": sorted(rows, key=lambda r: r["request_identity"]),
