@@ -18,16 +18,20 @@ def signed(value, field):
     return value
 
 
-def selected(case_id: str, symbol: str, right: str, status: str):
+def selected(
+    case_id: str, symbol: str, right: str, status: str, *,
+    expiration: str = "2022-03-18",
+    decision: str = "2022-03-02T14:35:00+00:00",
+):
     return {
         "case_id": case_id,
         "original_case_id": case_id.rsplit(":", 1)[0],
         "ticker": "TEST",
         "option_symbol": symbol,
         "right": right,
-        "expiration": "2022-03-18",
-        "decision_at_utc": "2022-03-02T14:35:00+00:00",
-        "selected_at_utc": "2022-03-02T14:35:00+00:00",
+        "expiration": expiration,
+        "decision_at_utc": decision,
+        "selected_at_utc": decision,
         "accepted_stock_source_sha256": "a" * 64,
         "frozen_native_raw_open": "100",
         "frozen_structural_strike": "100",
@@ -40,8 +44,9 @@ def selected(case_id: str, symbol: str, right: str, status: str):
     }
 
 
-def selection(cases):
+def selection(cases, *, years=None):
     by = {x["case_id"]: x for x in cases}
+    years = years or {"one": "2022", "two": "2022"}
     coverage = []
     for original in ("one", "two"):
         for right, suffix in (("call", "C"), ("put", "P")):
@@ -49,7 +54,7 @@ def selection(cases):
             chosen = by.get(cid)
             coverage.append({
                 "case_id": original,
-                "signal_year": "2022",
+                "signal_year": years[original],
                 "right": right,
                 "status": (
                     chosen["source_selection_status"]
@@ -256,3 +261,33 @@ def test_persist_additive_plan_is_immutable_and_d_bound(tmp_path):
     path.write_text("tampered", encoding="utf-8")
     with pytest.raises(AdditiveQuotePlanError):
         persist_additive_quote_plan(settings, out)
+
+
+def test_newly_selected_2021_contract_outside_current_floor_is_retained_without_paid_request():
+    old = selected(
+        "one:C", "TEST220318C00100000", "call",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+    )
+    rolled = selected(
+        "two:P", "TEST211015P00100000", "put",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+        expiration="2021-10-15",
+        decision="2021-09-28T13:35:00+00:00",
+    )
+    before = selection([old], years={"one": "2022", "two": "2021"})
+    after = selection([old, rolled], years={"one": "2022", "two": "2021"})
+    out = build_additive_quote_plan(
+        before, base_plan(old), after,
+        asof_utc=datetime(2026, 9, 30, 15, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 29),
+        expected_original_cases=2,
+    )
+    member = next(x for x in out["memberships"] if x["case_id"] == "two:P")
+    assert member["disposition"] == (
+        "ORIGINAL_DECISION_OUTSIDE_STARTER_FIVE_YEAR_WINDOW"
+    )
+    assert member["request_identity"] is None
+    assert out["newly_selected_case_rights"] == 1
+    assert out["new_selected_outside_current_quote_window"] == 1
+    assert out["added_physical_quote_queries"] == 0
+    assert out["unique_physical_quote_queries"] == 1
