@@ -188,13 +188,6 @@ def build_additive_quote_plan(
     fresh_members = {x["case_id"]: x for x in fresh["memberships"]}
     if set(fresh_members) != set(new_ids):
         raise AdditiveQuotePlanError("new selection/fresh demand membership changed")
-    if any(x["disposition"] != "SOURCE_DEMAND_READY" for x in fresh["memberships"]):
-        # Newly selected historical cases outside current entitlement stay explicit
-        # in selection coverage, but cannot be silently inserted as paid demand.
-        raise AdditiveQuotePlanError(
-            "newly selected contract is outside current exact quote entitlement"
-        )
-
     combined_requests = {k: deepcopy(v) for k, v in base_requests.items()}
     for request in fresh["requests"]:
         identity = request["request_identity"]
@@ -216,9 +209,14 @@ def build_additive_quote_plan(
         request["member_case_ids"] = sorted(set(request["member_case_ids"]))
     membership_by_request: dict[str, list[str]] = {}
     for member in memberships:
-        membership_by_request.setdefault(member["request_identity"], []).append(
-            member["case_id"]
-        )
+        identity = member.get("request_identity")
+        if identity is None:
+            if member.get("disposition") == "SOURCE_DEMAND_READY":
+                raise AdditiveQuotePlanError("eligible membership lost exact request")
+            continue
+        if member.get("disposition") != "SOURCE_DEMAND_READY":
+            raise AdditiveQuotePlanError("ineligible membership gained exact request")
+        membership_by_request.setdefault(identity, []).append(member["case_id"])
     if any(
         sorted(request["member_case_ids"])
         != sorted(membership_by_request.get(request["request_identity"], []))
@@ -247,6 +245,10 @@ def build_additive_quote_plan(
         "newly_selected_case_rights": len(new_ids),
         "base_physical_quote_queries": len(base_requests),
         "added_physical_quote_queries": len(requests) - len(base_requests),
+        "new_selected_outside_current_quote_window": sum(
+            x.get("disposition") != "SOURCE_DEMAND_READY"
+            for x in fresh["memberships"]
+        ),
         "prior_selected_contracts_changed": 0,
         "base_exact_windows_preserved": True,
         "new_exact_windows_use_current_rolling_floor": True,
