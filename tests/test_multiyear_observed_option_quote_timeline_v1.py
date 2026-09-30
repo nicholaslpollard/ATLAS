@@ -279,3 +279,76 @@ def test_original_2022_full_series_can_cover_2023_exact_demand():
     assert all(r["first_later_observed_quote"]["session_et"] == "2023-03-03"
                for r in relevant)
     assert out["provider_requests"] == 0 and out["account_pnl_authority"] is False
+
+
+def test_clipped_recovery_decodes_once_and_never_claims_missing_prefix():
+    selection, plan, handoff = make_inputs()
+    for row in handoff["rows"]:
+        if row["quote_request_identity"] == "a" * 64:
+            row["quote_history_status"] = "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY"
+            row["quote_source_request_identity"] = "e" * 64
+            row["quote_source_from_inclusive"] = "2022-03-03"
+            row["quote_source_to_exclusive"] = "2022-03-19"
+            row["quote_source_is_clipped_recovery"] = True
+            row["original_quote_window_fully_reconstructed"] = False
+            row["quote_body_sha256"] = "f" * 64
+            row["observed_quote_rows"] = 2
+    handoff = signed(
+        {k: v for k, v in handoff.items() if k != "handoff_fingerprint"} |
+        {
+            "reused_original_2022_queries": 0,
+            "verified_demand_cache_queries": 0,
+            "recovered_original_quote_queries": 1,
+            "verified_clipped_recovery_queries": 1,
+        },
+        "handoff_fingerprint",
+    )
+    calls = []
+    clipped = [
+        source("2022-03-03", 1.1, 1.3),
+        source("2022-03-07", 0.8, 1.0),
+    ]
+    def reader(request, slot):
+        calls.append((
+            request["request_identity"],
+            slot["quote_source_request_identity"],
+            slot["quote_source_from_inclusive"],
+        ))
+        return clipped
+    out = build_observed_option_timeline(
+        selection, plan, handoff, read_verified_observations=reader,
+        expected_original_cases=2,
+    )
+    assert calls == [("a" * 64, "e" * 64, "2022-03-03")]
+    assert out["unique_verified_physical_histories_decoded"] == 1
+    relevant = [r for r in out["rows"] if r["quote_request_identity"] == "a" * 64]
+    assert len(relevant) == 2
+    assert all(r["timeline_status"] == "TWO_OR_MORE_LATER_TWO_SIDED_SOURCE_DATES"
+               for r in relevant)
+    assert all(r["first_later_observed_quote"]["session_et"] == "2022-03-03"
+               for r in relevant)
+    assert out["historical_intraday_0935_quote_proof"] is False
+    assert out["account_pnl_authority"] is False
+
+
+def test_clipped_recovery_cannot_claim_original_start_or_same_identity():
+    selection, plan, handoff = make_inputs()
+    target = handoff["rows"][0]
+    target.update({
+        "quote_history_status": "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY",
+        "quote_source_request_identity": target["quote_request_identity"],
+        "quote_source_from_inclusive": "2022-01-01",
+        "quote_source_to_exclusive": "2022-03-19",
+        "quote_source_is_clipped_recovery": True,
+        "original_quote_window_fully_reconstructed": False,
+    })
+    handoff = signed(
+        {k: v for k, v in handoff.items() if k != "handoff_fingerprint"} |
+        {"reused_original_2022_queries": 1, "recovered_original_quote_queries": 1},
+        "handoff_fingerprint",
+    )
+    with pytest.raises(ObservedOptionTimelineError, match="clipped recovery"):
+        build_observed_option_timeline(
+            selection, plan, handoff, read_verified_observations=lambda *_: records(),
+            expected_original_cases=2,
+        )
