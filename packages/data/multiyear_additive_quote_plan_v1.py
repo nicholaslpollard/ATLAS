@@ -9,9 +9,10 @@ window. This prevents paid churn and keeps old 2021 source lineage auditable.
 """
 
 from copy import deepcopy
-from datetime import date, datetime
+from datetime import UTC, date, datetime, time as dt_time
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from packages.core.settings import AtlasSettings
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
@@ -24,6 +25,7 @@ from packages.data.multiyear_option_quote_bridge_v1 import (
 )
 
 CONTRACT = "atlas-multiyear-additive-option-quote-demand-v1"
+EASTERN = ZoneInfo("America/New_York")
 
 
 class AdditiveQuotePlanError(ValueError):
@@ -180,9 +182,15 @@ def build_additive_quote_plan(
         # Quote demand is identical even if missing-chain coverage statuses improved.
         return deepcopy(base_plan)
 
+    if not isinstance(asof_utc, datetime) or asof_utc.tzinfo is None:
+        raise AdditiveQuotePlanError("aware additive planning as-of required")
+    planning_day = asof_utc.astimezone(EASTERN).date()
+    stable_asof = datetime.combine(
+        planning_day, dt_time.min, tzinfo=EASTERN
+    ).astimezone(UTC)
     fresh = freeze_quote_demand(
         [expanded[x] for x in new_ids],
-        asof_utc=asof_utc,
+        asof_utc=stable_asof,
         last_completed_session=last_completed_session,
     )
     fresh_members = {x["case_id"]: x for x in fresh["memberships"]}
@@ -229,6 +237,7 @@ def build_additive_quote_plan(
         "additive_contract": CONTRACT,
         "status": "SOURCE_DEMAND_FROZEN_NO_PROVIDER_READS",
         "asof_utc": fresh["asof_utc"],
+        "additive_planning_day_et": planning_day.isoformat(),
         "rolling_five_year_floor": fresh["rolling_five_year_floor"],
         "last_completed_session": fresh["last_completed_session"],
         "requested_case_denominator": len(expanded),
