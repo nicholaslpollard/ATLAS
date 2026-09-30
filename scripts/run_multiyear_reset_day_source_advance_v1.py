@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -254,10 +254,12 @@ def main(argv: list[str] | None = None) -> int:
               flush=True)
         selected = build_local_bridge(settings, right="both")
         selection_path, selection_action = write_local_bridge(settings, selected)
+        frozen_asof = datetime.fromisoformat(original["asof_utc"])
+        frozen_last_complete = date.fromisoformat(original["last_completed_session"])
         fresh_plan = freeze_quote_demand(
             selected["cases"],
-            asof_utc=now,
-            last_completed_session=_last_complete(now),
+            asof_utc=frozen_asof,
+            last_completed_session=frozen_last_complete,
         )
         fresh_plan_path = _persist_quote_plan(settings, fresh_plan)
         fresh_preview = run_demand_cache(settings, fresh_plan)
@@ -276,7 +278,54 @@ def main(argv: list[str] | None = None) -> int:
         print(f"    fresh_quote_plan={fresh_plan_path}", flush=True)
         print(f"    fresh_quote_plan_fingerprint={fresh_plan['plan_fingerprint']}",
               flush=True)
+        print(
+            f"    frozen_research_asof={fresh_plan['asof_utc']} "
+            f"frozen_source_floor={fresh_plan['rolling_five_year_floor']} "
+            f"current_provider_day={now.date().isoformat()}",
+            flush=True,
+        )
 
+        # The rebuilt plan is intentionally frozen to the original research
+        # date. Any exact request that has rolled out by today is recovered only
+        # through a separate clipped-tail request with its own physical identity.
+        if not a.skip_tail and fresh_preview["pending"] and remaining:
+            print("  stage=RECOVER_FRESH_PLAN_STALE_TAILS", flush=True)
+            fresh_recovery = build_tail_recovery_plan(
+                fresh_plan, fresh_preview, asof_utc=now,
+            )
+            frp, fra = persist_tail_recovery_plan(settings, fresh_recovery)
+            fresh_tail_requests = min(
+                fresh_recovery["distinct_recovery_queries"],
+                a.max_tail_requests,
+            )
+            print(
+                f"    fresh_recovery_plan={fra} / {frp} "
+                f"recoverable={fresh_recovery['distinct_recovery_queries']} "
+                f"expired={fresh_recovery['expired_before_current_floor_queries']}",
+                flush=True,
+            )
+            if fresh_tail_requests:
+                fresh_tail = _paid_quote_cache(
+                    settings, fresh_recovery,
+                    token=token,
+                    asserted_remaining=remaining,
+                    max_requests=fresh_tail_requests,
+                    workers=a.quote_workers,
+                    prefix="fresh_tail",
+                )
+                remaining = _remaining_after(
+                    remaining,
+                    fresh_tail.get("last_observed_provider_remaining"),
+                    fresh_tail.get("observed_credits"),
+                )
+                print(
+                    f"    fresh_tail_complete={fresh_tail['new_cache_complete']} "
+                    f"fresh_tail_gaps={fresh_tail['exact_source_gaps']} "
+                    f"fresh_tail_pending={fresh_tail['pending']} "
+                    f"fresh_tail_credits={fresh_tail['observed_credits']} "
+                    f"provider_remaining={remaining}",
+                    flush=True,
+                )
         final_quote = fresh_preview
         if (
             not a.skip_new_quotes
