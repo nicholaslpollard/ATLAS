@@ -162,15 +162,25 @@ def build_execution_proof_demand(
             continue
         if ready["replay_blocker"] != "SOURCE_DATES_PAIRED_BUT_CLOCK_DELIVERABLE_AND_FILL_UNPROVEN":
             raise HistoricalExecutionRequirementsError("qualified source pair was promoted")
-        sha = row.get("original_quote_body_sha256")
-        query = row.get("quote_request_identity")
+        sha = row.get("quote_source_body_sha256") or row.get(
+            "original_quote_body_sha256"
+        )
+        query = row.get("quote_source_request_identity") or row.get(
+            "quote_request_identity"
+        )
+        clipped = row.get("quote_source_is_clipped_recovery") is True
         if (
             not isinstance(sha, str) or len(sha) != 64
             or any(ch not in "0123456789abcdef" for ch in sha)
             or not isinstance(query, str) or not query
             or not isinstance(row.get("option_symbol"), str)
+            or (clipped and (
+                row.get("original_quote_body_sha256") is not None
+                or not isinstance(row.get("quote_source_from_inclusive"), str)
+                or not isinstance(row.get("quote_source_to_exclusive"), str)
+            ))
         ):
-            raise HistoricalExecutionRequirementsError("original quote provenance missing")
+            raise HistoricalExecutionRequirementsError("physical quote source provenance missing")
         entry = _source_mark(
             row["first_later_option_source"], row["entry_session_native_source"],
             quote_body_sha=sha, quote_identity=query,
@@ -183,6 +193,12 @@ def build_execution_proof_demand(
             option_symbol=row["option_symbol"], ticker=row["ticker"],
             stage="LATER_SOURCE_NOT_EXIT_EXECUTION",
         )
+        if clipped:
+            for mark in (entry, later):
+                mark["source_is_clipped_recovery"] = True
+                mark["source_from_inclusive"] = row["quote_source_from_inclusive"]
+                mark["source_to_exclusive"] = row["quote_source_to_exclusive"]
+                mark["missing_original_prefix_is_not_reconstructed"] = True
         if entry["session_et"] >= later["session_et"]:
             raise HistoricalExecutionRequirementsError("future source chronology changed")
         for mark in (entry, later):
