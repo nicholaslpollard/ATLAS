@@ -291,3 +291,31 @@ def test_newly_selected_2021_contract_outside_current_floor_is_retained_without_
     assert out["new_selected_outside_current_quote_window"] == 1
     assert out["added_physical_quote_queries"] == 0
     assert out["unique_physical_quote_queries"] == 1
+
+
+def test_additive_plan_is_stable_across_same_et_day_restarts():
+    old = selected(
+        "one:C", "TEST220318C00100000", "call",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+    )
+    new = selected(
+        "two:P", "TEST220318P00100000", "put",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+    )
+    before = selection([old])
+    after = selection([old, new])
+    plan = base_plan(old)
+    morning = build_additive_quote_plan(
+        before, plan, after,
+        asof_utc=datetime(2026, 9, 30, 13, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 29),
+        expected_original_cases=2,
+    )
+    evening = build_additive_quote_plan(
+        before, plan, after,
+        asof_utc=datetime(2026, 9, 30, 22, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 29),
+        expected_original_cases=2,
+    )
+    assert morning == evening
+    assert morning["additive_planning_day_et"] == "2026-09-30"
