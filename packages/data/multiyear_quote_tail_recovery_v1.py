@@ -78,9 +78,18 @@ def build_tail_recovery_plan(
             for item in requests
         )
         or any(
-            member.get("request_identity") not in by_request
-            or member["case_id"] not in by_request[member["request_identity"]].get(
-                "member_case_ids", []
+            (
+                member.get("disposition") == "SOURCE_DEMAND_READY"
+                and (
+                    member.get("request_identity") not in by_request
+                    or member["case_id"] not in by_request[
+                        member["request_identity"]
+                    ].get("member_case_ids", [])
+                )
+            )
+            or (
+                member.get("disposition") != "SOURCE_DEMAND_READY"
+                and member.get("request_identity") is not None
             )
             for member in memberships
         )
