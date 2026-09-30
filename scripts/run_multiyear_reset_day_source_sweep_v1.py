@@ -30,6 +30,7 @@ from packages.data.multiyear_additive_quote_plan_v1 import (
     build_additive_quote_plan, persist_additive_quote_plan,
 )
 from packages.data.multiyear_chain_campaign_v1 import (
+    EASTERN as CHAIN_EASTERN,
     MAX_NEW_REQUESTS as MAX_CHAIN_REQUESTS, run_campaign,
 )
 from packages.data.multiyear_demand_quote_cache_v1 import (
@@ -271,6 +272,7 @@ def main() -> int:
                 confirm_paid_starter=True,
                 confirm_private_internal_use=True,
                 token=token,
+                today=at.astimezone(CHAIN_EASTERN).date(),
                 progress=_progress("chain_get"),
             )
             if chain["status"] not in SUCCESS_CHAIN:
@@ -281,7 +283,9 @@ def main() -> int:
             if chain.get("last_reported_remaining") is not None:
                 provider_remaining = chain["last_reported_remaining"]
         else:
-            chain = run_campaign(settings)
+            chain = run_campaign(
+                settings, today=at.astimezone(CHAIN_EASTERN).date()
+            )
         print(
             f"    chain_status={chain['status']} "
             f"new_chain_complete={chain['new_complete']} "
