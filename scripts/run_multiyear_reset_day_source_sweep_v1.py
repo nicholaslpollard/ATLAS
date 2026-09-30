@@ -333,13 +333,15 @@ def main() -> int:
         )
 
         print("  stage=NEWLY_SELECTED_EXACT_QUOTE_ACQUISITION", flush=True)
-        quote_budget = max(0, args.max_total_observed_credits - spent)
+        asserted_now = _available_assertion(
+            args.user_asserted_remaining, spent, provider_remaining
+        ) if live else 0
+        quote_budget = min(
+            max(0, args.max_total_observed_credits - spent),
+            max(0, asserted_now - args.min_remaining_credits),
+        )
         if live and quote_budget > 0 and expanded_census["pending"] > 0:
-            asserted_now = _available_assertion(
-                args.user_asserted_remaining, spent, provider_remaining
-            )
-            if asserted_now >= quote_budget + args.min_remaining_credits:
-                expanded_paid = run_demand_cache(
+            expanded_paid = run_demand_cache(
                     settings, additive,
                     max_new_requests=MAX_QUOTE_REQUESTS,
                     max_observed_credits=quote_budget,
@@ -352,11 +354,11 @@ def main() -> int:
                     min_remaining_credits=args.min_remaining_credits,
                     progress=_progress("expanded_quote_get"),
                 )
-                spent += expanded_paid["observed_credits"]
-                if expanded_paid["last_observed_provider_remaining"] is not None:
-                    provider_remaining = expanded_paid[
-                        "last_observed_provider_remaining"
-                    ]
+            spent += expanded_paid["observed_credits"]
+            if expanded_paid["last_observed_provider_remaining"] is not None:
+                provider_remaining = expanded_paid[
+                    "last_observed_provider_remaining"
+                ]
         expanded_census = run_demand_cache(
             settings, additive, progress=_progress("expanded_final_cache"),
         )
