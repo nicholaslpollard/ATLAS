@@ -120,6 +120,10 @@ def assemble_quote_reuse_handoff(
             raise QuoteReuseHandoffError("duplicate original recovery request")
         if not set(recovery_by_original).issubset(by_request):
             raise QuoteReuseHandoffError("recovery overlay references unknown original request")
+        if set(recovery_by_original) & set(by_entry):
+            raise QuoteReuseHandoffError(
+                "recovery overlay may only augment still-missing original requests"
+            )
         recovery_overlay_fp = recovery_overlay["overlay_fingerprint"]
         recovery_complete_queries = recovery_overlay.get("complete_recovery_queries", 0)
         recovery_gap_queries = recovery_overlay.get("recovery_query_gaps", 0)
