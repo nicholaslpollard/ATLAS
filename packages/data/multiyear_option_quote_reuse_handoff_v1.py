@@ -167,7 +167,7 @@ def assemble_quote_reuse_handoff(
             or chosen.get("original_case_id") is None
             or chosen.get("right") not in ("call", "put")
         ):
-            raise QuoteReuseHandoffError("PIT OCC selected identity differs")
+            raise QuoteReuseHandoffError("PIT OCC selected identity/membership differs")
         disposition = m.get("disposition")
         if disposition == "SOURCE_DEMAND_READY":
             if m.get("request_identity") not in by_request:
