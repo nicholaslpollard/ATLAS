@@ -230,3 +230,29 @@ def test_source_and_readiness_fingerprints_cannot_be_crosswired():
     })
     with pytest.raises(HistoricalExecutionRequirementsError, match="lineage"):
         build_execution_proof_demand(source, ready, expected_cases=2)
+
+
+def test_execution_proof_binds_clipped_physical_request_not_unavailable_original_prefix():
+    source, _ = proof_fixture()
+    row = source["rows"][0]
+    original_request = row["quote_request_identity"]
+    row["quote_source_request_identity"] = "recovery-physical-request"
+    row["quote_source_body_sha256"] = row["original_quote_body_sha256"]
+    row["original_quote_body_sha256"] = None
+    row["quote_source_from_inclusive"] = "2022-01-04"
+    row["quote_source_to_exclusive"] = "2022-01-21"
+    row["quote_source_is_clipped_recovery"] = True
+    resign(source)
+    ready = build_replay_readiness(
+        source, expected_cases=2, expected_source_fp=None,
+    )
+    demand = build_execution_proof_demand(source, ready, expected_cases=2)
+    item = demand["rows"][0]
+    assert item["entry_source"]["quote_request_identity"] == (
+        "recovery-physical-request"
+    )
+    assert item["entry_source"]["quote_request_identity"] != original_request
+    assert item["entry_source"]["source_is_clipped_recovery"] is True
+    assert item["entry_source"]["missing_original_prefix_is_not_reconstructed"] is True
+    assert item["historical_entry_admitted"] is False
+    assert demand["historical_account_pnl"] is None
