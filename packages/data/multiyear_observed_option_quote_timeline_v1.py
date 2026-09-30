@@ -41,6 +41,9 @@ ABSENT = {
     "QUOTE_HISTORY_NOT_ACQUIRED",
     "EXACT_QUOTE_QUERY_NO_DATA",
     "CLIPPED_RECOVERY_QUERY_NO_DATA",
+    "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW",
+    "QUOTE_HISTORY_AFTER_LAST_COMPLETED_SESSION",
+    "QUOTE_HISTORY_NO_CLOSED_SOURCE_PERIOD",
 }
 
 
@@ -252,14 +255,34 @@ def build_observed_option_timeline(
             if picked is not None or source_id is not None or slot["option_symbol"] is not None:
                 raise ObservedOptionTimelineError("unselected slot acquired quote authority")
         else:
-            if picked is None or source_id not in req or picked["option_symbol"] != slot["option_symbol"]:
+            if state in {
+                "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW",
+                "QUOTE_HISTORY_AFTER_LAST_COMPLETED_SESSION",
+                "QUOTE_HISTORY_NO_CLOSED_SOURCE_PERIOD",
+            }:
+                if (
+                    picked is None
+                    or source_id is not None
+                    or picked["option_symbol"] != slot["option_symbol"]
+                ):
+                    raise ObservedOptionTimelineError(
+                        "ineligible selected contract gained or changed quote request"
+                    )
+            elif (
+                picked is None
+                or source_id not in req
+                or picked["option_symbol"] != slot["option_symbol"]
+            ):
                 raise ObservedOptionTimelineError("missing quote changed original selected OCC")
         counts[result["timeline_status"]] += 1
         years[year][result["timeline_status"]] += 1
         rows.append(result)
     if (
         len(seen) != expected_original_cases * 2
-        or {x["case_right_id"] for x in rows if x["quote_request_identity"]} != set(chosen)
+        or {x["case_right_id"] for x in rows if x["quote_request_identity"]} != {
+            m["case_id"] for m in plan.get("memberships", [])
+            if m.get("request_identity") is not None
+        }
         or len(source_by_request) != (
             handoff["reused_original_2022_queries"]
             + handoff["verified_demand_cache_queries"]
