@@ -34,11 +34,13 @@ EASTERN = ZoneInfo("America/New_York")
 VERIFIED = {
     "VERIFIED_ORIGINAL_2022_QUOTE_HISTORY",
     "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY",
+    "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY",
 }
 ABSENT = {
     "NO_PIT_SELECTED_CONTRACT",
     "QUOTE_HISTORY_NOT_ACQUIRED",
     "EXACT_QUOTE_QUERY_NO_DATA",
+    "CLIPPED_RECOVERY_QUERY_NO_DATA",
 }
 
 
@@ -134,7 +136,7 @@ def build_observed_option_timeline(
     if len(req) != len(requests) or len(chosen) != len(candidates):
         raise ObservedOptionTimelineError("duplicate exact query or selected identity")
     source_by_request: dict[str, tuple[str, str, str]] = {}
-    observed: dict[str, list[dict[str, Any]]] = {}
+    observed: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     counts: Counter[str] = Counter()
     years: dict[str, Counter[str]] = defaultdict(Counter)
     rows: list[dict[str, Any]] = []
@@ -178,13 +180,38 @@ def build_observed_option_timeline(
                 or picked["source_selection_status"] != slot["source_selection_status"]
             ):
                 raise ObservedOptionTimelineError("source selection or quote identity changed")
+            source_from = slot.get("quote_source_from_inclusive") or request["from_inclusive"]
+            source_to = slot.get("quote_source_to_exclusive") or request["to_exclusive"]
+            source_identity = slot["quote_source_request_identity"]
+            if state == "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY":
+                if (
+                    slot.get("quote_source_is_clipped_recovery") is not True
+                    or not isinstance(source_identity, str) or not source_identity
+                    or not (
+                        date.fromisoformat(request["from_inclusive"])
+                        < date.fromisoformat(source_from)
+                        < date.fromisoformat(source_to)
+                        <= date.fromisoformat(request["to_exclusive"])
+                    )
+                    or slot.get("original_quote_window_fully_reconstructed") is not False
+                ):
+                    raise ObservedOptionTimelineError("clipped recovery window or authority changed")
+            elif (
+                source_from != request["from_inclusive"]
+                or source_to != request["to_exclusive"]
+                or slot.get("quote_source_is_clipped_recovery") is True
+            ):
+                raise ObservedOptionTimelineError("non-recovery quote source window changed")
             signature = (
-                state, slot["quote_source_request_identity"], slot["quote_body_sha256"]
+                state, source_identity, slot["quote_body_sha256"]
             )
             if source_id in source_by_request and source_by_request[source_id] != signature:
                 raise ObservedOptionTimelineError("shared quote points to different original bytes")
             source_by_request[source_id] = signature
-            if source_id not in observed:
+            observed_key = (
+                state, source_identity, source_from, source_to
+            )
+            if observed_key not in observed:
                 original = read_verified_observations(request, slot)
                 if not isinstance(original, list) or len(original) != slot["observed_quote_rows"]:
                     raise ObservedOptionTimelineError("raw quote observations differ from receipt")
@@ -195,18 +222,18 @@ def build_observed_option_timeline(
                 sessions = [x["session_et"] for x in normalized]
                 if len(set(sessions)) != len(sessions):
                     raise ObservedOptionTimelineError("duplicate historical option session")
-                first = date.fromisoformat(request["from_inclusive"])
-                end = date.fromisoformat(request["to_exclusive"])
+                first = date.fromisoformat(source_from)
+                end = date.fromisoformat(source_to)
                 if first >= end:
                     raise ObservedOptionTimelineError("frozen quote window invalid")
-                observed[source_id] = [
+                observed[observed_key] = [
                     x for x in sorted(normalized, key=lambda x: x["session_et"])
                     if first <= date.fromisoformat(x["session_et"]) < end
                 ]
             signal = _utc(picked["decision_at_utc"]).astimezone(EASTERN).date()
             expiry = date.fromisoformat(picked["expiration"])
             later = [
-                o for o in observed[source_id]
+                o for o in observed[observed_key]
                 if signal < date.fromisoformat(o["session_et"]) <= expiry
                 and o["two_sided_source"]
             ]
@@ -236,6 +263,7 @@ def build_observed_option_timeline(
         or len(source_by_request) != (
             handoff["reused_original_2022_queries"]
             + handoff["verified_demand_cache_queries"]
+            + handoff.get("recovered_original_quote_queries", 0)
         )
         or sum(counts.values()) != expected_original_cases * 2
     ):
@@ -284,13 +312,30 @@ def local_verified_quote_reader(settings: AtlasSettings, plan: dict[str, Any]) -
             if receipt is None or receipt["status"] != "COMPLETE_SOURCE_ONLY":
                 raise ObservedOptionTimelineError("accepted 2022 quote receipt unavailable")
             source_ticket, raw_path = old, old_2022_paths(settings, old)[0]
-        elif slot["quote_history_status"] == "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY":
-            receipt = demand_receipt(settings, request)
+        elif slot["quote_history_status"] in (
+            "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY",
+            "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY",
+        ):
+            if slot["quote_history_status"] == "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY":
+                source_ticket = {
+                    "option_symbol": request["option_symbol"],
+                    "from_inclusive": slot["quote_source_from_inclusive"],
+                    "to_exclusive": slot["quote_source_to_exclusive"],
+                    "request_identity": slot["quote_source_request_identity"],
+                }
+                if (
+                    slot.get("quote_source_is_clipped_recovery") is not True
+                    or source_ticket["request_identity"] == request["request_identity"]
+                ):
+                    raise ObservedOptionTimelineError("clipped recovery source identity changed")
+            else:
+                source_ticket = request
+                if slot["quote_source_request_identity"] != request["request_identity"]:
+                    raise ObservedOptionTimelineError("demand source request changed")
+            receipt = demand_receipt(settings, source_ticket)
             if receipt is None or receipt["status"] != "COMPLETE_SOURCE_ONLY":
                 raise ObservedOptionTimelineError("accepted exact demand quote unavailable")
-            source_ticket, raw_path = request, demand_paths(settings, request)[0]
-            if slot["quote_source_request_identity"] != request["request_identity"]:
-                raise ObservedOptionTimelineError("demand source request changed")
+            raw_path = demand_paths(settings, source_ticket)[0]
         else:
             raise ObservedOptionTimelineError("missing source cannot supply raw observations")
         if raw_path.is_symlink() or not raw_path.is_file():
