@@ -9,7 +9,7 @@ fill and not a substitute for unavailable earlier dates.
 """
 
 from collections import defaultdict
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time as dt_time
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -65,7 +65,9 @@ def build_tail_recovery_plan(
     if len(entries) + len(pending) != len(requests):
         raise QuoteTailRecoveryError("original source partition changed")
 
-    floor = _floor(asof_utc.astimezone(EASTERN).date())
+    recovery_day = asof_utc.astimezone(EASTERN).date()
+    floor = _floor(recovery_day)
+    stable_asof = datetime.combine(recovery_day, dt_time.min, tzinfo=EASTERN).astimezone(UTC)
     recovery_by_id: dict[str, dict[str, Any]] = {}
     old_to_recovery: dict[str, str] = {}
     expired: list[str] = []
@@ -124,7 +126,8 @@ def build_tail_recovery_plan(
         "contract": QUOTE_CONTRACT,
         "recovery_contract": RECOVERY_CONTRACT,
         "status": "SOURCE_DEMAND_FROZEN_NO_PROVIDER_READS",
-        "asof_utc": asof_utc.astimezone(UTC).isoformat(),
+        "asof_utc": stable_asof.isoformat(),
+        "recovery_asof_day_et": recovery_day.isoformat(),
         "rolling_five_year_floor": floor.isoformat(),
         "last_completed_session": original_plan["last_completed_session"],
         "requested_case_denominator": len(recovery_memberships),
