@@ -114,6 +114,7 @@ def build_observed_option_timeline(
         _check_signature(value, field)
     source_rows = handoff.get("rows")
     requests = plan.get("requests")
+    memberships = plan.get("memberships")
     candidates = selection.get("cases")
     if (
         handoff.get("contract") != HANDOFF_CONTRACT
@@ -127,7 +128,9 @@ def build_observed_option_timeline(
         or not isinstance(source_rows, list) or len(source_rows) != expected_original_cases * 2
         or not isinstance(requests, list)
         or handoff.get("unique_quote_queries") != len(requests)
+        or not isinstance(memberships, list)
         or not isinstance(candidates, list)
+        or len(memberships) != len(candidates)
         or handoff.get("selected_case_right_memberships") != len(candidates)
         or handoff.get("provider_requests") != 0
         or handoff.get("portfolio_pnl_authority") is not False
@@ -136,8 +139,16 @@ def build_observed_option_timeline(
         raise ObservedOptionTimelineError("original full-denominator source lineage changed")
     req = {x["request_identity"]: x for x in requests}
     chosen = {x["case_id"]: x for x in candidates}
-    if len(req) != len(requests) or len(chosen) != len(candidates):
-        raise ObservedOptionTimelineError("duplicate exact query or selected identity")
+    member = {x["case_id"]: x for x in memberships}
+    if (
+        len(req) != len(requests)
+        or len(chosen) != len(candidates)
+        or len(member) != len(memberships)
+        or set(member) != set(chosen)
+    ):
+        raise ObservedOptionTimelineError(
+            "duplicate exact query/selected identity or plan membership"
+        )
     source_by_request: dict[str, tuple[str, str, str]] = {}
     observed: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     counts: Counter[str] = Counter()
@@ -280,7 +291,7 @@ def build_observed_option_timeline(
     if (
         len(seen) != expected_original_cases * 2
         or {x["case_right_id"] for x in rows if x["quote_request_identity"]} != {
-            m["case_id"] for m in plan.get("memberships", [])
+            m["case_id"] for m in memberships
             if m.get("request_identity") is not None
         }
         or len(source_by_request) != (
