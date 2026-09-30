@@ -22,6 +22,14 @@ AVAILABLE = {
 }
 RECOVERY_COMPLETE = "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY"
 RECOVERY_GAP = "CLIPPED_RECOVERY_QUERY_NO_DATA"
+INELIGIBLE_DISPOSITIONS = {
+    "ORIGINAL_DECISION_OUTSIDE_STARTER_FIVE_YEAR_WINDOW":
+        "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW",
+    "ORIGINAL_DECISION_AFTER_LAST_COMPLETED_SESSION":
+        "QUOTE_HISTORY_AFTER_LAST_COMPLETED_SESSION",
+    "NO_CLOSED_SOURCE_PERIOD":
+        "QUOTE_HISTORY_NO_CLOSED_SOURCE_PERIOD",
+}
 
 
 class QuoteReuseHandoffError(ValueError):
@@ -152,14 +160,6 @@ def assemble_quote_reuse_handoff(
     ):
         raise QuoteReuseHandoffError("quote request / census partition changed")
     for m in memberships:
-        if m.get("disposition") != "SOURCE_DEMAND_READY":
-            raise QuoteReuseHandoffError("selected quote request was not eligible")
-        if m.get("request_identity") not in by_request:
-            raise QuoteReuseHandoffError("selected case has no exact quote request")
-        req = by_request[m["request_identity"]]
-        if (m.get("option_symbol") != req["option_symbol"]
-            or m["case_id"] not in req["member_case_ids"]):
-            raise QuoteReuseHandoffError("case-to-request membership changed")
         chosen = by_selected[m["case_id"]]
         if (
             chosen.get("option_symbol") != m.get("option_symbol")
@@ -168,6 +168,23 @@ def assemble_quote_reuse_handoff(
             or chosen.get("right") not in ("call", "put")
         ):
             raise QuoteReuseHandoffError("PIT OCC selected identity differs")
+        disposition = m.get("disposition")
+        if disposition == "SOURCE_DEMAND_READY":
+            if m.get("request_identity") not in by_request:
+                raise QuoteReuseHandoffError("selected case has no exact quote request")
+            req = by_request[m["request_identity"]]
+            if (
+                m.get("option_symbol") != req["option_symbol"]
+                or m["case_id"] not in req["member_case_ids"]
+            ):
+                raise QuoteReuseHandoffError("case-to-request membership changed")
+        elif disposition in INELIGIBLE_DISPOSITIONS:
+            if m.get("request_identity") is not None:
+                raise QuoteReuseHandoffError(
+                    "ineligible selected case unexpectedly gained exact request"
+                )
+        else:
+            raise QuoteReuseHandoffError("unknown selected quote-demand disposition")
 
     by_status: Counter[str] = Counter()
     by_year: dict[str, Counter[str]] = defaultdict(Counter)
@@ -203,25 +220,32 @@ def assemble_quote_reuse_handoff(
                 or chosen["option_symbol"] != item.get("option_symbol")
                 or chosen["source_selection_status"] != item.get("status")):
                 raise QuoteReuseHandoffError("original source/selected case mismatch")
-            entry = by_entry.get(membership["request_identity"])
-            recovered = None if entry is not None else recovery_by_original.get(
-                membership["request_identity"]
-            )
-            if entry is not None:
-                status = AVAILABLE[entry["status"]]
-            elif recovered is not None:
-                if recovered["option_symbol"] != chosen["option_symbol"]:
-                    raise QuoteReuseHandoffError("recovery source option identity changed")
-                if recovered["status"] not in (
-                    RECOVERY_COMPLETE, RECOVERY_GAP, "TAIL_RECOVERY_NOT_ACQUIRED"
-                ):
-                    raise QuoteReuseHandoffError("unknown clipped recovery source status")
-                status = (
-                    recovered["status"] if recovered["status"] != "TAIL_RECOVERY_NOT_ACQUIRED"
-                    else "QUOTE_HISTORY_NOT_ACQUIRED"
-                )
+            disposition = membership["disposition"]
+            if disposition != "SOURCE_DEMAND_READY":
+                entry = None
+                recovered = None
+                status = INELIGIBLE_DISPOSITIONS[disposition]
             else:
-                status = "QUOTE_HISTORY_NOT_ACQUIRED"
+                entry = by_entry.get(membership["request_identity"])
+                recovered = None if entry is not None else recovery_by_original.get(
+                    membership["request_identity"]
+                )
+                if entry is not None:
+                    status = AVAILABLE[entry["status"]]
+                elif recovered is not None:
+                    if recovered["option_symbol"] != chosen["option_symbol"]:
+                        raise QuoteReuseHandoffError("recovery source option identity changed")
+                    if recovered["status"] not in (
+                        RECOVERY_COMPLETE, RECOVERY_GAP, "TAIL_RECOVERY_NOT_ACQUIRED"
+                    ):
+                        raise QuoteReuseHandoffError("unknown clipped recovery source status")
+                    status = (
+                        recovered["status"]
+                        if recovered["status"] != "TAIL_RECOVERY_NOT_ACQUIRED"
+                        else "QUOTE_HISTORY_NOT_ACQUIRED"
+                    )
+                else:
+                    status = "QUOTE_HISTORY_NOT_ACQUIRED"
         by_status[status] += 1
         by_year[year][status] += 1
         rows.append({
@@ -233,7 +257,7 @@ def assemble_quote_reuse_handoff(
             "quote_history_status": status,
             "option_symbol": item.get("option_symbol"),
             "quote_request_identity": (
-                membership["request_identity"] if membership else None
+                membership.get("request_identity") if membership else None
             ),
             "quote_body_sha256": (
                 entry.get("body_sha256") if entry else
@@ -311,6 +335,9 @@ def assemble_quote_reuse_handoff(
         "verified_clipped_recovery_queries": recovery_complete_queries,
         "clipped_recovery_gap_queries": recovery_gap_queries,
         "recovered_original_quote_queries": recovered_original_queries,
+        "ineligible_selected_case_right_memberships": sum(
+            m.get("disposition") != "SOURCE_DEMAND_READY" for m in memberships
+        ),
         "pending_unique_quote_queries": (
             census["pending"] - len(recovery_by_original)
             + sum(x.get("status") == "TAIL_RECOVERY_NOT_ACQUIRED"
