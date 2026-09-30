@@ -59,8 +59,46 @@ def build_tail_recovery_plan(
         raise QuoteTailRecoveryError("original quote plan/census lineage changed")
     by_request = {x["request_identity"]: x for x in requests}
     by_entry = {x["request_identity"]: x for x in entries}
-    if len(by_request) != len(requests) or len(by_entry) != len(entries):
-        raise QuoteTailRecoveryError("duplicate original request/source identity")
+    by_member = {x["case_id"]: x for x in memberships}
+    if (
+        len(by_request) != len(requests)
+        or len(by_entry) != len(entries)
+        or len(by_member) != len(memberships)
+        or len(memberships) != original_plan.get("requested_case_denominator")
+        or original_plan.get("unique_physical_quote_queries") != len(requests)
+        or any(
+            item["request_identity"] != _fingerprint({
+                "contract": QUOTE_CONTRACT,
+                "query": {
+                    "option_symbol": item["option_symbol"],
+                    "from_inclusive": item["from_inclusive"],
+                    "to_exclusive": item["to_exclusive"],
+                },
+            })
+            for item in requests
+        )
+        or any(
+            member.get("request_identity") not in by_request
+            or member["case_id"] not in by_request[member["request_identity"]].get(
+                "member_case_ids", []
+            )
+            for member in memberships
+        )
+        or not set(by_entry).issubset(by_request)
+        or original_census.get("original_requested_case_denominator") != len(memberships)
+        or original_census.get("unique_physical_quote_queries") != len(requests)
+        or original_census.get("reused_original_2022") != sum(
+            x.get("status") == "REUSED_ACCEPTED_2022_FULL_SERIES"
+            for x in entries
+        )
+        or original_census.get("new_cache_complete") != sum(
+            x.get("status") == "COMPLETE_SOURCE_ONLY" for x in entries
+        )
+        or original_census.get("exact_source_gaps") != sum(
+            x.get("status") == "EXACT_QUERY_SOURCE_GAP" for x in entries
+        )
+    ):
+        raise QuoteTailRecoveryError("original request/membership/source partition changed")
     pending = set(by_request) - set(by_entry)
     if len(entries) + len(pending) != len(requests):
         raise QuoteTailRecoveryError("original source partition changed")
