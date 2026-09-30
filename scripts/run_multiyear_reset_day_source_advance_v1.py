@@ -37,7 +37,6 @@ from packages.data.multiyear_quote_tail_recovery_v1 import (
     persist_tail_recovery_plan,
 )
 from scripts.refresh_multiyear_sources_after_quote_cache_v1 import main as refresh_main
-from scripts.run_multiyear_demand_quote_cache_v1 import _last_complete
 
 ORIGINAL_PLAN = Path(
     "data/options/manifests/"
