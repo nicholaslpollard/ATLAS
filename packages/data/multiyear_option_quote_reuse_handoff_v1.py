@@ -185,6 +185,7 @@ def assemble_quote_reuse_handoff(
         seen_slot.add(slot_id)
         seen_original.add(original_id)
         chosen = by_selected.get(slot_id)
+        recovered = None
         if chosen is None:
             if item.get("option_symbol") is not None or item.get("status", "").startswith("SELECTED_"):
                 raise QuoteReuseHandoffError("selected source missing from quote demand")
@@ -256,8 +257,12 @@ def assemble_quote_reuse_handoff(
             "quote_source_is_clipped_recovery": bool(
                 recovered is not None and status == RECOVERY_COMPLETE
             ),
-            "original_quote_window_fully_reconstructed": not bool(
-                recovered is not None and status == RECOVERY_COMPLETE
+            "original_quote_window_fully_reconstructed": bool(
+                entry is not None and status in (
+                    "VERIFIED_ORIGINAL_2022_QUOTE_HISTORY",
+                    "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY",
+                    "EXACT_QUOTE_QUERY_NO_DATA",
+                )
             ),
             "observed_quote_rows": (
                 entry.get("cached_observed_rows") if entry else
@@ -282,6 +287,7 @@ def assemble_quote_reuse_handoff(
         or sum(by_status[k] for k in (
             "VERIFIED_ORIGINAL_2022_QUOTE_HISTORY",
             "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY",
+            RECOVERY_COMPLETE,
         )) != expected_reused
     ):
         raise QuoteReuseHandoffError("full-case or reused-membership accounting mismatch")
