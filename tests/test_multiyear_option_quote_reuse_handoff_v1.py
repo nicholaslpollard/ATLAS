@@ -51,8 +51,10 @@ def _fixtures():
     }, "selection_fingerprint")
     requests = [
         dict(request_identity="a" * 64, option_symbol=cases[0]["option_symbol"],
+             from_inclusive="2022-01-01", to_exclusive="2022-03-19",
              member_case_ids=["one:C", "two:C"]),
         dict(request_identity="b" * 64, option_symbol=cases[1]["option_symbol"],
+             from_inclusive="2022-01-01", to_exclusive="2022-03-19",
              member_case_ids=["one:P"]),
     ]
     memberships = [
@@ -147,3 +149,53 @@ def test_persist_immutable_and_no_duplicate_write(tmp_path):
     first.write_text("tampered", encoding="utf-8")
     with pytest.raises((QuoteReuseHandoffError, ValueError)):
         persist_quote_reuse_handoff(settings, handoff)
+
+
+def test_clipped_recovery_can_supply_missing_original_without_claiming_full_window():
+    selection, plan, census = _fixtures()
+    overlay = _signed({
+        "contract": "atlas-multiyear-stale-exact-quote-recovery-overlay-v1",
+        "status": "CLIPPED_SOURCE_OVERLAY_NO_ORIGINAL_WINDOW_COMPLETENESS_CLAIM",
+        "original_plan_fingerprint": plan["plan_fingerprint"],
+        "recovery_plan_fingerprint": "e" * 64,
+        "recovery_census_fingerprint": "f" * 64,
+        "current_floor_et": "2022-02-01",
+        "recoverable_original_requests": 1,
+        "distinct_recovery_queries": 1,
+        "complete_recovery_queries": 1,
+        "recovery_query_gaps": 0,
+        "pending_recovery_queries": 0,
+        "rows": [{
+            "original_request_identity": "b" * 64,
+            "recovery_request_identity": "e" * 64,
+            "option_symbol": "TEST220318P00100000",
+            "source_from_inclusive": "2022-02-01",
+            "source_to_exclusive": "2022-03-19",
+            "status": "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY",
+            "quote_body_sha256": "f" * 64,
+            "observed_quote_rows": 22,
+            "missing_original_prefix_is_not_reconstructed": True,
+            "historical_fill_or_pnl_authority": False,
+        }],
+        "provider_requests": 0,
+        "original_window_fully_reconstructed": False,
+        "historical_fill_or_pnl_authority": False,
+    }, "overlay_fingerprint")
+    out = assemble_quote_reuse_handoff(
+        selection, plan, census, recovery_overlay=overlay,
+        expected_original_cases=2,
+    )
+    recovered = next(x for x in out["rows"] if x["case_right_id"] == "one:P")
+    assert recovered["quote_history_status"] == (
+        "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY"
+    )
+    assert recovered["quote_request_identity"] == "b" * 64
+    assert recovered["quote_source_request_identity"] == "e" * 64
+    assert recovered["quote_source_from_inclusive"] == "2022-02-01"
+    assert recovered["quote_source_to_exclusive"] == "2022-03-19"
+    assert recovered["quote_source_is_clipped_recovery"] is True
+    assert recovered["original_quote_window_fully_reconstructed"] is False
+    assert out["recovered_original_quote_queries"] == 1
+    assert out["verified_clipped_recovery_queries"] == 1
+    assert out["pending_unique_quote_queries"] == 0
+    assert out["provider_requests"] == 0
