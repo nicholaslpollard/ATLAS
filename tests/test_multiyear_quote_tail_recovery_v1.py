@@ -247,3 +247,34 @@ def test_resigned_but_wrong_original_request_identity_is_rejected():
             plan, census,
             asof_utc=datetime(2026, 9, 30, 15, 0, tzinfo=UTC),
         )
+
+
+def test_selected_ineligible_memberships_are_not_mistaken_for_pending_physical_queries():
+    plan, census, old_id, _ = inputs()
+    plan["requests"] = [
+        x for x in plan["requests"] if x["request_identity"] != old_id
+    ]
+    plan["unique_physical_quote_queries"] = 1
+    for member in plan["memberships"]:
+        if member["request_identity"] == old_id:
+            member["request_identity"] = None
+            member["disposition"] = (
+                "ORIGINAL_DECISION_OUTSIDE_STARTER_FIVE_YEAR_WINDOW"
+            )
+    plan["plan_fingerprint"] = _fingerprint({
+        k: v for k, v in plan.items() if k != "plan_fingerprint"
+    })
+    census["plan_fingerprint"] = plan["plan_fingerprint"]
+    census["unique_physical_quote_queries"] = 1
+    census["pending"] = 0
+    census["report_fingerprint"] = _fingerprint({
+        k: v for k, v in census.items() if k != "report_fingerprint"
+    })
+    recovery = build_tail_recovery_plan(
+        plan, census,
+        asof_utc=datetime(2026, 9, 30, 15, 0, tzinfo=UTC),
+    )
+    assert recovery["original_pending_queries"] == 0
+    assert recovery["original_stale_queries"] == 0
+    assert recovery["requests"] == []
+    assert recovery["provider_requests"] == 0
