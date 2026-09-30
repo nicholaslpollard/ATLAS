@@ -239,9 +239,26 @@ def build_verified_source_casebook(
             "ticker": need["ticker"], "instrument_id": need["instrument_id"],
             "option_symbol": original["option_symbol"],
             "quote_request_identity": original["quote_request_identity"],
+            "quote_source_request_identity": original.get(
+                "quote_source_request_identity"
+            ),
+            "quote_source_from_inclusive": original.get(
+                "quote_source_from_inclusive"
+            ),
+            "quote_source_to_exclusive": original.get(
+                "quote_source_to_exclusive"
+            ),
+            "quote_source_is_clipped_recovery": original.get(
+                "quote_source_is_clipped_recovery", False
+            ),
             "original_quote_history_status": original["quote_history_status"],
             "observed_quote_timeline_status": quote["timeline_status"],
-            "original_quote_body_sha256": original.get("quote_body_sha256"),
+            "quote_source_body_sha256": original.get("quote_body_sha256"),
+            "original_quote_body_sha256": (
+                original.get("quote_body_sha256")
+                if original.get("quote_source_is_clipped_recovery") is not True
+                else None
+            ),
             "first_later_option_source": entry,
             "next_later_option_source": later,
             "entry_session_native_source": stock_entry,
