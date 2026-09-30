@@ -52,7 +52,7 @@ PLAN = Path(
 )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Refresh signed option/native/account source evidence from local caches only"
     )
@@ -61,7 +61,7 @@ def main() -> int:
     parser.add_argument("--as-of-utc",
                         help="Aware current timestamp; recovery plan is stable per ET day")
     parser.add_argument("--native-workers", type=int, default=3)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     print("ATLAS MULTIYEAR SOURCE REFRESH AFTER QUOTE CACHE — ZERO PROVIDER GETs",
           flush=True)
