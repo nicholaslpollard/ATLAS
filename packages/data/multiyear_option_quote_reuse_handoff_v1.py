@@ -20,6 +20,8 @@ AVAILABLE = {
     "COMPLETE_SOURCE_ONLY": "VERIFIED_DEMAND_CACHE_QUOTE_HISTORY",
     "EXACT_QUERY_SOURCE_GAP": "EXACT_QUOTE_QUERY_NO_DATA",
 }
+RECOVERY_COMPLETE = "VERIFIED_CLIPPED_DEMAND_CACHE_QUOTE_HISTORY"
+RECOVERY_GAP = "CLIPPED_RECOVERY_QUERY_NO_DATA"
 
 
 class QuoteReuseHandoffError(ValueError):
@@ -38,6 +40,7 @@ def assemble_quote_reuse_handoff(
     plan: dict[str, Any],
     census: dict[str, Any],
     *,
+    recovery_overlay: dict[str, Any] | None = None,
     expected_original_cases: int = 14902,
 ) -> dict[str, Any]:
     """Join every frozen case/right to an audited quote pointer or explicit gap.
@@ -88,6 +91,42 @@ def assemble_quote_reuse_handoff(
     by_member = {x["case_id"]: x for x in memberships}
     by_request = {x["request_identity"]: x for x in requests}
     by_entry = {x["request_identity"]: x for x in entries}
+    recovery_by_original: dict[str, dict[str, Any]] = {}
+    recovery_overlay_fp = None
+    recovery_complete_queries = recovery_gap_queries = 0
+    recovered_original_queries = 0
+    if recovery_overlay is not None:
+        from packages.data.multiyear_quote_tail_recovery_v1 import (
+            OVERLAY_CONTRACT,
+        )
+        try:
+            _check_signature(recovery_overlay, "overlay_fingerprint")
+        except (QuoteReuseHandoffError, ValueError) as exc:
+            raise QuoteReuseHandoffError("recovery overlay fingerprint mismatch") from exc
+        overlay_rows = recovery_overlay.get("rows")
+        if (
+            recovery_overlay.get("contract") != OVERLAY_CONTRACT
+            or recovery_overlay.get("original_plan_fingerprint") != plan["plan_fingerprint"]
+            or recovery_overlay.get("provider_requests") != 0
+            or recovery_overlay.get("historical_fill_or_pnl_authority") is not False
+            or recovery_overlay.get("original_window_fully_reconstructed") is not False
+            or not isinstance(overlay_rows, list)
+        ):
+            raise QuoteReuseHandoffError("recovery overlay lineage or authority changed")
+        recovery_by_original = {
+            x["original_request_identity"]: x for x in overlay_rows
+        }
+        if len(recovery_by_original) != len(overlay_rows):
+            raise QuoteReuseHandoffError("duplicate original recovery request")
+        if not set(recovery_by_original).issubset(by_request):
+            raise QuoteReuseHandoffError("recovery overlay references unknown original request")
+        recovery_overlay_fp = recovery_overlay["overlay_fingerprint"]
+        recovery_complete_queries = recovery_overlay.get("complete_recovery_queries", 0)
+        recovery_gap_queries = recovery_overlay.get("recovery_query_gaps", 0)
+        recovered_original_queries = sum(
+            row.get("status") == RECOVERY_COMPLETE
+            for row in overlay_rows
+        )
     if (
         len(by_selected) != len(selected)
         or len(by_member) != len(memberships)
@@ -160,7 +199,24 @@ def assemble_quote_reuse_handoff(
                 or chosen["source_selection_status"] != item.get("status")):
                 raise QuoteReuseHandoffError("original source/selected case mismatch")
             entry = by_entry.get(membership["request_identity"])
-            status = AVAILABLE[entry["status"]] if entry is not None else "QUOTE_HISTORY_NOT_ACQUIRED"
+            recovered = None if entry is not None else recovery_by_original.get(
+                membership["request_identity"]
+            )
+            if entry is not None:
+                status = AVAILABLE[entry["status"]]
+            elif recovered is not None:
+                if recovered["option_symbol"] != chosen["option_symbol"]:
+                    raise QuoteReuseHandoffError("recovery source option identity changed")
+                if recovered["status"] not in (
+                    RECOVERY_COMPLETE, RECOVERY_GAP, "TAIL_RECOVERY_NOT_ACQUIRED"
+                ):
+                    raise QuoteReuseHandoffError("unknown clipped recovery source status")
+                status = (
+                    recovered["status"] if recovered["status"] != "TAIL_RECOVERY_NOT_ACQUIRED"
+                    else "QUOTE_HISTORY_NOT_ACQUIRED"
+                )
+            else:
+                status = "QUOTE_HISTORY_NOT_ACQUIRED"
         by_status[status] += 1
         by_year[year][status] += 1
         rows.append({
@@ -174,18 +230,51 @@ def assemble_quote_reuse_handoff(
             "quote_request_identity": (
                 membership["request_identity"] if membership else None
             ),
-            "quote_body_sha256": entry.get("body_sha256") if entry else None,
+            "quote_body_sha256": (
+                entry.get("body_sha256") if entry else
+                recovered.get("quote_body_sha256") if recovered and status == RECOVERY_COMPLETE
+                else None
+            ),
             "quote_source_request_identity": (
                 entry.get("source_request_identity", membership["request_identity"])
-                if entry and membership else None
+                if entry and membership else
+                recovered.get("recovery_request_identity")
+                if recovered and status == RECOVERY_COMPLETE else None
             ),
-            "observed_quote_rows": entry.get("cached_observed_rows") if entry else None,
+            "quote_source_from_inclusive": (
+                by_request[membership["request_identity"]]["from_inclusive"]
+                if entry and membership else
+                recovered.get("source_from_inclusive")
+                if recovered and status == RECOVERY_COMPLETE else None
+            ),
+            "quote_source_to_exclusive": (
+                by_request[membership["request_identity"]]["to_exclusive"]
+                if entry and membership else
+                recovered.get("source_to_exclusive")
+                if recovered and status == RECOVERY_COMPLETE else None
+            ),
+            "quote_source_is_clipped_recovery": bool(
+                recovered is not None and status == RECOVERY_COMPLETE
+            ),
+            "original_quote_window_fully_reconstructed": not bool(
+                recovered is not None and status == RECOVERY_COMPLETE
+            ),
+            "observed_quote_rows": (
+                entry.get("cached_observed_rows") if entry else
+                recovered.get("observed_quote_rows") if recovered and status == RECOVERY_COMPLETE
+                else None
+            ),
         })
     expected_reused = sum(
         len(by_request[e["request_identity"]]["member_case_ids"])
         for e in entries if e["status"] in (
             "REUSED_ACCEPTED_2022_FULL_SERIES", "COMPLETE_SOURCE_ONLY"
         )
+    )
+    expected_reused += sum(
+        len(by_request[oid]["member_case_ids"])
+        for oid, recovered in recovery_by_original.items()
+        if recovered.get("status") == RECOVERY_COMPLETE
     )
     if (
         len(seen_original) != expected_original_cases
@@ -208,7 +297,17 @@ def assemble_quote_reuse_handoff(
         "unique_quote_queries": len(requests),
         "reused_original_2022_queries": census["reused_original_2022"],
         "verified_demand_cache_queries": census["new_cache_complete"],
-        "pending_unique_quote_queries": census["pending"],
+        "recovery_overlay_fingerprint": recovery_overlay_fp,
+        "verified_clipped_recovery_queries": recovery_complete_queries,
+        "clipped_recovery_gap_queries": recovery_gap_queries,
+        "recovered_original_quote_queries": recovered_original_queries,
+        "pending_unique_quote_queries": (
+            census["pending"] - len(recovery_by_original)
+            + sum(x.get("status") == "TAIL_RECOVERY_NOT_ACQUIRED"
+                  for x in recovery_by_original.values())
+            + sum(x.get("status") == RECOVERY_GAP
+                  for x in recovery_by_original.values())
+        ),
         "by_status": dict(sorted(by_status.items())),
         "by_year": {y: dict(sorted(c.items())) for y, c in sorted(by_year.items())},
         "rows": sorted(rows, key=lambda x: x["case_right_id"]),
