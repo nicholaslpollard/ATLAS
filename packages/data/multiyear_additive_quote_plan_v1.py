@@ -278,7 +278,15 @@ def persist_additive_quote_plan(
         f"{PLAN_REL}_{report['plan_fingerprint'][:16]}.json"
     )
     if path.exists() or path.is_symlink():
-        if path.is_symlink() or not path.is_file() or _read_object(path) != report:
+        if path.is_symlink() or not path.is_file():
+            raise AdditiveQuotePlanError("immutable additive quote plan changed")
+        try:
+            prior = _read_object(path)
+        except (OSError, ValueError, TypeError) as exc:
+            raise AdditiveQuotePlanError(
+                "immutable additive quote plan unreadable or changed"
+            ) from exc
+        if prior != report:
             raise AdditiveQuotePlanError("immutable additive quote plan changed")
         return path, "REUSED_IDENTICAL_ADDITIVE_QUOTE_PLAN"
     _write_new(path, report)
