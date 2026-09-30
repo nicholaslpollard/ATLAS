@@ -180,7 +180,7 @@ def build_execution_proof_demand(
                 or not isinstance(row.get("quote_source_to_exclusive"), str)
             ))
         ):
-            raise HistoricalExecutionRequirementsError("physical quote source provenance missing")
+            raise HistoricalExecutionRequirementsError("physical quote provenance missing")
         entry = _source_mark(
             row["first_later_option_source"], row["entry_session_native_source"],
             quote_body_sha=sha, quote_identity=query,
