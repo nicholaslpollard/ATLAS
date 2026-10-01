@@ -5135,3 +5135,40 @@ The repaired contract now keeps an exact 2026 native CLOSE request in lineage bu
 The deterministic recovery command is now `scripts/continue_multiyear_source_refresh_offline_v1.py --acquisition-day-et 2026-09-30`. It performs **zero provider GETs**. It reconstructs the current PIT selection from local chain receipts, discovers exactly one additive quote plan bound to the accepted base-plan fingerprint + current selection fingerprint + September 30 acquisition day, discovers exactly one matching signed recovery overlay, verifies local quote receipts, then resumes handoff -> option timeline -> native CLOSE source -> casebook -> readiness -> execution-proof demand. If artifact lineage is ambiguous, it fails closed instead of choosing by modification time or performance.
 
 Future ATLAS handoffs must preserve this distinction: the September 30 paid work is complete evidence acquisition, while the native-2026 repair is an offline source-classification fix. Remaining 7,799 exact quote histories are future acquisition work after another provider reset; they are not a reason to repeat already completed September 30 requests.
+
+### 2026-10-01 — Offline source-refresh closeout and cross-day clipped-tail reuse guard
+
+The post-#297 workstation continuation completed with **zero provider GETs/credits**.
+It rebuilt the current PIT selection at **20,364 selected case/right memberships** and
+bound the September 30 additive quote plan at **17,348 physical exact histories**
+(6,622 base + 10,726 additive). The local exact-history census is **7,314 complete
+new-cache histories + 2,235 reused accepted 2022 histories / 0 exact gaps / 7,799
+pending**. The September 30 clipped recovery overlay remains **487 complete / 0 gaps /
+0 pending**.
+
+Targeted native verification completed all **1,494 / 1,494** required pre-2026 source
+units, producing **14,409 exact native closes**, **13 native daily gaps** and **31
+protected-2026 native CLOSE requests withheld without opening any 2026 stock outcome**.
+The refreshed full casebook/readiness/proof demand reports **11,715 dated
+stock+option source rights**, **24 protected-2026 withheld rights**, **22,781 distinct
+option-observation proof targets**, **14,355 native-close proof targets** and
+**0 historical executable option trades**. Historical option P&L remains NULL.
+
+Before the October 1 reset-day paid continuation, review found a credit-efficiency
+defect in clipped-tail recovery. A new calendar day advances the Starter rolling floor,
+so the old implementation would derive a new narrower clipped query even when a
+verified prior-day clipped body already covered the entire newer suffix. The recovery
+layer now discovers signed prior recovery overlays and may reuse a prior physical
+request only when it maps to the exact same immutable original request, the option
+symbol and `to_exclusive` are unchanged, the prior `from_inclusive` is no later than
+the current floor, and the prior body SHA-256 is retained. The normal quote-cache
+census still re-verifies the actual receipt/body; a changed or missing body is not
+silently replaced by a paid request. Original full-window completeness, historical
+fill/P&L authority and the missing clipped prefix remain unchanged.
+
+After exact-head CI and merge, the next reset-day run should prioritize clearing the
+**7,799 existing exact-history backlog** while still advancing a bounded amount of new
+PIT chain coverage. Do not use the old default chain-heavy reserve simply because a
+new daily credit balance is available. The additive sweep remains the sole paid
+orchestration path; completed September 30 receipts and prior clipped bodies must be
+reused before any new GET.
