@@ -182,11 +182,13 @@ def _mark_key(mark: dict[str, Any]) -> tuple[str, str, Decimal, Decimal]:
     )
 
 
-def _decoded_key(row: dict[str, Any]) -> tuple[str, str, Decimal, Decimal]:
-    bid = _number(row["bid"], "decoded bid", allow_zero=False)
-    ask = _number(row["ask"], "decoded ask", allow_zero=False)
-    if bid is None or ask is None:
-        raise MarketDataEodClockProbeError("decoded proof row lost two-sided price")
+def _decoded_key(
+    row: dict[str, Any],
+) -> tuple[str, str, Decimal | None, Decimal | None]:
+    # Preserve one-sided/zero-price source rows in the verified physical-history
+    # index.  Only proof-demand entry/exit marks are required to be two-sided.
+    bid = _number(row["bid"], "decoded bid")
+    ask = _number(row["ask"], "decoded ask")
     return (
         row["session_et"], row["updated_at_utc"], bid, ask,
     )
@@ -281,7 +283,10 @@ def build_marketdata_eod_clock_liquidity_probe(
     ):
         raise MarketDataEodClockProbeError("source denominator changed")
 
-    decoded: dict[str, dict[tuple[str, str, str, str], dict[str, Any]]] = {}
+    decoded: dict[
+        str,
+        dict[tuple[str, str, Decimal | None, Decimal | None], dict[str, Any]],
+    ] = {}
     decoded_body_sha: dict[str, str] = {}
     output_rows: list[dict[str, Any]] = []
     by_year: dict[str, Counter[str]] = {
