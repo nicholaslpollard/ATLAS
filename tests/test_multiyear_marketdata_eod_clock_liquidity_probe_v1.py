@@ -35,14 +35,20 @@ def stamp(text: str) -> int:
     return int(datetime.fromisoformat(text).timestamp())
 
 
-def raw_body(symbol: str, *, underlying=True, sizes=True, volume=True) -> bytes:
+DEFAULT_UPDATED_TIMES = (
+    "2022-03-03T16:00:00-05:00",
+    "2022-03-04T16:00:00-05:00",
+)
+
+
+def raw_body(
+    symbol: str, *, underlying=True, sizes=True, volume=True,
+    updated_times: tuple[str, str] = DEFAULT_UPDATED_TIMES,
+) -> bytes:
     return json.dumps({
         "s": "ok",
         "optionSymbol": [symbol, symbol],
-        "updated": [
-            stamp("2022-03-03T16:00:00-05:00"),
-            stamp("2022-03-04T16:00:00-05:00"),
-        ],
+        "updated": [stamp(value) for value in updated_times],
         "bid": [1.00, 1.20],
         "ask": [1.10, 1.30],
         "bidSize": [4, 5] if sizes else [0, 0],
@@ -96,7 +102,10 @@ def mark(
     }
 
 
-def fixture(*, put_underlying=True, put_sizes=True, put_volume=True):
+def fixture(
+    *, put_underlying=True, put_sizes=True, put_volume=True,
+    put_updated_times: tuple[str, str] = DEFAULT_UPDATED_TIMES,
+):
     call_symbol = "TEST220318C00100000"
     put_symbol = "TEST220318P00100000"
     call_req = request(call_symbol)
@@ -109,6 +118,7 @@ def fixture(*, put_underlying=True, put_sizes=True, put_volume=True):
         underlying=put_underlying,
         sizes=put_sizes,
         volume=put_volume,
+        updated_times=put_updated_times,
     )
     raw_by_id = {
         call_req["request_identity"]: call_raw,
@@ -117,6 +127,10 @@ def fixture(*, put_underlying=True, put_sizes=True, put_volume=True):
     sha_by_id = {
         rid: hashlib.sha256(raw).hexdigest()
         for rid, raw in raw_by_id.items()
+    }
+    updated_by_id = {
+        call_req["request_identity"]: DEFAULT_UPDATED_TIMES,
+        put_req["request_identity"]: put_updated_times,
     }
     plan = signed({
         "contract": QUOTE_CONTRACT,
@@ -172,14 +186,15 @@ def fixture(*, put_underlying=True, put_sizes=True, put_volume=True):
             "source_join_status": "PAIRED_DATED_SOURCE_ONLY_UNSYNCHRONIZED",
         })
         source_sha = sha_by_id[req["request_identity"]]
+        source_updated = updated_by_id[req["request_identity"]]
         entry = mark(
-            symbol, "2022-03-03", "2022-03-03T16:00:00-05:00",
+            symbol, "2022-03-03", source_updated[0],
             "1.0", "1.1",
             body_sha=source_sha,
             request_identity=req["request_identity"],
         )
         later = mark(
-            symbol, "2022-03-04", "2022-03-04T16:00:00-05:00",
+            symbol, "2022-03-04", source_updated[1],
             "1.2", "1.3",
             body_sha=source_sha,
             request_identity=req["request_identity"],
@@ -364,3 +379,27 @@ def test_probe_fails_if_casebook_physical_source_provenance_changes():
             read_verified_body=reader,
             expected_original_cases=1,
         )
+
+
+def test_probe_requires_exact_1600_for_historical_eod_clock_shape():
+    plan, handoff, casebook, proof, reader = fixture(
+        put_updated_times=(
+            "2022-03-03T15:59:00-05:00",
+            "2022-03-04T16:00:00-05:00",
+        ),
+    )
+    out = build_marketdata_eod_clock_liquidity_probe(
+        plan, handoff, casebook, proof,
+        read_verified_body=reader,
+        expected_original_cases=1,
+    )
+    assert out["documented_same_row_snapshot_candidates"] == 2
+    assert out["documented_historical_eod_clock_shape_candidates"] == 1
+    assert out["clock_liquidity_preexpiry_source_shape_candidates"] == 1
+    put = next(row for row in out["rows"] if row["right"] == "put")
+    assert put["provider_documented_same_row_snapshot_candidate"] is True
+    assert (
+        put["provider_documented_historical_eod_clock_shape_candidate"]
+        is False
+    )
+    assert put["status"] == "EOD_SNAPSHOT_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"
