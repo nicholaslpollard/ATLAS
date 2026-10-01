@@ -117,10 +117,10 @@ def main(argv: list[str] | None = None) -> int:
             f"{report['entry_exit_positive_size_and_volume_candidates']} "
             f"forced_pre_expiry_exit_candidates="
             f"{report['forced_pre_expiry_exit_candidates']} "
-            f"non_deliverable_gates_candidate_pass="
-            f"{report['non_deliverable_gates_candidate_pass']} "
-            f"clock_liquidity_or_exit_gap="
-            f"{report['eod_clock_or_liquidity_or_exit_policy_gap']}",
+            f"clock_liquidity_preexpiry_source_shape_candidates="
+            f"{report['clock_liquidity_preexpiry_source_shape_candidates']} "
+            f"snapshot_liquidity_or_exit_gap="
+            f"{report['eod_snapshot_or_liquidity_or_exit_policy_gap']}",
             flush=True,
         )
         for year, values in report["by_year"].items():
