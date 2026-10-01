@@ -195,3 +195,61 @@ def test_pilot_missing_plan_is_not_claimed_as_reused(tmp_path):
     assert result["candidate_full_coverage_sources"] == 0
     _, action = m.persist_pilot_overlap(settings, result)
     assert action == "WRITTEN_IMMUTABLE_PILOT_QUOTE_OVERLAP"
+
+
+def test_2025_option_sources_crossing_into_2026_keep_native_requests_but_mark_them_protected(monkeypatch):
+    native, selection, timeline = sources(monkeypatch)
+    native["rows"][0]["signal_session"] = "2025-12-29"
+    native["rows"][0]["entry_session"] = "2025-12-30"
+    native = signed({k: v for k, v in native.items() if k != "source_fingerprint"},
+                    "source_fingerprint")
+    monkeypatch.setattr(m, "NATIVE_FP", native["source_fingerprint"])
+    selection["cases"][0]["expiration"] = "2026-01-16"
+    selection["cases"][0]["decision_at_utc"] = "2025-12-30T14:35:00+00:00"
+    selection = signed(
+        {k: v for k, v in selection.items() if k != "selection_fingerprint"},
+        "selection_fingerprint",
+    )
+    q1 = {
+        "session_et": "2026-01-02",
+        "provider_updated_at_utc": "2026-01-02T21:00:00+00:00",
+        "two_sided_source": True,
+        "observed_bid_per_share": "1.0",
+        "observed_ask_per_share": "1.2",
+    }
+    q2 = {
+        "session_et": "2026-01-05",
+        "provider_updated_at_utc": "2026-01-05T21:00:00+00:00",
+        "two_sided_source": True,
+        "observed_bid_per_share": "1.1",
+        "observed_ask_per_share": "1.3",
+    }
+    row = timeline["rows"][0]
+    row["year"] = "2025"
+    row["first_later_observed_quote"] = q1
+    row["next_later_observed_quote"] = q2
+    for other in timeline["rows"][1:]:
+        other["first_later_observed_quote"] = None
+        other["next_later_observed_quote"] = None
+        other["timeline_status"] = "NO_VALID_LATER_TWO_SIDED_SOURCE"
+    timeline["selection_fingerprint"] = selection["selection_fingerprint"]
+    timeline = signed(
+        {k: v for k, v in timeline.items() if k != "timeline_fingerprint"},
+        "timeline_fingerprint",
+    )
+    report = m.build_native_eod_needs(
+        native, selection, timeline, expected_original_cases=2,
+    )
+    protected_row = next(x for x in report["rows"] if x["case_right_id"] == "one:C")
+    assert protected_row["status"] == m.PROTECTED_2026
+    assert protected_row["protected_2026_native_entry_withheld"] is True
+    assert protected_row["protected_2026_native_next_withheld"] is True
+    assert report["case_rights_with_protected_2026_native_close_withheld"] == 1
+    protected_requests = [
+        x for x in report["requests"]
+        if x["session_et"].startswith("2026-")
+    ]
+    assert len(protected_requests) == 2
+    assert all(x["protected_2026_native_read_forbidden"] is True
+               for x in protected_requests)
+    assert report["protected_2026_outcomes_read"] == 0
