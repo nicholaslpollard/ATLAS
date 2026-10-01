@@ -27,6 +27,7 @@ CONTRACT = "atlas-multiyear-verified-stock-option-source-casebook-v1"
 OUTPUT_REL = "data/options/derived/multiyear_verified_stock_option_source_casebook_v1"
 NO_PAIR = "NO_TWO_LATER_TWO_SIDED_OPTION_SOURCE_DATES"
 STOCK_GAP = "ONE_OR_MORE_EXACT_NATIVE_DAILY_CLOSE_GAPS"
+PROTECTED_2026_WITHHELD = "OPTION_SOURCE_DATES_PRESENT_PROTECTED_2026_NATIVE_CLOSE_WITHHELD"
 SOURCE_PAIR = "PAIRED_DATED_SOURCE_ONLY_UNSYNCHRONIZED"
 
 
@@ -106,7 +107,11 @@ def _native_close(
     ):
         raise SourceCasebookError("native-close identity, date or clock authority changed")
     state = close["status"]
-    if state not in {"VERIFIED_NATIVE_RAW_EOD_CLOSE", "NO_RAW_NATIVE_DAILY_BAR_FOR_EXACT_SESSION"}:
+    if state not in {
+        "VERIFIED_NATIVE_RAW_EOD_CLOSE",
+        "NO_RAW_NATIVE_DAILY_BAR_FOR_EXACT_SESSION",
+        "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ",
+    }:
         raise SourceCasebookError("unknown native raw daily close status")
     raw = close.get("raw_as_traded_close")
     if state == "VERIFIED_NATIVE_RAW_EOD_CLOSE":
@@ -119,6 +124,17 @@ def _native_close(
             raise SourceCasebookError("verified native canonical source SHA missing")
         if not close.get("native_unit_id"):
             raise SourceCasebookError("verified native unit identity missing")
+    elif state == "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ":
+        if (
+            date.fromisoformat(query["session_et"]).year != 2026
+            or query.get("protected_2026_native_read_forbidden") is not True
+            or close.get("protected_outcome_read_performed") is not False
+            or raw is not None
+            or close.get("raw_as_traded_open") is not None
+            or close.get("native_unit_id") is not None
+            or close.get("native_canonical_sha256") is not None
+        ):
+            raise SourceCasebookError("protected native CLOSE was read or mislabeled")
     elif raw is not None or close.get("raw_as_traded_open") is not None:
         raise SourceCasebookError("missing native source contains a claimed price")
     return {
@@ -128,6 +144,9 @@ def _native_close(
         "raw_as_traded_close": raw if state == "VERIFIED_NATIVE_RAW_EOD_CLOSE" else None,
         "native_unit_id": close.get("native_unit_id"),
         "native_canonical_sha256": close.get("native_canonical_sha256"),
+        "protected_2026_native_read_withheld": (
+            state == "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ"
+        ),
         "actual_close_observation_timestamp_unavailable": True,
     }
 
@@ -220,16 +239,23 @@ def build_verified_source_casebook(
         if later is not None and (entry is None or later["session_et"] <= entry["session_et"]):
             raise SourceCasebookError("option observation chronology changed")
         if entry and later and stock_entry and stock_later:
-            status = SOURCE_PAIR if (
-                stock_entry["status"] == stock_later["status"] == "VERIFIED_NATIVE_RAW_EOD_CLOSE"
-            ) else STOCK_GAP
+            native_states = {stock_entry["status"], stock_later["status"]}
+            if "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ" in native_states:
+                status = PROTECTED_2026_WITHHELD
+            elif stock_entry["status"] == stock_later["status"] == "VERIFIED_NATIVE_RAW_EOD_CLOSE":
+                status = SOURCE_PAIR
+            else:
+                status = STOCK_GAP
         else:
             status = NO_PAIR
-        if (status == SOURCE_PAIR) != (
-            need["status"] == "QUOTE_SOURCE_AVAILABLE_NATIVE_RAW_EOD_CLOSE_NOT_YET_VERIFIED"
-            and stock_entry is not None and stock_later is not None
-            and stock_entry["status"] == stock_later["status"] == "VERIFIED_NATIVE_RAW_EOD_CLOSE"
-        ):
+        expected_need = (
+            "OPTION_SOURCE_PAIR_REQUIRES_PROTECTED_2026_NATIVE_CLOSE_WITHHELD"
+            if status == PROTECTED_2026_WITHHELD
+            else "QUOTE_SOURCE_AVAILABLE_NATIVE_RAW_EOD_CLOSE_NOT_YET_VERIFIED"
+            if status in {SOURCE_PAIR, STOCK_GAP}
+            else "NO_LATER_TWO_SIDED_SOURCE_PAIR"
+        )
+        if need["status"] != expected_need:
             raise SourceCasebookError("frozen quote/native source classification changed")
         by_year[year][status] += 1
         rows.append({
@@ -281,8 +307,13 @@ def build_verified_source_casebook(
         "original_case_denominator": expected_original_cases,
         "original_right_memberships": right_count,
         "selected_case_right_memberships": handoff["selected_case_right_memberships"],
-        "two_later_option_source_rights": counts[SOURCE_PAIR] + counts[STOCK_GAP],
+        "two_later_option_source_rights": (
+            counts[SOURCE_PAIR] + counts[STOCK_GAP] + counts[PROTECTED_2026_WITHHELD]
+        ),
         "dated_option_and_stock_source_rights": counts[SOURCE_PAIR],
+        "protected_2026_native_close_withheld_rights": counts[
+            PROTECTED_2026_WITHHELD
+        ],
         "by_status": dict(sorted(counts.items())),
         "by_year": {
             str(year): dict(sorted(by_year[str(year)].items()))
