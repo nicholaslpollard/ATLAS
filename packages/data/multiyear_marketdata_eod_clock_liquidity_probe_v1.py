@@ -169,18 +169,26 @@ def _decode_snapshot_rows(
     return rows
 
 
-def _mark_key(mark: dict[str, Any]) -> tuple[str, str, str, str]:
+def _mark_key(mark: dict[str, Any]) -> tuple[str, str, Decimal, Decimal]:
+    bid = _number(mark["source_bid_per_share_not_fill"], "proof bid", allow_zero=False)
+    ask = _number(mark["source_ask_per_share_not_fill"], "proof ask", allow_zero=False)
+    if bid is None or ask is None:
+        raise MarketDataEodClockProbeError("proof mark lost two-sided price")
     return (
         mark["session_et"],
         mark["provider_updated_at_utc_not_publication_proof"],
-        mark["source_bid_per_share_not_fill"],
-        mark["source_ask_per_share_not_fill"],
+        bid,
+        ask,
     )
 
 
-def _decoded_key(row: dict[str, Any]) -> tuple[str, str, str, str]:
+def _decoded_key(row: dict[str, Any]) -> tuple[str, str, Decimal, Decimal]:
+    bid = _number(row["bid"], "decoded bid", allow_zero=False)
+    ask = _number(row["ask"], "decoded ask", allow_zero=False)
+    if bid is None or ask is None:
+        raise MarketDataEodClockProbeError("decoded proof row lost two-sided price")
     return (
-        row["session_et"], row["updated_at_utc"], row["bid"], row["ask"],
+        row["session_et"], row["updated_at_utc"], bid, ask,
     )
 
 
