@@ -167,6 +167,8 @@ def fixture(*, put_underlying=True, put_sizes=True, put_volume=True):
             "ticker": "TEST",
             "instrument_id": "TEST",
             "option_symbol": symbol,
+            "quote_source_request_identity": req["request_identity"],
+            "quote_source_body_sha256": sha_by_id[req["request_identity"]],
             "source_join_status": "PAIRED_DATED_SOURCE_ONLY_UNSYNCHRONIZED",
         })
         source_sha = sha_by_id[req["request_identity"]]
@@ -333,6 +335,27 @@ def test_probe_fails_if_proof_physical_source_provenance_changes():
     with pytest.raises(
         MarketDataEodClockProbeError,
         match="physical quote provenance changed",
+    ):
+        build_marketdata_eod_clock_liquidity_probe(
+            plan, handoff, casebook, proof,
+            read_verified_body=reader,
+            expected_original_cases=1,
+        )
+
+
+def test_probe_fails_if_casebook_physical_source_provenance_changes():
+    plan, handoff, casebook, proof, reader = fixture()
+    casebook["rows"][0]["quote_source_body_sha256"] = "e" * 64
+    casebook["casebook_fingerprint"] = _fingerprint({
+        k: v for k, v in casebook.items() if k != "casebook_fingerprint"
+    })
+    proof["casebook_fingerprint"] = casebook["casebook_fingerprint"]
+    proof["proof_demand_fingerprint"] = _fingerprint({
+        k: v for k, v in proof.items() if k != "proof_demand_fingerprint"
+    })
+    with pytest.raises(
+        MarketDataEodClockProbeError,
+        match="casebook physical quote provenance changed",
     ):
         build_marketdata_eod_clock_liquidity_probe(
             plan, handoff, casebook, proof,
