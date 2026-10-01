@@ -145,15 +145,21 @@ def test_requested_units_only_and_immutable_source(monkeypatch, tmp_path):
         m.persist_native_eod_closes(settings, out)
 
 
-def test_protected_2026_request_fails_before_native_read(monkeypatch, tmp_path):
+def test_2026_request_without_explicit_protected_flag_fails_before_native_read(
+    monkeypatch, tmp_path,
+):
     native, demand = _source(monkeypatch)
     demand["requests"][0]["session_et"] = "2026-03-03"
-    demand = _signed({k: v for k, v in demand.items() if k != "demand_fingerprint"},
-                     "demand_fingerprint")
-    monkeypatch.setattr(m, "_accepted_native_plan",
-                        lambda *_: pytest.fail("must not read 2026 native source"))
+    demand = _signed(
+        {k: v for k, v in demand.items() if k != "demand_fingerprint"},
+        "demand_fingerprint",
+    )
+    monkeypatch.setattr(
+        m, "_accepted_native_plan",
+        lambda *_: pytest.fail("must not inspect native source for malformed 2026 request"),
+    )
     settings = SimpleNamespace(assert_external_storage_binding=lambda c: None)
-    with pytest.raises(m.NativeEodCloseError, match="protected"):
+    with pytest.raises(m.NativeEodCloseError, match="classification"):
         m.resolve_native_eod_closes(settings, native, demand)
 
 
