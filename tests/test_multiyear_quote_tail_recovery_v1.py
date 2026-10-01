@@ -9,6 +9,7 @@ from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.multiyear_demand_quote_cache_v1 import CONTRACT as QUOTE_CONTRACT
 from packages.data.multiyear_quote_tail_recovery_v1 import (
     build_recovery_overlay, build_tail_recovery_plan,
+    discover_covering_recovery_requests,
     persist_recovery_overlay, persist_tail_recovery_plan,
 )
 
@@ -278,3 +279,109 @@ def test_selected_ineligible_memberships_are_not_mistaken_for_pending_physical_q
     assert recovery["original_stale_queries"] == 0
     assert recovery["requests"] == []
     assert recovery["provider_requests"] == 0
+
+
+def test_next_reset_day_reuses_verified_prior_covering_tail_without_new_query(tmp_path):
+    plan, census, old_id, _ = inputs()
+    sep30 = build_tail_recovery_plan(
+        plan, census,
+        asof_utc=datetime(2026, 9, 30, 15, 0, tzinfo=UTC),
+    )
+    rid = sep30["requests"][0]["request_identity"]
+    recovered_census = signed({
+        "contract": QUOTE_CONTRACT,
+        "plan_fingerprint": sep30["plan_fingerprint"],
+        "status": "ALL_ELIGIBLE_SOURCE_QUERIES_ACCOUNTED",
+        "original_requested_case_denominator": 2,
+        "unique_physical_quote_queries": 1,
+        "ineligible_original_cases": 0,
+        "reused_original_2022": 0,
+        "new_cache_complete": 1,
+        "exact_source_gaps": 0,
+        "pending": 0,
+        "rolling_floor_stale_pending": 0,
+        "current_paid_rolling_floor_et": None,
+        "new_provider_attempts": 0,
+        "observed_credits": 0,
+        "last_observed_provider_remaining": None,
+        "provider_read_authority_only_not_strategy_or_pnl": True,
+        "source_entries": [{
+            "request_identity": rid,
+            "status": "COMPLETE_SOURCE_ONLY",
+            "body_sha256": "d" * 64,
+            "cached_observed_rows": 7,
+        }],
+    }, "report_fingerprint")
+    overlay = build_recovery_overlay(plan, sep30, recovered_census)
+    settings = SimpleNamespace(
+        resolved_path=lambda p: tmp_path / p,
+        assert_external_storage_binding=lambda c:
+            None if c == "options" else pytest.fail("wrong storage category"),
+    )
+    persist_recovery_overlay(settings, overlay)
+
+    covering = discover_covering_recovery_requests(
+        settings, plan,
+        asof_utc=datetime(2026, 10, 1, 15, 0, tzinfo=UTC),
+    )
+    assert covering[old_id]["request_identity"] == rid
+    assert covering[old_id]["from_inclusive"] == "2021-09-30"
+    assert covering[old_id]["to_exclusive"] == "2021-10-16"
+    assert covering[old_id]["quote_body_sha256"] == "d" * 64
+
+    oct1 = build_tail_recovery_plan(
+        plan, census,
+        asof_utc=datetime(2026, 10, 1, 15, 0, tzinfo=UTC),
+        covering_recoveries=covering,
+    )
+    assert oct1["rolling_five_year_floor"] == "2021-10-01"
+    assert oct1["distinct_recovery_queries"] == 1
+    assert oct1["reused_covering_recovery_original_requests"] == 1
+    assert oct1["reused_covering_recovery_queries"] == 1
+    assert oct1["new_current_floor_recovery_queries"] == 0
+    request = oct1["requests"][0]
+    assert request["request_identity"] == rid
+    assert request["from_inclusive"] == "2021-09-30"
+    assert request["verified_covering_body_sha256"] == "d" * 64
+    assert request["covering_recovery_overlay_fingerprints"] == [
+        overlay["overlay_fingerprint"]
+    ]
+
+
+def test_next_reset_day_without_covering_source_uses_current_floor_query():
+    plan, census, _, _ = inputs()
+    oct1 = build_tail_recovery_plan(
+        plan, census,
+        asof_utc=datetime(2026, 10, 1, 15, 0, tzinfo=UTC),
+    )
+    assert oct1["requests"][0]["from_inclusive"] == "2021-10-01"
+    assert oct1["reused_covering_recovery_queries"] == 0
+    assert oct1["new_current_floor_recovery_queries"] == 1
+
+
+def test_reused_covering_tail_body_sha_must_match_prior_signed_overlay():
+    plan, census, _, _ = inputs()
+    sep30 = build_tail_recovery_plan(
+        plan, census,
+        asof_utc=datetime(2026, 9, 30, 15, 0, tzinfo=UTC),
+    )
+    rid = sep30["requests"][0]["request_identity"]
+    sep30["requests"][0]["verified_covering_body_sha256"] = "d" * 64
+    sep30["requests"][0]["covering_recovery_overlay_fingerprints"] = ["e" * 64]
+    sep30["plan_fingerprint"] = _fingerprint({
+        k: v for k, v in sep30.items() if k != "plan_fingerprint"
+    })
+    changed_census = signed({
+        "plan_fingerprint": sep30["plan_fingerprint"],
+        "status": "ALL_ELIGIBLE_SOURCE_QUERIES_ACCOUNTED",
+        "new_provider_attempts": 0,
+        "observed_credits": 0,
+        "source_entries": [{
+            "request_identity": rid,
+            "status": "COMPLETE_SOURCE_ONLY",
+            "body_sha256": "f" * 64,
+            "cached_observed_rows": 7,
+        }],
+    }, "report_fingerprint")
+    with pytest.raises(ValueError, match="no longer matches"):
+        build_recovery_overlay(plan, sep30, changed_census)
