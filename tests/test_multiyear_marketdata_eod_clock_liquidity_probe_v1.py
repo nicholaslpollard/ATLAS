@@ -272,7 +272,8 @@ def test_probe_projects_same_row_clock_liquidity_and_preexpiry_without_trade_aut
     )
     assert out["dated_pair_work_items"] == 2
     assert out["unique_verified_physical_histories_decoded"] == 2
-    assert out["documented_same_row_clock_candidates"] == 2
+    assert out["documented_same_row_snapshot_candidates"] == 2
+    assert out["documented_historical_eod_clock_shape_candidates"] == 2
     assert out["entry_exit_positive_size_and_volume_candidates"] == 2
     assert out["forced_pre_expiry_exit_candidates"] == 2
     assert out["exact_1600_et_entry_and_exit_snapshots"] == 2
@@ -303,7 +304,8 @@ def test_probe_retains_missing_same_row_or_liquidity_fields_as_explicit_gap():
         read_verified_body=reader,
         expected_original_cases=1,
     )
-    assert out["documented_same_row_clock_candidates"] == 1
+    assert out["documented_same_row_snapshot_candidates"] == 1
+    assert out["documented_historical_eod_clock_shape_candidates"] == 1
     assert out["entry_exit_positive_size_and_volume_candidates"] == 1
     assert out["clock_liquidity_preexpiry_source_shape_candidates"] == 1
     put = next(row for row in out["rows"] if row["right"] == "put")
