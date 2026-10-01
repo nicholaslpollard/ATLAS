@@ -211,6 +211,24 @@ def main() -> int:
             f"carry_physical_queries={base_plan['unique_physical_quote_queries']}",
             flush=True,
         )
+        print("  stage=VALIDATE_CURRENT_SELECTION_EXTENDS_CARRY_ZERO_GET", flush=True)
+        current_selection_pre_chain = build_local_bridge(settings, right="both")
+        pre_chain_plan = build_additive_quote_plan(
+            base_selection,
+            base_plan,
+            current_selection_pre_chain,
+            asof_utc=at,
+            last_completed_session=last_complete,
+        )
+        print(
+            f"    current_selected_case_rights="
+            f"{current_selection_pre_chain['selected_case_right_memberships']} "
+            f"unplanned_selected_case_rights="
+            f"{current_selection_pre_chain['selected_case_right_memberships'] - base_selection['selected_case_right_memberships']} "
+            f"pre_chain_plan_fingerprint={pre_chain_plan['plan_fingerprint']}",
+            flush=True,
+        )
+
         spent = 0
         provider_remaining: int | None = None
 
