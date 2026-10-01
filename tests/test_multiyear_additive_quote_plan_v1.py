@@ -294,6 +294,20 @@ def test_newly_selected_2021_contract_outside_current_floor_is_retained_without_
     assert out["added_physical_quote_queries"] == 0
     assert out["unique_physical_quote_queries"] == 1
 
+    # Once frozen as an explicit source gap, a later reset day must carry the
+    # selected identity forward without inventing a newly clipped request.
+    carried = build_additive_quote_plan(
+        after, out, after,
+        asof_utc=datetime(2026, 10, 1, 15, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 30),
+        expected_original_cases=2,
+    )
+    assert carried == out
+    carried_member = next(
+        x for x in carried["memberships"] if x["case_id"] == "two:P"
+    )
+    assert carried_member["request_identity"] is None
+
 
 def test_additive_plan_is_stable_across_same_et_day_restarts():
     old = selected(
