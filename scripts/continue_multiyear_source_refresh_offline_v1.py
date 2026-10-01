@@ -304,8 +304,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"    execution_proof_demand={pps} / {pp}", flush=True)
         print(f"    eod_clock_liquidity_probe={eps} / {ep}", flush=True)
         print(
-            f"    eod_same_row_clock_candidates="
-            f"{eod_probe['documented_same_row_clock_candidates']} "
+            f"    eod_same_row_snapshot_candidates="
+            f"{eod_probe['documented_same_row_snapshot_candidates']} "
+            f"eod_historical_clock_shape_candidates="
+            f"{eod_probe['documented_historical_eod_clock_shape_candidates']} "
             f"eod_positive_size_volume_candidates="
             f"{eod_probe['entry_exit_positive_size_and_volume_candidates']} "
             f"eod_clock_liquidity_preexpiry_source_shape_candidates="
