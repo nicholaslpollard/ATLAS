@@ -5086,3 +5086,14 @@ This sequencing is designed to convert daily credits into new **PIT contract cov
 
 
 The rebuilt quote plan remains pinned to the original accepted planning as-of and last-completed-session values, so the research population cannot drift merely because the provider rolling window advances. Newly stale exact windows are handled only through separately signed clipped-tail recovery requests using the current entitlement floor.
+
+
+### 2026-09-30 — Repository-root `.env` runtime credential contract
+
+ATLAS workstation commands use the **repository-root `.env`** as the persistent local credential/configuration source. `packages/core/settings.py::load_settings(...)` calls `load_dotenv(ROOT / ".env", override=False)`; therefore scripts must load ATLAS settings **before** reading provider variables with `os.getenv(...)`. A normal operator run from the repository must not require a separate PowerShell `$env:` export when the credential is already present in the root `.env`.
+
+This contract includes `MARKETDATA_TOKEN` for MarketData.app historical-options acquisition and `ATLAS_EXTERNAL_DATA_ROOT` for the secondary-data binding, alongside the other provider variables documented by `.env.example`. Real secrets remain local and ignored by git. Process-environment values may intentionally override `.env` because dotenv is loaded with `override=False`, but absence from the current shell is **not** evidence that the root `.env` lacks the value until `load_settings()` has run.
+
+The reset-day multi-source orchestrator previously checked `MARKETDATA_TOKEN` before calling `load_settings()`, causing a false “not configured” stop even though the token existed in the root `.env`. That ordering defect is now regression-tested. Future orchestration/provider scripts must preserve: **find repository root -> load settings/root dotenv -> resolve credential -> perform explicit paid authorization checks -> provider access**.
+
+Handoff/review rule for future ATLAS sessions: current code and the normative `README.md` + `docs/roadmap.md` must be reviewed before proposing workstation commands. Configuration assumptions, current merged acquisition state, D:-binding policy, immutable evidence rules, provider-credit controls and simulator authority gates must be taken from those sources rather than reconstructed from shell state or guessed defaults.
