@@ -94,6 +94,7 @@ def discover_covering_recovery_requests(
                 continue
             try:
                 original_start = date.fromisoformat(original["from_inclusive"])
+                original_end = date.fromisoformat(original["to_exclusive"])
                 source_start = date.fromisoformat(row["source_from_inclusive"])
                 source_end = date.fromisoformat(row["source_to_exclusive"])
             except (KeyError, TypeError, ValueError) as exc:
@@ -101,7 +102,7 @@ def discover_covering_recovery_requests(
             if (
                 row.get("option_symbol") != original.get("option_symbol")
                 or row.get("source_to_exclusive") != original.get("to_exclusive")
-                or source_end != date.fromisoformat(original["to_exclusive"])
+                or source_end != original_end
                 or not original_start < source_start <= floor < source_end
                 or row.get("missing_original_prefix_is_not_reconstructed") is not True
             ):
