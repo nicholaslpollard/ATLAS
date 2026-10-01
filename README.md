@@ -5172,3 +5172,52 @@ PIT chain coverage. Do not use the old default chain-heavy reserve simply becaus
 new daily credit balance is available. The additive sweep remains the sole paid
 orchestration path; completed September 30 receipts and prior clipped bodies must be
 reused before any new GET.
+
+### 2026-10-01 — Reset-day additive quote lineage must carry forward, never re-freeze from root
+
+PR #298 closed one cross-day cache inefficiency by allowing an already verified
+prior clipped-tail body to cover a later narrower entitlement suffix. A subsequent
+pre-paid review found a broader orchestration defect that must be closed before the
+October 1 provider reset is used.
+
+`build_additive_quote_plan` already preserves every exact request/window supplied by
+its base plan. The reset-day orchestrator, however, still supplied the original
+September 27 7,788-selection / 6,622-query root on every day. The accepted September
+30 additive head contains 20,364 selected case/right memberships and 17,348 physical
+exact histories. Rebuilding all 12,576 non-root selections from the September 27 root
+on October 1 would apply the newer 2021-10-01 rolling floor to them again. Floor-
+sensitive 2021 requests could therefore be reclassified or receive new exact request
+identities even though September 30 receipts already exist. This violates the
+additive contract's immutable-window intent and risks duplicate provider spending.
+
+The repaired reset-day path now discovers the unique signed additive lineage rooted
+at the frozen September 27 selection/plan. Each child must bind the exact parent plan
+fingerprint and the exact selection represented by that parent; the referenced
+expanded-selection artifact is signature-checked and the child plan is revalidated
+against it. Parent counts, exact request membership, selection extension and planning
+day chronology are checked at every hop. A fork, missing selection, broken parent
+link, signature drift or cycle fails closed. Unrelated/orphan manifests are not
+selected by modification time or performance.
+
+Before any paid stage, the orchestrator also rebuilds the current PIT selection
+locally and proves it is a valid extension of the discovered carry-forward head. The
+carry-forward plan—not the September 27 root—is then used for cache census and tail
+recovery. After new chain acquisition, only genuinely new selected case/rights are
+added; all prior exact request identities and windows remain byte-for-byte inherited.
+The offline continuation entry point follows the same chained lineage, so a later
+zero-provider resume no longer assumes every acquisition-day plan is a direct child
+of September 27.
+
+For the current workstation state, the expected carry-forward head before new October
+1 acquisition is the accepted September 30 plan fingerprint
+`90f940b2bf167a9451a3d569286ee2fc065c776a2e8df12edf9bef7e02bcbc03`,
+with **17,348 physical exact histories**, **7,314 new-cache complete**, **2,235
+accepted 2022 reused**, **0 exact gaps** and **7,799 pending**. The prior 487 clipped
+tails remain reusable under PR #298. No historical fill/P&L, common-clock,
+deliverable, strategy, PAPER or LIVE authority changes.
+
+After exact-head CI and merge of this carry-forward repair, the next paid reset-day
+run should spend from that lineage head and bias the daily budget toward the existing
+7,799 exact-history backlog while retaining only bounded new PIT chain acquisition.
+Do not run the paid reset-day sweep from a revision that still rebuilds additive
+demand from the September 27 root.
