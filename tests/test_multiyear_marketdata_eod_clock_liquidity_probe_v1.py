@@ -11,6 +11,8 @@ from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.multiyear_demand_quote_cache_v1 import CONTRACT as QUOTE_CONTRACT
 from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
     MarketDataEodClockProbeError,
+    _decode_snapshot_rows,
+    _decoded_key,
     build_marketdata_eod_clock_liquidity_probe,
 )
 from packages.data.multiyear_option_quote_reuse_handoff_v1 import (
@@ -403,3 +405,28 @@ def test_probe_requires_exact_1600_for_historical_eod_clock_shape():
         is False
     )
     assert put["status"] == "EOD_SNAPSHOT_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"
+
+
+def test_probe_index_preserves_unrelated_one_sided_physical_rows():
+    symbol = "TEST220318C00100000"
+    ticket = request(symbol)
+    raw = json.dumps({
+        "s": "ok",
+        "optionSymbol": [symbol, symbol, symbol],
+        "updated": [
+            stamp("2022-03-02T16:00:00-05:00"),
+            stamp("2022-03-03T16:00:00-05:00"),
+            stamp("2022-03-04T16:00:00-05:00"),
+        ],
+        "bid": [0, 1.00, 1.20],
+        "ask": [0.20, 1.10, 1.30],
+        "bidSize": [0, 4, 5],
+        "askSize": [1, 3, 4],
+        "volume": [0, 25, 30],
+        "underlyingPrice": [99.50, 100.25, 101.50],
+    }, sort_keys=True).encode("utf-8")
+    rows = _decode_snapshot_rows(raw, ticket, 3)
+    assert rows[0]["two_sided"] is False
+    assert _decoded_key(rows[0])[2] == 0
+    assert rows[1]["two_sided"] is True
+    assert rows[2]["two_sided"] is True
