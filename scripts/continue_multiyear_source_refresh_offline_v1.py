@@ -80,12 +80,14 @@ def _find_additive_plan(
     acquisition_day_et: date,
     *,
     root_plan_path: Path | None = None,
+    expected_original_cases: int = 14902,
 ) -> tuple[Path, dict[str, Any]]:
     lineage = discover_additive_quote_lineage(
         settings,
         root_selection,
         root_plan,
         root_plan_path=root_plan_path,
+        expected_original_cases=expected_original_cases,
     )
     matches = [
         node for node in lineage[1:]
