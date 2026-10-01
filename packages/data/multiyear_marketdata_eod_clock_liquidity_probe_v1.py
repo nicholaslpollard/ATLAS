@@ -360,10 +360,15 @@ def build_marketdata_eod_clock_liquidity_probe(
         exit_mark = _project_mark(exit_row, side="exit")
         expiry = _expiry(proof["option_symbol"])
 
-        same_row_clock = (
+        same_row_snapshot = (
             entry["documented_same_row_stock_option_snapshot"]
             and exit_mark["documented_same_row_stock_option_snapshot"]
         )
+        exact_1600 = (
+            entry["updated_is_1600_et"]
+            and exit_mark["updated_is_1600_et"]
+        )
+        historical_eod_clock_shape = same_row_snapshot and exact_1600
         quote_side_liquidity = (
             entry["positive_displayed_size"]
             and exit_mark["positive_displayed_size"]
@@ -371,9 +376,10 @@ def build_marketdata_eod_clock_liquidity_probe(
             and exit_mark["positive_reported_volume"]
         )
         pre_expiry_exit = date.fromisoformat(exit_mark["session_et"]) < expiry
-        exact_1600 = entry["updated_is_1600_et"] and exit_mark["updated_is_1600_et"]
         source_shape_candidate = (
-            same_row_clock and quote_side_liquidity and pre_expiry_exit
+            historical_eod_clock_shape
+            and quote_side_liquidity
+            and pre_expiry_exit
         )
 
         status = (
@@ -384,7 +390,8 @@ def build_marketdata_eod_clock_liquidity_probe(
         year = proof["year"]
         by_year[year][status] += 1
         counts[status] += 1
-        counts["DOCUMENTED_SAME_ROW_CLOCK"] += same_row_clock
+        counts["DOCUMENTED_SAME_ROW_SNAPSHOT"] += same_row_snapshot
+        counts["DOCUMENTED_HISTORICAL_EOD_CLOCK_SHAPE"] += historical_eod_clock_shape
         counts["ENTRY_EXIT_POSITIVE_SIZE_AND_VOLUME"] += quote_side_liquidity
         counts["FORCED_EXIT_STRICTLY_BEFORE_EXPIRY"] += pre_expiry_exit
         counts["BOTH_UPDATED_EXACTLY_1600_ET"] += exact_1600
@@ -401,7 +408,9 @@ def build_marketdata_eod_clock_liquidity_probe(
             "entry": entry,
             "exit": exit_mark,
             "expiration": expiry.isoformat(),
-            "provider_documented_same_row_snapshot_clock_candidate": same_row_clock,
+            "provider_documented_same_row_snapshot_candidate": same_row_snapshot,
+            "provider_documented_historical_eod_clock_shape_candidate":
+                historical_eod_clock_shape,
             "option_quote_publication_or_retrieval_availability_verified": False,
             "matched_executable_stock_option_clock_verified": False,
             "conservative_one_contract_quote_side_liquidity_candidate":
@@ -440,8 +449,10 @@ def build_marketdata_eod_clock_liquidity_probe(
         "original_right_memberships": expected_original_cases * 2,
         "dated_pair_work_items": len(output_rows),
         "unique_verified_physical_histories_decoded": len(decoded),
-        "documented_same_row_clock_candidates":
-            counts["DOCUMENTED_SAME_ROW_CLOCK"],
+        "documented_same_row_snapshot_candidates":
+            counts["DOCUMENTED_SAME_ROW_SNAPSHOT"],
+        "documented_historical_eod_clock_shape_candidates":
+            counts["DOCUMENTED_HISTORICAL_EOD_CLOCK_SHAPE"],
         "entry_exit_positive_size_and_volume_candidates":
             counts["ENTRY_EXIT_POSITIVE_SIZE_AND_VOLUME"],
         "forced_pre_expiry_exit_candidates":
