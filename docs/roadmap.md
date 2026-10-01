@@ -5664,3 +5664,44 @@ run should spend from that lineage head and bias the daily budget toward the exi
 7,799 exact-history backlog while retaining only bounded new PIT chain acquisition.
 Do not run the paid reset-day sweep from a revision that still rebuilds additive
 demand from the September 27 root.
+
+### 2026-10-01 — Exact-history closeout and EOD snapshot/liquidity proof probe
+
+The accepted reset-day source run completed without error at **7,297 observed
+MarketData credits**, with the last provider header reporting **2,703 remaining**.
+The final source partition contains **13,511 complete demand-cache exact histories +
+2,235 reused accepted 2022 histories + 1,602 complete clipped recovery histories =
+17,348 physical histories**, with zero exact/recovery source gaps. The 1,602 original
+exact identities still shown as pending are rolling-floor-stale identities, not
+missing source: the current recovery overlay covers all 1,602 (487 reused prior
+covering bodies + 1,115 current-floor recovery bodies).
+
+The refreshed casebook now contains **20,040 dated stock+option source rights**:
+2,635 in 2021, 5,302 in 2022, 3,077 in 2023, 2,535 in 2024 and 6,491 in 2025.
+Another 54 2025 rights require protected 2026 native closes and remain withheld.
+Historical executable option trades remain **0** and historical account P&L remains
+NULL.
+
+Current MarketData documentation was re-reviewed on 2026-10-01. It documents
+`updated` as the option quote snapshot timestamp and `underlyingPrice` as the last
+underlying-security price at the time of that quote; historical bid/ask/volume/
+underlyingPrice fields are documented as EOD values as of the row's updated time.
+ATLAS previously preserved those raw fields but intentionally did not project
+`underlyingPrice` into the derived timeline.
+
+A new zero-provider V1 probe therefore reopens only SHA-verified accepted quote
+bodies and measures same-row EOD stock/option snapshot shape, displayed bid/ask
+size, reported volume and strict pre-expiry exit availability. The probe also freezes
+the existing conservative one-contract entry-at-ask / exit-at-bid plus $1.30
+round-trip fee policy for diagnostic use. It **does not** treat provider snapshot
+time as independent proof of historical publication/retrieval availability, does not
+verify deliverable/multiplier, and admits no trade or P&L. These remain explicit
+execution-proof blockers.
+
+The reset-day and zero-provider continuation orchestrators now emit this probe
+automatically after execution-proof demand. For the already-completed October 1 run,
+run the standalone zero-provider probe against the exact
+`multiyear_historical_execution_proof_demand_v1_52a4830956f00c4d.json` artifact
+after this change is merged. Do not spend the remaining 2,703 MarketData credits
+merely to repeat source that is already complete; use them only if the new evidence
+census identifies genuinely missing provider source that MarketData can supply.

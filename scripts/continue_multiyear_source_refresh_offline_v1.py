@@ -31,8 +31,12 @@ from packages.data.multiyear_native_eod_close_source_v1 import (
     persist_native_eod_closes, resolve_native_eod_closes,
 )
 from packages.data.multiyear_observed_option_quote_timeline_v1 import (
-    build_observed_option_timeline, local_verified_quote_reader,
-    persist_observed_option_timeline,
+    build_observed_option_timeline, local_verified_quote_body_reader,
+    local_verified_quote_reader, persist_observed_option_timeline,
+)
+from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
+    build_marketdata_eod_clock_liquidity_probe,
+    persist_marketdata_eod_clock_liquidity_probe,
 )
 from packages.data.multiyear_option_quote_bridge_v1 import (
     NATIVE_REL, build_local_bridge, write_local_bridge,
@@ -283,9 +287,33 @@ def main(argv: list[str] | None = None) -> int:
         ap, aps = persist_replay_readiness(settings, readiness)
         proof = build_execution_proof_demand(casebook, readiness)
         pp, pps = persist_execution_proof_demand(settings, proof)
+        eod_probe = build_marketdata_eod_clock_liquidity_probe(
+            plan,
+            handoff,
+            casebook,
+            proof,
+            read_verified_body=local_verified_quote_body_reader(
+                settings, plan
+            ),
+        )
+        ep, eps = persist_marketdata_eod_clock_liquidity_probe(
+            settings, eod_probe
+        )
         print(f"    casebook={bps} / {bp}", flush=True)
         print(f"    replay_readiness={aps} / {ap}", flush=True)
         print(f"    execution_proof_demand={pps} / {pp}", flush=True)
+        print(f"    eod_clock_liquidity_probe={eps} / {ep}", flush=True)
+        print(
+            f"    eod_same_row_snapshot_candidates="
+            f"{eod_probe['documented_same_row_snapshot_candidates']} "
+            f"eod_historical_clock_shape_candidates="
+            f"{eod_probe['documented_historical_eod_clock_shape_candidates']} "
+            f"eod_positive_size_volume_candidates="
+            f"{eod_probe['entry_exit_positive_size_and_volume_candidates']} "
+            f"eod_clock_liquidity_preexpiry_source_shape_candidates="
+            f"{eod_probe['clock_liquidity_preexpiry_source_shape_candidates']}",
+            flush=True,
+        )
         print(
             f"    dated_option_and_stock_source_rights="
             f"{casebook['dated_option_and_stock_source_rights']} "

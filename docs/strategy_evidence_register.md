@@ -981,3 +981,18 @@ One future offline operator step after merge (from ATLAS repository root) audits
 ~~~
 
 Next real-source integration: independently qualify option/publication and native underlying clock, verified historical deliverable/multiplier, source-proven entry/exit side plus cost/expiry policy; then add a receipt-bound historical adapter to the account kernel. Do not report the synthetic smoke P&L as historical performance or use same-date (unsynchronized) data as exact-minute execution. Paid exact-history acquisition remains a separate user-authorized, credit-capped preparation stage, not a hidden replay fallback.
+
+### 2026-10-01 — Multiyear option source expansion does not change strategy evidence status
+
+The October 1 multiyear option-source refresh increased dated stock+option source
+coverage to 20,040 case/right rows and closed the currently recoverable physical EOD
+quote-history corpus, but this remains source infrastructure rather than strategy
+evidence. No historical option trade is admitted and no option/account P&L is
+authorized.
+
+The new MarketData EOD snapshot/liquidity probe is likewise diagnostic source
+evidence only. Provider documentation can support interpretation of `updated` and
+same-row `underlyingPrice` as a historical EOD snapshot shape, but independent
+publication/retrieval availability and point-in-time deliverable/multiplier proof
+remain unresolved. No strategy state, promotion gate, PAPER eligibility, LIVE
+eligibility, or prior negative/parked strategy conclusion changes.
