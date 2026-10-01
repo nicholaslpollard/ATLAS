@@ -305,6 +305,13 @@ def build_marketdata_eod_clock_liquidity_probe(
 
         source_id = slot["quote_source_request_identity"]
         body_sha = slot["quote_body_sha256"]
+        if (
+            source_case.get("quote_source_request_identity") != source_id
+            or source_case.get("quote_source_body_sha256") != body_sha
+        ):
+            raise MarketDataEodClockProbeError(
+                "casebook physical quote provenance changed"
+            )
         for mark in (proof["entry_source"], proof["later_source"]):
             if (
                 mark.get("physical_quote_body_sha256") != body_sha
@@ -333,9 +340,12 @@ def build_marketdata_eod_clock_liquidity_probe(
                 )
             decoded[source_id] = index
             decoded_body_sha[source_id] = body_sha
-        elif decoded_body_sha[source_id] != body_sha:
+        elif (
+            decoded_body_sha[source_id] != body_sha
+            or len(decoded[source_id]) != slot.get("observed_quote_rows")
+        ):
             raise MarketDataEodClockProbeError(
-                "same physical source identity changed body SHA"
+                "same physical source identity changed body SHA or row count"
             )
 
         entry_key = _mark_key(proof["entry_source"])
