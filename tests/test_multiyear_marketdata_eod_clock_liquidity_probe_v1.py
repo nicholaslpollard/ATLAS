@@ -67,14 +67,17 @@ def request(symbol: str):
     }
 
 
-def mark(symbol: str, session: str, updated: str, bid: str, ask: str):
+def mark(
+    symbol: str, session: str, updated: str, bid: str, ask: str, *,
+    body_sha: str, request_identity: str,
+):
     return {
         "stage": "ENTRY_SOURCE_NOT_EXECUTION",
         "option_observation_identity": "o" * 64,
         "session_et": session,
         "option_symbol": symbol,
-        "physical_quote_body_sha256": "x" * 64,
-        "quote_request_identity": "q" * 64,
+        "physical_quote_body_sha256": body_sha,
+        "quote_request_identity": request_identity,
         "provider_updated_at_utc_not_publication_proof":
             datetime.fromisoformat(updated).astimezone(
                 ZoneInfo("UTC")
@@ -166,13 +169,18 @@ def fixture(*, put_underlying=True, put_sizes=True, put_volume=True):
             "option_symbol": symbol,
             "source_join_status": "PAIRED_DATED_SOURCE_ONLY_UNSYNCHRONIZED",
         })
+        source_sha = sha_by_id[req["request_identity"]]
         entry = mark(
             symbol, "2022-03-03", "2022-03-03T16:00:00-05:00",
             "1.0", "1.1",
+            body_sha=source_sha,
+            request_identity=req["request_identity"],
         )
         later = mark(
             symbol, "2022-03-04", "2022-03-04T16:00:00-05:00",
             "1.2", "1.3",
+            body_sha=source_sha,
+            request_identity=req["request_identity"],
         )
         later["stage"] = "LATER_SOURCE_NOT_EXIT_EXECUTION"
         proof_rows.append({
@@ -309,6 +317,23 @@ def test_probe_fails_if_proof_mark_no_longer_matches_verified_body():
         k: v for k, v in proof.items() if k != "proof_demand_fingerprint"
     })
     with pytest.raises(MarketDataEodClockProbeError, match="no longer matches"):
+        build_marketdata_eod_clock_liquidity_probe(
+            plan, handoff, casebook, proof,
+            read_verified_body=reader,
+            expected_original_cases=1,
+        )
+
+
+def test_probe_fails_if_proof_physical_source_provenance_changes():
+    plan, handoff, casebook, proof, reader = fixture()
+    proof["rows"][0]["entry_source"]["physical_quote_body_sha256"] = "f" * 64
+    proof["proof_demand_fingerprint"] = _fingerprint({
+        k: v for k, v in proof.items() if k != "proof_demand_fingerprint"
+    })
+    with pytest.raises(
+        MarketDataEodClockProbeError,
+        match="physical quote provenance changed",
+    ):
         build_marketdata_eod_clock_liquidity_probe(
             plan, handoff, casebook, proof,
             read_verified_body=reader,
