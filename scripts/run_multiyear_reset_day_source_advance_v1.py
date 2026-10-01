@@ -44,6 +44,17 @@ ORIGINAL_PLAN = Path(
 )
 
 
+def _load_runtime():
+    """Load the repository-root .env before resolving provider credentials."""
+    settings = load_settings(ROOT, "development")
+    token = os.getenv("MARKETDATA_TOKEN", "").strip()
+    if not token:
+        raise ValueError(
+            "MARKETDATA_TOKEN is not configured in the ATLAS root .env or process environment"
+        )
+    return settings, token
+
+
 def _remaining_after(
     asserted: int, observed_remaining: object, observed_credits: object,
 ) -> int:
@@ -119,6 +130,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--confirm-private-internal-use", action="store_true")
     a = p.parse_args(argv)
 
+    print("ATLAS RESET-DAY MULTI-SOURCE ADVANCE V1 — SUPERSEDED", flush=True)
+    print(
+        "  No provider call is permitted from this entrypoint. Use "
+        "scripts/run_multiyear_reset_day_source_sweep_v1.py, which preserves "
+        "accepted exact quote windows and adds only newly PIT-selectable demand.",
+        flush=True,
+    )
+    return 3
+
     print("ATLAS RESET-DAY MULTI-SOURCE ADVANCE V1", flush=True)
     print(
         "  Order: current exact cache -> clipped 2021 tails -> PIT chains -> "
@@ -146,11 +166,7 @@ def main(argv: list[str] | None = None) -> int:
             and a.confirm_private_internal_use
         ):
             raise ValueError("all three provider authorization confirmations required")
-        token = os.getenv("MARKETDATA_TOKEN", "").strip()
-        if not token:
-            raise ValueError("MARKETDATA_TOKEN is not configured")
-
-        settings = load_settings(ROOT, "development")
+        settings, token = _load_runtime()
         settings.assert_external_storage_binding("options")
         original = _read_object(a.original_plan)
         remaining = a.user_asserted_daily_remaining

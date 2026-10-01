@@ -48,7 +48,17 @@ def make_inputs():
             ("b" * 64, put, ["one:P"]),
         )
     ]
-    plan = signed({"requests": reqs}, "plan_fingerprint")
+    memberships = [
+        {
+            "case_id": c["case_id"],
+            "request_identity": ("b" * 64 if c["right"] == "put" else "a" * 64),
+            "disposition": "SOURCE_DEMAND_READY",
+            "option_symbol": c["option_symbol"],
+            "ticker": "TEST",
+        }
+        for c in chosen
+    ]
+    plan = signed({"requests": reqs, "memberships": memberships}, "plan_fingerprint")
     slots = [
         dict(case_right_id=c, original_case_id=o, year="2022", right=side,
              source_selection_status="SELECTED_VERIFIED_PIT_CHAIN",
@@ -352,3 +362,44 @@ def test_clipped_recovery_cannot_claim_original_start_or_same_identity():
             selection, plan, handoff, read_verified_observations=lambda *_: records(),
             expected_original_cases=2,
         )
+
+
+def test_selected_contract_outside_quote_window_never_invokes_reader():
+    selection, plan, handoff = make_inputs()
+    target = next(x for x in handoff["rows"] if x["case_right_id"] == "one:P")
+    target["quote_history_status"] = "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+    target["quote_request_identity"] = None
+    target["quote_source_request_identity"] = None
+    target["quote_body_sha256"] = None
+    target["observed_quote_rows"] = None
+    handoff["unique_quote_queries"] = 1
+    handoff = signed(
+        {k: v for k, v in handoff.items() if k != "handoff_fingerprint"} |
+        {"reused_original_2022_queries": 1},
+        "handoff_fingerprint",
+    )
+    plan["requests"] = [x for x in plan["requests"]
+                        if x["request_identity"] != "b" * 64]
+    member = next(x for x in plan["memberships"] if x["case_id"] == "one:P")
+    member["request_identity"] = None
+    member["disposition"] = "ORIGINAL_DECISION_OUTSIDE_STARTER_FIVE_YEAR_WINDOW"
+    plan = signed(
+        {k: v for k, v in plan.items() if k != "plan_fingerprint"},
+        "plan_fingerprint",
+    )
+    handoff = signed(
+        {k: v for k, v in handoff.items() if k != "handoff_fingerprint"} |
+        {"quote_plan_fingerprint": plan["plan_fingerprint"]},
+        "handoff_fingerprint",
+    )
+    calls = []
+    out = build_observed_option_timeline(
+        selection, plan, handoff,
+        read_verified_observations=lambda *args: calls.append(args) or records(),
+        expected_original_cases=2,
+    )
+    assert len(calls) == 1
+    row = next(x for x in out["rows"] if x["case_right_id"] == "one:P")
+    assert row["timeline_status"] == "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+    assert row["first_later_observed_quote"] is None
+    assert out["account_pnl_authority"] is False
