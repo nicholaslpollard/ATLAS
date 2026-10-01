@@ -23,7 +23,9 @@ if str(ROOT) not in sys.path:
 
 from packages.core.settings import load_settings
 from packages.data.marketdata_candidate_expansion_v1 import _read_object
-from packages.data.multiyear_additive_quote_plan_v1 import CONTRACT as ADDITIVE_CONTRACT
+from packages.data.multiyear_additive_quote_plan_v1 import (
+    CONTRACT as ADDITIVE_CONTRACT, discover_additive_quote_lineage,
+)
 from packages.data.multiyear_demand_quote_cache_v1 import run_demand_cache
 from packages.data.multiyear_native_eod_close_source_v1 import (
     persist_native_eod_closes, resolve_native_eod_closes,
@@ -52,6 +54,10 @@ from packages.simulation.multiyear_historical_execution_requirements_v1 import (
     build_execution_proof_demand, persist_execution_proof_demand,
 )
 
+BASE_SELECTION = Path(
+    "data/options/manifests/"
+    "multiyear_pit_selected_option_quotes_v1_3fa478312734f9c2.json"
+)
 BASE_PLAN = Path(
     "data/options/manifests/"
     "multiyear_demand_quote_v1_dbe759955e48946b.json"
@@ -67,42 +73,37 @@ def _manifest_root(settings) -> Path:
 
 
 def _find_additive_plan(
-    settings, base_plan: dict[str, Any], selection: dict[str, Any],
+    settings,
+    root_selection: dict[str, Any],
+    root_plan: dict[str, Any],
+    selection: dict[str, Any],
     acquisition_day_et: date,
+    *,
+    root_plan_path: Path | None = None,
 ) -> tuple[Path, dict[str, Any]]:
-    matches: list[tuple[Path, dict[str, Any]]] = []
-    for path in sorted(_manifest_root(settings).glob("multiyear_demand_quote_v1_*.json")):
-        try:
-            doc = _read_object(path)
-            if (
-                doc.get("additive_contract") != ADDITIVE_CONTRACT
-                or doc.get("base_quote_plan_fingerprint")
-                    != base_plan["plan_fingerprint"]
-                or doc.get("expanded_selection_fingerprint")
-                    != selection["selection_fingerprint"]
-                or doc.get("additive_planning_day_et")
-                    != acquisition_day_et.isoformat()
-            ):
-                continue
-            _check_signature(doc, "plan_fingerprint")
-        except (OSError, ValueError, TypeError, KeyError):
-            continue
-        if (
-            doc.get("status") != "SOURCE_DEMAND_FROZEN_NO_PROVIDER_READS"
-            or doc.get("provider_requests") != 0
-            or doc.get("strategy_authority") is not False
-            or doc.get("historical_fill_or_pnl_authority") is not False
-            or doc.get("prior_selected_contracts_changed") != 0
-            or doc.get("base_exact_windows_preserved") is not True
-        ):
-            raise OfflineContinuationError("matching additive plan authority changed")
-        matches.append((path, doc))
+    lineage = discover_additive_quote_lineage(
+        settings,
+        root_selection,
+        root_plan,
+        root_plan_path=root_plan_path,
+    )
+    matches = [
+        node for node in lineage[1:]
+        if node.plan.get("additive_contract") == ADDITIVE_CONTRACT
+        and node.plan.get("expanded_selection_fingerprint")
+            == selection["selection_fingerprint"]
+        and node.plan.get("additive_planning_day_et")
+            == acquisition_day_et.isoformat()
+    ]
     if len(matches) != 1:
         raise OfflineContinuationError(
             f"expected exactly one additive plan for {acquisition_day_et.isoformat()}, "
             f"found {len(matches)}"
         )
-    return matches[0]
+    node = matches[0]
+    if node.plan_path is None:
+        raise OfflineContinuationError("matching additive plan path is unavailable")
+    return node.plan_path, node.plan
 
 
 def _find_recovery_overlay(
@@ -149,6 +150,7 @@ def main(argv: list[str] | None = None) -> int:
         "--acquisition-day-et", type=date.fromisoformat, required=True,
         help="ET calendar day of the paid additive sweep, e.g. 2026-09-30",
     )
+    parser.add_argument("--base-selection", type=Path, default=BASE_SELECTION)
     parser.add_argument("--base-plan", type=Path, default=BASE_PLAN)
     parser.add_argument("--native-workers", type=int, default=4)
     args = parser.parse_args(argv)
@@ -163,8 +165,10 @@ def main(argv: list[str] | None = None) -> int:
             raise OfflineContinuationError("native workers must remain within 1..4")
         settings = load_settings(ROOT, "development")
         settings.assert_external_storage_binding("options")
-        base_plan = _read_object(args.base_plan)
-        _check_signature(base_plan, "plan_fingerprint")
+        root_selection = _read_object(args.base_selection)
+        root_plan = _read_object(args.base_plan)
+        _check_signature(root_selection, "selection_fingerprint")
+        _check_signature(root_plan, "plan_fingerprint")
 
         print("  stage=REBUILD_CURRENT_PIT_SELECTION_ZERO_GET", flush=True)
         selection = build_local_bridge(settings, right="both")
@@ -178,7 +182,12 @@ def main(argv: list[str] | None = None) -> int:
 
         print("  stage=DISCOVER_EXACT_ACQUISITION_DAY_ADDITIVE_PLAN", flush=True)
         plan_path, plan = _find_additive_plan(
-            settings, base_plan, selection, args.acquisition_day_et,
+            settings,
+            root_selection,
+            root_plan,
+            selection,
+            args.acquisition_day_et,
+            root_plan_path=args.base_plan,
         )
         print(f"    additive_plan={plan_path}", flush=True)
         print(f"    additive_plan_fingerprint={plan['plan_fingerprint']}", flush=True)
