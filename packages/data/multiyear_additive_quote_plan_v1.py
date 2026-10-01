@@ -128,18 +128,37 @@ def _validate_base_plan(
             )
         ):
             raise AdditiveQuotePlanError("base exact request fingerprint/membership changed")
+    nonrequest_dispositions = {
+        "ORIGINAL_DECISION_OUTSIDE_STARTER_FIVE_YEAR_WINDOW",
+        "ORIGINAL_DECISION_AFTER_LAST_COMPLETED_SESSION",
+        "NO_CLOSED_SOURCE_PERIOD",
+    }
     for case_id, member in by_mem.items():
         chosen = selected[case_id]
-        request = by_req.get(member.get("request_identity"))
         if (
-            request is None
-            or member.get("disposition") != "SOURCE_DEMAND_READY"
-            or member.get("option_symbol") != chosen.get("option_symbol")
+            member.get("option_symbol") != chosen.get("option_symbol")
             or member.get("ticker") != chosen.get("ticker")
-            or request.get("option_symbol") != chosen.get("option_symbol")
-            or case_id not in request.get("member_case_ids", [])
         ):
             raise AdditiveQuotePlanError("base selected contract/request mapping changed")
+        disposition = member.get("disposition")
+        identity = member.get("request_identity")
+        if disposition == "SOURCE_DEMAND_READY":
+            request = by_req.get(identity)
+            if (
+                request is None
+                or request.get("option_symbol") != chosen.get("option_symbol")
+                or case_id not in request.get("member_case_ids", [])
+            ):
+                raise AdditiveQuotePlanError(
+                    "base selected contract/request mapping changed"
+                )
+        elif (
+            disposition not in nonrequest_dispositions
+            or identity is not None
+        ):
+            raise AdditiveQuotePlanError(
+                "base selected source-gap disposition/request mapping changed"
+            )
     return by_req, by_mem
 
 
