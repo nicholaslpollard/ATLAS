@@ -42,3 +42,28 @@ One cumulative daily credit ceiling spans: (1) verified clipped-tail recovery fo
 After paid source work, the same command rebuilds the clipped-source overlay, full 29,804-right handoff, observed option timelines, targeted native raw daily CLOSE evidence, source casebook, account-readiness census and execution-proof demand with **zero further provider GETs**. Native stock stays on C:, options/news/evidence remain on the D:-bound secondary storage. Historical option P&L remains NULL; provider EOD quote timestamps are not 09:35/publication proof, native daily CLOSE is not a synchronized option clock, and deliverable/multiplier, executable liquidity/cost and expiry/exercise/assignment proof remain required.
 
 For future ATLAS review sessions, do **not** resume from the older reset-day advance command. Review current `main`, this section, the repository-root `.env` credential contract, the latest operator output, and use the additive sweep as the sole reset-day multiyear paid orchestration path unless a later merged living-document revision explicitly replaces it.
+
+
+### 2026-09-30 — Additive reset-day paid acquisition completed; offline native-2026 boundary repair
+
+The first authoritative additive reset-day sweep completed its **paid acquisition stages** and then stopped only in the zero-provider native-stock verification stage. Operator output recorded:
+
+- cumulative observed MarketData credits: **9,999**;
+- last provider remaining header: **1**;
+- verified clipped 2021 recovery overlay: **487 complete / 0 gaps / 0 pending**;
+- additive exact quote cache after the run: **7,314 complete**, **2,235 reused accepted 2022 histories**, **0 exact source gaps**, **7,799 still pending**;
+- the paid exact-quote stage ended cleanly at provider remaining 1 and persisted every completed body/attempt/receipt before the later offline stop.
+
+**Do not rerun the paid sweep to recover from the subsequent error.** Those credits and source receipts are already retained on D:.
+
+The later stop was:
+
+`NativeEodCloseError: protected/adjusted native request cannot be read`.
+
+Root cause: newly available 2025 option contracts can have first/next retained option-source observations in early **2026**. The accepted native-stock contract intentionally forbids opening 2026 stock outcomes. The original native-close resolver treated the presence of such a request as a fatal malformed demand instead of recording the protected boundary as an explicit source disposition.
+
+The repaired contract now keeps an exact 2026 native CLOSE request in lineage but labels it `PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ`. No 2026 native stock unit, Parquet row, return, open or close is read. Pre-2026 native requests continue through SHA/checkpoint-verified local source reads. The source casebook exposes `OPTION_SOURCE_DATES_PRESENT_PROTECTED_2026_NATIVE_CLOSE_WITHHELD`, and replay readiness exposes `PROTECTED_2026_NATIVE_CLOSE_WITHHELD`; neither is an executable trade or an inferred price gap. `protected_2026_outcomes_read` remains zero.
+
+The deterministic recovery command is now `scripts/continue_multiyear_source_refresh_offline_v1.py --acquisition-day-et 2026-09-30`. It performs **zero provider GETs**. It reconstructs the current PIT selection from local chain receipts, discovers exactly one additive quote plan bound to the accepted base-plan fingerprint + current selection fingerprint + September 30 acquisition day, discovers exactly one matching signed recovery overlay, verifies local quote receipts, then resumes handoff -> option timeline -> native CLOSE source -> casebook -> readiness -> execution-proof demand. If artifact lineage is ambiguous, it fails closed instead of choosing by modification time or performance.
+
+Future ATLAS handoffs must preserve this distinction: the September 30 paid work is complete evidence acquisition, while the native-2026 repair is an offline source-classification fix. Remaining 7,799 exact quote histories are future acquisition work after another provider reset; they are not a reason to repeat already completed September 30 requests.
