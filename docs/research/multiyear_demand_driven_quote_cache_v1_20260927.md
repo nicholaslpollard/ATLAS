@@ -94,3 +94,30 @@ After merge, the next paid reset should prioritize the 7,799 already-selected ex
 histories while retaining only a bounded chain budget. Completed September 30 quote,
 chain and recovery receipts must be reused; no paid request is repeated merely because
 the Eastern rolling floor advanced.
+
+### 2026-10-01 — Carry the signed additive head across reset days
+
+Cross-day clipped-tail reuse is necessary but not sufficient. The reset-day
+orchestrator must also carry forward the latest accepted additive quote plan itself.
+The additive planner preserves exact prior windows only relative to the plan it is
+given as its base. Reusing the original September 27 root every day would cause all
+later selections to be frozen again under the new rolling floor, changing some 2021
+request identities and defeating exact-cache reuse.
+
+The reset-day path now discovers one unique signed parent→child additive lineage from
+the frozen root. Every hop requires exact parent-plan fingerprint, exact base-selection
+fingerprint, signed referenced expanded selection, unchanged prior selected contract
+fields, exact request membership/count reconciliation and non-backward planning-day
+chronology. Forks, cycles, missing selection artifacts or broken links fail closed.
+
+The latest lineage head is used for the initial exact-cache census and clipped-tail
+recovery. A local current-selection rebuild is validated against that head before any
+provider work. After the bounded chain stage, only selections absent from the head are
+newly planned under the current floor. Existing request identities/windows are copied
+forward unchanged. The offline continuation uses the same lineage chain.
+
+For the current October 1 handoff the expected pre-acquisition head is September 30
+`90f940b2bf167a9451a3d569286ee2fc065c776a2e8df12edf9bef7e02bcbc03`
+(17,348 physical exact queries; 7,314 new-cache complete; 2,235 reused accepted
+2022; 0 exact gaps; 7,799 pending). Do not spend October 1 credits from a build that
+reconstructs those non-root selections from the September 27 base.
