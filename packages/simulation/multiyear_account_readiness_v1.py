@@ -17,6 +17,7 @@ from packages.data.multiyear_demand_quote_cache_v1 import _write_new
 from packages.data.multiyear_option_quote_reuse_handoff_v1 import _check_signature
 from packages.data.multiyear_verified_stock_option_source_casebook_v1 import (
     CONTRACT as CASEBOOK_CONTRACT, SOURCE_PAIR, STOCK_GAP, NO_PAIR,
+    PROTECTED_2026_WITHHELD,
 )
 
 CONTRACT = "atlas-multiyear-account-replay-source-readiness-v1"
@@ -87,6 +88,23 @@ def build_replay_readiness(
             blocker = "SOURCE_DATES_PAIRED_BUT_CLOCK_DELIVERABLE_AND_FILL_UNPROVEN"
         elif status == STOCK_GAP:
             blocker = "EXACT_NATIVE_DAILY_PRICE_GAP"
+        elif status == PROTECTED_2026_WITHHELD:
+            if (
+                not row.get("first_later_option_source")
+                or not row.get("next_later_option_source")
+                or not row.get("entry_session_native_source")
+                or not row.get("next_session_native_source")
+                or not any(
+                    x.get("status")
+                    == "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ"
+                    for x in (
+                        row["entry_session_native_source"],
+                        row["next_session_native_source"],
+                    )
+                )
+            ):
+                raise AccountReadinessError("protected 2026 native withholding changed")
+            blocker = "PROTECTED_2026_NATIVE_CLOSE_WITHHELD"
         elif status == NO_PAIR:
             if row["option_symbol"] is None:
                 blocker = "NO_PIT_SELECTED_CONTRACT"
