@@ -155,3 +155,57 @@ def test_protected_2026_request_fails_before_native_read(monkeypatch, tmp_path):
     settings = SimpleNamespace(assert_external_storage_binding=lambda c: None)
     with pytest.raises(m.NativeEodCloseError, match="protected"):
         m.resolve_native_eod_closes(settings, native, demand)
+
+
+def test_protected_2026_native_request_is_withheld_without_read(monkeypatch, tmp_path):
+    native, demand = _source(monkeypatch)
+    demand["requests"][0]["session_et"] = "2026-01-02"
+    demand["requests"][0]["protected_2026_native_read_forbidden"] = True
+    demand = _signed(
+        {k: v for k, v in demand.items() if k != "demand_fingerprint"},
+        "demand_fingerprint",
+    )
+    record = {"unit_id": "u1", "year": 2022, "symbols": ["TEST"]}
+    def plan_reader(settings, source, pairs):
+        assert pairs == {("TEST", date(2022, 3, 7))}
+        return [record], {
+            "native_acceptance_fingerprint": "a" * 64,
+            "native_plan_sha256": "b" * 64,
+        }, SimpleNamespace()
+    monkeypatch.setattr(m, "_accepted_native_plan", plan_reader)
+    calls = []
+    def reader(r, layout, items):
+        calls.extend(x["session_et"] for x in items)
+        return [{
+            "request_identity": x["request_identity"],
+            "instrument_id": x["instrument_id"],
+            "ticker": x["ticker"],
+            "session_et": x["session_et"],
+            "status": "VERIFIED_NATIVE_RAW_EOD_CLOSE",
+            "raw_as_traded_open": "100",
+            "raw_as_traded_close": "101",
+            "native_unit_id": r["unit_id"],
+            "native_canonical_sha256": "c" * 64,
+            "option_clock_match_proven": False,
+            "historical_fill_proven": False,
+        } for x in items], {
+            "native_unit_id": r["unit_id"],
+            "native_canonical_sha256": "c" * 64,
+        }
+    settings = SimpleNamespace(
+        resolved_path=lambda p: tmp_path / p,
+        assert_external_storage_binding=lambda c:
+            None if c == "options" else pytest.fail("wrong binding"),
+    )
+    out = m.resolve_native_eod_closes(
+        settings, native, demand, workers=2, unit_reader=reader,
+    )
+    assert calls == ["2022-03-07"]
+    protected = next(x for x in out["rows"] if x["session_et"] == "2026-01-02")
+    assert protected["status"] == "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ"
+    assert protected["raw_as_traded_open"] is None
+    assert protected["raw_as_traded_close"] is None
+    assert protected["native_unit_id"] is None
+    assert protected["protected_outcome_read_performed"] is False
+    assert out["protected_2026_native_closes_withheld"] == 1
+    assert out["protected_2026_outcomes_read"] == 0
