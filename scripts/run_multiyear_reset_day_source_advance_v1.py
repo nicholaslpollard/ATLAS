@@ -130,6 +130,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--confirm-private-internal-use", action="store_true")
     a = p.parse_args(argv)
 
+    print("ATLAS RESET-DAY MULTI-SOURCE ADVANCE V1 — SUPERSEDED", flush=True)
+    print(
+        "  No provider call is permitted from this entrypoint. Use "
+        "scripts/run_multiyear_reset_day_source_sweep_v1.py, which preserves "
+        "accepted exact quote windows and adds only newly PIT-selectable demand.",
+        flush=True,
+    )
+    return 3
+
     print("ATLAS RESET-DAY MULTI-SOURCE ADVANCE V1", flush=True)
     print(
         "  Order: current exact cache -> clipped 2021 tails -> PIT chains -> "
