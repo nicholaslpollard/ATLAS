@@ -112,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
             "  "
             f"dated_pair_work_items={report['dated_pair_work_items']} "
             f"unique_histories_decoded={report['unique_verified_physical_histories_decoded']} "
-            f"same_row_clock_candidates={report['documented_same_row_clock_candidates']} "
+            f"same_row_snapshot_candidates={report['documented_same_row_snapshot_candidates']} "\n            f"historical_eod_clock_shape_candidates="\n            f"{report['documented_historical_eod_clock_shape_candidates']} "
             f"positive_size_and_volume_candidates="
             f"{report['entry_exit_positive_size_and_volume_candidates']} "
             f"forced_pre_expiry_exit_candidates="
