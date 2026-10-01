@@ -177,8 +177,11 @@ def resolve_native_eod_closes(
     readable = [
         x for x in needed if date.fromisoformat(x["session_et"]).year <= 2025
     ]
-    pairs = {(x["ticker"], date.fromisoformat(x["session_et"])) for x in readable}
-    if len(query_ids) != len(needed) or len(pairs) != len(needed):
+    all_pairs = {(x["ticker"], date.fromisoformat(x["session_et"])) for x in needed}
+    readable_pairs = {
+        (x["ticker"], date.fromisoformat(x["session_et"])) for x in readable
+    }
+    if len(query_ids) != len(needed) or len(all_pairs) != len(needed):
         raise NativeEodCloseError("duplicate or ambiguous exact native CLOSE request")
     if any(
         x["stock_close_has_not_been_read"] is not True
@@ -193,9 +196,11 @@ def resolve_native_eod_closes(
     source_report = native.get("accepted_native_source")
     if not isinstance(source_report, dict):
         raise NativeEodCloseError("original accepted native source provenance missing")
-    records, accepted, layout = _accepted_native_plan(settings, source_report, pairs)
+    records, accepted, layout = _accepted_native_plan(
+        settings, source_report, readable_pairs
+    )
     by_pair = {}
-    sought = {(ticker, day.year) for ticker, day in pairs}
+    sought = {(ticker, day.year) for ticker, day in readable_pairs}
     for record in records:
         for symbol in record["symbols"]:
             key = (str(symbol), int(record["year"]))
@@ -204,7 +209,7 @@ def resolve_native_eod_closes(
                     raise NativeEodCloseError("same symbol/year has ambiguous native units")
                 by_pair[key] = record
     groups: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]] = {}
-    for item in needed:
+    for item in readable:
         unit = by_pair.get((item["ticker"], date.fromisoformat(item["session_et"]).year))
         if unit is None:
             raise NativeEodCloseError("native acquisition plan lacks exact ticker/year unit")
