@@ -15,7 +15,7 @@ same-row stock/option clock and conservative quote-side liquidity evidence.
 Deliverable/multiplier proof remains explicitly absent.
 """
 
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 import json
@@ -29,9 +29,6 @@ from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.marketdata_candidate_expansion_v1 import _read_object
 from packages.data.multiyear_demand_quote_cache_v1 import (
     CONTRACT as QUOTE_CONTRACT, _write_new,
-)
-from packages.data.multiyear_observed_option_quote_timeline_v1 import (
-    local_verified_quote_body_reader,
 )
 from packages.data.multiyear_option_quote_reuse_handoff_v1 import (
     CONTRACT as HANDOFF_CONTRACT, _check_signature,
@@ -308,6 +305,15 @@ def build_marketdata_eod_clock_liquidity_probe(
 
         source_id = slot["quote_source_request_identity"]
         body_sha = slot["quote_body_sha256"]
+        for mark in (proof["entry_source"], proof["later_source"]):
+            if (
+                mark.get("physical_quote_body_sha256") != body_sha
+                or mark.get("quote_request_identity") != source_id
+                or mark.get("option_symbol") != proof["option_symbol"]
+            ):
+                raise MarketDataEodClockProbeError(
+                    "proof-demand physical quote provenance changed"
+                )
         if source_id not in decoded:
             source_ticket, raw, receipt = read_verified_body(request, slot)
             if (
