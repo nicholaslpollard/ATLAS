@@ -9,6 +9,7 @@ window. This prevents paid churn and keeps old 2021 source lineage auditable.
 """
 
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, time as dt_time
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from packages.data.multiyear_demand_quote_cache_v1 import (
 )
 from packages.data.multiyear_option_quote_bridge_v1 import (
     CONTRACT as SELECTION_CONTRACT,
+    OUTPUT_REL as SELECTION_OUTPUT_REL,
 )
 
 CONTRACT = "atlas-multiyear-additive-option-quote-demand-v1"
@@ -30,6 +32,14 @@ EASTERN = ZoneInfo("America/New_York")
 
 class AdditiveQuotePlanError(ValueError):
     pass
+
+
+@dataclass(frozen=True, slots=True)
+class AdditiveLineageNode:
+    plan_path: Path | None
+    plan: dict[str, Any]
+    selection_path: Path | None
+    selection: dict[str, Any]
 
 
 def _signed(value: dict[str, Any], field: str) -> None:
@@ -143,23 +153,23 @@ _STABLE_CASE_FIELDS = (
 )
 
 
-def build_additive_quote_plan(
+def _validate_selection_extension(
     base_selection: dict[str, Any],
-    base_plan: dict[str, Any],
     expanded_selection: dict[str, Any],
     *,
-    asof_utc: datetime,
-    last_completed_session: date,
-    expected_original_cases: int = 14902,
-) -> dict[str, Any]:
-    """Preserve every base exact query and add demand only for newly selected slots."""
+    expected_original_cases: int,
+) -> tuple[
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+]:
     old, old_coverage = _index_selection(
         base_selection, expected_original_cases=expected_original_cases,
     )
     expanded, expanded_coverage = _index_selection(
         expanded_selection, expected_original_cases=expected_original_cases,
     )
-    base_requests, base_members = _validate_base_plan(base_plan, old)
     if set(old) - set(expanded):
         raise AdditiveQuotePlanError("previously selected PIT contract disappeared")
     if set(old_coverage) != set(expanded_coverage):
@@ -176,6 +186,177 @@ def build_additive_quote_plan(
             or before.get("status") != after.get("status")
         ):
             raise AdditiveQuotePlanError("previous selected coverage row changed")
+    return old, old_coverage, expanded, expanded_coverage
+
+
+def discover_additive_quote_lineage(
+    settings: AtlasSettings,
+    root_selection: dict[str, Any],
+    root_plan: dict[str, Any],
+    *,
+    root_plan_path: Path | None = None,
+    expected_original_cases: int = 14902,
+) -> list[AdditiveLineageNode]:
+    """Return the unique signed carry-forward chain rooted at the frozen base plan.
+
+    Every child must extend the exact parent plan and the exact selection that parent
+    represents. A fork, missing referenced selection, signature drift or broken parent
+    link fails closed. Unrelated/orphan manifests are ignored.
+    """
+    settings.assert_external_storage_binding("options")
+    root_selected, _ = _index_selection(
+        root_selection, expected_original_cases=expected_original_cases,
+    )
+    _validate_base_plan(root_plan, root_selected)
+
+    manifest_root = settings.resolved_path("data/options/manifests")
+    if not manifest_root.is_dir():
+        raise AdditiveQuotePlanError("options manifest directory is unavailable")
+
+    plan_prefix = Path(PLAN_REL).name + "_"
+    docs_by_fp: dict[str, tuple[Path, dict[str, Any]]] = {}
+    for path in sorted(manifest_root.glob(plan_prefix + "*.json")):
+        try:
+            doc = _read_object(path)
+        except (OSError, ValueError, TypeError):
+            continue
+        if doc.get("additive_contract") != CONTRACT:
+            continue
+        _signed(doc, "plan_fingerprint")
+        fp = doc["plan_fingerprint"]
+        if (
+            doc.get("contract") != QUOTE_CONTRACT
+            or doc.get("status") != "SOURCE_DEMAND_FROZEN_NO_PROVIDER_READS"
+            or doc.get("provider_requests") != 0
+            or doc.get("strategy_authority") is not False
+            or doc.get("historical_fill_or_pnl_authority") is not False
+            or doc.get("prior_selected_contracts_changed") != 0
+            or doc.get("base_exact_windows_preserved") is not True
+            or not isinstance(doc.get("base_quote_plan_fingerprint"), str)
+            or not isinstance(doc.get("base_selection_fingerprint"), str)
+            or not isinstance(doc.get("expanded_selection_fingerprint"), str)
+        ):
+            raise AdditiveQuotePlanError("additive plan authority/lineage changed")
+        prior = docs_by_fp.get(fp)
+        if prior is not None and prior[0] != path:
+            raise AdditiveQuotePlanError("duplicate additive plan fingerprint files")
+        docs_by_fp[fp] = (path, doc)
+
+    lineage = [
+        AdditiveLineageNode(
+            plan_path=root_plan_path,
+            plan=root_plan,
+            selection_path=None,
+            selection=root_selection,
+        )
+    ]
+    current_plan = root_plan
+    current_selection = root_selection
+    seen = {root_plan["plan_fingerprint"]}
+    previous_day: date | None = None
+
+    while True:
+        parent_fp = current_plan["plan_fingerprint"]
+        children_all = [
+            (path, doc)
+            for path, doc in docs_by_fp.values()
+            if doc.get("base_quote_plan_fingerprint") == parent_fp
+        ]
+        incompatible = [
+            doc for _, doc in children_all
+            if doc.get("base_selection_fingerprint")
+                != current_selection["selection_fingerprint"]
+        ]
+        if incompatible:
+            raise AdditiveQuotePlanError(
+                "additive child references parent plan with a different base selection"
+            )
+        children = [
+            (path, doc) for path, doc in children_all
+            if doc.get("base_selection_fingerprint")
+                == current_selection["selection_fingerprint"]
+        ]
+        if not children:
+            break
+        if len(children) != 1:
+            raise AdditiveQuotePlanError(
+                "ambiguous additive quote-plan lineage fork"
+            )
+        plan_path, child = children[0]
+        child_fp = child["plan_fingerprint"]
+        if child_fp in seen:
+            raise AdditiveQuotePlanError("additive quote-plan lineage cycle")
+        seen.add(child_fp)
+
+        selection_fp = child["expanded_selection_fingerprint"]
+        selection_path = settings.resolved_path(
+            f"{SELECTION_OUTPUT_REL}_{selection_fp[:16]}.json"
+        )
+        if not selection_path.is_file():
+            raise AdditiveQuotePlanError(
+                "additive plan referenced selection artifact is missing"
+            )
+        selection = _read_object(selection_path)
+        _signed(selection, "selection_fingerprint")
+        if selection["selection_fingerprint"] != selection_fp:
+            raise AdditiveQuotePlanError(
+                "additive plan referenced selection fingerprint changed"
+            )
+
+        old, _, expanded, _ = _validate_selection_extension(
+            current_selection,
+            selection,
+            expected_original_cases=expected_original_cases,
+        )
+        _validate_base_plan(child, expanded)
+        if (
+            child.get("preserved_selected_case_rights") != len(old)
+            or child.get("newly_selected_case_rights")
+                != len(expanded) - len(old)
+            or child.get("base_physical_quote_queries")
+                != current_plan.get("unique_physical_quote_queries")
+            or child.get("requested_case_denominator") != len(expanded)
+        ):
+            raise AdditiveQuotePlanError("additive plan carry-forward counts changed")
+
+        try:
+            child_day = date.fromisoformat(str(child["additive_planning_day_et"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise AdditiveQuotePlanError("invalid additive planning day") from exc
+        if previous_day is not None and child_day < previous_day:
+            raise AdditiveQuotePlanError("additive planning day moved backward")
+        previous_day = child_day
+
+        lineage.append(
+            AdditiveLineageNode(
+                plan_path=plan_path,
+                plan=child,
+                selection_path=selection_path,
+                selection=selection,
+            )
+        )
+        current_plan = child
+        current_selection = selection
+
+    return lineage
+
+
+def build_additive_quote_plan(
+    base_selection: dict[str, Any],
+    base_plan: dict[str, Any],
+    expanded_selection: dict[str, Any],
+    *,
+    asof_utc: datetime,
+    last_completed_session: date,
+    expected_original_cases: int = 14902,
+) -> dict[str, Any]:
+    """Preserve every base exact query and add demand only for newly selected slots."""
+    old, old_coverage, expanded, expanded_coverage = _validate_selection_extension(
+        base_selection,
+        expanded_selection,
+        expected_original_cases=expected_original_cases,
+    )
+    base_requests, base_members = _validate_base_plan(base_plan, old)
 
     new_ids = sorted(set(expanded) - set(old))
     if not new_ids:
