@@ -27,7 +27,8 @@ from packages.core.market_calendar import get_market_calendar
 from packages.core.settings import load_settings
 from packages.data.marketdata_candidate_expansion_v1 import _read_object
 from packages.data.multiyear_additive_quote_plan_v1 import (
-    build_additive_quote_plan, persist_additive_quote_plan,
+    build_additive_quote_plan, discover_additive_quote_lineage,
+    persist_additive_quote_plan,
 )
 from packages.data.multiyear_chain_campaign_v1 import (
     EASTERN as CHAIN_EASTERN,
@@ -188,12 +189,32 @@ def main() -> int:
         if live and not token.strip():
             raise ValueError("MARKETDATA_TOKEN is not configured in the ATLAS root .env or process environment")
 
-        base_selection = _read_object(args.base_selection)
-        base_plan = _read_object(args.base_plan)
+        root_selection = _read_object(args.base_selection)
+        root_plan = _read_object(args.base_plan)
+        lineage = discover_additive_quote_lineage(
+            settings,
+            root_selection,
+            root_plan,
+            root_plan_path=args.base_plan,
+        )
+        carry = lineage[-1]
+        base_selection = carry.selection
+        base_plan = carry.plan
+        base_plan_path = carry.plan_path or args.base_plan
+        print("  stage=DISCOVER_CARRY_FORWARD_ADDITIVE_LINEAGE_ZERO_GET", flush=True)
+        print(
+            f"    lineage_depth={len(lineage) - 1} "
+            f"carry_plan={base_plan_path} "
+            f"carry_plan_fingerprint={base_plan['plan_fingerprint']} "
+            f"carry_selected_case_rights="
+            f"{base_selection['selected_case_right_memberships']} "
+            f"carry_physical_queries={base_plan['unique_physical_quote_queries']}",
+            flush=True,
+        )
         spent = 0
         provider_remaining: int | None = None
 
-        print("  stage=BASE_EXACT_CACHE_CENSUS_ZERO_GET", flush=True)
+        print("  stage=CARRY_FORWARD_EXACT_CACHE_CENSUS_ZERO_GET", flush=True)
         base_census = run_demand_cache(
             settings, base_plan, progress=_progress("base_cache"),
         )
@@ -313,8 +334,8 @@ def main() -> int:
             asof_utc=at, last_completed_session=last_complete,
         )
         if additive["plan_fingerprint"] == base_plan["plan_fingerprint"]:
-            plan_path = args.base_plan
-            plan_action = "REUSED_UNCHANGED_BASE_QUOTE_PLAN"
+            plan_path = base_plan_path
+            plan_action = "REUSED_UNCHANGED_CARRY_FORWARD_QUOTE_PLAN"
         else:
             plan_path, plan_action = persist_additive_quote_plan(settings, additive)
         print(f"    expanded_selection={selection_action} / {selection_path}", flush=True)
