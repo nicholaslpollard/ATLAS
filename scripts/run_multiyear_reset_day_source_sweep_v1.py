@@ -54,6 +54,7 @@ from packages.data.multiyear_option_stock_eod_preflight_v1 import (
 )
 from packages.data.multiyear_quote_tail_recovery_v1 import (
     build_recovery_overlay, build_tail_recovery_plan,
+    discover_covering_recovery_requests,
     persist_recovery_overlay, persist_tail_recovery_plan,
 )
 from packages.data.multiyear_verified_stock_option_source_casebook_v1 import (
@@ -204,14 +205,20 @@ def main() -> int:
         )
 
         print("  stage=2021_CLIPPED_TAIL_RECOVERY", flush=True)
+        covering_recovery = discover_covering_recovery_requests(
+            settings, base_plan, asof_utc=at,
+        )
         recovery = build_tail_recovery_plan(
             base_plan, base_census, asof_utc=at,
+            covering_recoveries=covering_recovery,
         )
         rp, rps = persist_tail_recovery_plan(settings, recovery)
         print(
             f"    current_floor_et={recovery['rolling_five_year_floor']} "
             f"stale={recovery['original_stale_queries']} "
             f"recoverable={recovery['distinct_recovery_queries']} "
+            f"reused_prior_covering={recovery['reused_covering_recovery_queries']} "
+            f"new_current_floor={recovery['new_current_floor_recovery_queries']} "
             f"expired={recovery['expired_before_current_floor_queries']}",
             flush=True,
         )
@@ -378,10 +385,21 @@ def main() -> int:
             raise RuntimeError("cumulative observed credit ceiling exceeded")
 
         print("  stage=BUILD_CURRENT_RECOVERY_OVERLAY_ZERO_GET", flush=True)
+        current_covering_recovery = discover_covering_recovery_requests(
+            settings, additive, asof_utc=at,
+        )
         current_recovery = build_tail_recovery_plan(
             additive, expanded_census, asof_utc=at,
+            covering_recoveries=current_covering_recovery,
         )
         crp, crps = persist_tail_recovery_plan(settings, current_recovery)
+        print(
+            f"    recovery_reused_prior_covering="
+            f"{current_recovery['reused_covering_recovery_queries']} "
+            f"recovery_new_current_floor="
+            f"{current_recovery['new_current_floor_recovery_queries']}",
+            flush=True,
+        )
         current_recovery_census = run_demand_cache(settings, current_recovery)
         overlay = build_recovery_overlay(
             additive, current_recovery, current_recovery_census,
