@@ -67,3 +67,30 @@ The repaired contract now keeps an exact 2026 native CLOSE request in lineage bu
 The deterministic recovery command is now `scripts/continue_multiyear_source_refresh_offline_v1.py --acquisition-day-et 2026-09-30`. It performs **zero provider GETs**. It reconstructs the current PIT selection from local chain receipts, discovers exactly one additive quote plan bound to the accepted base-plan fingerprint + current selection fingerprint + September 30 acquisition day, discovers exactly one matching signed recovery overlay, verifies local quote receipts, then resumes handoff -> option timeline -> native CLOSE source -> casebook -> readiness -> execution-proof demand. If artifact lineage is ambiguous, it fails closed instead of choosing by modification time or performance.
 
 Future ATLAS handoffs must preserve this distinction: the September 30 paid work is complete evidence acquisition, while the native-2026 repair is an offline source-classification fix. Remaining 7,799 exact quote histories are future acquisition work after another provider reset; they are not a reason to repeat already completed September 30 requests.
+
+### 2026-10-01 — Cross-day clipped-tail cache reuse before the next paid reset
+
+The September 30 offline continuation closed successfully with zero provider GETs:
+17,348 physical exact histories are now in the additive plan, with 2,235 accepted
+2022 histories reused, 7,314 exact cache histories complete, zero exact quote gaps
+and 7,799 pending. The prior clipped-tail overlay remains 487/487 complete.
+
+A reset-day review identified a duplicate-spend risk: advancing the rolling entitlement
+floor by one day would create a new narrower clipped request even when yesterday's
+verified clipped body already covered that entire suffix. The recovery planner now
+discovers signed prior recovery overlays and reuses the broadest verified covering
+physical query for the same immutable original request. Reuse requires exact option
+symbol and end-date equality, prior start <= current floor, signed overlay provenance
+and the prior body SHA-256. The ordinary cache census re-verifies the physical
+receipt/body before reuse; SHA drift fails closed. A missing/corrupt prior body is not
+silently reacquired under the stale query identity.
+
+This is a cache/transport efficiency repair only. It does not make the unavailable
+original prefix complete, does not turn provider `updated` into publication proof,
+does not synchronize native stock CLOSE with option quotes, and creates no historical
+fill, deliverable, P&L, strategy, PAPER or LIVE authority.
+
+After merge, the next paid reset should prioritize the 7,799 already-selected exact
+histories while retaining only a bounded chain budget. Completed September 30 quote,
+chain and recovery receipts must be reused; no paid request is repeated merely because
+the Eastern rolling floor advanced.
