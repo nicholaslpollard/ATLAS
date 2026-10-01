@@ -44,6 +44,17 @@ ORIGINAL_PLAN = Path(
 )
 
 
+def _load_runtime():
+    """Load the repository-root .env before resolving provider credentials."""
+    settings = load_settings(ROOT, "development")
+    token = os.getenv("MARKETDATA_TOKEN", "").strip()
+    if not token:
+        raise ValueError(
+            "MARKETDATA_TOKEN is not configured in the ATLAS root .env or process environment"
+        )
+    return settings, token
+
+
 def _remaining_after(
     asserted: int, observed_remaining: object, observed_credits: object,
 ) -> int:
@@ -146,11 +157,7 @@ def main(argv: list[str] | None = None) -> int:
             and a.confirm_private_internal_use
         ):
             raise ValueError("all three provider authorization confirmations required")
-        token = os.getenv("MARKETDATA_TOKEN", "").strip()
-        if not token:
-            raise ValueError("MARKETDATA_TOKEN is not configured")
-
-        settings = load_settings(ROOT, "development")
+        settings, token = _load_runtime()
         settings.assert_external_storage_binding("options")
         original = _read_object(a.original_plan)
         remaining = a.user_asserted_daily_remaining
