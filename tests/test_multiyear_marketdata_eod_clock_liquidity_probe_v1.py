@@ -266,7 +266,9 @@ def test_probe_projects_same_row_clock_liquidity_and_preexpiry_without_trade_aut
     assert out["entry_exit_positive_size_and_volume_candidates"] == 2
     assert out["forced_pre_expiry_exit_candidates"] == 2
     assert out["exact_1600_et_entry_and_exit_snapshots"] == 2
-    assert out["non_deliverable_gates_candidate_pass"] == 2
+    assert out["clock_liquidity_preexpiry_source_shape_candidates"] == 2
+    assert out["option_quote_publication_or_retrieval_availability_verified"] == 0
+    assert out["matched_executable_stock_option_clock_verified"] == 0
     assert out["point_in_time_option_deliverable_and_multiplier_verified"] == 0
     assert out["historical_option_trades_admitted"] == 0
     assert out["historical_account_pnl"] is None
@@ -274,6 +276,8 @@ def test_probe_projects_same_row_clock_liquidity_and_preexpiry_without_trade_aut
     assert all(
         row["historical_trade_admitted"] is False
         and row["point_in_time_option_deliverable_and_multiplier_verified"] is False
+        and row["option_quote_publication_or_retrieval_availability_verified"] is False
+        and row["matched_executable_stock_option_clock_verified"] is False
         for row in out["rows"]
     )
 
@@ -291,9 +295,9 @@ def test_probe_retains_missing_same_row_or_liquidity_fields_as_explicit_gap():
     )
     assert out["documented_same_row_clock_candidates"] == 1
     assert out["entry_exit_positive_size_and_volume_candidates"] == 1
-    assert out["non_deliverable_gates_candidate_pass"] == 1
+    assert out["clock_liquidity_preexpiry_source_shape_candidates"] == 1
     put = next(row for row in out["rows"] if row["right"] == "put")
-    assert put["status"] == "EOD_CLOCK_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"
+    assert put["status"] == "EOD_SNAPSHOT_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"
     assert put["entry"]["underlying_price_same_snapshot"] is None
     assert put["historical_trade_admitted"] is False
 
