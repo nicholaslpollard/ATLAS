@@ -31,6 +31,7 @@ OUTPUT_REL = "data/options/derived/multiyear_option_stock_eod_source_needs_v1"
 EASTERN = ZoneInfo("America/New_York")
 PILOT_COUNT = 11
 NEEDS = "QUOTE_SOURCE_AVAILABLE_NATIVE_RAW_EOD_CLOSE_NOT_YET_VERIFIED"
+PROTECTED_2026 = "OPTION_SOURCE_PAIR_REQUIRES_PROTECTED_2026_NATIVE_CLOSE_WITHHELD"
 NO_TWO = "NO_LATER_TWO_SIDED_SOURCE_PAIR"
 
 
@@ -107,6 +108,7 @@ def build_native_eod_needs(
             ("next", item["next_later_observed_quote"]),
         ]
         marks = {}
+        protected_roles = {"entry": False, "next": False}
         for role, quote in observations:
             if quote is None:
                 marks[role] = None
@@ -131,6 +133,8 @@ def build_native_eod_needs(
                 "session_et": day.isoformat(),
             }
             identity = _fingerprint({"contract": CONTRACT, "native_query": query})
+            protected = day.year == 2026
+            protected_roles[role] = protected
             request = requests.setdefault(identity, {
                 "request_identity": identity,
                 **query,
@@ -138,7 +142,10 @@ def build_native_eod_needs(
                 "option_source_updates_utc": [],
                 "required_native_field": "RAW_AS_TRADED_1DAY_REGULAR_CLOSE",
                 "stock_close_has_not_been_read": True,
+                "protected_2026_native_read_forbidden": protected,
             })
+            if request["protected_2026_native_read_forbidden"] is not protected:
+                raise OptionStockEodNeedsError("same native request crossed protected boundary")
             if case_right not in request["case_right_ids"]:
                 request["case_right_ids"].append(case_right)
             stamp_text = clock.isoformat()
@@ -147,7 +154,12 @@ def build_native_eod_needs(
             marks[role] = identity
         if (marks["next"] is not None and marks["entry"] is None):
             raise OptionStockEodNeedsError("next quote without earlier entry source")
-        status = NEEDS if marks["entry"] and marks["next"] else NO_TWO
+        status = (
+            PROTECTED_2026
+            if marks["entry"] and marks["next"] and any(protected_roles.values())
+            else NEEDS if marks["entry"] and marks["next"]
+            else NO_TWO
+        )
         yearly[year][status] += 1
         rows.append({
             "case_right_id": case_right, "original_case_id": original,
@@ -157,6 +169,8 @@ def build_native_eod_needs(
             "observed_quote_timeline_status": item["timeline_status"],
             "native_entry_close_request_identity": marks["entry"],
             "native_next_close_request_identity": marks["next"],
+            "protected_2026_native_entry_withheld": protected_roles["entry"],
+            "protected_2026_native_next_withheld": protected_roles["next"],
             "native_close_verified": False,
             "matched_option_stock_clock_verified": False,
             "hypothetical_fill_or_option_pnl_authority": False,
@@ -177,7 +191,10 @@ def build_native_eod_needs(
         "original_right_memberships": expected_original_cases * 2,
         "selected_case_right_memberships": len(selected),
         "case_rights_with_two_later_option_quote_dates": sum(
-            x["status"] == NEEDS for x in rows
+            x["status"] in {NEEDS, PROTECTED_2026} for x in rows
+        ),
+        "case_rights_with_protected_2026_native_close_withheld": sum(
+            x["status"] == PROTECTED_2026 for x in rows
         ),
         "unique_native_raw_eod_close_requests": len(requests),
         "by_year": {k: dict(sorted(v.items())) for k,v in sorted(yearly.items())},

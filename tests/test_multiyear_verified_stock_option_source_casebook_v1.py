@@ -10,8 +10,8 @@ from packages.data.multiyear_observed_option_quote_timeline_v1 import CONTRACT a
 from packages.data.multiyear_option_quote_reuse_handoff_v1 import CONTRACT as HANDOFF_CONTRACT
 from packages.data.multiyear_option_stock_eod_preflight_v1 import CONTRACT as NEEDS_CONTRACT
 from packages.data.multiyear_verified_stock_option_source_casebook_v1 import (
-    NO_PAIR, SOURCE_PAIR, STOCK_GAP, SourceCasebookError,
-    build_verified_source_casebook,
+    NO_PAIR, SOURCE_PAIR, STOCK_GAP, PROTECTED_2026_WITHHELD,
+    SourceCasebookError, build_verified_source_casebook,
 )
 
 
@@ -183,3 +183,53 @@ def test_crossed_quote_rejected_even_if_source_document_is_resigned():
     resign(c, "source_fingerprint")
     with pytest.raises(SourceCasebookError, match="crossed"):
         build_verified_source_casebook(h, t, n, c, expected_original_cases=1)
+
+
+def test_protected_2026_native_close_is_retained_as_withheld_not_gap_or_pair():
+    h, t, n, c = fixture_reports()
+    trow = t["rows"][0]
+    trow["next_later_observed_quote"]["session_et"] = "2026-01-05"
+    trow["next_later_observed_quote"]["provider_updated_at_utc"] = (
+        "2026-01-05T21:00:00+00:00"
+    )
+    resign(t, "timeline_fingerprint")
+
+    n["accepted_option_timeline_fingerprint"] = t["timeline_fingerprint"]
+    n["requests"][1]["session_et"] = "2026-01-05"
+    n["requests"][1]["protected_2026_native_read_forbidden"] = True
+    n["rows"][0]["status"] = (
+        "OPTION_SOURCE_PAIR_REQUIRES_PROTECTED_2026_NATIVE_CLOSE_WITHHELD"
+    )
+    n["rows"][0]["protected_2026_native_entry_withheld"] = False
+    n["rows"][0]["protected_2026_native_next_withheld"] = True
+    resign(n, "demand_fingerprint")
+
+    c["original_stock_close_demand_fingerprint"] = n["demand_fingerprint"]
+    c["rows"][1].update({
+        "session_et": "2026-01-05",
+        "status": "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ",
+        "raw_as_traded_open": None,
+        "raw_as_traded_close": None,
+        "native_unit_id": None,
+        "native_canonical_sha256": None,
+        "protected_outcome_read_performed": False,
+    })
+    resign(c, "source_fingerprint")
+
+    report = build_verified_source_casebook(
+        h, t, n, c, expected_original_cases=1,
+    )
+    row = next(x for x in report["rows"] if x["case_right_id"] == "case1:C")
+    assert row["source_join_status"] == PROTECTED_2026_WITHHELD
+    assert row["entry_session_native_source"]["status"] == (
+        "VERIFIED_NATIVE_RAW_EOD_CLOSE"
+    )
+    assert row["next_session_native_source"]["status"] == (
+        "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ"
+    )
+    assert row["next_session_native_source"][
+        "protected_2026_native_read_withheld"
+    ] is True
+    assert report["dated_option_and_stock_source_rights"] == 0
+    assert report["protected_2026_native_close_withheld_rights"] == 1
+    assert report["protected_2026_outcomes_read"] == 0

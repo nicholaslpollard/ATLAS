@@ -171,20 +171,36 @@ def resolve_native_eod_closes(
     if not needed:
         raise NativeEodCloseError("no accepted exact native daily CLOSE demand")
     query_ids = {x["request_identity"] for x in needed}
-    pairs = {(x["ticker"], date.fromisoformat(x["session_et"])) for x in needed}
-    if len(query_ids) != len(needed) or len(pairs) != len(needed):
+    protected = [
+        x for x in needed if date.fromisoformat(x["session_et"]).year == 2026
+    ]
+    readable = [
+        x for x in needed if date.fromisoformat(x["session_et"]).year <= 2025
+    ]
+    all_pairs = {(x["ticker"], date.fromisoformat(x["session_et"])) for x in needed}
+    readable_pairs = {
+        (x["ticker"], date.fromisoformat(x["session_et"])) for x in readable
+    }
+    if len(query_ids) != len(needed) or len(all_pairs) != len(needed):
         raise NativeEodCloseError("duplicate or ambiguous exact native CLOSE request")
-    if any(x["session_et"][:4] == "2026" or x["stock_close_has_not_been_read"] is not True
-           or x["required_native_field"] != "RAW_AS_TRADED_1DAY_REGULAR_CLOSE"
-           for x in needed):
-        raise NativeEodCloseError("protected/adjusted native request cannot be read")
+    if any(
+        x["stock_close_has_not_been_read"] is not True
+        or x["required_native_field"] != "RAW_AS_TRADED_1DAY_REGULAR_CLOSE"
+        or date.fromisoformat(x["session_et"]).year not in {2021, 2022, 2023, 2024, 2025, 2026}
+        or bool(x.get("protected_2026_native_read_forbidden", False))
+            != (date.fromisoformat(x["session_et"]).year == 2026)
+        for x in needed
+    ):
+        raise NativeEodCloseError("protected/adjusted native request classification changed")
     settings.assert_external_storage_binding("options")
     source_report = native.get("accepted_native_source")
     if not isinstance(source_report, dict):
         raise NativeEodCloseError("original accepted native source provenance missing")
-    records, accepted, layout = _accepted_native_plan(settings, source_report, pairs)
+    records, accepted, layout = _accepted_native_plan(
+        settings, source_report, readable_pairs
+    )
     by_pair = {}
-    sought = {(ticker, day.year) for ticker, day in pairs}
+    sought = {(ticker, day.year) for ticker, day in readable_pairs}
     for record in records:
         for symbol in record["symbols"]:
             key = (str(symbol), int(record["year"]))
@@ -193,7 +209,7 @@ def resolve_native_eod_closes(
                     raise NativeEodCloseError("same symbol/year has ambiguous native units")
                 by_pair[key] = record
     groups: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]] = {}
-    for item in needed:
+    for item in readable:
         unit = by_pair.get((item["ticker"], date.fromisoformat(item["session_et"]).year))
         if unit is None:
             raise NativeEodCloseError("native acquisition plan lacks exact ticker/year unit")
@@ -201,29 +217,43 @@ def resolve_native_eod_closes(
         if uid not in groups:
             groups[uid] = (unit, [])
         groups[uid][1].append(item)
-    results: list[dict[str, Any]] = []
+    results: list[dict[str, Any]] = [{
+        "request_identity": item["request_identity"],
+        "instrument_id": item["instrument_id"],
+        "ticker": item["ticker"],
+        "session_et": item["session_et"],
+        "status": "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ",
+        "raw_as_traded_open": None,
+        "raw_as_traded_close": None,
+        "native_unit_id": None,
+        "native_canonical_sha256": None,
+        "option_clock_match_proven": False,
+        "historical_fill_proven": False,
+        "protected_outcome_read_performed": False,
+    } for item in protected]
     bindings = []
-    max_workers = min(workers, max(1, (os.cpu_count() or 4) - 1), len(groups))
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(unit_reader, rec, layout, items): uid
-            for uid, (rec, items) in groups.items()
-        }
-        # Wait for every submitted verifier; an error leaves all original files untouched.
-        errors = []
-        for completed, future in enumerate(as_completed(futures), 1):
-            try:
-                rows, binding = future.result()
-                results.extend(rows)
-                bindings.append(binding)
-            except Exception as exc:
-                errors.append((futures[future], exc))
-            if progress and (completed == 1 or completed % 20 == 0 or completed == len(futures)):
-                progress({
-                    "stage": "TARGETED_NATIVE_UNIT_CLOSE_READ",
-                    "verified_units": completed, "total_needed_units": len(futures),
-                    "source_rows": len(results), "provider_requests": 0,
-                })
+    errors = []
+    if groups:
+        max_workers = min(workers, max(1, (os.cpu_count() or 4) - 1), len(groups))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(unit_reader, rec, layout, items): uid
+                for uid, (rec, items) in groups.items()
+            }
+            # Wait for every submitted verifier; an error leaves all original files untouched.
+            for completed, future in enumerate(as_completed(futures), 1):
+                try:
+                    rows, binding = future.result()
+                    results.extend(rows)
+                    bindings.append(binding)
+                except Exception as exc:
+                    errors.append((futures[future], exc))
+                if progress and (completed == 1 or completed % 20 == 0 or completed == len(futures)):
+                    progress({
+                        "stage": "TARGETED_NATIVE_UNIT_CLOSE_READ",
+                        "verified_units": completed, "total_needed_units": len(futures),
+                        "source_rows": len(results), "provider_requests": 0,
+                    })
     if errors:
         unit, error = errors[0]
         raise NativeEodCloseError(
@@ -244,6 +274,9 @@ def resolve_native_eod_closes(
         "unique_requested_native_closes": len(needed),
         "verified_exact_native_raw_closes": statuses["VERIFIED_NATIVE_RAW_EOD_CLOSE"],
         "exact_daily_bar_gaps": statuses["NO_RAW_NATIVE_DAILY_BAR_FOR_EXACT_SESSION"],
+        "protected_2026_native_closes_withheld": statuses[
+            "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ"
+        ],
         "by_status": dict(sorted(statuses.items())),
         "native_unit_bindings": sorted(bindings, key=lambda x: x["native_unit_id"]),
         "rows": sorted(results, key=lambda x: x["request_identity"]),

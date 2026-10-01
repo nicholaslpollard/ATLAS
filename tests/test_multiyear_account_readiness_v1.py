@@ -7,6 +7,7 @@ import pytest
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.multiyear_verified_stock_option_source_casebook_v1 import (
     CONTRACT as CASEBOOK_CONTRACT, SOURCE_PAIR, STOCK_GAP, NO_PAIR,
+    PROTECTED_2026_WITHHELD,
 )
 from packages.simulation.multiyear_account_readiness_v1 import (
     AccountReadinessError, build_replay_readiness,
@@ -275,5 +276,35 @@ def test_selected_rolled_out_quote_history_keeps_specific_replay_blocker():
     assert report["by_blocker"][
         "OPTION_QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
     ] == 1
+    assert report["actual_executable_option_trades"] == 0
+    assert report["historical_account_pnl"] is None
+
+
+def test_protected_2026_native_withholding_has_specific_readiness_blocker():
+    doc = sample_casebook()
+    target = doc["rows"][2]
+    target["source_join_status"] = PROTECTED_2026_WITHHELD
+    target["first_later_option_source"] = {
+        "session_et": "2025-12-31",
+        "observed_ask_per_share": "2.0",
+    }
+    target["next_later_option_source"] = {
+        "session_et": "2026-01-02",
+        "observed_bid_per_share": "2.1",
+    }
+    target["entry_session_native_source"] = {
+        "status": "VERIFIED_NATIVE_RAW_EOD_CLOSE",
+    }
+    target["next_session_native_source"] = {
+        "status": "PROTECTED_2026_NATIVE_CLOSE_WITHHELD_NOT_READ",
+        "protected_2026_native_read_withheld": True,
+    }
+    resign(doc)
+    report = build_replay_readiness(
+        doc, expected_cases=2, expected_source_fp=None,
+    )
+    row = next(x for x in report["rows"] if x["case_right_id"] == "case2:C")
+    assert row["replay_blocker"] == "PROTECTED_2026_NATIVE_CLOSE_WITHHELD"
+    assert report["by_blocker"]["PROTECTED_2026_NATIVE_CLOSE_WITHHELD"] == 1
     assert report["actual_executable_option_trades"] == 0
     assert report["historical_account_pnl"] is None
