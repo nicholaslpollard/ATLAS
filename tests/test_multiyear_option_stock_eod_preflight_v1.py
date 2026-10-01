@@ -204,8 +204,10 @@ def test_2025_option_sources_crossing_into_2026_keep_native_requests_but_mark_th
     native = signed({k: v for k, v in native.items() if k != "source_fingerprint"},
                     "source_fingerprint")
     monkeypatch.setattr(m, "NATIVE_FP", native["source_fingerprint"])
-    selection["cases"][0]["expiration"] = "2026-01-16"
-    selection["cases"][0]["decision_at_utc"] = "2025-12-30T14:35:00+00:00"
+    for picked in selection["cases"]:
+        if picked["original_case_id"] == "one":
+            picked["expiration"] = "2026-01-16"
+            picked["decision_at_utc"] = "2025-12-30T14:35:00+00:00"
     selection = signed(
         {k: v for k, v in selection.items() if k != "selection_fingerprint"},
         "selection_fingerprint",
@@ -224,8 +226,10 @@ def test_2025_option_sources_crossing_into_2026_keep_native_requests_but_mark_th
         "observed_bid_per_share": "1.1",
         "observed_ask_per_share": "1.3",
     }
+    for candidate in timeline["rows"]:
+        if candidate["original_case_id"] == "one":
+            candidate["year"] = "2025"
     row = timeline["rows"][0]
-    row["year"] = "2025"
     row["first_later_observed_quote"] = q1
     row["next_later_observed_quote"] = q2
     for other in timeline["rows"][1:]:
