@@ -323,14 +323,20 @@ def build_observed_option_timeline(
     return result
 
 
-def local_verified_quote_reader(settings: AtlasSettings, plan: dict[str, Any]) -> Callable:
-    """Recheck original receipt/body before decoding each selected unique series."""
+def local_verified_quote_body_reader(settings: AtlasSettings, plan: dict[str, Any]) -> Callable:
+    """Recheck an accepted physical quote receipt/body and return its exact bytes.
+
+    This is the common offline provenance gate for derived decoders. It never
+    contacts a provider and does not reinterpret source rows as fills.
+    """
     needs_2022 = any(
         row["from_inclusive"].startswith("2022-") for row in plan["requests"]
     )
     original_2022 = OfflineOptionHistoryStore(settings) if needs_2022 else None
 
-    def reader(request: dict[str, Any], slot: dict[str, Any]) -> list[dict[str, Any]]:
+    def reader(
+        request: dict[str, Any], slot: dict[str, Any],
+    ) -> tuple[dict[str, Any], bytes, dict[str, Any]]:
         if slot["quote_history_status"] == "VERIFIED_ORIGINAL_2022_QUOTE_HISTORY":
             if original_2022 is None:
                 raise ObservedOptionTimelineError("accepted original 2022 index unavailable")
@@ -381,6 +387,17 @@ def local_verified_quote_reader(settings: AtlasSettings, plan: dict[str, Any]) -
             or receipt["safe_summary"]["observed_rows"] != slot["observed_quote_rows"]
         ):
             raise ObservedOptionTimelineError("source receipt/body SHA or row count differs")
+        return source_ticket, raw, receipt
+
+    return reader
+
+
+def local_verified_quote_reader(settings: AtlasSettings, plan: dict[str, Any]) -> Callable:
+    """Recheck original receipt/body before decoding each selected unique series."""
+    body_reader = local_verified_quote_body_reader(settings, plan)
+
+    def reader(request: dict[str, Any], slot: dict[str, Any]) -> list[dict[str, Any]]:
+        source_ticket, raw, _ = body_reader(request, slot)
         return _original_observations(raw, source_ticket, slot["observed_quote_rows"])
 
     return reader
