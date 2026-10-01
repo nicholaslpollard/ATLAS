@@ -199,3 +199,36 @@ def test_clipped_recovery_can_supply_missing_original_without_claiming_full_wind
     assert out["verified_clipped_recovery_queries"] == 1
     assert out["pending_unique_quote_queries"] == 0
     assert out["provider_requests"] == 0
+
+
+def test_selected_contract_outside_current_quote_window_stays_explicit_without_request():
+    selection, plan, census = _fixtures()
+    target = next(x for x in plan["memberships"] if x["case_id"] == "one:P")
+    target["disposition"] = "ORIGINAL_DECISION_OUTSIDE_STARTER_FIVE_YEAR_WINDOW"
+    target["request_identity"] = None
+    plan["requests"] = [
+        x for x in plan["requests"] if x["request_identity"] != "b" * 64
+    ]
+    plan["unique_physical_quote_queries"] = 1
+    plan["plan_fingerprint"] = _fingerprint({
+        k: v for k, v in plan.items() if k != "plan_fingerprint"
+    })
+    census["plan_fingerprint"] = plan["plan_fingerprint"]
+    census["unique_physical_quote_queries"] = 1
+    census["pending"] = 0
+    census["report_fingerprint"] = _fingerprint({
+        k: v for k, v in census.items() if k != "report_fingerprint"
+    })
+    out = assemble_quote_reuse_handoff(
+        selection, plan, census, expected_original_cases=2,
+    )
+    row = next(x for x in out["rows"] if x["case_right_id"] == "one:P")
+    assert row["option_symbol"] == "TEST220318P00100000"
+    assert row["quote_request_identity"] is None
+    assert row["quote_history_status"] == (
+        "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+    )
+    assert row["quote_body_sha256"] is None
+    assert out["ineligible_selected_case_right_memberships"] == 1
+    assert out["pending_unique_quote_queries"] == 0
+    assert out["portfolio_pnl_authority"] is False
