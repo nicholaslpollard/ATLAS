@@ -185,7 +185,7 @@ def main() -> int:
             settings.assert_external_storage_binding(category)
         token = os.getenv("MARKETDATA_TOKEN", "") if live else None
         if live and not token.strip():
-            raise ValueError("MARKETDATA_TOKEN is not configured")
+            raise ValueError("MARKETDATA_TOKEN is not configured in the ATLAS root .env or process environment")
 
         base_selection = _read_object(args.base_selection)
         base_plan = _read_object(args.base_plan)
