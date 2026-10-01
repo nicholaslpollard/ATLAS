@@ -395,6 +395,7 @@ def build_marketdata_eod_clock_liquidity_probe(
         counts["ENTRY_EXIT_POSITIVE_SIZE_AND_VOLUME"] += quote_side_liquidity
         counts["FORCED_EXIT_STRICTLY_BEFORE_EXPIRY"] += pre_expiry_exit
         counts["BOTH_UPDATED_EXACTLY_1600_ET"] += exact_1600
+        counts["EOD_SOURCE_SHAPE_CANDIDATE"] += source_shape_candidate
 
         output_rows.append({
             "case_right_id": case_right_id,
