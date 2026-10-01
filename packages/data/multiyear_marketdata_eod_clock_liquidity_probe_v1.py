@@ -36,6 +36,9 @@ from packages.data.multiyear_observed_option_quote_timeline_v1 import (
 from packages.data.multiyear_option_quote_reuse_handoff_v1 import (
     CONTRACT as HANDOFF_CONTRACT, _check_signature,
 )
+from packages.data.multiyear_verified_stock_option_source_casebook_v1 import (
+    CONTRACT as CASEBOOK_CONTRACT,
+)
 from packages.providers.marketdata_app.client import array_rows
 from packages.simulation.multiyear_historical_execution_requirements_v1 import (
     CONTRACT as PROOF_DEMAND_CONTRACT,
@@ -233,6 +236,7 @@ def build_marketdata_eod_clock_liquidity_probe(
     if (
         plan.get("contract") != QUOTE_CONTRACT
         or handoff.get("contract") != HANDOFF_CONTRACT
+        or casebook.get("contract") != CASEBOOK_CONTRACT
         or proof_demand.get("contract") != PROOF_DEMAND_CONTRACT
         or handoff.get("quote_plan_fingerprint") != plan["plan_fingerprint"]
         or casebook.get("handoff_fingerprint") != handoff["handoff_fingerprint"]
