@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+import json
 from types import SimpleNamespace
 
 import pytest
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.multiyear_additive_quote_plan_v1 import (
-    AdditiveQuotePlanError, build_additive_quote_plan, persist_additive_quote_plan,
+    AdditiveQuotePlanError, build_additive_quote_plan,
+    discover_additive_quote_lineage, persist_additive_quote_plan,
 )
 from packages.data.multiyear_demand_quote_cache_v1 import CONTRACT as QUOTE_CONTRACT
 from packages.data.multiyear_option_quote_bridge_v1 import CONTRACT as SELECTION_CONTRACT
@@ -319,3 +321,160 @@ def test_additive_plan_is_stable_across_same_et_day_restarts():
     )
     assert morning == evening
     assert morning["additive_planning_day_et"] == "2026-09-30"
+
+
+def lineage_settings(tmp_path):
+    return SimpleNamespace(
+        resolved_path=lambda p: tmp_path / p,
+        assert_external_storage_binding=lambda c:
+            None if c == "options" else pytest.fail("wrong storage category"),
+    )
+
+
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value), encoding="utf-8")
+
+
+def test_discover_lineage_carries_sep30_additive_exact_window_into_oct1(tmp_path):
+    old = selected(
+        "one:C", "TEST220318C00100000", "call",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+    )
+    rolled = selected(
+        "two:P", "TEST211015P00100000", "put",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+        expiration="2021-10-15",
+        decision="2021-09-30T13:35:00+00:00",
+    )
+    years = {"one": "2022", "two": "2021"}
+    root_selection = selection([old], years=years)
+    root_plan = base_plan(old)
+    sep30_selection = selection([old, rolled], years=years)
+    sep30_plan = build_additive_quote_plan(
+        root_selection,
+        root_plan,
+        sep30_selection,
+        asof_utc=datetime(2026, 9, 30, 15, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 29),
+        expected_original_cases=2,
+    )
+    rolled_request = next(
+        x for x in sep30_plan["requests"]
+        if x["option_symbol"] == rolled["option_symbol"]
+    )
+    assert rolled_request["from_inclusive"] == "2021-09-30"
+
+    root = tmp_path / "data/options/manifests"
+    selection_path = root / (
+        "multiyear_pit_selected_option_quotes_v1_"
+        + sep30_selection["selection_fingerprint"][:16] + ".json"
+    )
+    plan_path = root / (
+        "multiyear_demand_quote_v1_"
+        + sep30_plan["plan_fingerprint"][:16] + ".json"
+    )
+    write_json(selection_path, sep30_selection)
+    write_json(plan_path, sep30_plan)
+
+    lineage = discover_additive_quote_lineage(
+        lineage_settings(tmp_path),
+        root_selection,
+        root_plan,
+        root_plan_path=tmp_path / "root-plan.json",
+        expected_original_cases=2,
+    )
+    assert len(lineage) == 2
+    assert lineage[-1].plan_path == plan_path
+    assert lineage[-1].selection_path == selection_path
+    assert lineage[-1].plan == sep30_plan
+    assert lineage[-1].selection == sep30_selection
+
+    # October 1 must not re-freeze the September 30 case against the newer floor.
+    oct1 = build_additive_quote_plan(
+        lineage[-1].selection,
+        lineage[-1].plan,
+        sep30_selection,
+        asof_utc=datetime(2026, 10, 1, 15, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 30),
+        expected_original_cases=2,
+    )
+    assert oct1 == sep30_plan
+    assert next(
+        x for x in oct1["requests"]
+        if x["option_symbol"] == rolled["option_symbol"]
+    )["from_inclusive"] == "2021-09-30"
+
+    # Demonstrate why restarting from the root would be scientifically wrong.
+    naive = build_additive_quote_plan(
+        root_selection,
+        root_plan,
+        sep30_selection,
+        asof_utc=datetime(2026, 10, 1, 15, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 30),
+        expected_original_cases=2,
+    )
+    naive_member = next(
+        x for x in naive["memberships"] if x["case_id"] == "two:P"
+    )
+    assert naive_member["disposition"] == (
+        "ORIGINAL_DECISION_OUTSIDE_STARTER_FIVE_YEAR_WINDOW"
+    )
+    assert naive_member["request_identity"] is None
+
+
+def test_discover_lineage_rejects_fork_from_same_parent(tmp_path):
+    old = selected(
+        "one:C", "TEST220318C00100000", "call",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+    )
+    new = selected(
+        "two:P", "TEST220318P00100000", "put",
+        "SELECTED_VERIFIED_PIT_CHAIN",
+    )
+    root_selection = selection([old])
+    root_plan = base_plan(old)
+    expanded = selection([old, new])
+    child = build_additive_quote_plan(
+        root_selection,
+        root_plan,
+        expanded,
+        asof_utc=datetime(2026, 9, 30, 15, 0, tzinfo=UTC),
+        last_completed_session=date(2026, 9, 29),
+        expected_original_cases=2,
+    )
+    fork = dict(child)
+    fork["last_completed_session"] = "2026-09-30"
+    fork["plan_fingerprint"] = _fingerprint({
+        k: v for k, v in fork.items() if k != "plan_fingerprint"
+    })
+
+    root = tmp_path / "data/options/manifests"
+    write_json(
+        root / (
+            "multiyear_pit_selected_option_quotes_v1_"
+            + expanded["selection_fingerprint"][:16] + ".json"
+        ),
+        expanded,
+    )
+    write_json(
+        root / (
+            "multiyear_demand_quote_v1_"
+            + child["plan_fingerprint"][:16] + ".json"
+        ),
+        child,
+    )
+    write_json(
+        root / (
+            "multiyear_demand_quote_v1_"
+            + fork["plan_fingerprint"][:16] + ".json"
+        ),
+        fork,
+    )
+    with pytest.raises(AdditiveQuotePlanError, match="lineage fork"):
+        discover_additive_quote_lineage(
+            lineage_settings(tmp_path),
+            root_selection,
+            root_plan,
+            expected_original_cases=2,
+        )
