@@ -356,14 +356,14 @@ def build_marketdata_eod_clock_liquidity_probe(
         )
         pre_expiry_exit = date.fromisoformat(exit_mark["session_et"]) < expiry
         exact_1600 = entry["updated_is_1600_et"] and exit_mark["updated_is_1600_et"]
-        all_except_deliverable = (
+        source_shape_candidate = (
             same_row_clock and quote_side_liquidity and pre_expiry_exit
         )
 
         status = (
-            "NON_DELIVERABLE_GATES_CANDIDATE_PASS"
-            if all_except_deliverable
-            else "EOD_CLOCK_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"
+            "EOD_SNAPSHOT_LIQUIDITY_PREEXPIRY_SOURCE_SHAPE_CANDIDATE"
+            if source_shape_candidate
+            else "EOD_SNAPSHOT_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"
         )
         year = proof["year"]
         by_year[year][status] += 1
@@ -385,7 +385,9 @@ def build_marketdata_eod_clock_liquidity_probe(
             "entry": entry,
             "exit": exit_mark,
             "expiration": expiry.isoformat(),
-            "provider_documented_same_row_common_clock_candidate": same_row_clock,
+            "provider_documented_same_row_snapshot_clock_candidate": same_row_clock,
+            "option_quote_publication_or_retrieval_availability_verified": False,
+            "matched_executable_stock_option_clock_verified": False,
             "conservative_one_contract_quote_side_liquidity_candidate":
                 quote_side_liquidity,
             "forced_exit_strictly_before_expiry_candidate": pre_expiry_exit,
@@ -395,13 +397,15 @@ def build_marketdata_eod_clock_liquidity_probe(
             "point_in_time_option_deliverable_and_multiplier_verified": False,
             "historical_trade_admitted": False,
             "historical_account_pnl_authority": False,
+            "source_shape_clock_liquidity_preexpiry_candidate":
+                source_shape_candidate,
             "status": status,
         })
 
     if (
         len(output_rows) != proof_demand["dated_pair_work_items"]
-        or sum(by_year[y]["NON_DELIVERABLE_GATES_CANDIDATE_PASS"]
-               + by_year[y]["EOD_CLOCK_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"]
+        or sum(by_year[y]["EOD_SNAPSHOT_LIQUIDITY_PREEXPIRY_SOURCE_SHAPE_CANDIDATE"]
+               + by_year[y]["EOD_SNAPSHOT_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"]
                for y in by_year) != len(output_rows)
     ):
         raise MarketDataEodClockProbeError("probe denominator changed")
@@ -428,10 +432,12 @@ def build_marketdata_eod_clock_liquidity_probe(
             counts["FORCED_EXIT_STRICTLY_BEFORE_EXPIRY"],
         "exact_1600_et_entry_and_exit_snapshots":
             counts["BOTH_UPDATED_EXACTLY_1600_ET"],
-        "non_deliverable_gates_candidate_pass":
-            counts["NON_DELIVERABLE_GATES_CANDIDATE_PASS"],
-        "eod_clock_or_liquidity_or_exit_policy_gap":
-            counts["EOD_CLOCK_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"],
+        "clock_liquidity_preexpiry_source_shape_candidates":
+            counts["EOD_SOURCE_SHAPE_CANDIDATE"],
+        "eod_snapshot_or_liquidity_or_exit_policy_gap":
+            counts["EOD_SNAPSHOT_OR_LIQUIDITY_OR_EXIT_POLICY_GAP"],
+        "option_quote_publication_or_retrieval_availability_verified": 0,
+        "matched_executable_stock_option_clock_verified": 0,
         "by_year": {
             year: dict(sorted(by_year[year].items())) for year in by_year
         },
