@@ -187,8 +187,8 @@ def resolve_native_eod_closes(
         x["stock_close_has_not_been_read"] is not True
         or x["required_native_field"] != "RAW_AS_TRADED_1DAY_REGULAR_CLOSE"
         or date.fromisoformat(x["session_et"]).year not in {2021, 2022, 2023, 2024, 2025, 2026}
-        or x.get("protected_2026_native_read_forbidden")
-            is not (date.fromisoformat(x["session_et"]).year == 2026)
+        or bool(x.get("protected_2026_native_read_forbidden", False))
+            != (date.fromisoformat(x["session_et"]).year == 2026)
         for x in needed
     ):
         raise NativeEodCloseError("protected/adjusted native request classification changed")
