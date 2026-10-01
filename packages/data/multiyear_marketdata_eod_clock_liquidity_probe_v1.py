@@ -130,8 +130,13 @@ def _decode_snapshot_rows(
         ask_size = _number(item.get("askSize"), "askSize")
         volume = _number(item.get("volume"), "volume")
         underlying = _number(
-            item.get("underlyingPrice"), "underlyingPrice", allow_zero=False
+            item.get("underlyingPrice"), "underlyingPrice"
         )
+        if underlying is not None and underlying == 0:
+            # Existing source validation permits nonnegative provider fields.
+            # A zero underlying mark is retained as an explicit missing-clock
+            # condition rather than aborting unrelated valid rows.
+            underlying = None
         two_sided = (
             bid is not None and ask is not None
             and bid > 0 and ask >= bid
