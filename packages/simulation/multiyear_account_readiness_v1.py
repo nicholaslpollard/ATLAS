@@ -92,6 +92,18 @@ def build_replay_readiness(
                 blocker = "NO_PIT_SELECTED_CONTRACT"
             elif row["original_quote_history_status"] == "QUOTE_HISTORY_NOT_ACQUIRED":
                 blocker = "EXACT_OPTION_QUOTE_HISTORY_NOT_ACQUIRED"
+            elif row["original_quote_history_status"] == (
+                "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+            ):
+                blocker = "OPTION_QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+            elif row["original_quote_history_status"] == (
+                "QUOTE_HISTORY_AFTER_LAST_COMPLETED_SESSION"
+            ):
+                blocker = "OPTION_QUOTE_HISTORY_AFTER_LAST_COMPLETED_SESSION"
+            elif row["original_quote_history_status"] == (
+                "QUOTE_HISTORY_NO_CLOSED_SOURCE_PERIOD"
+            ):
+                blocker = "OPTION_QUOTE_HISTORY_NO_CLOSED_SOURCE_PERIOD"
             else:
                 blocker = "INSUFFICIENT_LATER_VALID_OPTION_QUOTE_OBSERVATIONS"
         else:
