@@ -308,8 +308,8 @@ def main(argv: list[str] | None = None) -> int:
             f"{eod_probe['documented_same_row_clock_candidates']} "
             f"eod_positive_size_volume_candidates="
             f"{eod_probe['entry_exit_positive_size_and_volume_candidates']} "
-            f"eod_non_deliverable_gates_candidate_pass="
-            f"{eod_probe['non_deliverable_gates_candidate_pass']}",
+            f"eod_clock_liquidity_preexpiry_source_shape_candidates="
+            f"{eod_probe['clock_liquidity_preexpiry_source_shape_candidates']}",
             flush=True,
         )
         print(
