@@ -256,3 +256,24 @@ def test_execution_proof_binds_clipped_physical_request_not_unavailable_original
     assert item["entry_source"]["missing_original_prefix_is_not_reconstructed"] is True
     assert item["historical_entry_admitted"] is False
     assert demand["historical_account_pnl"] is None
+
+
+def test_selected_rolled_out_quote_history_keeps_specific_replay_blocker():
+    doc = sample_casebook()
+    target = doc["rows"][3]
+    target["original_quote_history_status"] = (
+        "QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+    )
+    resign(doc)
+    report = build_replay_readiness(
+        doc, expected_cases=2, expected_source_fp=None,
+    )
+    row = next(x for x in report["rows"] if x["case_right_id"] == "case2:P")
+    assert row["replay_blocker"] == (
+        "OPTION_QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+    )
+    assert report["by_blocker"][
+        "OPTION_QUOTE_HISTORY_OUTSIDE_CURRENT_PROVIDER_WINDOW"
+    ] == 1
+    assert report["actual_executable_option_trades"] == 0
+    assert report["historical_account_pnl"] is None
