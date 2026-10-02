@@ -310,7 +310,7 @@ def build_thetadata_intraday_option_source_plan(
     span_minutes: list[int] = []
     history_row_upper_bound = 0
     for group in contract_days.values():
-        minute_values = sorted(item["minute_of_day_et"] for item in group)
+        minute_values = sorted(int(item["minute_of_day_et"]) for item in group)
         span = minute_values[-1] - minute_values[0]
         span_minutes.append(span)
         history_row_upper_bound += span + 1
