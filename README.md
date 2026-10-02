@@ -5430,3 +5430,31 @@ NBBO demand plan. No option provider is read by this gate.
 Detailed forensic closeout:
 `docs/research/eod_option_entry_clock_forensics_v1_20261002.md`.
 
+## 2026-10-02 — Intraday stock exit clock accepted; exact option-source demand next
+
+The offline intraday stock-exit clock run completed over 9,974 pre-2026 CALL/policy
+cases using only accepted Alpaca SIP raw 1-minute source. It opened 4,596 exact
+source bindings, read 3,372,861 minute rows, and performed zero provider GETs.
+
+Results:
+- 9,667 / 9,974 cases (96.9220%) have a causal option-expression clock;
+- 304 cases (3.0479%) reached the stock exit at or before the planned 09:35 option
+  decision and therefore cannot be expressed as an option at that clock;
+- only three STOP/TARGET cases had no minute trigger on the daily exit session;
+- one-minute ordering changed the older daily STOP/TARGET disposition in 51 cases
+  (0.5113%), confirming that daily bars were usually sufficient for the exit session
+  but not for exact derivative pricing time;
+- the exact future source demand is 9,667 entry quote memberships plus 9,667 exit
+  quote memberships, deduplicated to 18,921 at-time NBBO queries.
+
+The next zero-provider gate is
+`thetadata_intraday_option_source_plan_v1`. It audits the exact 18,921 clocks,
+groups contract/day demand, estimates at-time versus bounded 1-minute history request
+shapes, and creates an outcome-blind multi-year provider-qualification sample before
+any subscription or provider read is authorized.
+
+Current public ThetaData documentation is not treated as data authority. The plan
+targets Options Standard rather than Value because the retail page advertises eight
+years for Standard while Value advertises four years; 2021 coverage must be proven
+by the qualification itself before full acquisition.
+
