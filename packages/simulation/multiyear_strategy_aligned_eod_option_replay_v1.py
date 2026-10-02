@@ -419,6 +419,10 @@ def replay_strategy_aligned_eod_call_account(
         allow_zero=True,
     )
 
+    case_by_id = {case["case_id"]: case for case in scenario["cases"]}
+    if len(case_by_id) != scenario["original_case_denominator"]:
+        raise StrategyAlignedEodReplayError("strategy account case identities changed")
+
     decisions: dict[str, dict[str, Any]] = {}
     positions: dict[str, dict[str, Any]] = {}
     ledger: list[dict[str, Any]] = []
@@ -476,7 +480,7 @@ def replay_strategy_aligned_eod_call_account(
         events.append((strategy_close.astimezone(UTC), 0, -score, cid, "EXIT_ATTEMPT"))
 
     for at, priority, _tie, cid, kind in sorted(events):
-        case = next(item for item in scenario["cases"] if item["case_id"] == cid)
+        case = case_by_id[cid]
         row = decisions[cid]
         call = case["call"]
 
@@ -628,6 +632,10 @@ def replay_strategy_aligned_eod_call_account(
         "status": "MODELED_STRATEGY_ALIGNED_EOD_CALL_ACCOUNT_NO_FILL_AUTHORITY",
         "scenario_fingerprint": scenario["scenario_fingerprint"],
         "strategy_exit_policy": scenario["strategy_exit_policy"],
+        "option_exit_timing_interpretation": (
+            "EOD_BID_ON_STOCK_STRATEGY_EXIT_SESSION; "
+            "NOT_INTRADAY_STOP_OR_TARGET_TOUCH_TIME"
+        ),
         "original_case_denominator": scenario["original_case_denominator"],
         "safe_last_signal_session": scenario["safe_last_signal_session"],
         "policy": {
