@@ -103,6 +103,7 @@ def build_historical_eod_option_scenario(
         tuple[dict[str, Any], bytes, dict[str, Any]],
     ],
     expected_original_cases: int = 14902,
+    expected_native_fingerprint: str = NATIVE_FP,
 ) -> dict[str, Any]:
     """Build causal entry legs and resolve exits only after their entry timestamp."""
     for doc, field in (
@@ -116,7 +117,7 @@ def build_historical_eod_option_scenario(
 
     if (
         native.get("contract") != NATIVE_CONTRACT
-        or native.get("source_fingerprint") != NATIVE_FP
+        or native.get("source_fingerprint") != expected_native_fingerprint
         or native.get("case_denominator") != expected_original_cases
         or len(native.get("rows", [])) != expected_original_cases
         or native.get("protected_outcomes_read") != 0
