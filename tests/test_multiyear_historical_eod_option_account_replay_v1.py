@@ -220,6 +220,7 @@ def fixture():
         "provider_requests": 0,
         "historical_option_trades_admitted": 0,
         "historical_account_pnl_authority": False,
+        "protected_2026_outcomes_read": 0,
     }, "probe_fingerprint")
 
     admission_rows = []
