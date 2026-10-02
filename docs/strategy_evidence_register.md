@@ -1064,3 +1064,20 @@ Dynamic Exit V1 selector. A separate paired-observation result may characterize 
 source-ready dynamic entry/exit pairs, but because it conditions on future exact-exit
 source availability it is not a causal account result and grants no promotion, PAPER
 or LIVE authority.
+
+
+### 2026-10-02 — Dynamic Exit V1 option result and Continuous V2 boundary
+
+Dynamic Exit V1 selected 354/14,733 target cases (2.40%), all with the 3% stop / 5%
+target action and all in 2025. Among 93 exact source-ready CALL pairs, modeled mean
+return on premium was -11.56%, median -19.30%, probability positive 27.96%, and mean
+P&L -$63.91 per contract. The strict account completed 26 positions, retained three
+unresolved positions, and reported modeled realized P&L -$22,366.50 with ending cash
+$58,622.05; ending equity and total return remain NULL.
+
+These results do not promote or reject the strategy. V1 re-vetoed most accepted entries
+through its robust-LCB/ABSTAIN gate and therefore did not provide a broad five-year
+dynamic exit test. Continuous V2 is preregistered as an exit parameterizer rather than
+a second entry selector. Its case-specific levels use only strictly-prior training
+MFE/MAE and return quartiles inside the frozen static envelope. Paired option results
+remain future-source-conditioned diagnostics, not causal portfolio/PAPER/LIVE evidence.
