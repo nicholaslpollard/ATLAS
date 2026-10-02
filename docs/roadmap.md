@@ -5839,3 +5839,24 @@ through the existing trade-expression gate -> incremental PIT-safe news evidence
 Track A recurrent runtime/operator-product work continues independently and must not be
 blocked by a weak Track B strategy result.
 
+### 2026-10-02 — Intraday clock rebaseline after EOD option forensic closeout
+
+The EOD option replay is now closed as a performance representation of the original
+09:35 strategy. The clock closeout found 5,785 causal EOD CALL entries, of which
+3,230 (55.83%) arrived only after the underlying stock strategy had already exited.
+The paired sample is materially survival-selected: 75.36% of STOP cases and 57.55%
+of TARGET cases were censored by the delayed EOD entry while only 0.96% of TIME
+exits were. No source-ready pair remained after >=5% absolute underlying movement
+before EOD option entry.
+
+The next Track B gate is **offline intraday stock-exit clock resolution**, not another
+exit parameter revision and not immediate option-provider acquisition. Reuse the
+accepted local Alpaca SIP raw 1-minute source to resolve exact STOP/TARGET action
+minutes and official exchange TIME closes, then emit deduplicated entry/exit at-time
+option NBBO demands. This gate performs zero provider reads.
+
+Only after that demand plan is accepted should ATLAS qualify an intraday historical
+option source against the exact clocks. MarketData remains useful for accepted EOD
+evidence but is not an intraday historical option source. Stock signal expectancy,
+option expression economics, and news evidence remain separate experiments.
+

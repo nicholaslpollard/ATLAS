@@ -1113,3 +1113,34 @@ the zero-provider entry-clock translation closeout, followed by separate underly
 signal and stock-vs-option economic evaluation. Detailed record:
 `docs/research/continuous_dynamic_exit_v2_closeout_20261002.md`.
 
+## 19. EOD option entry-clock forensic closeout — 2026-10-02
+
+The immutable Continuous V2 EOD option replay was joined to the case-level entry-clock
+closeout. Of 5,785 causal EOD CALL entries, 3,230 (55.83%) were available only after
+the stock strategy had already exited. Median delay was 30.42 hours; median absolute
+underlying movement before option entry was 2.32%; 20.78% had moved at least 5%; and
+35.96% changed CALL moneyness classification.
+
+The missingness is not random. Of 3,210 STOP cases with causal EOD entries, 2,419
+(75.36%) exited before/not after option entry. Of 1,390 TARGET cases, 800 (57.55%)
+did so. Only 11 of 1,144 TIME cases (0.96%) did so. The 2,055 paired observations
+therefore overrepresent trades that survive long enough to reach the delayed EOD
+clock. No source-ready pair exists after >=5% absolute pre-entry stock movement.
+
+The paired EOD premium result remains descriptive only for that conditioned sample
+and is not treated as an unbiased estimate of an intended 09:35 option expression.
+Continuous Exit V3 remains unauthorized from the same DEVELOPMENT outcomes.
+
+The strict account is also retained only as an execution-state diagnostic: ten
+unresolved 2021 positions consume all ten slots and prevent a meaningful 2022–2025
+portfolio replay. A later execution state machine must handle bounded retry,
+exchange-calendar-aware early closes, expiration, and settlement separately.
+
+**Disposition:** `EOD_OPTION_PERFORMANCE_AS_ORIGINAL_STRATEGY_CLOSED /
+NO_PROMOTION / NEXT_OFFLINE_INTRADAY_STOCK_EXIT_CLOCK_V1`.
+
+Historical supported modern alpha remains zero. The next permitted gate uses only
+accepted local Alpaca SIP raw 1-minute stock evidence to resolve exact stock exit
+clocks and create a future at-time option NBBO request plan. It creates no historical
+fill, strategy, PAPER, or LIVE authority.
+

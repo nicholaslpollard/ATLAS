@@ -5403,3 +5403,30 @@ be evaluated separately before any further option-performance interpretation.
 Detailed closeout:
 `docs/research/continuous_dynamic_exit_v2_closeout_20261002.md`.
 
+## 2026-10-02 — EOD option performance interpretation closed; intraday stock-exit clock next
+
+The immutable EOD entry-clock closeout established that the current historical EOD
+option replay does not preserve the original 09:35 stock/option decision clock.
+Among 5,785 causal EOD CALL entries, 3,230 (55.83%) became available only after the
+stock strategy had already reached STOP/TARGET/TIME. Median delay was one exchange
+session / 30.42 hours, median absolute underlying movement before option entry was
+2.32%, and CALL moneyness classification changed in 35.96% of cases.
+
+Case-level joining also showed mechanical survival selection: 75.36% of STOP exits
+and 57.55% of TARGET exits occurred before/not after EOD option entry, versus only
+0.96% of TIME exits. There were zero source-ready paired observations once the
+underlying had moved at least 5% before the delayed EOD entry. Therefore the paired
+EOD option return distribution remains a valid descriptive result for its exact
+future-source-conditioned sample, but it is not interpreted as performance of the
+intended 09:35 option strategy.
+
+ATLAS already owns accepted Alpaca SIP raw 1-minute stock history sufficient to
+resolve the stock-side exit clock. The next zero-provider gate is
+`multiyear_intraday_stock_exit_clock_v1`: resolve STOP/TARGET to the first causal
+one-minute boundary event, use the official exchange close for TIME exits, identify
+trades already finished at/before 09:35, and emit the exact future at-time option
+NBBO demand plan. No option provider is read by this gate.
+
+Detailed forensic closeout:
+`docs/research/eod_option_entry_clock_forensics_v1_20261002.md`.
+
