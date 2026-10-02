@@ -5795,3 +5795,22 @@ saturation, report two diagnostics: a strict causal cash account retaining unres
 positions, plus an all-source-ready paired trade census. The paired census may
 summarize returns only with an explicit future-source-conditioning label and may not
 be used as causal portfolio/PAPER/LIVE evidence.
+
+
+### 2026-10-02 — Continuous Dynamic Exit V2 after Dynamic Exit V1
+
+Dynamic Exit V1 selected only 354 of 14,733 eligible 2021–2025 cases (2.40%), all
+using 3%/5% and all in 2025. The 93 source-ready option pairs were negative on average
+and the selector left the earlier years entirely abstained. This closes V1 as a useful
+causal selector diagnostic but not the intended broad dynamic-exit implementation.
+
+The next gate is Continuous Dynamic Exit V2. It reuses the accepted entry population
+and derives stop/target levels per case from strictly-prior training distributions:
+mean MAE plus downside P25 for stop anchoring, and mean MFE plus upside P75 for target
+anchoring. Levels stay inside the previously researched 1–3% / 2–5% envelope and
+preserve minimum 1.5x target/stop. The five-session horizon and conservative daily
+STOP/TARGET/TIME mechanics remain unchanged.
+
+Run V2 as a zero-provider modeled diagnostic, report the derived-level distributions,
+paired exact-session option outcomes, and the strict unresolved-source cash account.
+Do not tune the formula after seeing V1 option returns.
