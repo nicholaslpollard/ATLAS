@@ -5731,3 +5731,24 @@ GETs, zero historical trades, NULL historical account P&L.
 If the causal entry-ready population is substantial, the next implementation gate is
 a receipt-bound historical EOD scenario adapter that preserves later no-fill or
 unqualified-exit positions explicitly instead of filtering them from the cohort.
+
+
+### 2026-10-01 — First receipt-bound historical EOD option account replay
+
+The next implementation gate after the accepted 10,809-right causal admission audit
+is now a real-data EOD account replay rather than another broad source campaign.
+
+The replay preserves the 14,902-case daily-LONG denominator and never conditions entry
+on future exit availability. CALL is the primary direction-aligned mode; PUT is a
+separate counterfactual. Entry uses the exact accepted 16:00 ET ask. The exit policy
+is causal: scan forward only after entry and use the first later SHA-verified 16:00 ET
+two-sided bid with positive displayed size and volume before expiration. If no such
+exit occurs before expiration/2026 boundary, the position remains explicitly open and
+unmarked; no resolved-only cohort filter is permitted.
+
+Account economics use the existing cash-only ReplayPolicy framework with modeled
+100-share provider-standard contracts, configurable allocation/concurrency, ask/bid
+execution sides, fees, slippage and exit-fee reservation. No provider GET is required.
+Independent OCC deliverable authority, historical fill authority, strategy evidence,
+PAPER and LIVE remain false. After CI/merge, the next workstation run should build
+the scenario and execute CALL plus PUT replay in one pass.
