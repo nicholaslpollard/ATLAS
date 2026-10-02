@@ -344,8 +344,8 @@ def build_thetadata_intraday_option_source_plan(
             "role_memberships": dict(sorted(roles.items())),
             "unique_clock_times_et": len(times),
             "minute_boundary_aligned": minute_aligned,
-            "all_demands_on_or_after_documented_standard_first_access": (
-                target_coverage_after_2016
+            "all_demands_on_or_after_documented_value_first_access": (
+                target_coverage_after_2020
             ),
         },
         "request_shape_analysis": {
