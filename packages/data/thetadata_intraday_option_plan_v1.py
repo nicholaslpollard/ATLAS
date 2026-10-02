@@ -324,8 +324,8 @@ def build_thetadata_intraday_option_source_plan(
     minute_aligned = all(
         str(item["time_of_day_et"]).endswith(":00.000") for item in demands
     )
-    target_coverage_after_2016 = all(
-        date.fromisoformat(item["date_et"]) >= date(2016, 1, 1)
+    target_coverage_after_2020 = all(
+        date.fromisoformat(item["date_et"]) >= date(2020, 1, 1)
         for item in demands
     )
     anchors = _qualification_anchors(demands)
