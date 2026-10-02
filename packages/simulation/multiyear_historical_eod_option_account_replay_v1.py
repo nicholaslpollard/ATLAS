@@ -31,6 +31,7 @@ from packages.core.settings import AtlasSettings
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.marketdata_candidate_expansion_v1 import _read_object
 from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
+    CONTRACT as EOD_PROBE_CONTRACT,
     _decode_snapshot_rows,
 )
 from packages.data.multiyear_marketdata_eod_standard_contract_admission_v1 import (
@@ -94,6 +95,7 @@ def build_historical_eod_option_scenario(
     native: dict[str, Any],
     plan: dict[str, Any],
     handoff: dict[str, Any],
+    probe: dict[str, Any],
     admission: dict[str, Any],
     *,
     read_verified_body: Callable[
@@ -107,6 +109,7 @@ def build_historical_eod_option_scenario(
         (native, "source_fingerprint"),
         (plan, "plan_fingerprint"),
         (handoff, "handoff_fingerprint"),
+        (probe, "probe_fingerprint"),
         (admission, "audit_fingerprint"),
     ):
         _check_signature(doc, field)
@@ -117,7 +120,10 @@ def build_historical_eod_option_scenario(
         or native.get("case_denominator") != expected_original_cases
         or len(native.get("rows", [])) != expected_original_cases
         or native.get("protected_outcomes_read") != 0
+        or probe.get("contract") != EOD_PROBE_CONTRACT
         or admission.get("contract") != ADMISSION_CONTRACT
+        or probe.get("source_handoff_fingerprint") != handoff.get("handoff_fingerprint")
+        or admission.get("eod_probe_fingerprint") != probe.get("probe_fingerprint")
         or admission.get("original_case_denominator") != expected_original_cases
         or admission.get("original_right_memberships") != expected_original_cases * 2
         or admission.get("future_exit_used_for_entry_admission") is not False
@@ -135,12 +141,15 @@ def build_historical_eod_option_scenario(
 
     native_by_id = {row["case_id"]: row for row in native["rows"]}
     handoff_by_id = {row["case_right_id"]: row for row in handoff["rows"]}
+    probe_by_id = {row["case_right_id"]: row for row in probe["rows"]}
     admission_by_id = {row["case_right_id"]: row for row in admission["rows"]}
     requests = {row["request_identity"]: row for row in plan["requests"]}
     if (
         len(native_by_id) != expected_original_cases
         or len(handoff_by_id) != expected_original_cases * 2
+        or len(probe_by_id) != probe["dated_pair_work_items"]
         or len(admission_by_id) != admission["dated_pair_work_items"]
+        or set(probe_by_id) != set(admission_by_id)
         or len(requests) != plan["unique_physical_quote_queries"]
     ):
         raise HistoricalEodReplayError("historical EOD source denominator changed")
@@ -154,7 +163,14 @@ def build_historical_eod_option_scenario(
     }
 
     for case_right_id, row in sorted(admission_by_id.items()):
-        if row.get("provider_standard_chain_classification") is not True:
+        probe_row = probe_by_id[case_right_id]
+        if (
+            row.get("provider_standard_chain_classification") is not True
+            or probe_row.get("option_symbol") != row.get("option_symbol")
+            or probe_row.get("ticker") != row.get("ticker")
+            or probe_row.get("right") != row.get("right")
+            or probe_row.get("original_case_id") != row.get("original_case_id")
+        ):
             raise HistoricalEodReplayError("admission lost provider-standard classification")
         status = (
             "ENTRY_READY_MODELED_STANDARD_EOD"
@@ -212,12 +228,12 @@ def build_historical_eod_option_scenario(
             elif decoded_sha[source_id] != body_sha:
                 raise HistoricalEodReplayError("shared physical quote source SHA changed")
 
-            entry = row.get("entry")
+            entry = probe_row.get("entry")
             if not isinstance(entry, dict):
                 raise HistoricalEodReplayError("entry-ready right lost entry snapshot")
             entry_at = _aware(entry["snapshot_updated_at_utc"], "entry snapshot")
             entry_day = date.fromisoformat(entry["session_et"])
-            expiration = _expiry(row["option_symbol"], row["expiration"])
+            expiration = _expiry(row["option_symbol"], probe_row["expiration"])
             match = OCC.fullmatch(row["option_symbol"])
             if (
                 match is None
@@ -333,6 +349,7 @@ def build_historical_eod_option_scenario(
         "native_source_fingerprint": native["source_fingerprint"],
         "quote_plan_fingerprint": plan["plan_fingerprint"],
         "handoff_fingerprint": handoff["handoff_fingerprint"],
+        "eod_probe_fingerprint": probe["probe_fingerprint"],
         "admission_audit_fingerprint": admission["audit_fingerprint"],
         "original_case_denominator": expected_original_cases,
         "original_right_memberships": expected_original_cases * 2,
