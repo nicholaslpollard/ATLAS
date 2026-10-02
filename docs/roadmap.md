@@ -5775,3 +5775,23 @@ session. It will not search forward after the strategy exit to manufacture a fil
 
 Late-2025 signals whose required five-session stock horizon crosses into 2026 remain
 withheld so protected 2026 stock/option outcomes stay unread.
+
+
+### 2026-10-02 — Pivot static option controls to bounded Dynamic Exit V1
+
+The completed static strategy-session controls show that exact session alignment is
+working but that strict unresolved evidence can saturate the account: 2%/5% produced
+1,493 source-ready pairs and 10 ending unresolved positions; 3%/5% produced 2,055
+source-ready pairs and 10 ending unresolved positions. Once those ten gaps occupy all
+slots, later source-ready opportunities are rejected by the conservative account.
+
+Do not interpret either static account P&L as the intended ATLAS exit system. The next
+implementation rebuilds Dynamic Exit V1 through the final safe 2025 signal date using
+only completed prior folds. It maps each selected action (or ABSTAIN) into the exact
+stock STOP/TARGET/TIME exit session and then into the option EOD bid on that session.
+
+To separate strategy/option-expression information from unresolved-evidence account
+saturation, report two diagnostics: a strict causal cash account retaining unresolved
+positions, plus an all-source-ready paired trade census. The paired census may
+summarize returns only with an explicit future-source-conditioning label and may not
+be used as causal portfolio/PAPER/LIVE evidence.
