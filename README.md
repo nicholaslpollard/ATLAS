@@ -5379,3 +5379,27 @@ levels from strictly-prior training-cell MFE/MAE and return quartiles, bounded i
 the already researched 1–3% stop / 2–5% target envelope with minimum 1.5x
 target-to-stop. Current-case/current-fold outcomes and option exit evidence are not
 inputs to the level calculation.
+
+## 2026-10-02 — Continuous Dynamic Exit V2 closes exit-geometry tuning; entry-clock fidelity next
+
+The first workstation Continuous Dynamic Exit V2 run completed with zero provider GETs
+and zero protected-2026 outcome reads. Across 14,733 usable daily-LONG cases, the stop
+distribution was effectively pinned to the frozen upper bound (P25/median/P75 3.00%,
+mean 2.9986%) and the target was exactly 5.00% for every case. The 2,055 exact-session
+source-ready CALL pairs had modeled mean/median premium returns of -14.06%/-18.42%,
+30.61% positive, and mean modeled P&L -$75.01 per contract. The strict account
+completed 74 positions, retained ten unresolved positions, and reported modeled
+realized P&L -$33,365.40; ending equity/total return remain NULL.
+
+This closes the current exit-geometry branch. Do not create V3, widen bounds, weaken
+causal rules, or retune another exit formula from the same DEVELOPMENT outcomes.
+A separate zero-provider closeout now measures the more material trade-expression
+problem exposed by the run: 3,230 cases had already reached the stock strategy exit
+session by the time the accepted historical EOD CALL entry was available. The next
+gate quantifies decision-to-option-entry session/time lag, underlying movement and
+moneyness migration before option entry. Underlying alpha and option expression must
+be evaluated separately before any further option-performance interpretation.
+
+Detailed closeout:
+`docs/research/continuous_dynamic_exit_v2_closeout_20261002.md`.
+

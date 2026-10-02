@@ -5814,3 +5814,28 @@ STOP/TARGET/TIME mechanics remain unchanged.
 Run V2 as a zero-provider modeled diagnostic, report the derived-level distributions,
 paired exact-session option outcomes, and the strict unresolved-source cash account.
 Do not tune the formula after seeing V1 option returns.
+
+### 2026-10-02 — Rebaseline after Continuous Dynamic Exit V2
+
+Continuous Dynamic Exit V2 completed without provider calls. Its 14,733-case
+parameterization saturated the frozen research envelope: stop P25/median/P75 = 3%,
+mean = 2.9986%, and every target = 5%. The 2,055 source-ready modeled CALL pairs were
+negative in every year and negative in aggregate (mean premium return -14.06%, median
+-18.42%, P(positive) 30.61%). The strict account remained non-authoritative and ended
+with ten unresolved positions.
+
+**Roadmap correction:** exit geometry is no longer the next research bottleneck.
+Continuous V3 or another same-data stop/target search is not authorized. Track B next
+measures whether the historical EOD option expression preserves the original stock
+decision clock at all; the V2 run already showed 3,230 cases where the underlying
+strategy exit was not after the accepted EOD option entry. The new offline
+`multiyear_eod_option_entry_clock_closeout_v1` diagnostic quantifies entry lag,
+underlying movement and moneyness migration without new provider reads or strategy
+selection.
+
+After that closeout, research sequencing is underlying-signal expectancy -> intended
+decision-clock option source feasibility -> economic STOCK/OPTION/ABSTAIN comparison
+through the existing trade-expression gate -> incremental PIT-safe news evidence.
+Track A recurrent runtime/operator-product work continues independently and must not be
+blocked by a weak Track B strategy result.
+
