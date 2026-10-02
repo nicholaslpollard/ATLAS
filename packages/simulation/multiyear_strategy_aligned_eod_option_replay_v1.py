@@ -379,6 +379,7 @@ def replay_strategy_aligned_eod_call_account(
     max_positions_per_family: int = 3,
     one_active_position_per_ticker: bool = True,
     expected_scenario_contract: str = SCENARIO_CONTRACT,
+    replay_contract: str = CONTRACT,
 ) -> dict[str, Any]:
     """Replay CALL entries with exact frozen strategy-exit attempts."""
     _check_signature(scenario, "scenario_fingerprint")
@@ -631,7 +632,7 @@ def replay_strategy_aligned_eod_call_account(
     ending_equity = str(cash) if not positions else None
 
     report = {
-        "contract": CONTRACT,
+        "contract": replay_contract,
         "status": "MODELED_STRATEGY_ALIGNED_EOD_CALL_ACCOUNT_NO_FILL_AUTHORITY",
         "scenario_fingerprint": scenario["scenario_fingerprint"],
         "strategy_exit_policy": scenario["strategy_exit_policy"],
