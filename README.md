@@ -5358,3 +5358,24 @@ separate paired-observation diagnostic over every dynamically selected case that
 both an admissible EOD entry and exact strategy-exit-session EOD bid. The paired
 diagnostic is explicitly conditional on future exit-source availability and is not a
 causal portfolio result.
+
+
+### 2026-10-02 — Dynamic Exit V1 option replay completed; Continuous V2 preregistered
+
+Dynamic Exit V1 completed over the bounded 2021–2025 option cohort with zero provider
+GETs. It selected **354 / 14,733** eligible cases (**2.40%**), chose only the
+`STOP_03_TARGET_05` action, and all selected cases occurred in 2025. The resulting
+93 exact source-ready CALL pairs had mean modeled return on premium -11.56%, median
+-19.30%, probability positive 27.96%, and mean modeled P&L -$63.91 per contract.
+
+The strict account admitted 29 positions, completed 26, retained three unresolved
+positions and ended with $58,622.05 cash; ending equity/return remain NULL. This V1
+result remains diagnostic only and shows that the selector is too abstention-heavy
+and too coarse to serve as the final ATLAS exit engine.
+
+Continuous Dynamic Exit V2 is now preregistered to separate entry selection from exit
+parameterization. Every eligible accepted LONG case receives case-specific stop/target
+levels from strictly-prior training-cell MFE/MAE and return quartiles, bounded inside
+the already researched 1–3% stop / 2–5% target envelope with minimum 1.5x
+target-to-stop. Current-case/current-fold outcomes and option exit evidence are not
+inputs to the level calculation.
