@@ -1047,3 +1047,20 @@ A separately versioned diagnostic will now bind CALL exits to the frozen stock e
 session for both previously frozen 2%/5% and 3%/5% candidate policies. EOD option
 quotes can support session-level alignment only; they cannot establish the option
 price at the stock strategy's intraday stop/target touch.
+
+
+### 2026-10-02 — Static option exit controls are controls, not strategy evidence
+
+The static exact-session CALL controls completed with 1,493 source-ready 2%/5% pairs
+and 2,055 source-ready 3%/5% pairs. Their strict accounts admitted only 68/84
+positions and completed 58/74 because ten unresolved exact-exit evidence gaps filled
+all account slots early; ending cash was $26,147.70 / $24,997.70 with modeled
+realized P&L -$28,764.50 / -$33,365.40. Ending equity and total return remain NULL
+because both accounts retain ten unmarked unresolved positions.
+
+These are source/account mechanics controls, not an exit-policy ranking and not
+strategy evidence. The next diagnostic uses the already-established point-in-time
+Dynamic Exit V1 selector. A separate paired-observation result may characterize all
+source-ready dynamic entry/exit pairs, but because it conditions on future exact-exit
+source availability it is not a causal account result and grants no promotion, PAPER
+or LIVE authority.
