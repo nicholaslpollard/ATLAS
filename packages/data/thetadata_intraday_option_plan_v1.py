@@ -229,14 +229,19 @@ def _qualification_anchors(
             raise ThetaDataIntradayOptionPlanError(
                 f"no exact option demands for qualification year {year}"
             )
-        entry = _first(year_rows, lambda x: "ENTRY" in x["roles"])
-        exit_ = _first(year_rows, lambda x: "EXIT" in x["roles"])
-        if entry is None or exit_ is None:
-            raise ThetaDataIntradayOptionPlanError(
-                f"year {year} lacks ENTRY/EXIT qualification clocks"
+        for role in ("ENTRY", "EXIT"):
+            role_rows = [item for item in year_rows if role in item["roles"]]
+            if not role_rows:
+                raise ThetaDataIntradayOptionPlanError(
+                    f"year {year} lacks {role} qualification clocks"
+                )
+            picks = (
+                ("FIRST", role_rows[0]),
+                ("MIDDLE", role_rows[len(role_rows) // 2]),
+                ("LAST", role_rows[-1]),
             )
-        chosen.append((f"YEAR_{year}_ENTRY", entry))
-        chosen.append((f"YEAR_{year}_EXIT", exit_))
+            for position, item in picks:
+                chosen.append((f"YEAR_{year}_{role}_{position}", item))
 
     earliest_exit = min(
         (item for item in ordered if "EXIT" in item["roles"]),
