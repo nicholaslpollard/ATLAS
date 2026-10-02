@@ -5311,3 +5311,29 @@ five open positions and $0.65 per-contract entry/exit fees. Provider-standard
 OCC deliverable proof remains false. Completed round trips may report modeled EOD
 realized P&L, but historical fill/account-P&L authority, strategy promotion, PAPER
 and LIVE authority remain false.
+
+
+### 2026-10-02 — First real-data EOD option account replay completed
+
+The first receipt-bound historical EOD option replay completed over the immutable
+2021–2025 source set with zero provider requests. The scenario contained **10,809**
+causal entry-ready option rights; **10,696** found a later qualified liquid EOD bid
+and **113** did not.
+
+The direction-aligned CALL account saw 5,785 source-entry-ready cases, admitted 345
+positions under the initial five-position/10%-cash model, completed 343, ended with
+two unresolved positions and $182.05 cash, and realized modeled P&L of -$99,108.00.
+The PUT counterfactual admitted 442, completed 439, ended with three unresolved
+positions and $304.15 cash, and realized modeled P&L of -$99,443.90.
+
+These results close the first real-data option account-plumbing diagnostic only. The
+exit rule in that V1 replay was the first subsequent qualified liquid EOD bid, not
+the stock strategy's STOP/TARGET/TIME exit. Therefore the near-total modeled cash
+loss is **not strategy evidence** and does not change promotion, PAPER or LIVE state.
+
+The next replay binds CALL exits to the frozen stock strategy exit **session** for the
+unchanged 2%/5% and 3%/5% candidate policies. Because historical option observations
+are EOD, STOP/TARGET touch time remains unavailable: the option exits at the EOD bid
+of that stock exit session. Cases whose stock exit occurred before or on the first
+admissible option EOD entry are not option trades; exact-session option source gaps
+remain unresolved rather than sliding forward.
