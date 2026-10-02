@@ -15,6 +15,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import duckdb
 
@@ -377,7 +378,7 @@ def main(argv: list[str] | None = None) -> int:
         resolved: list[dict[str, Any]] = []
         calendar = MarketCalendar(
             exchange=settings.data.calendar.exchange,
-            market_tz=settings.data.calendar.market_timezone,
+            market_tz=ZoneInfo(settings.data.calendar.market_timezone),
         )
         for case in cases:
             if case["daily_exit_disposition"] == "TIME":
