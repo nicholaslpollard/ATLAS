@@ -5337,3 +5337,24 @@ are EOD, STOP/TARGET touch time remains unavailable: the option exits at the EOD
 of that stock exit session. Cases whose stock exit occurred before or on the first
 admissible option EOD entry are not option trades; exact-session option source gaps
 remain unresolved rather than sliding forward.
+
+
+### 2026-10-02 — Static strategy-session option controls completed; dynamic replay next
+
+The stock-strategy-session-aligned static CALL controls completed with zero provider
+GETs. Under STOP 2% / TARGET 5%, 1,493 cases had exact strategy-exit-session option
+source ready; under STOP 3% / TARGET 5%, 2,055 were source ready. Exact-exit-source
+gaps were 345 and 459 respectively. In both strict account replays, ten unresolved
+positions accumulated early and permanently occupied the 10-position ceiling, causing
+1,701 and 2,328 maximum-concurrency rejections. These account outputs therefore
+primarily measure the conservative unresolved-source policy, not five-year strategy
+performance.
+
+The next option gate uses the existing Dynamic Exit V1 selector rather than one
+static stop/target pair. Dynamic choices are rebuilt only from completed prior folds
+through the safe 2025 boundary; current-fold outcomes and all 2026 outcomes remain
+forbidden. The runner reports both (1) the same strict causal account and (2) a
+separate paired-observation diagnostic over every dynamically selected case that has
+both an admissible EOD entry and exact strategy-exit-session EOD bid. The paired
+diagnostic is explicitly conditional on future exit-source availability and is not a
+causal portfolio result.
