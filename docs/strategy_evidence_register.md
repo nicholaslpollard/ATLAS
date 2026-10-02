@@ -1012,3 +1012,19 @@ three-parameter historical chain requests support a provider-standard 100-share
 OCC deliverable/multiplier proof, historical fill authority, option/account P&L
 authority, strategy promotion, PAPER eligibility or LIVE eligibility. Later exit
 liquidity remains a separately observed event and may not influence entry admission.
+
+
+### 2026-10-01 — Modeled historical EOD option replay remains diagnostic
+
+The 10,809 causal entry-ready rights permit construction of a separately labeled
+modeled historical EOD account replay, but do not change strategy evidence status.
+The replay preserves all original 14,902 daily-LONG cases, uses CALL as the
+direction-aligned primary mode and PUT only as a counterfactual, and never selects
+entries using future exit information.
+
+Modeled entries use accepted EOD asks; exits use the first later qualified EOD bid
+after entry, with unresolved exits retained as open/unmarked positions. The
+provider-standard 100-share multiplier remains a model assumption rather than
+independent OCC deliverable proof. Any resulting realized cash/P&L is therefore
+diagnostic modeled EOD output only: no historical-fill authority, strategy promotion,
+PAPER eligibility or LIVE eligibility is created.
