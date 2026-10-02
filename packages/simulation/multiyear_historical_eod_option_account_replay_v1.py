@@ -130,11 +130,18 @@ def build_historical_eod_option_scenario(
         or probe.get("contract") != EOD_PROBE_CONTRACT
         or admission.get("contract") != ADMISSION_CONTRACT
         or probe.get("source_handoff_fingerprint") != handoff.get("handoff_fingerprint")
+        or probe.get("quote_plan_fingerprint") != plan.get("plan_fingerprint")
+        or probe.get("provider_requests") != 0
+        or probe.get("historical_option_trades_admitted") != 0
+        or probe.get("historical_account_pnl_authority") is not False
+        or probe.get("protected_2026_outcomes_read") != 0
+        or admission.get("handoff_fingerprint") != handoff.get("handoff_fingerprint")
         or admission.get("eod_probe_fingerprint") != probe.get("probe_fingerprint")
         or admission.get("original_case_denominator") != expected_original_cases
         or admission.get("original_right_memberships") != expected_original_cases * 2
         or admission.get("future_exit_used_for_entry_admission") is not False
         or admission.get("provider_requests") != 0
+        or admission.get("protected_2026_outcomes_read") != 0
         or admission.get("historical_option_trades_admitted") != 0
         or admission.get("historical_account_pnl_authority") is not False
         or admission.get("provider_standard_100_share_multiplier_is_model_assumption")
@@ -173,6 +180,14 @@ def build_historical_eod_option_scenario(
         probe_row = probe_by_id[case_right_id]
         if (
             row.get("provider_standard_chain_classification") is not True
+            or row.get("original_case_id") not in native_by_id
+            or _aware(row["decision_at_utc"], "admission decision")
+                != _aware(
+                    native_by_id[row["original_case_id"]][
+                        "planned_option_decision_at_utc"
+                    ],
+                    "native decision",
+                )
             or probe_row.get("option_symbol") != row.get("option_symbol")
             or probe_row.get("ticker") != row.get("ticker")
             or probe_row.get("right") != row.get("right")
@@ -270,10 +285,19 @@ def build_historical_eod_option_scenario(
             if len(matches) != 1:
                 raise HistoricalEodReplayError("entry snapshot no longer matches raw body")
 
+            selected_from = date.fromisoformat(request["from_inclusive"])
+            selected_to = date.fromisoformat(request["to_exclusive"])
+            if not selected_from <= entry_day < selected_to:
+                raise HistoricalEodReplayError(
+                    "entry snapshot escaped immutable selected request window"
+                )
             exits = []
             for source_row in decoded[source_id]:
                 session = date.fromisoformat(source_row["session_et"])
-                if not (entry_day < session < expiration):
+                if not (
+                    entry_day < session < expiration
+                    and selected_from <= session < selected_to
+                ):
                     continue
                 if session >= PROTECTED_2026_START:
                     continue
@@ -630,7 +654,11 @@ def replay_historical_eod_option_account(
         "modeled_realized_pnl": str(_money(realized_pnl)),
         "modeled_cash_change": str(_money(cash - initial_cash)),
         "modeled_total_return_on_initial_cash_if_fully_closed": (
-            str(_money((cash - initial_cash) / initial_cash))
+            str(
+                ((cash - initial_cash) / initial_cash).quantize(
+                    Decimal("0.00000001")
+                )
+            )
             if not positions else None
         ),
         "ending_reserved_exit_fees": str(reserved_exit_fees),
