@@ -14,6 +14,7 @@ from packages.core.settings import load_settings
 from packages.data.marketdata_candidate_expansion_v1 import _read_object
 from packages.data.multiyear_demand_quote_cache_v1 import PLAN_REL
 from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
+    OUTPUT_REL as EOD_PROBE_REL,
     local_verified_quote_body_reader,
 )
 from packages.data.multiyear_marketdata_eod_standard_contract_admission_v1 import (
@@ -99,6 +100,12 @@ def main(argv: list[str] | None = None) -> int:
         if admission.get("contract") != ADMISSION_CONTRACT:
             raise HistoricalEodReplayRunnerError("admission audit contract changed")
 
+        probe_path, probe = _artifact(
+            settings,
+            EOD_PROBE_REL,
+            admission["eod_probe_fingerprint"],
+        )
+        _check_signature(probe, "probe_fingerprint")
         handoff_path, handoff = _artifact(
             settings,
             HANDOFF_REL,
@@ -121,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
             raise HistoricalEodReplayRunnerError("accepted native source changed")
 
         print(f"  admission={admission_path}", flush=True)
+        print(f"  probe={probe_path}", flush=True)
         print(f"  handoff={handoff_path}", flush=True)
         print(f"  quote_plan={plan_path}", flush=True)
         print(f"  native_source={native_path}", flush=True)
@@ -129,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
             native,
             plan,
             handoff,
+            probe,
             admission,
             read_verified_body=local_verified_quote_body_reader(
                 settings, plan
