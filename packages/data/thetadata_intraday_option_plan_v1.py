@@ -48,7 +48,8 @@ PROVIDER_CANDIDATE = {
     "quote_source": "OPRA_NBBO",
     "at_time_endpoint": "/v3/option/at_time/quote",
     "history_quote_endpoint": "/v3/option/history/quote",
-    "requested_granularity": "1m",
+    "provider_granularity_observed": "tick level",
+    "requested_clock_resolution": "minute boundary",
     "clock_timezone": "America/New_York",
     "at_time_semantics_observed":
         "last NBBO quote reported by OPRA at the specified millisecond of the day",
