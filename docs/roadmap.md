@@ -5860,3 +5860,27 @@ option source against the exact clocks. MarketData remains useful for accepted E
 evidence but is not an intraday historical option source. Stock signal expectancy,
 option expression economics, and news evidence remain separate experiments.
 
+### 2026-10-02 — Stock-side intraday clock gate completed
+
+The exact minute-source replay is complete for the pre-2026 structural CALL cohort:
+9,667 / 9,974 cases have a causal option-expression clock, 304 stock trades had
+already exited by 09:35, three STOP/TARGET cases remain minute-trigger gaps, and only
+51 cases changed STOP/TARGET ordering relative to the prior daily replay.
+
+This closes the stock-side clock uncertainty. The resulting option-source demand is
+18,921 deduplicated ENTRY/EXIT at-time NBBO queries.
+
+Next gate: zero-provider `thetadata_intraday_option_source_plan_v1`. It must:
+1. verify every requested clock is minute-aligned and remains inside 2021–2025;
+2. inventory unique contract/day groups and the potential row cost of 1-minute
+   history batching versus exact at-time requests;
+3. select qualification anchors without option prices, P&L, or future liquidity;
+4. span 2021 through 2025, ENTRY and EXIT roles, early/late exit clocks, and a 13:00
+   early-close case when present;
+5. create no full-acquisition authority.
+
+Provider qualification then becomes a small explicit read-only gate. Full historical
+intraday option acquisition remains unauthorized until the oldest 2021 anchor,
+contract identity, OPRA NBBO timestamp semantics, schema, empty-response behavior,
+and raw receipt integrity are observed successfully.
+
