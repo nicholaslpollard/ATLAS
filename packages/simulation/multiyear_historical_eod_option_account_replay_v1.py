@@ -30,6 +30,7 @@ from zoneinfo import ZoneInfo
 from packages.core.settings import AtlasSettings
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.marketdata_candidate_expansion_v1 import _read_object
+from packages.data.multiyear_demand_quote_cache_v1 import CONTRACT as QUOTE_CONTRACT
 from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
     CONTRACT as EOD_PROBE_CONTRACT,
     _decode_snapshot_rows,
@@ -41,7 +42,10 @@ from packages.data.multiyear_native_stock_open_v1 import (
     CONTRACT as NATIVE_CONTRACT,
     NATIVE_FP,
 )
-from packages.data.multiyear_option_quote_reuse_handoff_v1 import _check_signature
+from packages.data.multiyear_option_quote_reuse_handoff_v1 import (
+    CONTRACT as HANDOFF_CONTRACT,
+    _check_signature,
+)
 from packages.simulation.multiyear_offline_account_replay_v1 import (
     ReplayPolicy,
     _decimal,
@@ -121,6 +125,8 @@ def build_historical_eod_option_scenario(
         or native.get("case_denominator") != expected_original_cases
         or len(native.get("rows", [])) != expected_original_cases
         or native.get("protected_outcomes_read") != 0
+        or plan.get("contract") != QUOTE_CONTRACT
+        or handoff.get("contract") != HANDOFF_CONTRACT
         or probe.get("contract") != EOD_PROBE_CONTRACT
         or admission.get("contract") != ADMISSION_CONTRACT
         or probe.get("source_handoff_fingerprint") != handoff.get("handoff_fingerprint")
