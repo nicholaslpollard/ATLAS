@@ -5879,7 +5879,7 @@ Next gate: zero-provider `thetadata_intraday_option_source_plan_v1`. It must:
    early-close case when present;
 5. create no full-acquisition authority.
 
-Provider qualification then becomes a small explicit read-only gate. Full historical
+Provider qualification then becomes a small explicit read-only gate targeting ThetaData Options Value. Full historical
 intraday option acquisition remains unauthorized until the oldest 2021 anchor,
 contract identity, OPRA NBBO timestamp semantics, schema, empty-response behavior,
 and raw receipt integrity are observed successfully.
