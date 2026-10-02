@@ -5454,7 +5454,8 @@ shapes, and creates an outcome-blind multi-year provider-qualification sample be
 any subscription or provider read is authorized.
 
 Current public ThetaData documentation is not treated as data authority. The plan
-targets Options Standard rather than Value because the retail page advertises eight
-years for Standard while Value advertises four years; 2021 coverage must be proven
-by the qualification itself before full acquisition.
+targets Options Value because the current retail page advertises six years of option
+history and the current subscription table lists Value option access from 2020-01-01,
+which encompasses the 2021–2025 target. The qualification must still prove the
+oldest required 2021 anchor before full acquisition.
 
