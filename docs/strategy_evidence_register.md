@@ -1144,3 +1144,24 @@ accepted local Alpaca SIP raw 1-minute stock evidence to resolve exact stock exi
 clocks and create a future at-time option NBBO request plan. It creates no historical
 fill, strategy, PAPER, or LIVE authority.
 
+## 20. Intraday stock-exit clock closeout and entry-contract clock correction — 2026-10-02
+
+The offline minute replay resolved stock exits for the pre-2026 structural CALL cohort:
+9,667 / 9,974 cases are option-expressible after 09:35, 304 had already exited at or
+before 09:35, three retain minute-trigger gaps, and only 51 cases changed STOP/TARGET
+ordering versus the prior daily replay. The run performed zero provider requests.
+
+This does not make the earlier single-contract option demand final. The provisional
+CALL had been selected nearest-ATM to the native stock open, while the intended
+option decision occurs at 09:35. A paid provider request against that symbol would
+therefore preserve a remaining contract-clock mismatch even if its quote timestamp
+were exact.
+
+**Disposition:** `STOCK_EXIT_CLOCK_COMPLETE / SINGLE_STRIKE_INTRADAY_DEMAND_NOT_FINAL /
+NEXT_CAUSAL_0935_DECISION_SPOT_AND_CANDIDATE_SURFACE`.
+
+The next permitted gate uses only accepted stock minute data to bind the causal 09:35
+underlying state and define provider-agnostic option candidate demand. It does not
+read option prices/outcomes or create historical-fill, strategy, PAPER or LIVE
+authority. Historical supported modern alpha remains zero.
+
