@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime
+from datetime import date, datetime, time
 import json
 import os
 import sys
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import duckdb
 
@@ -124,36 +125,65 @@ def _read_binding_rows(
     finally:
         verifier.close()
 
-    symbols = sorted(requested)
-    days = sorted({day for values in requested.values() for day in values})
-    symbol_marks = ",".join("?" for _ in symbols)
-    day_marks = ",".join("?" for _ in days)
+    request_rows = [
+        (
+            symbol,
+            day,
+            datetime.combine(
+                date.fromisoformat(day),
+                time(9, 34),
+                tzinfo=EASTERN,
+            ).astimezone(ZoneInfo("UTC")),
+        )
+        for symbol in sorted(requested)
+        for day in sorted(requested[symbol])
+    ]
+    if not request_rows:
+        raise OptionDecisionSpotRunnerError("binding read has no requested keys")
+
     con = duckdb.connect(":memory:")
     try:
         con.execute(f"PRAGMA threads={max(1, int(duckdb_threads))}")
+        con.execute(
+            """
+            CREATE TEMP TABLE requested_decision_spots(
+                symbol VARCHAR,
+                session_date DATE,
+                cutoff_utc TIMESTAMPTZ
+            )
+            """
+        )
+        con.executemany(
+            "INSERT INTO requested_decision_spots VALUES (?, CAST(? AS DATE), ?)",
+            request_rows,
+        )
         physical = con.execute(
-            f"""
+            """
             SELECT
-                symbol,
-                timestamp_utc,
-                CAST(session_date AS VARCHAR) AS session_date,
-                session_segment,
-                close,
-                timeframe,
-                dataset,
-                provider,
-                source_id,
-                is_adjusted
-            FROM read_parquet(?, hive_partitioning=false)
-            WHERE symbol IN ({symbol_marks})
-              AND CAST(session_date AS VARCHAR) IN ({day_marks})
-              AND session_segment = ?
-            ORDER BY symbol, session_date, timestamp_utc
+                p.symbol,
+                p.timestamp_utc,
+                CAST(p.session_date AS VARCHAR) AS session_date,
+                p.session_segment,
+                p.close,
+                p.timeframe,
+                p.dataset,
+                p.provider,
+                p.source_id,
+                p.is_adjusted
+            FROM read_parquet(?, hive_partitioning=false) p
+            JOIN requested_decision_spots r
+              ON p.symbol = r.symbol
+             AND p.session_date = r.session_date
+            WHERE p.session_segment = ?
+              AND p.timestamp_utc <= r.cutoff_utc
+            QUALIFY row_number() OVER (
+                PARTITION BY p.symbol, p.session_date
+                ORDER BY p.timestamp_utc DESC
+            ) = 1
+            ORDER BY p.symbol, p.session_date
             """,
             [
                 str(binding.canonical_path),
-                *symbols,
-                *days,
                 SessionSegment.REGULAR.value,
             ],
         ).fetchall()
