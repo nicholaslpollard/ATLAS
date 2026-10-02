@@ -364,3 +364,48 @@ def test_call_and_put_replays_remain_separate_modes():
     assert put["provider_requests"] == 0
     assert call["protected_2026_outcomes_read"] == 0
     assert put["protected_2026_outcomes_read"] == 0
+
+
+def test_unresolved_admitted_exit_remains_open_and_suppresses_terminal_equity():
+    native, native_fp, plan, handoff, probe, admission, reader = fixture()
+    scenario = build_historical_eod_option_scenario(
+        native, plan, handoff, probe, admission,
+        read_verified_body=reader,
+        expected_original_cases=2,
+        expected_native_fingerprint=native_fp,
+    )
+    one = next(case for case in scenario["cases"] if case["case_id"] == "one")
+    one["call"]["resolved_exit"] = None
+    one["call"]["exit_resolution"] = (
+        "NO_LATER_QUALIFIED_LIQUID_EOD_BID_BEFORE_EXPIRY_OR_2026"
+    )
+    scenario["entry_ready_resolved_exit_rights"] -= 1
+    scenario["entry_ready_unresolved_exit_rights"] += 1
+    scenario["scenario_fingerprint"] = _fingerprint({
+        key: value
+        for key, value in scenario.items()
+        if key != "scenario_fingerprint"
+    })
+
+    report = replay_historical_eod_option_account(
+        scenario,
+        mode="CALL",
+        policy=ReplayPolicy(
+            initial_cash="100000.00",
+            fraction_of_available_cash="0.10",
+            max_open_positions=5,
+            option_slippage_per_share="0.00",
+            option_entry_fee_per_contract="0.65",
+            option_exit_fee_per_contract="0.65",
+        ),
+    )
+    assert report["admitted_positions"] == 1
+    assert report["completed_round_trips"] == 0
+    assert report["end_open_positions"] == 1
+    assert report["ending_equity"] is None
+    assert report["modeled_total_return_on_initial_cash_if_fully_closed"] is None
+    decision = next(
+        row for row in report["decisions"] if row["case_id"] == "one"
+    )
+    assert decision["status"] == "OPEN_UNRESOLVED_NO_QUALIFIED_PREEXPIRY_EXIT"
+    assert report["historical_account_pnl_authority"] is False
