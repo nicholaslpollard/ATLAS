@@ -1028,3 +1028,22 @@ provider-standard 100-share multiplier remains a model assumption rather than
 independent OCC deliverable proof. Any resulting realized cash/P&L is therefore
 diagnostic modeled EOD output only: no historical-fill authority, strategy promotion,
 PAPER eligibility or LIVE eligibility is created.
+
+
+### 2026-10-02 — First historical EOD option account result remains non-authoritative
+
+The receipt-bound EOD option account replay completed, but its result is not entered
+as strategy performance evidence. CALL modeled realized P&L was -$99,108.00 with
+$182.05 ending cash and two unresolved positions; PUT counterfactual modeled realized
+P&L was -$99,443.90 with $304.15 ending cash and three unresolved positions.
+
+The V1 replay used the first subsequent qualified liquid EOD bid as its exit rule,
+which was chosen to validate historical option/account plumbing rather than to
+reproduce the stock strategy's STOP/TARGET/TIME policy. Historical fill authority,
+independent OCC deliverable authority, strategy promotion, PAPER and LIVE authority
+all remain false.
+
+A separately versioned diagnostic will now bind CALL exits to the frozen stock exit
+session for both previously frozen 2%/5% and 3%/5% candidate policies. EOD option
+quotes can support session-level alignment only; they cannot establish the option
+price at the stock strategy's intraday stop/target touch.
