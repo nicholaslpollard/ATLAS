@@ -21,7 +21,7 @@ from packages.data.thetadata_intraday_option_qualification_v1 import (
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Read-only ThetaData Options Standard qualification over the frozen "
+            "Read-only ThetaData Options Value qualification over the frozen "
             "outcome-blind intraday option anchor plan."
         )
     )
@@ -32,11 +32,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Required explicit authorization for read-only ThetaData Terminal calls.",
     )
     parser.add_argument(
-        "--confirm-thetadata-standard",
+        "--confirm-thetadata-value",
         action="store_true",
         help=(
             "Required confirmation that the operator intentionally enabled an "
-            "Options Standard subscription/entitlement for this qualification."
+            "Options Value subscription/entitlement for this qualification."
         ),
     )
     parser.add_argument("--workers", type=int, default=4)
@@ -52,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.confirm_thetadata_standard:
         print(
             "BLOCKED: pass --confirm-thetadata-standard only after the operator "
-            "has intentionally enabled Options Standard.",
+            "has intentionally enabled Options Value.",
             flush=True,
         )
         return 2
