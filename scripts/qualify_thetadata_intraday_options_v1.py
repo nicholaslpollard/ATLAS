@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             "Options Value subscription/entitlement for this qualification."
         ),
     )
-    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--workers", type=int, default=2)
     args = parser.parse_args(argv)
 
     if not args.authorize_provider_reads:
@@ -49,9 +49,9 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         return 2
-    if not args.confirm_thetadata_standard:
+    if not args.confirm_thetadata_value:
         print(
-            "BLOCKED: pass --confirm-thetadata-standard only after the operator "
+            "BLOCKED: pass --confirm-thetadata-value only after the operator "
             "has intentionally enabled Options Value.",
             flush=True,
         )
