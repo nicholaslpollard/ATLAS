@@ -122,8 +122,17 @@ def _targeted_bindings(
         needed = requirements.get(key)
         if not needed:
             continue
+        window_start = date.fromisoformat(str(record["window_start"]))
+        window_end = date.fromisoformat(str(record["window_end_exclusive"]))
         symbols = set(str(value) for value in record["symbols"])
-        if symbols.intersection(needed):
+        include = any(
+            any(
+                window_start <= date.fromisoformat(day) < window_end
+                for day in needed.get(symbol, set())
+            )
+            for symbol in symbols.intersection(needed)
+        )
+        if include:
             selected_records.append(record)
     bindings = [_binding_from_plan(source.layout, record) for record in selected_records]
     if not bindings:
