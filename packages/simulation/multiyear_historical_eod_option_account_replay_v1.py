@@ -40,8 +40,8 @@ from packages.data.multiyear_marketdata_eod_standard_contract_admission_v1 impor
 )
 from packages.data.multiyear_native_stock_open_v1 import (
     CONTRACT as NATIVE_CONTRACT,
-    NATIVE_FP,
 )
+from packages.data.multiyear_option_quote_bridge_v1 import NATIVE_FP
 from packages.data.multiyear_option_quote_reuse_handoff_v1 import (
     CONTRACT as HANDOFF_CONTRACT,
     _check_signature,
