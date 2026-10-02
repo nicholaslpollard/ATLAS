@@ -1081,3 +1081,35 @@ dynamic exit test. Continuous V2 is preregistered as an exit parameterizer rathe
 a second entry selector. Its case-specific levels use only strictly-prior training
 MFE/MAE and return quartiles inside the frozen static envelope. Paired option results
 remain future-source-conditioned diagnostics, not causal portfolio/PAPER/LIVE evidence.
+
+## 18. Continuous Dynamic Exit V2 closeout — 2026-10-02
+
+Continuous Dynamic Exit V2 was run once as preregistered and is now closed. It
+parameterized 14,733 usable daily-LONG cases using strictly-prior training
+distributions only. The resulting stop distribution had minimum 2.6853%, P25/median/
+P75 3.00%, mean 2.9986%, and maximum 3.00%; the target was exactly 5.00% for all
+14,733 cases. The intended continuous surface therefore collapsed almost entirely to
+the previously researched 3%/5% boundary.
+
+There were 2,055 exact-session source-ready CALL pairs. Modeled paired premium return
+was mean -14.06%, median -18.42%, P(positive) 30.61%, mean P&L -$75.01/contract.
+Every yearly paired mean from 2021 through 2025 was negative. The strict causal
+account admitted 84 positions, completed 74, retained ten unresolved positions and
+reported modeled realized P&L -$33,365.40 with $24,997.70 ending cash; ending equity
+and total return remain NULL.
+
+Separately, 3,230 cases had a stock STOP/TARGET/TIME exit session that was not after
+the accepted historical EOD CALL entry session. This is evidence that EOD
+trade-expression timing can materially diverge from the underlying strategy clock and
+must be measured before interpreting further option replay results.
+
+**Disposition:** `CONTINUOUS_DYNAMIC_EXIT_V2_DIAGNOSTIC_COMPLETE /
+EXIT_GEOMETRY_BRANCH_CLOSED / NO_V3_FROM_SAME_DEVELOPMENT_EVIDENCE /
+NO_PROMOTION`.
+
+Historical supported modern alpha remains zero. No strategy, selector, exit policy,
+option expression, PAPER or LIVE authority is promoted. Next permitted research is
+the zero-provider entry-clock translation closeout, followed by separate underlying
+signal and stock-vs-option economic evaluation. Detailed record:
+`docs/research/continuous_dynamic_exit_v2_closeout_20261002.md`.
+
