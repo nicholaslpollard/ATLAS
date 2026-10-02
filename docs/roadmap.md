@@ -5705,3 +5705,29 @@ run the standalone zero-provider probe against the exact
 after this change is merged. Do not spend the remaining 2,703 MarketData credits
 merely to repeat source that is already complete; use them only if the new evidence
 census identifies genuinely missing provider source that MarketData can supply.
+
+
+### 2026-10-01 — Causal EOD standard-contract admission gate
+
+The accepted EOD probe's **8,574** clock/liquidity/pre-expiry rights are a source-shape
+intersection, not an admissible trade denominator, because the intersection includes
+future exit liquidity. The next gate is therefore causal and zero-provider.
+
+The new audit re-verifies the signed MarketData historical chain source for every
+dated selected OCC. Accepted physical requests contain only `date`, `expiration`
+and `strike`; MarketData documents omitted `nonstandard` as default `false`,
+excluding adjusted/non-standard contracts. The selected OCC root must still equal the
+accepted underlying ticker. This supports a provider-standard 100-share **modeled**
+multiplier for a separately labeled EOD scenario, while independent OCC deliverable
+authority remains false.
+
+Entry readiness is measured solely from entry-known evidence: documented same-row
+16:00 ET stock/option snapshot shape, a two-sided option quote, positive displayed ask
+size, positive reported volume, and provider-standard chain classification. Later
+bid-side liquidity/pre-expiry state is measured separately and may not affect entry
+admission. The output remains source/model-readiness evidence only: zero provider
+GETs, zero historical trades, NULL historical account P&L.
+
+If the causal entry-ready population is substantial, the next implementation gate is
+a receipt-bound historical EOD scenario adapter that preserves later no-fill or
+unqualified-exit positions explicitly instead of filtering them from the cohort.
