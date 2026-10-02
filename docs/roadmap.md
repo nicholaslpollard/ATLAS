@@ -5860,3 +5860,28 @@ option source against the exact clocks. MarketData remains useful for accepted E
 evidence but is not an intraday historical option source. Stock signal expectancy,
 option expression economics, and news evidence remain separate experiments.
 
+### 2026-10-02 — 09:35 option contract clock correction before provider acquisition
+
+The accepted intraday stock-exit clock established 9,667 causal option-expression
+cases out of 9,974 pre-2026 structural CALL cases. That closes the stock-exit timing
+problem but exposes one remaining entry-contract mismatch: the provisional historical
+CALL identity was nearest-ATM to the native stock open even though option selection
+occurs at 09:35 ET.
+
+Do not acquire the old 18,921 single-contract demand set as final historical option
+evidence. It remains a reproducible baseline only.
+
+Next gate: `multiyear_option_decision_spot_v1`.
+1. read only accepted local Alpaca SIP raw 1-minute stock evidence;
+2. bind the latest completed minute close available at 09:35 (normally 09:34 bar
+   close; the 09:35 bar is future at the decision instant);
+3. quantify native-open to 09:35 stock movement and provisional strike drift;
+4. replace single-strike entry demand with a provider-agnostic CALL candidate surface;
+5. acquire no option data and create no option-selection authority.
+
+After this gate, historical intraday option-source qualification may be rebuilt
+against candidate-surface requests. Contract selection must remain downstream of
+causal bid/ask, IV/Greeks, liquidity, DTE, event context and the universal economic
+gate. The selected contract's exact exit quote is then acquired at the already-bound
+stock exit clock.
+
