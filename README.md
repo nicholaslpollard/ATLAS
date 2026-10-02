@@ -5285,3 +5285,29 @@ exit liquidity is evaluated separately only when the later observation is reache
 The 100-share value is explicitly a provider-standard **modeled multiplier
 assumption**, not independent OCC deliverable proof. The audit admits zero historical
 trades, creates no historical account P&L authority and uses zero provider credits.
+
+
+### 2026-10-01 — First receipt-bound historical EOD option account replay
+
+The causal admission audit accepted **10,809** entry-ready dated option rights from
+20,040 dated stock+option source rights. The prior 8,574 entry+later-exit intersection
+is not used as an entry denominator because that would let future exit liquidity
+decide whether an earlier trade existed.
+
+A new historical EOD replay path remains separate from the synthetic fixture engine.
+It preserves all 14,902 original accepted daily-LONG cases, treats CALL as the
+direction-aligned primary option mode and PUT only as a counterfactual diagnostic.
+Entry uses the signed causal-admission result and the exact SHA-verified 16:00 ET ask.
+After entry, the engine advances through the same verified physical quote history and
+attempts to sell at the **first subsequent** 16:00 ET two-sided bid with positive
+displayed bid size and positive reported volume, strictly before expiration. 2026
+outcomes are not opened.
+
+An unresolved exit is not removed from the cohort: the position stays open/unmarked
+and continues consuming cash, reserved exit fee and account capacity. The account
+model is cash-only, defaults to $100,000 initial cash, 10% available-cash allocation,
+five open positions and $0.65 per-contract entry/exit fees. Provider-standard
+100-share treatment remains an explicit modeled multiplier assumption; independent
+OCC deliverable proof remains false. Completed round trips may report modeled EOD
+realized P&L, but historical fill/account-P&L authority, strategy promotion, PAPER
+and LIVE authority remain false.
