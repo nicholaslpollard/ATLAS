@@ -52,6 +52,7 @@ ASSIGNMENT_CONTRACT = "atlas-multiyear-bounded-dynamic-exit-assignments-v1"
 SCENARIO_CONTRACT = "atlas-multiyear-dynamic-exit-eod-option-scenario-v1"
 REPLAY_CONTRACT = "atlas-multiyear-dynamic-exit-eod-option-replay-v1"
 DIAGNOSTIC_CONTRACT = "atlas-multiyear-dynamic-exit-eod-option-paired-diagnostics-v1"
+ASSIGNMENT_REL = "data/options/derived/multiyear_bounded_dynamic_exit_assignments_v1"
 SCENARIO_REL = "data/options/derived/multiyear_dynamic_exit_eod_option_scenario_v1"
 REPLAY_REL = "data/options/derived/multiyear_dynamic_exit_eod_option_replay_v1"
 DIAGNOSTIC_REL = (
@@ -530,6 +531,20 @@ def build_paired_observation_diagnostics(
     }
     result["diagnostic_fingerprint"] = _fingerprint(result)
     return result
+
+
+
+
+def persist_dynamic_assignments(
+    settings: AtlasSettings,
+    value: dict[str, Any],
+) -> tuple[Path, str]:
+    settings.assert_external_storage_binding("options")
+    _check_signature(value, "assignment_fingerprint")
+    path = settings.resolved_path(
+        f"{ASSIGNMENT_REL}_{value['assignment_fingerprint'][:16]}.json"
+    )
+    return _persist(path, value, "BOUNDED_DYNAMIC_EXIT_ASSIGNMENTS")
 
 
 def persist_dynamic_scenario(
