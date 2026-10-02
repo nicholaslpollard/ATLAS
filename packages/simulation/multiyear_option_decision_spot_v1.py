@@ -173,7 +173,7 @@ def select_decision_spot_cases(report: dict[str, Any]) -> list[dict[str, Any]]:
             )
         selected.append({
             "case_id": row["case_id"],
-            "year": row["year"],
+            "year": str(row["year"]),
             "ticker": row["ticker"],
             "policy_id": row["policy_id"],
             "economic_family_id": row.get("economic_family_id"),
