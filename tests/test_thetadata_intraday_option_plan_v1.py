@@ -128,8 +128,8 @@ def test_source_plan_is_zero_provider_and_spans_all_years(monkeypatch):
         for anchor in result["qualification"]["anchors"]
         for reason in anchor["qualification_reasons"]
     }
-    assert "YEAR_2021_ENTRY" in reasons
-    assert "YEAR_2025_EXIT" in reasons
+    assert "YEAR_2021_ENTRY_FIRST" in reasons
+    assert "YEAR_2025_EXIT_LAST" in reasons
     assert "EARLY_CLOSE_1300_ET" in reasons
 
 
