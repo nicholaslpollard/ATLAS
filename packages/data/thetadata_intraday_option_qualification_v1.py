@@ -10,6 +10,7 @@ It does not compute option returns, historical fills, account P&L, strategy evid
 PAPER, or LIVE decisions.
 """
 
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime
 import hashlib
@@ -466,11 +467,7 @@ def run_thetadata_intraday_option_qualification_v1(
         "provider_writes": 0,
         "anchors": ordered,
         "status_counts": dict(
-            sorted(
-                __import__("collections").Counter(
-                    item["status"] for item in ordered
-                ).items()
-            )
+            sorted(Counter(item["status"] for item in ordered).items())
         ),
         "usable_year_role_coverage": coverage,
         "oldest_2021_entry_and_exit_proven": oldest_2021_proven,
@@ -484,6 +481,7 @@ def run_thetadata_intraday_option_qualification_v1(
         "paper_authority": False,
         "live_authority": False,
         "raw_root": str(root),
+        "report_path": str(root / "qualification.json"),
     }
     report["qualification_fingerprint"] = _fingerprint(report)
     report_path = root / "qualification.json"
@@ -492,5 +490,4 @@ def run_thetadata_intraday_option_qualification_v1(
         json.dumps(report, indent=2, sort_keys=True) + "\n",
         fsync=True,
     )
-    report["report_path"] = str(report_path)
     return report
