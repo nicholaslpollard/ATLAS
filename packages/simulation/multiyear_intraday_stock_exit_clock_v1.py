@@ -371,6 +371,38 @@ def resolve_intraday_exit_case(
         event_stamp = close_utc
         action_at = close_utc
     else:
+        if not bars:
+            return {
+                "case_id": case["case_id"],
+                "year": case["year"],
+                "ticker": case["ticker"],
+                "policy_id": case["policy_id"],
+                "economic_family_id": case.get("economic_family_id"),
+                "signal_session": case["signal_session"],
+                "entry_session": case["entry_session"],
+                "decision_at_utc": decision.isoformat(),
+                "raw_stock_open": case["raw_stock_open"],
+                "stop_fraction": case["stop_fraction"],
+                "target_fraction": case["target_fraction"],
+                "stop_price": str(stop_price),
+                "target_price": str(target_price),
+                "option_symbol": case["option_symbol"],
+                "daily_exit_disposition": daily_disposition,
+                "daily_exit_session": case["daily_exit_session"],
+                "daily_exit_session_offset": case["daily_exit_session_offset"],
+                "minute_exit_disposition": None,
+                "minute_event_stamp_utc": None,
+                "causal_exit_action_at_utc": None,
+                "minutes_after_option_decision": None,
+                "daily_vs_minute_disposition_changed": False,
+                "minute_same_bar_collision_adverse_first": False,
+                "minute_gap_through_boundary": False,
+                "trigger_bar": None,
+                "option_expression_clock_ready": False,
+                "status": "MINUTE_SOURCE_SESSION_MISSING",
+                "entry_quote_demand": None,
+                "exit_quote_demand": None,
+            }
         previous: datetime | None = None
         for bar in sorted(bars, key=_bar_timestamp):
             stamp = _bar_timestamp(bar)
