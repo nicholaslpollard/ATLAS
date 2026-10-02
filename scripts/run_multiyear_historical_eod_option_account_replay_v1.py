@@ -15,6 +15,8 @@ from packages.data.marketdata_candidate_expansion_v1 import _read_object
 from packages.data.multiyear_demand_quote_cache_v1 import PLAN_REL
 from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
     OUTPUT_REL as EOD_PROBE_REL,
+)
+from packages.data.multiyear_observed_option_quote_timeline_v1 import (
     local_verified_quote_body_reader,
 )
 from packages.data.multiyear_marketdata_eod_standard_contract_admission_v1 import (

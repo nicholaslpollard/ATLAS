@@ -22,6 +22,9 @@ from packages.simulation.multiyear_historical_eod_option_account_replay_v1 impor
     replay_historical_eod_option_account,
 )
 from packages.simulation.multiyear_offline_account_replay_v1 import ReplayPolicy
+from scripts.run_multiyear_historical_eod_option_account_replay_v1 import (
+    main as historical_eod_replay_runner_main,
+)
 
 
 def signed(value, field):
@@ -410,3 +413,7 @@ def test_unresolved_admitted_exit_remains_open_and_suppresses_terminal_equity():
     )
     assert decision["status"] == "OPEN_UNRESOLVED_NO_QUALIFIED_PREEXPIRY_EXIT"
     assert report["historical_account_pnl_authority"] is False
+
+
+def test_historical_eod_replay_runner_imports_end_to_end():
+    assert callable(historical_eod_replay_runner_main)
