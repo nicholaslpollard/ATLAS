@@ -996,3 +996,19 @@ same-row `underlyingPrice` as a historical EOD snapshot shape, but independent
 publication/retrieval availability and point-in-time deliverable/multiplier proof
 remain unresolved. No strategy state, promotion gate, PAPER eligibility, LIVE
 eligibility, or prior negative/parked strategy conclusion changes.
+
+
+### 2026-10-01 — Causal EOD standard-contract audit does not change strategy status
+
+The accepted 8,574 EOD clock/liquidity/pre-expiry intersection is not treated as a
+historical trade cohort because it contains future exit information. A new
+zero-provider audit instead measures causal entry readiness from entry-known evidence
+only and rechecks that the selected OCC came from MarketData's default
+standard-contract chain path.
+
+MarketData's documented default `nonstandard=false` semantics and the accepted
+three-parameter historical chain requests support a provider-standard 100-share
+**modeled multiplier assumption** for an EOD scenario. They do not create independent
+OCC deliverable/multiplier proof, historical fill authority, option/account P&L
+authority, strategy promotion, PAPER eligibility or LIVE eligibility. Later exit
+liquidity remains a separately observed event and may not influence entry admission.

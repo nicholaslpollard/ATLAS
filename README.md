@@ -5262,3 +5262,26 @@ run the standalone zero-provider probe against the exact
 after this change is merged. Do not spend the remaining 2,703 MarketData credits
 merely to repeat source that is already complete; use them only if the new evidence
 census identifies genuinely missing provider source that MarketData can supply.
+
+
+### 2026-10-01 — Causal EOD standard-contract admission gate
+
+The accepted EOD clock/liquidity probe produced **20,040** dated source rights and
+**8,574** rights with both entry and later-exit EOD clock/liquidity/pre-expiry source
+shape. That 8,574 count is not used as an entry population because requiring later
+exit liquidity at admission would introduce lookahead.
+
+A new zero-provider admission audit therefore rechecks the exact signed historical
+chain receipt/body that supplied each dated selected OCC symbol. MarketData documents
+the chain `nonstandard` parameter as defaulting to `false`; the accepted ATLAS
+chain requests contain exactly `date`, `expiration` and `strike`, so they did not
+opt into adjusted/non-standard contracts. The selected OCC root must also continue to
+match the accepted underlying ticker. Provider documentation describes the standard
+equity chain under the ordinary 100-share contract model.
+
+The audit reports a **causal entry-ready** population using only entry-time EOD
+snapshot, ask-side size/volume and provider-standard chain evidence. Later bid-side
+exit liquidity is evaluated separately only when the later observation is reached.
+The 100-share value is explicitly a provider-standard **modeled multiplier
+assumption**, not independent OCC deliverable proof. The audit admits zero historical
+trades, creates no historical account P&L authority and uses zero provider credits.

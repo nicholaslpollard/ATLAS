@@ -38,6 +38,11 @@ from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
     build_marketdata_eod_clock_liquidity_probe,
     persist_marketdata_eod_clock_liquidity_probe,
 )
+from packages.data.multiyear_marketdata_eod_standard_contract_admission_v1 import (
+    build_eod_standard_contract_admission_audit,
+    local_standard_chain_verifier,
+    persist_eod_standard_contract_admission_audit,
+)
 from packages.data.multiyear_option_quote_bridge_v1 import (
     NATIVE_REL, build_local_bridge, write_local_bridge,
 )
@@ -299,10 +304,29 @@ def main(argv: list[str] | None = None) -> int:
         ep, eps = persist_marketdata_eod_clock_liquidity_probe(
             settings, eod_probe
         )
+        standard_admission = build_eod_standard_contract_admission_audit(
+            selection,
+            handoff,
+            eod_probe,
+            verify_standard_chain=local_standard_chain_verifier(settings),
+        )
+        sap, saps = persist_eod_standard_contract_admission_audit(
+            settings, standard_admission
+        )
         print(f"    casebook={bps} / {bp}", flush=True)
         print(f"    replay_readiness={aps} / {ap}", flush=True)
         print(f"    execution_proof_demand={pps} / {pp}", flush=True)
         print(f"    eod_clock_liquidity_probe={eps} / {ep}", flush=True)
+        print(f"    eod_standard_contract_admission={saps} / {sap}", flush=True)
+        print(
+            f"    eod_provider_standard_at_selection="
+            f"{standard_admission['provider_standard_at_selection']} "
+            f"eod_causal_entry_ready_model_source_shape="
+            f"{standard_admission['causal_entry_ready_model_source_shape']} "
+            f"eod_entry_and_later_exit_model_source_shape="
+            f"{standard_admission['entry_and_later_exit_model_source_shape']}",
+            flush=True,
+        )
         print(
             f"    eod_same_row_snapshot_candidates="
             f"{eod_probe['documented_same_row_snapshot_candidates']} "
