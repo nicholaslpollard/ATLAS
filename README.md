@@ -5430,3 +5430,26 @@ NBBO demand plan. No option provider is read by this gate.
 Detailed forensic closeout:
 `docs/research/eod_option_entry_clock_forensics_v1_20261002.md`.
 
+## 2026-10-02 — Intraday stock exit clock accepted; 09:35 contract clock correction
+
+The zero-provider intraday stock-exit clock completed over 9,974 pre-2026 CALL/policy
+cases using accepted Alpaca SIP raw 1-minute source. It resolved 9,667 cases (96.9220%)
+to a causal option-expression window after the planned 09:35 decision; 304 stock
+trades had already exited at or before 09:35 and three STOP/TARGET cases retained a
+minute-trigger gap. Minute ordering changed the older daily STOP/TARGET disposition
+in only 51 cases (0.5113%). No provider request or option outcome was read.
+
+A final entry-side clock mismatch was identified before paid intraday option
+acquisition: the provisional structural CALL symbol had been selected nearest-ATM
+against the native stock open, while option expression is decided at 09:35 ET.
+Therefore the previously emitted 18,921 exact single-contract quote demands are not
+treated as final acquisition authority.
+
+The replacement zero-provider gate is
+`multiyear_option_decision_spot_v1`. It binds the last completed accepted stock
+minute causally available at 09:35, measures open-to-decision movement and baseline
+strike drift, and emits provider-agnostic CALL candidate-surface demand by
+underlying/date/decision clock. Strike and expiration remain unselected until causal
+option quotes can be evaluated by the existing option-economics/trade-expression
+layer. Exact option exit source demand is second-stage after entry contract selection.
+
