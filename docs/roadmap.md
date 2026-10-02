@@ -5752,3 +5752,26 @@ execution sides, fees, slippage and exit-fee reservation. No provider GET is req
 Independent OCC deliverable authority, historical fill authority, strategy evidence,
 PAPER and LIVE remain false. After CI/merge, the next workstation run should build
 the scenario and execute CALL plus PUT replay in one pass.
+
+
+### 2026-10-02 — EOD option account plumbing complete; strategy-session alignment next
+
+The first real-data EOD account replay completed with zero provider reads. It proved
+that the signed historical option source, modeled standard multiplier, chronological
+cash account, entry sizing, bid/ask economics and unresolved-position handling can run
+end to end.
+
+That replay intentionally exited at the first later qualified liquid EOD bid. CALL
+therefore depleted nearly all modeled deployable cash ($182.05 remaining; modeled
+realized P&L -$99,108.00 across 343 completed positions), but this is an execution
+diagnostic rather than a test of the accepted stock strategy's exit logic.
+
+The next gate is strategy-session alignment for the two unchanged frozen static
+candidates: 2% stop / 5% target and 3% stop / 5% target. Existing accepted daily
+stock path logic resolves STOP/TARGET/TIME sessions conservatively. The option
+adapter will enter only after the first causal EOD ask while the stock strategy is
+still active, then attempt to exit at the option EOD bid on the exact stock exit
+session. It will not search forward after the strategy exit to manufacture a fill.
+
+Late-2025 signals whose required five-session stock horizon crosses into 2026 remain
+withheld so protected 2026 stock/option outcomes stay unread.
