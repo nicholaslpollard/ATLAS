@@ -480,6 +480,11 @@ def build_continuous_dynamic_exit_v2_scenario(
         "handoff_fingerprint": handoff["handoff_fingerprint"],
         "original_case_denominator": expected_original_cases,
         "safe_last_signal_session": safe_last_signal_session.isoformat(),
+        "strategy_exit_policy": {
+            "policy_id": "CONTINUOUS_DYNAMIC_EXIT_V2",
+            "time_exit_sessions": 5,
+            "case_specific_levels": True,
+        },
         "parameterization": {
             "downside_anchor": "MEAN_OF_MEAN_MAE_AND_ABS_NEGATIVE_P25_RETURN",
             "upside_anchor": "MEAN_OF_MEAN_MFE_AND_POSITIVE_P75_RETURN",
