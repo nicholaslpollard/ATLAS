@@ -334,7 +334,7 @@ def run_thetadata_intraday_option_qualification_v1(
     settings: AtlasSettings,
     plan: dict[str, Any],
     *,
-    workers: int = 4,
+    workers: int = 2,
     reader: Callable[..., ThetaDataResponse] = option_at_time_quote,
 ) -> dict[str, Any]:
     _validate_plan(plan)
