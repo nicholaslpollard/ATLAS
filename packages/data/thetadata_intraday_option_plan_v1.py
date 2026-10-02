@@ -12,7 +12,7 @@ The plan has two purposes:
 2. Build a small, outcome-blind qualification sample plus exact acquisition
    accounting before the operator purchases or authorizes a provider subscription.
 
-The current candidate is ThetaData Options Standard. This plan deliberately does
+The current candidate is ThetaData Options Value. This plan deliberately does
 not treat public entitlement documentation as observed data authority. The oldest
 required 2021 sample must be proven by a later provider qualification run.
 """
