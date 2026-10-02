@@ -1144,3 +1144,29 @@ accepted local Alpaca SIP raw 1-minute stock evidence to resolve exact stock exi
 clocks and create a future at-time option NBBO request plan. It creates no historical
 fill, strategy, PAPER, or LIVE authority.
 
+## 20. Intraday stock-exit clock closeout — 2026-10-02
+
+The zero-provider minute replay resolved the stock side of the historical option
+clock problem across 9,974 pre-2026 cases with a selected structural CALL and stock
+exit. It reused accepted Alpaca SIP raw 1-minute evidence only.
+
+Observed result:
+- clock-ready cases: 9,667 (96.9220%);
+- stock exit at/before planned 09:35 option decision: 304 (3.0479%);
+- minute trigger not found on daily exit session: 3;
+- daily versus minute STOP/TARGET disposition changed: 51 (0.5113%);
+- final minute dispositions: STOP 5,238 / TARGET 2,516 / TIME 2,217;
+- exact future NBBO demand: 18,921 deduplicated at-time queries;
+- provider requests: 0.
+
+This materially changes the interpretation of the earlier EOD option work. The
+original EOD entry path was strongly clock-censored, but the intended 09:35 strategy
+itself is expressible as an option in the large majority of the frozen cohort once
+stock exits are resolved at minute precision.
+
+**Disposition:** `STOCK_INTRADAY_CLOCK_COMPLETE / NO_OPTION_PNL_AUTHORITY /
+NEXT_EXACT_INTRADAY_OPTION_SOURCE_QUALIFICATION_PLAN`.
+
+Historical supported modern alpha remains zero. Correct source clocks are necessary
+for derivative-expression evidence but do not promote the underlying stock signal.
+
