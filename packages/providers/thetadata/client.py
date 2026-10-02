@@ -18,7 +18,7 @@ from typing import Any, Callable
 
 THETADATA_BASE_URL_ENV = "THETADATA_BASE_URL"
 DEFAULT_THETADATA_BASE_URL = "http://127.0.0.1:25503"
-TRANSIENT_STATUS = frozenset({500, 502, 503, 504})
+NO_DATA_STATUS = 472\nTRANSIENT_STATUS = frozenset({429, 474, 571, 572, 500, 502, 503, 504})
 
 
 class ThetaDataError(RuntimeError):
@@ -121,15 +121,27 @@ def get_json(
         except urllib.error.HTTPError as exc:
             body = exc.read()
             message = body.decode("utf-8", errors="replace").strip()
-            if exc.code in {400, 401, 402, 403, 404, 405, 409, 422, 429}:
-                raise ThetaDataError(
-                    f"ThetaData HTTP {exc.code}: {message[:500]}",
+            if exc.code == NO_DATA_STATUS:
+                return ThetaDataResponse(
                     http_status=int(exc.code),
-                ) from exc
+                    rows=(),
+                    headers={str(k): str(v) for k, v in exc.headers.items()},
+                    response_bytes=len(body),
+                    elapsed_seconds=max(0.0, time.perf_counter() - started),
+                    raw_body=body,
+                )
             last_error = exc
             if exc.code in TRANSIENT_STATUS and attempt < max_attempts:
                 sleep(min(initial_retry_seconds * (2 ** (attempt - 1)), max_retry_seconds))
                 continue
+            if exc.code in {
+                400, 401, 402, 403, 404, 405, 409, 422,
+                470, 471, 473, 475, 476, 477, 478, 570,
+            }:
+                raise ThetaDataError(
+                    f"ThetaData HTTP {exc.code}: {message[:500]}",
+                    http_status=int(exc.code),
+                ) from exc
             raise ThetaDataError(
                 f"ThetaData HTTP {exc.code}: {message[:500]}",
                 http_status=int(exc.code),
