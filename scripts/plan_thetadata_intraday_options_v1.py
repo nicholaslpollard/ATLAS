@@ -47,7 +47,7 @@ def _persist(settings, report: dict) -> tuple[Path, str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Plan an outcome-blind ThetaData Options Standard qualification and exact "
+            "Plan an outcome-blind ThetaData Options Value qualification and exact "
             "intraday historical option NBBO acquisition shape. Zero provider reads."
         )
     )
