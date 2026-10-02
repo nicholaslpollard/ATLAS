@@ -111,6 +111,8 @@ def build_strategy_aligned_eod_option_scenario(
         tuple[dict[str, Any], bytes, dict[str, Any]],
     ],
     expected_original_cases: int = 14902,
+    decoded_cache: dict[str, list[dict[str, Any]]] | None = None,
+    decoded_sha_cache: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Bind CALL entries to exact frozen stock exit sessions without exit lookahead."""
     for doc, field in (
@@ -154,8 +156,8 @@ def build_strategy_aligned_eod_option_scenario(
     ):
         raise StrategyAlignedEodReplayError("strategy-aligned denominator changed")
 
-    decoded: dict[str, list[dict[str, Any]]] = {}
-    decoded_sha: dict[str, str] = {}
+    decoded = decoded_cache if decoded_cache is not None else {}
+    decoded_sha = decoded_sha_cache if decoded_sha_cache is not None else {}
     counts: Counter[str] = Counter()
     by_year: dict[str, Counter[str]] = {
         str(year): Counter() for year in range(2021, 2027)
@@ -376,11 +378,13 @@ def replay_strategy_aligned_eod_call_account(
     policy: ReplayPolicy | None = None,
     max_positions_per_family: int = 3,
     one_active_position_per_ticker: bool = True,
+    expected_scenario_contract: str = SCENARIO_CONTRACT,
+    replay_contract: str = CONTRACT,
 ) -> dict[str, Any]:
     """Replay CALL entries with exact frozen strategy-exit attempts."""
     _check_signature(scenario, "scenario_fingerprint")
     if (
-        scenario.get("contract") != SCENARIO_CONTRACT
+        scenario.get("contract") != expected_scenario_contract
         or scenario.get("future_option_exit_used_for_entry_admission") is not False
         or scenario.get("provider_requests") != 0
         or scenario.get("protected_2026_outcomes_read") != 0
@@ -628,7 +632,7 @@ def replay_strategy_aligned_eod_call_account(
     ending_equity = str(cash) if not positions else None
 
     report = {
-        "contract": CONTRACT,
+        "contract": replay_contract,
         "status": "MODELED_STRATEGY_ALIGNED_EOD_CALL_ACCOUNT_NO_FILL_AUTHORITY",
         "scenario_fingerprint": scenario["scenario_fingerprint"],
         "strategy_exit_policy": scenario["strategy_exit_policy"],
