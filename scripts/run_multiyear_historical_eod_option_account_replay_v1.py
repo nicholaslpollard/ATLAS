@@ -20,7 +20,7 @@ from packages.data.multiyear_marketdata_eod_clock_liquidity_probe_v1 import (
 from packages.data.multiyear_marketdata_eod_standard_contract_admission_v1 import (
     CONTRACT as ADMISSION_CONTRACT,
 )
-from packages.data.multiyear_native_stock_open_v1 import (
+from packages.data.multiyear_option_quote_bridge_v1 import (
     NATIVE_FP,
     NATIVE_REL,
 )
