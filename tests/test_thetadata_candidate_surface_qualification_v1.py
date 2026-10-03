@@ -152,6 +152,7 @@ def _response(
         response_bytes=len(raw),
         elapsed_seconds=0.01,
         raw_body=raw,
+        library_version="1.0.12",
     )
 
 
@@ -221,6 +222,7 @@ def test_future_quote_in_surface_fails_validation(tmp_path):
             response_bytes=len(raw),
             elapsed_seconds=0.01,
             raw_body=raw,
+            library_version="1.0.12",
         )
 
     report = run_thetadata_candidate_surface_qualification_v1(
