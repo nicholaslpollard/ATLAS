@@ -36,6 +36,9 @@ from packages.data.thetadata_candidate_surface_qualification_v1 import (
     _symbol_matches_underlying,
 )
 from packages.providers.thetadata.client import (
+    EVIDENCE_ENCODING,
+    TARGET_LIBRARY_VERSION,
+    TRANSPORT,
     ThetaDataError,
     ThetaDataResponse,
     option_history_open_interest_surface,
@@ -50,6 +53,17 @@ EXPECTED_QUALIFICATION_ANCHORS = 15
 
 class ThetaDataOpenInterestQualificationError(ValueError):
     pass
+
+
+def _validate_provider_provenance(response: ThetaDataResponse) -> None:
+    if (
+        response.transport != TRANSPORT
+        or response.library_version != TARGET_LIBRARY_VERSION
+        or response.evidence_encoding != EVIDENCE_ENCODING
+    ):
+        raise ThetaDataOpenInterestQualificationError(
+            "ThetaData provider transport/library provenance changed"
+        )
 
 
 def _sha256(raw: bytes) -> str:
@@ -274,6 +288,19 @@ def _probe_one(
             "http_status": exc.http_status,
             "error": f"{type(exc).__name__}: {exc}",
         }, None, None
+
+    try:
+        _validate_provider_provenance(response)
+    except ThetaDataOpenInterestQualificationError as exc:
+        return {
+            "anchor_index": anchor["anchor_index"],
+            "qualification_reasons": anchor["qualification_reasons"],
+            "query": anchor["query"],
+            "status": "SURFACE_VALIDATION_ERROR",
+            "http_status": response.http_status,
+            "response_rows": len(response.rows),
+            "error": f"{type(exc).__name__}: {exc}",
+        }, response, None
 
     if len(response.rows) == 0:
         return {
