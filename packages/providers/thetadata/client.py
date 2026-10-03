@@ -1,30 +1,36 @@
 from __future__ import annotations
 
-"""Read-only ThetaData Python-library adapter.
+"""Read-only ThetaData adapter backed by an isolated Python-library worker.
 
-ThetaData's Python library connects directly to ThetaData over HTTPS/gRPC and does
-not require Theta Terminal or Java. ATLAS uses pandas DataFrames because pandas is
-already a core dependency.
+ThetaData 1.0.12 requires protobuf>=6.32.1 while the accepted ATLAS Webull SDK
+requires protobuf<6 on Python>=3.12. To avoid destabilizing broker/runtime code,
+ThetaData runs in a dedicated provider virtual environment and ATLAS communicates
+with a persistent worker process over line-delimited JSON on stdin/stdout.
 
-The adapter converts provider DataFrames to deterministic Python records and canonical
-JSON bytes for immutable evidence receipts. These bytes are a canonical serialization
-of the provider DataFrame, not raw network/wire bytes.
+No Theta Terminal or Java is involved.
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime
-import importlib.metadata
+from datetime import date
 import json
-import math
+import os
+from pathlib import Path
+import subprocess
 import sys
 import threading
 import time
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Mapping, Sequence
+import uuid
 
-MIN_PYTHON = (3, 12)
-MIN_API_KEY_LIBRARY = (1, 0, 9)
+
+ROOT = Path(__file__).resolve().parents[3]
+WORKER_SCRIPT = ROOT / "scripts" / "thetadata_python_worker_v1.py"
+THETADATA_PYTHON_ENV = "ATLAS_THETADATA_PYTHON"
+DEFAULT_PROVIDER_VENV = ROOT / ".provider_venvs" / "thetadata"
 TARGET_LIBRARY_VERSION = "1.0.12"
-TRANSPORT = "THETADATA_PYTHON_LIBRARY_GRPC"
+MIN_PROVIDER_PYTHON = (3, 12)
+TRANSPORT = "THETADATA_PYTHON_LIBRARY_ISOLATED_WORKER"
+EVIDENCE_ENCODING = "CANONICAL_PROVIDER_DATAFRAME_JSON"
 
 
 class ThetaDataError(RuntimeError):
@@ -35,8 +41,8 @@ class ThetaDataError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class ThetaDataResponse:
-    # Kept for compatibility with the existing source qualification/cache contracts.
-    # The Python library does not expose HTTP status or headers.
+    # http_status/headers remain for compatibility with existing qualification code.
+    # The worker/library transport does not expose HTTP response metadata.
     http_status: int
     rows: tuple[dict[str, Any], ...]
     headers: dict[str, str]
@@ -45,125 +51,19 @@ class ThetaDataResponse:
     raw_body: bytes
     transport: str = TRANSPORT
     library_version: str | None = None
-    evidence_encoding: str = "CANONICAL_PROVIDER_DATAFRAME_JSON"
+    evidence_encoding: str = EVIDENCE_ENCODING
 
 
 _thread_state = threading.local()
 
 
-def _version_tuple(value: str) -> tuple[int, ...]:
-    pieces: list[int] = []
-    for token in value.split("."):
-        digits = "".join(ch for ch in token if ch.isdigit())
-        if not digits:
-            break
-        pieces.append(int(digits))
-    return tuple(pieces)
-
-
-def installed_library_version() -> str | None:
-    try:
-        return importlib.metadata.version("thetadata")
-    except importlib.metadata.PackageNotFoundError:
-        return None
-
-
-def python_runtime_supported() -> bool:
-    return sys.version_info[:2] >= MIN_PYTHON
-
-
-def _load_theta_client_class():
-    if not python_runtime_supported():
-        raise ThetaDataError(
-            "ThetaData Python library requires Python 3.12 or newer"
-        )
-    version = installed_library_version()
-    if version is None:
-        raise ThetaDataError(
-            "ThetaData Python library is not installed; install the optional "
-            "ATLAS ThetaData provider dependency after subscription setup"
-        )
-    if _version_tuple(version) < MIN_API_KEY_LIBRARY:
-        raise ThetaDataError(
-            "ThetaData Python library is too old for the supported API-key flow"
-        )
-    try:
-        from thetadata import ThetaClient
-    except Exception as exc:  # provider import contract is external
-        raise ThetaDataError(
-            f"ThetaData Python library import failed: {type(exc).__name__}"
-        ) from exc
-    return ThetaClient, version
-
-
-def _client():
-    cached = getattr(_thread_state, "client", None)
-    if cached is not None:
-        return cached
-    client_class, version = _load_theta_client_class()
-    try:
-        client = client_class(dataframe_type="pandas")
-    except Exception as exc:
-        raise ThetaDataError(
-            f"ThetaData client authentication/initialization failed: "
-            f"{type(exc).__name__}"
-        ) from exc
-    _thread_state.client = client
-    _thread_state.library_version = version
-    return client
-
-
-def reset_thread_client_for_tests() -> None:
-    for name in ("client", "library_version"):
-        if hasattr(_thread_state, name):
-            delattr(_thread_state, name)
-
-
-def _json_scalar(value: Any) -> Any:
-    if value is None or isinstance(value, (str, int, bool)):
-        return value
-    if isinstance(value, float):
-        if not math.isfinite(value):
-            raise ThetaDataError("ThetaData DataFrame contains non-finite float")
-        return value
-    if isinstance(value, (date, datetime)):
-        return value.isoformat()
-    if hasattr(value, "item"):
-        try:
-            return _json_scalar(value.item())
-        except Exception:
-            pass
-    if hasattr(value, "isoformat"):
-        try:
-            return value.isoformat()
-        except Exception:
-            pass
-    raise ThetaDataError(
-        f"ThetaData DataFrame contains unsupported scalar type {type(value).__name__}"
-    )
-
-
-def _records_from_dataframe(frame: Any) -> tuple[dict[str, Any], ...]:
-    if hasattr(frame, "to_dict"):
-        try:
-            records = frame.to_dict(orient="records")
-        except TypeError:
-            records = None
-        if isinstance(records, list):
-            return tuple(
-                {str(key): _json_scalar(value) for key, value in row.items()}
-                for row in records
-            )
-    if hasattr(frame, "to_dicts"):
-        records = frame.to_dicts()
-        if isinstance(records, list):
-            return tuple(
-                {str(key): _json_scalar(value) for key, value in row.items()}
-                for row in records
-            )
-    raise ThetaDataError(
-        "ThetaData Python library returned an unsupported DataFrame object"
-    )
+def provider_python_path() -> Path:
+    override = str(os.environ.get(THETADATA_PYTHON_ENV, "")).strip()
+    if override:
+        return Path(override).expanduser()
+    if os.name == "nt":
+        return DEFAULT_PROVIDER_VENV / "Scripts" / "python.exe"
+    return DEFAULT_PROVIDER_VENV / "bin" / "python"
 
 
 def _canonical_bytes(rows: Sequence[Mapping[str, Any]]) -> bytes:
@@ -179,26 +79,132 @@ def _canonical_bytes(rows: Sequence[Mapping[str, Any]]) -> bytes:
     ).encode("utf-8")
 
 
+class _Worker:
+    def __init__(self, python_path: Path) -> None:
+        if not python_path.is_file():
+            raise ThetaDataError(
+                "isolated ThetaData provider Python is unavailable; run the provider "
+                "environment setup after the ThetaData subscription is ready"
+            )
+        if not WORKER_SCRIPT.is_file():
+            raise ThetaDataError("ThetaData provider worker script is unavailable")
+        try:
+            self.process = subprocess.Popen(
+                [str(python_path), str(WORKER_SCRIPT), "--serve"],
+                cwd=str(ROOT),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                bufsize=1,
+                env=os.environ.copy(),
+            )
+        except OSError as exc:
+            raise ThetaDataError(
+                f"unable to start isolated ThetaData provider worker: "
+                f"{type(exc).__name__}"
+            ) from exc
+        if self.process.stdin is None or self.process.stdout is None:
+            self.close()
+            raise ThetaDataError("ThetaData provider worker pipes unavailable")
+
+    def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+        if self.process.poll() is not None:
+            raise ThetaDataError("ThetaData provider worker exited unexpectedly")
+        request_id = uuid.uuid4().hex
+        payload = {
+            "id": request_id,
+            "method": method,
+            "kwargs": kwargs,
+        }
+        assert self.process.stdin is not None
+        assert self.process.stdout is not None
+        try:
+            self.process.stdin.write(
+                json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+            )
+            self.process.stdin.flush()
+            line = self.process.stdout.readline()
+        except (BrokenPipeError, OSError) as exc:
+            raise ThetaDataError(
+                f"ThetaData provider worker communication failed: "
+                f"{type(exc).__name__}"
+            ) from exc
+        if not line:
+            raise ThetaDataError("ThetaData provider worker returned no response")
+        try:
+            response = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ThetaDataError(
+                "ThetaData provider worker returned invalid protocol JSON"
+            ) from exc
+        if (
+            not isinstance(response, dict)
+            or response.get("id") != request_id
+            or response.get("ok") is not True
+        ):
+            error_type = (
+                str(response.get("error_type"))
+                if isinstance(response, dict)
+                else "UNKNOWN"
+            )
+            raise ThetaDataError(
+                f"ThetaData Python-library worker request failed: {error_type}"
+            )
+        return response
+
+    def close(self) -> None:
+        process = getattr(self, "process", None)
+        if process is None:
+            return
+        try:
+            if process.stdin is not None:
+                process.stdin.close()
+        except OSError:
+            pass
+        if process.poll() is None:
+            try:
+                process.terminate()
+                process.wait(timeout=2)
+            except Exception:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+
+
+def _worker() -> _Worker:
+    cached = getattr(_thread_state, "worker", None)
+    if cached is not None and cached.process.poll() is None:
+        return cached
+    worker = _Worker(provider_python_path())
+    _thread_state.worker = worker
+    return worker
+
+
+def reset_thread_worker_for_tests() -> None:
+    cached = getattr(_thread_state, "worker", None)
+    if cached is not None:
+        cached.close()
+    if hasattr(_thread_state, "worker"):
+        delattr(_thread_state, "worker")
+
+
 def _call(method_name: str, **kwargs: Any) -> ThetaDataResponse:
-    client = _client()
-    method = getattr(client, method_name, None)
-    if method is None or not callable(method):
-        raise ThetaDataError(
-            f"ThetaData Python library missing method {method_name}"
-        )
     started = time.perf_counter()
-    try:
-        frame = method(**kwargs)
-    except Exception as exc:
-        # Avoid echoing an external exception message because a provider/auth library
-        # may include sensitive request context. The class is enough for diagnosis.
-        raise ThetaDataError(
-            f"ThetaData Python library call {method_name} failed: "
-            f"{type(exc).__name__}"
-        ) from exc
-    rows = _records_from_dataframe(frame)
+    response = _worker().request(method_name, kwargs)
+    rows_raw = response.get("rows")
+    if not isinstance(rows_raw, list) or any(
+        not isinstance(row, dict) for row in rows_raw
+    ):
+        raise ThetaDataError("ThetaData worker response rows malformed")
+    rows = tuple(
+        {str(key): value for key, value in row.items()}
+        for row in rows_raw
+    )
     canonical = _canonical_bytes(rows)
-    version = getattr(_thread_state, "library_version", installed_library_version())
+    library_version = response.get("library_version")
     return ThetaDataResponse(
         http_status=200,
         rows=rows,
@@ -209,15 +215,17 @@ def _call(method_name: str, **kwargs: Any) -> ThetaDataResponse:
         response_bytes=len(canonical),
         elapsed_seconds=max(0.0, time.perf_counter() - started),
         raw_body=canonical,
-        library_version=version,
+        library_version=(
+            None if library_version is None else str(library_version)
+        ),
     )
 
 
-def _day(value: str) -> date:
+def _day_text(value: str) -> str:
     text = str(value)
     if len(text) == 8 and text.isdigit():
-        return date(int(text[:4]), int(text[4:6]), int(text[6:]))
-    return date.fromisoformat(text)
+        return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+    return date.fromisoformat(text).isoformat()
 
 
 def option_at_time_quote_surface(
@@ -229,12 +237,11 @@ def option_at_time_quote_surface(
     max_dte: int = 75,
     strike_range: int | None = None,
 ) -> ThetaDataResponse:
-    """Return all CALL quote candidates known at one causal decision clock."""
     if max_dte < 1:
         raise ValueError("max_dte must be positive")
     if strike_range is not None and strike_range < 0:
         raise ValueError("strike_range cannot be negative")
-    day = _day(date_et)
+    day = _day_text(date_et)
     kwargs: dict[str, Any] = {
         "symbol": symbol,
         "start_date": day,
@@ -259,15 +266,14 @@ def option_at_time_quote(
     date_et: str,
     time_of_day_et: str,
 ) -> ThetaDataResponse:
-    """Exact-contract at-time quote reserved for selected-contract exit evidence."""
-    day = _day(date_et)
+    day = _day_text(date_et)
     return _call(
         "option_at_time_quote",
         symbol=symbol,
         start_date=day,
         end_date=day,
         time_of_day=time_of_day_et,
-        expiration=_day(expiration),
+        expiration=_day_text(expiration),
         strike=str(strike),
         right=right,
     )
@@ -281,14 +287,13 @@ def option_history_open_interest_surface(
     max_dte: int = 75,
     strike_range: int | None = None,
 ) -> ThetaDataResponse:
-    """Historical previous-session open interest for a bounded option surface."""
     if max_dte < 1:
         raise ValueError("max_dte must be positive")
     if strike_range is not None and strike_range < 0:
         raise ValueError("strike_range cannot be negative")
     kwargs: dict[str, Any] = {
         "symbol": symbol,
-        "date": _day(date_et),
+        "date": _day_text(date_et),
         "expiration": "*",
         "strike": "*",
         "right": right,
@@ -312,7 +317,6 @@ def option_history_binomial_first_order_greeks_at_minute(
     binomial_steps: int = 101,
     strike_range: int | None = None,
 ) -> ThetaDataResponse:
-    """Dividend-aware American-style first-order Greeks at one historical minute."""
     if annual_dividend < 0:
         raise ValueError("annual_dividend cannot be negative")
     if binomial_steps < 5 or binomial_steps > 201:
@@ -323,10 +327,10 @@ def option_history_binomial_first_order_greeks_at_minute(
         raise ValueError("unsupported ThetaData Greeks version")
     kwargs: dict[str, Any] = {
         "symbol": symbol,
-        "expiration": _day(expiration),
+        "expiration": _day_text(expiration),
         "strike": "*",
         "right": right,
-        "date": _day(date_et),
+        "date": _day_text(date_et),
         "start_time": time_of_day_et,
         "end_time": time_of_day_et,
         "interval": "1m",
