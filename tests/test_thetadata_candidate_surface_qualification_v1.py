@@ -9,6 +9,7 @@ from packages.data.thetadata_candidate_surface_plan_v1 import (
     PROVIDER_CANDIDATE,
 )
 from packages.data.thetadata_candidate_surface_qualification_v1 import (
+    _symbol_matches_underlying,
     run_thetadata_candidate_surface_qualification_v1,
 )
 from packages.providers.thetadata.client import ThetaDataResponse
@@ -232,3 +233,10 @@ def test_future_quote_in_surface_fails_validation(tmp_path):
     assert report["full_acquisition_source_qualified"] is False
     assert report["hard_validation_or_transport_errors"] == 5
     assert report["status_counts"]["SURFACE_VALIDATION_ERROR"] == 5
+
+
+def test_response_symbol_accepts_same_root_occ_but_not_neighbor_root():
+    assert _symbol_matches_underlying("AAPL", "AAPL") is True
+    assert _symbol_matches_underlying("AAPL250221C00100000", "AAPL") is True
+    assert _symbol_matches_underlying("AAPL  250221C00100000", "AAPL") is True
+    assert _symbol_matches_underlying("AAPLX250221C00100000", "AAPL") is False
