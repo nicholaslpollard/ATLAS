@@ -4,7 +4,7 @@ from __future__ import annotations
 
 This stage is inert by default and may perform provider reads only after a signed
 qualification report proves the source for the exact plan. It preserves durable
-pre-request intent, exact raw response bytes, immutable receipts, normalized surface
+pre-request intent, canonical provider-DataFrame bytes, immutable receipts, normalized surface
 fingerprints, D:-bound storage guards, a run lock, and deterministic resume behavior.
 
 The acquired surfaces remain entry-time source evidence only. No contract is selected
@@ -39,6 +39,9 @@ from packages.data.thetadata_candidate_surface_qualification_v1 import (
     _normalize_rows,
 )
 from packages.providers.thetadata.client import (
+    EVIDENCE_ENCODING,
+    TARGET_LIBRARY_VERSION,
+    TRANSPORT,
     ThetaDataError,
     ThetaDataResponse,
     option_at_time_quote_surface,
@@ -268,9 +271,23 @@ def _write_response(
         raise ThetaDataCandidateSurfaceCacheError(
             "ThetaData durable request intent missing"
         )
+    if (
+        response.transport != TRANSPORT
+        or response.library_version != TARGET_LIBRARY_VERSION
+        or not isinstance(response.provider_environment_fingerprint, str)
+        or len(response.provider_environment_fingerprint) != 64
+        or any(
+            char not in "0123456789abcdef"
+            for char in response.provider_environment_fingerprint
+        )
+        or response.evidence_encoding != EVIDENCE_ENCODING
+    ):
+        raise ThetaDataCandidateSurfaceCacheError(
+            "ThetaData provider transport/library provenance changed"
+        )
     if not isinstance(response.raw_body, bytes) or len(response.raw_body) > MAX_RAW_BYTES:
         raise ThetaDataCandidateSurfaceCacheError(
-            "ThetaData candidate surface raw response is unbounded"
+            "ThetaData candidate surface evidence bytes are unbounded"
         )
 
     if response.rows:
@@ -304,7 +321,11 @@ def _write_response(
         "row_count": len(response.rows),
         "surface_summary": summary,
         "normalized_surface_fingerprint": normalized_fingerprint,
-        "raw_http_body_exact": True,
+        "provider_transport": response.transport,
+        "provider_library_version": response.library_version,
+        "provider_environment_fingerprint": response.provider_environment_fingerprint,
+        "evidence_encoding": response.evidence_encoding,
+        "canonical_provider_dataframe_bytes": True,
         "historical_fill_authority": False,
         "strategy_evidence_authority": False,
     }
@@ -373,6 +394,16 @@ def _read_intact(
         or intent.get("automatic_retry_permitted") is not False
         or receipt.get("body_sha256") != _sha256(raw)
         or receipt.get("body_bytes") != len(raw)
+        or receipt.get("provider_transport") != TRANSPORT
+        or receipt.get("provider_library_version") != TARGET_LIBRARY_VERSION
+        or not isinstance(receipt.get("provider_environment_fingerprint"), str)
+        or len(receipt["provider_environment_fingerprint"]) != 64
+        or any(
+            char not in "0123456789abcdef"
+            for char in receipt["provider_environment_fingerprint"]
+        )
+        or receipt.get("canonical_provider_dataframe_bytes") is not True
+        or receipt.get("evidence_encoding") != EVIDENCE_ENCODING
         or receipt.get("historical_fill_authority") is not False
         or receipt.get("strategy_evidence_authority") is not False
     ):

@@ -1,182 +1,209 @@
 from __future__ import annotations
 
-import io
-import urllib.error
+import json
+from pathlib import Path
 
 import pytest
 
 from packages.providers.thetadata import client
 
 
-class _Response:
-    def __init__(self, body: bytes = b"[]") -> None:
-        self.status = 200
-        self.headers = {}
-        self._body = body
+class _FakeWorker:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, dict]] = []
 
-    def read(self) -> bytes:
-        return self._body
+    def request(self, method: str, kwargs: dict):
+        self.calls.append((method, dict(kwargs)))
+        if method == "option_history_open_interest":
+            rows = [
+                {
+                    "symbol": kwargs["symbol"],
+                    "expiration": "2025-02-21",
+                    "strike": 100.0,
+                    "right": "call",
+                    "timestamp": "2025-01-06T06:30:00",
+                    "open_interest": 250,
+                }
+            ]
+        elif method == "option_history_binomial_greeks_first_order":
+            rows = [
+                {
+                    "symbol": kwargs["symbol"],
+                    "expiration": kwargs["expiration"],
+                    "strike": 100.0,
+                    "right": "call",
+                    "timestamp": "2025-01-06T09:35:00",
+                    "bid": 1.0,
+                    "ask": 1.1,
+                    "delta": 0.5,
+                    "theta": -0.05,
+                    "vega": 0.12,
+                    "rho": 0.04,
+                    "epsilon": 0.01,
+                    "lambda": 4.0,
+                    "implied_vol": 0.3,
+                    "iv_error": 0.0,
+                    "underlying_timestamp": "2025-01-06T09:35:00",
+                    "underlying_price": 101.0,
+                }
+            ]
+        else:
+            rows = [
+                {
+                    "symbol": kwargs["symbol"],
+                    "expiration": (
+                        "2025-02-21"
+                        if kwargs.get("expiration") == "*"
+                        else kwargs.get("expiration")
+                    ),
+                    "strike": 100.0,
+                    "right": "call",
+                    "timestamp": "2025-01-06T09:34:59",
+                    "bid_size": 10,
+                    "bid_exchange": 1,
+                    "bid": 1.0,
+                    "bid_condition": 0,
+                    "ask_size": 12,
+                    "ask_exchange": 2,
+                    "ask": 1.1,
+                    "ask_condition": 0,
+                }
+            ]
+        return {
+            "id": "fake",
+            "ok": True,
+            "method": method,
+            "library_version": "1.0.12",
+            "environment_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "rows": rows,
+        }
 
-    def __enter__(self):
-        return self
 
-    def __exit__(self, exc_type, exc, tb):
-        return False
+@pytest.fixture
+def fake_worker(monkeypatch):
+    fake = _FakeWorker()
+    monkeypatch.setattr(client, "_worker", lambda: fake)
+    yield fake
+    client.reset_thread_worker_for_tests()
 
 
-def _http_error(code: int, body: bytes) -> urllib.error.HTTPError:
-    return urllib.error.HTTPError(
-        url="http://127.0.0.1:25503/test",
-        code=code,
-        msg="error",
-        hdrs={},
-        fp=io.BytesIO(body),
+def test_provider_python_default_is_isolated_repo_environment(monkeypatch):
+    monkeypatch.delenv(client.THETADATA_PYTHON_ENV, raising=False)
+    path = client.provider_python_path()
+
+    assert client.DEFAULT_PROVIDER_VENV in path.parents
+    assert ".provider_venvs" in str(path)
+    assert "thetadata" in str(path)
+
+
+def test_provider_python_override(monkeypatch, tmp_path):
+    expected = tmp_path / "python-custom.exe"
+    monkeypatch.setenv(client.THETADATA_PYTHON_ENV, str(expected))
+    assert client.provider_python_path() == expected
+
+
+def test_canonical_bytes_are_stable():
+    rows = (
+        {"b": 2.0, "a": "2025-01-06"},
     )
+    assert client._canonical_bytes(rows) == b'[{"a":"2025-01-06","b":2.0}]\n'
 
 
-def test_thetadata_base_url_rejects_non_loopback(monkeypatch):
-    monkeypatch.setenv(client.THETADATA_BASE_URL_ENV, "https://example.com:25503")
-    with pytest.raises(client.ThetaDataError, match="local http Theta Terminal"):
-        client._base_url()
-
-
-def test_no_data_472_is_explicit_empty_response(monkeypatch):
-    monkeypatch.delenv(client.THETADATA_BASE_URL_ENV, raising=False)
-
-    def urlopen(request, timeout):
-        raise _http_error(472, b"NO_DATA")
-
-    monkeypatch.setattr(client.urllib.request, "urlopen", urlopen)
-    response = client.get_json("/v3/test", params={}, max_attempts=1)
-
-    assert response.http_status == 472
-    assert response.rows == ()
-    assert response.raw_body == b"NO_DATA"
-
-
-def test_os_limit_429_retries(monkeypatch):
-    monkeypatch.delenv(client.THETADATA_BASE_URL_ENV, raising=False)
-    attempts = {"count": 0}
-    sleeps = []
-
-    def urlopen(request, timeout):
-        attempts["count"] += 1
-        if attempts["count"] == 1:
-            raise _http_error(429, b"OS_LIMIT")
-        return _Response()
-
-    monkeypatch.setattr(client.urllib.request, "urlopen", urlopen)
-    response = client.get_json(
-        "/v3/test",
-        params={},
-        max_attempts=2,
-        initial_retry_seconds=0.01,
-        sleep=sleeps.append,
-    )
-
-    assert attempts["count"] == 2
-    assert sleeps == [0.01]
-    assert response.http_status == 200
-
-
-def test_surface_request_uses_wildcard_contract_and_bound(monkeypatch):
-    captured = {}
-
-    def fake_get(path, *, params, **kwargs):
-        captured["path"] = path
-        captured["params"] = params
-        return client.ThetaDataResponse(
-            http_status=200,
-            rows=(),
-            headers={},
-            response_bytes=2,
-            elapsed_seconds=0.01,
-            raw_body=b"[]",
-        )
-
-    monkeypatch.setattr(client, "get_json", fake_get)
-    client.option_at_time_quote_surface(
+def test_at_time_surface_maps_to_worker_library_method(fake_worker):
+    response = client.option_at_time_quote_surface(
         symbol="AAPL",
         date_et="2025-01-06",
         time_of_day_et="09:35:00.000",
         max_dte=75,
     )
 
-    assert captured["path"] == "/v3/option/at_time/quote"
-    assert captured["params"]["expiration"] == "*"
-    assert captured["params"]["strike"] == "*"
-    assert captured["params"]["right"] == "call"
-    assert captured["params"]["max_dte"] == 75
-    assert captured["params"]["strike_range"] is None
+    name, params = fake_worker.calls[-1]
+    assert name == "option_at_time_quote"
+    assert params == {
+        "symbol": "AAPL",
+        "start_date": "2025-01-06",
+        "end_date": "2025-01-06",
+        "time_of_day": "09:35:00.000",
+        "expiration": "*",
+        "strike": "*",
+        "right": "call",
+        "max_dte": 75,
+    }
+    assert response.transport == "THETADATA_PYTHON_LIBRARY_ISOLATED_WORKER"
+    assert response.library_version == "1.0.12"
+    assert response.provider_environment_fingerprint == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    assert response.evidence_encoding == "CANONICAL_PROVIDER_DATAFRAME_JSON"
+    assert response.http_status == 200
+    assert len(response.rows) == 1
 
 
-def test_open_interest_surface_uses_all_contracts_and_bound(monkeypatch):
-    captured = {}
+def test_exact_at_time_quote_maps_selected_contract(fake_worker):
+    client.option_at_time_quote(
+        symbol="AAPL",
+        expiration="2025-02-21",
+        strike="100.0",
+        right="call",
+        date_et="2025-01-06",
+        time_of_day_et="10:07:00.000",
+    )
 
-    def fake_get(path, *, params, **kwargs):
-        captured["path"] = path
-        captured["params"] = params
-        return client.ThetaDataResponse(
-            http_status=200,
-            rows=(),
-            headers={},
-            response_bytes=2,
-            elapsed_seconds=0.01,
-            raw_body=b"[]",
-        )
+    name, params = fake_worker.calls[-1]
+    assert name == "option_at_time_quote"
+    assert params["expiration"] == "2025-02-21"
+    assert params["strike"] == "100.0"
+    assert params["start_date"] == "2025-01-06"
+    assert params["end_date"] == "2025-01-06"
+    assert params["time_of_day"] == "10:07:00.000"
 
-    monkeypatch.setattr(client, "get_json", fake_get)
-    client.option_history_open_interest_surface(
+
+def test_open_interest_surface_maps_to_worker_library_method(fake_worker):
+    response = client.option_history_open_interest_surface(
         symbol="AAPL",
         date_et="2025-01-06",
         max_dte=75,
     )
 
-    assert captured["path"] == "/v3/option/history/open_interest"
-    assert captured["params"]["expiration"] == "*"
-    assert captured["params"]["strike"] == "*"
-    assert captured["params"]["right"] == "call"
-    assert captured["params"]["date"] == "20250106"
-    assert captured["params"]["max_dte"] == 75
-    assert captured["params"]["strike_range"] is None
+    name, params = fake_worker.calls[-1]
+    assert name == "option_history_open_interest"
+    assert params == {
+        "symbol": "AAPL",
+        "date": "2025-01-06",
+        "expiration": "*",
+        "strike": "*",
+        "right": "call",
+        "max_dte": 75,
+    }
+    assert response.rows[0]["open_interest"] == 250
 
 
-def test_binomial_greeks_request_is_exact_minute_and_dividend_explicit(monkeypatch):
-    captured = {}
-
-    def fake_get(path, *, params, **kwargs):
-        captured["path"] = path
-        captured["params"] = params
-        return client.ThetaDataResponse(
-            http_status=200,
-            rows=(),
-            headers={},
-            response_bytes=2,
-            elapsed_seconds=0.01,
-            raw_body=b"[]",
-        )
-
-    monkeypatch.setattr(client, "get_json", fake_get)
-    client.option_history_binomial_first_order_greeks_at_minute(
+def test_binomial_greeks_maps_exact_minute_and_dividend(fake_worker):
+    response = client.option_history_binomial_first_order_greeks_at_minute(
         symbol="AAPL",
         expiration="2025-02-21",
         date_et="2025-01-06",
         annual_dividend=1.0,
     )
 
-    assert captured["path"] == "/v3/option/history/binomial_greeks/first_order"
-    assert captured["params"]["expiration"] == "20250221"
-    assert captured["params"]["date"] == "20250106"
-    assert captured["params"]["start_time"] == "09:35:00.000"
-    assert captured["params"]["end_time"] == "09:35:00.000"
-    assert captured["params"]["interval"] == "1m"
-    assert captured["params"]["annual_dividend"] == 1.0
-    assert captured["params"]["rate_type"] == "sofr"
-    assert captured["params"]["version"] == "1"
-    assert captured["params"]["binomial_steps"] == 101
+    name, params = fake_worker.calls[-1]
+    assert name == "option_history_binomial_greeks_first_order"
+    assert params == {
+        "symbol": "AAPL",
+        "expiration": "2025-02-21",
+        "strike": "*",
+        "right": "call",
+        "date": "2025-01-06",
+        "start_time": "09:35:00.000",
+        "end_time": "09:35:00.000",
+        "interval": "1m",
+        "annual_dividend": 1.0,
+        "rate_type": "sofr",
+        "version": "1",
+        "binomial_steps": 101,
+    }
+    assert response.rows[0]["delta"] == 0.5
 
 
-def test_binomial_greeks_rejects_unknown_negative_dividend():
+def test_binomial_greeks_rejects_negative_dividend():
     with pytest.raises(ValueError, match="annual_dividend"):
         client.option_history_binomial_first_order_greeks_at_minute(
             symbol="AAPL",
@@ -184,3 +211,8 @@ def test_binomial_greeks_rejects_unknown_negative_dividend():
             date_et="2025-01-06",
             annual_dividend=-0.01,
         )
+
+
+def test_worker_rejects_missing_provider_python(tmp_path):
+    with pytest.raises(client.ThetaDataError, match="provider Python is unavailable"):
+        client._Worker(tmp_path / "missing-python")
