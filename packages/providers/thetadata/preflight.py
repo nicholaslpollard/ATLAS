@@ -25,6 +25,7 @@ from packages.providers.thetadata.client import (
 
 API_KEY_ENV = "THETADATA_API_KEY"
 CREDENTIALS_FILE_ENV = "THETADATA_CREDENTIALS_FILE"
+_UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,13 +138,13 @@ def run_thetadata_preflight_v1(
     dotenv_path: Path | None = None,
     environ: dict[str, str] | None = None,
     python_version: tuple[int, int] | None = None,
-    library_version: str | None = None,
+    library_version: str | None | object = _UNSET,
 ) -> ThetaDataPreflightResult:
     version = sys.version_info[:2] if python_version is None else python_version
     python_ok = tuple(version) >= MIN_PYTHON
     installed = (
         installed_library_version()
-        if library_version is None
+        if library_version is _UNSET
         else library_version
     )
     library_installed = installed is not None
