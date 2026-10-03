@@ -74,6 +74,7 @@ class _FakeWorker:
             "ok": True,
             "method": method,
             "library_version": "1.0.12",
+            "environment_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "rows": rows,
         }
 
@@ -130,6 +131,7 @@ def test_at_time_surface_maps_to_worker_library_method(fake_worker):
     }
     assert response.transport == "THETADATA_PYTHON_LIBRARY_ISOLATED_WORKER"
     assert response.library_version == "1.0.12"
+    assert response.provider_environment_fingerprint == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     assert response.evidence_encoding == "CANONICAL_PROVIDER_DATAFRAME_JSON"
     assert response.http_status == 200
     assert len(response.rows) == 1
