@@ -153,6 +153,7 @@ def _response(
         elapsed_seconds=0.01,
         raw_body=raw,
         library_version="1.0.12",
+        provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
 
 
@@ -223,6 +224,8 @@ def test_future_quote_in_surface_fails_validation(tmp_path):
             elapsed_seconds=0.01,
             raw_body=raw,
             library_version="1.0.12",
+            provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         )
 
     report = run_thetadata_candidate_surface_qualification_v1(
