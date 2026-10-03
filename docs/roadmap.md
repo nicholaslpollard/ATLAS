@@ -5916,3 +5916,26 @@ valid historical candidate surface in each target year 2021–2025, proves oldes
 access, validates chronology/schema, preserves raw request/response receipts and
 repeats a 2021 surface deterministically. No strategy, PAPER, LIVE or historical-fill
 authority changes.
+
+
+### 2026-10-03 — ThetaData surface enrichment staged behind source qualification
+
+Before any full ThetaData acquisition, ATLAS now freezes a separate enrichment layer
+on top of the immutable 9,455-surface quote plan.
+
+Stage order:
+1. qualify the 15 outcome-blind 09:35 quote anchors and one 2021 repeat;
+2. qualify matching historical OI surfaces and one 2021 repeat;
+3. acquire full quote/OI surfaces only after both source gates succeed;
+4. join quote + OI and apply only the already-frozen DTE/spread/OI screens;
+5. request first-order Leisen-Reimer binomial Greeks only for surviving expirations;
+6. require explicit historical dividend context before Greeks receive contract-
+   selection authority;
+7. apply authoritative delta/IV/economic eligibility;
+8. select one entry contract;
+9. then and only then request its exact exit quote at the already-bound stock exit
+   clock.
+
+This avoids downloading Greeks for every expiration/strike before basic liquidity
+screening, while also avoiding the inaccurate shortcut of assuming dividends are zero.
+No authority changes.

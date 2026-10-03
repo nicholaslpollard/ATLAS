@@ -1189,3 +1189,25 @@ No contract is selected, no option outcome or P&L is opened, and strategy promot
 PAPER and LIVE authority remain false. The next ThetaData gate is outcome-blind and
 read-only; full historical candidate-surface acquisition remains locked until provider
 entitlement, schema, chronology and repeatability are observed successfully.
+
+
+## 22. ThetaData quote/OI/binomial-Greeks source architecture — 2026-10-03
+
+The provider-specific source architecture is now frozen without provider reads.
+The accepted 9,455 causal 09:35 quote surfaces are augmented by a one-for-one
+historical open-interest surface demand. OI is treated as previous-session state and
+must be timestamped no later than the 09:35 decision.
+
+A deterministic pre-Greeks screen uses only the existing Phase13 constraints:
+14-45 DTE, spread-to-mid <= 15%, and open interest >= 100. This screen may narrow
+expirations but cannot select a contract because delta is still unavailable.
+
+For surviving expirations, the preferred Standard-tier Greeks source is ThetaData's
+historical first-order Leisen-Reimer binomial endpoint at the exact 09:35 minute.
+Because provider documentation states dividend effects are ignored unless an annual
+dividend amount is supplied, historical dividend context is a hard prerequisite for
+authoritative Greeks. Missing dividend evidence fails closed.
+
+**Disposition:** `THETADATA_SOURCE_ARCHITECTURE_FROZEN /
+QUOTE_AND_OI_QUALIFICATION_NEXT / GREEKS_DIVIDEND_CONTEXT_REQUIRED /
+NO_OPTION_PNL_OR_STRATEGY_AUTHORITY`.

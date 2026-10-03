@@ -212,3 +212,80 @@ def option_at_time_quote(
             "format": "json",
         },
     )
+
+
+def option_history_open_interest_surface(
+    *,
+    symbol: str,
+    date_et: str,
+    right: str = "call",
+    max_dte: int = 75,
+    strike_range: int | None = None,
+) -> ThetaDataResponse:
+    """Historical previous-session open interest for a bounded option surface."""
+    if max_dte < 1:
+        raise ValueError("max_dte must be positive")
+    if strike_range is not None and strike_range < 0:
+        raise ValueError("strike_range cannot be negative")
+    return get_json(
+        "/v3/option/history/open_interest",
+        params={
+            "symbol": symbol,
+            "expiration": "*",
+            "strike": "*",
+            "right": right,
+            "date": date_et.replace("-", ""),
+            "max_dte": max_dte,
+            "strike_range": strike_range,
+            "format": "json",
+        },
+    )
+
+
+def option_history_binomial_first_order_greeks_at_minute(
+    *,
+    symbol: str,
+    expiration: str,
+    date_et: str,
+    right: str = "call",
+    time_of_day_et: str = "09:35:00.000",
+    annual_dividend: float,
+    rate_type: str = "sofr",
+    version: str = "1",
+    binomial_steps: int = 101,
+    strike_range: int | None = None,
+) -> ThetaDataResponse:
+    """Dividend-aware American-style first-order Greeks at one historical minute.
+
+    This endpoint is intentionally expiration-specific. The upstream quote/open-
+    interest stage must first narrow the candidate expirations. ATLAS requires an
+    explicit annual dividend amount; unknown dividend context is not silently treated
+    as zero.
+    """
+    if annual_dividend < 0:
+        raise ValueError("annual_dividend cannot be negative")
+    if binomial_steps < 5 or binomial_steps > 201:
+        raise ValueError("binomial_steps must be in [5, 201]")
+    if strike_range is not None and strike_range < 0:
+        raise ValueError("strike_range cannot be negative")
+    if version not in {"1", "latest"}:
+        raise ValueError("unsupported ThetaData Greeks version")
+    return get_json(
+        "/v3/option/history/binomial_greeks/first_order",
+        params={
+            "symbol": symbol,
+            "expiration": expiration.replace("-", ""),
+            "strike": "*",
+            "right": right,
+            "date": date_et.replace("-", ""),
+            "start_time": time_of_day_et,
+            "end_time": time_of_day_et,
+            "interval": "1m",
+            "annual_dividend": annual_dividend,
+            "rate_type": rate_type,
+            "version": version,
+            "binomial_steps": binomial_steps,
+            "strike_range": strike_range,
+            "format": "json",
+        },
+    )

@@ -108,3 +108,79 @@ def test_surface_request_uses_wildcard_contract_and_bound(monkeypatch):
     assert captured["params"]["right"] == "call"
     assert captured["params"]["max_dte"] == 75
     assert captured["params"]["strike_range"] is None
+
+
+def test_open_interest_surface_uses_all_contracts_and_bound(monkeypatch):
+    captured = {}
+
+    def fake_get(path, *, params, **kwargs):
+        captured["path"] = path
+        captured["params"] = params
+        return client.ThetaDataResponse(
+            http_status=200,
+            rows=(),
+            headers={},
+            response_bytes=2,
+            elapsed_seconds=0.01,
+            raw_body=b"[]",
+        )
+
+    monkeypatch.setattr(client, "get_json", fake_get)
+    client.option_history_open_interest_surface(
+        symbol="AAPL",
+        date_et="2025-01-06",
+        max_dte=75,
+    )
+
+    assert captured["path"] == "/v3/option/history/open_interest"
+    assert captured["params"]["expiration"] == "*"
+    assert captured["params"]["strike"] == "*"
+    assert captured["params"]["right"] == "call"
+    assert captured["params"]["date"] == "20250106"
+    assert captured["params"]["max_dte"] == 75
+    assert captured["params"]["strike_range"] is None
+
+
+def test_binomial_greeks_request_is_exact_minute_and_dividend_explicit(monkeypatch):
+    captured = {}
+
+    def fake_get(path, *, params, **kwargs):
+        captured["path"] = path
+        captured["params"] = params
+        return client.ThetaDataResponse(
+            http_status=200,
+            rows=(),
+            headers={},
+            response_bytes=2,
+            elapsed_seconds=0.01,
+            raw_body=b"[]",
+        )
+
+    monkeypatch.setattr(client, "get_json", fake_get)
+    client.option_history_binomial_first_order_greeks_at_minute(
+        symbol="AAPL",
+        expiration="2025-02-21",
+        date_et="2025-01-06",
+        annual_dividend=1.0,
+    )
+
+    assert captured["path"] == "/v3/option/history/binomial_greeks/first_order"
+    assert captured["params"]["expiration"] == "20250221"
+    assert captured["params"]["date"] == "20250106"
+    assert captured["params"]["start_time"] == "09:35:00.000"
+    assert captured["params"]["end_time"] == "09:35:00.000"
+    assert captured["params"]["interval"] == "1m"
+    assert captured["params"]["annual_dividend"] == 1.0
+    assert captured["params"]["rate_type"] == "sofr"
+    assert captured["params"]["version"] == "1"
+    assert captured["params"]["binomial_steps"] == 101
+
+
+def test_binomial_greeks_rejects_unknown_negative_dividend():
+    with pytest.raises(ValueError, match="annual_dividend"):
+        client.option_history_binomial_first_order_greeks_at_minute(
+            symbol="AAPL",
+            expiration="2025-02-21",
+            date_et="2025-01-06",
+            annual_dividend=-0.01,
+        )

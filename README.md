@@ -5491,3 +5491,33 @@ failure, and repeats a 2021 surface for deterministic historical replay. Full 9,
 surface acquisition remains locked until that source gate passes. Contract selection,
 historical open interest, local IV/Greeks, exact selected-contract exit quotes,
 historical-fill authority, strategy evidence, PAPER and LIVE remain downstream.
+
+
+## 2026-10-03 — ThetaData quote/OI enrichment path frozen before provider reads
+
+The accepted 09:35 quote-surface plan remains immutable. A separate zero-provider
+enrichment contract now maps each of the 9,455 quote surfaces to one historical
+open-interest surface request using the same underlying/date, CALL-only, all
+expirations/all strikes and max DTE 75.
+
+Open interest is treated as previous-session state: ThetaData documents OPRA OI as
+normally reported around 06:30 ET and representing the prior trading day's closing
+open interest. The source qualification therefore requires OI timestamps to be on the
+decision date and no later than the 09:35 option decision.
+
+Greeks are intentionally deferred until quote + OI evidence has applied the frozen
+Phase13 DTE (14-45 days), spread-to-mid (<=15%) and open-interest (>=100) screens.
+Only expirations containing survivors are eligible for a Greeks request.
+
+For those expirations ATLAS targets ThetaData Standard's historical first-order
+**binomial** Greeks endpoint, bounded to the exact 09:35 minute, CALL only, all
+strikes, 1-minute interval, version 1, 101 Leisen-Reimer tree steps and SOFR rate
+type. Historical annual dividend amount is an explicit required PIT input; missing
+dividend context blocks authoritative Greeks rather than silently assuming zero.
+
+The first live provider source gate is now one bounded runner:
+`qualify_thetadata_candidate_source_pipeline_v1.py`. It performs at most 32
+read-only requests: 15 quote anchors plus one deterministic 2021 repeat, followed
+only after quote success by 15 matching OI anchors plus one deterministic 2021
+repeat. Full quote/OI acquisition, Greeks, contract selection, exact exit pricing,
+historical P&L, strategy evidence, PAPER and LIVE remain locked.
