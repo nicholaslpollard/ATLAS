@@ -274,6 +274,12 @@ def _write_response(
     if (
         response.transport != TRANSPORT
         or response.library_version != TARGET_LIBRARY_VERSION
+        or not isinstance(response.provider_environment_fingerprint, str)
+        or len(response.provider_environment_fingerprint) != 64
+        or any(
+            char not in "0123456789abcdef"
+            for char in response.provider_environment_fingerprint
+        )
         or response.evidence_encoding != EVIDENCE_ENCODING
     ):
         raise ThetaDataCandidateSurfaceCacheError(
@@ -317,6 +323,7 @@ def _write_response(
         "normalized_surface_fingerprint": normalized_fingerprint,
         "provider_transport": response.transport,
         "provider_library_version": response.library_version,
+        "provider_environment_fingerprint": response.provider_environment_fingerprint,
         "evidence_encoding": response.evidence_encoding,
         "canonical_provider_dataframe_bytes": True,
         "historical_fill_authority": False,
@@ -389,6 +396,12 @@ def _read_intact(
         or receipt.get("body_bytes") != len(raw)
         or receipt.get("provider_transport") != TRANSPORT
         or receipt.get("provider_library_version") != TARGET_LIBRARY_VERSION
+        or not isinstance(receipt.get("provider_environment_fingerprint"), str)
+        or len(receipt["provider_environment_fingerprint"]) != 64
+        or any(
+            char not in "0123456789abcdef"
+            for char in receipt["provider_environment_fingerprint"]
+        )
         or receipt.get("canonical_provider_dataframe_bytes") is not True
         or receipt.get("evidence_encoding") != EVIDENCE_ENCODING
         or receipt.get("historical_fill_authority") is not False
