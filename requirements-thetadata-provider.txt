@@ -1,0 +1,4 @@
+# Isolated ThetaData provider environment.
+# Do not merge these dependencies into core requirements.lock:
+# ThetaData requires protobuf>=6.32.1 while the accepted Webull SDK requires protobuf<6.
+thetadata==1.0.12
