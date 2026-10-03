@@ -14,7 +14,6 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import venv
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -48,6 +47,33 @@ def _run(cmd: list[str], *, cwd: Path = ROOT) -> subprocess.CompletedProcess[str
         text=True,
         check=False,
     )
+
+
+def _base_python_version(python_path: Path) -> tuple[int, int, int]:
+    completed = _run(
+        [
+            str(python_path),
+            "-c",
+            (
+                "import json,sys;"
+                "print(json.dumps([sys.version_info.major,sys.version_info.minor,"
+                "sys.version_info.micro]))"
+            ),
+        ],
+    )
+    if completed.returncode != 0:
+        raise RuntimeError("base Python version probe failed")
+    try:
+        values = json.loads(completed.stdout.strip())
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("base Python version probe returned invalid JSON") from exc
+    if (
+        not isinstance(values, list)
+        or len(values) != 3
+        or any(type(item) is not int for item in values)
+    ):
+        raise RuntimeError("base Python version probe returned invalid version")
+    return int(values[0]), int(values[1]), int(values[2])
 
 
 def _worker_preflight(python_path: Path) -> dict:
@@ -112,6 +138,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Provider virtual environment path.",
     )
     parser.add_argument(
+        "--base-python",
+        type=Path,
+        default=Path(sys.executable),
+        help=(
+            "Python 3.12+ interpreter used to create the provider venv. "
+            "Defaults to the current ATLAS interpreter."
+        ),
+    )
+    parser.add_argument(
         "--recreate",
         action="store_true",
         help="Delete/recreate an existing provider venv. Never implied.",
@@ -125,8 +160,14 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
     try:
-        if sys.version_info[:2] < (3, 12):
-            raise RuntimeError("provider environment requires Python 3.12 or newer")
+        base_python = args.base_python.expanduser()
+        if not base_python.is_file():
+            raise RuntimeError(f"base Python unavailable: {base_python}")
+        base_version = _base_python_version(base_python)
+        if base_version[:2] < (3, 12):
+            raise RuntimeError(
+                "ThetaData provider environment requires a Python 3.12+ base interpreter"
+            )
         if not REQUIREMENTS.is_file():
             raise RuntimeError(f"provider requirements unavailable: {REQUIREMENTS}")
         if not WORKER_SCRIPT.is_file():
@@ -145,7 +186,11 @@ def main(argv: list[str] | None = None) -> int:
 
         action = "REUSED_EXISTING_PROVIDER_VENV"
         if not root.exists():
-            venv.EnvBuilder(with_pip=True, clear=False).create(root)
+            completed = _run(
+                [str(base_python), "-m", "venv", str(root)],
+            )
+            if completed.returncode != 0:
+                raise RuntimeError("provider virtual environment creation failed")
             action = "CREATED_PROVIDER_VENV"
 
         python_path = _python_path(root)
@@ -210,6 +255,11 @@ def main(argv: list[str] | None = None) -> int:
         manifest, manifest_action = _persist_manifest(settings, payload)
 
         print(f"  provider_venv={root}", flush=True)
+        print(
+            f"  base_python={base_python} "
+            f"version={base_version[0]}.{base_version[1]}.{base_version[2]}",
+            flush=True,
+        )
         print(f"  provider_python={python_path}", flush=True)
         print(f"  setup={action}", flush=True)
         print(
