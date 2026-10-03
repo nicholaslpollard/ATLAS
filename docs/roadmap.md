@@ -5939,3 +5939,16 @@ Stage order:
 This avoids downloading Greeks for every expiration/strike before basic liquidity
 screening, while also avoiding the inaccurate shortcut of assuming dividends are zero.
 No authority changes.
+
+
+### 2026-10-03 — ThetaData local readiness gate
+
+Insert a zero-market-data local preflight before the first bounded provider source
+qualification. It checks Java >=21, loopback Terminal reachability on port 25503,
+non-secret auth-source presence where observable, and exact source/enrichment plan
+linkage. No market-data HTTP endpoint is contacted.
+
+If the Terminal is already reachable, ATLAS does not inspect command-line arguments
+to discover an API key. The next authoritative gate remains the bounded quote + OI
+source qualification; preflight success alone grants no acquisition, contract,
+strategy, PAPER or LIVE authority.
