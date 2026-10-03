@@ -5453,9 +5453,10 @@ groups contract/day demand, estimates at-time versus bounded 1-minute history re
 shapes, and creates an outcome-blind multi-year provider-qualification sample before
 any subscription or provider read is authorized.
 
-Current public ThetaData documentation is not treated as data authority. The plan
-targets Options Value because the current retail page advertises six years of option
-history and the current subscription table lists Value option access from 2020-01-01,
-which encompasses the 2021–2025 target. The qualification must still prove the
-oldest required 2021 anchor before full acquisition.
+The user selected ThetaData Options Standard for the next source gate. The supplied
+tier terms are $80/month, four concurrent requests, ten years of history, tick-level
+data, option chain snapshots, and every NBBO quote reported by OPRA. The current
+frozen acquisition target remains 2021–2025; the additional historical depth creates
+room for a separately frozen 2016–2020 extension later. The qualification must still
+prove the oldest required 2021 anchor before full acquisition.
 
