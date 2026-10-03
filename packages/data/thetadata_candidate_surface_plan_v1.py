@@ -26,8 +26,12 @@ from packages.simulation.multiyear_option_decision_spot_v1 import (
 CONTRACT = "atlas-thetadata-candidate-surface-source-plan-v1"
 OUTPUT_REL = "data/options/manifests/thetadata_candidate_surface_source_plan_v1"
 
-# Current official retail/docs observations verified 2026-10-02/03.
-# These are planning metadata, not provider-entitlement evidence.
+# Provider/source metadata frozen into the already accepted source-plan artifact.
+# The terminal_required=True field records the REST transport assumption that existed
+# when that immutable plan was created. It is lineage metadata only. The active ATLAS
+# runtime transport was superseded on 2026-10-03 by ThetaData's direct Python library,
+# which requires neither Theta Terminal nor Java. Do not mutate this dict without
+# intentionally creating a new source-plan lineage/fingerprint.
 PROVIDER_CANDIDATE = {
     "provider": "ThetaData",
     "api_generation": "v3",
