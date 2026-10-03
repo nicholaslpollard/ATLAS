@@ -19,6 +19,7 @@ from packages.data.thetadata_candidate_surface_qualification_v1 import (
 from packages.data.thetadata_open_interest_qualification_v1 import (
     run_thetadata_open_interest_qualification_v1,
 )
+from packages.providers.thetadata.client import close_all_workers
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -101,7 +102,12 @@ def main(argv: list[str] | None = None) -> int:
                 "  STOP: quote source did not qualify; OI source was not contacted.",
                 flush=True,
             )
+            close_all_workers()
             return 3
+
+        # Qualification stages use separate thread pools. Close the quote workers
+        # before OI so the account never carries stale idle provider processes.
+        close_all_workers()
 
         oi = run_thetadata_open_interest_qualification_v1(
             settings,
@@ -130,8 +136,10 @@ def main(argv: list[str] | None = None) -> int:
             "historical_fill=False strategy=False paper=False live=False",
             flush=True,
         )
+        close_all_workers()
         return 0 if oi["full_open_interest_acquisition_source_qualified"] else 3
     except Exception as exc:
+        close_all_workers()
         print(
             "THETADATA CANDIDATE SOURCE QUALIFICATION PIPELINE STOPPED: "
             f"{type(exc).__name__}: {exc}",
