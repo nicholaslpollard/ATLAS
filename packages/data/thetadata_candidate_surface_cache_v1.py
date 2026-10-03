@@ -50,7 +50,9 @@ MANIFEST_REL = "data/options/manifests"
 MAX_REQUESTS = 10000
 MAX_WORKERS = 4
 MAX_RAW_BYTES = 64 * 1024 * 1024
+MIN_PROJECTED_RESPONSE_BYTES = 1 * 1024 * 1024
 PROJECTED_RECEIPT_BYTES = 64 * 1024
+STORAGE_RECHECK_REQUESTS = 25
 
 
 class ThetaDataCandidateSurfaceCacheError(ValueError):
@@ -447,6 +449,19 @@ def _transport_one(
     )
 
 
+def _projected_response_bytes(qualification: dict[str, Any]) -> int:
+    observed = [
+        int(item.get("raw_receipt", {}).get("body_bytes", 0))
+        for item in qualification.get("anchors", [])
+        if isinstance(item, dict)
+    ]
+    observed_max = max(observed, default=0)
+    return min(
+        MAX_RAW_BYTES,
+        max(MIN_PROJECTED_RESPONSE_BYTES, observed_max * 4),
+    )
+
+
 def _write_checkpoint(
     settings: AtlasSettings,
     report: dict[str, Any],
@@ -516,6 +531,10 @@ def run_thetadata_candidate_surface_cache_v1(
         "new_raw_bytes": 0,
         "workers": workers,
         "max_new_requests": max_new_requests,
+        "projected_response_bytes_per_request": _projected_response_bytes(
+            qualification
+        ),
+        "storage_recheck_request_interval": STORAGE_RECHECK_REQUESTS,
         "provider_writes": 0,
         "option_exit_prices_read": 0,
         "single_contract_selected": False,
@@ -584,26 +603,41 @@ def run_thetadata_candidate_surface_cache_v1(
             os.fsync(handle.fileno())
 
         remaining = list(pending)
+        next_storage_check = 0
+        projected_each = (
+            int(report["projected_response_bytes_per_request"])
+            + PROJECTED_RECEIPT_BYTES
+        )
         with ThreadPoolExecutor(max_workers=workers) as pool:
             while remaining and report["new_provider_attempts"] < max_new_requests:
+                if report["new_provider_attempts"] >= next_storage_check:
+                    guarded_requests = min(
+                        STORAGE_RECHECK_REQUESTS,
+                        len(remaining),
+                        max_new_requests - report["new_provider_attempts"],
+                    )
+                    try:
+                        assert_category_acquisition_allowed(
+                            settings,
+                            category="options_candidate_cache",
+                            projected_additional_bytes=(
+                                guarded_requests * projected_each
+                            ),
+                        )
+                    except ResearchStorageError as exc:
+                        report["status"] = "PARTIAL_STORAGE_BLOCKED"
+                        report["storage_error"] = str(exc)
+                        break
+                    next_storage_check = (
+                        report["new_provider_attempts"]
+                        + STORAGE_RECHECK_REQUESTS
+                    )
+
                 batch_size = min(
                     workers,
                     len(remaining),
                     max_new_requests - report["new_provider_attempts"],
                 )
-                try:
-                    assert_category_acquisition_allowed(
-                        settings,
-                        category="options_candidate_cache",
-                        projected_additional_bytes=(
-                            batch_size * (MAX_RAW_BYTES + PROJECTED_RECEIPT_BYTES)
-                        ),
-                    )
-                except ResearchStorageError as exc:
-                    report["status"] = "PARTIAL_STORAGE_BLOCKED"
-                    report["storage_error"] = str(exc)
-                    break
-
                 batch = [remaining.pop(0) for _ in range(batch_size)]
                 futures = {
                     pool.submit(
