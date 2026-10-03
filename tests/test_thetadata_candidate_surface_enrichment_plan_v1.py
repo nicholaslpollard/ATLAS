@@ -33,6 +33,21 @@ def _query(index: int, year: int) -> dict:
 
 def _source_plan() -> dict:
     queries = [_query(i, year) for i, year in enumerate(range(2021, 2026), 1)]
+    anchors = []
+    for index, query in enumerate(queries, 1):
+        params = query["params"]
+        anchors.append({
+            "anchor_index": index,
+            "qualification_reasons": [f"YEAR_{params['start_date'][:4]}_FIRST"],
+            "date_et": (
+                f"{params['start_date'][:4]}-{params['start_date'][4:6]}-"
+                f"{params['start_date'][6:8]}"
+            ),
+            "time_of_day_et": "09:35:00.000",
+            "symbol": params["symbol"],
+            "decision_spot_query_fingerprint": query["source_query_fingerprint"],
+            "query": query,
+        })
     body = {
         "contract": SOURCE_PLAN_CONTRACT,
         "status": "PLANNED_ZERO_PROVIDER_READS",
@@ -45,6 +60,10 @@ def _source_plan() -> dict:
             "max_dte": 75,
             "strike_range": None,
             "full_surface_queries": queries,
+        },
+        "qualification": {
+            "anchor_query_count": len(anchors),
+            "anchors": anchors,
         },
         "provider_requests": 0,
         "historical_fill_authority": False,
@@ -77,6 +96,8 @@ def test_enrichment_plan_adds_one_open_interest_surface_per_quote_surface(monkey
     assert all(item["params"]["right"] == "call" for item in oi["requests"])
     assert all(item["params"]["max_dte"] == 75 for item in oi["requests"])
     assert all(item["params"]["strike_range"] is None for item in oi["requests"])
+    assert oi["qualification_anchor_count"] == 5
+    assert len(oi["qualification_anchors"]) == 5
 
     greeks = result["greeks_stage"]
     assert greeks["request_creation"] == "DYNAMIC_AFTER_QUOTE_AND_OPEN_INTEREST_JOIN"
