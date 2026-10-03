@@ -45,6 +45,7 @@ CONTRACT = "atlas-thetadata-open-interest-surface-qualification-v1"
 OUTPUT_REL = "data/options/provider_qualification/thetadata_open_interest_surface_v1"
 DECISION_CLOCK_ET = "09:35:00.000"
 MAX_WORKERS = 4
+EXPECTED_QUALIFICATION_ANCHORS = 15
 
 
 class ThetaDataOpenInterestQualificationError(ValueError):
@@ -220,7 +221,7 @@ def _validate_inputs(
         or not isinstance(oi, dict)
         or not isinstance(oi.get("qualification_anchors"), list)
         or oi.get("qualification_anchor_count") != len(oi["qualification_anchors"])
-        or oi.get("qualification_anchor_count") != 15
+        or oi.get("qualification_anchor_count") != EXPECTED_QUALIFICATION_ANCHORS
         or enrichment_plan.get("provider_requests") != 0
         or enrichment_plan.get("historical_fill_authority") is not False
         or enrichment_plan.get("strategy_evidence_authority") is not False
