@@ -120,8 +120,8 @@ def test_source_plan_is_zero_provider_and_spans_all_years(monkeypatch):
         "ENTRY": 5,
         "EXIT": 5,
     }
-    assert result["provider_candidate"]["target_subscription"] == "Options Value"
-    assert result["provider_candidate"]["documented_concurrent_requests_observed"] == 2
+    assert result["provider_candidate"]["target_subscription"] == "Options Standard"
+    assert result["provider_candidate"]["documented_concurrent_requests_observed"] == 4
 
     reasons = {
         reason
