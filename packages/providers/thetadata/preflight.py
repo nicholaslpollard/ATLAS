@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-"""Zero-provider-read readiness checks for the ThetaData Python library."""
+"""Zero-provider-read readiness checks for the isolated ThetaData Python worker."""
 
 from dataclasses import asdict, dataclass
-import os
+import json
 from pathlib import Path
-import sys
-from typing import Any
+import subprocess
+from typing import Any, Callable
 
 from packages.data.multiyear_option_quote_reuse_handoff_v1 import _check_signature
 from packages.data.thetadata_candidate_surface_enrichment_plan_v1 import (
@@ -16,26 +16,21 @@ from packages.data.thetadata_candidate_surface_plan_v1 import (
     CONTRACT as SOURCE_PLAN_CONTRACT,
 )
 from packages.providers.thetadata.client import (
-    MIN_API_KEY_LIBRARY,
-    MIN_PYTHON,
     TARGET_LIBRARY_VERSION,
-    _version_tuple,
-    installed_library_version,
+    WORKER_SCRIPT,
+    provider_python_path,
 )
-
-API_KEY_ENV = "THETADATA_API_KEY"
-CREDENTIALS_FILE_ENV = "THETADATA_CREDENTIALS_FILE"
-_UNSET = object()
 
 
 @dataclass(frozen=True, slots=True)
 class ThetaDataPreflightResult:
-    python_major: int
-    python_minor: int
-    python_meets_minimum: bool
+    provider_python: str
+    provider_python_present: bool
+    provider_python_version: str | None
+    provider_python_meets_3_12: bool
     library_installed: bool
     library_version: str | None
-    library_meets_minimum: bool
+    library_version_matches_tested: bool
     tested_library_version: str
     auth_source: str
     auth_material_present: bool
@@ -49,56 +44,6 @@ class ThetaDataPreflightResult:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-
-
-def _dotenv_has_api_key(path: Path) -> bool:
-    if not path.is_file() or path.is_symlink():
-        return False
-    try:
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            if key.strip() != API_KEY_ENV:
-                continue
-            value = value.strip().strip('"').strip("'")
-            return bool(value)
-    except OSError:
-        return False
-    return False
-
-
-def _creds_file_present(path: Path) -> bool:
-    if not path.is_file() or path.is_symlink():
-        return False
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return False
-    return len(lines) >= 2 and bool(lines[0].strip()) and bool(lines[1].strip())
-
-
-def inspect_auth_source(
-    *,
-    dotenv_path: Path | None = None,
-    environ: dict[str, str] | None = None,
-) -> tuple[str, bool]:
-    env = os.environ if environ is None else environ
-    if str(env.get(API_KEY_ENV, "")).strip():
-        return "THETADATA_API_KEY_ENV", True
-
-    if dotenv_path is not None and _dotenv_has_api_key(dotenv_path):
-        return "THETADATA_DOTENV_API_KEY", True
-
-    explicit_creds = str(env.get(CREDENTIALS_FILE_ENV, "")).strip()
-    if explicit_creds and _creds_file_present(Path(explicit_creds)):
-        return "THETADATA_CREDENTIALS_FILE_ENV", True
-
-    if _creds_file_present(Path.cwd() / "creds.txt"):
-        return "DEFAULT_CREDS_FILE", True
-
-    return "NOT_OBSERVED_LOCALLY", False
 
 
 def validate_plans(
@@ -131,43 +76,122 @@ def validate_plans(
     return source_valid, enrichment_valid, linked
 
 
+def inspect_provider_environment(
+    python_path: Path,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> dict[str, Any]:
+    if not python_path.is_file():
+        return {
+            "provider_python_present": False,
+            "python_version": None,
+            "python_meets_3_12": False,
+            "thetadata_installed": False,
+            "thetadata_version": None,
+            "thetadata_version_supported": False,
+            "auth_source": "NOT_OBSERVED_LOCALLY",
+            "auth_material_present": False,
+            "provider_requests": 0,
+        }
+    try:
+        completed = runner(
+            [str(python_path), str(WORKER_SCRIPT), "--preflight"],
+            cwd=str(WORKER_SCRIPT.parents[1]),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return {
+            "provider_python_present": True,
+            "python_version": None,
+            "python_meets_3_12": False,
+            "thetadata_installed": False,
+            "thetadata_version": None,
+            "thetadata_version_supported": False,
+            "auth_source": "PREFLIGHT_EXECUTION_FAILED",
+            "auth_material_present": False,
+            "provider_requests": 0,
+            "preflight_error_type": type(exc).__name__,
+        }
+    if completed.returncode != 0:
+        return {
+            "provider_python_present": True,
+            "python_version": None,
+            "python_meets_3_12": False,
+            "thetadata_installed": False,
+            "thetadata_version": None,
+            "thetadata_version_supported": False,
+            "auth_source": "PREFLIGHT_NONZERO_EXIT",
+            "auth_material_present": False,
+            "provider_requests": 0,
+        }
+    try:
+        payload = json.loads(completed.stdout.strip())
+    except json.JSONDecodeError:
+        payload = {}
+    if not isinstance(payload, dict) or payload.get("ok") is not True:
+        return {
+            "provider_python_present": True,
+            "python_version": None,
+            "python_meets_3_12": False,
+            "thetadata_installed": False,
+            "thetadata_version": None,
+            "thetadata_version_supported": False,
+            "auth_source": "PREFLIGHT_INVALID_PROTOCOL",
+            "auth_material_present": False,
+            "provider_requests": 0,
+        }
+    return {
+        "provider_python_present": True,
+        "python_version": payload.get("python_version"),
+        "python_meets_3_12": payload.get("python_meets_3_12") is True,
+        "thetadata_installed": payload.get("thetadata_installed") is True,
+        "thetadata_version": payload.get("thetadata_version"),
+        "thetadata_version_supported": payload.get("thetadata_version_supported") is True,
+        "auth_source": str(payload.get("auth_source") or "NOT_OBSERVED_LOCALLY"),
+        "auth_material_present": payload.get("auth_material_present") is True,
+        "provider_requests": int(payload.get("provider_requests") or 0),
+    }
+
+
 def run_thetadata_preflight_v1(
     *,
     source_plan: dict[str, Any],
     enrichment_plan: dict[str, Any],
-    dotenv_path: Path | None = None,
-    environ: dict[str, str] | None = None,
-    python_version: tuple[int, int] | None = None,
-    library_version: str | None | object = _UNSET,
+    provider_python: Path | None = None,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> ThetaDataPreflightResult:
-    version = sys.version_info[:2] if python_version is None else python_version
-    python_ok = tuple(version) >= MIN_PYTHON
-    installed = (
-        installed_library_version()
-        if library_version is _UNSET
-        else library_version
-    )
-    library_installed = installed is not None
-    library_ok = (
-        library_installed
-        and _version_tuple(str(installed)) >= MIN_API_KEY_LIBRARY
-        and _version_tuple(str(installed)) < (2,)
-    )
-
-    auth_source, auth_present = inspect_auth_source(
-        dotenv_path=dotenv_path,
-        environ=environ,
-    )
+    python_path = provider_python_path() if provider_python is None else provider_python
+    environment = inspect_provider_environment(python_path, runner=runner)
     source_valid, enrichment_valid, plans_linked = validate_plans(
         source_plan,
         enrichment_plan,
     )
 
+    present = environment["provider_python_present"] is True
+    py_ok = environment["python_meets_3_12"] is True
+    library_installed = environment["thetadata_installed"] is True
+    library_version = environment["thetadata_version"]
+    version_matches = library_version == TARGET_LIBRARY_VERSION
+    auth_present = environment["auth_material_present"] is True
+    auth_source = str(environment["auth_source"])
+
     details = [
-        f"python={version[0]}.{version[1]} minimum={MIN_PYTHON[0]}.{MIN_PYTHON[1]}",
         (
-            f"thetadata={installed} tested={TARGET_LIBRARY_VERSION}"
-            if installed is not None
+            f"provider_python={python_path}"
+            if present
+            else f"provider Python not found at {python_path}"
+        ),
+        (
+            f"provider_python_version={environment['python_version']}"
+            if environment["python_version"]
+            else "provider Python version unavailable"
+        ),
+        (
+            f"thetadata={library_version} tested={TARGET_LIBRARY_VERSION}"
+            if library_installed
             else f"thetadata not installed; tested={TARGET_LIBRARY_VERSION}"
         ),
         (
@@ -180,16 +204,28 @@ def run_thetadata_preflight_v1(
             if plans_linked
             else "ATLAS source/enrichment plan linkage invalid"
         ),
-        "Theta Terminal and Java are not required for the active Python-library path",
+        (
+            "ThetaData runs in an isolated provider environment because its "
+            "protobuf>=6 requirement conflicts with the accepted Webull SDK protobuf<6"
+        ),
+        "Theta Terminal and Java are not required",
     ]
 
-    ready = python_ok and library_ok and auth_present and plans_linked
-    if not python_ok:
-        next_action = "USE_PYTHON_3_12_PLUS"
-    elif not library_installed:
-        next_action = "INSTALL_THETADATA_PYTHON_LIBRARY"
-    elif not library_ok:
-        next_action = "UPGRADE_THETADATA_PYTHON_LIBRARY"
+    ready = (
+        present
+        and py_ok
+        and library_installed
+        and version_matches
+        and auth_present
+        and plans_linked
+        and environment["provider_requests"] == 0
+    )
+    if not present:
+        next_action = "SETUP_ISOLATED_THETADATA_PROVIDER_ENVIRONMENT"
+    elif not py_ok:
+        next_action = "RECREATE_PROVIDER_ENV_WITH_PYTHON_3_12_PLUS"
+    elif not library_installed or not version_matches:
+        next_action = "INSTALL_PINNED_THETADATA_PROVIDER_DEPENDENCIES"
     elif not auth_present:
         next_action = "CONFIGURE_THETADATA_AUTH"
     elif not plans_linked:
@@ -198,19 +234,26 @@ def run_thetadata_preflight_v1(
         next_action = "READY_FOR_BOUNDED_SOURCE_QUALIFICATION"
 
     return ThetaDataPreflightResult(
-        python_major=int(version[0]),
-        python_minor=int(version[1]),
-        python_meets_minimum=python_ok,
+        provider_python=str(python_path),
+        provider_python_present=present,
+        provider_python_version=(
+            None
+            if environment["python_version"] is None
+            else str(environment["python_version"])
+        ),
+        provider_python_meets_3_12=py_ok,
         library_installed=library_installed,
-        library_version=installed,
-        library_meets_minimum=library_ok,
+        library_version=(
+            None if library_version is None else str(library_version)
+        ),
+        library_version_matches_tested=version_matches,
         tested_library_version=TARGET_LIBRARY_VERSION,
         auth_source=auth_source,
         auth_material_present=auth_present,
         source_plan_valid=source_valid,
         enrichment_plan_valid=enrichment_valid,
         plans_linked=plans_linked,
-        provider_requests=0,
+        provider_requests=int(environment["provider_requests"]),
         ready_for_bounded_source_qualification=ready,
         next_action=next_action,
         detail=tuple(details),
