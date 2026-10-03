@@ -5542,3 +5542,41 @@ expose the credential.
 A reachable Terminal plus Java 21+ and valid ATLAS plan linkage is sufficient for
 preflight readiness. Provider entitlement/schema is still proven only by the separate
 bounded read-only quote/OI qualification gate.
+
+
+## 2026-10-03 — ThetaData transport correction: direct Python library, no Terminal
+
+ThetaData released a direct Python library in 2026 that connects to ThetaData over
+HTTPS/gRPC and does **not** require Theta Terminal or Java. ATLAS therefore supersedes
+the previously staged Terminal/localhost REST transport before any provider data was
+requested.
+
+The accepted scientific/source manifests are retained unchanged:
+- quote-surface plan `acc9525a2930fe39`;
+- enrichment plan `181645c252fc46f4`.
+
+Their request geometry, causal clocks, DTE bounds, quote/OI staging and downstream
+Greeks policy remain valid. The original source-plan field
+`terminal_required=True` is retained only as immutable lineage metadata from the
+transport assumption at plan-freeze time; it is not an active runtime requirement.
+
+Active provider transport:
+- optional package `thetadata==1.0.12`;
+- Python >=3.12;
+- `ThetaClient(dataframe_type="pandas")`;
+- direct methods `option_at_time_quote()`,
+  `option_history_open_interest()`, and
+  `option_history_binomial_greeks_first_order()`;
+- API-key authentication via `THETADATA_API_KEY` or supported ThetaData credential
+  discovery;
+- no Java, JAR, localhost port or local service.
+
+Provider evidence receipts now preserve a canonical JSON serialization of the returned
+provider DataFrame together with provider method, transport and library version. They
+must not claim wire-level/raw HTTP bytes because the direct library does not expose
+them.
+
+The obsolete Terminal preflight remains only as a compatibility shim that exits with
+a superseded message. The active readiness gate is
+`scripts/preflight_thetadata_python_library_v1.py`, and it still performs zero
+provider requests.
