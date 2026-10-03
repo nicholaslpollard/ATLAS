@@ -39,6 +39,9 @@ from packages.data.thetadata_candidate_surface_qualification_v1 import (
     _normalize_rows,
 )
 from packages.providers.thetadata.client import (
+    EVIDENCE_ENCODING,
+    TARGET_LIBRARY_VERSION,
+    TRANSPORT,
     ThetaDataError,
     ThetaDataResponse,
     option_at_time_quote_surface,
@@ -268,9 +271,17 @@ def _write_response(
         raise ThetaDataCandidateSurfaceCacheError(
             "ThetaData durable request intent missing"
         )
+    if (
+        response.transport != TRANSPORT
+        or response.library_version != TARGET_LIBRARY_VERSION
+        or response.evidence_encoding != EVIDENCE_ENCODING
+    ):
+        raise ThetaDataCandidateSurfaceCacheError(
+            "ThetaData provider transport/library provenance changed"
+        )
     if not isinstance(response.raw_body, bytes) or len(response.raw_body) > MAX_RAW_BYTES:
         raise ThetaDataCandidateSurfaceCacheError(
-            "ThetaData candidate surface raw response is unbounded"
+            "ThetaData candidate surface evidence bytes are unbounded"
         )
 
     if response.rows:
@@ -376,8 +387,10 @@ def _read_intact(
         or intent.get("automatic_retry_permitted") is not False
         or receipt.get("body_sha256") != _sha256(raw)
         or receipt.get("body_bytes") != len(raw)
+        or receipt.get("provider_transport") != TRANSPORT
+        or receipt.get("provider_library_version") != TARGET_LIBRARY_VERSION
         or receipt.get("canonical_provider_dataframe_bytes") is not True
-        or receipt.get("evidence_encoding") != "CANONICAL_PROVIDER_DATAFRAME_JSON"
+        or receipt.get("evidence_encoding") != EVIDENCE_ENCODING
         or receipt.get("historical_fill_authority") is not False
         or receipt.get("strategy_evidence_authority") is not False
     ):
