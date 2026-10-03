@@ -13,6 +13,9 @@ def test_worker_preflight_is_zero_provider_request_contract():
     assert result["ok"] is True
     assert result["provider_requests"] == 0
     assert result["thetadata_tested_version"] == "1.0.12"
+    assert isinstance(result["environment_fingerprint"], str)
+    assert len(result["environment_fingerprint"]) == 64
+    assert "protobuf" in result["environment_packages"]
 
 
 def test_worker_converts_date_arguments_for_library():
@@ -73,6 +76,7 @@ def test_worker_maps_no_data_exception_to_explicit_empty_surface():
 
     runtime = worker.Runtime()
     runtime.version = "1.0.12"
+    runtime.environment_fingerprint = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     runtime.ensure = lambda: FakeClient()
 
     result = runtime.request(
@@ -93,3 +97,4 @@ def test_worker_maps_no_data_exception_to_explicit_empty_surface():
     assert result["rows"] == []
     assert result["explicit_no_data"] is True
     assert result["library_version"] == "1.0.12"
+    assert result["environment_fingerprint"] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
