@@ -29,8 +29,9 @@ OUTPUT_REL = "data/options/manifests/thetadata_candidate_surface_source_plan_v1"
 # Provider/source metadata frozen into the already accepted source-plan artifact.
 # The terminal_required=True field records the REST transport assumption that existed
 # when that immutable plan was created. It is lineage metadata only. The active ATLAS
-# runtime transport was superseded on 2026-10-03 by ThetaData's direct Python library,
-# which requires neither Theta Terminal nor Java. Do not mutate this dict without
+# runtime transport was superseded on 2026-10-03 by ThetaData's direct Python library
+# running in an isolated provider worker environment, which requires neither Theta
+# Terminal nor Java and avoids the core Webull/ThetaData protobuf conflict. Do not mutate this dict without
 # intentionally creating a new source-plan lineage/fingerprint.
 PROVIDER_CANDIDATE = {
     "provider": "ThetaData",
