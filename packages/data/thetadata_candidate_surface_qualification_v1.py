@@ -30,6 +30,9 @@ from packages.data.thetadata_candidate_surface_plan_v1 import (
     PROVIDER_CANDIDATE,
 )
 from packages.providers.thetadata.client import (
+    EVIDENCE_ENCODING,
+    TARGET_LIBRARY_VERSION,
+    TRANSPORT,
     ThetaDataError,
     ThetaDataResponse,
     option_at_time_quote_surface,
@@ -72,6 +75,17 @@ def _symbol_matches_underlying(response_symbol: str, expected_symbol: str) -> bo
         and suffix[6] in {"C", "P"}
         and suffix[7:].isdigit()
     )
+
+
+def _validate_provider_provenance(response: ThetaDataResponse) -> None:
+    if (
+        response.transport != TRANSPORT
+        or response.library_version != TARGET_LIBRARY_VERSION
+        or response.evidence_encoding != EVIDENCE_ENCODING
+    ):
+        raise ThetaDataCandidateSurfaceQualificationError(
+            "ThetaData provider transport/library provenance changed"
+        )
 
 
 def _run_root(settings: AtlasSettings, plan_fp: str, run_id: str) -> Path:
@@ -376,6 +390,19 @@ def _probe_one(
             "error": f"{type(exc).__name__}: {exc}",
             "http_status": exc.http_status,
         }, None, None
+
+    try:
+        _validate_provider_provenance(response)
+    except ThetaDataCandidateSurfaceQualificationError as exc:
+        return {
+            "anchor_index": anchor["anchor_index"],
+            "qualification_reasons": anchor["qualification_reasons"],
+            "query": anchor["query"],
+            "status": "SURFACE_VALIDATION_ERROR",
+            "http_status": response.http_status,
+            "response_rows": len(response.rows),
+            "error": f"{type(exc).__name__}: {exc}",
+        }, response, None
 
     if len(response.rows) == 0:
         return {
