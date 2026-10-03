@@ -5521,3 +5521,24 @@ read-only requests: 15 quote anchors plus one deterministic 2021 repeat, followe
 only after quote success by 15 matching OI anchors plus one deterministic 2021
 repeat. Full quote/OI acquisition, Greeks, contract selection, exact exit pricing,
 historical P&L, strategy evidence, PAPER and LIVE remain locked.
+
+
+## 2026-10-03 — ThetaData Terminal zero-data preflight
+
+Before the first live ThetaData source qualification, ATLAS now requires a local
+zero-market-data preflight. The preflight validates:
+
+- Java 21 or newer;
+- the loopback-only Theta Terminal listener at 127.0.0.1:25503;
+- whether a local authentication source is observable via THETADATA_API_KEY,
+  terminal .env, or terminal creds.txt;
+- the immutable quote-surface plan and enrichment plan signatures and linkage.
+
+The preflight opens only a local TCP socket and does not call a ThetaData HTTP/data
+endpoint. It deliberately does not inspect running process command lines because a
+Terminal may have been launched with an API key argument and process inspection could
+expose the credential.
+
+A reachable Terminal plus Java 21+ and valid ATLAS plan linkage is sufficient for
+preflight readiness. Provider entitlement/schema is still proven only by the separate
+bounded read-only quote/OI qualification gate.
