@@ -117,6 +117,7 @@ def _response(**kwargs) -> ThetaDataResponse:
         elapsed_seconds=0.01,
         raw_body=raw,
         library_version="1.0.12",
+        provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
 
 
