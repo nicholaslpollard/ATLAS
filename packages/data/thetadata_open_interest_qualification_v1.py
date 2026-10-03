@@ -83,6 +83,9 @@ def _persist_raw(
         "body_bytes": len(response.raw_body),
         "http_status": response.http_status,
         "elapsed_seconds": response.elapsed_seconds,
+        "provider_transport": response.transport,
+        "provider_library_version": response.library_version,
+        "evidence_encoding": response.evidence_encoding,
         "query": query,
         "enrichment_plan_fingerprint": plan_fingerprint,
     }
