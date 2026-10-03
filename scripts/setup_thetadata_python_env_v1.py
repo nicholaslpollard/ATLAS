@@ -228,6 +228,8 @@ def main(argv: list[str] | None = None) -> int:
             preflight.get("python_meets_3_12") is not True
             or preflight.get("thetadata_installed") is not True
             or preflight.get("thetadata_version") != TARGET_LIBRARY_VERSION
+            or not isinstance(preflight.get("environment_fingerprint"), str)
+            or len(preflight["environment_fingerprint"]) != 64
         ):
             raise RuntimeError("ThetaData provider environment did not meet pinned contract")
 
@@ -242,6 +244,12 @@ def main(argv: list[str] | None = None) -> int:
             "target_thetadata_version": TARGET_LIBRARY_VERSION,
             "observed_thetadata_version": preflight.get("thetadata_version"),
             "python_version": preflight.get("python_version"),
+            "provider_environment_fingerprint": preflight.get(
+                "environment_fingerprint"
+            ),
+            "provider_environment_packages": preflight.get(
+                "environment_packages"
+            ),
             "pip_freeze": frozen,
             "requirements_sha256": hashlib.sha256(
                 REQUIREMENTS.read_bytes()
@@ -264,7 +272,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  setup={action}", flush=True)
         print(
             f"  thetadata={preflight.get('thetadata_version')} "
-            f"python={preflight.get('python_version')}",
+            f"python={preflight.get('python_version')} "
+            f"environment={str(preflight.get('environment_fingerprint'))[:16]}",
             flush=True,
         )
         print(
