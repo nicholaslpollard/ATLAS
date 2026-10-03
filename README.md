@@ -5578,9 +5578,10 @@ Webull SDK requires `protobuf<6` on Python >=3.12. ATLAS will not resolve a
 market-data dependency by changing a validated broker/runtime dependency.
 
 Provider evidence receipts preserve a canonical JSON serialization of the returned
-provider DataFrame together with provider method, transport and library version. They
-must not claim wire-level/raw HTTP bytes because the direct library does not expose
-them.
+provider DataFrame together with provider method, transport, library version and a
+fingerprint of the isolated provider dependency stack (ThetaData/protobuf/gRPC and
+related serialization/network packages). They must not claim wire-level/raw HTTP bytes
+because the direct library does not expose them.
 
 `scripts/setup_thetadata_python_env_v1.py` creates/validates the isolated provider
 environment without making a market-data request. The obsolete Terminal preflight
