@@ -5453,3 +5453,41 @@ underlying/date/decision clock. Strike and expiration remain unselected until ca
 option quotes can be evaluated by the existing option-economics/trade-expression
 layer. Exact option exit source demand is second-stage after entry contract selection.
 
+
+
+## 2026-10-03 — 09:35 decision spot accepted; ThetaData surface qualification next
+
+The corrected zero-provider `multiyear_option_decision_spot_v1` workstation run
+completed after PR #311 fixed the Eastern-time binding. It verified/read all 5,315
+target minute bindings and resolved a causal stock decision spot for **9,654 / 9,667**
+option-expressible cases (**99.8655%**). Thirteen cases remain explicitly missing a
+completed regular minute available at the 09:35 decision; they are not imputed.
+
+The open-to-09:35 absolute move had median **0.4660%**, mean **0.6562%**, P90
+**1.5422%** and maximum **4.8678%**. **22.81%** of ready cases had moved at least 1%
+from the raw open, **4.46%** at least 2%, and **0.89%** at least 3%. The old
+open-selected structural CALL was ATM in only 54 cases at 09:35; 4,899 were ITM and
+4,701 OTM, with median absolute strike distance **1.4266%**. This confirms that the
+entry-contract clock correction was material and that the obsolete 18,921
+single-contract request set must not be acquired.
+
+The accepted output replaces that set with **9,455 unique provider-agnostic
+underlying/date/09:35 CALL candidate surfaces** covering the 9,654 ready cases.
+No option provider, option price or option outcome was read.
+
+The next source gate is
+`thetadata_candidate_surface_source_plan_v1`. ThetaData Options Standard is the
+current provider candidate. Current official retail documentation observed for this
+gate lists $80/month, ten years of data, four concurrent requests, tick-level data,
+option-chain snapshots and every OPRA NBBO quote. The v3 at-time quote endpoint
+supports `expiration=*`, `max_dte` and all strikes at a minute-boundary clock, so
+ATLAS can qualify one bounded 09:35 surface per underlying/date without preselecting
+an OCC.
+
+The qualification stage remains outcome-blind and read-only. It freezes deterministic
+2021–2025 anchors, persists raw response/receipt evidence, validates timestamp and
+contract-surface semantics, distinguishes explicit no-data from entitlement/transport
+failure, and repeats a 2021 surface for deterministic historical replay. Full 9,455
+surface acquisition remains locked until that source gate passes. Contract selection,
+historical open interest, local IV/Greeks, exact selected-contract exit quotes,
+historical-fill authority, strategy evidence, PAPER and LIVE remain downstream.

@@ -1165,3 +1165,27 @@ underlying state and define provider-agnostic option candidate demand. It does n
 read option prices/outcomes or create historical-fill, strategy, PAPER or LIVE
 authority. Historical supported modern alpha remains zero.
 
+
+
+## 21. 09:35 decision-spot closeout and ThetaData candidate-surface staging — 2026-10-03
+
+The corrected decision-spot run completed with zero option-provider reads. It resolved
+**9,654 / 9,667** option-expressible cases to a causal stock spot known at 09:35 and
+left **13** explicit missing-minute cases. The ready population deduplicates to
+**9,455** provider-agnostic CALL candidate-surface requests.
+
+The observed open-to-decision movement and strike drift confirm that the old
+open-selected CALL identity is not an acceptable historical 09:35 contract proxy:
+median absolute stock movement from open was **0.4660%**, while the retained baseline
+CALL was ATM in only 54 cases and had median absolute strike distance **1.4266%** at
+the decision clock.
+
+**Disposition:** `DECISION_SPOT_COMPLETE /
+OLD_SINGLE_CONTRACT_INTRADAY_DEMAND_SUPERSEDED /
+NEXT_THETADATA_CANDIDATE_SURFACE_SOURCE_QUALIFICATION`.
+
+This is source-clock evidence only. Historical supported modern alpha remains zero.
+No contract is selected, no option outcome or P&L is opened, and strategy promotion,
+PAPER and LIVE authority remain false. The next ThetaData gate is outcome-blind and
+read-only; full historical candidate-surface acquisition remains locked until provider
+entitlement, schema, chronology and repeatability are observed successfully.
