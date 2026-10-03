@@ -28,9 +28,6 @@ dependencies = [
 dev = [
     "pytest>=9,<10",
 ]
-thetadata = [
-    "thetadata==1.0.12; python_version >= '3.12'",
-]
 
 [tool.setuptools.packages.find]
 where = ["."]
