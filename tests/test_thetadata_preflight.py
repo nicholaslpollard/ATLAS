@@ -77,6 +77,7 @@ def test_ready_provider_environment(tmp_path):
         "thetadata_version": "1.0.12",
         "thetadata_tested_version": "1.0.12",
         "thetadata_version_supported": True,
+        "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "auth_source": "THETADATA_API_KEY_ENV",
         "auth_material_present": True,
         "provider_requests": 0,
@@ -96,6 +97,7 @@ def test_ready_provider_environment(tmp_path):
     assert result.library_installed is True
     assert result.library_version == "1.0.12"
     assert result.library_version_matches_tested is True
+    assert result.provider_environment_fingerprint == "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     assert result.auth_material_present is True
     assert result.plans_linked is True
     assert result.provider_requests == 0
@@ -115,6 +117,7 @@ def test_wrong_library_version_blocks(tmp_path):
         "thetadata_installed": True,
         "thetadata_version": "1.0.11",
         "thetadata_version_supported": True,
+        "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "auth_source": "THETADATA_API_KEY_ENV",
         "auth_material_present": True,
         "provider_requests": 0,
@@ -143,6 +146,7 @@ def test_missing_auth_blocks(tmp_path):
         "thetadata_installed": True,
         "thetadata_version": "1.0.12",
         "thetadata_version_supported": True,
+        "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "auth_source": "NOT_OBSERVED_LOCALLY",
         "auth_material_present": False,
         "provider_requests": 0,
