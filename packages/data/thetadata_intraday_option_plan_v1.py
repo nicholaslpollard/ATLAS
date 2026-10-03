@@ -43,7 +43,7 @@ PROVIDER_CANDIDATE = {
     "target_subscription": "Options Standard",
     "retail_monthly_price_usd_observed": 80,
     "retail_history_marketing_observed": "10 years",
-        "documented_concurrent_requests_observed": 4,
+    "documented_concurrent_requests_observed": 4,
     "quote_source": "OPRA_NBBO",
     "at_time_endpoint": "/v3/option/at_time/quote",
     "history_quote_endpoint": "/v3/option/history/quote",
@@ -323,8 +323,8 @@ def build_thetadata_intraday_option_source_plan(
     minute_aligned = all(
         str(item["time_of_day_et"]).endswith(":00.000") for item in demands
     )
-    target_coverage_after_2020 = all(
-        date.fromisoformat(item["date_et"]) >= date(2020, 1, 1)
+    target_scope_within_advertised_ten_year_window = all(
+        date(2016, 10, 2) <= date.fromisoformat(item["date_et"]) <= date(2026, 10, 2)
         for item in demands
     )
     anchors = _qualification_anchors(demands)
@@ -343,8 +343,8 @@ def build_thetadata_intraday_option_source_plan(
             "role_memberships": dict(sorted(roles.items())),
             "unique_clock_times_et": len(times),
             "minute_boundary_aligned": minute_aligned,
-            "all_demands_on_or_after_documented_value_first_access": (
-                target_coverage_after_2020
+            "all_demands_within_advertised_ten_year_window_as_of_2026_10_02": (
+                target_scope_within_advertised_ten_year_window
             ),
         },
         "request_shape_analysis": {
