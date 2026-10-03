@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import subprocess
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.thetadata_candidate_surface_enrichment_plan_v1 import (
@@ -31,26 +33,15 @@ def _enrichment_plan(source: dict) -> dict:
     return body
 
 
-def test_auth_source_detects_env():
-    source, present = module.inspect_auth_source(
-        environ={"THETADATA_API_KEY": "secret"},
-    )
-    assert present is True
-    assert source == "THETADATA_API_KEY_ENV"
-
-
-def test_auth_source_detects_dotenv_without_exposing_secret(tmp_path):
-    path = tmp_path / ".env"
-    path.write_text('THETADATA_API_KEY="abc123"\n', encoding="utf-8")
-
-    source, present = module.inspect_auth_source(
-        dotenv_path=path,
-        environ={},
-    )
-
-    assert present is True
-    assert source == "THETADATA_DOTENV_API_KEY"
-    assert "abc123" not in source
+def _runner(payload: dict, *, returncode: int = 0):
+    def run(*args, **kwargs):
+        return subprocess.CompletedProcess(
+            args=args[0] if args else [],
+            returncode=returncode,
+            stdout=json.dumps(payload),
+            stderr="",
+        )
+    return run
 
 
 def test_plan_linkage_passes_for_matching_signed_plans():
@@ -59,72 +50,129 @@ def test_plan_linkage_passes_for_matching_signed_plans():
     assert module.validate_plans(source, enrichment) == (True, True, True)
 
 
-def test_preflight_ready_on_python_library_path():
+def test_missing_provider_python_is_not_ready(tmp_path):
     source = _source_plan()
     enrichment = _enrichment_plan(source)
 
     result = module.run_thetadata_preflight_v1(
         source_plan=source,
         enrichment_plan=enrichment,
-        python_version=(3, 14),
-        library_version="1.0.12",
-        environ={"THETADATA_API_KEY": "x"},
+        provider_python=tmp_path / "missing-python.exe",
     )
 
-    assert result.python_meets_minimum is True
+    assert result.provider_python_present is False
+    assert result.ready_for_bounded_source_qualification is False
+    assert result.next_action == "SETUP_ISOLATED_THETADATA_PROVIDER_ENVIRONMENT"
+    assert result.provider_requests == 0
+
+
+def test_ready_provider_environment(tmp_path):
+    provider_python = tmp_path / "python.exe"
+    provider_python.write_bytes(b"placeholder")
+    payload = {
+        "ok": True,
+        "python_version": "3.14.0",
+        "python_meets_3_12": True,
+        "thetadata_installed": True,
+        "thetadata_version": "1.0.12",
+        "thetadata_tested_version": "1.0.12",
+        "thetadata_version_supported": True,
+        "auth_source": "THETADATA_API_KEY_ENV",
+        "auth_material_present": True,
+        "provider_requests": 0,
+    }
+    source = _source_plan()
+    enrichment = _enrichment_plan(source)
+
+    result = module.run_thetadata_preflight_v1(
+        source_plan=source,
+        enrichment_plan=enrichment,
+        provider_python=provider_python,
+        runner=_runner(payload),
+    )
+
+    assert result.provider_python_present is True
+    assert result.provider_python_meets_3_12 is True
     assert result.library_installed is True
-    assert result.library_meets_minimum is True
+    assert result.library_version == "1.0.12"
+    assert result.library_version_matches_tested is True
     assert result.auth_material_present is True
     assert result.plans_linked is True
     assert result.provider_requests == 0
     assert result.ready_for_bounded_source_qualification is True
     assert result.next_action == "READY_FOR_BOUNDED_SOURCE_QUALIFICATION"
-    assert any("Terminal and Java are not required" in x for x in result.detail)
+    assert any("protobuf>=6" in item for item in result.detail)
+    assert any("Terminal and Java are not required" in item for item in result.detail)
 
 
-def test_preflight_blocks_python_311():
+def test_wrong_library_version_blocks(tmp_path):
+    provider_python = tmp_path / "python.exe"
+    provider_python.write_bytes(b"placeholder")
+    payload = {
+        "ok": True,
+        "python_version": "3.14.0",
+        "python_meets_3_12": True,
+        "thetadata_installed": True,
+        "thetadata_version": "1.0.11",
+        "thetadata_version_supported": True,
+        "auth_source": "THETADATA_API_KEY_ENV",
+        "auth_material_present": True,
+        "provider_requests": 0,
+    }
     source = _source_plan()
     enrichment = _enrichment_plan(source)
 
     result = module.run_thetadata_preflight_v1(
         source_plan=source,
         enrichment_plan=enrichment,
-        python_version=(3, 11),
-        library_version="1.0.12",
-        environ={"THETADATA_API_KEY": "x"},
+        provider_python=provider_python,
+        runner=_runner(payload),
     )
 
     assert result.ready_for_bounded_source_qualification is False
-    assert result.next_action == "USE_PYTHON_3_12_PLUS"
+    assert result.next_action == "INSTALL_PINNED_THETADATA_PROVIDER_DEPENDENCIES"
 
 
-def test_preflight_blocks_missing_library():
+def test_missing_auth_blocks(tmp_path):
+    provider_python = tmp_path / "python.exe"
+    provider_python.write_bytes(b"placeholder")
+    payload = {
+        "ok": True,
+        "python_version": "3.14.0",
+        "python_meets_3_12": True,
+        "thetadata_installed": True,
+        "thetadata_version": "1.0.12",
+        "thetadata_version_supported": True,
+        "auth_source": "NOT_OBSERVED_LOCALLY",
+        "auth_material_present": False,
+        "provider_requests": 0,
+    }
     source = _source_plan()
     enrichment = _enrichment_plan(source)
 
     result = module.run_thetadata_preflight_v1(
         source_plan=source,
         enrichment_plan=enrichment,
-        python_version=(3, 14),
-        library_version=None,
-        environ={"THETADATA_API_KEY": "x"},
-    )
-
-    assert result.ready_for_bounded_source_qualification is False
-    assert result.next_action == "INSTALL_THETADATA_PYTHON_LIBRARY"
-
-
-def test_preflight_blocks_missing_auth():
-    source = _source_plan()
-    enrichment = _enrichment_plan(source)
-
-    result = module.run_thetadata_preflight_v1(
-        source_plan=source,
-        enrichment_plan=enrichment,
-        python_version=(3, 14),
-        library_version="1.0.12",
-        environ={},
+        provider_python=provider_python,
+        runner=_runner(payload),
     )
 
     assert result.ready_for_bounded_source_qualification is False
     assert result.next_action == "CONFIGURE_THETADATA_AUTH"
+
+
+def test_invalid_worker_protocol_blocks(tmp_path):
+    provider_python = tmp_path / "python.exe"
+    provider_python.write_bytes(b"placeholder")
+    source = _source_plan()
+    enrichment = _enrichment_plan(source)
+
+    result = module.run_thetadata_preflight_v1(
+        source_plan=source,
+        enrichment_plan=enrichment,
+        provider_python=provider_python,
+        runner=_runner({"ok": False}),
+    )
+
+    assert result.ready_for_bounded_source_qualification is False
+    assert result.provider_requests == 0
