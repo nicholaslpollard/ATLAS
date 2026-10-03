@@ -12,7 +12,7 @@ The plan has two purposes:
 2. Build a small, outcome-blind qualification sample plus exact acquisition
    accounting before the operator purchases or authorizes a provider subscription.
 
-The current candidate is ThetaData Options Value. This plan deliberately does
+The current candidate is ThetaData Options Standard. This plan deliberately does
 not treat public entitlement documentation as observed data authority. The oldest
 required 2021 sample must be proven by a later provider qualification run.
 """
@@ -40,15 +40,14 @@ PROVIDER_CANDIDATE = {
     "provider": "ThetaData",
     "api_generation": "v3",
     "terminal_required": True,
-    "target_subscription": "Options Value",
-    "retail_monthly_price_usd_observed": 40,
-    "retail_history_marketing_observed": "6 years",
-    "subscription_table_first_access_date_observed": "2020-01-01",
-    "documented_concurrent_requests_observed": 2,
+    "target_subscription": "Options Standard",
+    "retail_monthly_price_usd_observed": 80,
+    "retail_history_marketing_observed": "10 years",
+        "documented_concurrent_requests_observed": 4,
     "quote_source": "OPRA_NBBO",
     "at_time_endpoint": "/v3/option/at_time/quote",
     "history_quote_endpoint": "/v3/option/history/quote",
-    "provider_granularity_observed": "1 minute",
+    "provider_granularity_observed": "tick level",
     "requested_clock_resolution": "minute boundary",
     "clock_timezone": "America/New_York",
     "at_time_semantics_observed":
