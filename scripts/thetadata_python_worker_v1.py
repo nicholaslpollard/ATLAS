@@ -13,6 +13,7 @@ core ATLAS/Webull environment.
 """
 
 import argparse
+import contextlib
 from datetime import date, datetime
 import importlib.metadata
 import json
@@ -165,8 +166,9 @@ class Runtime:
             raise RuntimeError("THETADATA_LIBRARY_NOT_INSTALLED")
         if sys.version_info[:2] < (3, 12):
             raise RuntimeError("PYTHON_3_12_PLUS_REQUIRED")
-        from thetadata import ThetaClient
-        self.client = ThetaClient(dataframe_type="pandas")
+        with contextlib.redirect_stdout(sys.stderr):
+            from thetadata import ThetaClient
+            self.client = ThetaClient(dataframe_type="pandas")
         self.version = version
         return self.client
 
@@ -176,7 +178,8 @@ class Runtime:
         if func is None or not callable(func):
             raise RuntimeError("THETADATA_METHOD_UNAVAILABLE")
         try:
-            frame = func(**_convert_kwargs(method, kwargs))
+            with contextlib.redirect_stdout(sys.stderr):
+                frame = func(**_convert_kwargs(method, kwargs))
         except Exception as exc:
             if type(exc).__name__ == "NoDataFoundError":
                 return {
