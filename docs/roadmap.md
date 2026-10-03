@@ -5952,3 +5952,24 @@ If the Terminal is already reachable, ATLAS does not inspect command-line argume
 to discover an API key. The next authoritative gate remains the bounded quote + OI
 source qualification; preflight success alone grants no acquisition, contract,
 strategy, PAPER or LIVE authority.
+
+
+### 2026-10-03 — Replace Theta Terminal with direct Python-library transport
+
+ThetaData's current Python library removes the need for a local Terminal. Before any
+ThetaData provider read, replace the staged localhost REST transport with the direct
+library path.
+
+The accepted 9,455 quote-surface and 9,455 OI-surface manifests are not regenerated.
+Only transport/evidence mechanics change:
+- Python >=3.12;
+- optional pinned ThetaData provider package;
+- direct `ThetaClient` calls;
+- canonical provider-DataFrame evidence bytes rather than claimed raw HTTP bytes;
+- Python-library/auth/plan-linkage preflight instead of Java/socket/Terminal preflight.
+
+The scientific stage order remains quote -> OI -> frozen DTE/spread/OI filter ->
+dividend-aware first-order binomial Greeks -> delta/economic eligibility -> one entry
+contract -> exact selected-contract exit quote.
+
+No source acquisition, option P&L, strategy, PAPER or LIVE authority changes.
