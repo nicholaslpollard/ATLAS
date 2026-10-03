@@ -4,7 +4,7 @@ from __future__ import annotations
 
 This stage is inert by default and may perform provider reads only after a signed
 qualification report proves the source for the exact plan. It preserves durable
-pre-request intent, exact raw response bytes, immutable receipts, normalized surface
+pre-request intent, canonical provider-DataFrame bytes, immutable receipts, normalized surface
 fingerprints, D:-bound storage guards, a run lock, and deterministic resume behavior.
 
 The acquired surfaces remain entry-time source evidence only. No contract is selected
@@ -304,7 +304,10 @@ def _write_response(
         "row_count": len(response.rows),
         "surface_summary": summary,
         "normalized_surface_fingerprint": normalized_fingerprint,
-        "raw_http_body_exact": True,
+        "provider_transport": response.transport,
+        "provider_library_version": response.library_version,
+        "evidence_encoding": response.evidence_encoding,
+        "canonical_provider_dataframe_bytes": True,
         "historical_fill_authority": False,
         "strategy_evidence_authority": False,
     }
@@ -373,6 +376,8 @@ def _read_intact(
         or intent.get("automatic_retry_permitted") is not False
         or receipt.get("body_sha256") != _sha256(raw)
         or receipt.get("body_bytes") != len(raw)
+        or receipt.get("canonical_provider_dataframe_bytes") is not True
+        or receipt.get("evidence_encoding") != "CANONICAL_PROVIDER_DATAFRAME_JSON"
         or receipt.get("historical_fill_authority") is not False
         or receipt.get("strategy_evidence_authority") is not False
     ):
