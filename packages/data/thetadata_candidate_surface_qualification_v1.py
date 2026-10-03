@@ -81,6 +81,12 @@ def _validate_provider_provenance(response: ThetaDataResponse) -> None:
     if (
         response.transport != TRANSPORT
         or response.library_version != TARGET_LIBRARY_VERSION
+        or not isinstance(response.provider_environment_fingerprint, str)
+        or len(response.provider_environment_fingerprint) != 64
+        or any(
+            char not in "0123456789abcdef"
+            for char in response.provider_environment_fingerprint
+        )
         or response.evidence_encoding != EVIDENCE_ENCODING
     ):
         raise ThetaDataCandidateSurfaceQualificationError(
@@ -120,6 +126,7 @@ def _persist_raw(
         "elapsed_seconds": response.elapsed_seconds,
         "provider_transport": response.transport,
         "provider_library_version": response.library_version,
+        "provider_environment_fingerprint": response.provider_environment_fingerprint,
         "evidence_encoding": response.evidence_encoding,
         "query": query,
         "plan_fingerprint": plan_fingerprint,
