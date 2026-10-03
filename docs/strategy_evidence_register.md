@@ -1170,3 +1170,9 @@ NEXT_EXACT_INTRADAY_OPTION_SOURCE_QUALIFICATION_PLAN`.
 Historical supported modern alpha remains zero. Correct source clocks are necessary
 for derivative-expression evidence but do not promote the underlying stock signal.
 
+ThetaData Options Standard is the selected acquisition tier for the next provider
+qualification. The supplied tier terms provide ten years of history, tick-level data,
+four concurrent requests, option-chain snapshots, and every OPRA NBBO quote. This
+provider choice changes source capability only; the currently frozen option cohort
+remains 2021–2025 until a separately versioned older-history cohort is defined.
+
