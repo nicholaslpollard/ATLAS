@@ -32,6 +32,7 @@ class ThetaDataPreflightResult:
     library_version: str | None
     library_version_matches_tested: bool
     tested_library_version: str
+    provider_environment_fingerprint: str | None
     auth_source: str
     auth_material_present: bool
     source_plan_valid: bool
@@ -89,6 +90,7 @@ def inspect_provider_environment(
             "thetadata_installed": False,
             "thetadata_version": None,
             "thetadata_version_supported": False,
+            "environment_fingerprint": None,
             "auth_source": "NOT_OBSERVED_LOCALLY",
             "auth_material_present": False,
             "provider_requests": 0,
@@ -110,6 +112,7 @@ def inspect_provider_environment(
             "thetadata_installed": False,
             "thetadata_version": None,
             "thetadata_version_supported": False,
+            "environment_fingerprint": None,
             "auth_source": "PREFLIGHT_EXECUTION_FAILED",
             "auth_material_present": False,
             "provider_requests": 0,
@@ -123,6 +126,7 @@ def inspect_provider_environment(
             "thetadata_installed": False,
             "thetadata_version": None,
             "thetadata_version_supported": False,
+            "environment_fingerprint": None,
             "auth_source": "PREFLIGHT_NONZERO_EXIT",
             "auth_material_present": False,
             "provider_requests": 0,
@@ -139,6 +143,7 @@ def inspect_provider_environment(
             "thetadata_installed": False,
             "thetadata_version": None,
             "thetadata_version_supported": False,
+            "environment_fingerprint": None,
             "auth_source": "PREFLIGHT_INVALID_PROTOCOL",
             "auth_material_present": False,
             "provider_requests": 0,
@@ -150,6 +155,7 @@ def inspect_provider_environment(
         "thetadata_installed": payload.get("thetadata_installed") is True,
         "thetadata_version": payload.get("thetadata_version"),
         "thetadata_version_supported": payload.get("thetadata_version_supported") is True,
+        "environment_fingerprint": payload.get("environment_fingerprint"),
         "auth_source": str(payload.get("auth_source") or "NOT_OBSERVED_LOCALLY"),
         "auth_material_present": payload.get("auth_material_present") is True,
         "provider_requests": int(payload.get("provider_requests") or 0),
@@ -175,6 +181,12 @@ def run_thetadata_preflight_v1(
     library_installed = environment["thetadata_installed"] is True
     library_version = environment["thetadata_version"]
     version_matches = library_version == TARGET_LIBRARY_VERSION
+    environment_fingerprint = environment.get("environment_fingerprint")
+    environment_fp_ok = (
+        isinstance(environment_fingerprint, str)
+        and len(environment_fingerprint) == 64
+        and all(char in "0123456789abcdef" for char in environment_fingerprint)
+    )
     auth_present = environment["auth_material_present"] is True
     auth_source = str(environment["auth_source"])
 
@@ -193,6 +205,11 @@ def run_thetadata_preflight_v1(
             f"thetadata={library_version} tested={TARGET_LIBRARY_VERSION}"
             if library_installed
             else f"thetadata not installed; tested={TARGET_LIBRARY_VERSION}"
+        ),
+        (
+            f"provider_environment={environment_fingerprint[:16]}"
+            if environment_fp_ok
+            else "provider environment fingerprint unavailable"
         ),
         (
             f"authentication material observed via {auth_source}"
@@ -216,6 +233,7 @@ def run_thetadata_preflight_v1(
         and py_ok
         and library_installed
         and version_matches
+        and environment_fp_ok
         and auth_present
         and plans_linked
         and environment["provider_requests"] == 0
@@ -226,6 +244,8 @@ def run_thetadata_preflight_v1(
         next_action = "RECREATE_PROVIDER_ENV_WITH_PYTHON_3_12_PLUS"
     elif not library_installed or not version_matches:
         next_action = "INSTALL_PINNED_THETADATA_PROVIDER_DEPENDENCIES"
+    elif not environment_fp_ok:
+        next_action = "RECREATE_PROVIDER_ENVIRONMENT_MANIFEST"
     elif not auth_present:
         next_action = "CONFIGURE_THETADATA_AUTH"
     elif not plans_linked:
@@ -248,6 +268,9 @@ def run_thetadata_preflight_v1(
         ),
         library_version_matches_tested=version_matches,
         tested_library_version=TARGET_LIBRARY_VERSION,
+        provider_environment_fingerprint=(
+            str(environment_fingerprint) if environment_fp_ok else None
+        ),
         auth_source=auth_source,
         auth_material_present=auth_present,
         source_plan_valid=source_valid,
