@@ -5962,11 +5962,15 @@ library path.
 
 The accepted 9,455 quote-surface and 9,455 OI-surface manifests are not regenerated.
 Only transport/evidence mechanics change:
-- Python >=3.12;
-- optional pinned ThetaData provider package;
-- direct `ThetaClient` calls;
+- dedicated provider Python >=3.12 under `.provider_venvs/thetadata`;
+- pinned ThetaData 1.0.12 package outside the core ATLAS dependency graph;
+- persistent worker processes that make direct `ThetaClient` calls;
 - canonical provider-DataFrame evidence bytes rather than claimed raw HTTP bytes;
 - Python-library/auth/plan-linkage preflight instead of Java/socket/Terminal preflight.
+
+Isolation is required because ThetaData 1.0.12 requires protobuf>=6.32.1 while the
+accepted Webull SDK requires protobuf<6 on Python>=3.12. Do not upgrade or retune the
+broker SDK merely to co-install the market-data library.
 
 The scientific stage order remains quote -> OI -> frozen DTE/spread/OI filter ->
 dividend-aware first-order binomial Greeks -> delta/economic eligibility -> one entry
