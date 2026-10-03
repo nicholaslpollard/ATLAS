@@ -1222,8 +1222,10 @@ transport and evidence wrapper, not the accepted causal request population.
 
 The immutable quote/OI planning artifacts remain the authority for what may be
 requested. Their legacy `terminal_required=True` metadata is historical lineage
-only. Active source calls use the direct Python library, and receipts preserve
-canonical provider-DataFrame bytes plus method/library-version provenance.
+only. Active source calls use the direct Python library from a dedicated provider
+virtual environment, and receipts preserve canonical provider-DataFrame bytes plus
+method/library-version provenance. Isolation is mandatory because ThetaData 1.0.12
+requires protobuf>=6.32.1 while the accepted Webull SDK requires protobuf<6.
 
 **Disposition:** `TRANSPORT_CORRECTED_BEFORE_PROVIDER_READ /
 SCIENTIFIC_MANIFESTS_RETAINED / TERMINAL_PATH_SUPERSEDED /
