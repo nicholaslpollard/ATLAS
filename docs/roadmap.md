@@ -5885,3 +5885,34 @@ causal bid/ask, IV/Greeks, liquidity, DTE, event context and the universal econo
 gate. The selected contract's exact exit quote is then acquired at the already-bound
 stock exit clock.
 
+
+
+### 2026-10-03 — Decision-spot closeout and provider-neutral surface handoff
+
+The workstation rerun of `multiyear_option_decision_spot_v1` completed on corrected
+main with zero provider requests. Of the 9,667 stock-clock-ready cases, **9,654**
+have a causal completed-minute stock spot available at 09:35 and **13** fail closed
+for missing completed regular-minute evidence. The output deduplicates those ready
+members into **9,455 underlying/date/09:35 CALL candidate surfaces**.
+
+This closes the open-versus-09:35 contract-selection mismatch. The previously planned
+18,921 exact single-contract ENTRY/EXIT requests remain baseline lineage only and are
+not acquisition authority. The old structural CALL was ATM in only 54 of 9,654 ready
+cases at the actual decision clock, with median strike distance 1.4266%.
+
+Next gate: zero-provider `thetadata_candidate_surface_source_plan_v1`, followed only
+by its bounded read-only qualification if the operator has intentionally enabled the
+ThetaData Options Standard subscription and local v3 Terminal.
+
+The provider mapping is one 09:35 request per accepted surface using
+`/v3/option/at_time/quote`, `expiration=*`, all strikes, CALL only and
+`max_dte=75`. No `strike_range` is frozen before observed causal option evidence;
+the downstream Phase13/economic layer still owns DTE, delta, spread, liquidity,
+open-interest and valuation eligibility. Exact exit source is deferred until the
+entry contract is selected.
+
+Full surface acquisition remains unauthorized until qualification proves at least one
+valid historical candidate surface in each target year 2021–2025, proves oldest-2021
+access, validates chronology/schema, preserves raw request/response receipts and
+repeats a 2021 surface deterministically. No strategy, PAPER, LIVE or historical-fill
+authority changes.
