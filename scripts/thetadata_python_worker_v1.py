@@ -16,6 +16,7 @@ import argparse
 import contextlib
 from datetime import date, datetime
 import importlib.metadata
+import hashlib
 import json
 import math
 import os
@@ -25,6 +26,15 @@ from typing import Any
 
 
 TARGET_LIBRARY_VERSION = "1.0.12"
+PROVIDER_PACKAGES = (
+    "thetadata",
+    "protobuf",
+    "grpcio",
+    "httpx",
+    "pandas",
+    "polars",
+    "zstandard",
+)
 API_KEY_ENV = "THETADATA_API_KEY"
 CREDENTIALS_FILE_ENV = "THETADATA_CREDENTIALS_FILE"
 
@@ -108,6 +118,22 @@ def _auth_source() -> tuple[str, bool]:
     return "NOT_OBSERVED_LOCALLY", False
 
 
+def _provider_environment() -> tuple[dict[str, str | None], str]:
+    packages: dict[str, str | None] = {}
+    for name in PROVIDER_PACKAGES:
+        try:
+            packages[name] = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            packages[name] = None
+    raw = json.dumps(
+        packages,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return packages, hashlib.sha256(raw).hexdigest()
+
+
 def _library_version() -> str | None:
     try:
         return importlib.metadata.version("thetadata")
@@ -118,6 +144,7 @@ def _library_version() -> str | None:
 def preflight() -> dict[str, Any]:
     version = _library_version()
     auth_source, auth_present = _auth_source()
+    environment_packages, environment_fingerprint = _provider_environment()
     return {
         "ok": True,
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
@@ -132,6 +159,8 @@ def preflight() -> dict[str, Any]:
         ),
         "auth_source": auth_source,
         "auth_material_present": auth_present,
+        "environment_packages": environment_packages,
+        "environment_fingerprint": environment_fingerprint,
         "provider_requests": 0,
     }
 
@@ -157,6 +186,7 @@ class Runtime:
     def __init__(self) -> None:
         self.client = None
         self.version = None
+        self.environment_fingerprint = None
 
     def ensure(self):
         if self.client is not None:
@@ -170,6 +200,7 @@ class Runtime:
             from thetadata import ThetaClient
             self.client = ThetaClient(dataframe_type="pandas")
         self.version = version
+        _, self.environment_fingerprint = _provider_environment()
         return self.client
 
     def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -186,6 +217,7 @@ class Runtime:
                     "ok": True,
                     "method": method,
                     "library_version": self.version,
+                    "environment_fingerprint": self.environment_fingerprint,
                     "rows": [],
                     "explicit_no_data": True,
                 }
@@ -194,6 +226,7 @@ class Runtime:
             "ok": True,
             "method": method,
             "library_version": self.version,
+            "environment_fingerprint": self.environment_fingerprint,
             "rows": _records(frame),
             "explicit_no_data": False,
         }
