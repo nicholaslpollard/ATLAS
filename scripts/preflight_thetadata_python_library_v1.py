@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Zero-provider-read readiness check for direct ThetaData Python-library access."""
+"""Zero-provider-read preflight for the isolated ThetaData Python-library worker."""
 
 import argparse
 import sys
@@ -18,21 +18,24 @@ from packages.providers.thetadata.preflight import run_thetadata_preflight_v1
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Validate Python version, ThetaData Python-library installation, local "
-            "authentication source, and immutable ATLAS plan linkage. Makes zero "
+            "Validate isolated ThetaData provider Python, pinned library version, "
+            "authentication source and immutable ATLAS plan linkage. Makes zero "
             "ThetaData market-data requests."
         )
     )
     parser.add_argument("--source-plan", type=Path, required=True)
     parser.add_argument("--enrichment-plan", type=Path, required=True)
     parser.add_argument(
-        "--dotenv-path",
+        "--provider-python",
         type=Path,
-        help="Optional ThetaData .env path. Secret values are never printed.",
+        help=(
+            "Optional isolated provider Python override. Default is "
+            ".provider_venvs/thetadata under the ATLAS repository."
+        ),
     )
     args = parser.parse_args(argv)
 
-    print("ATLAS THETADATA PYTHON LIBRARY PREFLIGHT V1", flush=True)
+    print("ATLAS THETADATA ISOLATED PYTHON PREFLIGHT V1", flush=True)
     print(
         "  ZERO provider requests. No Theta Terminal or Java required.",
         flush=True,
@@ -60,12 +63,14 @@ def main(argv: list[str] | None = None) -> int:
         result = run_thetadata_preflight_v1(
             source_plan=_read_object(source_path),
             enrichment_plan=_read_object(enrichment_path),
-            dotenv_path=args.dotenv_path,
+            provider_python=args.provider_python,
         )
         print(
-            "  python "
-            f"{result.python_major}.{result.python_minor} "
-            f"meets_3_12_plus={result.python_meets_minimum}",
+            "  provider_python "
+            f"path={result.provider_python} "
+            f"present={result.provider_python_present} "
+            f"version={result.provider_python_version} "
+            f"meets_3_12_plus={result.provider_python_meets_3_12}",
             flush=True,
         )
         print(
@@ -73,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             f"installed={result.library_installed} "
             f"version={result.library_version} "
             f"tested={result.tested_library_version} "
-            f"meets_minimum={result.library_meets_minimum}",
+            f"matches_tested={result.library_version_matches_tested}",
             flush=True,
         )
         print(
