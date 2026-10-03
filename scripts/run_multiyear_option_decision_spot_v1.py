@@ -14,6 +14,9 @@ from zoneinfo import ZoneInfo
 
 import duckdb
 
+EASTERN = ZoneInfo("America/New_York")
+UTC = ZoneInfo("UTC")
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -112,6 +115,14 @@ def _targeted_bindings(
     return bindings, exact, raw_sha, compressed_sha
 
 
+def _decision_cutoff_utc(day: str) -> datetime:
+    return datetime.combine(
+        date.fromisoformat(day),
+        time(9, 34),
+        tzinfo=EASTERN,
+    ).astimezone(UTC)
+
+
 def _read_binding_rows(
     *,
     settings,
@@ -129,11 +140,7 @@ def _read_binding_rows(
         (
             symbol,
             day,
-            datetime.combine(
-                date.fromisoformat(day),
-                time(9, 34),
-                tzinfo=EASTERN,
-            ).astimezone(ZoneInfo("UTC")),
+            _decision_cutoff_utc(day),
         )
         for symbol in sorted(requested)
         for day in sorted(requested[symbol])
