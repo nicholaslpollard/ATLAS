@@ -175,12 +175,24 @@ class Runtime:
         func = getattr(client, method, None)
         if func is None or not callable(func):
             raise RuntimeError("THETADATA_METHOD_UNAVAILABLE")
-        frame = func(**_convert_kwargs(method, kwargs))
+        try:
+            frame = func(**_convert_kwargs(method, kwargs))
+        except Exception as exc:
+            if type(exc).__name__ == "NoDataFoundError":
+                return {
+                    "ok": True,
+                    "method": method,
+                    "library_version": self.version,
+                    "rows": [],
+                    "explicit_no_data": True,
+                }
+            raise
         return {
             "ok": True,
             "method": method,
             "library_version": self.version,
             "rows": _records(frame),
+            "explicit_no_data": False,
         }
 
 
