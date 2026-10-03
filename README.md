@@ -5561,22 +5561,29 @@ Greeks policy remain valid. The original source-plan field
 transport assumption at plan-freeze time; it is not an active runtime requirement.
 
 Active provider transport:
-- optional package `thetadata==1.0.12`;
-- Python >=3.12;
-- `ThetaClient(dataframe_type="pandas")`;
+- pinned provider package `thetadata==1.0.12`;
+- a dedicated `.provider_venvs/thetadata` Python >=3.12 environment;
+- a persistent ATLAS worker process per acquisition thread;
+- direct `ThetaClient(dataframe_type="pandas")` calls inside that isolated worker;
 - direct methods `option_at_time_quote()`,
   `option_history_open_interest()`, and
   `option_history_binomial_greeks_first_order()`;
 - API-key authentication via `THETADATA_API_KEY` or supported ThetaData credential
   discovery;
-- no Java, JAR, localhost port or local service.
+- no Java, JAR, localhost port or Theta Terminal.
 
-Provider evidence receipts now preserve a canonical JSON serialization of the returned
+The provider environment is intentionally isolated rather than installed into the
+core ATLAS venv. ThetaData 1.0.12 requires `protobuf>=6.32.1`, while the accepted
+Webull SDK requires `protobuf<6` on Python >=3.12. ATLAS will not resolve a
+market-data dependency by changing a validated broker/runtime dependency.
+
+Provider evidence receipts preserve a canonical JSON serialization of the returned
 provider DataFrame together with provider method, transport and library version. They
 must not claim wire-level/raw HTTP bytes because the direct library does not expose
 them.
 
-The obsolete Terminal preflight remains only as a compatibility shim that exits with
-a superseded message. The active readiness gate is
-`scripts/preflight_thetadata_python_library_v1.py`, and it still performs zero
-provider requests.
+`scripts/setup_thetadata_python_env_v1.py` creates/validates the isolated provider
+environment without making a market-data request. The obsolete Terminal preflight
+remains only as a compatibility shim that exits with a superseded message. The active
+readiness gate is `scripts/preflight_thetadata_python_library_v1.py`, and it also
+performs zero provider requests.
