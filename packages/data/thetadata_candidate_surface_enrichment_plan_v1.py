@@ -121,6 +121,35 @@ def build_thetadata_surface_enrichment_plan(
             "open-interest surface query identities are not unique"
         )
     years = Counter(str(item["params"]["date"])[:4] for item in oi_queries)
+    oi_by_source = {
+        item["source_quote_query_fingerprint"]: item for item in oi_queries
+    }
+    source_qualification = source_plan.get("qualification")
+    if (
+        not isinstance(source_qualification, dict)
+        or not isinstance(source_qualification.get("anchors"), list)
+        or source_qualification.get("anchor_query_count")
+            != len(source_qualification["anchors"])
+    ):
+        raise ThetaDataSurfaceEnrichmentPlanError(
+            "source-plan qualification anchors changed"
+        )
+    oi_anchors: list[dict[str, Any]] = []
+    for anchor in source_qualification["anchors"]:
+        source_fp = anchor.get("decision_spot_query_fingerprint")
+        oi_query = oi_by_source.get(source_fp)
+        if oi_query is None:
+            raise ThetaDataSurfaceEnrichmentPlanError(
+                "source-plan qualification anchor has no OI surface mapping"
+            )
+        oi_anchors.append({
+            "anchor_index": int(anchor["anchor_index"]),
+            "qualification_reasons": list(anchor["qualification_reasons"]),
+            "symbol": str(anchor["symbol"]),
+            "date_et": str(anchor["date_et"]),
+            "source_quote_query_fingerprint": str(source_fp),
+            "query": oi_query,
+        })
 
     body = {
         "contract": CONTRACT,
@@ -142,6 +171,8 @@ def build_thetadata_surface_enrichment_plan(
             "right": "call",
             "max_dte": EXPECTED_MAX_DTE,
             "strike_range": None,
+            "qualification_anchor_count": len(oi_anchors),
+            "qualification_anchors": oi_anchors,
         },
         "pre_greeks_filter": {
             "dte_calendar_days": [PHASE13_OPTION_MIN_DTE, PHASE13_OPTION_MAX_DTE],
