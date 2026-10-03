@@ -53,6 +53,7 @@ class ThetaDataResponse:
     raw_body: bytes
     transport: str = TRANSPORT
     library_version: str | None = None
+    provider_environment_fingerprint: str | None = None
     evidence_encoding: str = EVIDENCE_ENCODING
 
 
@@ -247,6 +248,7 @@ def _call(method_name: str, **kwargs: Any) -> ThetaDataResponse:
     )
     canonical = _canonical_bytes(rows)
     library_version = response.get("library_version")
+    environment_fingerprint = response.get("environment_fingerprint")
     return ThetaDataResponse(
         http_status=200,
         rows=rows,
@@ -259,6 +261,11 @@ def _call(method_name: str, **kwargs: Any) -> ThetaDataResponse:
         raw_body=canonical,
         library_version=(
             None if library_version is None else str(library_version)
+        ),
+        provider_environment_fingerprint=(
+            None
+            if environment_fingerprint is None
+            else str(environment_fingerprint)
         ),
     )
 
