@@ -59,6 +59,21 @@ class ThetaDataCandidateSurfaceQualificationError(ValueError):
     pass
 
 
+def _symbol_matches_underlying(response_symbol: str, expected_symbol: str) -> bool:
+    if response_symbol == expected_symbol:
+        return True
+    compact = response_symbol.replace(" ", "")
+    if not compact.startswith(expected_symbol):
+        return False
+    suffix = compact[len(expected_symbol):]
+    return (
+        len(suffix) == 15
+        and suffix[:6].isdigit()
+        and suffix[6] in {"C", "P"}
+        and suffix[7:].isdigit()
+    )
+
+
 def _run_root(settings: AtlasSettings, plan_fp: str, run_id: str) -> Path:
     return settings.resolved_path(f"{OUTPUT_REL}/{plan_fp[:16]}/{run_id}")
 
@@ -200,7 +215,7 @@ def _normalize_rows(
                 f"ThetaData response missing fields: {missing}"
             )
         response_symbol = str(row["symbol"])
-        if response_symbol != expected_symbol:
+        if not _symbol_matches_underlying(response_symbol, expected_symbol):
             raise ThetaDataCandidateSurfaceQualificationError(
                 "ThetaData candidate-surface response changed underlying symbol"
             )
