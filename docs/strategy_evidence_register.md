@@ -1211,3 +1211,20 @@ authoritative Greeks. Missing dividend evidence fails closed.
 **Disposition:** `THETADATA_SOURCE_ARCHITECTURE_FROZEN /
 QUOTE_AND_OI_QUALIFICATION_NEXT / GREEKS_DIVIDEND_CONTEXT_REQUIRED /
 NO_OPTION_PNL_OR_STRATEGY_AUTHORITY`.
+
+
+## 23. ThetaData transport correction before first provider read — 2026-10-03
+
+No ThetaData market-data request had occurred when the transport assumption was
+revisited. Current official ThetaData documentation provides a direct Python library
+that does not require Theta Terminal. ATLAS therefore changes only the source
+transport and evidence wrapper, not the accepted causal request population.
+
+The immutable quote/OI planning artifacts remain the authority for what may be
+requested. Their legacy `terminal_required=True` metadata is historical lineage
+only. Active source calls use the direct Python library, and receipts preserve
+canonical provider-DataFrame bytes plus method/library-version provenance.
+
+**Disposition:** `TRANSPORT_CORRECTED_BEFORE_PROVIDER_READ /
+SCIENTIFIC_MANIFESTS_RETAINED / TERMINAL_PATH_SUPERSEDED /
+NO_OPTION_PNL_OR_STRATEGY_AUTHORITY`.
