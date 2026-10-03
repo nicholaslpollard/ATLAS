@@ -236,7 +236,6 @@ def test_oi_after_decision_clock_fails_validation(tmp_path, monkeypatch):
             raw_body=raw,
             library_version="1.0.12",
             provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         )
 
     plan = _enrichment_plan()
