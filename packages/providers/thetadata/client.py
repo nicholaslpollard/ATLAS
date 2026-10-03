@@ -5,18 +5,19 @@ from __future__ import annotations
 ThetaData 1.0.12 requires protobuf>=6.32.1 while the accepted ATLAS Webull SDK
 requires protobuf<6 on Python>=3.12. To avoid destabilizing broker/runtime code,
 ThetaData runs in a dedicated provider virtual environment and ATLAS communicates
-with a persistent worker process over line-delimited JSON on stdin/stdout.
+with persistent worker processes over line-delimited JSON on stdin/stdout.
 
 No Theta Terminal or Java is involved.
 """
 
+import atexit
 from dataclasses import dataclass
 from datetime import date
 import json
 import os
 from pathlib import Path
+import queue
 import subprocess
-import sys
 import threading
 import time
 from typing import Any, Mapping, Sequence
@@ -31,6 +32,7 @@ TARGET_LIBRARY_VERSION = "1.0.12"
 MIN_PROVIDER_PYTHON = (3, 12)
 TRANSPORT = "THETADATA_PYTHON_LIBRARY_ISOLATED_WORKER"
 EVIDENCE_ENCODING = "CANONICAL_PROVIDER_DATAFRAME_JSON"
+WORKER_RESPONSE_TIMEOUT_SECONDS = 180.0
 
 
 class ThetaDataError(RuntimeError):
@@ -55,6 +57,8 @@ class ThetaDataResponse:
 
 
 _thread_state = threading.local()
+_workers_lock = threading.Lock()
+_workers: set["_Worker"] = set()
 
 
 def provider_python_path() -> Path:
@@ -94,7 +98,7 @@ class _Worker:
                 cwd=str(ROOT),
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
                 text=True,
                 encoding="utf-8",
                 bufsize=1,
@@ -109,50 +113,76 @@ class _Worker:
             self.close()
             raise ThetaDataError("ThetaData provider worker pipes unavailable")
 
-    def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
-        if self.process.poll() is not None:
-            raise ThetaDataError("ThetaData provider worker exited unexpectedly")
-        request_id = uuid.uuid4().hex
-        payload = {
-            "id": request_id,
-            "method": method,
-            "kwargs": kwargs,
-        }
-        assert self.process.stdin is not None
+        self._responses: queue.Queue[str | None] = queue.Queue()
+        self._request_lock = threading.Lock()
+        self._reader = threading.Thread(
+            target=self._read_stdout,
+            name="atlas-thetadata-worker-reader",
+            daemon=True,
+        )
+        self._reader.start()
+        with _workers_lock:
+            _workers.add(self)
+
+    def _read_stdout(self) -> None:
         assert self.process.stdout is not None
         try:
-            self.process.stdin.write(
-                json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
-            )
-            self.process.stdin.flush()
-            line = self.process.stdout.readline()
-        except (BrokenPipeError, OSError) as exc:
-            raise ThetaDataError(
-                f"ThetaData provider worker communication failed: "
-                f"{type(exc).__name__}"
-            ) from exc
-        if not line:
-            raise ThetaDataError("ThetaData provider worker returned no response")
-        try:
-            response = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise ThetaDataError(
-                "ThetaData provider worker returned invalid protocol JSON"
-            ) from exc
-        if (
-            not isinstance(response, dict)
-            or response.get("id") != request_id
-            or response.get("ok") is not True
-        ):
-            error_type = (
-                str(response.get("error_type"))
-                if isinstance(response, dict)
-                else "UNKNOWN"
-            )
-            raise ThetaDataError(
-                f"ThetaData Python-library worker request failed: {error_type}"
-            )
-        return response
+            for line in self.process.stdout:
+                self._responses.put(line)
+        finally:
+            self._responses.put(None)
+
+    def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+        with self._request_lock:
+            if self.process.poll() is not None:
+                raise ThetaDataError("ThetaData provider worker exited unexpectedly")
+            request_id = uuid.uuid4().hex
+            payload = {
+                "id": request_id,
+                "method": method,
+                "kwargs": kwargs,
+            }
+            assert self.process.stdin is not None
+            try:
+                self.process.stdin.write(
+                    json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+                )
+                self.process.stdin.flush()
+                line = self._responses.get(timeout=WORKER_RESPONSE_TIMEOUT_SECONDS)
+            except queue.Empty as exc:
+                self.close()
+                raise ThetaDataError(
+                    "ThetaData provider worker timed out waiting for a response"
+                ) from exc
+            except (BrokenPipeError, OSError) as exc:
+                raise ThetaDataError(
+                    f"ThetaData provider worker communication failed: "
+                    f"{type(exc).__name__}"
+                ) from exc
+
+            if not line:
+                raise ThetaDataError("ThetaData provider worker returned no response")
+            try:
+                response = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ThetaDataError(
+                    "ThetaData provider worker returned invalid protocol JSON"
+                ) from exc
+
+            if (
+                not isinstance(response, dict)
+                or response.get("id") != request_id
+                or response.get("ok") is not True
+            ):
+                error_type = (
+                    str(response.get("error_type"))
+                    if isinstance(response, dict)
+                    else "UNKNOWN"
+                )
+                raise ThetaDataError(
+                    f"ThetaData Python-library worker request failed: {error_type}"
+                )
+            return response
 
     def close(self) -> None:
         process = getattr(self, "process", None)
@@ -172,6 +202,18 @@ class _Worker:
                     process.kill()
                 except Exception:
                     pass
+        with _workers_lock:
+            _workers.discard(self)
+
+
+def close_all_workers() -> None:
+    with _workers_lock:
+        snapshot = list(_workers)
+    for worker in snapshot:
+        worker.close()
+
+
+atexit.register(close_all_workers)
 
 
 def _worker() -> _Worker:
