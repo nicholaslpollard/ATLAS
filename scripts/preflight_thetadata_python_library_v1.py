@@ -78,7 +78,8 @@ def main(argv: list[str] | None = None) -> int:
             f"installed={result.library_installed} "
             f"version={result.library_version} "
             f"tested={result.tested_library_version} "
-            f"matches_tested={result.library_version_matches_tested}",
+            f"matches_tested={result.library_version_matches_tested} "
+            f"environment={str(result.provider_environment_fingerprint)[:16]}",
             flush=True,
         )
         print(
