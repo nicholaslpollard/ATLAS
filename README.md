@@ -11,6 +11,7 @@ ATLAS is being built to discover stock opportunities, compare stock and option t
 - [Project guide and roadmap](docs/roadmap.md): the single authority for goals, current state, architecture, dependencies, active work, and continuation.
 - [Strategy evidence register](docs/strategy_evidence_register.md): compact results, limitations, dispositions, and completed experiment identities.
 - [Offline workstation review](scripts/review_offline_workstation_v1.py): one bounded, provider-free inventory of storage bindings and retained metadata; usage is in the project guide.
+- [Retained stock results review](scripts/review_retained_stock_results_v1.py): reconcile accepted route/fold returns, costs, concentration, and five-session paths without a new replay.
 
 Read both before continuing. Update the guide in place when material state changes and the register when an experiment changes. This README is an entry page. Historical specifications and closeouts support the guide; they are not instructions to rerun completed campaigns.
 
