@@ -69,6 +69,8 @@ Many high-volume routes were negative, including EMA pullback LONG, MACD LONG/SH
 
 Retained baseline daily MFE/MAE describes a 20-session excursion window; it cannot be reported as five-session excursion evidence. Separately computed selected five-session daily paths: 35,995 comparable cases, 143,980 threshold rows; entry next regular open, five instrument sessions; 1/2/3/5% favorable/adverse thresholds. Same-session collisions remain unordered. Many negative routes also reached 2-3% favorable excursion: timing, adverse path, and costs matter. Arithmetic mean of return/MFE is unstable near zero MFE and must not rank strategies; retained median and raw path distributions are the useful summaries. Underlying movement is not option P&L.
 
+The 2026-10-12 review of the operator's uploaded retained artifacts reconciled the original 36,254 selected comparable cases, -0.313660% primary / -0.466303% stress means, and 11 positive / 22 negative folds without a source replay. Original full-summary snapshots and six matching aggregates support this selected-only review; the changed `route_summary.parquet` is excluded, so full DEVELOPMENT/test route means are not newly verified. For Bollinger mean reversion LONG, the five-session 2% favorable/adverse hit rates were 73.11% / 68.78%; favorable-first 43.49%, adverse-first 43.69%, and same-session unordered 10.88%. High favorable-hit frequency alone does not establish executable exit profit. This is existing evidence reconciliation; dispositions and trading authority are unchanged.
+
 | Artifact | Fingerprint |
 | --- | --- |
 | Standalone scientific contract | `d962d72579996c26485a292469e6483132b413c484b90471aba74b209993cafb` |
