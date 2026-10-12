@@ -2,7 +2,7 @@
 
 **Reviewed 2026-10-12 (America/New_York). Baseline: main at `641757803b00bbebf75eb5c20c366b2668ee9707` (PR #314, 2026-10-03).**
 
-This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. This review did not inspect the operator's current C:/D: files or rerun the historical corpus.
+This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. The documentation consolidation did not rerun the historical corpus. A subsequent operator metadata inventory on 2026-10-12 established the storage observations below.
 
 ## Goals and definition of progress
 
@@ -16,7 +16,7 @@ Product engineering and strategy research proceed together. A negative research 
 
 | Area | Repository / previously recorded workstation state | Remaining limitation |
 | --- | --- | --- |
-| Stock source | Alpaca SIP V2: 67,480 complete units, 5,302 daily / 62,178 minute; 3,897,688,734 canonical rows and 1,757,288 quarantined rows | Verify physical files, disk capacity, and latest accepted cutoff locally before another large run |
+| Stock source | Alpaca SIP V2: 67,480 complete units, 5,302 daily / 62,178 minute; 3,897,688,734 canonical rows and 1,757,288 quarantined rows; acquisition/acceptance/research metadata found locally on 2026-10-12 | Inventory reads headers only; retain existing acceptance receipts for source identity and cutoff before a dependent raw-data replay |
 | Daily/minute semantics | V2 research preparation and B34 intraday/session audits accepted | Preserve missing bars, exact source identity, and corporate-action boundaries |
 | News | 141 monthly partitions, 2,211,606 records; source-integrity V2 accepted | No validated news-derived alpha; sentiment and attribution need PIT-safe evaluation |
 | Strategy laboratory | 21 economic families / 28 routes; 54,618,427 standalone DEVELOPMENT records; conditioning v1 completed | Aggregate conditioning/account evidence does not establish robust profitable strategies |
@@ -52,9 +52,9 @@ Core code: `packages/data`, `packages/backtesting`, `packages/strategies`, `pack
 
 ### Workstation storage
 
-ATLAS source, environment, accepted stock corpus, checkpoints, and core runtime remain on C:. Secondary root `D:/ATLAS_DATA` is selected by `ATLAS_EXTERNAL_DATA_ROOT`; verified Windows junctions retain stable project paths. `data/options` and `data/research/evidence` were previously reported READY. Check news and other eligible bindings individually; do not assume every eligible path migrated.
+ATLAS source, environment, accepted stock corpus, checkpoints, and core runtime remain on C:. Secondary root `D:/ATLAS_DATA` is selected by `ATLAS_EXTERNAL_DATA_ROOT`; verified Windows junctions retain stable project paths. The operator's 2026-10-12 inventory reported all six bindings READY: options, news, provider qualification, research evidence, fundamentals, and archives. Free capacity at that observation was C: 140.51 GiB / D: 228.72 GiB. Capacity changes with use.
 
-Raw responses are immutable. Preserve hashes, receipts, and original failures; reuse verified caches. Missing D: bindings must not spill acquisition onto C:. Current free space is unknown until inspected locally. The [secondary-storage specification](external_secondary_storage_v1_20260924.md) defines bindings and quotas.
+Raw responses are immutable. Preserve hashes, receipts, and original failures; reuse verified caches. Missing D: bindings must not spill acquisition onto C:. The [secondary-storage specification](external_secondary_storage_v1_20260924.md) defines bindings and quotas.
 
 ## Simulation and research boundaries
 
@@ -76,8 +76,8 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 
 | Order | Work package | Completion criterion | Dependency |
 | --- | --- | --- | --- |
-| 1 | Workstation/cache inventory | Locate retained stock/news/research metadata and inspect D: bindings/capacity; use existing acceptance receipts for source identity before any dependent replay | Existing files; no purchase |
-| 2 | Unified offline results and stock diagnostics | Reuse accepted outcome/conditioning/path artifacts; reconcile strategy/account results, costs, coverage, rejection/unresolved reasons, uncertainty, and concentration | Verified retained artifacts; no broad download |
+| 1 | Workstation/cache inventory — metadata pass complete 2026-10-12 | All expected metadata groups found and six D: bindings READY; several option files exceeded the 8 MiB read limit, so their contents remain uninspected | Inventory is not new source acceptance; no purchase |
+| 2 | Unified offline results and stock diagnostics — aggregate reviewer implemented, local report pending | First reconcile accepted route/fold returns, costs, concentration and five-session paths with `review_retained_stock_results_v1.py`; account coverage/rejection/unresolved reconciliation remains downstream | Five hash-bound retained aggregate files; no broad source scan/download |
 | 3 | Historical account lifecycle | Explicit retry/no-quote, calendar/early-close, expiration, settlement, marks, capital release, and restart behavior; fixtures reconcile cash/positions/equity without invented prices | Existing engine/cache; empirical option acceptance downstream |
 | 4 | Option input readiness | Identify PIT dividend/rate/event/volume inputs and gaps; validate qualification/cache behavior with fixtures | No subscription for design/fixtures |
 | 5 | ThetaData local/source acceptance | Terminal preflight, bounded quote/OI qualification, original receipts, timestamp/schema/entitlement/repeatability checks | Active subscription and Terminal; no full campaign before success |
@@ -94,6 +94,16 @@ Orders 2-4 can overlap after required files are verified. Missing option access 
 `scripts/review_offline_workstation_v1.py --save-report` implements a bounded metadata inventory for order 1. It inspects storage bindings and free capacity, locates the known stock/news/successor reports and option/ThetaData plans, and reads only small allowlisted JSON headers. It saves one new inventory JSON under `data/research/offline_workstation_review_v1`; the original inputs remain read-only.
 
 The command makes zero provider/broker calls, scans no bars or raw quote bodies, and runs no simulations. Missing or misbound paths, oversized/unreadable metadata, multiple candidates, and truncation remain explicit. It never picks the newest plan or describes file presence/reported headers as accepted source lineage. Use the inventory to choose the next existing artifacts to inspect, not to rerun completed acquisition or validation. No new strategy specification, threshold change, or authority is created.
+
+The saved operator inventory was `data/research/offline_workstation_review_v1/20261012T224545593297Z.json`. It found the stock acceptance/research, news, successor, Dynamic Exit V1 and ThetaData-plan metadata. The reported option decision-clock/quote-lineage gaps were existing files too large for the bounded header reader; this result did not establish missing market files or renew their acceptance.
+
+### Retained stock results review
+
+`scripts/review_retained_stock_results_v1.py --save-report` advances order 2 using two frozen analysis summaries and five small aggregate Parquet files: option-worthiness strategy inventory, route returns, selected folds, and selected-daily path/first-touch summaries. It recomputes the original accepted analysis identities, verifies the contents actually read, and reconciles route/direction, fold, path, threshold and inventory populations. It never follows file paths supplied by a report or selects a newer run. Missing, altered, oversized or inconsistent artifacts block reporting; no rebuild or fallback is automatic.
+
+The JSON under `data/research/retained_stock_review_v1` retains all recorded route directions, including losing and unselected routes. It reports gross/primary/stress means, observed cost drag, selection coverage, fold signs and concentration, five-session excursions/giveback, and unordered same-session first touches. Daily baseline MFE/MAE remains explicitly 20-session evidence. The existing dependencies suffice; temporary aggregate snapshots are discarded after reading. The original evidence remains read-only.
+
+This is a descriptive review of existing DEVELOPMENT results. It does not rerun or reaccept the 54-million-record source set, change strategy or exit settings, estimate option profit, or compute compounded account returns. Week/month/year account windows and regime-specific acceptance require separate case/account evidence. No new strategy experiment specification is established by this reviewer; the operator's proposed strategy workflow remains under discussion. Workstation performance and artifact verification remain pending until the command completes locally.
 
 ### ThetaData handoff
 
