@@ -67,7 +67,7 @@ Post-result favorable slices below are specialist hypotheses, not validated stra
 
 Many high-volume routes were negative, including EMA pullback LONG, MACD LONG/SHORT, relative-strength momentum LONG/SHORT, ATR-expansion LONG/SHORT, Bollinger SHORT, and multiple pattern/breakout directions. Selecting the six positive slices after outcomes would be post-selection.
 
-Selected five-session daily paths: 35,995 comparable cases, 143,980 threshold rows; entry next regular open, five instrument sessions; 1/2/3/5% favorable/adverse thresholds. Same-session collisions remain unordered. Many negative routes also reached 2-3% favorable excursion: timing, adverse path, and costs matter. Arithmetic mean of return/MFE is unstable near zero MFE and must not rank strategies; retained median and raw path distributions are the useful summaries. Underlying movement is not option P&L.
+Retained baseline daily MFE/MAE describes a 20-session excursion window; it cannot be reported as five-session excursion evidence. Separately computed selected five-session daily paths: 35,995 comparable cases, 143,980 threshold rows; entry next regular open, five instrument sessions; 1/2/3/5% favorable/adverse thresholds. Same-session collisions remain unordered. Many negative routes also reached 2-3% favorable excursion: timing, adverse path, and costs matter. Arithmetic mean of return/MFE is unstable near zero MFE and must not rank strategies; retained median and raw path distributions are the useful summaries. Underlying movement is not option P&L.
 
 | Artifact | Fingerprint |
 | --- | --- |
