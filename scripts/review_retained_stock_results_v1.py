@@ -26,17 +26,19 @@ def _pct(value: float | None) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Reconcile accepted retained stock aggregates; no new simulation or market/provider reads.")
     parser.add_argument("--save-report", action="store_true", help="Save one new JSON review; original artifacts remain read-only.")
+    parser.add_argument("--selected-only", action="store_true", help="Use the exact frozen selected summary and six verified aggregates; omit full DEVELOPMENT/test returns and do not read route_summary.")
     args = parser.parse_args(argv)
     started = time.monotonic()
     print("ATLAS RETAINED STOCK RESULTS REVIEW V1", flush=True)
-    print("  scope: two summaries / five small aggregates; no source replay or provider requests", flush=True)
+    scope = "two frozen summary snapshots / six aggregates; selected results only" if args.selected_only else "two summaries / five small aggregates"
+    print(f"  scope: {scope}; no source replay or provider requests", flush=True)
     try:
         settings = load_settings(PROJECT_ROOT, "development")
     except (ConfigurationError, ValueError) as exc:
         print(f"  BLOCKED: configuration could not be loaded ({type(exc).__name__})", flush=True)
         return 3
     try:
-        report = build_retained_stock_review(settings, progress=lambda detail: print(f"  [{time.monotonic() - started:.1f}s] {detail}", flush=True))
+        report = build_retained_stock_review(settings, progress=lambda detail: print(f"  [{time.monotonic() - started:.1f}s] {detail}", flush=True), selected_only=args.selected_only)
         totals = report["totals"]
         print(f"  routes / families: {totals['policy_routes']} / {totals['economic_families']}")
         print(f"  selected comparable / records: {totals['selected_comparable']:,} / {totals['selected_records']:,}")
@@ -56,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
                 print("      first-touch " + " | ".join(f"{touch['move_threshold']:.0%}: favorable-first={_pct(touch['favorable_before_adverse_rate'])}, adverse-first={_pct(touch['adverse_before_favorable_rate'])}, unordered={_pct(touch['same_session_collision_rate'])}" for touch in row["five_session_first_touch"]))
         print("  horizons: daily return/path 5 sessions; baseline daily MFE/MAE 20 sessions")
         print("  account and week/month/year returns: not computed; evidence remains descriptive DEVELOPMENT")
+        if args.selected_only:
+            print("  full DEVELOPMENT/test route returns: unavailable; route_summary remains excluded and its original acceptance hash is unchanged")
         if args.save_report:
             directory = settings.resolved_path("data/research/retained_stock_review_v1")
             stamp = datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')

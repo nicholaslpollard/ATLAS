@@ -7,6 +7,7 @@ import json
 import math
 import tempfile
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Callable
 
@@ -36,6 +37,10 @@ from packages.strategies.successor_selected_daily_path_contract import (
 
 CONTRACT = "atlas-retained-stock-review-v1-accepted-aggregate-reconciliation"
 ACCEPTED_PATH_ANALYSIS = "e89d1d61b7fe6875353816a11727f7ad4a0797917eac0ef4b2d437812a053e20"
+# Exact retained report snapshots: selected metrics are outside the older
+# analysis-fingerprint payload, so their complete JSON bytes must also be pinned.
+ACCEPTED_STOCK_SUMMARY_SHA256 = "8388b98f583e28e6cda510c20e309db91aab6671bb4a0ef84ac75b7cbea828be"
+ACCEPTED_PATH_SUMMARY_SHA256 = "5fae6f8ea47a70a3293eee098683c13b1f4b51d211325dbc64553b3b9b0c58da"
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_AGGREGATE_ROWS = 10_000
 CONDITIONING_ROOT = (
@@ -178,14 +183,29 @@ def _weighted(rows: list[dict], count: str, metric: str) -> float | None:
     return sum(row[count] * row[metric] for row in rows) / total if total else None
 
 
-def reconcile_aggregates(inventory: list[dict], returns: list[dict], folds: list[dict], paths: list[dict], thresholds: list[dict]) -> dict:
+def _threshold_rows(rows: list[dict]) -> list[dict]:
+    # DuckDB's frozen SQL emits DECIMAL(9,8), rather than a binary float. Validate
+    # the exact decimal grid before normalizing labels for JSON and key joins.
+    grid = {Decimal(str(value)) for value in MOVE_THRESHOLDS}
+    normalized = []
+    for row in rows:
+        try:
+            value = Decimal(str(row["move_threshold"]))
+        except InvalidOperation as exc:
+            raise RetainedStockReviewError("invalid move threshold") from exc
+        _require(value.is_finite() and value in grid, "unexpected frozen move threshold")
+        normalized.append({**row, "move_threshold": float(value)})
+    return normalized
+
+
+def reconcile_aggregates(inventory: list[dict], returns: list[dict], folds: list[dict], paths: list[dict], thresholds: list[dict], *, coverage: list[dict] | None = None) -> dict:
     """All observed directions are retained, including losses and zero selections."""
     policies = _index(inventory, lambda row: row["policy_id"])
     _require(all(row["subset"] in ANALYSIS_SUBSETS and row["policy_id"] in policies for row in returns), "unexpected return subset/policy")
     returns_by_key = _index(returns, lambda row: (row["subset"], *_key(row)))
     _index(folds, lambda row: (row["fold_id"], *_key(row)))
     paths_by_key = _index(paths, _key)
-    thresholds_by_key = _index(thresholds, lambda row: (*_key(row), row["move_threshold"]))
+    thresholds_by_key = _index(_threshold_rows(thresholds), lambda row: (*_key(row), row["move_threshold"]))
     selected = [row for row in returns if row["subset"] == SELECTED]
     selected_keys = {_key(row) for row in selected}
     _require({_key(row) for row in folds} == selected_keys, "selected return/fold population differs")
@@ -193,7 +213,16 @@ def reconcile_aggregates(inventory: list[dict], returns: list[dict], folds: list
     _require(set(paths_by_key) == daily_keys, "five-session path population differs from selected daily returns")
     _require(set(thresholds_by_key) == {(*key, value) for key in daily_keys for value in MOVE_THRESHOLDS}, "five-session threshold population differs")
     routes = []
-    for key in sorted({_key(row) for row in returns}):
+    keys = {_key(row) for row in returns}
+    if coverage is not None:
+        _require(all(row["policy_id"] in policies for row in coverage), "coverage contains an unknown policy")
+        for row in coverage:
+            meta = policies[row["policy_id"]]
+            _require(row["economic_family_id"] == meta["economic_family_id"] and row["native_timeframe"] == meta["native_timeframe"], "coverage route identity differs")
+        coverage_keys = {_key(row) for row in coverage}
+        _require(keys.issubset(coverage_keys), "selected route is missing from verified coverage")
+        keys = coverage_keys
+    for key in sorted(keys):
         policy, direction = key
         meta = policies[policy]
         _require(direction in ("LONG", "SHORT") and meta["native_timeframe"] in ("1d", "1m"), "unsupported route direction/timeframe")
@@ -208,8 +237,9 @@ def reconcile_aggregates(inventory: list[dict], returns: list[dict], folds: list
             _require(all(isinstance(row[metric], (int, float)) and math.isfinite(row[metric]) for metric in ("mean_gross_return", "mean_primary_net_return", "mean_stress_net_return")), "invalid return mean")
         selection = subsets[SELECTED]
         test = subsets[TEST]
-        _require(subsets[ALL] is not None and (selection is None or test is not None), "selected/test route is absent from its parent population")
-        _require(subsets[ALL]["comparable_opportunities"] >= (test["comparable_opportunities"] if test else 0) >= (selection["comparable_opportunities"] if selection else 0), "route subset count ordering drifted")
+        if coverage is None:
+            _require(subsets[ALL] is not None and (selection is None or test is not None), "selected/test route is absent from its parent population")
+            _require(subsets[ALL]["comparable_opportunities"] >= (test["comparable_opportunities"] if test else 0) >= (selection["comparable_opportunities"] if selection else 0), "route subset count ordering drifted")
         route_folds = [row for row in folds if _key(row) == key]
         for fold in route_folds:
             _require(fold["economic_family_id"] == meta["economic_family_id"] and fold["native_timeframe"] == meta["native_timeframe"], "fold route identity differs")
@@ -255,7 +285,8 @@ def reconcile_aggregates(inventory: list[dict], returns: list[dict], folds: list
         })
     for policy, meta in policies.items():
         policy_rows = [row for row in returns if row["policy_id"] == policy]
-        for subset, field in ((ALL, "standalone_comparable"), (TEST, "walk_forward_test_comparable"), (SELECTED, "selected_comparable")):
+        subsets_to_check = ((SELECTED, "selected_comparable"),) if coverage is not None else ((ALL, "standalone_comparable"), (TEST, "walk_forward_test_comparable"), (SELECTED, "selected_comparable"))
+        for subset, field in subsets_to_check:
             _require(sum(row["comparable_opportunities"] for row in policy_rows if row["subset"] == subset) == meta[field], f"inventory/subset counts do not reconcile: {policy}/{subset}")
         _require(0 <= meta["selected_comparable"] <= meta["selected_records"] <= meta["walk_forward_test_records"] <= meta["standalone_records"], "inventory count ordering drifted")
     fold_totals = []
@@ -272,6 +303,7 @@ def reconcile_aggregates(inventory: list[dict], returns: list[dict], folds: list
             "selected_records": sum(row["selected_records"] for row in inventory),
             "selected_comparable": sum(row["comparable_opportunities"] for row in selected),
             "selected_daily_comparable": sum(row["selected_comparable"] for row in paths),
+            "selected_mean_gross_return": _weighted(selected, "comparable_opportunities", "mean_gross_return"),
             "selected_mean_primary_net_return": _weighted(selected, "comparable_opportunities", "mean_primary_net_return"),
             "selected_mean_stress_net_return": _weighted(selected, "comparable_opportunities", "mean_stress_net_return"),
             "active_folds": len(fold_totals),
@@ -281,7 +313,36 @@ def reconcile_aggregates(inventory: list[dict], returns: list[dict], folds: list
     }
 
 
-def build_retained_stock_review(settings: AtlasSettings, progress: Callable[[str], None] | None = None) -> dict:
+def _selected_summary_rows(stock: dict, folds: list[dict], stability: list[dict], curve: list[dict]) -> list[dict]:
+    diagnostics = stock.get("selected_route_diagnostics")
+    _require(isinstance(diagnostics, list), "frozen selected summary is missing")
+    indexed = _index(diagnostics, _key)
+    stability_index = _index(stability, _key)
+    selected_curve = [row for row in curve if row["subset"] == SELECTED]
+    curve_index = _index(_threshold_rows(selected_curve), lambda row: (*_key(row), row["move_threshold"]))
+    _require(set(indexed) == set(stability_index), "frozen summary/stability route population differs")
+    _require(set(curve_index) == {(*key, value) for key in indexed for value in MOVE_THRESHOLDS}, "frozen selected curve population differs")
+    returns = []
+    for key, row in indexed.items():
+        route_folds = [fold for fold in folds if _key(fold) == key]
+        stable = stability_index[key]
+        for name in ("active_folds", "positive_primary_folds", "negative_primary_folds", "selected_comparable"):
+            _require(row[name] == stable[name], f"frozen selected summary/stability differs: {name}")
+        _close(row["largest_fold_share"], stable["largest_fold_share"], "frozen selected concentration differs")
+        _require(row["active_folds"] == len(route_folds), "frozen selected summary/fold count differs")
+        # Excursion means can have fewer observations than comparable trades;
+        # fold files lack those denominators, so they cannot be reweighted here.
+        for metric in ("mean_primary_net_return", "mean_stress_net_return", "primary_win_rate"):
+            _close(row[metric], _weighted(route_folds, "selected_comparable", metric), f"frozen selected summary/fold {metric} differs")
+        for value in MOVE_THRESHOLDS:
+            threshold = curve_index[(*key, value)]
+            _close(row[f"p_mfe_ge_{int(value * 100)}pct"], threshold["favorable_excursion_hit_rate"], "frozen selected favorable curve differs")
+            _close(row[f"p_mae_le_m{int(value * 100)}pct"], threshold["adverse_excursion_breach_rate"], "frozen selected adverse curve differs")
+        returns.append({**row, "subset": SELECTED, "comparable_opportunities": row["selected_comparable"], "median_primary_net_return": None})
+    return returns
+
+
+def build_retained_stock_review(settings: AtlasSettings, progress: Callable[[str], None] | None = None, *, selected_only: bool = False) -> dict:
     notify = progress or (lambda detail: None)
     stock_root = settings.resolved_path(OPTIONWORTHINESS_ROOT)
     path_root = settings.resolved_path(PATH_ROOT)
@@ -290,6 +351,9 @@ def build_retained_stock_review(settings: AtlasSettings, progress: Callable[[str
     path, path_outputs, path_binding = _summary(path_root, daily_path=True)
     _require(path["conditioning_analysis_fingerprint"] == stock["input_binding"]["conditioning_analysis_fingerprint"], "path/stock conditioning lineage differs")
     _require(path["accepted_optionworthiness"]["summary_sha256"] == stock_binding["summary_sha256"] and path["accepted_optionworthiness"]["output_artifact_set_fingerprint"] == stock["output_artifact_set_fingerprint"], "path/stock summary lineage differs")
+    if selected_only:
+        _require(stock_binding["summary_sha256"] == ACCEPTED_STOCK_SUMMARY_SHA256, "frozen selected summary content hash drifted")
+        _require(path_binding["summary_sha256"] == ACCEPTED_PATH_SUMMARY_SHA256, "frozen path summary content hash drifted")
     route_identity = {"policy_id", "economic_family_id", "native_timeframe", "direction"}
     metrics = {"mean_gross_return", "mean_primary_net_return", "mean_stress_net_return"}
     specs = (
@@ -299,19 +363,39 @@ def build_retained_stock_review(settings: AtlasSettings, progress: Callable[[str
         (path_root, path_outputs, "route_path_summary", {"policy_id", "economic_family_id", "direction", "selected_comparable", "active_folds", "mean_gross_return_5", "median_gross_return_5", "mean_mfe_5", "mean_adverse_excursion_5", "median_exit_capture_ratio", "mean_peak_giveback", "retained_mean_primary_net_return", "retained_mean_stress_net_return"}),
         (path_root, path_outputs, "route_threshold_summary", {"policy_id", "direction", "move_threshold", "selected_comparable", "favorable_hit_rate_5", "adverse_hit_rate_5", "favorable_before_adverse_rate", "adverse_before_favorable_rate", "same_session_collision_rate"}),
     )
+    if selected_only:
+        fold_spec = (*specs[2][:3], specs[2][3] | {"primary_win_rate", "mean_mfe", "mean_mae"})
+        specs = (
+            specs[0], fold_spec, specs[3], specs[4],
+            (stock_root, stock_outputs, "move_threshold_curve", route_identity | {"subset", "move_threshold", "favorable_excursion_hit_rate", "adverse_excursion_breach_rate"}),
+            (stock_root, stock_outputs, "route_stability", route_identity | {"active_folds", "positive_primary_folds", "negative_primary_folds", "selected_comparable", "largest_fold_share"}),
+        )
     tables, bindings = [], []
     for index, (root, outputs, name, columns) in enumerate(specs, 1):
         notify(f"verifying aggregate {index}/{len(specs)}: {name}")
         rows, binding = _aggregate(root, outputs, name, columns)
         tables.append(rows)
         bindings.append(binding)
-    result = reconcile_aggregates(*tables)
+    if selected_only:
+        inventory, folds, paths, thresholds, curve, stability = tables
+        returns = _selected_summary_rows(stock, folds, stability, curve)
+        result = reconcile_aggregates(inventory, returns, folds, paths, thresholds, coverage=curve)
+    else:
+        result = reconcile_aggregates(*tables)
     totals = result["totals"]
-    for key, expected in {"policy_routes": 28, "economic_families": 21, "standalone_records": ACCEPTED_STANDALONE_RECORD_COUNT, "test_records": 45_516_323, "selected_records": 36_259, "selected_comparable": 36_254, "selected_daily_comparable": 35_995, "active_folds": 33}.items():
+    # Inventory test records are all assignment rows, not the narrower count
+    # described as test-eligible in the earlier conditioning closeout.
+    expected_test_records = stock["input_binding"]["eligibility_assignments_rows"]
+    _require(type(expected_test_records) is int and expected_test_records > 0, "invalid accepted assignment row count")
+    for key, expected in {"policy_routes": 28, "economic_families": 21, "standalone_records": ACCEPTED_STANDALONE_RECORD_COUNT, "test_records": expected_test_records, "selected_records": 36_259, "selected_comparable": 36_254, "selected_daily_comparable": 35_995, "active_folds": 33}.items():
         _require(totals[key] == expected, f"accepted population drifted: {key}")
-    for subset, key in ((ALL, "development_all_comparable"), (TEST, "walk_forward_test_comparable"), (SELECTED, "walk_forward_selected_comparable")):
-        observed = sum(row["comparable_opportunities"] for row in tables[1] if row["subset"] == subset)
-        _require(stock["scope_counts"][key] == observed, f"summary/subset counts do not reconcile: {key}")
+    if selected_only:
+        for key, field in (("development_all_comparable", "standalone_comparable"), ("walk_forward_test_comparable", "walk_forward_test_comparable"), ("walk_forward_selected_comparable", "selected_comparable")):
+            _require(stock["scope_counts"][key] == sum(row[field] for row in inventory), f"summary/inventory counts do not reconcile: {key}")
+    else:
+        for subset, key in ((ALL, "development_all_comparable"), (TEST, "walk_forward_test_comparable"), (SELECTED, "walk_forward_selected_comparable")):
+            observed = sum(row["comparable_opportunities"] for row in tables[1] if row["subset"] == subset)
+            _require(stock["scope_counts"][key] == observed, f"summary/subset counts do not reconcile: {key}")
     _require(path["selected_daily_comparable"] == totals["selected_daily_comparable"], "summary/path count differs")
     result.update({
         "contract": CONTRACT, "status": "COMPLETE_RETAINED_STOCK_AGGREGATE_REVIEW", "generated_utc": datetime.now(UTC).isoformat(),
@@ -326,6 +410,13 @@ def build_retained_stock_review(settings: AtlasSettings, progress: Callable[[str
             "Week/month/year account windows and regime-specific acceptance cannot be reconstructed from these route/fold aggregates.",
         ],
     })
+    result["semantics"]["test_records_scope"] = "ALL_RETAINED_ELIGIBILITY_ASSIGNMENT_ROWS_INCLUDING_INELIGIBLE"
+    if selected_only:
+        result["status"] = "COMPLETE_VERIFIED_SELECTED_STOCK_REVIEW"
+        result["review_scope"] = "SELECTED_RESULTS_AND_POLICY_INVENTORY_ONLY"
+        result["input_binding"]["verification_scope"] = "TWO_FROZEN_SUMMARY_CONTENT_HASHES_AND_SIX_AGGREGATE_CONTENT_HASHES"
+        result["excluded_inputs"] = [{"name": "route_summary", "used_for_results": False, "original_recorded_sha256": next(row["sha256"] for row in stock_outputs if row["name"] == "route_summary")}]
+        result["limitations"].append("Full DEVELOPMENT/test route returns and selected-return medians are unavailable in this mode; route_summary is not read or repaired. The default full review still requires its original hash.")
     result["report_fingerprint"] = canonical_sha256(result)
     notify("aggregate reconciliation complete")
     return result
