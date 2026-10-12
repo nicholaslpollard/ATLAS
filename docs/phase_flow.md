@@ -2,7 +2,7 @@
 
 > **Archived process, not a living source of truth.** This file remains at its
 > historical path for accepted validator compatibility. Its exact pre-rebaseline
-> copy is archived under `docs/archive/2026-09-02-pre-product-rebaseline/docs/`.
+> copy is archived under [Git history](https://github.com/nicholaslpollard/ATLAS/tree/641757803b00bbebf75eb5c20c366b2668ee9707/docs/archive/2026-09-02-pre-product-rebaseline/docs).
 > Current process and progression rules live only in `README.md` and
 > `docs/roadmap.md`. Do not update this file.
 
