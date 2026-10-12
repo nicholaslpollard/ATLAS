@@ -76,7 +76,7 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 
 | Order | Work package | Completion criterion | Dependency |
 | --- | --- | --- | --- |
-| 1 | Workstation/cache inventory | One local report verifies stock/news identities, D: bindings, manifests/checkpoints, and capacity; separates present/absent/stale | Existing files; no purchase |
+| 1 | Workstation/cache inventory | Locate retained stock/news/research metadata and inspect D: bindings/capacity; use existing acceptance receipts for source identity before any dependent replay | Existing files; no purchase |
 | 2 | Unified offline results and stock diagnostics | Reuse accepted outcome/conditioning/path artifacts; reconcile strategy/account results, costs, coverage, rejection/unresolved reasons, uncertainty, and concentration | Verified retained artifacts; no broad download |
 | 3 | Historical account lifecycle | Explicit retry/no-quote, calendar/early-close, expiration, settlement, marks, capital release, and restart behavior; fixtures reconcile cash/positions/equity without invented prices | Existing engine/cache; empirical option acceptance downstream |
 | 4 | Option input readiness | Identify PIT dividend/rate/event/volume inputs and gaps; validate qualification/cache behavior with fixtures | No subscription for design/fixtures |
@@ -88,6 +88,12 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 | 10 | Qualifying PAPER and controlled LIVE | New prospective evidence, risk/execution acceptance, explicit promotion/rollback | A38, then Phase39; currently blocked |
 
 Orders 2-4 can overlap after required files are verified. Missing option access must not block stock/product work. Avoid new full strategy tournaments or repeated completed source campaigns merely to keep the machine busy.
+
+### Offline workstation review
+
+`scripts/review_offline_workstation_v1.py --save-report` implements a bounded metadata inventory for order 1. It inspects storage bindings and free capacity, locates the known stock/news/successor reports and option/ThetaData plans, and reads only small allowlisted JSON headers. It saves one new inventory JSON under `data/research/offline_workstation_review_v1`; the original inputs remain read-only.
+
+The command makes zero provider/broker calls, scans no bars or raw quote bodies, and runs no simulations. Missing or misbound paths, oversized/unreadable metadata, multiple candidates, and truncation remain explicit. It never picks the newest plan or describes file presence/reported headers as accepted source lineage. Use the inventory to choose the next existing artifacts to inspect, not to rerun completed acquisition or validation. No new strategy specification, threshold change, or authority is created.
 
 ### ThetaData handoff
 
