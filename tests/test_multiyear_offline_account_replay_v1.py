@@ -312,3 +312,96 @@ def test_unqualified_future_exit_does_not_change_entry_capital_competition():
         "MAX_CONCURRENT_POSITIONS_REACHED": 1, "OPEN_UNQUALIFIED_EXIT_SOURCE": 1,
     }
     assert report["synthetic_round_trips"] == 0
+
+
+@pytest.mark.parametrize("mode", ["STOCK", "CALL", "PUT"])
+@pytest.mark.parametrize("flag", [
+    "exit_source_integrity_qualified", "exit_observation_clock_qualified",
+])
+def test_future_exit_failure_cannot_change_an_earlier_account_snapshot(mode, flag):
+    signal = _fixture()[0]
+    changed = replace(signal, **{mode.lower(): replace(
+        getattr(signal, mode.lower()), **{flag: False},
+    )})
+    horizon = datetime(2022, 1, 4, 21, 0, tzinfo=UTC)
+    before = replay_synthetic_account([signal], mode=mode, as_of_utc=horizon)
+    failed_before = replay_synthetic_account([changed], mode=mode, as_of_utc=horizon)
+    assert failed_before == before
+    after = replay_synthetic_account(
+        [changed], mode=mode, as_of_utc=datetime(2022, 1, 5, 21, 0, tzinfo=UTC),
+    )
+    assert after["decisions"][0]["status"] == "OPEN_UNQUALIFIED_EXIT_SOURCE"
+    assert after["ledger"] == before["ledger"]
+    assert after["ending_cash"] == before["ending_cash"]
+    assert after["ending_reserved_exit_fees"] == before["ending_reserved_exit_fees"]
+    assert after["ending_equity"] is None
+
+
+def test_exit_scheduled_after_expiration_cannot_leak_into_preexpiry_snapshot():
+    signal = _fixture()[0]
+    changed = replace(signal, call=replace(
+        signal.call, expiration=date(2022, 1, 4), symbol="O:TEST220104C00100000",
+    ))
+    horizon = datetime(2022, 1, 4, 21, 0, tzinfo=UTC)
+    before = replay_synthetic_account([changed], mode="CALL", as_of_utc=horizon)
+    assert before["decisions"][0]["status"] == "OPEN_UNMARKED_NO_QUALIFIED_EXIT"
+    after = replay_synthetic_account([changed], mode="CALL")
+    assert after["decisions"][0]["status"] == "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"
+    assert after["ledger"] == before["ledger"]
+    assert after["ending_cash"] == before["ending_cash"]
+    assert after["ending_reserved_exit_fees"] == before["ending_reserved_exit_fees"]
+    assert after["ending_equity"] is None
+
+
+@pytest.mark.parametrize("horizon,expected", [
+    (datetime(2022, 1, 21, 14, 35, tzinfo=UTC), "OPEN_UNMARKED_NO_QUALIFIED_EXIT"),
+    (datetime(2022, 1, 22, 4, 59, 59, tzinfo=UTC), "OPEN_UNMARKED_NO_QUALIFIED_EXIT"),
+    (datetime(2022, 1, 22, 5, 0, tzinfo=UTC), "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"),
+])
+def test_date_only_expiration_does_not_invent_an_intraday_deadline(horizon, expected):
+    signal = _fixture()[0]
+    no_exit = replace(signal, call=replace(
+        signal.call, exit_at_utc=None, exit_per_share=None,
+    ))
+    report = replay_synthetic_account([no_exit], mode="CALL", as_of_utc=horizon)
+    assert report["decisions"][0]["status"] == expected
+    assert report["end_open_positions"] == 1
+    assert report["ending_cash"] == "90168.15"
+    assert report["ending_reserved_exit_fees"] == "31.85"
+    assert report["modeled_realized_pnl"] == "0.00"
+    assert report["ending_equity"] is None
+
+
+def test_later_cohort_event_advances_expiry_status_without_freeing_a_position():
+    a, b = _fixture()
+    no_exit = replace(a, call=replace(a.call, exit_at_utc=None, exit_per_share=None))
+    later = replace(b, decision_at_utc=datetime(2022, 1, 24, 14, 35, tzinfo=UTC),
+                    stock=None)
+    report = replay_synthetic_account([no_exit, later], mode="CALL")
+    assert report["decisions"][0]["status"] == "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"
+    assert report["replay_horizon_utc"] == later.decision_at_utc.isoformat()
+    assert report["end_open_positions"] == 1
+    assert report["ending_reserved_exit_fees"] == "31.85"
+    assert report["ending_equity"] is None
+
+
+def test_exit_failure_without_a_clock_is_not_an_observed_attempt():
+    signal = _fixture()[0]
+    no_exit = replace(signal, call=replace(
+        signal.call, exit_at_utc=None, exit_per_share=None,
+        exit_source_integrity_qualified=False,
+    ))
+    report = replay_synthetic_account([no_exit], mode="CALL")
+    assert report["decisions"][0]["status"] == "OPEN_UNMARKED_NO_QUALIFIED_EXIT"
+    assert report["replay_horizon_utc"] == signal.call.entry_at_utc.isoformat()
+
+
+def test_unchosen_instrument_clocks_cannot_advance_the_account_horizon():
+    signal = _fixture()[0]
+    changed = replace(signal, stock=replace(
+        signal.stock, exit_at_utc=datetime(2022, 1, 24, 21, 0, tzinfo=UTC),
+    ))
+    before = replay_synthetic_account([signal], mode="CALL")
+    assert replay_synthetic_account([changed], mode="CALL") == before
+    abstain = replay_synthetic_account([changed], mode="ABSTAIN")
+    assert abstain["replay_horizon_utc"] == signal.decision_at_utc.isoformat()

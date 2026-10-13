@@ -78,7 +78,7 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 | --- | --- | --- | --- |
 | 1 | Workstation/cache inventory — metadata pass complete 2026-10-12 | All expected metadata groups found and six D: bindings READY; several option files exceeded the 8 MiB read limit, so their contents remain uninspected | Inventory is not new source acceptance; no purchase |
 | 2 | Unified offline results and stock diagnostics — selected-results review verified from operator upload 2026-10-12 | Selected report reconciles 36,254 comparable selections, 43 observed directions and 33 folds from original snapshots/six matching aggregates; full route baseline review is blocked by one changed file; account coverage/rejection/unresolved reconciliation remains downstream | Retained aggregates; no broad source scan/download |
-| 3 | Historical account lifecycle | Explicit retry/no-quote, calendar/early-close, expiration, settlement, marks, capital release, and restart behavior; fixtures reconcile cash/positions/equity without invented prices | Existing engine/cache; empirical option acceptance downstream |
+| 3 | Historical account lifecycle — synthetic status timing corrected | Explicit retry/no-quote, calendar/early-close, expiration, settlement, marks, capital release, and restart behavior; causal status fixtures are covered, broader lifecycle integration remains open | Existing engine/cache; empirical option acceptance downstream |
 | 4 | Option input readiness | Identify PIT dividend/rate/event/volume inputs and gaps; validate qualification/cache behavior with fixtures | No subscription for design/fixtures |
 | 5 | ThetaData local/source acceptance | Terminal preflight, bounded quote/OI qualification, original receipts, timestamp/schema/entitlement/repeatability checks | Active subscription and Terminal; no full campaign before success |
 | 6 | Candidate acquisition/construction | Acquire/reuse frozen 9,455 surfaces; qualify enrichment; PIT filters, dividend-aware Greeks, then common economic contract selection | Accepted source/storage; separately qualify unproven Greeks surface |
@@ -110,6 +110,12 @@ The operator's diagnostic ZIP on 2026-10-12 showed that six small aggregates mat
 The reader accepts the original SQL decimal threshold representation without changing the exact 1/2/3/5% grid. Its test-record count is the 45,907,526 retained assignment rows bound by the input summary, rather than the narrower 45,516,323 test-eligible count in the conditioning closeout.
 
 This is a descriptive review of existing DEVELOPMENT results. It does not rerun or reaccept the 54-million-record source set, change strategy or exit settings, estimate option profit, or compute compounded account returns. Week/month/year account windows and regime-specific acceptance require separate case/account evidence. No new strategy experiment specification is established by this reviewer. The full baseline cache needs an original hash-matching copy or a separately scoped reconstruction; it must not trigger a broad automatic rerun merely to unblock reporting.
+
+### Offline account lifecycle
+
+The synthetic account engine now reports `replay_horizon_utc`: the explicit as-of cutoff, or the latest decision/entry/exit clock in the chosen-mode fixture cohort. A future failed exit cannot alter an earlier snapshot. An exit failure needs a reached attempt clock; an untimed flag is not an observed attempt. Other instrument modes do not advance this account's clock.
+
+With only an expiration date, the engine marks an open option as unresolved expiry/assignment after that date has ended in New York. It does not infer an intraday trading/exercise deadline or settle the contract. Failed exits and unresolved expiry retain positions, committed cash and exit-fee reserves; missing marks keep equity unknown. Regression fixtures cover STOCK/CALL/PUT failure clocks, expiration-day boundaries, later cohort events and unchanged capital. This is a mechanics correction with no historical source replay or strategy promotion. Calendar-aware bounded retries, accepted settlement evidence and historical integration remain downstream.
 
 ### ThetaData handoff
 

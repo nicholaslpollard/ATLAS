@@ -246,6 +246,20 @@ def replay_synthetic_account(
         signal.validate()
     if len({s.case_id for s in signals}) != len(signals):
         raise OfflineAccountReplayError("duplicate original case identity")
+    # Without an explicit cutoff, consume the complete chosen-mode fixture clock.
+    # Include failed exit attempts: their source gate cannot erase when an attempt
+    # was reached. Other modes' paths must not advance this account's horizon.
+    horizon = cutoff
+    if horizon is None:
+        clocks = [_stamp(s.decision_at_utc, "decision") for s in signals]
+        if mode != "ABSTAIN":
+            for signal in signals:
+                leg = getattr(signal, mode.lower())
+                if leg is not None:
+                    clocks.append(_stamp(leg.entry_at_utc, "entry"))
+                    if leg.exit_at_utc is not None:
+                        clocks.append(_stamp(leg.exit_at_utc, "exit"))
+        horizon = max(clocks)
     cash = _decimal(policy.initial_cash, "initial cash")
     initial_cash = cash
     reserved_exit_fees = Decimal("0.00")
@@ -340,16 +354,17 @@ def replay_synthetic_account(
         (p["reserved_exit_fee"] for p in positions.values()), Decimal(0)
     ):
         raise OfflineAccountReplayError("modeled open-position fee escrow does not reconcile")
-    for cid, position in positions.items():
+    for cid in positions:
         leg = selected[cid]
-        if leg.kind != "STOCK" and (
-            (cutoff is not None and cutoff.astimezone(EASTERN).date() >= leg.expiration)
-            or (leg.exit_at_utc is not None
-                and leg.exit_at_utc.astimezone(EASTERN).date() > leg.expiration)
-        ):
+        # An expiration DATE does not establish an intraday trading/exercise
+        # deadline. Only classify it as past once the local date has ended, and
+        # never infer a settlement, mark, cash release, or assignment from it.
+        if leg.kind != "STOCK" and horizon.astimezone(EASTERN).date() > leg.expiration:
             decisions[cid]["status"] = "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"
-        elif (leg.exit_source_integrity_qualified is False
-              or leg.exit_observation_clock_qualified is False):
+        elif (leg.exit_at_utc is not None
+              and _stamp(leg.exit_at_utc, "exit") <= horizon
+              and (leg.exit_source_integrity_qualified is False
+                   or leg.exit_observation_clock_qualified is False)):
             decisions[cid]["status"] = "OPEN_UNQUALIFIED_EXIT_SOURCE"
     for signal in signals:
         by_year[str(signal.year)][decisions[signal.case_id]["status"]] += 1
@@ -369,6 +384,7 @@ def replay_synthetic_account(
         "original_case_denominator": len(signals),
         "synthetic_round_trips": round_trips,
         "as_of_utc": cutoff.isoformat() if cutoff is not None else None,
+        "replay_horizon_utc": horizon.isoformat(),
         "initial_cash": str(initial_cash),
         "ending_cash": str(cash),
         "modeled_cash_flow_change": str(_money(cash - initial_cash)),
