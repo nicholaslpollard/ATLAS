@@ -320,11 +320,10 @@ def recurrent_marked_account_state_fingerprint(
     return _fingerprint_payload(state)
 
 
-def _validate_mark(
+def _validate_mark_binding(
     *,
     position: SimulatedOpenPositionV1,
     mark: SimulatedMarketMarkEvidence,
-    valuation_utc: datetime,
 ) -> None:
     if mark.contract_fingerprint != MARKET_MARK_EVIDENCE_CONTRACT_FINGERPRINT:
         raise RecurrentMarkedAccountError(
@@ -377,6 +376,13 @@ def _validate_mark(
             raise RecurrentMarkedAccountError(
                 f"market-mark {label} mismatch"
             )
+
+
+def _validate_mark(
+    *, position: SimulatedOpenPositionV1, mark: SimulatedMarketMarkEvidence,
+    valuation_utc: datetime,
+) -> None:
+    _validate_mark_binding(position=position, mark=mark)
     if mark.valuation_utc != valuation_utc:
         raise RecurrentMarkedAccountError(
             "all marks must share requested recurrent valuation timestamp"
@@ -561,6 +567,91 @@ def build_recurrent_marked_account_state(
         complete_mark_coverage=True,
         marked_positions=marked_positions,
     )
+
+
+def build_recurrent_mark_coverage_preview(
+    *, source_state: RecurrentLifecycleAccountStateV1,
+    marks: Sequence[SimulatedMarketMarkEvidence], valuation_utc: datetime,
+) -> dict[str, Any]:
+    """Read-only coverage/economics; incomplete coverage never becomes equity.
+
+    Identity/provenance errors still fail closed. Ordinary absent, stale or
+    differently timed observations remain explicit unknown position values.
+    This dictionary cannot replace the accepted marked-account state contract.
+    """
+    if (source_state.contract_fingerprint != RECURRENT_LIFECYCLE_ACCOUNT_CONTRACT_FINGERPRINT
+            or source_state.state_fingerprint != recurrent_lifecycle_account_state_fingerprint(source_state)):
+        raise RecurrentMarkedAccountError("recurrent coverage source fingerprint mismatch")
+    _require_aware(valuation_utc, label="coverage valuation timestamp")
+    if valuation_utc < source_state.as_of_utc:
+        raise RecurrentMarkedAccountError("coverage valuation predates account state")
+    if len(source_state.open_positions) > 100000 or len(marks) > 100000:
+        raise RecurrentMarkedAccountError("coverage population exceeds safe bound")
+    positions = {p.decision_record_fingerprint: p for p in source_state.open_positions}
+    mark_by_decision: dict[str, SimulatedMarketMarkEvidence] = {}
+    for mark in marks:
+        if not isinstance(mark, SimulatedMarketMarkEvidence):
+            raise RecurrentMarkedAccountError("typed market-mark evidence required")
+        key = mark.decision_record_fingerprint
+        if key in mark_by_decision or key not in positions:
+            raise RecurrentMarkedAccountError("duplicate or extra coverage mark")
+        _validate_mark_binding(position=positions[key], mark=mark)
+        mark_by_decision[key] = mark
+    rows = []
+    known_value = known_unrealized = 0.0
+    for key, position in sorted(positions.items()):
+        mark = mark_by_decision.get(key)
+        reason = None
+        if mark is None:
+            reason = "MISSING_MARK"
+        elif mark.valuation_utc != valuation_utc:
+            reason = "VALUATION_CLOCK_MISMATCH"
+        elif mark.market_timestamp_utc < position.opened_utc:
+            reason = "MARK_BEFORE_POSITION_OPEN"
+        elif mark.freshness != MarketMarkFreshness.FRESH or not mark.valuation_eligible:
+            reason = "STALE_OR_INELIGIBLE_MARK"
+        valued = None if reason else _mark_position(position=position, mark=mark, valuation_utc=valuation_utc)
+        if valued is not None:
+            known_value += valued.marked_value_dollars
+            known_unrealized += valued.unrealized_pnl_dollars
+        rows.append({
+            "decision_record_fingerprint": key,
+            "position_fingerprint": position.position_fingerprint,
+            "instrument_kind": position.instrument_kind.value,
+            "instrument_id": position.instrument_id, "ticker": position.ticker,
+            "option_contract_ticker": position.option_contract_ticker,
+            "quantity": position.quantity, "contract_multiplier": position.contract_multiplier,
+            "entry_book_value_dollars": position.entry_book_value_dollars,
+            "mark_fingerprint": mark.mark_fingerprint if mark is not None else None,
+            "status": reason or "FRESH_BOUND_MARK",
+            "marked_value_dollars": valued.marked_value_dollars if valued is not None else None,
+            "unrealized_pnl_dollars": valued.unrealized_pnl_dollars if valued is not None else None,
+        })
+    known_count = sum(row["status"] == "FRESH_BOUND_MARK" for row in rows)
+    complete = known_count == len(rows)
+    strict = build_recurrent_marked_account_state(source_state=source_state, marks=marks,
+                                                 valuation_utc=valuation_utc) if complete else None
+    report = {
+        "contract": "atlas-recurrent-mark-coverage-preview-v1-readonly",
+        "source_account_state_fingerprint": source_state.state_fingerprint,
+        "valuation_utc": valuation_utc.isoformat(),
+        "status": "COMPLETE_MARK_COVERAGE" if complete else "INCOMPLETE_MARK_COVERAGE_UNKNOWN_EQUITY",
+        "open_position_count": len(rows), "known_mark_count": known_count,
+        "unknown_mark_count": len(rows) - known_count, "complete_mark_coverage": complete,
+        "cash": source_state.cash, "account_book_equity": source_state.account_book_equity,
+        "stock_reserved_capital": source_state.stock_reserved_capital,
+        "option_reserved_capital": source_state.option_reserved_capital,
+        "open_entry_book_value_dollars": source_state.open_entry_book_value_dollars,
+        "known_marked_position_value_dollars": known_value,
+        "known_position_unrealized_pnl_dollars": known_unrealized,
+        "marked_equity": strict.marked_equity if strict is not None else None,
+        "aggregate_unrealized_pnl_dollars": strict.aggregate_unrealized_pnl_dollars if strict is not None else None,
+        "accepted_valuation_state_fingerprint": strict.state_fingerprint if strict is not None else None,
+        "positions": rows, "account_mutation_authority": False,
+        "provider_requests": 0, "broker_requests": 0, "paper": False, "live": False,
+    }
+    report["report_fingerprint"] = _fingerprint_payload(report)
+    return report
 
 
 __all__ = [

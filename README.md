@@ -4,7 +4,7 @@
 
 ATLAS is being built to discover stock opportunities, compare stock and option trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
 
-**Reviewed 2026-10-12 against main at `641757803b00bbebf75eb5c20c366b2668ee9707`.** This documentation review is not a fresh workstation audit or a new simulation result.
+**Reviewed 2026-10-13 against main at `9e5748cdbe2a572c97a2cb9e435f5fc1805318e5`.** Code and fixture verification do not renew workstation source or strategy acceptance.
 
 ## Start here
 
@@ -12,6 +12,7 @@ ATLAS is being built to discover stock opportunities, compare stock and option t
 - [Strategy evidence register](docs/strategy_evidence_register.md): compact results, limitations, dispositions, and completed experiment identities.
 - [Offline workstation review](scripts/review_offline_workstation_v1.py): one bounded, provider-free inventory of storage bindings and retained metadata; usage is in the project guide.
 - [Retained stock results review](scripts/review_retained_stock_results_v1.py): reconcile accepted route/fold returns, costs, concentration, and five-session paths without a new replay; `--selected-only` uses the exact original summary and six matching aggregates when the full route cache is unavailable.
+- [Retained option account review](scripts/review_retained_option_account_v1.py): audit the original V2 ledger, retained cash/fees and unresolved contracts, then save a bounded evidence demand without rerunning its simulation.
 
 Read both before continuing. Update the guide in place when material state changes and the register when an experiment changes. This README is an entry page. Historical specifications and closeouts support the guide; they are not instructions to rerun completed campaigns.
 
@@ -19,7 +20,7 @@ Read both before continuing. Update the guide in place when material state chang
 
 The Alpaca SIP stock corpus and historical news are available on the workstation. Stock research and recurrent-account components exist. Cached MarketData history supports EOD option diagnostics, but its entry clock did not reproduce the intended 09:35 option decision. Causal stock spots are ready for 9,654 cases, deduplicated to 9,455 option candidate surfaces. ThetaData source/enrichment plans, bounded qualification, cache support, and local Terminal preflight are implemented; provider acceptance and full acquisition are pending.
 
-ThetaData Options Standard remains planned, with activation expected approximately three to four weeks after this review. Continue offline stock analysis, cached-result reporting, account-lifecycle work, and source-input preparation meanwhile. The [roadmap](docs/roadmap.md#ordered-roadmap) defines deliverables and dependencies.
+ThetaData Options Standard remains planned, with activation expected approximately three to four weeks after the 2026-10-12 planning note. Continue offline stock analysis, cached-result reporting, account-lifecycle work, and source-input preparation meanwhile. The [roadmap](docs/roadmap.md#ordered-roadmap) defines deliverables and dependencies.
 
 ## Local operator interface
 
