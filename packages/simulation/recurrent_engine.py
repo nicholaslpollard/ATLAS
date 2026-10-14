@@ -37,6 +37,7 @@ from packages.simulation.recurrent_lifecycle_state import (
 from packages.simulation.recurrent_marked_state import (
     RecurrentMarkedAccountStateV1,
     build_recurrent_marked_account_state,
+    build_recurrent_mark_coverage_preview,
     recurrent_marked_account_state_fingerprint,
 )
 from packages.simulation.recurrent_positions import (
@@ -294,6 +295,16 @@ class RecurrentLifecycleCoordinatorV1:
     ) -> RecurrentMarkedAccountStateV1 | None:
         with self._lock:
             return self._marked_state
+
+    def mark_coverage_preview(
+        self, *, marks: Sequence[SimulatedMarketMarkEvidence], valuation_utc: datetime,
+    ) -> dict[str, Any]:
+        """Inspect missing/stale marks without publishing or mutating valuation."""
+        with self._lock:
+            _validate_account(self._account)
+            return build_recurrent_mark_coverage_preview(
+                source_state=self._account.state, marks=marks, valuation_utc=valuation_utc,
+            )
 
     def current_dashboard_pair(
         self,
