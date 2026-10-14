@@ -8,14 +8,18 @@ deliverables or fills, so they MUST NOT be transformed into ReplaySignal here.
 """
 
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 from zoneinfo import ZoneInfo
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
+from packages.simulation.offline_option_exit_retry_v1 import (
+    OptionExitRetryCursorV1, OptionExitRetryPlanV1, SyntheticExitQuoteV1,
+    advance_option_exit_retry,
+)
 
 CONTRACT = "atlas-multiyear-synthetic-account-replay-engine-v1"
 ORIGIN = "SYNTHETIC_FIXTURE_ONLY"
@@ -105,6 +109,7 @@ class ReplayLeg:
     standard_deliverable_verified: bool
     exit_source_integrity_qualified: bool | None = None
     exit_observation_clock_qualified: bool | None = None
+    exit_retry_plan: OptionExitRetryPlanV1 | None = None
 
     def validate(self, signal_at_utc: datetime, ticker: str) -> None:
         start = _stamp(self.entry_at_utc, "leg entry")
@@ -145,6 +150,14 @@ class ReplayLeg:
                      self.exit_observation_clock_qualified):
             if flag is not None and type(flag) is not bool:
                 raise OfflineAccountReplayError("exit source gate must be boolean or absent")
+        if self.exit_retry_plan is not None:
+            plan = self.exit_retry_plan
+            if (not isinstance(plan, OptionExitRetryPlanV1) or self.kind == "STOCK"
+                    or plan.option_symbol != self.symbol or plan.expiration != self.expiration
+                    or plan.opened_at_utc != start or end is not None
+                    or self.exit_source_integrity_qualified is not None
+                    or self.exit_observation_clock_qualified is not None):
+                raise OfflineAccountReplayError("retry plan must bind the exact option/open and replace the fixed exit")
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,6 +239,7 @@ def replay_synthetic_account(
     signals: list[ReplaySignal], *, mode: Mode,
     policy: ReplayPolicy | None = None,
     as_of_utc: datetime | None = None,
+    exit_quotes: Mapping[tuple[str, datetime], SyntheticExitQuoteV1 | None] | None = None,
 ) -> dict[str, Any]:
     """Chronological entry-first cash ledger with optional as-of knowledge boundary.
 
@@ -246,6 +260,15 @@ def replay_synthetic_account(
         signal.validate()
     if len({s.case_id for s in signals}) != len(signals):
         raise OfflineAccountReplayError("duplicate original case identity")
+    if exit_quotes is not None and (not isinstance(exit_quotes, Mapping) or len(exit_quotes) > 100000):
+        raise OfflineAccountReplayError("bounded in-memory synthetic exit quote map required")
+    quotes = exit_quotes if exit_quotes is not None else {}
+    if mode != "ABSTAIN" and sum(
+        len(leg.exit_retry_plan.attempt_times_utc)
+        for signal in signals if (leg := getattr(signal, mode.lower())) is not None
+        and leg.exit_retry_plan is not None
+    ) > 100000:
+        raise OfflineAccountReplayError("aggregate retry attempts exceed safe bound")
     # Without an explicit cutoff, consume the complete chosen-mode fixture clock.
     # Include failed exit attempts: their source gate cannot erase when an attempt
     # was reached. Other modes' paths must not advance this account's horizon.
@@ -259,6 +282,8 @@ def replay_synthetic_account(
                     clocks.append(_stamp(leg.entry_at_utc, "entry"))
                     if leg.exit_at_utc is not None:
                         clocks.append(_stamp(leg.exit_at_utc, "exit"))
+                    if leg.exit_retry_plan is not None:
+                        clocks.append(leg.exit_retry_plan.deadline_at_utc)
         horizon = max(clocks)
     cash = _decimal(policy.initial_cash, "initial cash")
     initial_cash = cash
@@ -267,8 +292,9 @@ def replay_synthetic_account(
     decisions: dict[str, dict[str, Any]] = {}
     ledger: list[dict[str, Any]] = []
     by_year: dict[str, Counter[str]] = {str(y): Counter() for y in range(2021, 2027)}
-    events: list[tuple[datetime, int, str, ReplayLeg]] = []
+    events: list[tuple[datetime, int, str, ReplayLeg, bool]] = []
     selected: dict[str, ReplayLeg] = {}
+    retry_cursors: dict[str, OptionExitRetryCursorV1] = {}
     for signal in signals:
         leg = getattr(signal, mode.lower()) if mode != "ABSTAIN" else None
         if cutoff is not None and _stamp(signal.decision_at_utc, "decision") > cutoff:
@@ -285,16 +311,20 @@ def replay_synthetic_account(
         }
         if status == "ELIGIBLE_SYNTHETIC_ENTRY":
             selected[signal.case_id] = leg
-            events.append((_stamp(leg.entry_at_utc, "entry"), 1, signal.case_id, leg))
+            events.append((_stamp(leg.entry_at_utc, "entry"), 1, signal.case_id, leg, False))
+            if leg.exit_retry_plan is not None:
+                events.extend((at, 0, signal.case_id, leg, True)
+                              for at in leg.exit_retry_plan.attempt_times_utc
+                              if cutoff is None or at <= cutoff)
             if (leg.exit_at_utc is not None and leg.exit_per_share is not None
                     and (cutoff is None or _stamp(leg.exit_at_utc, "exit") <= cutoff)
                     and leg.exit_source_integrity_qualified is not False
                     and leg.exit_observation_clock_qualified is not False
                     and (leg.kind == "STOCK" or
                          leg.exit_at_utc.astimezone(EASTERN).date() <= leg.expiration)):
-                events.append((_stamp(leg.exit_at_utc, "exit"), 0, signal.case_id, leg))
+                events.append((_stamp(leg.exit_at_utc, "exit"), 0, signal.case_id, leg, False))
     # Release existing positions before admitting new ones at an identical stamp.
-    for at, priority, cid, leg in sorted(events, key=lambda e: (e[0], e[1], e[2])):
+    for at, priority, cid, leg, is_retry in sorted(events, key=lambda e: (e[0], e[1], e[2])):
         row = decisions[cid]
         debit, fee_in, fee_out = _entry_unit_terms(leg, policy)
         if priority == 1:
@@ -324,6 +354,10 @@ def replay_synthetic_account(
             }
             row["status"] = "OPEN_UNMARKED_NO_QUALIFIED_EXIT"
             row["units"] = units
+            if leg.exit_retry_plan is not None:
+                retry_cursors[cid] = OptionExitRetryCursorV1(
+                    leg.exit_retry_plan, units, policy.option_slippage_per_share, at,
+                )
             ledger.append({
                 "kind": "MODELED_ENTRY", "case_id": cid,
                 "at_utc": at.isoformat(), "instrument": leg.symbol,
@@ -331,6 +365,25 @@ def replay_synthetic_account(
                 "cash_after": str(cash), "exit_fees_reserved": str(reserved_exit_fees),
             })
         elif cid in positions:
+            if is_retry:
+                cursor = advance_option_exit_retry(
+                    retry_cursors[cid], as_of_utc=at,
+                    read_quote=lambda symbol, clock: quotes.get((cid, clock)),
+                )
+                retry_cursors[cid] = cursor
+                attempt = cursor.attempts[-1]
+                if cursor.ready_quote is None:
+                    row["status"] = cursor.status
+                    ledger.append({
+                        "kind": "MODELED_EXIT_ATTEMPT_UNRESOLVED", "case_id": cid,
+                        "at_utc": at.isoformat(), "instrument": leg.symbol,
+                        "attempt_number": len(cursor.attempts), "reason": attempt.result,
+                        "cash_delta": "0.00", "cash_after": str(cash),
+                        "exit_fees_reserved": str(reserved_exit_fees),
+                    })
+                    continue
+                leg = replace(leg, exit_retry_plan=None, exit_at_utc=at,
+                              exit_per_share=cursor.ready_quote.bid_per_share)
             position = positions.pop(cid)
             if position["kind"] != leg.kind or position["symbol"] != leg.symbol:
                 raise OfflineAccountReplayError("modeled position identity changed")
@@ -354,6 +407,8 @@ def replay_synthetic_account(
         (p["reserved_exit_fee"] for p in positions.values()), Decimal(0)
     ):
         raise OfflineAccountReplayError("modeled open-position fee escrow does not reconcile")
+    retry_cursors = {cid: replace(cursor, as_of_utc=horizon)
+                     for cid, cursor in retry_cursors.items()}
     for cid in positions:
         leg = selected[cid]
         # An expiration DATE does not establish an intraday trading/exercise
@@ -361,6 +416,8 @@ def replay_synthetic_account(
         # never infer a settlement, mark, cash release, or assignment from it.
         if leg.kind != "STOCK" and horizon.astimezone(EASTERN).date() > leg.expiration:
             decisions[cid]["status"] = "OPEN_UNRESOLVED_EXPIRY_OR_ASSIGNMENT"
+        elif cid in retry_cursors:
+            decisions[cid]["status"] = retry_cursors[cid].status
         elif (leg.exit_at_utc is not None
               and _stamp(leg.exit_at_utc, "exit") <= horizon
               and (leg.exit_source_integrity_qualified is False
@@ -416,6 +473,12 @@ def replay_synthetic_account(
         "protected_holdout_is_fresh": False,
         "paper": False, "live": False,
     }
+    if retry_cursors:
+        result["option_exit_retries"] = [
+            {"case_id": cid, "cursor_fingerprint": cursor.fingerprint,
+             "cursor": cursor.payload()}
+            for cid, cursor in sorted(retry_cursors.items())
+        ]
     result["replay_fingerprint"] = _fingerprint(result)
     return result
 
