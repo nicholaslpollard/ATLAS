@@ -4,7 +4,7 @@
 
 ATLAS is being built to discover stock opportunities, compare stock and option trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
 
-**Reviewed 2026-10-14 against main at `8e9a35d89fe00f2ea4f14d63e47b075b8a219376`.** Code and fixture verification do not renew workstation source or strategy acceptance.
+**Reviewed 2026-10-15 against main at `2db6bb8d5254adbfd71f36d1a0106e9800a228d1`.** Code and fixture verification do not renew workstation source or strategy acceptance.
 
 ## Start here
 
@@ -13,6 +13,7 @@ ATLAS is being built to discover stock opportunities, compare stock and option t
 - [Offline workstation review](scripts/review_offline_workstation_v1.py): one bounded, provider-free inventory of storage bindings and retained metadata; usage is in the project guide.
 - [Retained stock results review](scripts/review_retained_stock_results_v1.py): reconcile accepted route/fold returns, costs, concentration, and five-session paths without a new replay; `--selected-only` uses the exact original summary and six matching aggregates when the full route cache is unavailable.
 - [Retained option account review](scripts/review_retained_option_account_v1.py): audit the original V2 ledger, retained cash/fees and unresolved contracts, then save a bounded evidence demand without rerunning its simulation.
+- [Retained exact-exit source audit](scripts/audit_retained_option_exit_sources_v1.py): explain the ten unresolved exit labels using their original hash-bound quote histories and cache receipts; no strategy or account replay.
 
 Read both before continuing. Update the guide in place when material state changes and the register when an experiment changes. This README is an entry page. Historical specifications and closeouts support the guide; they are not instructions to rerun completed campaigns.
 
