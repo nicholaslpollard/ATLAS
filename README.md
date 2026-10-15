@@ -4,7 +4,7 @@
 
 ATLAS is being built to discover stock opportunities, compare stock and option trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
 
-**Reviewed 2026-10-13 against main at `9e5748cdbe2a572c97a2cb9e435f5fc1805318e5`.** Code and fixture verification do not renew workstation source or strategy acceptance.
+**Reviewed 2026-10-14 against main at `8e9a35d89fe00f2ea4f14d63e47b075b8a219376`.** Code and fixture verification do not renew workstation source or strategy acceptance.
 
 ## Start here
 
@@ -19,6 +19,8 @@ Read both before continuing. Update the guide in place when material state chang
 ## Current position
 
 The Alpaca SIP stock corpus and historical news are available on the workstation. Stock research and recurrent-account components exist. Cached MarketData history supports EOD option diagnostics, but its entry clock did not reproduce the intended 09:35 option decision. Causal stock spots are ready for 9,654 cases, deduplicated to 9,455 option candidate surfaces. ThetaData source/enrichment plans, bounded qualification, cache support, and local Terminal preflight are implemented; provider acceptance and full acquisition are pending.
+
+The retained V2 account audit completed on 2026-10-14 with ten unresolved liquidity-gap positions. Its flat $0.65-per-contract entry/exit costs reconcile as modeled assumptions; they are not a verified Webull or Alpaca fee schedule. Broker-specific costs and historical position settlement remain open in the roadmap.
 
 ThetaData Options Standard remains planned, with activation expected approximately three to four weeks after the 2026-10-12 planning note. Continue offline stock analysis, cached-result reporting, account-lifecycle work, and source-input preparation meanwhile. The [roadmap](docs/roadmap.md#ordered-roadmap) defines deliverables and dependencies.
 

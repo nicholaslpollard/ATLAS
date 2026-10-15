@@ -136,6 +136,10 @@ Continuous V2 used strictly-prior MAE/MFE and return quartiles, clipped stop 1-3
 
 2,055 source-ready pairs: mean premium return -14.06%, median -18.42%, 30.61% positive, mean -$75.01/contract. Every 2021-2025 annual paired mean negative. Strict account 84 admitted / 74 completed / ten unresolved; realized modeled P&L -$33,365.40, cash $24,997.70; equity/return NULL. 3,230 stock exits were not after the EOD option entry.
 
+The 2026-10-14 operator retained-ledger review reconciled those original balances and memberships without replay or provider/source reads. All ten unresolved positions opened in 2021 and were labeled `STRATEGY_EXIT_SESSION_OPTION_LIQUIDITY_GAP`: 226 contracts, $41,636.90 committed entry cash including fees, $146.90 reserved exit fees, $24,850.80 cash after reserve; terminal clock/equity/return remain unknown. Review fingerprint: `c06049ba1ca270f09fcb56d4927530ea78137fee6c0af8ceb23e1645ef51e474`. Original replay: `b525b49fabd0aead7f6fc5c8edf33e6f7c8d125de9253de6b7d9ecdf4c7516a7`; scenario: `03406fdf1def82332b8e01761213ab4cd4eb9e7a8cdb551ea37ad8c9d7bfcf5b`.
+
+The original $0.65-per-contract entry/exit fees are generic model assumptions, not a qualified broker schedule; zero additional option slippage is also retained. This review verifies recorded arithmetic, not actual Webull/Alpaca charges, historical fills or settlement. Broker/account/date-specific costs remain an engineering dependency in the roadmap. Original costs, negative results and unknown equity remain unchanged; no fee-adjusted rerun or strategy promotion occurred.
+
 EXIT_GEOMETRY_BRANCH_CLOSED / NO_V3_FROM_SAME_DEVELOPMENT_EVIDENCE / NO_PROMOTION. The closed branch does not prohibit all future dynamic-exit research; it prohibits rescuing this experiment by tuning its observed outcomes. [V2 closeout](research/continuous_dynamic_exit_v2_closeout_20261002.md).
 
 ## Option account and clock forensics
