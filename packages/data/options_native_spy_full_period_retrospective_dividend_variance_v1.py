@@ -136,7 +136,8 @@ def reconcile_reference_to_archive(archive: dict[str, Any], schedule: dict[str, 
                  and item.get("historical_available_at_utc") is None
                  and item.get("point_in_time_qualified") is False
                  and isinstance(payload, dict) and payload.get("symbol") == "SPY"
-                 and isinstance(payload.get("ex_date"), str),
+                 and isinstance(payload.get("ex_date"), str)
+                 and "rate" in payload,
                  "original action source gained historical authority or wrong type")
         when = payload["ex_date"]
         _require(when not in recorded and when in schedule, "extra/duplicate archive ex-date")
