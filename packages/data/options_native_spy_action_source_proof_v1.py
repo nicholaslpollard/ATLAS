@@ -50,6 +50,7 @@ class ActionSourceProofError(ValueError):
 class StockReviewBinding:
     path: str = "data/research/options_native_stock_input_review_v1/9caee69b5d0fc180.json"
     fingerprint: str = "9caee69b5d0fc18075451f7b4b8c46ec3c8db817d4b0b0d3ed311bf9712748e7"
+    retained_packet_fingerprint: str = "92c4d71997ec3225d5040f00375fc4ad66d654be6ce4a6cb81136a87d75374dc"
 
 
 def _require(ok: bool, reason: str) -> None:
@@ -216,7 +217,7 @@ def build_spy_action_source_proof(
         "contract": STOCK_REVIEW_CONTRACT,
         "specification_fingerprint": SPECIFICATION_FINGERPRINT,
         "feature_cutoff_utc": FEATURE_CUTOFF.isoformat(),
-        "retained_packet_fingerprint": "92c4d71997ec3225d5040f00375fc4ad66d654be6ce4a6cb81136a87d75374dc",
+        "retained_packet_fingerprint": binding.retained_packet_fingerprint,
         "economic_log_returns": None,
         "forecast_total_variance": None,
         "pilot_input_acceptance": False,
