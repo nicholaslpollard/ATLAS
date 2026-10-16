@@ -18,6 +18,12 @@ This register summarizes completed evidence and current research dispositions. T
 
 The master `2026-05-12..2026-08-11` holdout was consumed once by frozen A33/B33 V2 on 2026-09-07 (93,380 protected return rows). It cannot qualify revisions. Earlier experiments' zero-protected-read statements remain true for their own scope. New prospective qualification is still necessary.
 
+## Options-native pilot v1 — specified, no performance evidence
+
+On 2026-10-15 the user approved making options-native discovery a primary branch alongside independent stock research. The first code-registered specification is `options-native-spy-long-straddle-v1`: one SPY common-strike/expiry CALL+PUT pair, a fixed twenty-prior-return volatility estimator versus same-maturity ATM implied variance, daily thesis-based exit and five-session maximum hold. The [guide](roadmap.md#options-native-pilot-and-data-contract) describes scope/dependencies; the [contract](../packages/strategies/options_native_pilot_v1_contract.py) owns exact rules. Specification fingerprint: `e3ad55ad153ca61432bfde65aa0b5c54004766866a2919a567b6b5ade551efca`.
+
+Budget: one strategy variant, qualified primary and predeclared spread/latency stress. The independent discovery plan has 411 weekly 2018-2025 CALL/PUT surfaces, including 2020, and excludes seven clocks by a predetermined maturity buffer. No historical prices/outcomes were read, provider calls made, historical trades simulated or workstation trial ledger appended. Synthetic feature and plan tests establish mechanics only. Source availability/clock models, broker fees and multi-leg execution/lifecycle remain unqualified. Append a matching draft to the existing trial ledger before any authorized outcome read. Earlier history is DEVELOPMENT, not untouched qualification; no consumed 2026 outcomes or post-result regime pruning are permitted. Status: SPECIFIED_NOT_PERFORMANCE_TESTED / NO_PROMOTION.
+
 ## A33/B33 and A34 reference account
 
 Nine direction-specific policies / six families. Accepted V2 DEVELOPMENT: 161,347 opportunities, account return -17.912608%, maximum drawdown -20.803073%. Unchanged frozen walk-forward `2026-05-12..2026-09-03`: 14,081 opportunities, account return and maximum drawdown -8.372772%. The master slice ends 2026-08-11; later rows are post-protected continuation, not a new holdout. Some signal-level LONG means were positive; aggregate account results were negative, RSI support small, cash-distribution economics incomplete. All policies remain RESEARCH.
