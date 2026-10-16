@@ -193,7 +193,7 @@ The **2018-06-18, 2018-06-25, 2018-07-02, 2018-07-09 and 2018-07-16** weekly pri
 
 [The offline negative-control module](../packages/data/options_native_spy_dividend_negative_control_v1.py) and [script](../scripts/review_options_native_spy_dividend_negative_control_v1.py) pin the completed 411-week minute-coverage JSON and the newly uploaded archival-action JSON by both file SHA and canonical fingerprint. Without reopening any raw records, they derive exactly which fixed prior 20 return-ending clocks overlap the externally witnessed ex-date. The result explicitly records 32 archived cash dividends, 267 archive-empty weeks and five directly disproven 'no action' interpretations. No dividends are backfilled, no historical publication clock is fabricated, and no forecast or trade is authorized. Candidate source coverage, announcement/revision times, split/no-split coverage, adjusted economic returns and option inputs remain **unqualified**. The historical hypothesis, trial budget, source archive and 2026 holdout stay frozen.
 
-Once **exact-head Linux and Windows CI are green and PR merged**, run only the new bounded source discrepancy certificate:
+The source discrepancy certificate completed successfully on 2026-10-16; this is a retained historical command, not a rerun instruction. It produced the pinned report `81102692ce1d1062.json` (raw SHA-256 `fd984995c6bd7d5db17dca3c61105d9365d255bd5765cf6535ce8c92eed81e63`; fingerprint `81102692ce1d1062ddc0022f09350b1c1d9a6ec5514625081a08f273607e8a96`). The script printed 32 archived cash distributions, 267 archive-empty windows and five externally witnessed omitted-dividend windows, leaving all PIT/option/forecast authority false. The following historical command is already complete:
 
 ```powershell
 & {
@@ -209,6 +209,30 @@ Once **exact-head Linux and Windows CI are green and PR merged**, run only the n
 This reads only the two completed small pinned JSON reports. The JSON report goes to `data/research/options_native_spy_dividend_negative_control_v1` on D:; user returns only this command output and saved JSON. No provider/broker/source-bar/option/outcome calls or simulation.
 
 **Follow-up priority:** obtain a complete, traceable sponsor/authoritative historical distribution series, reconcile ex-dates and event cash values across all frozen windows, and separately establish historical announcement/revision availability. The present witness proves incompleteness but is not, by itself, a substitute accepted event series. Avoid dozens of small pilots or repeated native archive scans.
+
+### Retrospective US SPY distribution and 411-week variance grid — next bounded source diagnostic
+
+The [offline grid module](../packages/data/options_native_spy_full_period_retrospective_dividend_variance_v1.py) and [single command](../scripts/review_options_native_spy_full_period_dividend_variance_v1.py) reconcile all **33** U.S. SPY regular quarterly ex-date distributions for 2017-12–2025-12 from the independent [US dividend-history table](https://dividendhistory.org/payout/SPY/) against the immutable **32** archived event candidates. The original archive's 32 ex-dates all appear independently; only 2018-06-15 is absent. Archived and independently shown cash amounts match exactly except for known last-decimal rounding differences on 2018-03-16 (archive 1.096775 versus rounded reference 1.09678) and 2020-06-19 (1.3662419 versus 1.366242), both at or below USD 0.000005/share. [AAStocks' historical SPY distributions](https://www.aastocks.com/en/usq/analysis/dividend.aspx?symbol=SPY) independently corroborate the cash amounts. These are sources observed in **2026**, not 2018–2025 publication/announcement/revision-time records; an original hash-versioned U.S. State Street sponsor historical-distributions workbook was not successfully fetched and is an open independent-authority check. The 33-row code table is a transparent, retrospective **comparison assumption**. Its presence cannot certify complete event coverage, split/no-split history, or availability as of trading decisions.
+
+The grid reads exactly four previously completed **hash-pinned JSON reports** (97-month minute coverage, 32-event archived action index, 2018 negative control, and January 2020 single-dividend volatility packet); it reads NO raw minute bars, daily stock price units, action ledger/pages, options or outcomes. For each of the **407** physically complete cases, it computes 20 raw-close log returns and the purely retrospective cash-per-original-share ex-date scenario on the same frozen 21 prices, preserving XNYS closing-minute and elapsed calendar-time conventions. It reuses the original January 2020 variance as an **exact 34-decimal arithmetic cross-check**, derives 411 case diagnostics and year summaries, and marks the **four** 2019-price-incomplete weeks as no-computation. All five June 2018 omitted-event weeks remain separately tagged in the report.
+
+This is **not an accepted causal research feature or a trade replay**. Economic returns, strategy `forecast_total_variance`, option premiums/IV, 2026 protected outcomes, liquidity, execution and profitability remain unavailable/unqualified. Source absence is never converted into a zero-cash action claim, and retrospective cash is not granted 2018–2025 availability. The original hypothesis and option-data acquisition plan are frozen. Resolving complete sponsor event coverage and proof of historical announcements/revisions is a distinct prerequisite for genuine PIT research.
+
+When this package has **exact-head Windows/Ubuntu CI green and is merged**, run one offline command from current Windows `main`, uploading terminal output and saved JSON:
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw 'Git update failed.' }
+    & .\.venv\Scripts\python.exe scripts\review_options_native_spy_full_period_dividend_variance_v1.py --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'Full-period SPY retrospective variance grid stopped; paste output.' }
+}
+```
+
+The output is a conflict-safe small JSON under `data/research/options_native_spy_full_period_retrospective_dividend_variance_v1` on the research-evidence D: binding. No paid API, provider/broker source requests, 411 separate native scans or simulated trades.
+
 
 
 
