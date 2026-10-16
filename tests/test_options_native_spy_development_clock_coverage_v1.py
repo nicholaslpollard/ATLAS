@@ -92,8 +92,8 @@ def test_projection_preserves_every_gap_and_never_promotes_raw_completeness():
     assert output["cases"][0]["exact_minutes_present"] == 22
     assert output["cases"][0]["historical_input_accepted"] is False
     assert output["cases"][0]["forecast_total_variance"] is None
-    assert output["cases"][1]["exact_minutes_present"] == 2
-    assert len(output["cases"][1]["missing_clocks"]) == 20
+    assert output["cases"][1]["exact_minutes_present"] == 1
+    assert len(output["cases"][1]["missing_clocks"]) == 21
 
 
 def test_physical_minute_provenance_and_duplicate_fail_closed():
