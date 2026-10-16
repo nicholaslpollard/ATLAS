@@ -1,6 +1,6 @@
 # ATLAS Project Guide and Roadmap
 
-**Reviewed 2026-10-16 (America/New_York). Code baseline: main at `89272aa10a0d1532311a30c03c5d5ba50a7a9e89` (PR #327), with the inspected pilot packet and cached stock-input follow-up below. Workstation observations retain their original dates.**
+**Reviewed 2026-10-16 (America/New_York). Confirmed main baseline: `70da241349d50781de9c3a30c6ba7023efa07aa5` (PR #328), with the proposed original-action proof separately reviewed below. Workstation observations retain their original dates.**
 
 This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. The documentation consolidation did not rerun the historical corpus. A subsequent operator metadata inventory on 2026-10-12 established the storage observations below.
 
@@ -132,18 +132,7 @@ The same command hashes the accepted source snapshot and its original native-act
 
 Resource bounds: two sequential minute units at 256 MiB each, 4 MiB per JSON, 128 MiB inventory, 64/256 MiB compressed/expanded plan, 128/512 MiB compressed/expanded action files, 1 MiB lines and bounded row/output counts. DuckDB uses two threads and 512 MiB; a heartbeat reports active checks every 20 seconds. There are zero daily-unit rereads, provider/broker requests, option histories, outcome calculations or simulations. Output remains diagnostic, with unknown historical availability and no pilot acceptance.
 
-Run once from the existing Windows main checkout and return the output plus the small JSON named on the `saved report` line:
-
-```powershell
-& {
-    $ErrorActionPreference = 'Stop'
-    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }
-    git pull --ff-only
-    if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
-    .\.venv\Scripts\python.exe scripts\review_options_native_stock_inputs_v1.py --save-report
-    if ($LASTEXITCODE -ne 0) { throw 'Pilot stock-input review blocked; see output above.' }
-}
-```
+The completed 2026-10-16 workstation command was `scripts/review_options_native_stock_inputs_v1.py --save-report`; do **not** repeat that successful stock-input scan. The next command is the original-action proof described below.
 
 The report saves under `data/research/options_native_stock_input_review_v1`, honors the research-evidence storage binding, and refuses conflicting output. The operator completed this follow-up on 2026-10-16. The uploaded `9caee69b5d0fc180.json` records 22/22 exact minute observations (21 prior regular closes plus the 2020-01-06 09:59–10:00 ET SPY spot at 321.60), no missing clock and one SPY dividend candidate with ex-date 2019-12-20 and rate 1.569992 per share. Its fingerprint is `9caee69b5d0fc18075451f7b4b8c46ec3c8db817d4b0b0d3ed311bf9712748e7`. These are verified retained report facts, not as-of historical publication proof, accepted dividend treatment or an executable option input. No repeat stock scan is needed. Missing/changed/oversized artifacts block without rebuild or fallback.
 
