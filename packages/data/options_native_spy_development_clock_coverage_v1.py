@@ -209,7 +209,7 @@ def review_spy_development_minute_coverage(
     source_packet_path = settings.resolved_path(DEFAULT_BINDING.relative_path)
     _require(not source_packet_path.is_symlink() and source_packet_path.is_file()
              and source_packet_path.stat().st_size <= 256 * 1024, "retained native packet unavailable")
-    packet = verify_retained_pilot_packet(source_packet_path.read_bytes())
+    packet = verify_retained_pilot_packet(source_packet_path.read_bytes(), DEFAULT_BINDING)
     demand, months = frozen_clock_demand()
     _require(max(months) <= (2025, 12), "request would touch 2026 or protected source units")
     layout = V2Layout.beneath((settings.project_root / "data").resolve())
