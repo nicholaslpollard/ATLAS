@@ -4,13 +4,14 @@
 
 ATLAS is being built as an options-first research and trading system: discover opportunities in option pricing and volatility, independently evaluate stock signals, compare trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
 
-**Reviewed 2026-10-15 against main at `bf7e0000a903893dd26dfc260ae57f8f260d26e8`, with the options-native pilot specification described in the guide.** Code and fixture verification do not renew workstation source or strategy acceptance.
+**Reviewed 2026-10-16 against main at `1ef6ed0a3d826a5e8612e33b8d65a5985ac37b45`, with the options-native pair mechanics and bounded input packet described in the guide.** Code and fixture verification do not renew workstation source or strategy acceptance.
 
 ## Start here
 
 - [Project guide and roadmap](docs/roadmap.md): the single authority for goals, current state, architecture, dependencies, active work, and continuation.
 - [Strategy evidence register](docs/strategy_evidence_register.md): compact results, limitations, dispositions, and completed experiment identities.
 - [Options-native pilot plan](scripts/plan_options_native_pilot_v1.py): provider-free specification and bounded CALL/PUT discovery demand; no performance run or download.
+- [Pilot input packet](scripts/inspect_options_native_pilot_inputs_v1.py): inspect 21 existing SPY raw daily closes and exact source lineage for one fixed prior window; report missing economic-return and availability qualification without a simulation.
 - [Offline workstation review](scripts/review_offline_workstation_v1.py): one bounded, provider-free inventory of storage bindings and retained metadata; usage is in the project guide.
 - [Retained stock results review](scripts/review_retained_stock_results_v1.py): reconcile accepted route/fold returns, costs, concentration, and five-session paths without a new replay; `--selected-only` uses the exact original summary and six matching aggregates when the full route cache is unavailable.
 - [Retained option account review](scripts/review_retained_option_account_v1.py): audit the original V2 ledger, retained cash/fees and unresolved contracts, then save a bounded evidence demand without rerunning its simulation.
@@ -26,7 +27,7 @@ The retained V2 account review completed on 2026-10-14. The 2026-10-15 exact-exi
 
 ThetaData Options Standard remains planned, with activation expected approximately three to four weeks after the 2026-10-12 planning note. Continue offline stock analysis, cached-result reporting, account-lifecycle work, and source-input preparation meanwhile. The [roadmap](docs/roadmap.md#ordered-roadmap) defines deliverables and dependencies.
 
-The first options-native pilot is a separately versioned SPY long-straddle hypothesis with prior-only volatility inputs and option-aware daily exits. Its specification, data contract, 411 weekly CALL/PUT discovery requests and synthetic feature checks are implemented. Historical source, broker costs and multi-leg execution remain unqualified. The original 9,455 stock-to-CALL surfaces and closed experiments retain their own identities.
+The first options-native pilot is a separately versioned SPY long-straddle hypothesis with prior-only volatility inputs and option-aware daily exits. Its specification, 411 weekly CALL/PUT discovery requests, synthetic feature/contract selection, daily exit requests and two-leg cash/exposure mechanics are implemented. Explicit invented receipts test legging, fee reserves and separate sale settlement; quotes never manufacture a fill. The next workstation action is the small raw-input packet in the guide. Historical economic-return/source clocks, broker costs and multi-leg execution remain unqualified. The original 9,455 stock-to-CALL surfaces and closed experiments retain their own identities.
 
 ## Local operator interface
 

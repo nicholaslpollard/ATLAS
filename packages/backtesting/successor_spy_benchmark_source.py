@@ -8,7 +8,7 @@ import os
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -69,6 +69,25 @@ SPY_BENCHMARK_SOURCE_AUDIT_CONTRACT_FINGERPRINT = canonical_sha256(
 
 class SuccessorSpyBenchmarkSourceError(RuntimeError):
     pass
+
+
+@dataclass(frozen=True, slots=True)
+class NativeSpyDailyReadLimits:
+    """Opt-in resource bounds for a small source packet; legacy callers unchanged."""
+
+    metadata_bytes: int = 64 * 1024 * 1024
+    compressed_plan_bytes: int = 64 * 1024 * 1024
+    expanded_plan_bytes: int = 256 * 1024 * 1024
+    plan_line_bytes: int = 1024 * 1024
+    inventory_bytes: int = 128 * 1024 * 1024
+    canonical_unit_bytes: int = 64 * 1024 * 1024
+
+
+def _bounded_native_file(path: Path, layout: V2Layout, maximum: int) -> None:
+    _assert_native_path(path.absolute(), expected=path.absolute(), root=layout.root,
+                        label="bounded native daily input")
+    if not path.is_file() or not 0 < path.stat().st_size <= maximum:
+        raise SuccessorSpyBenchmarkSourceError(f"native daily input missing or exceeds {maximum} bytes: {path}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -306,11 +325,15 @@ def _load_plan_records_for_fallback(
     layout: V2Layout,
     *,
     years: set[int],
+    read_limits: NativeSpyDailyReadLimits | None = None,
 ) -> tuple[list[dict[str, object]], dict[str, object]]:
     if any(year > SPY_DAILY_FALLBACK_LAST_YEAR for year in years):
         raise SuccessorSpyBenchmarkSourceError("refusing 2026-or-later native-daily SPY fallback")
     manifest_path = layout.manifests / "native_acquisition_plan.json"
     plan_path = layout.manifests / "native_acquisition_plan.jsonl.gz"
+    if read_limits is not None:
+        _bounded_native_file(manifest_path, layout, read_limits.metadata_bytes)
+        _bounded_native_file(plan_path, layout, read_limits.compressed_plan_bytes)
     manifest = _read_json(manifest_path, "native acquisition plan manifest")
     if manifest.get("contract") != ACQUISITION_CONTRACT or manifest.get("status") != "FROZEN":
         raise SuccessorSpyBenchmarkSourceError("native acquisition plan is not the frozen V2 plan")
@@ -318,15 +341,33 @@ def _load_plan_records_for_fallback(
         raise SuccessorSpyBenchmarkSourceError("native acquisition plan V1 ancestry drifted")
     if not plan_path.is_file() or _sha256_file(plan_path) != str(manifest.get("plan_file_sha256") or ""):
         raise SuccessorSpyBenchmarkSourceError("native acquisition plan compressed hash drifted")
-    try:
-        raw = gzip.decompress(plan_path.read_bytes())
-    except (OSError, EOFError) as exc:
-        raise SuccessorSpyBenchmarkSourceError("native acquisition plan gzip is unreadable") from exc
-    if hashlib.sha256(raw).hexdigest() != str(manifest.get("plan_sha256") or ""):
-        raise SuccessorSpyBenchmarkSourceError("native acquisition plan content hash drifted")
+    raw_hash = hashlib.sha256()
+    if read_limits is None:
+        try:
+            raw = gzip.decompress(plan_path.read_bytes())
+        except (OSError, EOFError) as exc:
+            raise SuccessorSpyBenchmarkSourceError("native acquisition plan gzip is unreadable") from exc
+        raw_hash.update(raw)
+        if raw_hash.hexdigest() != str(manifest.get("plan_sha256") or ""):
+            raise SuccessorSpyBenchmarkSourceError("native acquisition plan content hash drifted")
+        lines = iter(raw.splitlines())
+    else:
+        def bounded_lines():
+            expanded = 0
+            try:
+                with gzip.open(plan_path, "rb") as handle:
+                    while line := handle.readline(read_limits.plan_line_bytes + 1):
+                        expanded += len(line)
+                        if len(line) > read_limits.plan_line_bytes or expanded > read_limits.expanded_plan_bytes:
+                            raise SuccessorSpyBenchmarkSourceError("native acquisition plan exceeds expanded/line bound")
+                        raw_hash.update(line)
+                        yield line
+            except (OSError, EOFError) as exc:
+                raise SuccessorSpyBenchmarkSourceError("native acquisition plan gzip is unreadable") from exc
+        lines = bounded_lines()
 
     selected: list[dict[str, object]] = []
-    for line_number, line in enumerate(raw.splitlines(), start=1):
+    for line_number, line in enumerate(lines, start=1):
         if not line.strip():
             continue
         try:
@@ -345,6 +386,8 @@ def _load_plan_records_for_fallback(
         if record.get("provider_timeframe") != "1Day" or record.get("month") is not None:
             raise SuccessorSpyBenchmarkSourceError("SPY daily native-plan identity drifted")
         selected.append(record)
+    if raw_hash.hexdigest() != str(manifest.get("plan_sha256") or ""):
+        raise SuccessorSpyBenchmarkSourceError("native acquisition plan content hash drifted")
     selected_years = [int(record["year"]) for record in selected]
     if sorted(selected_years) != sorted(years) or len(selected_years) != len(set(selected_years)):
         raise SuccessorSpyBenchmarkSourceError(
@@ -360,6 +403,8 @@ def _daily_fallback_rows(
     settings: AtlasSettings,
     *,
     requested_sessions: tuple[date, ...],
+    read_limits: NativeSpyDailyReadLimits | None = None,
+    progress: Callable[[str], None] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, object]]:
     if not requested_sessions:
         return pd.DataFrame(columns=["session_date", "close"]), {
@@ -373,6 +418,8 @@ def _daily_fallback_rows(
 
     project_root = settings.project_root.resolve()
     layout = V2Layout.beneath((project_root / "data").resolve())
+    if read_limits is not None:
+        _bounded_native_file(layout.manifests / "research_daily.json", layout, read_limits.metadata_bytes)
     adapter = ReferenceV2DailyLakeAdapter(settings)
     _research_manifest_path, research_manifest = adapter._manifest(None)
     if research_manifest.get("contract") != RESEARCH_DAILY_CONTRACT:
@@ -386,6 +433,8 @@ def _daily_fallback_rows(
         )
 
     native_report_path = (layout.validation / "native_acceptance.json").absolute()
+    if read_limits is not None:
+        _bounded_native_file(native_report_path, layout, read_limits.metadata_bytes)
     _assert_native_path(
         native_report_path,
         expected=native_report_path,
@@ -421,17 +470,21 @@ def _daily_fallback_rows(
         root=layout.root,
         label="native unit inventory",
     )
+    if read_limits is not None:
+        _bounded_native_file(inventory_path, layout, read_limits.inventory_bytes)
     if not inventory_path.is_file() or _sha256_file(inventory_path) != str(
         inventory.get("sha256") or ""
     ):
         raise SuccessorSpyBenchmarkSourceError("native acceptance unit inventory hash drifted")
 
     years = {session.year for session in requested_sessions}
-    records, plan_report = _load_plan_records_for_fallback(layout, years=years)
+    if progress:
+        progress("verifying frozen plan identities; streaming bounded metadata, no minute/outcome partitions")
+    records, plan_report = _load_plan_records_for_fallback(layout, years=years, read_limits=read_limits)
     requested = set(requested_sessions)
     pieces: list[pd.DataFrame] = []
     unit_bindings: list[dict[str, object]] = []
-    for record in sorted(records, key=lambda item: int(item["year"])):
+    for number, record in enumerate(sorted(records, key=lambda item: int(item["year"])), start=1):
         year = int(record["year"])
         batch = int(record["batch_index"])
         unit_id = str(record["unit_id"])
@@ -445,6 +498,8 @@ def _daily_fallback_rows(
             / f"{prefix}.json"
         ).absolute()
         canonical_path = (layout.canonical_daily / partition / f"{prefix}.parquet").absolute()
+        if progress:
+            progress(f"verifying native daily unit {number}/{len(records)}: year {year}; projecting SPY closes")
         if year > SPY_DAILY_FALLBACK_LAST_YEAR:
             raise SuccessorSpyBenchmarkSourceError("refusing to open 2026 native daily partition")
         _assert_native_path(
@@ -459,6 +514,9 @@ def _daily_fallback_rows(
             root=layout.root,
             label=f"native SPY daily canonical {year}",
         )
+        if read_limits is not None:
+            _bounded_native_file(checkpoint_path, layout, read_limits.metadata_bytes)
+            _bounded_native_file(canonical_path, layout, read_limits.canonical_unit_bytes)
         checkpoint = _read_json(checkpoint_path, f"native SPY daily checkpoint {year}")
         if checkpoint.get("contract") != UNIT_CONTRACT:
             raise SuccessorSpyBenchmarkSourceError(
@@ -511,20 +569,30 @@ def _daily_fallback_rows(
                 f"SPY was provider-rejected in native daily source: {year}"
             )
 
-        frame = _read_parquet_frame(
-            canonical_path,
-            columns=(
-                "symbol",
-                "session_date",
-                "close",
-                "provider",
-                "dataset",
-                "timeframe",
-                "session_segment",
-                "is_adjusted",
-                "source_id",
-            ),
+        columns = (
+            "symbol",
+            "session_date",
+            "close",
+            "provider",
+            "dataset",
+            "timeframe",
+            "session_segment",
+            "is_adjusted",
+            "source_id",
         )
+        if read_limits is None:
+            frame = _read_parquet_frame(canonical_path, columns=columns)
+        else:
+            con = connect_utc(":memory:")
+            try:
+                placeholders = ",".join("?" for _ in requested_sessions)
+                frame = con.execute(
+                    f"SELECT {_duckdb_projection(columns)} FROM read_parquet({sql_string(canonical_path)}, hive_partitioning=false) "
+                    f"WHERE symbol = ? AND CAST(session_date AS DATE) IN ({placeholders})",
+                    ["SPY", *requested_sessions],
+                ).fetchdf()
+            finally:
+                con.close()
         frame["session_date"] = pd.to_datetime(
             frame["session_date"], errors="raise"
         ).dt.date
