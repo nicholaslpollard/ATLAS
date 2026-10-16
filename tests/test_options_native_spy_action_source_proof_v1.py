@@ -12,7 +12,7 @@ from packages.data.alpaca_v2_acquisition import _extract_action_records
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data import options_native_spy_action_source_proof_v1 as proof
 from packages.data import options_native_stock_input_review_v1 as review
-from test_options_native_stock_input_review_v1 import source, sha, write_json
+from test_options_native_stock_input_review_v1 import source, reseal, write_json
 
 
 def fixture_archive(tmp_path, pages):
@@ -114,6 +114,11 @@ def test_all_raw_source_faults_fail_closed(tmp_path, monkeypatch, fault):
 
 
 def test_original_source_proof_reuses_review_without_any_bar_rereads(source):
+    # The pre-existing fixture uses one "fixture" raw-page action container.
+    # Align its invented ledger label with the actual raw payload before sealing.
+    for row in source["actions"]:
+        row["action_type"] = "fixture"
+    reseal(source)
     report = review.review_options_native_stock_inputs(source["settings"], binding=source["binding"])
     output = source["settings"].project_root / "data/research/options_native_stock_input_review_v1/fixture.json"
     write_json(output, report)
@@ -141,6 +146,9 @@ def test_original_source_proof_reuses_review_without_any_bar_rereads(source):
 
 
 def test_resigned_stock_report_will_not_gain_forecast_authority(source):
+    for row in source["actions"]:
+        row["action_type"] = "fixture"
+    reseal(source)
     report = review.review_options_native_stock_inputs(source["settings"], binding=source["binding"])
     report["pilot_input_acceptance"] = True
     report["report_fingerprint"] = _fingerprint(
