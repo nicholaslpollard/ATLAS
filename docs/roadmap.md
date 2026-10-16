@@ -1,6 +1,6 @@
 # ATLAS Project Guide and Roadmap
 
-**Reviewed 2026-10-16 (America/New_York). Confirmed main baseline: `70da241349d50781de9c3a30c6ba7023efa07aa5` (PR #328), with the proposed original-action proof separately reviewed below. Workstation observations retain their original dates.**
+**Reviewed 2026-10-16 (America/New_York). Confirmed main baseline before this package: `3c94f7e65bd3e7073230237ebe8712a21c384e55` (PR #329), with the action-source proof completed. Workstation observations retain their original dates.**
 
 This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. The documentation consolidation did not rerun the historical corpus. A subsequent operator metadata inventory on 2026-10-12 established the storage observations below.
 
@@ -136,7 +136,7 @@ The completed 2026-10-16 workstation command was `scripts/review_options_native_
 
 The report saves under `data/research/options_native_stock_input_review_v1`, honors the research-evidence storage binding, and refuses conflicting output. The operator completed this follow-up on 2026-10-16. The uploaded `9caee69b5d0fc180.json` records 22/22 exact minute observations (21 prior regular closes plus the 2020-01-06 09:59–10:00 ET SPY spot at 321.60), no missing clock and one SPY dividend candidate with ex-date 2019-12-20 and rate 1.569992 per share. Its fingerprint is `9caee69b5d0fc18075451f7b4b8c46ec3c8db817d4b0b0d3ed311bf9712748e7`. These are verified retained report facts, not as-of historical publication proof, accepted dividend treatment or an executable option input. No repeat stock scan is needed. Missing/changed/oversized artifacts block without rebuild or fallback.
 
-### Options-native original corporate-action page proof — next local gate
+### Options-native original corporate-action page proof — completed local gate
 
 [The bounded source-proof module](../packages/data/options_native_spy_action_source_proof_v1.py) and [operator command](../scripts/prove_options_native_spy_actions_v1.py) use the pinned 2026-10-16 cached-stock review, original action manifest/source snapshot, full native-action ledger and original concatenated gzip-page bundle. Each decompressed original source page must match its manifest-recorded SHA-256/length; every extracted original record must match the corresponding native ledger record in exact page/type/index order. The old December–January SPY selection must reproduce the verified prior report byte-for-byte at the semantic-record level. The separate expanded action window is 2019-10-01 through 2020-03-31 so dividend, split, identity and undated candidates remain visible for the 2020 pilot. Revised candidate records are retained separately rather than cherry-picked or deduplicated. Blank selection is not qualified no-action coverage.
 
@@ -144,20 +144,13 @@ The source proof does not reinterpret process/ex/record/payment dates as announc
 
 Only two source objects are streamed: the accepted native-action ledger and original compressed-page bundle. Both compressed files are hash-verified within 128 MiB each; concatenated gzip members have 32 MiB per-page and 512 MiB aggregate expansion limits, with an exact ledger equality/count check and a 20-second heartbeat. Original page hashes are **verified** here, unlike the earlier cached-stock summary which only recorded them. Existing mismatched reports are not overwritten.
 
-After merging and verifying source-proof CI, run once from the Windows `main` checkout and return terminal output **and** the small JSON named by the saved-report line:
+The 2026-10-16 operator source proof completed: original pages 379/379; reconciled action records 378,362. Uploaded report `b0cbad9dca14d6ce.json` has fingerprint `b0cbad9dca14d6ce0221cd684473fbc3190e17248c42b0b0909c0854a9f8d929` and raw SHA-256 `3880427d8300d814cebd7ede1c6a2b6dc72c51d8a50fc686a75932081566b237`. The bounded SPY candidates were cash dividends ex-2019-12-20 at 1.569992/share and ex-2020-03-20 at 1.405559/share; only the first lies inside the frozen pilot prior window. The original stock and action proof scans are complete, and historical publication/coverage remain unqualified.
 
-```powershell
-& {
-    $ErrorActionPreference = 'Stop'
-    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }
-    git pull --ff-only
-    if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
-    .\.venv\Scripts\python.exe scripts\prove_options_native_spy_actions_v1.py --save-report
-    if ($LASTEXITCODE -ne 0) { throw 'Original SPY corporate-action source proof blocked; paste complete output.' }
-}
-```
+### Conditional SPY prior variance diagnostic
 
-The saved report belongs under `data/research/options_native_spy_action_source_proof_v1` on the existing research-evidence storage binding. The 21-close packet and 22-minute review need no rerun. Do not advance PIT dividend returns or the variance forecast from fixture assumptions while publication/revision proof remains unknown.
+The [offline diagnostic](../packages/data/options_native_spy_prior_variance_sensitivity_v1.py) and [script](../scripts/inspect_options_native_spy_prior_variance_v1.py) read only the two pinned JSON reports, without stock/option/source-bar scans or provider requests. They compare 20 prior log-price returns against a one-dividend hypothetical return series using the frozen calendar-time squared-return variance convention. The March 2020 distribution is excluded. Preliminary independently calculated annualized values were about 7.34% for raw closing-minute price returns versus 7.54% for a conditional ex-dividend adjustment. These are diagnostics, **not** historically qualified economic returns, a strategy forecast, or alpha evidence. Unknown publication/revision clocks and complete adjustment coverage remain blocking; `economic_log_returns` and `forecast_total_variance` are null. The original strategy specification and option plan do not change.
+
+When this package is merged, run `python scripts/inspect_options_native_spy_prior_variance_v1.py --save-report` once after updating the Windows `main` checkout. It stores a conflict-safe report under `data/research/options_native_spy_prior_variance_sensitivity_v1` through the research-evidence storage binding. Return its terminal output and saved JSON. No repeat raw source audit is needed.
 
 [Economic-return fixture arithmetic](../packages/strategies/options_native_economic_returns_v1.py) prepares the next adapter without inventing source facts. For one share at the prior close, it computes `ln((split_new_per_old * current_raw_close + ex_date_cash_per_original_share) / prior_raw_close)` using a 34-digit decimal context and 24-decimal-place log returns compatible with the existing variance-input contract. Cash is an analytical ex-date entitlement per original share, not a payment-date account credit. Explicit split/no-split and cash/no-cash values, complete action coverage and publication/revision qualification are required. Unknowns, noncash/identity actions or ambiguous share basis abstain; one bad interval invalidates the fixed twenty-return window. It emits typed fixture returns for the existing variance screen, grants no historical adapter authority and changes neither the frozen strategy nor its budget. [S&P's total-return methodology](https://www.spglobal.com/spdji/en/methodology/article/index-mathematics-methodology/) describes the distinction between price movement and dividend reinvestment; this fixture convention is separately labeled from account cash settlement and option pricing.
 
