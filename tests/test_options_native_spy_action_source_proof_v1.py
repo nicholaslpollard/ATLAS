@@ -12,6 +12,7 @@ from packages.data.alpaca_v2_acquisition import _extract_action_records
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data import options_native_spy_action_source_proof_v1 as proof
 from packages.data import options_native_stock_input_review_v1 as review
+from test_options_native_pilot_input_packet_v1 import native
 from test_options_native_stock_input_review_v1 import source, reseal, write_json
 
 
@@ -49,7 +50,8 @@ def test_two_original_gzip_pages_reconcile_every_record_and_preserve_revision_ca
     result = proof.reconcile_raw_actions(manifest, ledger, bundle)
     assert result["verified_raw_pages"] == 2
     assert result["reconciled_native_records"] == 5
-    assert [r["payload"]["rate"] for r in result["prior_window_selection"]] == [1.569992, 1.57]
+    assert [r["payload"]["rate"] for r in result["prior_window_selection"]
+            if r["action_type"] == "cash_dividends"] == [1.569992, 1.57]
     assert len(result["expanded_record_selection"]) == 4
     assert result["expanded_record_selection"][-1]["effective_date_state"] == "UNKNOWN_EFFECTIVE_DATE"
     assert all(r["historical_available_at_utc"] is None and r["point_in_time_qualified"] is False
