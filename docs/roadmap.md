@@ -1,6 +1,6 @@
 # ATLAS Project Guide and Roadmap
 
-**Reviewed 2026-10-15 (America/New_York). Code baseline: main at `bf7e0000a903893dd26dfc260ae57f8f260d26e8` (PR #325), with the user-approved options-first research direction and first options-native specification below. Workstation observations retain their original dates.**
+**Reviewed 2026-10-16 (America/New_York). Code baseline: main at `1ef6ed0a3d826a5e8612e33b8d65a5985ac37b45` (PR #326), with the options-native pair mechanics and bounded source-input packet below. Workstation observations retain their original dates.**
 
 This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. The documentation consolidation did not rerun the historical corpus. A subsequent operator metadata inventory on 2026-10-12 established the storage observations below.
 
@@ -22,7 +22,7 @@ Product engineering and strategy research proceed together. A negative research 
 | Daily/minute semantics | V2 research preparation and B34 intraday/session audits accepted | Preserve missing bars, exact source identity, and corporate-action boundaries |
 | News | 141 monthly partitions, 2,211,606 records; source-integrity V2 accepted | No validated news-derived alpha; sentiment and attribution need PIT-safe evaluation |
 | Strategy laboratory | 21 economic families / 28 routes; 54,618,427 standalone DEVELOPMENT records; conditioning v1 completed | Aggregate conditioning/account evidence does not establish robust profitable strategies |
-| Options-native research | First SPY long-straddle specification, data contract, outcome-blind CALL/PUT plan and synthetic variance-feature arithmetic implemented | No historical performance run; accepted inputs, broker fees, pair construction/execution and prospective qualification remain open |
+| Options-native research | SPY long-straddle specification, CALL/PUT plan, synthetic variance/geometry/daily-exit checks and two-leg cash/exposure coordinator implemented; bounded raw-input packet ready | No historical performance run; economic returns, input clocks, broker costs, execution/settlement and prospective qualification remain open |
 | Dynamic exits | Prior-fold discrete Dynamic Exit V1 and continuous distribution-based V2 tested | V1 negative later results; V2 saturated near 3%/5%; neither is an accepted final exit policy |
 | Account lifecycle | Recurrent reservations, entries, marks, closes, re-entry, clocks, checkpoints, transactions and observability; synthetic retry/partial-exit mechanics and read-only mark coverage preview implemented | Accepted source integration, historical settlement and missing-mark source resolution remain open; recurrent V1 closes still require whole positions |
 | MarketData options | Candidate raw chains, exact-series caches, receipts, source reconciliation, and EOD account diagnostics exist | EOD timing differs from the intended intraday strategy; unresolved positions prevent a valid full account return |
@@ -82,8 +82,8 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 | Order | Work package | Completion criterion | Dependency |
 | --- | --- | --- | --- |
 | 1 | Options-native pilot specification and data design — implemented | One SPY long-straddle variant, prior-only variance feature, dynamic management rule and 411 weekly CALL/PUT discovery surfaces, independently registered from stock signals | Code specification is not performance evidence; no operator run needed to repeat fixture checks |
-| 2 | Pilot input and cost qualification | Bind PIT economic returns, causal spot, both-rights quote/OI, dividend/rate/IV semantics, availability/latency assumptions and broker/account/date/channel costs | Existing stock/option lineage where applicable; broker account details and qualified provider evidence where missing |
-| 3 | Pilot pair construction and execution mechanics | Exact common-strike/expiry selection; paired-order or explicit legging model; reservations, partial legs, marks, exits and exercise/settlement reconcile | Extend existing engines with fixtures; single-leg support does not qualify a straddle; only implement mechanics needed by the pilot |
+| 2 | Pilot input and cost qualification — bounded raw packet ready | Inspect one fixed 21-close SPY source window, then bind PIT economic returns, causal spot, quotes/OI, dividend/rate/IV, availability and broker costs | Next meaningful operator command below; raw closes alone do not qualify economic returns or historical availability |
+| 3 | Pilot pair construction and execution mechanics — synthetic path implemented | Exact common-strike/expiry selection, daily exit requests, explicit legging, reservations, residual marks and sale-settlement cash reconcile | Fixtures establish mechanics; accepted execution, deliverables, exercise and settlement adapters remain downstream; frozen single-leg engines unchanged |
 | 4 | ThetaData source acceptance when active | Preserve existing 09:35 qualifier; separately qualify native 10:00 CALL/PUT shape and earlier years with bounded receipts/repeatability | Subscription and Terminal; no acquisition or subscription activation authorized by the new planner |
 | 5 | Bounded candidate acquisition and enrichment | Reuse/acquire the separate native discovery plan and frozen 9,455 stock-to-CALL surfaces; exact OI/IV/entry/management demand follows causal selection | Accepted source/storage, PIT dividends/rates and model units; no broad market-wide tick campaign |
 | 6 | Fast DEVELOPMENT research | Register the matching trial before outcomes, evaluate one frozen variant, report all decisions/coverage and reject unsupported hypotheses cheaply | Accepted native inputs/adapters and experiment budget; 2018-2025 is DEVELOPMENT, not fresh qualification |
@@ -116,7 +116,30 @@ The synthetic feature function rejects future/late/stale inputs, incomplete prio
 
 Historical runs remain blocked until source/adapters, broker costs and multi-leg execution/lifecycle qualify. Two snapshots do not prove an atomic pair fill, and partial legs retain actual exposure. `specification_trial_draft` uses the existing hash-chained `StrategyTrialLedger`; no workstation ledger was appended here. Before any later historical outcome read, append the matching draft and bind the run/input identities. Material rule/universe/clock changes consume a new registered variant; additional variants require a separately declared budget. Keep all negative results, abstentions and coverage gaps. Assess every eligible rolling window and calendar period, including low-count/unresolved windows; positive results in every window are not an acceptance requirement. Regime restrictions require independent later verification. The consumed 2026 holdout cannot qualify this pilot; prospective qualification needs its own interval and authority.
 
-The planner can be previewed without saving; `--output` optionally saves a deterministic review copy and refuses conflicting files. Another workstation command is unnecessary for this specification. Next dependencies are accepted pilot inputs and the pair/cost/lifecycle interfaces, not another inventory or broad strategy tournament.
+The planner can be previewed without saving; `--output` optionally saves a deterministic review copy and refuses conflicting files. Another workstation command is unnecessary for this specification. The frozen pilot fingerprint and one-variant budget remain unchanged by the following engineering work.
+
+### Options-native pair mechanics and next workstation input
+
+[Pair construction and management](../packages/strategies/options_native_pair_v1.py) accept invented typed fixtures only. Selection fixes the earliest 30-45 DTE expiry and nearest common strike before inspecting selected-leg liquidity or availability; failure abstains without another pair. The selected pair requires qualified original identities/deliverables, spot, quote/OI states and clocks, spread and displayed size. Zero reported volume alone does not reject a quote. Daily fixture reviews request an exit when the variance gap is nonpositive, five subsequent XNYS sessions have elapsed, or DTE is at most 14. Missing/unqualified variance cannot establish a thesis exit but never disables time guards. These are requests at 10:01, not fills or capital releases.
+
+The separate [synthetic pair coordinator](../packages/simulation/options_native_pair_account_v1.py) reuses the existing cent cash convention without changing recurrent V1 or single-leg contracts. It reserves both original entry limits and explicit entry/exit fees, enforces one open pair and the frozen 5% cap, and processes each invented fill at its availability clock. A lone filled leg or residual exit remains exposure. Only a qualified final zero-fill cancellation releases an unfilled leg's reservation; a timeout does not. Sale receipts realize only that leg's basis/P&L and create unsettled proceeds. An explicit, exact sale-settlement receipt transfers those proceeds to spendable cash; no historical settlement date or intrinsic exercise is assumed. Missing current marks, pending execution or unresolved expiry leave equity unknown. All fees are explicit fixture assumptions, not a broker schedule. This is a bounded in-memory fixture coordinator, not a historical or durable production account adapter.
+
+The next meaningful operator action is [the pilot raw-input packet](../scripts/inspect_options_native_pilot_inputs_v1.py). It reuses the native SPY reader's existing research/native-plan/checkpoint/hash checks, with opt-in bounds and a SQL predicate for exactly 21 completed SPY sessions before the fixed `2020-01-06T15:00:00Z` anchor: 2019-12-04 through 2020-01-03. It hashes two exact 2019/2020 raw daily batch files, verifies plan/inventory metadata, and never opens minute or option histories, calls providers, computes outcomes or runs a strategy. Limits are 64 MiB per metadata/compressed-plan/canonical-unit file, 128 MiB inventory, 256 MiB expanded plan and 1 MiB per plan line; expansion streams and blocks at the bound. The saved packet contains the selected raw closes, source/unit/file identities, missing sessions and explicit qualification gaps. It does not turn raw price changes into economic returns, substitute adjusted prices, infer publication from a calendar close, append a trial or qualify the pilot.
+
+Run once from the existing Windows main checkout and return the output plus the small JSON named on the `saved report` line:
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }
+    git pull --ff-only
+    if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
+    .\.venv\Scripts\python.exe scripts\inspect_options_native_pilot_inputs_v1.py --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'Pilot input packet blocked; see output above.' }
+}
+```
+
+The report saves under `data/research/options_native_pilot_input_packet_v1`, honors the research-evidence storage binding, and refuses conflicting output. A complete raw packet can still have qualification gaps; inspect those before building the economic-return/availability adapter. Missing/changed/oversized sources block without a rebuild or fallback. This command has not been run on the workstation yet; existing cache inventories and retained-result audits need no repeat.
 
 ### Offline workstation review
 
