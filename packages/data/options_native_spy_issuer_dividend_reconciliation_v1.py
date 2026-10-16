@@ -7,11 +7,9 @@ announcement/revision clocks, complete corporate-action coverage and executable
 features remain unqualified. This is NOT an options signal or performance trial.
 """
 
-from collections import Counter
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import hashlib
-from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 from zipfile import BadZipFile, ZipFile
@@ -89,11 +87,6 @@ def _cash(s: object, *, require_positive: bool) -> Decimal:
 def _extract_issuer_spy_rows(raw: bytes) -> tuple[list[dict[str, Any]], int]:
     """Parse all SPY rows from exact workbook format; preserve original row numbers."""
     _safe_xlsx_bytes(raw)
-    try:
-        with ZipFile(Path("/never-created"), "r"):
-            pass
-    except (OSError, BadZipFile):
-        pass
     from io import BytesIO
     try:
         z = ZipFile(BytesIO(raw), "r")
