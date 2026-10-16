@@ -162,10 +162,12 @@ def inspect_official_issuer_xlsx(raw: bytes) -> dict[str, Any]:
         for item in entries:
             name = item.filename.replace("\\", "/")
             _require(name not in paths and not name.startswith("/")
-                     and ".." not in name.split("/") and not name.endswith("/")
+                     and ".." not in name.split("/")
                      and not name.startswith("xl/externalLinks/")
                      and not name.endswith("vbaProject.bin"),
                      "unsafe, duplicated, external-linked or macro-enabled issuer workbook")
+            if item.is_dir():
+                continue
             paths.add(name)
             uncompressed += item.file_size
             _require(item.file_size <= ZIP_MAX_ENTRY_BYTES
