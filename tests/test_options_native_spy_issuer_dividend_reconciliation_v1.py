@@ -65,7 +65,7 @@ def test_issuer_33_cash_exdates_and_original_32_events_reconcile():
 
 
 @pytest.mark.parametrize("change", ["missing_ex", "extra_ex", "changed_cash", "changed_archive",
-                                    "missing_archival", "nonzero_capital_gain", "wrong_omission_source_row"])
+                                    "missing_archival", "nonzero_capital_gain", "wrong_omission_source_row", "bad_period_payment"])
 def test_any_new_unexplained_dividend_drift_abstains(change):
     rows, archive = issuer_fixture(), archive_fixture()
     if change == "missing_ex":
@@ -82,6 +82,9 @@ def test_any_new_unexplained_dividend_drift_abstains(change):
         rows[0]["long_term_capital_gain_raw"] = "0.01"
     elif change == "wrong_omission_source_row":
         next(r for r in rows if r["ex_date"] == "2018-06-15")["source_row"] = 5
+    elif change == "bad_period_payment":
+        rows[0]["record_date"] = "2026-01-03"
+        rows[0]["payable_date"] = rows[0]["ex_date"]
     with pytest.raises((ValueError, KeyError)):
         mod._compare_source_rows(rows, reference_schedule(), archive)
 
