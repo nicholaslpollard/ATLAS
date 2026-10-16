@@ -162,7 +162,7 @@ The operator completed `scripts/review_options_native_spy_development_clocks_v1.
 
 The uploaded `bf18bb1a4c7e38f0.json` was independently inspected and its canonical fingerprint rechecked. Raw SHA-256: `962852e3fc3739494b9758a8916ebe9ba0dfb8cdcadc71a651fa254e99455191`; report fingerprint: `bf18bb1a4c7e38f0dad91e1afaf3dd93d3dbdea9692f9e1345cf3b25efb56c2f`. All 97 accepted monthly source units were checked in one 15-second workstation run. Exactly 2,406/2,407 unique SPY minute clocks are present. The **one** missing observation is the normal 15:59–16:00 ET closing bar for SPY on **2019-08-12**, starting `2019-08-12T19:59:00+00:00`. Its source unit is `d1fee36b2b31db90fc3f268bba82742b970d8406260c7af60c8179d84d7b037e`; the originally accepted canonical file SHA-256 is `88e65db9f050db7885e225c0f559f94fdee6fca8f3101898a0219650c89cbd18`. Because prior 21-session lookbacks overlap, the gap affects the **2019-08-19**, **2019-08-26**, **2019-09-03**, and **2019-09-09** decisions, each with 21/22 minute observations. All other **407/411** weekly cases are physically complete. These are NOT 407 historically accepted signals: the 2026 archive lacks contemporaneous bar-publication and economic-action qualifications. No missing-bar substitute or paid acquisition is authorized. The 2026 master holdout was not accessed.
 
-### Full-period SPY archival action inventory — next offline gate
+### Full-period SPY archival action inventory — completed 2026-10-16
 
 [The bounded archive index](../packages/data/options_native_spy_archival_action_timeline_v1.py) and [script](../scripts/index_options_native_spy_archival_actions_v1.py) extend the 2020 action-source proof across the entire frozen 2018–2025 weekly pilot. They pin the complete 411-week price-coverage report by raw SHA-256 and content fingerprint, and similarly pin the previously verified 379-page original corporate-action source proof. The command verifies the source manifest and hash of the accepted `native_actions.jsonl.gz`, streams precisely the 378,362 existing normalized records ONCE, and selects SPY archival event candidates from 2017-11-01 through 2025-12-23. The originally verified 379 raw pages are **not reopened**. Candidate effective/execution/ex-dates, undated records and all action types remain separately visible. They are indexed only against the **20 return-ending sessions** of each frozen 21-close input window; the first prior close is only the baseline. The four 2019 gap weeks remain physically incomplete.
 
@@ -182,6 +182,34 @@ Once exact-head Linux/Windows CI is green and the PR is merged, run the followin
 ```
 
 The JSON is stored under `data/research/options_native_spy_archival_action_timeline_v1` on the established research-evidence D: binding. Provider, broker, raw SPY price, option, outcome and 2026 protected data reads remain **zero**.
+
+The operator successfully completed this archival pass and uploaded `6aaf6b09006443d0.json` on **2026-10-16**. Independently verified raw SHA-256 is `0010728cd99394834434555042ead745e4d12420050dcaa81396e277baa7546d`; canonical report fingerprint is `6aaf6b09006443d01dceb38b67c4e25ad496db165964411cddafebdc13d2a7a6`. The source lists 32 cash-dividend records, no other types, zero undated SPY selections, 144 weekly decisions with at least one archived ex-date in the fixed prior return window and **267 archive-empty windows**. None is an accepted no-action window. The original 378,362-row ledger and 379 original pages have already been fully inspected; **do not run this command again** unless explicitly investigating identity drift.
+
+### Source completeness failure: independently documented omitted 2018 SPY dividend
+
+A retrospective cross-source check on 2026-10-16 found that this immutable Alpaca corporate-action archive omits the SPY cash dividend with U.S. ex-date **2018-06-15**, USD **1.245568** per share. Its existence and approximately USD 1.24557 distribution are corroborated by [State Street's related SPY/CDI distribution-history table](https://www.ssga.com/au/en_gb/institutional/etfs/state-street-spdr-sp-500-etf-spy) and the US ex-date/amount by [U.S. SPY dividend history](https://dividendhistory.org/payout/SPY/) and [an independent SPY dividend table](https://www.slickcharts.com/symbol/SPY/dividend). The Australian CDI table has **different distribution-calendar semantics**, so it is NOT evidence of the US SPY ex-date or historical announcement clock by itself. Sources are contemporary retrospective pages, not timestamped immutable 2018 announcements.
+
+The **2018-06-18, 2018-06-25, 2018-07-02, 2018-07-09 and 2018-07-16** weekly prior windows contain this ex-date but show *zero* archived dividend candidates. All five have physically complete raw SPY 21-close/decision-spot windows. Thus historical action completeness fails independently of the separate four incomplete-price weeks in August/September 2019. The omission proves the accepted archive is **incomplete**, not which acquisition stage omitted the record, and does not establish that other missing events exist or don't exist. Existing action-source receipts are preserved and must not be rewritten to fabricate the missing event.
+
+[The offline negative-control module](../packages/data/options_native_spy_dividend_negative_control_v1.py) and [script](../scripts/review_options_native_spy_dividend_negative_control_v1.py) pin the completed 411-week minute-coverage JSON and the newly uploaded archival-action JSON by both file SHA and canonical fingerprint. Without reopening any raw records, they derive exactly which fixed prior 20 return-ending clocks overlap the externally witnessed ex-date. The result explicitly records 32 archived cash dividends, 267 archive-empty weeks and five directly disproven 'no action' interpretations. No dividends are backfilled, no historical publication clock is fabricated, and no forecast or trade is authorized. Candidate source coverage, announcement/revision times, split/no-split coverage, adjusted economic returns and option inputs remain **unqualified**. The historical hypothesis, trial budget, source archive and 2026 holdout stay frozen.
+
+Once **exact-head Linux and Windows CI are green and PR merged**, run only the new bounded source discrepancy certificate:
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw 'Git update failed.' }
+    & .\.venv\Scripts\python.exe scripts\review_options_native_spy_dividend_negative_control_v1.py --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'SPY archive negative control blocked; paste output.' }
+}
+```
+
+This reads only the two completed small pinned JSON reports. The JSON report goes to `data/research/options_native_spy_dividend_negative_control_v1` on D:; user returns only this command output and saved JSON. No provider/broker/source-bar/option/outcome calls or simulation.
+
+**Follow-up priority:** obtain a complete, traceable sponsor/authoritative historical distribution series, reconcile ex-dates and event cash values across all frozen windows, and separately establish historical announcement/revision availability. The present witness proves incompleteness but is not, by itself, a substitute accepted event series. Avoid dozens of small pilots or repeated native archive scans.
+
 
 
 
