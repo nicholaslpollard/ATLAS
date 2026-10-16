@@ -1,12 +1,14 @@
 # ATLAS Project Guide and Roadmap
 
-**Reviewed 2026-10-15 (America/New_York). Code baseline: main at `e97896d456c081c2cd5ea10871a6d2cd08889d4c` (PR #324), with the opt-in synthetic partial-exit extension described below. Workstation observations retain their original dates.**
+**Reviewed 2026-10-15 (America/New_York). Code baseline: main at `bf7e0000a903893dd26dfc260ae57f8f260d26e8` (PR #325), with the user-approved options-first research direction and first options-native specification below. Workstation observations retain their original dates.**
 
 This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. The documentation consolidation did not rerun the historical corpus. A subsequent operator metadata inventory on 2026-10-12 established the storage observations below.
 
 ## Goals and definition of progress
 
 Build an operator-usable quantitative system that reconstructs trustworthy stock/news/options information point in time; evaluates independent strategy families and conditions; forecasts underlying move magnitude, timing, downside, and uncertainty; compares stock/option economics after costs; sizes, manages, and reconciles realistic accounts; replays history and operates prospective PAPER; records decisions and outcomes; and improves through versioned research with explicit promotion and rollback. Controlled LIVE operation is a later goal.
+
+Options-native discovery is a primary research branch: volatility pricing, implied versus forecast movement, skew, term structure and events can originate a hypothesis without a stock BUY signal. Stock research remains independent and can support directional options or a stock alternative. Both branches use the same economic, risk and evidence standards. The first implementation targets one bounded long-volatility hypothesis; additional structures, including short options, need their own specifications and lifecycle support.
 
 The financial objective is positive expected value and account growth after costs, with controlled drawdown, tail loss, concentration, capacity, and execution risk. Profit is never guaranteed. A completed download or functioning dashboard is engineering progress, not a profitable strategy.
 
@@ -20,6 +22,7 @@ Product engineering and strategy research proceed together. A negative research 
 | Daily/minute semantics | V2 research preparation and B34 intraday/session audits accepted | Preserve missing bars, exact source identity, and corporate-action boundaries |
 | News | 141 monthly partitions, 2,211,606 records; source-integrity V2 accepted | No validated news-derived alpha; sentiment and attribution need PIT-safe evaluation |
 | Strategy laboratory | 21 economic families / 28 routes; 54,618,427 standalone DEVELOPMENT records; conditioning v1 completed | Aggregate conditioning/account evidence does not establish robust profitable strategies |
+| Options-native research | First SPY long-straddle specification, data contract, outcome-blind CALL/PUT plan and synthetic variance-feature arithmetic implemented | No historical performance run; accepted inputs, broker fees, pair construction/execution and prospective qualification remain open |
 | Dynamic exits | Prior-fold discrete Dynamic Exit V1 and continuous distribution-based V2 tested | V1 negative later results; V2 saturated near 3%/5%; neither is an accepted final exit policy |
 | Account lifecycle | Recurrent reservations, entries, marks, closes, re-entry, clocks, checkpoints, transactions and observability; synthetic retry/partial-exit mechanics and read-only mark coverage preview implemented | Accepted source integration, historical settlement and missing-mark source resolution remain open; recurrent V1 closes still require whole positions |
 | MarketData options | Candidate raw chains, exact-series caches, receipts, source reconciliation, and EOD account diagnostics exist | EOD timing differs from the intended intraday strategy; unresolved positions prevent a valid full account return |
@@ -33,7 +36,9 @@ File presence proves implementation, not workstation completion. Consult the evi
 
 ## System map and active components
 
-The common engine follows `PIT source -> features/context -> independent strategies -> evidence/forecast -> stock/options construction -> risk/account admission -> execution/lifecycle -> outcomes/performance -> operator interface`.
+The common engine follows `PIT source -> independent stock and options-native research -> evidence/forecast -> economic construction or NO TRADE -> risk/account admission -> execution/lifecycle -> outcomes/performance -> operator interface`.
+
+Use two levels with one versioned strategy specification: fast feature/diagnostic screening, then exact event-driven account replay for survivors. Fast approximations remain labeled and cannot manufacture fills or portfolio returns. Source validation and trade eligibility are separate: later source knowledge cannot remove an earlier bad trade. Multi-leg construction and paired execution are new capabilities; the accepted directional single-leg economics contract remains intact.
 
 | Component | Role and source of truth |
 | --- | --- |
@@ -76,18 +81,42 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 
 | Order | Work package | Completion criterion | Dependency |
 | --- | --- | --- | --- |
-| 1 | Workstation/cache inventory — metadata pass complete 2026-10-12 | All expected metadata groups found and six D: bindings READY; several option files exceeded the 8 MiB read limit, so their contents remain uninspected | Inventory is not new source acceptance; no purchase |
-| 2 | Unified offline results — retained reviews and exact-exit source audit completed | Stock review reconciles 36,254 selections, 43 directions and 33 folds; full baseline stays blocked by one changed file. Option audit explains all ten original exit rejections: nine volume checks / one fixed-clock check; four undersized bids. No repeat audit needed | Historical fill availability, deliverables, settlement and broker-specific costs remain separate dependencies |
-| 3 | Historical account lifecycle — synthetic retries/partial exits and mark coverage preview implemented | Explicit invented fills reconcile slice cash/P&L, residual units/cost basis and fee reserves. Strict valuation still requires all fresh exact-position marks; recurrent V1 closes remain full-position only | Accepted execution/source integration, historical exercise/settlement and missing marks; quote snapshots cannot supply fills |
-| 4 | Option input and execution-cost readiness | Identify PIT dividend/rate/event/volume gaps; qualify broker/account/order-channel fee schedules, applicable dates, pass-throughs and rounding; validate with fixtures | No subscription for design/fixtures; account classification and applicable broker schedule required for broker-accurate costs |
-| 5 | ThetaData local/source acceptance | Terminal preflight, bounded quote/OI qualification, original receipts, timestamp/schema/entitlement/repeatability checks | Active subscription and Terminal; no full campaign before success |
-| 6 | Candidate acquisition/construction | Acquire/reuse frozen 9,455 surfaces; qualify enrichment; PIT filters, dividend-aware Greeks, then common economic contract selection | Accepted source/storage; separately qualify unproven Greeks surface |
-| 7 | Exact option replay | Selected-contract exit demand only; execution/lifecycle at stock decision/exit clocks; STOCK vs OPTION comparison with coverage/costs | Selected entries, exact quotes, accepted inputs/lifecycle and qualified broker-specific costs |
-| 8 | Further strategy experiments | Separately frozen hypotheses, prior-only training, untuned qualifying/prospective evidence; failed versions/trials retained | Evidence reviewed; experimental specifications still to be decided |
+| 1 | Options-native pilot specification and data design — implemented | One SPY long-straddle variant, prior-only variance feature, dynamic management rule and 411 weekly CALL/PUT discovery surfaces, independently registered from stock signals | Code specification is not performance evidence; no operator run needed to repeat fixture checks |
+| 2 | Pilot input and cost qualification | Bind PIT economic returns, causal spot, both-rights quote/OI, dividend/rate/IV semantics, availability/latency assumptions and broker/account/date/channel costs | Existing stock/option lineage where applicable; broker account details and qualified provider evidence where missing |
+| 3 | Pilot pair construction and execution mechanics | Exact common-strike/expiry selection; paired-order or explicit legging model; reservations, partial legs, marks, exits and exercise/settlement reconcile | Extend existing engines with fixtures; single-leg support does not qualify a straddle; only implement mechanics needed by the pilot |
+| 4 | ThetaData source acceptance when active | Preserve existing 09:35 qualifier; separately qualify native 10:00 CALL/PUT shape and earlier years with bounded receipts/repeatability | Subscription and Terminal; no acquisition or subscription activation authorized by the new planner |
+| 5 | Bounded candidate acquisition and enrichment | Reuse/acquire the separate native discovery plan and frozen 9,455 stock-to-CALL surfaces; exact OI/IV/entry/management demand follows causal selection | Accepted source/storage, PIT dividends/rates and model units; no broad market-wide tick campaign |
+| 6 | Fast DEVELOPMENT research | Register the matching trial before outcomes, evaluate one frozen variant, report all decisions/coverage and reject unsupported hypotheses cheaply | Accepted native inputs/adapters and experiment budget; 2018-2025 is DEVELOPMENT, not fresh qualification |
+| 7 | Exact standalone account and window evaluation | Replay surviving specifications with fills, capital competition and complete valuation; rolling 5/21/252-session and calendar week/month/year reports | Qualified costs, source clocks, multi-leg lifecycle and marks; losing windows remain visible |
+| 8 | Independent comparison and portfolio assembly | Hand-audit fixture cash/order differences against a separately configured engine such as LEAN; combine justified survivors and test common capital/risk | Same inputs, explicit model differences, complete trial accounting and new independent/prospective evidence |
 | 9 | Operator PAPER and production | Integrated engine/UI, accepted Webull PAPER path, reconciliation/observability, operational state/recovery, authenticated deployment | Explicit authority packages; A35/A37 |
 | 10 | Qualifying PAPER and controlled LIVE | New prospective evidence, risk/execution acceptance, explicit promotion/rollback | A38, then Phase39; currently blocked |
 
-Orders 2-4 can overlap after required files are verified. Missing option access must not block stock/product work. Avoid new full strategy tournaments or repeated completed source campaigns merely to keep the machine busy.
+Orders 2-3 can advance offline before the subscription. Completed cache inventory, selected-stock review and ten-position exit audit remain recorded below; no repeat run is needed. Existing full-stock reporting remains blocked by one changed aggregate. Missing option access must not block useful stock/product work, and closed negative experiments remain closed.
+
+### Options-native pilot and data contract
+
+The source of truth is [the pilot contract](../packages/strategies/options_native_pilot_v1_contract.py); [the planner](../scripts/plan_options_native_pilot_v1.py) builds deterministic demand with no provider/broker calls, source scans or outcomes. The specification fingerprint is `e3ad55ad153ca61432bfde65aa0b5c54004766866a2919a567b6b5ade551efca`. This is a newly specified research hypothesis, with no profitable result or trading authority.
+
+| Item | Frozen pilot choice |
+| --- | --- |
+| Universe and clock | SPY, first XNYS session of each ISO week; observations through 10:00 ET, qualified delivery/computation through 10:01, then order eligibility |
+| Expression | Buy one CALL and one PUT at the same strike/expiration; earliest 30-45 DTE expiry, nearest common strike to causal spot, lower-strike tie; selected-pair failure abstains without fallback |
+| Feature | Twenty prior completed economic log returns; constant calendar-time variance rate projected to the same explicit model maturity as the pair's American-model IV |
+| Entry hypothesis | Forecast total variance strictly greater than the mean of CALL/PUT implied total variances; this comparison is neither a straddle-price model nor an expected-dollar-profit forecast |
+| Management | Recheck the original pair daily at 10:00; request exit when the forecast gap closes, after five subsequent sessions, or at <=14 calendar DTE; execution starts at 10:01 and can fail |
+| Capital | Research cash $100,000, one open pair, one pair per entry; debit plus fee reserves <=5% of available cash; no assumed cash interest |
+| Scope/budget | 2018-2025 DEVELOPMENT, including 2020; one strategy variant, qualified primary and predeclared spread/latency stress, NO TRADE control |
+
+The forecast assumes a constant variance rate, including weekends; it is a deliberately simple fixed baseline. IV and forecast share one maturity and 365-day units, while the position may exit much earlier. Actual premium repricing, theta, changing delta/vega, spreads and costs must therefore be evaluated from qualified quotes, not inferred from the variance gap. Model-based attribution stays separate from observed economics. Dynamic management here means a changing observable thesis, not tuned stock-percentage stop/target points.
+
+The plan contains 418 weekly clocks, with seven late-2025 entries excluded by a fixed 45-calendar-day buffer: 411 independent CALL/PUT snapshots. Initial qualification design uses 24 quote anchors plus a repeat, within a 64-request total design cap including bounded OI/model checks; all execution permissions remain false. Requests use a small provider strike band and max DTE 45; provider 0-29 DTE overfetch is ineligible. OI and model enrichment follow geometric pair selection. Entry, daily management and exit histories remain exact-contract downstream demand, not already acquired coverage. Both-rights/earlier-year qualification is separate from the existing 9,455 09:35 CALL plan.
+
+The synthetic feature function rejects future/late/stale inputs, incomplete prior windows, unqualified corporate-action/rate/dividend inputs and incompatible IV models. Its PASS proves arithmetic for invented fixtures only. The data contract distinguishes observation, publication/availability, decision readiness and offline calculation times. Unknown publication timing needs a separately qualified bounded clock/latency model with its assumptions retained; it cannot silently become observed availability. The stock calendar does not qualify option trading or exercise hours.
+
+Historical runs remain blocked until source/adapters, broker costs and multi-leg execution/lifecycle qualify. Two snapshots do not prove an atomic pair fill, and partial legs retain actual exposure. `specification_trial_draft` uses the existing hash-chained `StrategyTrialLedger`; no workstation ledger was appended here. Before any later historical outcome read, append the matching draft and bind the run/input identities. Material rule/universe/clock changes consume a new registered variant; additional variants require a separately declared budget. Keep all negative results, abstentions and coverage gaps. Assess every eligible rolling window and calendar period, including low-count/unresolved windows; positive results in every window are not an acceptance requirement. Regime restrictions require independent later verification. The consumed 2026 holdout cannot qualify this pilot; prospective qualification needs its own interval and authority.
+
+The planner can be previewed without saving; `--output` optionally saves a deterministic review copy and refuses conflicting files. Another workstation command is unnecessary for this specification. Next dependencies are accepted pilot inputs and the pair/cost/lifecycle interfaces, not another inventory or broad strategy tournament.
 
 ### Offline workstation review
 

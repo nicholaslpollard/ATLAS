@@ -2,14 +2,15 @@
 
 **Autonomous Trading, Learning, and Analysis System**
 
-ATLAS is being built to discover stock opportunities, compare stock and option trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
+ATLAS is being built as an options-first research and trading system: discover opportunities in option pricing and volatility, independently evaluate stock signals, compare trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
 
-**Reviewed 2026-10-15 against main at `e97896d456c081c2cd5ea10871a6d2cd08889d4c`.** Code and fixture verification do not renew workstation source or strategy acceptance.
+**Reviewed 2026-10-15 against main at `bf7e0000a903893dd26dfc260ae57f8f260d26e8`, with the options-native pilot specification described in the guide.** Code and fixture verification do not renew workstation source or strategy acceptance.
 
 ## Start here
 
 - [Project guide and roadmap](docs/roadmap.md): the single authority for goals, current state, architecture, dependencies, active work, and continuation.
 - [Strategy evidence register](docs/strategy_evidence_register.md): compact results, limitations, dispositions, and completed experiment identities.
+- [Options-native pilot plan](scripts/plan_options_native_pilot_v1.py): provider-free specification and bounded CALL/PUT discovery demand; no performance run or download.
 - [Offline workstation review](scripts/review_offline_workstation_v1.py): one bounded, provider-free inventory of storage bindings and retained metadata; usage is in the project guide.
 - [Retained stock results review](scripts/review_retained_stock_results_v1.py): reconcile accepted route/fold returns, costs, concentration, and five-session paths without a new replay; `--selected-only` uses the exact original summary and six matching aggregates when the full route cache is unavailable.
 - [Retained option account review](scripts/review_retained_option_account_v1.py): audit the original V2 ledger, retained cash/fees and unresolved contracts, then save a bounded evidence demand without rerunning its simulation.
@@ -24,6 +25,8 @@ The Alpaca SIP stock corpus and historical news are available on the workstation
 The retained V2 account review completed on 2026-10-14. The 2026-10-15 exact-exit audit found all ten original quote sources: nine exits failed the legacy positive-volume rule and one failed the fixed 16:00 rule on an early close; four positions exceeded reported bid size. These findings establish neither fills nor resolved account equity. Opt-in synthetic partial-exit accounting now tests residual contracts, cost basis and fee reserves. The retained $0.65-per-contract costs remain generic assumptions; broker-specific costs and historical settlement remain open in the roadmap.
 
 ThetaData Options Standard remains planned, with activation expected approximately three to four weeks after the 2026-10-12 planning note. Continue offline stock analysis, cached-result reporting, account-lifecycle work, and source-input preparation meanwhile. The [roadmap](docs/roadmap.md#ordered-roadmap) defines deliverables and dependencies.
+
+The first options-native pilot is a separately versioned SPY long-straddle hypothesis with prior-only volatility inputs and option-aware daily exits. Its specification, data contract, 411 weekly CALL/PUT discovery requests and synthetic feature checks are implemented. Historical source, broker costs and multi-leg execution remain unqualified. The original 9,455 stock-to-CALL surfaces and closed experiments retain their own identities.
 
 ## Local operator interface
 
