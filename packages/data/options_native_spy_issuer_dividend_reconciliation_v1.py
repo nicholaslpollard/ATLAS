@@ -136,8 +136,11 @@ def _extract_issuer_spy_rows(raw: bytes) -> tuple[list[dict[str, Any]], int]:
                         ex = _date(values.get("D"))
                         record = _date(values.get("E"))
                         payment = _date(values.get("F"))
-                        _require(ex not in seen_dates and ex <= record <= payment,
-                                 "SPY duplicate ex-date or nonmonotonic lifecycle dates")
+                        _require(ex not in seen_dates,
+                                 "SPY duplicate original issuer ex-date")
+                        if MIN_EX_DATE <= ex <= MAX_EX_DATE:
+                            _require(ex <= record <= payment,
+                                     "target-period SPY lifecycle dates inconsistent")
                         seen_dates.add(ex)
                         dividend = _cash(values.get("G"), require_positive=True)
                         for gain_col in ("H", "I"):
@@ -165,6 +168,9 @@ def _compare_source_rows(
     _require(len(in_period) == 33 and len({r["ex_date"] for r in in_period}) == 33,
              "issuer expected 2017-2025 distribution population differs")
     by_date = {row["ex_date"]: row for row in in_period}
+    _require(all(row["ex_date"] <= row["record_date"] <= row["payable_date"]
+                 for row in in_period),
+             "issuer in-period record/payment calendar changed")
     _require(all(row.get(column) in (None, "0.000000")
                  for row in in_period
                  for column in ("short_term_capital_gain_raw", "long_term_capital_gain_raw")),
@@ -262,6 +268,14 @@ def build_issuer_spy_reconciliation(settings: AtlasSettings) -> dict[str, Any]:
              "previous 33-row retrospective reference changed")
     rows, total = _extract_issuer_spy_rows(raw)
     outcome = _compare_source_rows(rows, expected, archive)
+    legacy_anomalies = [
+        {k: row[k] for k in ("source_row", "ex_date", "record_date", "payable_date")}
+        for row in rows if not (row["ex_date"] <= row["record_date"] <= row["payable_date"])
+    ]
+    _require(legacy_anomalies == [{
+        "source_row": 9211, "ex_date": "2006-06-16",
+        "record_date": "2006-06-20", "payable_date": "2006-06-16",
+    }], "issuer out-of-scope lifecycle anomaly population unexpectedly changed")
     report: dict[str, Any] = {
         "contract": CONTRACT,
         "status": "FULL_33_SPY_ISSUER_CASH_EVENTS_RECONCILED_RETROSPECTIVE_NO_PIT",
@@ -276,6 +290,7 @@ def build_issuer_spy_reconciliation(settings: AtlasSettings) -> dict[str, Any]:
         "issuer_original_bytes": RAW_BYTES,
         "issuer_workbook_rows": total,
         "issuer_all_time_spy_rows": len(rows),
+        "issuer_legacy_out_of_scope_date_anomalies": legacy_anomalies,
         "issuer_table_date_range": [MIN_EX_DATE, MAX_EX_DATE],
         "original_source_capture_clock": receipt["retrieved_at_utc"],
         **outcome,
