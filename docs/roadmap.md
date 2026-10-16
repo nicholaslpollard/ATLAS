@@ -235,13 +235,13 @@ The output is a conflict-safe small JSON under `data/research/options_native_spy
 
 The uploaded report `70bf12bdade00048.json` has independently verified **raw SHA-256 `1a67653fdd9cf57cdc585312bc03530cec6ff912808e2c4ca7f4a96df0cd3572`** and canonical fingerprint `70bf12bdade00048f4e1188cb7dfda5f55680911d355e9d4b1726baa47dd2ef1`. It gives 407/411 actual retrospective *arithmetic* diagnostics; 149 weeks contain at least one historical retrospective dividend, including the five 2018 omission weeks; four weeks abstain due to the same absent 2019-08-12 SPY close. Sign of annualized volatility delta: 26 positive, 123 negative, 258 zero. The previous January 2020 computation agrees exactly. None of these establishes a causal trading signal, profit or complete corporate-action coverage.
 
-### Next original-source step: U.S. State Street SPDR historical-distributions workbook
+### U.S. State Street SPDR historical-distributions original workbook — completed receipt
 
 The [issuer source-receipt module](../packages/data/options_native_spy_issuer_distributions_receipt_v1.py) and [explicit operator command](../scripts/receipt_options_native_spy_issuer_distributions_v1.py) use State Street's **U.S.** [SPDR Historical Distributions XLSX](https://www.ssga.com/library-content/products/fund-data/etfs/us/spdr-etf-historical-distributions.xlsx), linked from the official [U.S. distribution-information page](https://www.ssga.com/us/en/individual/resources/documents/etf-dividend-distributions). The network client could not fetch this original workbook in the chat environment; this does **not** establish that it is unavailable from the workstation. The only authorized new request is one **explicit free issuer-document HTTPS GET** (`--download`), not a paid price/option-data GET, and no automatic alternate URL, retries or broker/provider fallback.
 
 The runner pins the already completed 411-week retrospective variance JSON by exact source SHA and fingerprint, caps workbook compressed size to 32 MiB and total OOXML expansion to 160 MiB, rejects path traversal/external-link/macro objects and malformed cell/shared-string references, and inventories sheet/row counts and literal SPY/CUSIP/SPDR-label candidate rows. It writes both the **original unmodified XLSX bytes** with SHA-256 and a small content-fingerprinted inspection report to D: through the existing research-evidence storage binding. The original source receipt is immutable; conflicting writes block. The row probe is deliberately **not a universal XLSX importer or dividend parser**: source columns, dates, cash basis and any other corporate-action types must be audited from actual returned rows before full 33-event sponsor reconciliation is accepted. The workbook is a 2026 retrospective compilation and does not confer 2018–2025 announcement/revision availability, split-no-split qualifications, a historical economic-return feature, an IV comparison or simulation authority.
 
-Once exact-head **Windows and Ubuntu CI** is green and the PR is merged, run this single block from current `main`. It deliberately requests the published **issuer workbook only**, no broker/market-data requests:
+The operator successfully executed the following historical capture command on 2026-10-16. It is retained for provenance **not as a repeat instruction**:
 
 ```powershell
 & {
@@ -255,6 +255,30 @@ Once exact-head **Windows and Ubuntu CI** is green and the PR is merged, run thi
 ```
 
 If the official issuer HTTPS document blocks the one attempt, download **that same XLSX** through a regular browser and rerun the runner as `--local-xlsx "C:\\path\\to\\spdr-etf-historical-distributions.xlsx" --save-report`, with no extra network request. Return terminal output and the **small JSON saved report**; do not upload the large issuer workbook unless source layout analysis requires it. This original-source acquisition is deliberately separated from historical PIT availability.
+
+The completed original XLSX receipt was uploaded and independently rehashed: **581,216 original bytes; SHA-256 `6b65cbf956b5d25705d08470006a0e97e6a7d2a0d5cfd08b63f6f79783b06320`**. Retained source inspection report `c84814fcba520320.json` has raw SHA-256 `e0274d0628a1f4ae90510ef09359bab7073394689edf7d6f744ae224ca2f0f57` and canonical fingerprint `c84814fcba52032006d0f91890e7df1cdeef0c92774bc403a62ef968109e8ce4`; capture time 2026-10-16 09:36:16 UTC. The one-sheet workbook has 13,385 rows, including 136 SPY/CUSIP 78462F103 distributions dating to 1993. Its original row 1 names `EX-DATE` column D, `RECORD DATE` E, `PAYABLE DATE` F, `DIVIDEND ($)` G, and separate short/long capital gains H/I. The source row 9163 confirms the **2018-06-15** SPY ex-date and **USD 1.245568** dividend that the original action archive omitted. The issuer's 2018-03-16 cash `1.096775` agrees with the original Alpaca archive, correcting the third-party rounded `1.09678`; for 2020-06-19 the issuer `1.366242` agrees with the third-party reference, $0.0000001/share above the archival record `1.3662419`. Distinguish these two discrepancies by source, and do not silently mutate any prior report.
+
+### Next bounded gate: exact 33-event U.S. issuer SPY cash reconciliation
+
+[The source-reconciliation implementation](../packages/data/options_native_spy_issuer_dividend_reconciliation_v1.py) and [single runner](../scripts/reconcile_options_native_spy_issuer_dividends_v1.py) cross-check **all 33** original issuer SPY cash ex-dates from 2017-12-15 through 2025-12-19 against both the frozen 33-row retrospective comparison schedule and the unmodified native archive's 32 cash events. Every source row and important date, including the originally omitted June 2018 row 9163, has a retained original worksheet ordinal. Any unexpected date/value mismatch, altered column header, incorrect SPY identity/CUSIP, nonzero in-period capital-gain component, duplicate date or changed row count **blocks** without filling gaps or selecting another source.
+
+It reads **only three exact-hash/fingerprint-pinned JSON reports** (original action archive, recent full-period retrospective grid and the issuer receipt) and the hash-pinned original 581,216-byte XLSX in research-evidence storage. No source pages, 378k action ledger, 97 SPY minute months, option contracts/quotes, market outcomes, broker/provider requests or issuer re-downloads are read. The output is another small conflict-safe JSON under `data/research/options_native_spy_issuer_dividend_reconciliation_v1`.
+
+After this PR is exact-head Windows/Ubuntu **green and merged**, run once on Windows `main`:
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw 'Git update failed.' }
+    & .\.venv\Scripts\python.exe scripts\reconcile_options_native_spy_issuer_dividends_v1.py --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'Issuer cash source reconciliation stopped. Paste complete output.' }
+}
+```
+
+Upload its small saved JSON and console output. A current-day issuer history snapshot can establish accuracy and coverage **within that snapshot and period**, not original announcement/revision timing, historical as-of feature availability, negative evidence of all splits/noncash events, trade execution, option implied variance or alpha. **No historical research authorization changes** until those distinct blockers have their own receipts and authority.
+
 
 
 
