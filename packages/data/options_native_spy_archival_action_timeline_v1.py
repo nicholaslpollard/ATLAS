@@ -13,7 +13,7 @@ from datetime import date, datetime
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from packages.core.settings import AtlasSettings
 from packages.data.alpaca_v2_rebuild import V2Layout
@@ -148,7 +148,7 @@ def verify_source_bindings(coverage: dict, proof: dict) -> None:
 
 
 def projected_archival_events(
-    records: list[dict[str, Any]], pages: list[dict[str, Any]], *,
+    records: Iterable[dict[str, Any]], pages: list[dict[str, Any]], *,
     start: date = START, end: date = END,
 ) -> list[dict[str, Any]]:
     """Select SPY events, including unknown-date records, without claiming coverage."""
@@ -234,21 +234,23 @@ def build_spy_archival_action_timeline(
         progress("pinned 411-case minute coverage and 379-page action proof verified; streaming one native action ledger")
     # The original 379 pages and 378362 records have ALREADY been mutually
     # reconciled by the pinned proof. Do not reopen original source pages here.
-    rows = []
-    first_2019 = []
     count = 0
-    try:
-        for record in _gzip_records(ledger):
-            count += 1
-            _require(count <= MAX_LEDGER_RECORDS, "archival ledger record count unbounded")
-            rows.append(record)
-            if count % 50000 == 0 and progress:
-                progress(f"archival native records reviewed {count}/{proof['reconciled_action_records']}")
-    except (OSError, EOFError, ValueError, TypeError) as exc:
-        raise SpyArchivalTimelineError("accepted native action ledger unreadable") from exc
+
+    def original_records() -> Iterable[dict[str, Any]]:
+        nonlocal count
+        try:
+            for record in _gzip_records(ledger):
+                count += 1
+                _require(count <= MAX_LEDGER_RECORDS,
+                         "archival ledger record count unbounded")
+                if count % 50000 == 0 and progress:
+                    progress(f"archival native records reviewed {count}/{proof['reconciled_action_records']}")
+                yield record
+        except (OSError, EOFError, UnicodeError, ValueError, TypeError) as exc:
+            raise SpyArchivalTimelineError("accepted native action ledger unreadable") from exc
+
+    candidates = projected_archival_events(original_records(), pages)
     _require(count == proof["reconciled_action_records"], "original native action count changed")
-    candidates = projected_archival_events(rows, pages)
-    del rows
     early = [x for x in candidates if x in proof["spy_action_candidates"]]
     _require(len(early) == 2, "2019/2020 SPY page candidates do not reconcile to prior original proof")
     indexed = index_weekly_action_exposure(coverage["cases"], candidates)
