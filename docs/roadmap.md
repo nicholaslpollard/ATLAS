@@ -1,6 +1,6 @@
 # ATLAS Project Guide and Roadmap
 
-**Reviewed 2026-10-16 (America/New_York). Code baseline: main at `89272aa10a0d1532311a30c03c5d5ba50a7a9e89` (PR #327), with the inspected pilot packet and cached stock-input follow-up below. Workstation observations retain their original dates.**
+**Reviewed 2026-10-16 (America/New_York). Confirmed main baseline: `70da241349d50781de9c3a30c6ba7023efa07aa5` (PR #328), with the proposed original-action proof separately reviewed below. Workstation observations retain their original dates.**
 
 This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. The documentation consolidation did not rerun the historical corpus. A subsequent operator metadata inventory on 2026-10-12 established the storage observations below.
 
@@ -22,7 +22,7 @@ Product engineering and strategy research proceed together. A negative research 
 | Daily/minute semantics | V2 research preparation and B34 intraday/session audits accepted | Preserve missing bars, exact source identity, and corporate-action boundaries |
 | News | 141 monthly partitions, 2,211,606 records; source-integrity V2 accepted | No validated news-derived alpha; sentiment and attribution need PIT-safe evaluation |
 | Strategy laboratory | 21 economic families / 28 routes; 54,618,427 standalone DEVELOPMENT records; conditioning v1 completed | Aggregate conditioning/account evidence does not establish robust profitable strategies |
-| Options-native research | SPY pilot, CALL/PUT plan, synthetic variance/geometry/exits/two-leg account and economic-return arithmetic implemented; 21-close raw packet inspected | No historical performance run; cached action/clock follow-up ready, while economic returns, publication/revision clocks, costs, execution and prospective qualification remain open |
+| Options-native research | SPY pilot, CALL/PUT plan, synthetic variance/geometry/exits/two-leg account and economic-return arithmetic implemented; 21-close and 22-clock reports inspected | No historical performance run; cached action/clock follow-up ready, while economic returns, publication/revision clocks, costs, execution and prospective qualification remain open |
 | Dynamic exits | Prior-fold discrete Dynamic Exit V1 and continuous distribution-based V2 tested | V1 negative later results; V2 saturated near 3%/5%; neither is an accepted final exit policy |
 | Account lifecycle | Recurrent reservations, entries, marks, closes, re-entry, clocks, checkpoints, transactions and observability; synthetic retry/partial-exit mechanics and read-only mark coverage preview implemented | Accepted source integration, historical settlement and missing-mark source resolution remain open; recurrent V1 closes still require whole positions |
 | MarketData options | Candidate raw chains, exact-series caches, receipts, source reconciliation, and EOD account diagnostics exist | EOD timing differs from the intended intraday strategy; unresolved positions prevent a valid full account return |
@@ -82,7 +82,7 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 | Order | Work package | Completion criterion | Dependency |
 | --- | --- | --- | --- |
 | 1 | Options-native pilot specification and data design — implemented | One SPY long-straddle variant, prior-only variance feature, dynamic management rule and 411 weekly CALL/PUT discovery surfaces, independently registered from stock signals | Code specification is not performance evidence; no operator run needed to repeat fixture checks |
-| 2 | Pilot input and cost qualification — raw packet inspected, cached follow-up ready | Reuse the verified 21-close packet; inspect exact minute clocks and original SPY action records before binding PIT returns, spot, options and costs | Next meaningful operator command below; source snapshots and recorded dates do not establish historical availability |
+| 2 | Pilot input and cost qualification — cached minute/action review complete; original page proof prepared | Reuse 21-close/22-clock reports; inspect the original action-page-to-ledger source proof before binding PIT returns or option inputs | New bounded action source-proof command below; source snapshots and recorded dates do not establish historical availability |
 | 3 | Pilot pair construction and execution mechanics — synthetic path implemented | Exact common-strike/expiry selection, daily exit requests, explicit legging, reservations, residual marks and sale-settlement cash reconcile | Fixtures establish mechanics; accepted execution, deliverables, exercise and settlement adapters remain downstream; frozen single-leg engines unchanged |
 | 4 | ThetaData source acceptance when active | Preserve existing 09:35 qualifier; separately qualify native 10:00 CALL/PUT shape and earlier years with bounded receipts/repeatability | Subscription and Terminal; no acquisition or subscription activation authorized by the new planner |
 | 5 | Bounded candidate acquisition and enrichment | Reuse/acquire the separate native discovery plan and frozen 9,455 stock-to-CALL surfaces; exact OI/IV/entry/management demand follows causal selection | Accepted source/storage, PIT dividends/rates and model units; no broad market-wide tick campaign |
@@ -132,7 +132,19 @@ The same command hashes the accepted source snapshot and its original native-act
 
 Resource bounds: two sequential minute units at 256 MiB each, 4 MiB per JSON, 128 MiB inventory, 64/256 MiB compressed/expanded plan, 128/512 MiB compressed/expanded action files, 1 MiB lines and bounded row/output counts. DuckDB uses two threads and 512 MiB; a heartbeat reports active checks every 20 seconds. There are zero daily-unit rereads, provider/broker requests, option histories, outcome calculations or simulations. Output remains diagnostic, with unknown historical availability and no pilot acceptance.
 
-Run once from the existing Windows main checkout and return the output plus the small JSON named on the `saved report` line:
+The completed 2026-10-16 workstation command was `scripts/review_options_native_stock_inputs_v1.py --save-report`; do **not** repeat that successful stock-input scan. The next command is the original-action proof described below.
+
+The report saves under `data/research/options_native_stock_input_review_v1`, honors the research-evidence storage binding, and refuses conflicting output. The operator completed this follow-up on 2026-10-16. The uploaded `9caee69b5d0fc180.json` records 22/22 exact minute observations (21 prior regular closes plus the 2020-01-06 09:59–10:00 ET SPY spot at 321.60), no missing clock and one SPY dividend candidate with ex-date 2019-12-20 and rate 1.569992 per share. Its fingerprint is `9caee69b5d0fc18075451f7b4b8c46ec3c8db817d4b0b0d3ed311bf9712748e7`. These are verified retained report facts, not as-of historical publication proof, accepted dividend treatment or an executable option input. No repeat stock scan is needed. Missing/changed/oversized artifacts block without rebuild or fallback.
+
+### Options-native original corporate-action page proof — next local gate
+
+[The bounded source-proof module](../packages/data/options_native_spy_action_source_proof_v1.py) and [operator command](../scripts/prove_options_native_spy_actions_v1.py) use the pinned 2026-10-16 cached-stock review, original action manifest/source snapshot, full native-action ledger and original concatenated gzip-page bundle. Each decompressed original source page must match its manifest-recorded SHA-256/length; every extracted original record must match the corresponding native ledger record in exact page/type/index order. The old December–January SPY selection must reproduce the verified prior report byte-for-byte at the semantic-record level. The separate expanded action window is 2019-10-01 through 2020-03-31 so dividend, split, identity and undated candidates remain visible for the 2020 pilot. Revised candidate records are retained separately rather than cherry-picked or deduplicated. Blank selection is not qualified no-action coverage.
+
+The source proof does not reinterpret process/ex/record/payment dates as announcement or publication clocks, does not correct bar prices, and does not create economic-return, volatility, option-model, historical trade or PAPER/LIVE authority. Historical action availability, source revisions, corporate-action coverage and a justified as-of economic adjustment are still required. The pilot strategy/version and prior close review are immutable. No option/market/stock-outcome/provider reads are performed.
+
+Only two source objects are streamed: the accepted native-action ledger and original compressed-page bundle. Both compressed files are hash-verified within 128 MiB each; concatenated gzip members have 32 MiB per-page and 512 MiB aggregate expansion limits, with an exact ledger equality/count check and a 20-second heartbeat. Original page hashes are **verified** here, unlike the earlier cached-stock summary which only recorded them. Existing mismatched reports are not overwritten.
+
+After merging and verifying source-proof CI, run once from the Windows `main` checkout and return terminal output **and** the small JSON named by the saved-report line:
 
 ```powershell
 & {
@@ -140,12 +152,12 @@ Run once from the existing Windows main checkout and return the output plus the 
     if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main.' }
     git pull --ff-only
     if ($LASTEXITCODE -ne 0) { throw 'Git pull failed.' }
-    .\.venv\Scripts\python.exe scripts\review_options_native_stock_inputs_v1.py --save-report
-    if ($LASTEXITCODE -ne 0) { throw 'Pilot stock-input review blocked; see output above.' }
+    .\.venv\Scripts\python.exe scripts\prove_options_native_spy_actions_v1.py --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'Original SPY corporate-action source proof blocked; paste complete output.' }
 }
 ```
 
-The report saves under `data/research/options_native_stock_input_review_v1`, honors the research-evidence storage binding, and refuses conflicting output. This follow-up has not run on the workstation yet. Missing/changed/oversized artifacts block without a rebuild or fallback; the original packet, source files and completed retained-result audits remain intact.
+The saved report belongs under `data/research/options_native_spy_action_source_proof_v1` on the existing research-evidence storage binding. The 21-close packet and 22-minute review need no rerun. Do not advance PIT dividend returns or the variance forecast from fixture assumptions while publication/revision proof remains unknown.
 
 [Economic-return fixture arithmetic](../packages/strategies/options_native_economic_returns_v1.py) prepares the next adapter without inventing source facts. For one share at the prior close, it computes `ln((split_new_per_old * current_raw_close + ex_date_cash_per_original_share) / prior_raw_close)` using a 34-digit decimal context and 24-decimal-place log returns compatible with the existing variance-input contract. Cash is an analytical ex-date entitlement per original share, not a payment-date account credit. Explicit split/no-split and cash/no-cash values, complete action coverage and publication/revision qualification are required. Unknowns, noncash/identity actions or ambiguous share basis abstain; one bad interval invalidates the fixed twenty-return window. It emits typed fixture returns for the existing variance screen, grants no historical adapter authority and changes neither the frozen strategy nor its budget. [S&P's total-return methodology](https://www.spglobal.com/spdji/en/methodology/article/index-mathematics-methodology/) describes the distinction between price movement and dividend reinvestment; this fixture convention is separately labeled from account cash settlement and option pricing.
 

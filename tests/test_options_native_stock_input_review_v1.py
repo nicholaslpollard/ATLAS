@@ -50,7 +50,7 @@ def reseal(ctx):
         "page_count": 1, "action_record_count": len(ctx["actions"]), "data_quality": "complete",
         "pages": [{"sha256": hashlib.sha256(raw_page).hexdigest(), "captured_at_utc": "2026-09-01T12:00:00+00:00"}],
         "native_actions": {"path": str(actions_path), "sha256": sha(actions_path)},
-        "raw_bundle": {"path": str(raw_path), "sha256": sha(raw_path)},
+        "raw_bundle": {"path": str(raw_path), "sha256": sha(raw_path), "member_count": 1},
     }
     write_json(layout.manifests / "corporate_actions.json", action_manifest)
     snap = layout.manifests / "source_snapshot.json"
