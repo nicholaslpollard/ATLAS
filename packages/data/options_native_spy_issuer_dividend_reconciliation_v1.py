@@ -165,6 +165,10 @@ def _compare_source_rows(
     _require(len(in_period) == 33 and len({r["ex_date"] for r in in_period}) == 33,
              "issuer expected 2017-2025 distribution population differs")
     by_date = {row["ex_date"]: row for row in in_period}
+    _require(all(row.get(column) in (None, "0.000000")
+                 for row in in_period
+                 for column in ("short_term_capital_gain_raw", "long_term_capital_gain_raw")),
+             "target-period SPY capital-gain components require separate accounting")
     _require(set(by_date) == set(reference), "issuer/independent historical ex-date disagreement")
     archive_comparison = reconcile_reference_to_archive(archive, reference)
     native = {row["payload"]["ex_date"]: Decimal(str(row["payload"]["rate"]))
