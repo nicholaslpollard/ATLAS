@@ -22,6 +22,7 @@ from packages.simulation.offline_option_exit_retry_v1 import (
 )
 
 CONTRACT = "atlas-multiyear-synthetic-account-replay-engine-v1"
+EXIT_FILL_CONTRACT = "atlas-synthetic-option-exit-fill-v1"
 ORIGIN = "SYNTHETIC_FIXTURE_ONLY"
 MODES = ("STOCK", "CALL", "PUT", "ABSTAIN")
 CENTS = Decimal("0.01")
@@ -90,6 +91,43 @@ class ReplayPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class SyntheticOptionExitFillV1:
+    """Explicit invented execution, never inferred from a quote or bid size.
+
+    Cash becomes usable at available_at_utc, without backdating earlier account
+    decisions. execution_per_share is the final execution price; account option
+    slippage is not charged again. Policy exit fees still apply per closed unit.
+    Qualification flags describe the fixture's assumptions, not historical proof.
+    """
+    fill_id: str
+    option_symbol: str
+    executed_at_utc: datetime
+    available_at_utc: datetime
+    contracts: int
+    execution_per_share: str
+    source_integrity_qualified: bool
+    execution_clock_qualified: bool
+    origin: str = ORIGIN
+
+    def validate(self, symbol: str, opened_at: datetime, expiration: date) -> None:
+        if (self.origin != ORIGIN or not isinstance(self.fill_id, str)
+                or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", self.fill_id) is None
+                or self.option_symbol != symbol):
+            raise OfflineAccountReplayError("exit fill requires fixture identity and exact option")
+        executed = _stamp(self.executed_at_utc, "fill execution")
+        available = _stamp(self.available_at_utc, "fill availability")
+        if (executed <= opened_at or available < executed
+                or executed.astimezone(EASTERN).date() > expiration):
+            raise OfflineAccountReplayError("exit fill has invalid execution/availability chronology")
+        if type(self.contracts) is not int or not 1 <= self.contracts <= 100000:
+            raise OfflineAccountReplayError("exit fill requires a positive bounded contract quantity")
+        _decimal(self.execution_per_share, "fill execution price", allow_zero=True)
+        if (type(self.source_integrity_qualified) is not bool
+                or type(self.execution_clock_qualified) is not bool):
+            raise OfflineAccountReplayError("exit fill qualification must be boolean")
+
+
+@dataclass(frozen=True, slots=True)
 class ReplayLeg:
     """One *synthetic* time-qualified priced long instrument path.
 
@@ -110,6 +148,7 @@ class ReplayLeg:
     exit_source_integrity_qualified: bool | None = None
     exit_observation_clock_qualified: bool | None = None
     exit_retry_plan: OptionExitRetryPlanV1 | None = None
+    exit_fill_fixtures: tuple[SyntheticOptionExitFillV1, ...] = ()
 
     def validate(self, signal_at_utc: datetime, ticker: str) -> None:
         start = _stamp(self.entry_at_utc, "leg entry")
@@ -158,6 +197,19 @@ class ReplayLeg:
                     or self.exit_source_integrity_qualified is not None
                     or self.exit_observation_clock_qualified is not None):
                 raise OfflineAccountReplayError("retry plan must bind the exact option/open and replace the fixed exit")
+        if not isinstance(self.exit_fill_fixtures, tuple) or len(self.exit_fill_fixtures) > 64:
+            raise OfflineAccountReplayError("exit fill fixtures require a tuple of at most 64 fills")
+        if self.exit_fill_fixtures:
+            if (self.kind == "STOCK" or end is not None or self.exit_retry_plan is not None
+                    or self.exit_source_integrity_qualified is not None
+                    or self.exit_observation_clock_qualified is not None):
+                raise OfflineAccountReplayError("exit fill fixtures must replace the fixed option exit/retry")
+            for fill in self.exit_fill_fixtures:
+                if not isinstance(fill, SyntheticOptionExitFillV1):
+                    raise OfflineAccountReplayError("typed synthetic exit fill fixture required")
+                fill.validate(self.symbol, start, self.expiration)
+            if len({fill.fill_id for fill in self.exit_fill_fixtures}) != len(self.exit_fill_fixtures):
+                raise OfflineAccountReplayError("duplicate exit fill identity")
 
 
 @dataclass(frozen=True, slots=True)
@@ -269,6 +321,15 @@ def replay_synthetic_account(
         and leg.exit_retry_plan is not None
     ) > 100000:
         raise OfflineAccountReplayError("aggregate retry attempts exceed safe bound")
+    chosen_fills = [
+        fill for signal in signals
+        if mode != "ABSTAIN" and (leg := getattr(signal, mode.lower())) is not None
+        for fill in leg.exit_fill_fixtures
+    ]
+    if len(chosen_fills) > 100000:
+        raise OfflineAccountReplayError("aggregate exit fill fixtures exceed safe bound")
+    if len({fill.fill_id for fill in chosen_fills}) != len(chosen_fills):
+        raise OfflineAccountReplayError("duplicate exit fill identity across cases")
     # Without an explicit cutoff, consume the complete chosen-mode fixture clock.
     # Include failed exit attempts: their source gate cannot erase when an attempt
     # was reached. Other modes' paths must not advance this account's horizon.
@@ -284,15 +345,19 @@ def replay_synthetic_account(
                         clocks.append(_stamp(leg.exit_at_utc, "exit"))
                     if leg.exit_retry_plan is not None:
                         clocks.append(leg.exit_retry_plan.deadline_at_utc)
+                    clocks.extend(_stamp(fill.available_at_utc, "fill availability")
+                                  for fill in leg.exit_fill_fixtures)
         horizon = max(clocks)
     cash = _decimal(policy.initial_cash, "initial cash")
     initial_cash = cash
+    realized_pnl = Decimal("0.00")
+    fill_path_reached = False
     reserved_exit_fees = Decimal("0.00")
     positions: dict[str, dict[str, Any]] = {}
     decisions: dict[str, dict[str, Any]] = {}
     ledger: list[dict[str, Any]] = []
     by_year: dict[str, Counter[str]] = {str(y): Counter() for y in range(2021, 2027)}
-    events: list[tuple[datetime, int, str, ReplayLeg, bool]] = []
+    events: list[tuple[datetime, int, str, ReplayLeg, bool, SyntheticOptionExitFillV1 | None]] = []
     selected: dict[str, ReplayLeg] = {}
     retry_cursors: dict[str, OptionExitRetryCursorV1] = {}
     for signal in signals:
@@ -311,20 +376,26 @@ def replay_synthetic_account(
         }
         if status == "ELIGIBLE_SYNTHETIC_ENTRY":
             selected[signal.case_id] = leg
-            events.append((_stamp(leg.entry_at_utc, "entry"), 1, signal.case_id, leg, False))
+            events.append((_stamp(leg.entry_at_utc, "entry"), 1, signal.case_id, leg, False, None))
             if leg.exit_retry_plan is not None:
-                events.extend((at, 0, signal.case_id, leg, True)
+                events.extend((at, 0, signal.case_id, leg, True, None)
                               for at in leg.exit_retry_plan.attempt_times_utc
                               if cutoff is None or at <= cutoff)
+            events.extend((_stamp(fill.available_at_utc, "fill availability"), 0,
+                           signal.case_id, leg, False, fill)
+                          for fill in leg.exit_fill_fixtures
+                          if cutoff is None or _stamp(fill.available_at_utc, "fill availability") <= cutoff)
             if (leg.exit_at_utc is not None and leg.exit_per_share is not None
                     and (cutoff is None or _stamp(leg.exit_at_utc, "exit") <= cutoff)
                     and leg.exit_source_integrity_qualified is not False
                     and leg.exit_observation_clock_qualified is not False
                     and (leg.kind == "STOCK" or
                          leg.exit_at_utc.astimezone(EASTERN).date() <= leg.expiration)):
-                events.append((_stamp(leg.exit_at_utc, "exit"), 0, signal.case_id, leg, False))
+                events.append((_stamp(leg.exit_at_utc, "exit"), 0, signal.case_id, leg, False, None))
     # Release existing positions before admitting new ones at an identical stamp.
-    for at, priority, cid, leg, is_retry in sorted(events, key=lambda e: (e[0], e[1], e[2])):
+    for at, priority, cid, leg, is_retry, fill in sorted(
+        events, key=lambda e: (e[0], e[1], e[2], e[5].fill_id if e[5] is not None else ""),
+    ):
         row = decisions[cid]
         debit, fee_in, fee_out = _entry_unit_terms(leg, policy)
         if priority == 1:
@@ -365,6 +436,66 @@ def replay_synthetic_account(
                 "cash_after": str(cash), "exit_fees_reserved": str(reserved_exit_fees),
             })
         elif cid in positions:
+            if fill is not None:
+                fill_path_reached = True
+                position = positions[cid]
+                if position["kind"] != leg.kind or position["symbol"] != fill.option_symbol:
+                    raise OfflineAccountReplayError("modeled exit fill position identity changed")
+                common = {
+                    "case_id": cid, "at_utc": at.isoformat(), "instrument": fill.option_symbol,
+                    "fill_id": fill.fill_id, "fixture_origin": fill.origin,
+                    "executed_at_utc": _stamp(fill.executed_at_utc, "fill execution").isoformat(),
+                    "available_at_utc": at.isoformat(),
+                }
+                if not fill.source_integrity_qualified or not fill.execution_clock_qualified:
+                    ledger.append(common | {
+                        "kind": "MODELED_EXIT_FILL_REJECTED",
+                        "reason": ("UNQUALIFIED_SOURCE_INTEGRITY" if not fill.source_integrity_qualified
+                                   else "UNQUALIFIED_EXECUTION_CLOCK"),
+                        "cash_delta": "0.00", "cash_after": str(cash),
+                        "exit_fees_reserved": str(reserved_exit_fees),
+                    })
+                    if "closed_units" not in row:
+                        row["status"] = "OPEN_UNQUALIFIED_EXIT_SOURCE"
+                    continue
+                units = fill.contracts
+                if units > position["units"]:
+                    raise OfflineAccountReplayError("exit fill exceeds remaining position quantity")
+                # Entry debit and escrow are exact cent amounts per contract.
+                allocated_debit = (debit + fee_in) * units
+                released_reserve = fee_out * units
+                credit = _money(_decimal(fill.execution_per_share, "fill execution price", allow_zero=True)
+                                * leg.multiplier)
+                proceeds = (credit - fee_out) * units
+                pnl = _money(proceeds - allocated_debit)
+                cash = _money(cash + proceeds)
+                reserved_exit_fees = _money(reserved_exit_fees - released_reserve)
+                position["units"] -= units
+                position["debit"] -= allocated_debit
+                position["reserved_exit_fee"] -= released_reserve
+                realized_pnl += pnl
+                row["closed_units"] = row.get("closed_units", 0) + units
+                row["remaining_units"] = position["units"]
+                row["modeled_realized_pnl"] = str(_money(
+                    Decimal(row.get("modeled_realized_pnl", "0.00")) + pnl))
+                complete = position["units"] == 0
+                if complete:
+                    positions.pop(cid)
+                    row["modeled_net_pnl"] = row["modeled_realized_pnl"]
+                    row["status"] = "SYNTHETIC_ROUND_TRIP_MODELED"
+                else:
+                    row["status"] = "OPEN_PARTIALLY_EXITED_UNMARKED"
+                if cash < reserved_exit_fees or reserved_exit_fees < 0:
+                    raise OfflineAccountReplayError("modeled partial exit violates cash or fee escrow")
+                ledger.append(common | {
+                    "kind": "MODELED_EXIT" if complete else "MODELED_PARTIAL_EXIT",
+                    "units": units, "remaining_units": position["units"],
+                    "allocated_entry_debit": str(allocated_debit), "exit_fee": str(released_reserve),
+                    "execution_per_share": fill.execution_per_share,
+                    "cash_delta": str(proceeds), "cash_after": str(cash),
+                    "exit_fees_reserved": str(reserved_exit_fees), "modeled_net_pnl": str(pnl),
+                })
+                continue
             if is_retry:
                 cursor = advance_option_exit_retry(
                     retry_cursors[cid], as_of_utc=at,
@@ -394,6 +525,7 @@ def replay_synthetic_account(
             if cash < reserved_exit_fees or reserved_exit_fees < 0:
                 raise OfflineAccountReplayError("modeled exit violates cash or fee escrow")
             pnl = _money(proceeds - position["debit"])
+            realized_pnl += pnl
             row["modeled_net_pnl"] = str(pnl)
             row["status"] = "SYNTHETIC_ROUND_TRIP_MODELED"
             ledger.append({
@@ -403,10 +535,14 @@ def replay_synthetic_account(
                 "cash_after": str(cash), "exit_fees_reserved": str(reserved_exit_fees),
                 "modeled_net_pnl": str(pnl),
             })
+        elif fill is not None and row["units"] > 0:
+            raise OfflineAccountReplayError("exit fill supplied after the position was fully closed")
     if reserved_exit_fees != sum(
         (p["reserved_exit_fee"] for p in positions.values()), Decimal(0)
     ):
         raise OfflineAccountReplayError("modeled open-position fee escrow does not reconcile")
+    if cash != initial_cash + realized_pnl - sum((p["debit"] for p in positions.values()), Decimal(0)):
+        raise OfflineAccountReplayError("modeled cash, realized P&L and remaining entry debit do not reconcile")
     retry_cursors = {cid: replace(cursor, as_of_utc=horizon)
                      for cid, cursor in retry_cursors.items()}
     for cid in positions:
@@ -427,10 +563,6 @@ def replay_synthetic_account(
         by_year[str(signal.year)][decisions[signal.case_id]["status"]] += 1
     rows = [decisions[s.case_id] for s in sorted(signals, key=lambda s: (s.decision_at_utc, s.case_id))]
     round_trips = sum(x["status"] == "SYNTHETIC_ROUND_TRIP_MODELED" for x in rows)
-    realized_pnl = sum(
-        (Decimal(x["modeled_net_pnl"]) for x in rows if x["modeled_net_pnl"] is not None),
-        Decimal(0),
-    )
     result = {
         "contract": CONTRACT,
         "status": "SYNTHETIC_ACCOUNT_MECHANICS_ONLY_NOT_HISTORICAL",
@@ -479,6 +611,8 @@ def replay_synthetic_account(
              "cursor": cursor.payload()}
             for cid, cursor in sorted(retry_cursors.items())
         ]
+    if fill_path_reached:
+        result["option_exit_fill_contract"] = EXIT_FILL_CONTRACT
     result["replay_fingerprint"] = _fingerprint(result)
     return result
 
