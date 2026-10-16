@@ -130,7 +130,7 @@ def test_original_source_proof_reuses_review_without_any_bar_rereads(source):
     assert result["scanned_page_count"] == 1
     assert result["reconciled_action_records"] == 4
     assert result["original_prior_window_candidates_reconciled"] == 2
-    assert len(result["spy_action_candidates"]) == 2
+    assert len(result["spy_action_candidates"]) == 3
     assert result["source_scans"]["daily_units"] == result["source_scans"]["minute_units"] == 0
     assert result["historical_pit_publication_qualified"] is False
     assert result["economic_log_returns"] is result["forecast_total_variance"] is None
