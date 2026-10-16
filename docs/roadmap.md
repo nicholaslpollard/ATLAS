@@ -1,6 +1,6 @@
 # ATLAS Project Guide and Roadmap
 
-**Reviewed 2026-10-16 (America/New_York). Confirmed main baseline before this package: `52f0e95bd7da24e9127bee5dd60ce1cdd371b8b3` (PR #330); the source proof and conditional SPY variance packet have both been completed. Workstation observations retain their original dates.**
+**Reviewed 2026-10-16 (America/New_York). Confirmed main baseline before this package: `c6ada0620f28832c11c56f4b8fdb8ee1a17af120` (PR #331). The SPY 411-week exact-minute input coverage scan has now completed on the workstation. Workstation observations retain their original dates.**
 
 This is the single living project guide. It combines mission, architecture, current status, dependencies, work order, operating rules, and continuation. The [evidence register](strategy_evidence_register.md) records experiment results; the root README provides navigation. Code/tests establish behavior; original artifacts and Git history establish what ran. The documentation consolidation did not rerun the historical corpus. A subsequent operator metadata inventory on 2026-10-12 established the storage observations below.
 
@@ -82,7 +82,7 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 | Order | Work package | Completion criterion | Dependency |
 | --- | --- | --- | --- |
 | 1 | Options-native pilot specification and data design — implemented | One SPY long-straddle variant, prior-only variance feature, dynamic management rule and 411 weekly CALL/PUT discovery surfaces, independently registered from stock signals | Code specification is not performance evidence; no operator run needed to repeat fixture checks |
-| 2 | Pilot input and cost qualification — cached minute/action review complete; original page proof prepared | Reuse 21-close/22-clock reports; inspect the original action-page-to-ledger source proof before binding PIT returns or option inputs | New bounded action source-proof command below; source snapshots and recorded dates do not establish historical availability |
+| 2 | Pilot input and cost qualification — original action proof, January conditional variance and 411-week physical minute coverage completed | Preserve pinned 407/411 physically complete weekly windows; index archival SPY actions across all years before pursuing separately proven historical PIT disclosures | Next bounded one-ledger archival action index below; source snapshots and recorded dates do not establish historical availability |
 | 3 | Pilot pair construction and execution mechanics — synthetic path implemented | Exact common-strike/expiry selection, daily exit requests, explicit legging, reservations, residual marks and sale-settlement cash reconcile | Fixtures establish mechanics; accepted execution, deliverables, exercise and settlement adapters remain downstream; frozen single-leg engines unchanged |
 | 4 | ThetaData source acceptance when active | Preserve existing 09:35 qualifier; separately qualify native 10:00 CALL/PUT shape and earlier years with bounded receipts/repeatability | Subscription and Terminal; no acquisition or subscription activation authorized by the new planner |
 | 5 | Bounded candidate acquisition and enrichment | Reuse/acquire the separate native discovery plan and frozen 9,455 stock-to-CALL surfaces; exact OI/IV/entry/management demand follows causal selection | Accepted source/storage, PIT dividends/rates and model units; no broad market-wide tick campaign |
@@ -158,7 +158,31 @@ The operator completed the prior-variance sensitivity on 2026-10-16. The verifie
 
 The 2020-01-06 group must exactly match the earlier 22-clock raw SPY source report, including canonical unit IDs and price values, or the entire run blocks. Missing monthly units or exact bars remain explicit gaps, not a substituted price or automatic provider demand. Source file/hash/provenance drift blocks rather than being treated as absent market data. The reader runs two DuckDB threads with a 512 MiB query limit, bounds source Parquet units to 256 MiB each, reads at most 125 monthly units and reports progress at least every 20 seconds. A content-fingerprinted report retains case-by-case physical coverage and source identities; incomplete/source-unknown cases never qualify historical economic returns or forecasts.
 
-Once exact-head Linux/Windows CI is green and the PR is merged, run `scripts/review_options_native_spy_development_clocks_v1.py --save-report` once from the updated Windows `main` checkout. Return the complete terminal output and JSON report under `data/research/options_native_spy_development_clock_coverage_v1` (research-evidence D: binding). This is a larger physical coverage pass through historical cached minute units, not another run of the January pilot. It is **zero paid API calls** and gives a multi-year data-coverage baseline before ThetaData qualification. Historical action/quote publication and economic source coverage remain separate gates. The frozen strategy, 411 quote-surface plan and trial budget are unchanged.
+The operator completed `scripts/review_options_native_spy_development_clocks_v1.py --save-report` on 2026-10-16. Do not rerun the 97-month scan. Return the complete terminal output and JSON report under `data/research/options_native_spy_development_clock_coverage_v1` (research-evidence D: binding). This is a larger physical coverage pass through historical cached minute units, not another run of the January pilot. It is **zero paid API calls** and gives a multi-year data-coverage baseline before ThetaData qualification. Historical action/quote publication and economic source coverage remain separate gates. The frozen strategy, 411 quote-surface plan and trial budget are unchanged.
+
+The uploaded `bf18bb1a4c7e38f0.json` was independently inspected and its canonical fingerprint rechecked. Raw SHA-256: `962852e3fc3739494b9758a8916ebe9ba0dfb8cdcadc71a651fa254e99455191`; report fingerprint: `bf18bb1a4c7e38f0dad91e1afaf3dd93d3dbdea9692f9e1345cf3b25efb56c2f`. All 97 accepted monthly source units were checked in one 15-second workstation run. Exactly 2,406/2,407 unique SPY minute clocks are present. The **one** missing observation is the normal 15:59–16:00 ET closing bar for SPY on **2019-08-12**, starting `2019-08-12T19:59:00+00:00`. Its source unit is `d1fee36b2b31db90fc3f268bba82742b970d8406260c7af60c8179d84d7b037e`; the originally accepted canonical file SHA-256 is `88e65db9f050db7885e225c0f559f94fdee6fca8f3101898a0219650c89cbd18`. Because prior 21-session lookbacks overlap, the gap affects the **2019-08-19**, **2019-08-26**, **2019-09-03**, and **2019-09-09** decisions, each with 21/22 minute observations. All other **407/411** weekly cases are physically complete. These are NOT 407 historically accepted signals: the 2026 archive lacks contemporaneous bar-publication and economic-action qualifications. No missing-bar substitute or paid acquisition is authorized. The 2026 master holdout was not accessed.
+
+### Full-period SPY archival action inventory — next offline gate
+
+[The bounded archive index](../packages/data/options_native_spy_archival_action_timeline_v1.py) and [script](../scripts/index_options_native_spy_archival_actions_v1.py) extend the 2020 action-source proof across the entire frozen 2018–2025 weekly pilot. They pin the complete 411-week price-coverage report by raw SHA-256 and content fingerprint, and similarly pin the previously verified 379-page original corporate-action source proof. The command verifies the source manifest and hash of the accepted `native_actions.jsonl.gz`, streams precisely the 378,362 existing normalized records ONCE, and selects SPY archival event candidates from 2017-11-01 through 2025-12-23. The originally verified 379 raw pages are **not reopened**. Candidate effective/execution/ex-dates, undated records and all action types remain separately visible. They are indexed only against the **20 return-ending sessions** of each frozen 21-close input window; the first prior close is only the baseline. The four 2019 gap weeks remain physically incomplete.
+
+This work identifies when available archive records *purport* to have economic effects. It does **not** convert archival event dates, vendor process times or the 2026 snapshot into contemporary 2018–2025 publication/revision clocks. Absence of a retained dated SPY record is **not** qualified evidence of zero cash or no splits; undated or identity actions cannot be assumed harmless. No historical total returns, forecast IV comparisons, simulations, trades or promotion are authorized. Later historical availability/coverage evidence must be obtained and qualified independently; the frozen options-native hypothesis and single strategy budget remain unchanged.
+
+Once exact-head Linux/Windows CI is green and the PR is merged, run the following from the existing Windows `main` checkout. Return full terminal output **and** the small report named by the `saved report` line:
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw 'Git update failed.' }
+    & .\.venv\Scripts\python.exe scripts\index_options_native_spy_archival_actions_v1.py --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'SPY archival corporate-action index blocked; paste output.' }
+}
+```
+
+The JSON is stored under `data/research/options_native_spy_archival_action_timeline_v1` on the established research-evidence D: binding. Provider, broker, raw SPY price, option, outcome and 2026 protected data reads remain **zero**.
+
 
 
 
