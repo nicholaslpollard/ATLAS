@@ -40,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  period cash distributions matched: {report['issuer_event_count']}/33", flush=True)
         print(f"  original Alpaca archive ex-date matches: {report['archived_cash_events_matched_by_ex_date']}/33", flush=True)
         print(f"  originally omitted ex-dates: {report['missing_from_original_action_archive']}", flush=True)
+        print(f"  out-of-period issuer lifecycle anomalies retained: {report['issuer_legacy_out_of_scope_date_anomalies']}", flush=True)
         print(f"  issuer vs previous reference differences: {report['issuer_vs_reference_differences']}", flush=True)
         print(f"  issuer vs original archive differences: {report['issuer_vs_archive_differences']}", flush=True)
         print("  Historical PIT/publication/revisions, other adjustments, option IV and trading: UNQUALIFIED", flush=True)
