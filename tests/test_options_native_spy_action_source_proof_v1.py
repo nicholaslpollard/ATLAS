@@ -127,10 +127,8 @@ def test_original_source_proof_reuses_review_without_any_bar_rereads(source):
         fingerprint=report["report_fingerprint"],
         retained_packet_fingerprint=source["binding"].report_fingerprint,
     )
-    source["daily"][0].unlink()
-    source["daily"][1].unlink()
     for _, path, _ in source["units"]:
-        path.unlink()
+        path.unlink(missing_ok=True)
     result = proof.build_spy_action_source_proof(source["settings"], binding=binding)
     assert result["scanned_page_count"] == 1
     assert result["reconciled_action_records"] == 4
