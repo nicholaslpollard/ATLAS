@@ -198,8 +198,10 @@ def case_volatility(prior: list[str], observations: dict[str, Any],
             raw_sum += raw_r * raw_r
             conditional_sum += conditional_r * conditional_r
         _require(seconds > 0 and len(hits) <= 2, "invalid 20-return interval span")
-        raw_vol = (raw_sum * YEAR_SECONDS / Decimal(seconds)).sqrt()
-        conditioned_vol = (conditional_sum * YEAR_SECONDS / Decimal(seconds)).sqrt()
+        raw_rate = raw_sum / Decimal(seconds)
+        conditioned_rate = conditional_sum / Decimal(seconds)
+        raw_vol = (raw_rate * YEAR_SECONDS).sqrt()
+        conditioned_vol = (conditioned_rate * YEAR_SECONDS).sqrt()
     return {
         "annualized_raw_price_volatility": str(raw_vol),
         "annualized_retrospective_dividend_conditioned_volatility": str(conditioned_vol),
