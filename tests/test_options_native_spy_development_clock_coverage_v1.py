@@ -124,3 +124,42 @@ def test_spy_decision_clock_bounds_and_protected_year_exclusion():
     assert start[0] == 2017
     assert end[0] == 2025
     assert len(demand["cases"]) == 411
+
+
+def test_bounded_monthly_reader_reproduces_retained_2020_spy_calibration(source, monkeypatch):
+    """All source IO occurs against invented accepted native parquet/checkpoints."""
+    from packages.data import options_native_stock_input_review_v1 as old_review
+    ctx = source
+    prior = old_review.review_options_native_stock_inputs(ctx["settings"], binding=ctx["binding"])
+    monkeypatch.setattr(mod, "_read_report", lambda *_args, **_kwargs: prior)
+    monkeypatch.setattr(mod, "DEFAULT_BINDING", ctx["binding"])
+    requested = prior["observations"]
+    months = {}
+    for row in requested:
+        stamp = datetime.fromisoformat(row["interval_start_utc"])
+        month = (stamp.year, stamp.month)
+        months.setdefault(month, {})[row["interval_start_utc"]] = stamp
+    old = [{
+        "session": row["session_date"], "clock": row["interval_start_utc"]
+    } for row in requested if row["role"] == "PRIOR_REGULAR_CLOSE"]
+    case = {
+        "decision_date": "2020-01-06", "decision_utc": "2020-01-06T15:00:00+00:00",
+        "order_eligible_utc": "2020-01-06T15:01:00+00:00",
+        "quote_query_fingerprint": "a" * 64,
+        "prior": old, "spot": requested[-1]["interval_start_utc"],
+    }
+    demand = {"plan_fingerprint": "b" * 64,
+              "cases": [dict(case) for _ in range(411)],
+              "unique_clocks": 22}
+    monkeypatch.setattr(mod, "frozen_clock_demand", lambda: (demand, months))
+    report = mod.review_spy_development_minute_coverage(ctx["settings"])
+    assert report["target_weekly_cases"] == 411
+    assert report["raw_complete_weekly_cases"] == 411
+    assert report["raw_incomplete_weekly_cases"] == 0
+    assert report["observed_exact_clocks"] == 22
+    assert report["target_months"] == report["scanned_monthly_units"] == 2
+    assert report["observations"][case["spot"]]["raw_close"] == prior["observations"][-1]["raw_close"]
+    assert report["scan_scope"]["daily_units"] == report["scan_scope"]["options"] == 0
+    assert report["pilot_input_acceptance"] is False
+    assert report["forecast_total_variance"] is None
+    assert report["historical_publication_and_adjustment_qualified"] is False
