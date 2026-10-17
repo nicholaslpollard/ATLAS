@@ -170,7 +170,7 @@ Offline minute clock: 9,667/9,974 option-expressible cases after 09:35; 304 alre
 
 Causal 09:35 spot: 9,654/9,667 ready, 13 missing completed regular minute. Median absolute open-to-decision move 0.4660%, mean 0.6562%, P90 1.5422%; 22.81% moved >=1%. Old open-selected CALL was ATM in only 54 cases, median absolute strike distance 1.4266%. Old 18,921 single-contract requests superseded by 9,455 provider-agnostic candidate surfaces.
 
-ThetaData quote/OI/Greeks plans and Terminal preflight are implemented source preparation only. Quote/OI qualification, full acquisition, contract selection, exact exit pricing, authoritative Greeks, historical fill/strategy/PAPER/LIVE authority remain downstream. No news-derived strategy has been validated. Source successes must not be counted as alpha.
+ThetaData quote/OI/Greeks plans and direct Python-library worker preflight are implemented source preparation only. The dependency-isolated provider environment is not installed/qualified, and no ThetaData quote/OI/Greeks response has been accepted. Frozen historical source manifests were not regenerated. Quote/OI qualification, full acquisition, contract selection, exact exit pricing, authoritative Greeks, historical fill/strategy/PAPER/LIVE authority remain downstream. No news-derived strategy has been validated. Source successes must not be counted as alpha.
 
 ## Retained closed research
 
