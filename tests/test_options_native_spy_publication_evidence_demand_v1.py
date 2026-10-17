@@ -58,7 +58,7 @@ def synthetic_reports():
     }
     # Every fake interval ends BEFORE the 2018-06-18 decision; only first
     # 149 price-complete cases overlap June 2018 cash on a return-ending date.
-    baseline = datetime(2018, 6, 1, 20, 59, tzinfo=UTC)
+    baseline = datetime(2018, 5, 26, 20, 59, tzinfo=UTC)
     earlier = datetime(2018, 5, 1, 20, 59, tzinfo=UTC)
     for index in range(411):
         touched = index < 149
