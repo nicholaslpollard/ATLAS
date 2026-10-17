@@ -94,6 +94,29 @@ ThetaData Options Standard remains planned. Activation is expected approximately
 
 Orders 2-3 can advance offline before the subscription. Completed cache inventory, selected-stock review and ten-position exit audit remain recorded below; no repeat run is needed. Existing full-stock reporting remains blocked by one changed aggregate. Missing option access must not block useful stock/product work, and closed negative experiments remain closed.
 
+### Universe scope: SPY pilot versus full-market ATLAS
+
+**ATLAS is not being restricted to SPY.** General stock/news/strategy/account infrastructure, and the distinct `09:35` historical CALL source demand (9,455 deduplicated symbol/date requests, 2021-2025), cover **multiple stock underlyings**. The `10:00` CALL+PUT straddle hypothesis intentionally freezes **only SPY** for its first tightly controlled 2018-2025 DEVELOPMENT evaluation (411 weekly sessions). These two source populations are not one tested options universe: the broad `09:35` plan is CALL-only and has no accepted ThetaData quote/OI response, while the SPY pair requires both rights and different entry, expiration, exit and economic features. No SPY issuer-reconciliation or historical publication proof transfers automatically to AAPL, QQQ, MSFT or any other underlying.
+
+The long-term goal is to admit **every suitable supported and historically eligible** stock/ETF/option opportunity the data and broker access can serve, rather than hardcode a short favored ticker list or demand unavailable illiquid options. Symbols, listings, splits, mergers, dividends, deliverables, OCC contract identities, as-of event clocks, bid/ask/OI and trading hours require **per-underlying and per-contract source lineage and rejection reasons**. Universe expansion must be date-specific to avoid survivorship bias and require both rights for any two-leg strategy. Source demand, actual observed quote availability, mathematical modeling, valid execution, full account valuation and validated strategy profits remain distinct facts. We should reuse generic validators and shared caches, not do one manual SPY-like web publication search per symbol.
+
+The [multi-underlying source-demand inventory](../packages/data/options_multi_underlying_source_inventory_v1.py) and [CLI](../scripts/review_options_multi_underlying_source_inventory_v1.py) verify one existing immutable ThetaData 09:35 plan's **complete 9,455 source-query identities**, historical day/underlying uniqueness, year/case membership counts, complete SHA/fingerprint and **no provider/price/fill authority**, then report the actual historical count and name/count of **all** underlyings. This is only a read-only **plan census**, not a paid quote scan or a fabricated option history. It does not modify the frozen SPY strategy or convert a 09:35 CALL request into a 10:00 two-rights pair.
+
+Once exact-head CI passes and is merged, the existing signed plan may be inventoried locally (one bounded manifest read only):
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw 'Git update failed.' }
+    & .\.venv\Scripts\python.exe scripts\review_options_multi_underlying_source_inventory_v1.py --source-plan "data/options/manifests/thetadata_candidate_surface_source_plan_v1_acc9525a2930fe39.json" --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'Multi-underlying source inventory stopped. Paste the terminal output.' }
+}
+```
+
+This input path was recorded from the operator's previous ThetaData plan; if it does not exist, **stop** without searching alternative files or initiating any paid source request. One retained JSON report goes to `data/research/options_multi_underlying_source_inventory_v1` on the D: research-evidence binding. The eventual generalized historical options-native strategy/admission pipeline will need its own forward-specified trials and independent historical source qualification; this inventory is not a replay or a new strategy.
+
 ### Options-native pilot and data contract
 
 The source of truth is [the pilot contract](../packages/strategies/options_native_pilot_v1_contract.py); [the planner](../scripts/plan_options_native_pilot_v1.py) builds deterministic demand with no provider/broker calls, source scans or outcomes. The specification fingerprint is `e3ad55ad153ca61432bfde65aa0b5c54004766866a2919a567b6b5ade551efca`. This is a newly specified research hypothesis, with no profitable result or trading authority.
@@ -281,7 +304,7 @@ Upload its small saved JSON and console output. A current-day issuer history sna
 
 The operator completed the issuer reconciliation, `eca21b2ebbd6fbf3.json`, on **2026-10-16**. The uploaded 12,148-byte report has raw SHA-256 `2cad294694292fec31a8a9f6c6610fde23fa8b6db10bd36257fbe3ec9e856900` and independently verified content fingerprint `eca21b2ebbd6fbf378e905e7a8ef8ec278b6320dc2ba0e9976e1a53491b1ee35`. It confirms all 33 2017-12..2025-12 State Street cash distributions, 32/33 archival ex-date matches, the **2018-06-15 USD 1.245568** missing archive event and two source-specific decimal residuals: issuer/original Alpaca agree at **1.096775** on 2018-03-16 (the third-party reference rounded to 1.09678), while issuer/third-party agree at **1.366242** on 2020-06-19 (original Alpaca carries 1.3662419). A separate out-of-period 2006 payment/record date anomaly is retained. No data scans, strategy signals, implied variance, trading authorization or PIT publication qualification emerged from this run. **Do not rerun the issuer workbook capture or this 33-event reconciliation.**
 
-### Historical cash-dividend publication evidence — next grouped offline demand
+### Historical cash-dividend publication evidence — grouped demand completed
 
 [The 33-event evidence-demand module](../packages/data/options_native_spy_publication_evidence_demand_v1.py) and [script](../scripts/review_options_native_spy_publication_evidence_demand_v1.py) join exactly **three SHA-and-content-fingerprint-pinned existing JSON reports**: this original issuer reconciliation, the 411-week physical minute source coverage, and the 407-week retrospective variance grid. The output maps every original State Street distribution and original worksheet row to the **20 prior return-ending sessions** and exact weekly first/last 10:00 ET decisions that depend on it. It reconciles **149** dividend-touched, price-complete weeks, the four missing-price weeks, and the 33 historical event source requirements without rescanning any 97 stock months, 379 original action pages, the 378,362-row archive, or stock/news/options/outcomes. No provider, broker or issuer GET is authorized by the demand packet.
 
@@ -301,6 +324,9 @@ When exact-head Ubuntu/Windows CI for this package is green and merged, run the 
 ```
 
 The JSON is stored under `data/research/options_native_spy_publication_evidence_demand_v1` through the existing research-evidence D: binding. Its purpose is to create **one focused full-period publication/source-gap worklist** before a bounded historical-document acquisition effort, rather than continuing one week at a time or treating retrospective data as a real tradable feature.
+
+The operator completed the demand command on 2026-10-16; the uploaded 144,455-byte report `bccd125954b4b8f7.json` has independently checked **raw SHA-256 `d53e365eda40a9bd990c6934f257b66148e241ccf0cc98eaf647d5456519ced6`** and **canonical fingerprint `bccd125954b4b8f7762060ec0aeb8832b3d196aa2e180a3b3cedc50d4481d835`**. The 33 source-event worklist maps 407/411 price-complete weeks, 149 dividend-affected complete prior windows, four missing-price weeks (2019-08-19, 08-26, 09-03, 09-09), and **zero** original historical publication receipts. Three external article leads remain unretained; the 2025-12-19 dividend has no planned weekly lookback among the 411 decisions, so only 32 of the 33 cash events directly enter the frozen predictor's prior windows. The completed demand command must not be rerun. The next source-research step is bounded original announcement/availability investigation across the 32 relevant ex-dates, without assuming recent publisher time labels prove original historical as-of availability or enabling option replay.
+
 
 
 
