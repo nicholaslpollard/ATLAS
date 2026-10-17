@@ -140,6 +140,8 @@ def _response(
         response_bytes=len(raw),
         elapsed_seconds=0.01,
         raw_body=raw,
+        library_version="1.0.12",
+        provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
 
 
@@ -232,6 +234,8 @@ def test_oi_after_decision_clock_fails_validation(tmp_path, monkeypatch):
             response_bytes=len(raw),
             elapsed_seconds=0.01,
             raw_body=raw,
+            library_version="1.0.12",
+            provider_environment_fingerprint="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         )
 
     plan = _enrichment_plan()
