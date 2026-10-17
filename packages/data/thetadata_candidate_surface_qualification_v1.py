@@ -30,6 +30,9 @@ from packages.data.thetadata_candidate_surface_plan_v1 import (
     PROVIDER_CANDIDATE,
 )
 from packages.providers.thetadata.client import (
+    EVIDENCE_ENCODING,
+    TARGET_LIBRARY_VERSION,
+    TRANSPORT,
     ThetaDataError,
     ThetaDataResponse,
     option_at_time_quote_surface,
@@ -74,6 +77,23 @@ def _symbol_matches_underlying(response_symbol: str, expected_symbol: str) -> bo
     )
 
 
+def _validate_provider_provenance(response: ThetaDataResponse) -> None:
+    if (
+        response.transport != TRANSPORT
+        or response.library_version != TARGET_LIBRARY_VERSION
+        or not isinstance(response.provider_environment_fingerprint, str)
+        or len(response.provider_environment_fingerprint) != 64
+        or any(
+            char not in "0123456789abcdef"
+            for char in response.provider_environment_fingerprint
+        )
+        or response.evidence_encoding != EVIDENCE_ENCODING
+    ):
+        raise ThetaDataCandidateSurfaceQualificationError(
+            "ThetaData provider transport/library provenance changed"
+        )
+
+
 def _run_root(settings: AtlasSettings, plan_fp: str, run_id: str) -> Path:
     return settings.resolved_path(f"{OUTPUT_REL}/{plan_fp[:16]}/{run_id}")
 
@@ -104,6 +124,10 @@ def _persist_raw(
         "body_bytes": len(response.raw_body),
         "http_status": response.http_status,
         "elapsed_seconds": response.elapsed_seconds,
+        "provider_transport": response.transport,
+        "provider_library_version": response.library_version,
+        "provider_environment_fingerprint": response.provider_environment_fingerprint,
+        "evidence_encoding": response.evidence_encoding,
         "query": query,
         "plan_fingerprint": plan_fingerprint,
     }
@@ -373,6 +397,19 @@ def _probe_one(
             "error": f"{type(exc).__name__}: {exc}",
             "http_status": exc.http_status,
         }, None, None
+
+    try:
+        _validate_provider_provenance(response)
+    except ThetaDataCandidateSurfaceQualificationError as exc:
+        return {
+            "anchor_index": anchor["anchor_index"],
+            "qualification_reasons": anchor["qualification_reasons"],
+            "query": anchor["query"],
+            "status": "SURFACE_VALIDATION_ERROR",
+            "http_status": response.http_status,
+            "response_rows": len(response.rows),
+            "error": f"{type(exc).__name__}: {exc}",
+        }, response, None
 
     if len(response.rows) == 0:
         return {

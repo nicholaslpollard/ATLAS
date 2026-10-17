@@ -1,29 +1,38 @@
 from __future__ import annotations
 
-"""Minimal read-only client for a local ThetaData v3 Terminal.
+"""Read-only ThetaData adapter backed by an isolated Python-library worker.
 
-ThetaData's v3 REST API is served by the locally running Theta Terminal. This
-client deliberately permits loopback hosts only and exposes no provider write path.
+ThetaData 1.0.12 requires protobuf>=6.32.1 while the accepted ATLAS Webull SDK
+requires protobuf<6 on Python>=3.12. To avoid destabilizing broker/runtime code,
+ThetaData runs in a dedicated provider virtual environment and ATLAS communicates
+with persistent worker processes over line-delimited JSON on stdin/stdout.
+
+No Theta Terminal or Java is involved.
 """
 
+import atexit
 from dataclasses import dataclass
+from datetime import date
 import json
 import os
+from pathlib import Path
+import queue
+import subprocess
+import threading
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
-from typing import Any, Callable
+from typing import Any, Mapping, Sequence
+import uuid
 
 
-THETADATA_BASE_URL_ENV = "THETADATA_BASE_URL"
-DEFAULT_THETADATA_BASE_URL = "http://127.0.0.1:25503"
-NO_DATA_STATUS = 472
-TRANSIENT_STATUS = frozenset({429, 474, 571, 572, 500, 502, 503, 504})
-PERMANENT_STATUS = frozenset({
-    400, 401, 402, 403, 404, 405, 409, 422,
-    470, 471, 473, 475, 476, 477, 478, 570,
-})
+ROOT = Path(__file__).resolve().parents[3]
+WORKER_SCRIPT = ROOT / "scripts" / "thetadata_python_worker_v1.py"
+THETADATA_PYTHON_ENV = "ATLAS_THETADATA_PYTHON"
+DEFAULT_PROVIDER_VENV = ROOT / ".provider_venvs" / "thetadata"
+TARGET_LIBRARY_VERSION = "1.0.12"
+MIN_PROVIDER_PYTHON = (3, 12)
+TRANSPORT = "THETADATA_PYTHON_LIBRARY_ISOLATED_WORKER"
+EVIDENCE_ENCODING = "CANONICAL_PROVIDER_DATAFRAME_JSON"
+WORKER_RESPONSE_TIMEOUT_SECONDS = 180.0
 
 
 class ThetaDataError(RuntimeError):
@@ -34,123 +43,238 @@ class ThetaDataError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class ThetaDataResponse:
+    # http_status/headers remain for compatibility with existing qualification code.
+    # The worker/library transport does not expose HTTP response metadata.
     http_status: int
     rows: tuple[dict[str, Any], ...]
     headers: dict[str, str]
     response_bytes: int
     elapsed_seconds: float
     raw_body: bytes
+    transport: str = TRANSPORT
+    library_version: str | None = None
+    provider_environment_fingerprint: str | None = None
+    evidence_encoding: str = EVIDENCE_ENCODING
 
 
-def _base_url() -> str:
-    raw = os.getenv(THETADATA_BASE_URL_ENV, DEFAULT_THETADATA_BASE_URL).strip()
-    parsed = urllib.parse.urlparse(raw)
-    if (
-        parsed.scheme != "http"
-        or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}
-        or not parsed.port
-    ):
-        raise ThetaDataError(
-            f"{THETADATA_BASE_URL_ENV} must point to a local http Theta Terminal with port"
+_thread_state = threading.local()
+_workers_lock = threading.Lock()
+_workers: set["_Worker"] = set()
+
+
+def provider_python_path() -> Path:
+    override = str(os.environ.get(THETADATA_PYTHON_ENV, "")).strip()
+    if override:
+        return Path(override).expanduser()
+    if os.name == "nt":
+        return DEFAULT_PROVIDER_VENV / "Scripts" / "python.exe"
+    return DEFAULT_PROVIDER_VENV / "bin" / "python"
+
+
+def _canonical_bytes(rows: Sequence[Mapping[str, Any]]) -> bytes:
+    return (
+        json.dumps(
+            list(rows),
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
         )
-    return raw.rstrip("/")
+        + "\n"
+    ).encode("utf-8")
 
 
-def _decode_rows(raw: bytes) -> tuple[dict[str, Any], ...]:
-    try:
-        value = json.loads(raw.decode("utf-8"))
-    except Exception as exc:
-        raise ThetaDataError("ThetaData response was not valid UTF-8 JSON") from exc
-    if not isinstance(value, list):
-        raise ThetaDataError("ThetaData v3 JSON response root was not an array")
-    rows: list[dict[str, Any]] = []
-    for item in value:
-        if not isinstance(item, dict):
-            raise ThetaDataError("ThetaData v3 JSON response row was not an object")
-        rows.append(dict(item))
-    return tuple(rows)
-
-
-def get_json(
-    path: str,
-    *,
-    params: dict[str, object],
-    timeout_seconds: float = 60.0,
-    max_attempts: int = 4,
-    initial_retry_seconds: float = 0.5,
-    max_retry_seconds: float = 8.0,
-    sleep: Callable[[float], None] = time.sleep,
-) -> ThetaDataResponse:
-    if max_attempts < 1:
-        raise ValueError("max_attempts must be positive")
-    query_params = [
-        (str(key), str(value))
-        for key, value in params.items()
-        if value is not None
-    ]
-    if not any(key == "format" for key, _ in query_params):
-        query_params.append(("format", "json"))
-    query = urllib.parse.urlencode(query_params)
-    url = _base_url() + "/" + path.lstrip("/")
-    if query:
-        url += "?" + query
-    headers = {
-        "Accept": "application/json",
-        "User-Agent": "ATLAS-thetadata-candidate-surface-v1/1",
-    }
-
-    started = time.perf_counter()
-    last_error: BaseException | None = None
-    for attempt in range(1, max_attempts + 1):
-        request = urllib.request.Request(url, headers=headers, method="GET")
-        try:
-            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-                raw = response.read()
-                status = int(response.status)
-                if status != 200:
-                    raise ThetaDataError(
-                        f"ThetaData unexpected success status {status}",
-                        http_status=status,
-                    )
-                return ThetaDataResponse(
-                    http_status=status,
-                    rows=_decode_rows(raw),
-                    headers={str(k): str(v) for k, v in response.headers.items()},
-                    response_bytes=len(raw),
-                    elapsed_seconds=max(0.0, time.perf_counter() - started),
-                    raw_body=raw,
-                )
-        except urllib.error.HTTPError as exc:
-            body = exc.read()
-            message = body.decode("utf-8", errors="replace").strip()
-            if exc.code == NO_DATA_STATUS:
-                return ThetaDataResponse(
-                    http_status=int(exc.code),
-                    rows=(),
-                    headers={str(k): str(v) for k, v in exc.headers.items()},
-                    response_bytes=len(body),
-                    elapsed_seconds=max(0.0, time.perf_counter() - started),
-                    raw_body=body,
-                )
-            last_error = exc
-            if exc.code in TRANSIENT_STATUS and attempt < max_attempts:
-                sleep(min(initial_retry_seconds * (2 ** (attempt - 1)), max_retry_seconds))
-                continue
+class _Worker:
+    def __init__(self, python_path: Path) -> None:
+        if not python_path.is_file():
             raise ThetaDataError(
-                f"ThetaData HTTP {exc.code}: {message[:500]}",
-                http_status=int(exc.code),
+                "isolated ThetaData provider Python is unavailable; run the provider "
+                "environment setup after the ThetaData subscription is ready"
+            )
+        if not WORKER_SCRIPT.is_file():
+            raise ThetaDataError("ThetaData provider worker script is unavailable")
+        try:
+            self.process = subprocess.Popen(
+                [str(python_path), str(WORKER_SCRIPT), "--serve"],
+                cwd=str(ROOT),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                encoding="utf-8",
+                bufsize=1,
+                env=os.environ.copy(),
+            )
+        except OSError as exc:
+            raise ThetaDataError(
+                f"unable to start isolated ThetaData provider worker: "
+                f"{type(exc).__name__}"
             ) from exc
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            last_error = exc
-            if attempt < max_attempts:
-                sleep(min(initial_retry_seconds * (2 ** (attempt - 1)), max_retry_seconds))
-                continue
-            break
+        if self.process.stdin is None or self.process.stdout is None:
+            self.close()
+            raise ThetaDataError("ThetaData provider worker pipes unavailable")
 
-    raise ThetaDataError(
-        f"ThetaData request failed after {max_attempts} attempts: "
-        f"{type(last_error).__name__ if last_error else 'unknown error'}"
-    ) from last_error
+        self._responses: queue.Queue[str | None] = queue.Queue()
+        self._request_lock = threading.Lock()
+        self._reader = threading.Thread(
+            target=self._read_stdout,
+            name="atlas-thetadata-worker-reader",
+            daemon=True,
+        )
+        self._reader.start()
+        with _workers_lock:
+            _workers.add(self)
+
+    def _read_stdout(self) -> None:
+        assert self.process.stdout is not None
+        try:
+            for line in self.process.stdout:
+                self._responses.put(line)
+        finally:
+            self._responses.put(None)
+
+    def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+        with self._request_lock:
+            if self.process.poll() is not None:
+                raise ThetaDataError("ThetaData provider worker exited unexpectedly")
+            request_id = uuid.uuid4().hex
+            payload = {
+                "id": request_id,
+                "method": method,
+                "kwargs": kwargs,
+            }
+            assert self.process.stdin is not None
+            try:
+                self.process.stdin.write(
+                    json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+                )
+                self.process.stdin.flush()
+                line = self._responses.get(timeout=WORKER_RESPONSE_TIMEOUT_SECONDS)
+            except queue.Empty as exc:
+                self.close()
+                raise ThetaDataError(
+                    "ThetaData provider worker timed out waiting for a response"
+                ) from exc
+            except (BrokenPipeError, OSError) as exc:
+                raise ThetaDataError(
+                    f"ThetaData provider worker communication failed: "
+                    f"{type(exc).__name__}"
+                ) from exc
+
+            if not line:
+                raise ThetaDataError("ThetaData provider worker returned no response")
+            try:
+                response = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ThetaDataError(
+                    "ThetaData provider worker returned invalid protocol JSON"
+                ) from exc
+
+            if (
+                not isinstance(response, dict)
+                or response.get("id") != request_id
+                or response.get("ok") is not True
+            ):
+                error_type = (
+                    str(response.get("error_type"))
+                    if isinstance(response, dict)
+                    else "UNKNOWN"
+                )
+                raise ThetaDataError(
+                    f"ThetaData Python-library worker request failed: {error_type}"
+                )
+            return response
+
+    def close(self) -> None:
+        process = getattr(self, "process", None)
+        if process is None:
+            return
+        try:
+            if process.stdin is not None:
+                process.stdin.close()
+        except OSError:
+            pass
+        if process.poll() is None:
+            try:
+                process.terminate()
+                process.wait(timeout=2)
+            except Exception:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+        with _workers_lock:
+            _workers.discard(self)
+
+
+def close_all_workers() -> None:
+    with _workers_lock:
+        snapshot = list(_workers)
+    for worker in snapshot:
+        worker.close()
+
+
+atexit.register(close_all_workers)
+
+
+def _worker() -> _Worker:
+    cached = getattr(_thread_state, "worker", None)
+    if cached is not None and cached.process.poll() is None:
+        return cached
+    worker = _Worker(provider_python_path())
+    _thread_state.worker = worker
+    return worker
+
+
+def reset_thread_worker_for_tests() -> None:
+    cached = getattr(_thread_state, "worker", None)
+    if cached is not None:
+        cached.close()
+    if hasattr(_thread_state, "worker"):
+        delattr(_thread_state, "worker")
+
+
+def _call(method_name: str, **kwargs: Any) -> ThetaDataResponse:
+    started = time.perf_counter()
+    response = _worker().request(method_name, kwargs)
+    rows_raw = response.get("rows")
+    if not isinstance(rows_raw, list) or any(
+        not isinstance(row, dict) for row in rows_raw
+    ):
+        raise ThetaDataError("ThetaData worker response rows malformed")
+    rows = tuple(
+        {str(key): value for key, value in row.items()}
+        for row in rows_raw
+    )
+    canonical = _canonical_bytes(rows)
+    library_version = response.get("library_version")
+    environment_fingerprint = response.get("environment_fingerprint")
+    return ThetaDataResponse(
+        http_status=200,
+        rows=rows,
+        headers={
+            "atlas-provider-transport": TRANSPORT,
+            "atlas-provider-method": method_name,
+        },
+        response_bytes=len(canonical),
+        elapsed_seconds=max(0.0, time.perf_counter() - started),
+        raw_body=canonical,
+        library_version=(
+            None if library_version is None else str(library_version)
+        ),
+        provider_environment_fingerprint=(
+            None
+            if environment_fingerprint is None
+            else str(environment_fingerprint)
+        ),
+    )
+
+
+def _day_text(value: str) -> str:
+    text = str(value)
+    if len(text) == 8 and text.isdigit():
+        return f"{text[:4]}-{text[4:6]}-{text[6:8]}"
+    return date.fromisoformat(text).isoformat()
 
 
 def option_at_time_quote_surface(
@@ -162,31 +286,24 @@ def option_at_time_quote_surface(
     max_dte: int = 75,
     strike_range: int | None = None,
 ) -> ThetaDataResponse:
-    """Return a provider-side option surface at one decision clock.
-
-    No strike or expiration is preselected. The optional strike_range is intentionally
-    left unset by the current research plan so contract eligibility can be decided
-    downstream from observed causal evidence.
-    """
     if max_dte < 1:
         raise ValueError("max_dte must be positive")
     if strike_range is not None and strike_range < 0:
         raise ValueError("strike_range cannot be negative")
-    return get_json(
-        "/v3/option/at_time/quote",
-        params={
-            "symbol": symbol,
-            "expiration": "*",
-            "strike": "*",
-            "right": right,
-            "start_date": date_et.replace("-", ""),
-            "end_date": date_et.replace("-", ""),
-            "time_of_day": time_of_day_et,
-            "max_dte": max_dte,
-            "strike_range": strike_range,
-            "format": "json",
-        },
-    )
+    day = _day_text(date_et)
+    kwargs: dict[str, Any] = {
+        "symbol": symbol,
+        "start_date": day,
+        "end_date": day,
+        "time_of_day": time_of_day_et,
+        "expiration": "*",
+        "strike": "*",
+        "right": right,
+        "max_dte": max_dte,
+    }
+    if strike_range is not None:
+        kwargs["strike_range"] = strike_range
+    return _call("option_at_time_quote", **kwargs)
 
 
 def option_at_time_quote(
@@ -198,19 +315,16 @@ def option_at_time_quote(
     date_et: str,
     time_of_day_et: str,
 ) -> ThetaDataResponse:
-    """Exact-contract at-time quote reserved for the later selected-contract exit stage."""
-    return get_json(
-        "/v3/option/at_time/quote",
-        params={
-            "symbol": symbol,
-            "expiration": expiration.replace("-", ""),
-            "strike": strike,
-            "right": right,
-            "start_date": date_et.replace("-", ""),
-            "end_date": date_et.replace("-", ""),
-            "time_of_day": time_of_day_et,
-            "format": "json",
-        },
+    day = _day_text(date_et)
+    return _call(
+        "option_at_time_quote",
+        symbol=symbol,
+        start_date=day,
+        end_date=day,
+        time_of_day=time_of_day_et,
+        expiration=_day_text(expiration),
+        strike=str(strike),
+        right=right,
     )
 
 
@@ -222,24 +336,21 @@ def option_history_open_interest_surface(
     max_dte: int = 75,
     strike_range: int | None = None,
 ) -> ThetaDataResponse:
-    """Historical previous-session open interest for a bounded option surface."""
     if max_dte < 1:
         raise ValueError("max_dte must be positive")
     if strike_range is not None and strike_range < 0:
         raise ValueError("strike_range cannot be negative")
-    return get_json(
-        "/v3/option/history/open_interest",
-        params={
-            "symbol": symbol,
-            "expiration": "*",
-            "strike": "*",
-            "right": right,
-            "date": date_et.replace("-", ""),
-            "max_dte": max_dte,
-            "strike_range": strike_range,
-            "format": "json",
-        },
-    )
+    kwargs: dict[str, Any] = {
+        "symbol": symbol,
+        "date": _day_text(date_et),
+        "expiration": "*",
+        "strike": "*",
+        "right": right,
+        "max_dte": max_dte,
+    }
+    if strike_range is not None:
+        kwargs["strike_range"] = strike_range
+    return _call("option_history_open_interest", **kwargs)
 
 
 def option_history_binomial_first_order_greeks_at_minute(
@@ -255,13 +366,6 @@ def option_history_binomial_first_order_greeks_at_minute(
     binomial_steps: int = 101,
     strike_range: int | None = None,
 ) -> ThetaDataResponse:
-    """Dividend-aware American-style first-order Greeks at one historical minute.
-
-    This endpoint is intentionally expiration-specific. The upstream quote/open-
-    interest stage must first narrow the candidate expirations. ATLAS requires an
-    explicit annual dividend amount; unknown dividend context is not silently treated
-    as zero.
-    """
     if annual_dividend < 0:
         raise ValueError("annual_dividend cannot be negative")
     if binomial_steps < 5 or binomial_steps > 201:
@@ -270,22 +374,20 @@ def option_history_binomial_first_order_greeks_at_minute(
         raise ValueError("strike_range cannot be negative")
     if version not in {"1", "latest"}:
         raise ValueError("unsupported ThetaData Greeks version")
-    return get_json(
-        "/v3/option/history/binomial_greeks/first_order",
-        params={
-            "symbol": symbol,
-            "expiration": expiration.replace("-", ""),
-            "strike": "*",
-            "right": right,
-            "date": date_et.replace("-", ""),
-            "start_time": time_of_day_et,
-            "end_time": time_of_day_et,
-            "interval": "1m",
-            "annual_dividend": annual_dividend,
-            "rate_type": rate_type,
-            "version": version,
-            "binomial_steps": binomial_steps,
-            "strike_range": strike_range,
-            "format": "json",
-        },
-    )
+    kwargs: dict[str, Any] = {
+        "symbol": symbol,
+        "expiration": _day_text(expiration),
+        "strike": "*",
+        "right": right,
+        "date": _day_text(date_et),
+        "start_time": time_of_day_et,
+        "end_time": time_of_day_et,
+        "interval": "1m",
+        "annual_dividend": float(annual_dividend),
+        "rate_type": rate_type,
+        "version": version,
+        "binomial_steps": binomial_steps,
+    }
+    if strike_range is not None:
+        kwargs["strike_range"] = strike_range
+    return _call("option_history_binomial_greeks_first_order", **kwargs)

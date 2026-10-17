@@ -234,7 +234,10 @@ def test_plan_and_fixture_screen_make_no_provider_or_source_file_reads(monkeypat
     inputs = fixture()
     def forbidden(*args, **kwargs):
         pytest.fail("pilot specification work cannot contact providers or read source bodies")
-    monkeypatch.setattr(client, "get_json", forbidden)
+    # Direct-library transport replaced the old REST get_json entry point.
+    # Guard both the transport call and worker acquisition against accidental IO.
+    monkeypatch.setattr(client, "_call", forbidden)
+    monkeypatch.setattr(client, "_worker", forbidden)
     monkeypatch.setattr(Path, "read_text", forbidden)
     monkeypatch.setattr(Path, "read_bytes", forbidden)
     plan = build_options_native_pilot_plan()
