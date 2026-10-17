@@ -4,7 +4,7 @@
 
 ATLAS is being built as an options-first research and trading system: discover opportunities in option pricing and volatility, independently evaluate stock signals, compare trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
 
-**Reviewed 2026-10-16 against main at `89272aa10a0d1532311a30c03c5d5ba50a7a9e89`, with the inspected pilot packet and cached stock-input follow-up described in the guide.** Code and fixture verification do not renew workstation source or strategy acceptance.
+**Reviewed 2026-10-16 through merged PR #338 (`768ffea1`).** This entry page reflects completed SPY source checks and the pending offline multi-underlying plan census. Code and fixture verification do not renew workstation source or strategy acceptance.
 
 ## Start here
 
@@ -12,7 +12,8 @@ ATLAS is being built as an options-first research and trading system: discover o
 - [Strategy evidence register](docs/strategy_evidence_register.md): compact results, limitations, dispositions, and completed experiment identities.
 - [Options-native pilot plan](scripts/plan_options_native_pilot_v1.py): provider-free specification and bounded CALL/PUT discovery demand; no performance run or download.
 - [Pilot input packet](scripts/inspect_options_native_pilot_inputs_v1.py): completed 21-close SPY raw-input check; its uploaded packet is verified and needs no repeat.
-- [Cached pilot stock-input review](scripts/review_options_native_stock_inputs_v1.py): next bounded check of exact prior closing minutes, the 10:00 spot candidate and cached SPY corporate-action records; reuses the daily packet without a strategy replay or provider request.
+- [Cached pilot stock-input review](scripts/review_options_native_stock_inputs_v1.py): completed 22/22 exact minute observations in the retained operator report; not a task to repeat.
+- [Multi-underlying source-plan inventory](scripts/review_options_multi_underlying_source_inventory_v1.py): next offline operator action after PR #338, to count actual underlyings in the immutable 9,455-query 09:35 CALL plan; no quotes, downloads or simulated trades.
 - [Offline workstation review](scripts/review_offline_workstation_v1.py): one bounded, provider-free inventory of storage bindings and retained metadata; usage is in the project guide.
 - [Retained stock results review](scripts/review_retained_stock_results_v1.py): reconcile accepted route/fold returns, costs, concentration, and five-session paths without a new replay; `--selected-only` uses the exact original summary and six matching aggregates when the full route cache is unavailable.
 - [Retained option account review](scripts/review_retained_option_account_v1.py): audit the original V2 ledger, retained cash/fees and unresolved contracts, then save a bounded evidence demand without rerunning its simulation.
@@ -28,7 +29,7 @@ The retained V2 account review completed on 2026-10-14. The 2026-10-15 exact-exi
 
 ThetaData Options Standard remains planned, with activation expected approximately three to four weeks after the 2026-10-12 planning note. Continue offline stock analysis, cached-result reporting, account-lifecycle work, and source-input preparation meanwhile. The [roadmap](docs/roadmap.md#ordered-roadmap) defines deliverables and dependencies.
 
-The first options-native pilot is a separately versioned SPY long-straddle hypothesis with prior-only volatility inputs and option-aware daily exits. Its specification, 411 weekly CALL/PUT discovery requests, synthetic feature/contract selection, daily exit requests and two-leg cash/exposure mechanics are implemented. The uploaded raw-input packet reconciles all 21 closes; synthetic economic-return arithmetic now requires explicit split, cash-entitlement and timing inputs. The next workstation action checks cached corporate actions and 22 exact minute observations in one bounded review. Historical economic-return/source clocks, broker costs and multi-leg execution remain unqualified. The original 9,455 stock-to-CALL surfaces and closed experiments retain their own identities.
+The first options-native pilot is a separately versioned SPY long-straddle hypothesis with prior-only volatility inputs and option-aware daily exits. Its specification, 411 weekly CALL/PUT discovery requests, synthetic feature/contract selection, daily exit requests and two-leg cash/exposure mechanics are implemented. The uploaded raw-input packet reconciles all 21 closes; synthetic economic-return arithmetic now requires explicit split, cash-entitlement and timing inputs. The cached 22-clock check and 411-week physical coverage review are complete (407 price-complete weeks). State Street's original issuer workbook reconciles all 33 target-period cash dividends, including the 2018-06-15 archive omission. A separate all-event publication-demand packet is complete, but original as-of announcement/revision receipts are absent. The next workstation action is the existing offline multi-underlying source-plan inventory. Historical economic-return/source clocks, per-underlying action completeness, real option quotes, broker costs and multi-leg execution remain unqualified. The original 9,455 stock-to-CALL surfaces and closed experiments retain their own identities.
 
 ## Local operator interface
 
