@@ -279,6 +279,30 @@ After this PR is exact-head Windows/Ubuntu **green and merged**, run once on Win
 
 Upload its small saved JSON and console output. A current-day issuer history snapshot can establish accuracy and coverage **within that snapshot and period**, not original announcement/revision timing, historical as-of feature availability, negative evidence of all splits/noncash events, trade execution, option implied variance or alpha. **No historical research authorization changes** until those distinct blockers have their own receipts and authority.
 
+The operator completed the issuer reconciliation, `eca21b2ebbd6fbf3.json`, on **2026-10-16**. The uploaded 12,148-byte report has raw SHA-256 `2cad294694292fec31a8a9f6c6610fde23fa8b6db10bd36257fbe3ec9e856900` and independently verified content fingerprint `eca21b2ebbd6fbf378e905e7a8ef8ec278b6320dc2ba0e9976e1a53491b1ee35`. It confirms all 33 2017-12..2025-12 State Street cash distributions, 32/33 archival ex-date matches, the **2018-06-15 USD 1.245568** missing archive event and two source-specific decimal residuals: issuer/original Alpaca agree at **1.096775** on 2018-03-16 (the third-party reference rounded to 1.09678), while issuer/third-party agree at **1.366242** on 2020-06-19 (original Alpaca carries 1.3662419). A separate out-of-period 2006 payment/record date anomaly is retained. No data scans, strategy signals, implied variance, trading authorization or PIT publication qualification emerged from this run. **Do not rerun the issuer workbook capture or this 33-event reconciliation.**
+
+### Historical cash-dividend publication evidence — next grouped offline demand
+
+[The 33-event evidence-demand module](../packages/data/options_native_spy_publication_evidence_demand_v1.py) and [script](../scripts/review_options_native_spy_publication_evidence_demand_v1.py) join exactly **three SHA-and-content-fingerprint-pinned existing JSON reports**: this original issuer reconciliation, the 411-week physical minute source coverage, and the 407-week retrospective variance grid. The output maps every original State Street distribution and original worksheet row to the **20 prior return-ending sessions** and exact weekly first/last 10:00 ET decisions that depend on it. It reconciles **149** dividend-touched, price-complete weeks, the four missing-price weeks, and the 33 historical event source requirements without rescanning any 97 stock months, 379 original action pages, the 378,362-row archive, or stock/news/options/outcomes. No provider, broker or issuer GET is authorized by the demand packet.
+
+Separate **uncaptured retrospective research leads** currently exist for 2018-06-15 ([S&P Capital IQ article displaying June 14, 2018 at 7:34 p.m. ET](https://www.marketscreener.com/quote/stock/SPDR-S-P-500-ETF-TRUST-6501057/news/SPDR-S-P-500-ETF-Trust-Announce-US-and-AUD-Distribution-Payable-on-July-31-2018-and-August-10-201-34677797/)), 2025-06-20 ([displaying June 20, 2025 at 6:05 a.m. ET](https://www.marketscreener.com/quote/stock/SPDR-S-P-500-ETF-TRUST-6501057/news/SPDR-S-P-500-ETF-CDIs-Declares-distribution-50293299/)), and 2025-12-19 ([displaying December 18, 2025 at 5:35 p.m. ET](https://www.marketscreener.com/news/spdr-s-p-500-etf-announces-a-distribution-payable-on-31-january-2026-for-us-and-13-february-2026-fo-ce7e59dbde81fe20)). Article publication headers viewed in 2026 are useful **candidate evidence**, not hashed, retained original historical publication and revision receipts, and not State Street U.S. announcement-time proofs by themselves. Source retrieval/retention, event identity, disclosure clock and revisions require independent bounded gates; no missing source proves a zero-action interval. The frozen 2026 protected holdout is not reopened.
+
+When exact-head Ubuntu/Windows CI for this package is green and merged, run the one group-wide offline demand command, returning terminal output and the saved conflict-safe JSON:
+
+```powershell
+& {
+    $ErrorActionPreference = 'Stop'
+    if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main. Stop.' }
+    git pull --ff-only origin main
+    if ($LASTEXITCODE -ne 0) { throw 'Git update failed.' }
+    & .\.venv\Scripts\python.exe scripts\review_options_native_spy_publication_evidence_demand_v1.py --save-report
+    if ($LASTEXITCODE -ne 0) { throw 'SPY 33-event publication demand blocked; paste complete output.' }
+}
+```
+
+The JSON is stored under `data/research/options_native_spy_publication_evidence_demand_v1` through the existing research-evidence D: binding. Its purpose is to create **one focused full-period publication/source-gap worklist** before a bounded historical-document acquisition effort, rather than continuing one week at a time or treating retrospective data as a real tradable feature.
+
+
 
 
 
