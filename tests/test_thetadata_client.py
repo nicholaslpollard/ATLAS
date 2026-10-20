@@ -234,7 +234,7 @@ def test_worker_distinguishes_explicit_no_data_from_unexplained_empty(monkeypatc
         report = client._call("option_at_time_quote", symbol="AAPL")
         assert report.rows == ()
         assert report.explicit_no_data is explicit
-        assert report.raw_body == b"[]\\n"
+        assert report.raw_body == b"[]\n"
 
 
 @pytest.mark.parametrize(
