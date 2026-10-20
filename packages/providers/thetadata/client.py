@@ -55,6 +55,7 @@ class ThetaDataResponse:
     library_version: str | None = None
     provider_environment_fingerprint: str | None = None
     evidence_encoding: str = EVIDENCE_ENCODING
+    explicit_no_data: bool = False
 
 
 _thread_state = threading.local()
@@ -246,6 +247,11 @@ def _call(method_name: str, **kwargs: Any) -> ThetaDataResponse:
         {str(key): value for key, value in row.items()}
         for row in rows_raw
     )
+    explicit_no_data = response.get("explicit_no_data", False)
+    if type(explicit_no_data) is not bool:
+        raise ThetaDataError("ThetaData worker no-data evidence is not boolean")
+    if explicit_no_data and rows:
+        raise ThetaDataError("ThetaData worker claimed no data alongside rows")
     canonical = _canonical_bytes(rows)
     library_version = response.get("library_version")
     environment_fingerprint = response.get("environment_fingerprint")
@@ -259,6 +265,7 @@ def _call(method_name: str, **kwargs: Any) -> ThetaDataResponse:
         response_bytes=len(canonical),
         elapsed_seconds=max(0.0, time.perf_counter() - started),
         raw_body=canonical,
+        explicit_no_data=explicit_no_data,
         library_version=(
             None if library_version is None else str(library_version)
         ),

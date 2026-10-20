@@ -216,3 +216,47 @@ def test_binomial_greeks_rejects_negative_dividend():
 def test_worker_rejects_missing_provider_python(tmp_path):
     with pytest.raises(client.ThetaDataError, match="provider Python is unavailable"):
         client._Worker(tmp_path / "missing-python")
+
+def test_worker_distinguishes_explicit_no_data_from_unexplained_empty(monkeypatch):
+    class EmptyWorker:
+        def __init__(self, explicit):
+            self.explicit = explicit
+        def request(self, method, kwargs):
+            return {
+                "rows": [],
+                "explicit_no_data": self.explicit,
+                "library_version": "1.0.12",
+                "environment_fingerprint": "a" * 64,
+            }
+
+    for explicit in (True, False):
+        monkeypatch.setattr(client, "_worker", lambda: EmptyWorker(explicit))
+        report = client._call("option_at_time_quote", symbol="AAPL")
+        assert report.rows == ()
+        assert report.explicit_no_data is explicit
+        assert report.raw_body == b"[]\n"
+
+
+@pytest.mark.parametrize(
+    "bad_flag,rows",
+    [
+        ("true", []),
+        (1, []),
+        (True, [{"symbol": "AAPL"}]),
+    ],
+)
+def test_worker_rejects_invalid_or_self_contradictory_no_data_evidence(
+    monkeypatch, bad_flag, rows
+):
+    class BadWorker:
+        def request(self, method, kwargs):
+            return {
+                "rows": rows,
+                "explicit_no_data": bad_flag,
+                "library_version": "1.0.12",
+                "environment_fingerprint": "a" * 64,
+            }
+
+    monkeypatch.setattr(client, "_worker", lambda: BadWorker())
+    with pytest.raises(client.ThetaDataError, match="no-data|no data"):
+        client._call("option_at_time_quote", symbol="AAPL")

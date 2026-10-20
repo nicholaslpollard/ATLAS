@@ -122,6 +122,7 @@ def _persist_raw(
         "body_path": str(body_path),
         "body_sha256": _sha256(response.raw_body),
         "body_bytes": len(response.raw_body),
+        "explicit_no_data": response.explicit_no_data or response.http_status == 472,
         "http_status": response.http_status,
         "elapsed_seconds": response.elapsed_seconds,
         "provider_transport": response.transport,
@@ -412,14 +413,18 @@ def _probe_one(
         }, response, None
 
     if len(response.rows) == 0:
+        explicit = response.explicit_no_data or response.http_status == 472
         return {
             "anchor_index": anchor["anchor_index"],
             "qualification_reasons": anchor["qualification_reasons"],
             "query": anchor["query"],
-            "status": "EXPLICIT_NO_DATA",
+            "status": (
+                "EXPLICIT_NO_DATA" if explicit else "AMBIGUOUS_EMPTY_RESPONSE"
+            ),
             "http_status": response.http_status,
             "response_rows": 0,
-        }, response, ()
+            "explicit_no_data": explicit,
+        }, response, (() if explicit else None)
 
     try:
         normalized, summary = _normalize_rows(response.rows, anchor=anchor)
@@ -491,7 +496,7 @@ def run_thetadata_candidate_surface_qualification_v1(
             results[index] = result
 
     ordered = [results[index] for index in sorted(results)]
-    hard_bad = {"TRANSPORT_OR_ENTITLEMENT_ERROR", "SURFACE_VALIDATION_ERROR"}
+    hard_bad = {"TRANSPORT_OR_ENTITLEMENT_ERROR", "SURFACE_VALIDATION_ERROR", "AMBIGUOUS_EMPTY_RESPONSE"}
     hard_errors = [item for item in ordered if item["status"] in hard_bad]
 
     coverage: dict[str, int] = {str(year): 0 for year in range(2021, 2026)}
