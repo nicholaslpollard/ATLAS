@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 from datetime import date
 import sys
 from types import ModuleType
@@ -183,3 +184,37 @@ def test_root_dotenv_key_detected_without_exposing_value(tmp_path, monkeypatch):
     # A literal empty assignment does not establish any credentials.
     file.write_text("THETADATA_API_KEY=\n", encoding="utf-8")
     assert worker._auth_source() == ("NOT_OBSERVED_LOCALLY", False)
+
+def test_sdk_import_reports_bounded_missing_dependency_without_sdk_creation(monkeypatch):
+    monkeypatch.setattr(worker, "_library_version", lambda: "1.0.12")
+    original = builtins.__import__
+
+    def import_failing(name, *args, **kwargs):
+        if name == "thetadata":
+            raise ModuleNotFoundError(
+                "Sensitive import traceback context must not be repeated",
+                name="grpc._cython.cygrpc",
+            )
+        return original(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_failing)
+    result = worker.inspect_sdk_method_contract()
+    assert result["status"] == "SDK_IMPORT_FAILED_ModuleNotFoundError"
+    assert result["missing_module"] == "grpc._cython.cygrpc"
+    assert result["compatible"] is False
+    assert result["provider_requests"] == 0
+    assert "Sensitive" not in str(result)
+
+
+def test_sdk_import_rejects_untrusted_module_name_in_diagnostics():
+    bad = ModuleNotFoundError(
+        "API key may be in an exception message",
+        name="../.env?THETADATA_API_KEY=do-not-share",
+    )
+    assert worker._safe_missing_module_name(bad) is None
+    assert worker._safe_missing_module_name(
+        ModuleNotFoundError("missing", name="zstandard.backend_c")
+    ) == "zstandard.backend_c"
+    assert worker._safe_missing_module_name(
+        ModuleNotFoundError("missing", name="x" * 101)
+    ) is None
