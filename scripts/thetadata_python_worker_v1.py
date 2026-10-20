@@ -163,7 +163,7 @@ def _library_version() -> str | None:
         return None
 
 
-_MODULE_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*){0,7}\\Z")
+_MODULE_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:[.][A-Za-z_][A-Za-z0-9_]*){0,7}")
 
 
 def _safe_missing_module_name(exc: ModuleNotFoundError) -> str | None:
