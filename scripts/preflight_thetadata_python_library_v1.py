@@ -83,6 +83,12 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         print(
+            "  sdk_interface "
+            f"compatible={result.sdk_contract_compatible} "
+            f"status={result.sdk_contract_status}",
+            flush=True,
+        )
+        print(
             "  auth "
             f"source={result.auth_source} "
             f"material_present={result.auth_material_present}",
