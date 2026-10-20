@@ -10,6 +10,7 @@ cannot conflict with ATLAS's accepted Webull SDK protobuf<6 requirement.
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -147,6 +148,15 @@ def _failed_pinned_contract_checks(preflight: dict) -> tuple[str, ...]:
 
 def _safe_provider_diagnostic(preflight: dict) -> dict:
     """No secrets, error traces, credential paths, or provider request data."""
+    missing_module = preflight.get("sdk_missing_module")
+    if not (
+        isinstance(missing_module, str)
+        and len(missing_module) <= 100
+        and all(part.isascii() and part.isidentifier()
+                for part in missing_module.split("."))
+        and len(missing_module.split(".")) <= 8
+    ):
+        missing_module = None
     statuses = preflight.get("sdk_method_statuses")
     if not isinstance(statuses, dict):
         statuses = {}
@@ -154,6 +164,7 @@ def _safe_provider_diagnostic(preflight: dict) -> dict:
         "python_version": str(preflight.get("python_version") or "UNKNOWN")[:32],
         "thetadata_version": str(preflight.get("thetadata_version") or "NONE")[:32],
         "sdk_contract_status": str(preflight.get("sdk_contract_status") or "UNKNOWN")[:80],
+        "sdk_missing_module": missing_module,
         "sdk_method_statuses": {
             str(name)[:70]: str(status)[:70]
             for name, status in sorted(statuses.items())
