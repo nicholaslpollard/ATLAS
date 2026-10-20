@@ -63,3 +63,24 @@ def test_all_failed_checks_are_reported_without_secrets():
         "SDK_METHOD_INTERFACE_MISMATCH",
         "INVALID_ENVIRONMENT_FINGERPRINT",
     )
+
+def test_import_failure_propagates_only_safe_module_identifier():
+    sample = {
+        "python_meets_3_12": True,
+        "thetadata_installed": True,
+        "thetadata_version": setup.TARGET_LIBRARY_VERSION,
+        "sdk_contract_compatible": False,
+        "sdk_contract_status": "SDK_IMPORT_FAILED_ModuleNotFoundError",
+        "sdk_missing_module": "grpc._cython.cygrpc",
+        "environment_fingerprint": "a" * 64,
+        "api_key": "test-canary-should-never-appear",
+    }
+    result = setup._safe_provider_diagnostic(sample)
+    assert result["sdk_missing_module"] == "grpc._cython.cygrpc"
+    assert result["failed_checks"] == ["SDK_METHOD_INTERFACE_MISMATCH"]
+    assert "test-canary" not in json.dumps(result)
+
+    sample["sdk_missing_module"] = "../.env?THETADATA_API_KEY=test-canary"
+    result = setup._safe_provider_diagnostic(sample)
+    assert result["sdk_missing_module"] is None
+    assert "test-canary" not in json.dumps(result)
