@@ -290,6 +290,15 @@ def _write_response(
             "ThetaData candidate surface evidence bytes are unbounded"
         )
 
+    explicit_no_data = response.explicit_no_data or response.http_status == 472
+    if response.rows and explicit_no_data:
+        raise ThetaDataCandidateSurfaceCacheError(
+            "ThetaData nonempty response conflicts with explicit no-data source status"
+        )
+    if not response.rows and not explicit_no_data:
+        raise ThetaDataCandidateSurfaceCacheError(
+            "ThetaData empty provider DataFrame is ambiguous; cannot cache as explicit no-data"
+        )
     if response.rows:
         normalized, summary = _normalize_for_query(response.rows, query)
         status = "COMPLETE_CANDIDATE_SURFACE"
@@ -319,6 +328,7 @@ def _write_response(
         "body_sha256": _sha256(response.raw_body),
         "body_bytes": len(response.raw_body),
         "row_count": len(response.rows),
+        "explicit_no_data": explicit_no_data,
         "surface_summary": summary,
         "normalized_surface_fingerprint": normalized_fingerprint,
         "provider_transport": response.transport,
