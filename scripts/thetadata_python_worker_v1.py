@@ -17,6 +17,7 @@ import contextlib
 from datetime import date, datetime
 import importlib.metadata
 import hashlib
+import inspect
 import json
 import math
 import os
@@ -37,6 +38,26 @@ PROVIDER_PACKAGES = (
 )
 API_KEY_ENV = "THETADATA_API_KEY"
 CREDENTIALS_FILE_ENV = "THETADATA_CREDENTIALS_FILE"
+
+
+# Only these already-implemented read-only operations are authorized.
+# The per-method keyword set is also the local SDK compatibility contract:
+# an SDK upgrade may never silently change the wire call surface.
+ALLOWED_METHOD_ARGUMENTS = {
+    "option_at_time_quote": frozenset((
+        "symbol", "start_date", "end_date", "time_of_day", "expiration",
+        "strike", "right", "max_dte", "strike_range",
+    )),
+    "option_history_open_interest": frozenset((
+        "symbol", "date", "expiration", "strike", "right", "max_dte",
+        "strike_range",
+    )),
+    "option_history_binomial_greeks_first_order": frozenset((
+        "symbol", "date", "expiration", "strike", "right",
+        "start_time", "end_time", "interval", "annual_dividend",
+        "rate_type", "version", "binomial_steps", "strike_range",
+    )),
+}
 
 
 def _version_tuple(value: str) -> tuple[int, ...]:
@@ -141,10 +162,67 @@ def _library_version() -> str | None:
         return None
 
 
+def inspect_sdk_method_contract() -> dict[str, Any]:
+    """Inspect installed SDK class methods without constructing a client or requesting data.
+
+    A callable with only **kwargs is not evidence that our specific query
+    keywords are supported. Fail closed pending a targeted SDK review instead
+    of spending requests to discover an accidental signature change.
+    """
+    result: dict[str, Any] = {
+        "compatible": False,
+        "status": "LIBRARY_NOT_INSTALLED",
+        "method_statuses": {},
+        "provider_requests": 0,
+    }
+    if _library_version() is None:
+        return result
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            from thetadata import ThetaClient
+    except Exception as exc:
+        result["status"] = "SDK_IMPORT_FAILED_" + type(exc).__name__
+        return result
+
+    statuses: dict[str, str] = {}
+    for name, expected in ALLOWED_METHOD_ARGUMENTS.items():
+        method = getattr(ThetaClient, name, None)
+        if not callable(method):
+            statuses[name] = "MISSING_METHOD"
+            continue
+        try:
+            params = inspect.signature(method).parameters
+        except (TypeError, ValueError):
+            statuses[name] = "UNINSPECTABLE_SIGNATURE"
+            continue
+        explicit = {
+            key for key, param in params.items()
+            if param.kind in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+        }
+        if expected - explicit:
+            statuses[name] = "MISSING_EXPLICIT_KEYWORDS"
+        else:
+            statuses[name] = "EXPLICIT_KEYWORDS_PRESENT"
+    result["method_statuses"] = statuses
+    result["compatible"] = all(
+        state == "EXPLICIT_KEYWORDS_PRESENT"
+        for state in statuses.values()
+    ) and len(statuses) == len(ALLOWED_METHOD_ARGUMENTS)
+    result["status"] = (
+        "EXPECTED_METHOD_SIGNATURES_PRESENT"
+        if result["compatible"] else "SDK_METHOD_CONTRACT_UNQUALIFIED"
+    )
+    return result
+
+
 def preflight() -> dict[str, Any]:
     version = _library_version()
     auth_source, auth_present = _auth_source()
     environment_packages, environment_fingerprint = _provider_environment()
+    sdk = inspect_sdk_method_contract()
     return {
         "ok": True,
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
@@ -161,6 +239,9 @@ def preflight() -> dict[str, Any]:
         "auth_material_present": auth_present,
         "environment_packages": environment_packages,
         "environment_fingerprint": environment_fingerprint,
+        "sdk_contract_compatible": sdk["compatible"],
+        "sdk_contract_status": sdk["status"],
+        "sdk_method_statuses": sdk["method_statuses"],
         "provider_requests": 0,
     }
 
@@ -194,6 +275,10 @@ class Runtime:
         version = _library_version()
         if version is None:
             raise RuntimeError("THETADATA_LIBRARY_NOT_INSTALLED")
+        if version != TARGET_LIBRARY_VERSION:
+            raise RuntimeError("THETADATA_LIBRARY_UNPINNED")
+        if inspect_sdk_method_contract()["compatible"] is not True:
+            raise RuntimeError("THETADATA_SDK_METHOD_CONTRACT_UNQUALIFIED")
         if sys.version_info[:2] < (3, 12):
             raise RuntimeError("PYTHON_3_12_PLUS_REQUIRED")
         with contextlib.redirect_stdout(sys.stderr):
@@ -204,6 +289,13 @@ class Runtime:
         return self.client
 
     def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+        # Reject unsupported calls BEFORE SDK construction/authentication.
+        if method not in ALLOWED_METHOD_ARGUMENTS:
+            raise RuntimeError("THETADATA_METHOD_NOT_ALLOWED")
+        if not isinstance(kwargs, dict) or (
+            set(kwargs) - ALLOWED_METHOD_ARGUMENTS[method]
+        ):
+            raise RuntimeError("THETADATA_KEYWORDS_NOT_ALLOWED")
         client = self.ensure()
         func = getattr(client, method, None)
         if func is None or not callable(func):
