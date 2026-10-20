@@ -218,3 +218,21 @@ def test_sdk_import_rejects_untrusted_module_name_in_diagnostics():
     assert worker._safe_missing_module_name(
         ModuleNotFoundError("missing", name="x" * 101)
     ) is None
+
+def test_legacy_dollar_dividend_greeks_do_not_contact_sdk(monkeypatch):
+    runtime = worker.Runtime()
+    runtime.ensure = lambda: pytest.fail(
+        "Legacy ambiguous dividend units cannot construct the SDK client"
+    )
+    with pytest.raises(RuntimeError, match="THETADATA_GREEKS_DIVIDEND_UNITS_UNQUALIFIED"):
+        runtime.request(
+            "option_history_binomial_greeks_first_order",
+            {
+                "symbol": "AAPL",
+                "expiration": "2025-02-21",
+                "date": "2025-01-06",
+                "right": "call",
+                "annual_dividend": 1.0,
+                "binomial_steps": 101,
+            },
+        )

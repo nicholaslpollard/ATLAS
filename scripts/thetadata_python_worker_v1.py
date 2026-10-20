@@ -323,6 +323,14 @@ class Runtime:
         return self.client
 
     def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
+        # The frozen downstream plan supplies annual dividend dollars in the
+        # field named annual_dividend. Current Python SDK docs define that name
+        # as a DECIMAL YIELD; they reserve annual_dividend_amount for USD/share.
+        # Do not silently submit economically incorrect historical Greeks.
+        # A future versioned request/plan with explicit units and SDK proof must
+        # replace this guard. Quotes and OI remain unaffected.
+        if method == "option_history_binomial_greeks_first_order":
+            raise RuntimeError("THETADATA_GREEKS_DIVIDEND_UNITS_UNQUALIFIED")
         # Reject unsupported calls BEFORE SDK construction/authentication.
         if method not in ALLOWED_METHOD_ARGUMENTS:
             raise RuntimeError("THETADATA_METHOD_NOT_ALLOWED")
