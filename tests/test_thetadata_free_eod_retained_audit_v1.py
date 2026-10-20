@@ -117,6 +117,10 @@ def test_modified_source_fingerprint_rejected_before_interpretation():
      lambda d: d["responses"][1]["normalized_rows"][0].update(
          bid=11.0, ask=9.0),
      "EOD_CROSSED_QUOTE"),
+    ("wrong_timezone_offset",
+     lambda d: d["responses"][1]["normalized_rows"][0].update(
+         last_trade="2026-10-16T16:13:55.792000+00:00"),
+     "UNEXPECTED_ET_OFFSET_LAST_TRADE"),
     ("missing_field",
      lambda d: d["responses"][1]["normalized_rows"][0].pop("bid_size"),
      "EOD_ROW_COLUMNS_MISMATCH"),
