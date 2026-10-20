@@ -32,6 +32,8 @@ class ThetaDataPreflightResult:
     library_version: str | None
     library_version_matches_tested: bool
     tested_library_version: str
+    sdk_contract_compatible: bool
+    sdk_contract_status: str
     provider_environment_fingerprint: str | None
     auth_source: str
     auth_material_present: bool
@@ -156,6 +158,8 @@ def inspect_provider_environment(
         "thetadata_version": payload.get("thetadata_version"),
         "thetadata_version_supported": payload.get("thetadata_version_supported") is True,
         "environment_fingerprint": payload.get("environment_fingerprint"),
+        "sdk_contract_compatible": payload.get("sdk_contract_compatible") is True,
+        "sdk_contract_status": str(payload.get("sdk_contract_status") or "NOT_INSPECTED"),
         "auth_source": str(payload.get("auth_source") or "NOT_OBSERVED_LOCALLY"),
         "auth_material_present": payload.get("auth_material_present") is True,
         "provider_requests": int(payload.get("provider_requests") or 0),
@@ -187,6 +191,8 @@ def run_thetadata_preflight_v1(
         and len(environment_fingerprint) == 64
         and all(char in "0123456789abcdef" for char in environment_fingerprint)
     )
+    sdk_ok = environment.get("sdk_contract_compatible") is True
+    sdk_status = str(environment.get("sdk_contract_status") or "NOT_INSPECTED")
     auth_present = environment["auth_material_present"] is True
     auth_source = str(environment["auth_source"])
 
@@ -205,6 +211,9 @@ def run_thetadata_preflight_v1(
             f"thetadata={library_version} tested={TARGET_LIBRARY_VERSION}"
             if library_installed
             else f"thetadata not installed; tested={TARGET_LIBRARY_VERSION}"
+        ),
+        (
+            f"sdk_method_contract={sdk_status} compatible={sdk_ok}"
         ),
         (
             f"provider_environment={environment_fingerprint[:16]}"
@@ -234,6 +243,7 @@ def run_thetadata_preflight_v1(
         and library_installed
         and version_matches
         and environment_fp_ok
+        and sdk_ok
         and auth_present
         and plans_linked
         and environment["provider_requests"] == 0
@@ -246,6 +256,8 @@ def run_thetadata_preflight_v1(
         next_action = "INSTALL_PINNED_THETADATA_PROVIDER_DEPENDENCIES"
     elif not environment_fp_ok:
         next_action = "RECREATE_PROVIDER_ENVIRONMENT_MANIFEST"
+    elif not sdk_ok:
+        next_action = "INSPECT_PINNED_THETADATA_SDK_METHOD_SIGNATURES"
     elif not auth_present:
         next_action = "CONFIGURE_THETADATA_AUTH"
     elif not plans_linked:
@@ -268,6 +280,8 @@ def run_thetadata_preflight_v1(
         ),
         library_version_matches_tested=version_matches,
         tested_library_version=TARGET_LIBRARY_VERSION,
+        sdk_contract_compatible=sdk_ok,
+        sdk_contract_status=sdk_status,
         provider_environment_fingerprint=(
             str(environment_fingerprint) if environment_fp_ok else None
         ),

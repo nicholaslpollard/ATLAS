@@ -78,6 +78,8 @@ def test_ready_provider_environment(tmp_path):
         "thetadata_tested_version": "1.0.12",
         "thetadata_version_supported": True,
         "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sdk_contract_compatible": True,
+        "sdk_contract_status": "EXPECTED_METHOD_SIGNATURES_PRESENT",
         "auth_source": "THETADATA_API_KEY_ENV",
         "auth_material_present": True,
         "provider_requests": 0,
@@ -97,6 +99,8 @@ def test_ready_provider_environment(tmp_path):
     assert result.library_installed is True
     assert result.library_version == "1.0.12"
     assert result.library_version_matches_tested is True
+    assert result.sdk_contract_compatible is True
+    assert result.sdk_contract_status == "EXPECTED_METHOD_SIGNATURES_PRESENT"
     assert result.provider_environment_fingerprint == "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     assert result.auth_material_present is True
     assert result.plans_linked is True
@@ -118,6 +122,8 @@ def test_wrong_library_version_blocks(tmp_path):
         "thetadata_version": "1.0.11",
         "thetadata_version_supported": True,
         "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sdk_contract_compatible": True,
+        "sdk_contract_status": "EXPECTED_METHOD_SIGNATURES_PRESENT",
         "auth_source": "THETADATA_API_KEY_ENV",
         "auth_material_present": True,
         "provider_requests": 0,
@@ -147,6 +153,8 @@ def test_missing_auth_blocks(tmp_path):
         "thetadata_version": "1.0.12",
         "thetadata_version_supported": True,
         "environment_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sdk_contract_compatible": True,
+        "sdk_contract_status": "EXPECTED_METHOD_SIGNATURES_PRESENT",
         "auth_source": "NOT_OBSERVED_LOCALLY",
         "auth_material_present": False,
         "provider_requests": 0,
@@ -179,4 +187,36 @@ def test_invalid_worker_protocol_blocks(tmp_path):
     )
 
     assert result.ready_for_bounded_source_qualification is False
+    assert result.provider_requests == 0
+
+def test_sdk_method_contract_is_a_hard_readiness_gate(tmp_path):
+    provider_python = tmp_path / "python.exe"
+    provider_python.write_bytes(b"placeholder")
+    source = _source_plan()
+    enrichment = _enrichment_plan(source)
+    payload = {
+        "ok": True,
+        "python_version": "3.12.5",
+        "python_meets_3_12": True,
+        "thetadata_installed": True,
+        "thetadata_version": "1.0.12",
+        "environment_fingerprint": "a" * 64,
+        "sdk_contract_compatible": False,
+        "sdk_contract_status": "SDK_METHOD_CONTRACT_UNQUALIFIED",
+        "auth_source": "THETADATA_API_KEY_ENV",
+        "auth_material_present": True,
+        "provider_requests": 0,
+    }
+    result = module.run_thetadata_preflight_v1(
+        source_plan=source,
+        enrichment_plan=enrichment,
+        provider_python=provider_python,
+        runner=_runner(payload),
+    )
+    assert result.source_plan_valid
+    assert result.enrichment_plan_valid
+    assert result.plans_linked
+    assert not result.sdk_contract_compatible
+    assert not result.ready_for_bounded_source_qualification
+    assert result.next_action == "INSPECT_PINNED_THETADATA_SDK_METHOD_SIGNATURES"
     assert result.provider_requests == 0
