@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from datetime import date
+import sys
+from types import ModuleType
+
+import pytest
 
 import pandas as pd
 
@@ -98,3 +102,62 @@ def test_worker_maps_no_data_exception_to_explicit_empty_surface():
     assert result["explicit_no_data"] is True
     assert result["library_version"] == "1.0.12"
     assert result["environment_fingerprint"] == "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+def test_sdk_inspection_does_not_construct_a_client_or_request_data(monkeypatch):
+    module = ModuleType("thetadata")
+    class FakeThetaClient:
+        def __init__(self, **kwargs):
+            pytest.fail("SDK compatibility preflight must not instantiate the client")
+
+        def option_at_time_quote(self, **kwargs):
+            pytest.fail("SDK compatibility preflight must not request quote data")
+
+        def option_history_open_interest(self, **kwargs):
+            pytest.fail("SDK compatibility preflight must not request OI data")
+
+        def option_history_binomial_greeks_first_order(self, **kwargs):
+            pytest.fail("SDK compatibility preflight must not request Greeks data")
+
+    module.ThetaClient = FakeThetaClient
+    monkeypatch.setitem(sys.modules, "thetadata", module)
+    monkeypatch.setattr(worker, "_library_version", lambda: "1.0.12")
+    report = worker.inspect_sdk_method_contract()
+    assert report["compatible"] is True
+    assert report["provider_requests"] == 0
+    assert set(report["method_statuses"]) == set(worker.ALLOWED_METHOD_ARGUMENTS)
+    assert set(report["method_statuses"].values()) == {
+        "DYNAMIC_KEYWORDS_ACCEPTED_UNVERIFIED"
+    }
+
+
+def test_sdk_inspection_rejects_missing_method_without_client_construction(monkeypatch):
+    module = ModuleType("thetadata")
+    class IncompleteThetaClient:
+        def option_at_time_quote(self, *, symbol):
+            raise AssertionError("method invoked")
+        def option_history_open_interest(self, **kwargs):
+            raise AssertionError("method invoked")
+
+    module.ThetaClient = IncompleteThetaClient
+    monkeypatch.setitem(sys.modules, "thetadata", module)
+    monkeypatch.setattr(worker, "_library_version", lambda: "1.0.12")
+    report = worker.inspect_sdk_method_contract()
+    assert report["compatible"] is False
+    assert report["method_statuses"]["option_at_time_quote"] == "KEYWORDS_NOT_ACCEPTED"
+    assert report["method_statuses"]["option_history_binomial_greeks_first_order"] == "MISSING_METHOD"
+    assert report["provider_requests"] == 0
+
+
+@pytest.mark.parametrize(
+    "name,kwargs",
+    [
+        ("option_history_eod", {"symbol": "SPY"}),
+        ("option_at_time_quote", {"symbol": "SPY", "api_key": "should-not-pass"}),
+        ("option_history_open_interest", {"symbol": "SPY", "status": "unknown"}),
+    ],
+)
+def test_worker_rejects_unapproved_methods_or_keywords_before_sdk_auth(name, kwargs):
+    runtime = worker.Runtime()
+    runtime.ensure = lambda: pytest.fail("invalid operation cannot construct/authenticate SDK")
+    with pytest.raises(RuntimeError, match="THETADATA_"):
+        runtime.request(name, kwargs)
