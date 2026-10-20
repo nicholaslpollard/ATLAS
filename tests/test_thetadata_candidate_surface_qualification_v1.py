@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from dataclasses import replace
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.thetadata_candidate_surface_plan_v1 import (
@@ -244,3 +245,22 @@ def test_response_symbol_accepts_same_root_occ_but_not_neighbor_root():
     assert _symbol_matches_underlying("AAPL250221C00100000", "AAPL") is True
     assert _symbol_matches_underlying("AAPL  250221C00100000", "AAPL") is True
     assert _symbol_matches_underlying("AAPLX250221C00100000", "AAPL") is False
+
+def test_unexplained_empty_quote_dataframe_is_not_explicit_no_data(tmp_path):
+    def reader(**kwargs):
+        if str(kwargs["date_et"]).startswith("2021"):
+            return replace(
+                _response(**kwargs, empty=True),
+                http_status=200,
+                raw_body=b"[]",
+                explicit_no_data=False,
+            )
+        return _response(**kwargs)
+
+    report = run_thetadata_candidate_surface_qualification_v1(
+        _Settings(tmp_path), _plan(), workers=2, reader=reader,
+    )
+    assert report["full_acquisition_source_qualified"] is False
+    assert report["status_counts"]["AMBIGUOUS_EMPTY_RESPONSE"] == 1
+    assert report["status_counts"].get("EXPLICIT_NO_DATA", 0) == 0
+    assert report["hard_validation_or_transport_errors"] == 1
