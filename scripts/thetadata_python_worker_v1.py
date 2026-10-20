@@ -177,7 +177,9 @@ def _auth_source() -> tuple[str, bool]:
                 key, value = line.split("=", 1)
                 if key.strip() == API_KEY_ENV and value.strip().strip('"').strip("'"):
                     return "THETADATA_DOTENV_API_KEY", True
-        except OSError:
+        except (OSError, UnicodeError):
+            # Malformed/unreadable local .env must return a secret-free status,
+            # not abort the package-only preflight with decoder exception text.
             pass
     return "NOT_OBSERVED_LOCALLY", False
 
