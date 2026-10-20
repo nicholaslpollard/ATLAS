@@ -363,7 +363,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(
             f"  auth_source={preflight.get('auth_source')} "
-            f"auth_material_present={preflight.get('auth_material_present')}",
+            f"auth_material_present={preflight.get('auth_material_present')} "
+            f"dotenv_key_status={preflight.get('dotenv_key_status')}",
+            flush=True,
+        )
+        print(
+            "  sdk_greeks_dollar_dividend_keyword="
+            f"{preflight.get('sdk_greeks_dollar_dividend_keyword_status')}",
             flush=True,
         )
         print(f"  manifest={manifest_action} / {manifest}", flush=True)

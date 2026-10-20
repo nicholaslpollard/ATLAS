@@ -129,6 +129,9 @@ def test_sdk_inspection_does_not_construct_a_client_or_request_data(monkeypatch)
     assert set(report["method_statuses"].values()) == {
         "DYNAMIC_KEYWORDS_ACCEPTED_UNVERIFIED"
     }
+    assert report["greeks_dollar_dividend_keyword_status"] == (
+        "DYNAMIC_KEYWORD_ACCEPTED_SEMANTICS_UNVERIFIED"
+    )
 
 
 def test_sdk_inspection_rejects_missing_method_without_client_construction(monkeypatch):
@@ -178,6 +181,7 @@ def test_root_dotenv_key_detected_without_exposing_value(tmp_path, monkeypatch):
     status = worker.preflight()
     assert status["auth_source"] == "THETADATA_DOTENV_API_KEY"
     assert status["auth_material_present"] is True
+    assert status["dotenv_key_status"] == "DOTENV_KEY_NONEMPTY"
     assert status["provider_requests"] == 0
     assert fake_secret not in str(status)
 
@@ -236,3 +240,62 @@ def test_legacy_dollar_dividend_greeks_do_not_contact_sdk(monkeypatch):
                 "binomial_steps": 101,
             },
         )
+
+
+def test_dotenv_status_classifies_local_defects_without_secrets(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv(worker.API_KEY_ENV, raising=False)
+    monkeypatch.delenv(worker.CREDENTIALS_FILE_ENV, raising=False)
+    assert worker._dotenv_key_status() == "DOTENV_FILE_MISSING"
+    file = tmp_path / ".env"
+
+    file.write_text("OTHER_KEY=hidden\n", encoding="utf-8")
+    assert worker._dotenv_key_status() == "DOTENV_KEY_ASSIGNMENT_MISSING"
+    file.write_text("THETADATA_API_KEY=\n", encoding="utf-8")
+    assert worker._dotenv_key_status() == "DOTENV_KEY_EMPTY"
+    file.write_text("THETADATA_API_KEY=fixture-secret-not-real\n", encoding="utf-8")
+    assert worker._dotenv_key_status() == "DOTENV_KEY_NONEMPTY"
+    assert worker._auth_source() == ("THETADATA_DOTENV_API_KEY", True)
+
+    file.write_text(
+        "THETADATA_API_KEY=fixture-secret-not-real\nTHETADATA_API_KEY=other-secret\n",
+        encoding="utf-8",
+    )
+    assert worker._dotenv_key_status() == "DOTENV_KEY_ASSIGNMENT_DUPLICATED"
+    file.write_text("\ufeffTHETADATA_API_KEY=fixture-secret-not-real\n", encoding="utf-8")
+    assert worker._dotenv_key_status() == "DOTENV_KEY_UTF8_BOM_PREFIX"
+    assert worker._auth_source() == ("NOT_OBSERVED_LOCALLY", False)
+    file.write_text("export THETADATA_API_KEY=fixture-secret-not-real\n", encoding="utf-8")
+    assert worker._dotenv_key_status() == "DOTENV_EXPORT_SYNTAX_UNSUPPORTED_BY_PREFLIGHT"
+    file.write_bytes(b"\xff\xfe")
+    assert worker._dotenv_key_status() == "DOTENV_UNREADABLE"
+
+    # Even the complete preflight payload must never contain fixture secrets.
+    assert "fixture-secret" not in str(worker.preflight())
+
+
+def test_explicit_dollar_dividend_sdk_keyword_inspected_without_provider(monkeypatch):
+    module = ModuleType("thetadata")
+
+    class ExplicitDollarClient:
+        def __init__(self):
+            pytest.fail("No SDK client may be constructed by signature inspection")
+
+        def option_at_time_quote(self, **kwargs):
+            raise AssertionError("data read is forbidden")
+
+        def option_history_open_interest(self, **kwargs):
+            raise AssertionError("data read is forbidden")
+
+        def option_history_binomial_greeks_first_order(
+            self, *, annual_dividend_amount=None, **kwargs
+        ):
+            raise AssertionError("data read is forbidden")
+
+    module.ThetaClient = ExplicitDollarClient
+    monkeypatch.setitem(sys.modules, "thetadata", module)
+    monkeypatch.setattr(worker, "_library_version", lambda: "1.0.12")
+    result = worker.inspect_sdk_method_contract()
+    assert result["compatible"] is True
+    assert result["greeks_dollar_dividend_keyword_status"] == "EXPLICIT_KEYWORD_PRESENT"
+    assert result["provider_requests"] == 0
