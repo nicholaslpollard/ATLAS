@@ -202,13 +202,24 @@ def inspect_sdk_method_contract() -> dict[str, Any]:
                 inspect.Parameter.KEYWORD_ONLY,
             )
         }
-        if expected - explicit:
-            statuses[name] = "MISSING_EXPLICIT_KEYWORDS"
+        has_var_keyword = any(
+            param.kind == inspect.Parameter.VAR_KEYWORD
+            for param in params.values()
+        )
+        if expected - explicit and not has_var_keyword:
+            statuses[name] = "KEYWORDS_NOT_ACCEPTED"
+        elif expected - explicit:
+            # A dynamic **kwargs adapter can accept the Python call, but only
+            # a future bounded provider qualifier proves endpoint semantics.
+            statuses[name] = "DYNAMIC_KEYWORDS_ACCEPTED_UNVERIFIED"
         else:
             statuses[name] = "EXPLICIT_KEYWORDS_PRESENT"
     result["method_statuses"] = statuses
     result["compatible"] = all(
-        state == "EXPLICIT_KEYWORDS_PRESENT"
+        state in {
+            "EXPLICIT_KEYWORDS_PRESENT",
+            "DYNAMIC_KEYWORDS_ACCEPTED_UNVERIFIED",
+        }
         for state in statuses.values()
     ) and len(statuses) == len(ALLOWED_METHOD_ARGUMENTS)
     result["status"] = (
