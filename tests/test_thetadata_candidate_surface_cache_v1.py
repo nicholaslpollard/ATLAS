@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from dataclasses import replace
+
+import pytest
 
 import packages.data.thetadata_candidate_surface_cache_v1 as module
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
@@ -252,3 +255,24 @@ def test_failed_request_leaves_intent_and_lock_for_manual_review(tmp_path, monke
     assert intent.is_file()
     assert not body.exists()
     assert not receipt.exists()
+
+def test_ambiguous_empty_provider_dataframe_cannot_be_cached_as_no_data(tmp_path):
+    intent_path = tmp_path / "intent.json"
+    intent_path.write_text('{"planned":true}', encoding="utf-8")
+    body_path = tmp_path / "body.json"
+    receipt_path = tmp_path / "receipt.json"
+    original = _response(symbol="A1", date_et="20210106")
+    empty = replace(original, rows=(), raw_body=b"[]", response_bytes=2)
+    with pytest.raises(module.ThetaDataCandidateSurfaceCacheError, match="ambiguous"):
+        module._write_response(
+            body_path=body_path,
+            receipt_path=receipt_path,
+            intent_path=intent_path,
+            query=_query(1, 2021),
+            plan_fingerprint="1" * 64,
+            qualification_fingerprint="2" * 64,
+            response=empty,
+        )
+    assert not body_path.exists()
+    assert not receipt_path.exists()
+    assert intent_path.is_file()
