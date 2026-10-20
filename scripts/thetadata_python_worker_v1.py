@@ -119,6 +119,47 @@ def _records(frame: Any) -> list[dict[str, Any]]:
     raise TypeError("ThetaData returned an unsupported dataframe")
 
 
+def _dotenv_key_status() -> str:
+    """Classify root .env assignment without returning secret bytes or length.
+
+    Diagnostic statuses do not prove the SDK authenticates or accepts the key.
+    """
+    path = Path.cwd() / ".env"
+    if not path.is_file():
+        return "DOTENV_FILE_MISSING"
+    try:
+        content = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return "DOTENV_UNREADABLE"
+
+    assignments = []
+    export_syntax = False
+    bom_key = False
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        raw_key, raw_value = line.split("=", 1)
+        key = raw_key.strip()
+        if key.startswith("export ") and key[7:].strip() == API_KEY_ENV:
+            export_syntax = True
+            continue
+        if key.lstrip("\ufeff") != API_KEY_ENV:
+            continue
+        if key != API_KEY_ENV:
+            bom_key = True
+        assignments.append(bool(raw_value.strip().strip('"').strip("'").strip()))
+    if export_syntax:
+        return "DOTENV_EXPORT_SYNTAX_UNSUPPORTED_BY_PREFLIGHT"
+    if bom_key:
+        return "DOTENV_KEY_UTF8_BOM_PREFIX"
+    if not assignments:
+        return "DOTENV_KEY_ASSIGNMENT_MISSING"
+    if len(assignments) > 1:
+        return "DOTENV_KEY_ASSIGNMENT_DUPLICATED"
+    return "DOTENV_KEY_NONEMPTY" if assignments[0] else "DOTENV_KEY_EMPTY"
+
+
 def _auth_source() -> tuple[str, bool]:
     if str(os.environ.get(API_KEY_ENV, "")).strip():
         return "THETADATA_API_KEY_ENV", True
@@ -192,6 +233,7 @@ def inspect_sdk_method_contract() -> dict[str, Any]:
         "status": "LIBRARY_NOT_INSTALLED",
         "method_statuses": {},
         "provider_requests": 0,
+        "greeks_dollar_dividend_keyword_status": "SDK_NOT_INSPECTED",
     }
     if _library_version() is None:
         return result
@@ -237,6 +279,27 @@ def inspect_sdk_method_contract() -> dict[str, Any]:
         else:
             statuses[name] = "EXPLICIT_KEYWORDS_PRESENT"
     result["method_statuses"] = statuses
+    greeks_method = getattr(ThetaClient, "option_history_binomial_greeks_first_order", None)
+    if callable(greeks_method):
+        try:
+            greeks_params = inspect.signature(greeks_method).parameters
+            explicit_amount = greeks_params.get("annual_dividend_amount")
+            if explicit_amount is not None and explicit_amount.kind in (
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.KEYWORD_ONLY,
+            ):
+                dollar_status = "EXPLICIT_KEYWORD_PRESENT"
+            elif any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in greeks_params.values()
+            ):
+                dollar_status = "DYNAMIC_KEYWORD_ACCEPTED_SEMANTICS_UNVERIFIED"
+            else:
+                dollar_status = "KEYWORD_NOT_ACCEPTED"
+        except (TypeError, ValueError):
+            dollar_status = "SIGNATURE_UNINSPECTABLE"
+    else:
+        dollar_status = "METHOD_UNAVAILABLE"
+    result["greeks_dollar_dividend_keyword_status"] = dollar_status
     result["compatible"] = all(
         state in {
             "EXPLICIT_KEYWORDS_PRESENT",
@@ -270,12 +333,16 @@ def preflight() -> dict[str, Any]:
         ),
         "auth_source": auth_source,
         "auth_material_present": auth_present,
+        "dotenv_key_status": _dotenv_key_status(),
         "environment_packages": environment_packages,
         "environment_fingerprint": environment_fingerprint,
         "sdk_contract_compatible": sdk["compatible"],
         "sdk_contract_status": sdk["status"],
         "sdk_missing_module": sdk.get("missing_module"),
         "sdk_method_statuses": sdk["method_statuses"],
+        "sdk_greeks_dollar_dividend_keyword_status": sdk[
+            "greeks_dollar_dividend_keyword_status"
+        ],
         "provider_requests": 0,
     }
 
