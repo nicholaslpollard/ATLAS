@@ -7,7 +7,7 @@ or provider request. A provider-normalized EOD dataframe is NOT a 09:35 quote.
 """
 
 import argparse
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 import hashlib
 import json
 import math
@@ -49,6 +49,9 @@ def _timestamp(value: Any, name: str) -> datetime:
         raise RetainedReceiptError("INVALID_TIMESTAMP_" + name.upper()) from None
     if stamp.tzinfo is None or stamp.utcoffset() is None:
         raise RetainedReceiptError("NAIVE_TIMESTAMP_" + name.upper())
+    # 2026-10-16 is EDT (UTC-04); a UTC offset cannot be read as ET wall clock.
+    if stamp.utcoffset() != timedelta(hours=-4):
+        raise RetainedReceiptError("UNEXPECTED_ET_OFFSET_" + name.upper())
     return stamp
 
 
