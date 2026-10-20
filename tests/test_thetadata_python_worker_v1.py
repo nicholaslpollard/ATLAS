@@ -161,3 +161,25 @@ def test_worker_rejects_unapproved_methods_or_keywords_before_sdk_auth(name, kwa
     runtime.ensure = lambda: pytest.fail("invalid operation cannot construct/authenticate SDK")
     with pytest.raises(RuntimeError, match="THETADATA_"):
         runtime.request(name, kwargs)
+
+
+def test_root_dotenv_key_detected_without_exposing_value(tmp_path, monkeypatch):
+    # The user's actual secret is never used or printed in this fixture.
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv(worker.API_KEY_ENV, raising=False)
+    monkeypatch.delenv(worker.CREDENTIALS_FILE_ENV, raising=False)
+    fake_secret = "unit-test-secret-not-a-real-key"
+    file = tmp_path / ".env"
+    file.write_text("THETADATA_API_KEY=" + fake_secret + "\n", encoding="utf-8")
+
+    source, present = worker._auth_source()
+    assert (source, present) == ("THETADATA_DOTENV_API_KEY", True)
+    status = worker.preflight()
+    assert status["auth_source"] == "THETADATA_DOTENV_API_KEY"
+    assert status["auth_material_present"] is True
+    assert status["provider_requests"] == 0
+    assert fake_secret not in str(status)
+
+    # A literal empty assignment does not establish any credentials.
+    file.write_text("THETADATA_API_KEY=\n", encoding="utf-8")
+    assert worker._auth_source() == ("NOT_OBSERVED_LOCALLY", False)
