@@ -124,6 +124,46 @@ def _persist_manifest(settings, payload: dict) -> tuple[Path, str]:
     return path, "WRITTEN_PROVIDER_ENVIRONMENT_MANIFEST"
 
 
+def _failed_pinned_contract_checks(preflight: dict) -> tuple[str, ...]:
+    """Return safe, actionable failures without including any auth material."""
+    failures = []
+    if preflight.get("python_meets_3_12") is not True:
+        failures.append("PYTHON_BELOW_3_12")
+    if preflight.get("thetadata_installed") is not True:
+        failures.append("SDK_NOT_INSTALLED")
+    elif preflight.get("thetadata_version") != TARGET_LIBRARY_VERSION:
+        failures.append("SDK_PIN_MISMATCH")
+    if preflight.get("sdk_contract_compatible") is not True:
+        failures.append("SDK_METHOD_INTERFACE_MISMATCH")
+    fingerprint = preflight.get("environment_fingerprint")
+    if not (
+        isinstance(fingerprint, str)
+        and len(fingerprint) == 64
+        and all(char in "0123456789abcdef" for char in fingerprint)
+    ):
+        failures.append("INVALID_ENVIRONMENT_FINGERPRINT")
+    return tuple(failures)
+
+
+def _safe_provider_diagnostic(preflight: dict) -> dict:
+    """No secrets, error traces, credential paths, or provider request data."""
+    statuses = preflight.get("sdk_method_statuses")
+    if not isinstance(statuses, dict):
+        statuses = {}
+    return {
+        "python_version": str(preflight.get("python_version") or "UNKNOWN")[:32],
+        "thetadata_version": str(preflight.get("thetadata_version") or "NONE")[:32],
+        "sdk_contract_status": str(preflight.get("sdk_contract_status") or "UNKNOWN")[:80],
+        "sdk_method_statuses": {
+            str(name)[:70]: str(status)[:70]
+            for name, status in sorted(statuses.items())
+            if isinstance(name, str) and isinstance(status, str)
+        },
+        "failed_checks": list(_failed_pinned_contract_checks(preflight)),
+        "provider_requests": 0,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -224,15 +264,19 @@ def main(argv: list[str] | None = None) -> int:
             action += "+INSTALLED_PINNED_PROVIDER_DEPENDENCIES"
 
         preflight = _worker_preflight(python_path)
-        if (
-            preflight.get("python_meets_3_12") is not True
-            or preflight.get("thetadata_installed") is not True
-            or preflight.get("thetadata_version") != TARGET_LIBRARY_VERSION
-            or preflight.get("sdk_contract_compatible") is not True
-            or not isinstance(preflight.get("environment_fingerprint"), str)
-            or len(preflight["environment_fingerprint"]) != 64
-        ):
-            raise RuntimeError("ThetaData provider environment did not meet pinned contract")
+        failed_checks = _failed_pinned_contract_checks(preflight)
+        if failed_checks:
+            safe = _safe_provider_diagnostic(preflight)
+            print(
+                "  provider_preflight_diagnostic="
+                + json.dumps(safe, sort_keys=True, separators=(",", ":")),
+                flush=True,
+            )
+            raise RuntimeError(
+                "ThetaData provider environment did not meet pinned contract: "
+                + ", ".join(failed_checks)
+                + "; no provider call attempted"
+            )
 
         settings = load_settings(ROOT, "development")
         settings.assert_external_storage_binding("options")
