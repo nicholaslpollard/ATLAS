@@ -20,6 +20,35 @@ from packages.data.thetadata_open_interest_qualification_v1 import (
     run_thetadata_open_interest_qualification_v1,
 )
 from packages.providers.thetadata.client import close_all_workers
+from packages.providers.thetadata.preflight import run_thetadata_preflight_v1
+
+
+def require_offline_source_readiness(
+    source: dict, enrichment: dict
+) -> None:
+    """Recheck pinned SDK, local auth presence and frozen plan linkage before reads.
+
+    The source-qualification flags authorize only bounded quote/OI requests.
+    They do not waive the zero-request preflight, verify entitlements, or permit
+    blocked historical Greeks. This must run on EVERY invocation that can read
+    from ThetaData, even if the operator ran the standalone preflight earlier.
+    """
+    status = run_thetadata_preflight_v1(
+        source_plan=source, enrichment_plan=enrichment
+    )
+    if status.provider_requests != 0:
+        raise RuntimeError("THETADATA_PREFLIGHT_NOT_ZERO_REQUEST")
+    if not status.ready_for_bounded_source_qualification:
+        raise RuntimeError(
+            "THETADATA_SOURCE_QUALIFICATION_PREFLIGHT_BLOCKED: "
+            + status.next_action
+        )
+    print(
+        "  offline_preflight=PASSED "
+        "pinned_sdk=True auth_material_present=True plans_linked=True "
+        "provider_requests=0",
+        flush=True,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -82,6 +111,10 @@ def main(argv: list[str] | None = None) -> int:
         _check_signature(enrichment, "enrichment_plan_fingerprint")
         if enrichment.get("source_plan_fingerprint") != source["plan_fingerprint"]:
             raise ValueError("ThetaData enrichment/source plan fingerprint mismatch")
+
+        # The standalone package-only preflight is diagnostic, not a durable
+        # authorization token. Repeat it immediately before any provider reads.
+        require_offline_source_readiness(source, enrichment)
 
         quote = run_thetadata_candidate_surface_qualification_v1(
             settings,
