@@ -21,6 +21,7 @@ import inspect
 import json
 import math
 import os
+import re
 from pathlib import Path
 import sys
 from typing import Any
@@ -162,6 +163,22 @@ def _library_version() -> str | None:
         return None
 
 
+_MODULE_NAME_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:[.][A-Za-z_][A-Za-z0-9_]*){0,7}")
+
+
+def _safe_missing_module_name(exc: ModuleNotFoundError) -> str | None:
+    """Expose only an identifier from ModuleNotFoundError.name, never exception text.
+
+    Python import exception strings can include filesystem paths or arbitrary
+    untrusted context. A bounded dotted module identifier is sufficient to
+    diagnose a missing dependency while preserving secret-free preflight.
+    """
+    name = getattr(exc, "name", None)
+    if not isinstance(name, str) or len(name) > 100:
+        return None
+    return name if _MODULE_NAME_PATTERN.fullmatch(name) else None
+
+
 def inspect_sdk_method_contract() -> dict[str, Any]:
     """Inspect installed SDK class methods without constructing a client or requesting data.
 
@@ -180,6 +197,10 @@ def inspect_sdk_method_contract() -> dict[str, Any]:
     try:
         with contextlib.redirect_stdout(sys.stderr):
             from thetadata import ThetaClient
+    except ModuleNotFoundError as exc:
+        result["status"] = "SDK_IMPORT_FAILED_ModuleNotFoundError"
+        result["missing_module"] = _safe_missing_module_name(exc)
+        return result
     except Exception as exc:
         result["status"] = "SDK_IMPORT_FAILED_" + type(exc).__name__
         return result
@@ -252,6 +273,7 @@ def preflight() -> dict[str, Any]:
         "environment_fingerprint": environment_fingerprint,
         "sdk_contract_compatible": sdk["compatible"],
         "sdk_contract_status": sdk["status"],
+        "sdk_missing_module": sdk.get("missing_module"),
         "sdk_method_statuses": sdk["method_statuses"],
         "provider_requests": 0,
     }
