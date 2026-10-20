@@ -30,6 +30,7 @@ from typing import Any
 TARGET_LIBRARY_VERSION = "1.0.12"
 PROVIDER_PACKAGES = (
     "thetadata",
+    "python-dotenv",
     "protobuf",
     "grpcio",
     "httpx",

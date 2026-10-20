@@ -29,6 +29,7 @@ from packages.providers.thetadata.client import (
 
 
 REQUIREMENTS = ROOT / "requirements-thetadata-provider.txt"
+TARGET_DOTENV_DISTRIBUTION_VERSION = "1.2.4"
 CONTRACT = "atlas-thetadata-python-provider-environment-v1"
 OUTPUT_REL = "data/options/manifests/thetadata_python_provider_environment_v1"
 
@@ -124,6 +125,18 @@ def _persist_manifest(settings, payload: dict) -> tuple[Path, str]:
     return path, "WRITTEN_PROVIDER_ENVIRONMENT_MANIFEST"
 
 
+def _provider_dependency_install_needed(preflight: dict) -> bool:
+    """Install pinned companion dependencies even when the SDK itself is present."""
+    packages = preflight.get("environment_packages")
+    if not isinstance(packages, dict):
+        return True
+    return (
+        preflight.get("thetadata_installed") is not True
+        or preflight.get("thetadata_version") != TARGET_LIBRARY_VERSION
+        or packages.get("python-dotenv") != TARGET_DOTENV_DISTRIBUTION_VERSION
+    )
+
+
 def _failed_pinned_contract_checks(preflight: dict) -> tuple[str, ...]:
     """Return safe, actionable failures without including any auth material."""
     failures = []
@@ -133,6 +146,12 @@ def _failed_pinned_contract_checks(preflight: dict) -> tuple[str, ...]:
         failures.append("SDK_NOT_INSTALLED")
     elif preflight.get("thetadata_version") != TARGET_LIBRARY_VERSION:
         failures.append("SDK_PIN_MISMATCH")
+    packages = preflight.get("environment_packages")
+    if (
+        not isinstance(packages, dict)
+        or packages.get("python-dotenv") != TARGET_DOTENV_DISTRIBUTION_VERSION
+    ):
+        failures.append("PYTHON_DOTENV_DISTRIBUTION_NOT_PINNED")
     if preflight.get("sdk_contract_compatible") is not True:
         failures.append("SDK_METHOD_INTERFACE_MISMATCH")
     fingerprint = preflight.get("environment_fingerprint")
@@ -162,6 +181,11 @@ def _safe_provider_diagnostic(preflight: dict) -> dict:
     return {
         "python_version": str(preflight.get("python_version") or "UNKNOWN")[:32],
         "thetadata_version": str(preflight.get("thetadata_version") or "NONE")[:32],
+        "python_dotenv_version": (
+            str((preflight.get("environment_packages") or {}).get("python-dotenv") or "NONE")[:32]
+            if isinstance(preflight.get("environment_packages"), dict)
+            else "NONE"
+        ),
         "sdk_contract_status": str(preflight.get("sdk_contract_status") or "UNKNOWN")[:80],
         "sdk_missing_module": missing_module,
         "sdk_method_statuses": {
@@ -248,10 +272,7 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError("provider Python missing after venv setup")
 
         pre_before = _worker_preflight(python_path)
-        install_required = (
-            pre_before.get("thetadata_installed") is not True
-            or pre_before.get("thetadata_version") != TARGET_LIBRARY_VERSION
-        )
+        install_required = _provider_dependency_install_needed(pre_before)
         if install_required:
             completed = _run(
                 [
@@ -330,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  setup={action}", flush=True)
         print(
             f"  thetadata={preflight.get('thetadata_version')} "
+            f"python_dotenv={preflight.get('environment_packages', {}).get('python-dotenv')} "
             f"python={preflight.get('python_version')} "
             f"environment={str(preflight.get('environment_fingerprint'))[:16]}",
             flush=True,
