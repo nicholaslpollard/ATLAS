@@ -216,7 +216,10 @@ def _read_receipt(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def persist_audit(report: dict[str, Any], root: Path = RECEIPT_DIR) -> Path:
+def persist_audit(report: dict[str, Any], root: Path | None = None) -> Path:
+    # Evaluate the directory at call time so the isolated/test workspace is respected.
+    if root is None:
+        root = RECEIPT_DIR
     fp = _sha(report)
     raw = (json.dumps({**report, "fingerprint": fp}, sort_keys=True, indent=2,
                       allow_nan=False) + "\n").encode("utf-8")
