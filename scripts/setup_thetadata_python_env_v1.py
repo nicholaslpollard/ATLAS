@@ -228,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
             preflight.get("python_meets_3_12") is not True
             or preflight.get("thetadata_installed") is not True
             or preflight.get("thetadata_version") != TARGET_LIBRARY_VERSION
+            or preflight.get("sdk_contract_compatible") is not True
             or not isinstance(preflight.get("environment_fingerprint"), str)
             or len(preflight["environment_fingerprint"]) != 64
         ):
@@ -244,6 +245,9 @@ def main(argv: list[str] | None = None) -> int:
             "target_thetadata_version": TARGET_LIBRARY_VERSION,
             "observed_thetadata_version": preflight.get("thetadata_version"),
             "python_version": preflight.get("python_version"),
+            "sdk_contract_status": preflight.get("sdk_contract_status"),
+            "sdk_method_statuses": preflight.get("sdk_method_statuses"),
+            "sdk_contract_compatible": True,
             "provider_environment_fingerprint": preflight.get(
                 "environment_fingerprint"
             ),
@@ -274,6 +278,11 @@ def main(argv: list[str] | None = None) -> int:
             f"  thetadata={preflight.get('thetadata_version')} "
             f"python={preflight.get('python_version')} "
             f"environment={str(preflight.get('environment_fingerprint'))[:16]}",
+            flush=True,
+        )
+        print(
+            f"  sdk_contract={preflight.get('sdk_contract_status')} "
+            f"compatible={preflight.get('sdk_contract_compatible')}",
             flush=True,
         )
         print(
