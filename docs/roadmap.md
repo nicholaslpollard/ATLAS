@@ -61,7 +61,7 @@ ATLAS source, environment, accepted stock corpus, checkpoints, and core runtime 
 
 Raw responses are immutable. Preserve hashes, receipts, and original failures; reuse verified caches. Missing D: bindings must not spill acquisition onto C:. The [secondary-storage specification](external_secondary_storage_v1_20260924.md) defines bindings and quotas.
 
-### B34 causal premarket source-context continuation (new, pending operator run)
+### B34 causal premarket source-context continuation (operator run accepted 2026-10-20; prior-20 extension pending)
 
 The pre-existing B34 accepted closeout proves SIP native raw 1-minute stock coverage and the four frozen RESEARCH-only opening/premarket strategy contracts. It does **not** validate any profitable premarket signal or authorize protected research outcomes. The new [pure premarket context builder](../packages/data/b34_premarket_decision_context_v1.py) computes three independently clock-gated, descriptive **09:20, 09:30 and 09:35 ET** feature snapshots, using only left-edge Alpaca SIP minutes closed by each as-of clock (timestamp + 1m). At 09:20, the 09:20 bar is unavailable; at 09:30 the latest premarket stamp is 09:29; at 09:35 exactly the 09:30–09:34 regular bars can inform the decision. No post-decision price, volume, opening-range outcome or later news may affect a prior snapshot; missing minutes remain absence, not a zero bar or inferred halt. Prior 20-day relative volume, corporate-action-adjusted previous close, publication-qualified news and actual option quotes are explicitly **NULL/unjoined**, never invented. Split-crossing comparisons, model performance and a new 09:35 variant are not permitted by this source-only version.
 
