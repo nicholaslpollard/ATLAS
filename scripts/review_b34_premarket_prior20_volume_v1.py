@@ -9,7 +9,7 @@ This is NOT a backtest and raw volume ratios are NOT split-qualified signals.
 
 import argparse
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date
 import hashlib
 import json
 from pathlib import Path
@@ -76,74 +76,6 @@ def _query_prior_premarket(
         return [dict(zip(cols, row, strict=True)) for row in rows]
     finally:
         con.close()
-
-
-def run() -> dict[str, Any]:
-    # This existing reviewer hash-checks the two selected B34 source units,
-    # verifies original receipts, and never opens the master protected period.
-    base = run_review()
-    sample = next(
-        (item for item in base["samples"]
-         if item["sample_class"] == "liquid_symbol_day"),
-        None,
-    )
-    if (sample is None or sample["symbol"] != SYMBOL
-            or sample["session_date"] != SAMPLE_DATE.isoformat()
-            or sample["source_row_count"] != 720
-            or base["provider_requests"] != 0
-            or base["protected_outcomes_opened"] != 0):
-        raise Prior20SourceError("B34_APRIL_SOURCE_SELECTION_NOT_ACCEPTED")
-
-    retained = _read(
-        V2Layout.beneath(ROOT / "data").validation
-        / "b34_intraday_semantics_audit.json", byte_limit=4_000_000
-    )
-    matching = [
-        row for row in retained.get("sample_classes", [])
-        if isinstance(row, dict)
-        and row.get("sample_class") == "liquid_symbol_day"
-    ]
-    if len(matching) != 1:
-        raise Prior20SourceError("B34_EXACT_SOURCE_SELECTION_AMBIGUOUS")
-    entry = matching[0]
-    path = Path(str(entry["canonical_path"]))
-    if (not path.is_file() or path.is_symlink()
-            or path.stat().st_size > MAX_CANONICAL_BYTES
-            or entry.get("symbol") != SYMBOL
-            or entry.get("session_date") != SAMPLE_DATE.isoformat()
-            or not path.name.endswith(".parquet")):
-        raise Prior20SourceError("B34_SOURCE_UNIT_NOT_READABLE")
-    # The original B34 reviewer already verified this exact file against its
-    # canonical checkpoint SHA256. No second expensive full-file hash pass.
-    expected = sample["verified_canonical_sha256"]
-
-    calendar = MarketCalendar()
-    dates = calendar.sessions_in_range(date(2026, 4, 1),
-                                       date(2026, 4, 29))
-    if len(dates) != 20 or dates != sorted(dates):
-        raise Prior20SourceError("EXACT_20_PRIOR_EXCHANGE_SESSIONS_NOT_FOUND")
-
-    history = _query_prior_premarket(
-        path, symbol=SYMBOL, first=dates[0], last_exclusive=SAMPLE_DATE
-    )
-    by_date: dict[date, list[CanonicalBar]] = defaultdict(list)
-    for raw in history:
-        bar = CanonicalBar.model_validate(raw)
-        if (bar.symbol != SYMBOL or bar.session_date not in dates
-                or bar.session_segment.value != "premarket"):
-            raise Prior20SourceError("PRIOR20_CANONICAL_SCOPE_VIOLATION")
-        by_date[bar.session_date].append(bar)
-
-    # All 20 date identities are retained. Sessions without any observed
-    # premarket bars remain explicit empty samples, not zero-volume sessions.
-    results = review_prior20(
-        symbol=SYMBOL,
-        current_session=SAMPLE_DATE,
-        current_bars=(),  # replaced below from accepted exact source selection
-        prior_sessions=dates,
-        prior_bars_by_session={d: tuple(by_date[d]) for d in dates},
-    )
-    return results
 
 
 def run_with_current() -> dict[str, Any]:
