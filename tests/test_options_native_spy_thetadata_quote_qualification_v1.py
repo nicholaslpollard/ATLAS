@@ -55,6 +55,11 @@ def make_response(params, *, empty=False, right="both", future=False,
 def test_full_pilot_design_reconstructs_frozen_24_plus_one_no_authority():
     plan = quote_design()
     calls = plan["quote_source_calls"]
+    # This exact provider-free design was accepted on the operator workstation
+    # on 2026-10-22; later safety changes must not rewrite the frozen requests.
+    assert plan["design_fingerprint"] == (
+        "73369c3d84d35ac90fea4abb2abec0a72dd858065add7d0613c3c79c7d44167e"
+    )
     assert plan["quote_method_call_cap"] == 25
     assert len(calls) == 25
     assert [x["reason"] for x in calls[:3]] == [
