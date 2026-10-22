@@ -60,10 +60,17 @@ def main(argv: list[str] | None = None) -> int:
               "no Greeks/OI/execution/fills/strategy outcomes.", flush=True)
         settings = load_settings(ROOT, "development")
         settings.assert_external_storage_binding("options")
-        report = run_pilot_quote_source_gate(settings)
+        report = run_pilot_quote_source_gate(
+            settings,
+            authorize_provider_reads=args.authorize_provider_reads,
+            confirm_thetadata_standard=args.confirm_thetadata_standard,
+            acknowledge_25_quote_method_call_cap=args.acknowledge_25_quote_method_call_cap,
+        )
         print(f"  source_calls={report['requests_attempted']}/25 "
               f"statuses={report['status_counts']}", flush=True)
         print(f"  repeat_equal={report['repeat_surface_equal']} "
+              f"raw_bytes_equal={report['repeat_sdk_normalized_raw_bytes_equal']} "
+              f"all_24_anchors_observed={report['all_24_anchor_surfaces_observed']} "
               f"all_years_observed={report['all_years_observed']}", flush=True)
         print(f"  retained_report={report['report_path']}", flush=True)
         print("  COMPLETE status=BOUNDED_SOURCE_DIAGNOSTIC_NO_TRADING_AUTHORITY "
