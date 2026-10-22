@@ -142,6 +142,8 @@ def analyze_pilot_quote_surface(
             or not 0 < len(response.raw_body) <= RAW_RESPONSE_CAP
             or response.raw_body != _canonical_bytes(response.rows)):
         raise PilotQuoteSourceError("QUOTE_RAW_RECEIPT_OR_SIZE_CHANGED")
+    if response.http_status != 200:
+        raise PilotQuoteSourceError("UNQUALIFIED_PROVIDER_STATUS")
     if response.explicit_no_data:
         if response.rows:
             raise PilotQuoteSourceError("NO_DATA_WITH_ROWS")
@@ -275,6 +277,9 @@ def run_pilot_quote_source_gate(
         label = f"quote_{call['ordinal']:02d}"
         if not isinstance(response, ThetaDataResponse):
             raise PilotQuoteSourceError("UNEXPECTED_PROVIDER_RESPONSE_TYPE")
+        if (response.response_bytes != len(response.raw_body)
+                or not 0 < len(response.raw_body) <= RAW_RESPONSE_CAP):
+            raise PilotQuoteSourceError("QUOTE_RAW_RECEIPT_OR_SIZE_CHANGED")
         receipt = _persist_raw(
             root, label=label, response=response,
             query=call, plan_fingerprint=design["plan_fingerprint"],
