@@ -55,6 +55,31 @@ def test_source_candidates_only_matching_zsl_and_april_dates():
     assert all(c["historically_available_at"] is None for c in report["zsl_action_candidates"])
 
 
+def test_known_february_zsl_split_is_outside_april_and_zero_candidates_fail_closed():
+    # A separately published ProShares / SEC 8-K described a 1-for-10
+    # ZSL reverse split effective 2026-02-26 with new CUSIP 74347Y672.
+    # This synthetic projection is NOT a proof that April has complete coverage.
+    february = row("ZSL", 0, dates={"effective_date": "2026-02-26"})
+
+    def all_archived_records():
+        yield february
+        for i in range(1, EXPECTED_RECORDS):
+            yield row("OTHER", i)
+
+    report = project_archived_candidates(all_archived_records(), page_hashes())
+    assert report["archive_records_checked"] == EXPECTED_RECORDS
+    assert report["zsl_candidate_count"] == 0
+    assert report["zsl_action_candidates"] == []
+    assert report["zsl_split_type_candidates"] == 0
+    assert report["archival_zero_action_coverage_proved"] is False
+    assert report["corporate_action_completeness_qualified"] is False
+    assert report["historical_publication_revisions_qualified"] is False
+    assert report["split_comparable_premarket_volume_qualified"] is False
+    assert report["signal_authority"] is False
+    assert report["provider_requests"] == 0
+    assert report["protected_outcomes_opened"] == 0
+
+
 def test_duplicates_malformed_actions_and_wrong_corpus_fail_closed():
     hashes = page_hashes()
     with pytest.raises(ZslActionCandidateError, match="LEDGER_COUNT_CHANGED"):
