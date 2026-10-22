@@ -167,7 +167,8 @@ def analyze_pilot_quote_surface(
     for row in response.rows:
         if not all(k in row for k in REQUIRED_FIELDS):
             raise PilotQuoteSourceError("QUOTE_REQUIRED_FIELDS_MISSING")
-        if not _symbol_matches_underlying(str(row["symbol"]), "SPY"):
+        response_symbol = str(row["symbol"])
+        if not _symbol_matches_underlying(response_symbol, "SPY"):
             raise PilotQuoteSourceError("UNEXPECTED_OPTION_ROOT")
         right = str(row["right"]).lower()
         if right not in ("call", "put"):
