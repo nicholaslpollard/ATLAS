@@ -150,8 +150,15 @@ def run_review(settings: AtlasSettings) -> dict[str, Any]:
         raise ValueError("ARCHIVAL_NATIVE_LEDGER_SOURCE_CHANGED")
     _file(layout, ledger, MAX_ACTION_COMPRESSED, proof["native_actions_sha256"])
 
+    def observed_records():
+        for index, record in enumerate(_gzip_records(ledger), start=1):
+            if index % 50000 == 0:
+                print(f"  original action records checked={index}/{EXPECTED_RECORDS}",
+                      flush=True)
+            yield record
+
     candidates = project_archived_candidates(
-        _gzip_records(ledger), page_hashes, expected_records=EXPECTED_RECORDS,
+        observed_records(), page_hashes, expected_records=EXPECTED_RECORDS,
     )
     outcome = {
         **candidates,
