@@ -4,7 +4,7 @@
 
 ATLAS is being built as an options-first research and trading system: discover opportunities in option pricing and volatility, independently evaluate stock signals, compare trade expressions, simulate realistic accounts, and eventually operate through an observable PAPER workflow. The objective is positive returns after costs with controlled risk. No strategy currently has validated profitable trading authority.
 
-**Reviewed 2026-10-20 through merged PR #347 (`3d0514aa`).** The 815-underlying source-demand census is complete. The isolated ThetaData 1.0.12 SDK environment passed the operator's package/interface setup on 2026-10-20 without market-data requests; authentication and actual source entitlement/coverage remain unqualified. Code/fixture checks do not renew workstation source or strategy acceptance.
+**Reviewed 2026-10-22 through merged PR #354 (`94807e2e`).** The 815-underlying source-demand census, Free-tier ThetaData EOD connectivity/audit and accepted B34 six-snapshot source review are complete. Genuine historical intraday option quotes, OI, Greeks, paid-tier access and option fill evidence remain unqualified. The exact ZSL prior-20-session diagnostic still needs a bounded workstation observation; synthetic tests do not replace it or authorize a trade.
 
 ## Start here
 
