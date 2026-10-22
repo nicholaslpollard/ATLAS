@@ -200,6 +200,12 @@ def analyze_pilot_quote_surface(
         spread = (ask - bid) / mid if mid > 0 else None
         observations[key] = {
             "stamp": stamp, "stale": stale,
+            "symbol": response_symbol,
+            "bid": bid, "ask": ask, "bid_size": bidsz, "ask_size": asksz,
+            "bid_exchange": _nonnegative_int(row["bid_exchange"], "bid_exchange"),
+            "ask_exchange": _nonnegative_int(row["ask_exchange"], "ask_exchange"),
+            "bid_condition": _nonnegative_int(row["bid_condition"], "bid_condition"),
+            "ask_condition": _nonnegative_int(row["ask_condition"], "ask_condition"),
             "valid_quote": (
                 bid > 0 and ask >= bid and bidsz > 0 and asksz > 0
                 and spread is not None and math.isfinite(spread) and spread <= 0.15
@@ -223,10 +229,17 @@ def analyze_pilot_quote_surface(
                 and abs((call["stamp"] - put["stamp"]).total_seconds())
                     <= MAX_PAIR_SKEW_SECONDS):
             clock_qualified += 1
+    # Verify actual bid/ask, sizes, exchange/condition, right and timestamp.
+    # A repeated eligibility boolean cannot prove provider price consistency.
     shape = [
-        (key[0],key[1],key[2],
-         value["stamp"].isoformat(),value["valid_quote"])
-        for key,value in sorted(observations.items())
+        (
+            key[0], key[1], key[2], value["symbol"],
+            value["stamp"].isoformat(), value["bid"], value["ask"],
+            value["bid_size"], value["ask_size"], value["bid_exchange"],
+            value["ask_exchange"], value["bid_condition"], value["ask_condition"],
+            value["valid_quote"],
+        )
+        for key, value in sorted(observations.items())
     ]
     return {
         "status": ("OBSERVED_BOTH_RIGHTS_CLOCK_DIAGNOSTIC"
@@ -244,14 +257,27 @@ def run_pilot_quote_source_gate(
     settings: AtlasSettings,
     *,
     reader: Callable[..., ThetaDataResponse] = option_at_time_quote_surface,
+    authorize_provider_reads: bool = False,
+    confirm_thetadata_standard: bool = False,
+    acknowledge_25_quote_method_call_cap: bool = False,
 ) -> dict[str, Any]:
-    """Requires explicit authorization by the guarded CLI; never call directly in unattended tasks."""
+    """Require three affirmative authorizations for CLI AND direct Python calls.
+
+    Supplying an injected test reader does not bypass the source-read gate.
+    """
+    if not (
+        authorize_provider_reads is True
+        and confirm_thetadata_standard is True
+        and acknowledge_25_quote_method_call_cap is True
+    ):
+        raise PilotQuoteSourceError("PAID_QUOTE_READS_NOT_EXPLICITLY_AUTHORIZED")
     design = quote_design()
     settings.assert_external_storage_binding("options")
     root = settings.resolved_path(f"{OUTPUT_REL}/{design['design_fingerprint'][:16]}/{uuid4().hex}")
     root.mkdir(parents=True, exist_ok=False)
     reports = []
     original_repeat_fingerprint = None
+    repeat_raw_bytes_equal = False
     requests_attempted = 0
     for call in design["quote_source_calls"]:
         params = call["params"]
@@ -292,10 +318,20 @@ def run_pilot_quote_source_gate(
                 "failure_class": type(exc).__name__,
             }
         if call["repeat"]:
+            # An empty or invalid first/repeated result is not a successful
+            # quote repeatability observation, even if hashes match.
+            qualified = (
+                summary.get("status") == "OBSERVED_BOTH_RIGHTS_CLOCK_DIAGNOSTIC"
+                and reports[0].get("status") == "OBSERVED_BOTH_RIGHTS_CLOCK_DIAGNOSTIC"
+            )
             original_repeat_fingerprint = (
                 summary.get("normalized_surface_sha256")
-                if summary.get("normalized_surface_sha256")
+                if qualified and summary.get("normalized_surface_sha256")
                 == reports[0].get("normalized_surface_sha256") else None
+            )
+            repeat_raw_bytes_equal = (
+                qualified
+                and receipt["body_sha256"] == reports[0].get("raw_body_sha256")
             )
         reports.append({
             "ordinal": call["ordinal"], "reason": call["reason"],
@@ -316,6 +352,14 @@ def run_pilot_quote_source_gate(
         "requests_not_attempted": QUOTE_REQUEST_CAP - requests_attempted,
         "status_counts": status_counts, "anchors": reports,
         "repeat_surface_equal": original_repeat_fingerprint is not None,
+        "repeat_sdk_normalized_raw_bytes_equal": repeat_raw_bytes_equal,
+        "all_24_anchor_surfaces_observed": (
+            len(reports) == QUOTE_REQUEST_CAP
+            and all(r.get("status") == "OBSERVED_BOTH_RIGHTS_CLOCK_DIAGNOSTIC"
+                    for r in reports[:24])
+        ),
+        "raw_network_response_body_retained": False,
+        "sdk_normalized_canonical_response_retained": True,
         "all_years_observed": (
             set(design["years"]) ==
             {r["date_et"][:4] for r in reports

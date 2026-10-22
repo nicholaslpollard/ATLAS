@@ -146,10 +146,17 @@ def test_25_anchored_receipts_and_repeat_are_not_source_acceptance(tmp_path):
             "SPY", "10:00:00.000", "both", 45, 2)
         calls.append(date_et)
         return make_response({"start_date": date_et})
-    report = run_pilot_quote_source_gate(_Settings(tmp_path), reader=reader)
+    report = run_pilot_quote_source_gate(
+        _Settings(tmp_path), reader=reader,
+        authorize_provider_reads=True, confirm_thetadata_standard=True,
+        acknowledge_25_quote_method_call_cap=True,
+    )
     assert len(calls) == 25 and calls[0] == calls[-1]
     assert report["requests_attempted"] == 25
     assert report["repeat_surface_equal"] is True
+    assert report["repeat_sdk_normalized_raw_bytes_equal"] is True
+    assert report["all_24_anchor_surfaces_observed"] is True
+    assert report["raw_network_response_body_retained"] is False
     assert report["all_years_observed"] is True
     assert report["source_accepted"] is report["historical_fill_authority"] is False
     assert report["protected_outcomes_read"] == 0
@@ -163,12 +170,83 @@ def test_entitlement_error_stops_without_retries_or_false_no_data(tmp_path):
     def reader(**kwargs):
         calls.append(kwargs)
         raise ThetaDataError("credential text MUST NOT APPEAR", http_status=403)
-    report = run_pilot_quote_source_gate(_Settings(tmp_path), reader=reader)
+    report = run_pilot_quote_source_gate(
+        _Settings(tmp_path), reader=reader,
+        authorize_provider_reads=True, confirm_thetadata_standard=True,
+        acknowledge_25_quote_method_call_cap=True,
+    )
     assert len(calls) == 1
     assert report["requests_attempted"] == 1
     assert report["requests_not_attempted"] == 24
     assert report["status_counts"] == {"TRANSPORT_OR_ENTITLEMENT_ERROR":1}
     assert "credential text" not in Path(report["report_path"]).read_text()
+
+
+@pytest.mark.parametrize("mutated_field,changed_value", [
+    ("bid", 5.03), ("ask", 5.13), ("bid_size", 8),
+    ("ask_size", 9), ("bid_exchange", 2), ("ask_condition", 3),
+])
+def test_changed_prices_sizes_or_quote_metadata_fail_exact_repeat(
+    tmp_path, mutated_field, changed_value,
+):
+    from dataclasses import replace
+    calls = []
+    def reader(*, symbol, date_et, time_of_day_et, right, max_dte, strike_range):
+        calls.append(date_et)
+        response = make_response({"start_date": date_et})
+        if len(calls) == 25:
+            rows = list(response.rows)
+            rows[0] = {**rows[0], mutated_field: changed_value}
+            content = _canonical_bytes(rows)
+            return replace(response, rows=tuple(rows), raw_body=content,
+                           response_bytes=len(content))
+        return response
+    report = run_pilot_quote_source_gate(
+        _Settings(tmp_path), reader=reader,
+        authorize_provider_reads=True, confirm_thetadata_standard=True,
+        acknowledge_25_quote_method_call_cap=True,
+    )
+    assert len(calls) == 25
+    assert report["repeat_surface_equal"] is False
+    assert report["repeat_sdk_normalized_raw_bytes_equal"] is False
+    assert report["source_accepted"] is False
+
+
+def test_equally_empty_first_and_last_are_not_successful_repeatability(tmp_path):
+    calls = []
+    def reader(*, symbol, date_et, time_of_day_et, right, max_dte, strike_range):
+        calls.append(date_et)
+        return make_response({"start_date": date_et},
+                             empty=len(calls) in (1, 25))
+    report = run_pilot_quote_source_gate(
+        _Settings(tmp_path), reader=reader,
+        authorize_provider_reads=True, confirm_thetadata_standard=True,
+        acknowledge_25_quote_method_call_cap=True,
+    )
+    assert report["repeat_surface_equal"] is False
+    assert report["repeat_sdk_normalized_raw_bytes_equal"] is False
+    assert report["all_24_anchor_surfaces_observed"] is False
+    assert report["source_accepted"] is False
+
+
+@pytest.mark.parametrize("flags", [
+    {},
+    {"authorize_provider_reads": True},
+    {"confirm_thetadata_standard": True},
+    {"acknowledge_25_quote_method_call_cap": True},
+    {"authorize_provider_reads": True, "confirm_thetadata_standard": True},
+    {"authorize_provider_reads": True, "acknowledge_25_quote_method_call_cap": True},
+    {"confirm_thetadata_standard": True, "acknowledge_25_quote_method_call_cap": True},
+])
+def test_direct_python_cannot_bypass_three_paid_read_authorizations(tmp_path, flags):
+    calls = []
+    def reader(**kwargs):
+        calls.append(kwargs)
+        raise AssertionError("provider called without authorization")
+    with pytest.raises(PilotQuoteSourceError, match="NOT_EXPLICITLY_AUTHORIZED"):
+        run_pilot_quote_source_gate(_Settings(tmp_path), reader=reader, **flags)
+    assert calls == []
+    assert list(tmp_path.iterdir()) == []
 
 
 @pytest.mark.parametrize("form", ["script", "module"])
