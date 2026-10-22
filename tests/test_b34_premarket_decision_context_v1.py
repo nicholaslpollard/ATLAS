@@ -200,6 +200,17 @@ def test_source_review_uses_only_two_pinned_accepted_samples(tmp_path, monkeypat
         "regular_observed_closed_minutes"] == 2 for s in result["samples"])
     assert result["provider_requests"] == 0
     assert result["protected_outcomes_opened"] == 0
+
+    calls.clear()
+    april_only = runner.run_review(
+        tmp_path, sample_classes=("liquid_symbol_day",)
+    )
+    assert len(calls) == 1
+    assert april_only["read_count_exact_canonical_partitions_max"] == 1
+    assert len(april_only["samples"]) == 1
+    assert april_only["samples"][0]["sample_class"] == "liquid_symbol_day"
+    with pytest.raises(runner.PremarketSourceReviewError, match="SCOPE_NOT_AUTHORIZED"):
+        runner.run_review(tmp_path, sample_classes=("dst_session_boundary_day",))
     saved = runner._save(result, tmp_path)
     assert runner._save(result, tmp_path) == saved
     assert json.loads(saved.read_text(encoding="utf-8"))["fingerprint"] == (

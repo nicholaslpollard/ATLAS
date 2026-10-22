@@ -1,6 +1,6 @@
 # ATLAS Strategy Evidence Register
 
-**Original scientific consolidation 2026-10-12 at `64175780`; source-only continuation reviewed through 2026-10-16 PR #338 (`768ffea1`). No new performance evidence opened.**
+**Original scientific consolidation 2026-10-12 at `64175780`; source-only continuation reviewed through merged PR #354 (`94807e2e`) on 2026-10-22. No new performance evidence opened.**
 
 This register summarizes completed evidence and current research dispositions. The [project guide](roadmap.md) owns goals and work order. Code/contracts and original immutable artifacts own exact behavior/results; [the original full register](https://github.com/nicholaslpollard/ATLAS/blob/641757803b00bbebf75eb5c20c366b2668ee9707/docs/strategy_evidence_register.md) retains every earlier detailed entry and fingerprint. Consolidation does not alter prior verdicts or authorize reruns.
 

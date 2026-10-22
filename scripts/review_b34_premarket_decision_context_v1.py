@@ -52,7 +52,13 @@ def _fingerprint(body: dict) -> str:
     ).hexdigest()
 
 
-def run_review(root: Path = ROOT) -> dict:
+def run_review(
+    root: Path = ROOT, *, sample_classes: tuple[str, ...] = SAMPLE_CLASSES
+) -> dict:
+    # Permit exactly the original two-sample review, or an April-only
+    # source check for the separately versioned prior-20 diagnostic.
+    if sample_classes not in (SAMPLE_CLASSES, ("liquid_symbol_day",)):
+        raise PremarketSourceReviewError("B34_SAMPLE_SCOPE_NOT_AUTHORIZED")
     root = root.resolve()
     accepted = _read(root / "docs/evidence/b34_final_closeout_acceptance.json")
     if (accepted.get("status") != "ACCEPTED"
@@ -87,11 +93,11 @@ def run_review(root: Path = ROOT) -> dict:
         str(u["unit_id"]): u for u in retained.get("unit_integrity", [])
         if isinstance(u, dict) and "unit_id" in u
     }
-    if not all(name in samples for name in SAMPLE_CLASSES):
+    if not all(name in samples for name in sample_classes):
         raise PremarketSourceReviewError("MISSING_EXACT_B34_ACCEPTED_SAMPLES")
 
     result_samples = []
-    for sample_class in SAMPLE_CLASSES:
+    for sample_class in sample_classes:
         item = samples[sample_class]
         day = date.fromisoformat(str(item["session_date"]))
         if day > B34_LAST_SAFE_SESSION or not item.get("accepted"):
@@ -140,7 +146,7 @@ def run_review(root: Path = ROOT) -> dict:
         "premarket_context_contract": CONTRACT,
         "frozen_b34_pack_fingerprint": B34_INTRADAY_PACK_FINGERPRINT,
         "accepted_b34_evidence_sha256": accepted["enhanced_evidence_sha256"],
-        "read_count_exact_canonical_partitions_max": len(SAMPLE_CLASSES),
+        "read_count_exact_canonical_partitions_max": len(sample_classes),
         "provider_requests": 0,
         "broker_requests": 0,
         "protected_outcomes_opened": 0,
