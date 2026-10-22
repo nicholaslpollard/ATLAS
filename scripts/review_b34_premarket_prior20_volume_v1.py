@@ -13,7 +13,13 @@ from datetime import date
 import hashlib
 import json
 from pathlib import Path
+import sys
 from typing import Any
+
+# Support the documented `python scripts/NAME.py` command as well as `python -m`.
+# Python otherwise places only scripts/ on sys.path for direct file execution.
+if __name__ == "__main__" and not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import duckdb
 
@@ -81,7 +87,7 @@ def _query_prior_premarket(
 def run_with_current() -> dict[str, Any]:
     """Use only the single accepted ZSL session, without duplicate full scans."""
     # Re-run the original bounded reviewer to hash-check accepted source identity.
-    base = run_review()
+    base = run_review(sample_classes=("liquid_symbol_day",))
     samples = [x for x in base["samples"]
                if x["sample_class"] == "liquid_symbol_day"]
     if (len(samples) != 1 or samples[0]["symbol"] != SYMBOL
@@ -129,6 +135,7 @@ def run_with_current() -> dict[str, Any]:
         prior_bars_by_session={day: by_day[day] for day in prior_sessions},
     )
     return {
+        **report,
         "contract": CONTRACT, "source_contract": report["contract"],
         "source_accepted_b34_closeout_fingerprint": base[
             "accepted_b34_evidence_sha256"
@@ -138,7 +145,6 @@ def run_with_current() -> dict[str, Any]:
         "prior_rows_read": len(prior_rows),
         "current_sample_rows_read": len(current_rows),
         "status": "PRIOR20_SOURCE_DIAGNOSTIC_NO_SIGNAL",
-        **report,
     }
 
 

@@ -4,6 +4,8 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 from types import SimpleNamespace
 import json
+import subprocess
+import sys
 
 import pytest
 
@@ -168,9 +170,11 @@ def test_bounded_operator_review_uses_one_accepted_april_source(
         lambda _: SimpleNamespace(validation=tmp_path)
     )
     report_file.rename(tmp_path / "b34_intraday_semantics_audit.json")
-    monkeypatch.setattr(
-        cli, "run_review",
-        lambda: {
+    scopes_reviewed = []
+
+    def pinned_review(*, sample_classes):
+        scopes_reviewed.append(sample_classes)
+        return {
             "samples": [{
                 "sample_class": "liquid_symbol_day",
                 "symbol": "ZSL", "session_date": DAY.isoformat(),
@@ -179,7 +183,8 @@ def test_bounded_operator_review_uses_one_accepted_april_source(
             }],
             "accepted_b34_evidence_sha256": "b" * 64
         }
-    )
+
+    monkeypatch.setattr(cli, "run_review", pinned_review)
     monkeypatch.setattr(
         cli.MarketCalendar, "sessions_in_range",
         lambda self, start, end: days
@@ -194,6 +199,11 @@ def test_bounded_operator_review_uses_one_accepted_april_source(
 
     monkeypatch.setattr(cli, "_query_prior_premarket", fake_query)
     report = cli.run_with_current()
+    assert scopes_reviewed == [("liquid_symbol_day",)]
+    assert report["contract"] == cli.CONTRACT
+    assert report["source_contract"] == (
+        "atlas-b34-premarket-prior20-volume-observation-v1-no-signal"
+    )
     assert len(calls) == 1
     assert calls[0] == (source, "ZSL", days[0], DAY)
     assert report["provider_requests"] == 0
@@ -203,3 +213,19 @@ def test_bounded_operator_review_uses_one_accepted_april_source(
     assert audit == cli._save(report, tmp_path / "out")
     assert len(list((tmp_path / "out").glob("*.json"))) == 1
     assert json.loads(audit.read_text())["fingerprint"] == cli._fingerprint(report)
+
+
+@pytest.mark.parametrize("invocation", ["direct", "module"])
+def test_real_command_line_imports_without_provider_or_source_access(invocation):
+    # --help exits during argparse, before local source or provider reads.
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "review_b34_premarket_prior20_volume_v1.py"
+    command = ([sys.executable, str(script)] if invocation == "direct"
+               else [sys.executable, "-m",
+                     "scripts.review_b34_premarket_prior20_volume_v1"])
+    completed = subprocess.run(
+        [*command, "--help"], cwd=root, capture_output=True, text=True,
+        timeout=30, check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "--no-write" in completed.stdout
