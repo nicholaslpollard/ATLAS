@@ -284,6 +284,41 @@ def _day_text(value: str) -> str:
     return date.fromisoformat(text).isoformat()
 
 
+def option_history_hourly_quote_surface(
+    *,
+    symbol: str,
+    date_et: str,
+    right: str = "both",
+    max_dte: int = 45,
+    strike_range: int = 2,
+) -> ThetaDataResponse:
+    """Bound one historical quote request to a single session and 1h interval.
+
+    The source is diagnostic only. Hourly snapshots cannot prove a 09:35/10:00
+    fill or a minute-sensitive stop/target. Exact source acceptance is separate.
+    """
+    if max_dte < 1 or max_dte > 75:
+        raise ValueError("max_dte must be in [1, 75]")
+    if strike_range < 0 or strike_range > 8:
+        raise ValueError("strike_range must be in [0, 8]")
+    if right not in {"call", "put", "both"}:
+        raise ValueError("invalid option right")
+    day = _day_text(date_et)
+    return _call(
+        "option_history_quote",
+        symbol=symbol,
+        expiration="*",
+        interval="1h",
+        date=day,
+        strike="*",
+        right=right,
+        start_time="09:30:00",
+        end_time="16:00:00",
+        max_dte=max_dte,
+        strike_range=strike_range,
+    )
+
+
 def option_at_time_quote_surface(
     *,
     symbol: str,
