@@ -409,6 +409,12 @@ Official schedules checked on 2026-10-14 (America/New_York): [Webull US OpenAPI]
 
 Before broker-comparable simulation, bind the broker, US account/classification, order channel/product, fee effective dates, component rates, exceptions and aggregation/rounding rules. Test those rules and reconcile actual broker fee records when available. Keep bid/ask spread, additional slippage, financing/borrow, and recurring data/platform costs separately identified. Preserve the original V2 policy/artifacts; use any qualified fee profile only in a separately bound future run. Fee qualification can advance without ThetaData and creates no new strategy experiment or profitability claim.
 
+### Hybrid historical options source archive — V3 lossless single-source pilot (2026-10-23)
+
+Operator completed V2 requirement-gap demo against D:-bound catalog: five uses, four distinct exact quote scopes, one deduplicated use, one observed SPY 2025-06-09 1h source with 840 rows, three exact-query local misses, zero simulation-ready sources, and zero provider requests. Source presence does not establish available executable quotes, and planned gaps do not prove provider unavailability.
+
+V3 adds a [lossless compressed-source pilot](research/hybrid_historical_options_database_v1_20261023.md) for exactly one previously cataloged SHA-verified hourly source. The default command is a **read-only preview**; `--write-archive` explicitly writes one immutable gzip-9 mtime0 copy with a separate immutable JSON SHA receipt under D:-bound `data/options/hybrid/source_archive_v1`. A subsequent invocation validates the original source, catalog, receipt, compressed hash and bounded decompressed bytes; it never overwrites existing evidence, and partial archive/receipt pairs fail closed without retry. Original source JSON is never removed. No acquisition, historical fill simulation, backtest eligibility or broad storage-policy relaxation; this pilot is not bulk compression of ten years. Maintain existing 40 GiB warning and 25 GiB minimum free-space policy, using 40 GiB pre-write guard. Gate merge on full CI. Operator verification required before further storage design.
+
 ### Hybrid historical options exact-query gap planning — V2 (2026-10-23)
 
 The operator completed V1 source-index verification and registration: 840 observations across 120 distinct option contracts, source fingerprint `606ee2f25dcbaa2c017c04cd2c703d8e6784cc9c7d8ccb807319ed7455415f90`, D:-bound DuckDB source registered, no ThetaData or broker requests, source still diagnostic and simulator-ready false.

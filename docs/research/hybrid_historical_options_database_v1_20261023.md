@@ -181,3 +181,52 @@ read, and no downloaded price bars, option quotes, source receipts, protected
 outcomes, broker APIs, market-data methods or simulator positions are opened.
 The next separately versioned milestone is more general source registration,
 lossless compressed storage and precisely qualified coverage/readiness.
+
+## V2 operator acceptance: completed 2026-10-23
+
+The exact-query planner was executed against the registered V1 catalog.
+It reported `requirements=5`, `unique_queries=4`,
+`deduplicated_uses=1`, `local_source_diagnostics=1`,
+`missing_exact_local_sources=3`, and `simulator_ready=0`.
+The SPY 2025-06-09 1h CALL+PUT source matched 840 observed rows.
+The separate SPY 1m management, QQQ hourly and 2018 SPY hourly scopes
+were absent from the **local** catalog; provider availability has not
+been inferred. No new API requests or file downloads occurred.
+
+## V3: Immutable compressed source archive (one exact source)
+
+A provider-free archive module
+`packages/data/hybrid_options_lossless_archive_v1.py` and operator
+entrypoint `scripts/archive_hybrid_options_hourly_source_v1.py`
+use the already registered source ID
+`606ee2f25dcbaa2c017c04cd2c703d8e6784cc9c7d8ccb807319ed7455415f90`.
+The default mode only previews a lossless gzip-9 mtime0 compressed
+representation and verifies the original source, receipt and catalog.
+Pass `--write-archive` to write the compressed bytes **once** to the
+D:-bound `data/options/hybrid/source_archive_v1` directory with
+a separate SHA-256 and source-identity receipt. Writes are immutable,
+original evidence remains intact, and a repeat call verifies the
+existing archived bytes without re-creating them.
+
+The original canonical JSON is retained, so the first pilot does
+**not** reclaim disk space. It measures actual bytes-at-rest and proves
+round-trip integrity, which are prerequisites for later introducing
+compressed originals for newly acquired datasets. Its archive is
+a source-data cache, not verified complete historical coverage or
+executable quote data. Gaps from V2 remain gaps.
+
+Following green CI and merge, preview without writing:
+
+    .\.venv\Scripts\python.exe -m scripts.archive_hybrid_options_hourly_source_v1
+
+If preview reports the 840-row registered SPY source and round-trip
+proof, use an explicit write flag to create the immutable pilot
+copy:
+
+    .\.venv\Scripts\python.exe -m scripts.archive_hybrid_options_hourly_source_v1 --write-archive
+
+Both modes make **zero** ThetaData, broker, outcome or simulation calls.
+The write mode checks 40 GiB free headroom and refuses inconsistent
+source/receipt pairs or an altered catalog. Existing source files,
+strategies and protected outcome evidence are unchanged. No broader
+acquisition or archive migration is authorized by this milestone.
