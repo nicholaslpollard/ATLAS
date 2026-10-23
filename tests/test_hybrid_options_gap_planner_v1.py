@@ -119,7 +119,6 @@ def test_catalog_not_present_does_not_create_files(tmp_path):
     before = list((tmp_path / "data/options").iterdir())
     result = planner.plan_missing_sources(settings, planner.demo_batch())
     assert result["catalog_present"] is False
-    assert result["queries_missing_exact_local_sources"] if False else True
     assert result["queries_missing_exact_local_source"] == 4
     assert list((tmp_path / "data/options").iterdir()) == before
 
