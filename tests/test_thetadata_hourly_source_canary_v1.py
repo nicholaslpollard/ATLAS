@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import datetime
 import json
 from pathlib import Path
 import subprocess
@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from packages.data import thetadata_hourly_source_canary_v1 as hourly
 from packages.data.thetadata_hourly_source_canary_v1 import (
     HourlySourceCanaryError, design, run_one_hourly_source_canary,
 )
@@ -16,6 +17,14 @@ from packages.providers.thetadata.client import (
     EVIDENCE_ENCODING, TARGET_LIBRARY_VERSION, TRANSPORT,
     ThetaDataError, ThetaDataResponse, _canonical_bytes,
 )
+
+
+@pytest.fixture(autouse=True)
+def fake_disk_capacity(monkeypatch):
+    # GitHub-hosted test runners can be smaller than the workstation D: volume.
+    class Disk:
+        free = 200 * 1024**3
+    monkeypatch.setattr(hourly.shutil, "disk_usage", lambda _path: Disk())
 
 
 class FakeSettings:
