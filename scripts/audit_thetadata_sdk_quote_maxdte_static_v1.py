@@ -23,6 +23,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import textwrap
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -85,7 +86,7 @@ def classify_method_source(method: Any) -> dict[str, Any]:
     if len(source.encode("utf-8")) > SOURCE_TEXT_LIMIT:
         raise StaticSdkAuditError("INSTALLED_METHOD_SOURCE_OVERSIZE")
     try:
-        tree = ast.parse(inspect.cleandoc(source))
+        tree = ast.parse(textwrap.dedent(source))
     except (SyntaxError, IndentationError):
         # Decorator/class indentation or generated wrappers may be unsuitable
         # for direct AST; report unavailable without assuming absent filtering.
