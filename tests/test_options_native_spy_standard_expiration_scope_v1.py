@@ -37,7 +37,7 @@ def synthetic_source(tmp_path: Path, monkeypatch, *, corrupt: bool = False):
     monkeypatch.setattr(scope, "audit_saved_quote", lambda p, write: {
         "replay": "REPRODUCED",
         "replay_reason": "OUT_OF_SCOPE_OPTION_EXPIRATION",
-        "fingerprint": scope.PINNED_SCHEMA_AUDIT + "0"*48,
+        "fingerprint": "8aefd5e9a3612160" + "0"*48,
         "original_sha256": scope.PINNED_BODY_SHA,
         "rows": 264,
         "rights": {"CALL": 132, "PUT": 132},
