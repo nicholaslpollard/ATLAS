@@ -9,6 +9,7 @@ historical fills, strategies or paper/live. Zero provider/broker requests.
 
 import gzip
 import hashlib
+import zlib
 import json
 import os
 from pathlib import Path
@@ -129,10 +130,22 @@ def _expected_receipt(source: dict[str, Any], compressed: bytes) -> dict[str, An
     }
 
 
+def _restore_bounded(packed: bytes, expected_length: int) -> bytes:
+    """Decompress at most the original source size plus one byte."""
+    try:
+        decoder = zlib.decompressobj(wbits=16 + zlib.MAX_WBITS)
+        restored = decoder.decompress(packed, expected_length + 1)
+        if (len(restored) != expected_length or not decoder.eof
+                or decoder.unconsumed_tail or decoder.unused_data):
+            raise HybridArchiveError("ARCHIVE_DECOMPRESSED_LENGTH_OR_TRAILING_DATA")
+        return restored
+    except zlib.error as exc:
+        raise HybridArchiveError("ARCHIVE_GZIP_INVALID") from exc
+
+
 def _verify_existing(
     archive_file: Path, receipt_file: Path,
     source: dict[str, Any],
-    compressed_expected: bytes,
 ) -> None:
     if (archive_file.is_symlink() or receipt_file.is_symlink()
             or not archive_file.is_file() or not receipt_file.is_file()):
@@ -144,16 +157,16 @@ def _verify_existing(
         receipt = json.loads(receipt_file.read_bytes())
     except (ValueError, UnicodeError) as exc:
         raise HybridArchiveError("ARCHIVE_RECEIPT_INVALID") from exc
-    if receipt != _expected_receipt(source, compressed_expected):
-        raise HybridArchiveError("ARCHIVE_RECEIPT_IDENTITY_OR_SIZE_DRIFT")
     archived = archive_file.read_bytes()
+    # zlib/gzip builds can produce distinct but equally lossless compressed
+    # bytes. Existing evidence is verified by its original stored hash,
+    # not by recompressing and expecting byte-for-byte equality.
+    if receipt != _expected_receipt(source, archived):
+        raise HybridArchiveError("ARCHIVE_RECEIPT_IDENTITY_OR_SIZE_DRIFT")
     if _digest(archived) != receipt["compressed_sha256"]:
         raise HybridArchiveError("ARCHIVE_GZIP_HASH_DRIFT")
-    try:
-        restored = gzip.decompress(archived)
-    except (ValueError, OSError, EOFError) as exc:
-        raise HybridArchiveError("ARCHIVE_GZIP_INVALID") from exc
-    if len(restored) != source["original_bytes"] or _digest(restored) != source["source_sha256"]:
+    restored = _restore_bounded(archived, source["original_bytes"])
+    if _digest(restored) != source["source_sha256"]:
         raise HybridArchiveError("ARCHIVE_LOSSLESS_RESTORATION_FAILED")
 
 
@@ -190,10 +203,7 @@ def archive_existing_source(
     """Read one exact catalog source; preview by default, write only if told."""
     source = _source_from_catalog(settings, source_id)
     packed = gzip.compress(source["raw"], compresslevel=9, mtime=0)
-    try:
-        restored = gzip.decompress(packed)
-    except (ValueError, OSError, EOFError) as exc:
-        raise HybridArchiveError("COMPRESSION_ROUNDTRIP_FAILED") from exc
+    restored = _restore_bounded(packed, source["original_bytes"])
     if restored != source["raw"]:
         raise HybridArchiveError("COMPRESSION_ROUNDTRIP_CHANGED_SOURCE")
 
@@ -205,7 +215,7 @@ def archive_existing_source(
     if any_present and not both_present:
         raise HybridArchiveError("INCOMPLETE_ARCHIVE_PAIR_NO_AUTOMATIC_RETRY")
     if both_present:
-        _verify_existing(archive_path, receipt_path, source, packed)
+        _verify_existing(archive_path, receipt_path, source)
     inserted = False
     if write_archive and not both_present:
         root = settings.resolved_path("data/options")
@@ -217,16 +227,18 @@ def archive_existing_source(
             raise HybridArchiveError("ARCHIVE_RECEIPT_SIZE_LIMIT")
         _write_immutable(archive_path, packed)
         _write_immutable(receipt_path, serialized)
-        _verify_existing(archive_path, receipt_path, source, packed)
+        _verify_existing(archive_path, receipt_path, source)
         inserted = True
 
+    actual_compressed_size = (archive_path.stat().st_size
+                              if both_present else len(packed))
     return {
         "contract": CONTRACT,
         "source_id": source_id,
         "source_status": "RAW_VERIFIED_DIAGNOSTIC_UNQUALIFIED",
         "original_bytes": source["original_bytes"],
-        "compressed_bytes": len(packed),
-        "saved_fraction": (source["original_bytes"] - len(packed))
+        "compressed_bytes": actual_compressed_size,
+        "saved_fraction": (source["original_bytes"] - actual_compressed_size)
                           / source["original_bytes"],
         "observed_quotes": source["observed_quotes"],
         "archive_present": both_present or inserted,
