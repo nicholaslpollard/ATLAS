@@ -112,3 +112,72 @@ terminal output. This is a new catalog file, not a rewrite of sources.
   remaining gaps will determine viability.
 - Every replacement source must retain provider identity and separate
   acceptance status rather than silently inheriting ThetaData source claims.
+
+## V1 operator acceptance: completed 2026-10-23
+
+The operator ran the non-network preview followed by an explicit catalog
+registration. The original source hash and raw receipts passed, resulting
+in **840 observed quote records across 120 distinct option contracts**.
+Catalog file: `data/options/hybrid/coverage_catalog_v1.duckdb`;
+source fingerprint:
+`606ee2f25dcbaa2c017c04cd2c703d8e6784cc9c7d8ccb807319ed7455415f90`.
+Registration reported `catalog_inserted=True`,
+`exact_source_present=True`, `simulator_ready=False` and
+**zero ThetaData/broker requests**. The original source is not promoted
+to full historical-coverage evidence by this registration.
+
+## V2: Offline exact-query missing-source planner
+
+A separate provider-free planner
+`packages/data/hybrid_options_gap_planner_v1.py` and operator CLI
+`scripts/plan_hybrid_options_source_gaps_v1.py` now compare explicitly
+declared option-history-quote needs against V1 DuckDB `source_units`.
+Inputs are bounded to **64 individual requirement uses** with a strict
+source-query schema: underlying, trade date, expiration wildcard, right,
+1h/1m/1s interval, observation-window start/end, max DTE and strike range,
+plus named strategy and intended use.
+
+The planner deduplicates **identical provider queries across different
+strategies**, but will not infer that hourly observations satisfy minute
+entry/exit history, or that SPY data satisfies QQQ, or that one date supplies
+a different year. A known source is reported as
+`EXACT_SOURCE_OBSERVED_UNQUALIFIED`, **never simulator-ready**;
+unrecorded demands become `MISSING_EXACT_LOCAL_SOURCE`, meaning the
+local catalog lacks this precise source, not that the provider lacks it.
+No automated provider request or accepted acquisition worklist is created.
+The V1 catalog remains unchanged.
+
+After a tested green merge, run provider-free:
+
+    .\.venv\Scripts\python.exe -m scripts.plan_hybrid_options_source_gaps_v1 --demo
+
+The built-in demo has **five strategy uses of four distinct quote queries**:
+two uses of the exact saved SPY 2025-06-09 1h quote source,
+one SPY minute-management requirement, one QQQ hourly requirement
+on the same day, and one older SPY hourly requirement.
+Given the operator's previously registered V1 source, expect one
+`EXACT_SOURCE_OBSERVED_UNQUALIFIED` query with 840 observed rows,
+three `MISSING_EXACT_LOCAL_SOURCE` query identities and zero
+simulation-ready source sets. Paste full terminal output.
+
+The CLI also supports `--requirements FILE` with JSON:
+
+    {
+      "contract": "atlas-hybrid-options-source-requirement-batch-v1",
+      "requests": [{
+        "strategy_key": "MY_SPY_RESEARCH",
+        "purpose": "discovery",
+        "query": {
+          "symbol": "SPY", "date_et": "2025-06-09",
+          "expiration": "*", "right": "both", "interval": "1h",
+          "start_time": "09:30:00", "end_time": "16:00:00",
+          "max_dte": 45, "strike_range": 2
+        }
+      }]
+    }
+
+No existing quote source is modified or re-opened. Only catalog metadata is
+read, and no downloaded price bars, option quotes, source receipts, protected
+outcomes, broker APIs, market-data methods or simulator positions are opened.
+The next separately versioned milestone is more general source registration,
+lossless compressed storage and precisely qualified coverage/readiness.
