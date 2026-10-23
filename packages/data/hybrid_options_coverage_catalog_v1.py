@@ -9,7 +9,6 @@ No provider client is imported or called. No source files are overwritten.
 """
 
 from datetime import date, datetime
-import gzip
 import hashlib
 import json
 from pathlib import Path
@@ -157,8 +156,20 @@ def inspect_hourly_source(
             or diagnostics.get("invalid_expiration_rows") != 0
             or diagnostics.get("missing_required_quote_fields") != 0
             or diagnostics.get("invalid_or_naive_timestamps") != 0
-            or len(gzip.compress(raw, compresslevel=9))
-            != summary.get("gzip_9_size_bytes")):
+            or not isinstance(summary.get("gzip_9_size_bytes"), int)
+            or summary["gzip_9_size_bytes"] <= 0):
+        # Compression output size can vary across Python/zlib versions.
+        # It is a sizing estimate, not source-integrity evidence.
+        # Original canonical bytes and their SHA are authoritative.
+        pass
+    if (not isinstance(diagnostics, dict)
+            or diagnostics.get("rows") != len(rows)
+            or diagnostics.get("out_of_requested_dte_rows") != 0
+            or diagnostics.get("invalid_expiration_rows") != 0
+            or diagnostics.get("missing_required_quote_fields") != 0
+            or diagnostics.get("invalid_or_naive_timestamps") != 0
+            or not isinstance(summary.get("gzip_9_size_bytes"), int)
+            or summary["gzip_9_size_bytes"] <= 0):
         raise HybridCoverageError("HISTORICAL_SOURCE_DIAGNOSTICS_DRIFT")
 
     keys: list[tuple[int, str, str, str, str, str]] = []
@@ -225,7 +236,7 @@ def _create_schema(con: Any) -> None:
             provider VARCHAR NOT NULL,
             symbol VARCHAR NOT NULL,
             session_et VARCHAR NOT NULL,
-            interval VARCHAR NOT NULL,
+            interval_code VARCHAR NOT NULL,
             rights_requested VARCHAR NOT NULL,
             query_json VARCHAR NOT NULL,
             source_status VARCHAR NOT NULL,
@@ -248,7 +259,7 @@ def _create_schema(con: Any) -> None:
             underlying VARCHAR NOT NULL,
             expiration VARCHAR NOT NULL,
             strike VARCHAR NOT NULL,
-            right VARCHAR NOT NULL,
+            option_right VARCHAR NOT NULL,
             observed_timestamp VARCHAR NOT NULL,
             PRIMARY KEY(source_id, ordinal)
         )
