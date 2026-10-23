@@ -39,6 +39,19 @@ def test_worker_converts_date_arguments_for_library():
     assert converted["expiration"] == date(2025, 2, 21)
 
 
+def test_worker_converts_hourly_history_date_without_sdk_network():
+    converted = worker._convert_kwargs(
+        "option_history_quote", {
+            "symbol": "SPY", "date": "2025-06-09",
+            "expiration": "*", "interval": "1h", "max_dte": 45,
+        },
+    )
+    assert converted["date"] == date(2025, 6, 9)
+    assert converted["expiration"] == "*"
+    assert converted["interval"] == "1h"
+    assert converted["max_dte"] == 45
+
+
 def test_worker_preserves_expiration_wildcard():
     converted = worker._convert_kwargs(
         "option_history_open_interest",
@@ -109,6 +122,9 @@ def test_sdk_inspection_does_not_construct_a_client_or_request_data(monkeypatch)
     class FakeThetaClient:
         def __init__(self, **kwargs):
             pytest.fail("SDK compatibility preflight must not instantiate the client")
+
+        def option_history_quote(self, **kwargs):
+            pytest.fail("SDK preflight must not request historical quote data")
 
         def option_at_time_quote(self, **kwargs):
             pytest.fail("SDK compatibility preflight must not request quote data")
@@ -280,6 +296,9 @@ def test_explicit_dollar_dividend_sdk_keyword_inspected_without_provider(monkeyp
     class ExplicitDollarClient:
         def __init__(self):
             pytest.fail("No SDK client may be constructed by signature inspection")
+
+        def option_history_quote(self, **kwargs):
+            raise AssertionError("historical quote read is forbidden")
 
         def option_at_time_quote(self, **kwargs):
             raise AssertionError("data read is forbidden")

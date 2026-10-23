@@ -46,6 +46,10 @@ CREDENTIALS_FILE_ENV = "THETADATA_CREDENTIALS_FILE"
 # The per-method keyword set is also the local SDK compatibility contract:
 # an SDK upgrade may never silently change the wire call surface.
 ALLOWED_METHOD_ARGUMENTS = {
+    "option_history_quote": frozenset((
+        "symbol", "expiration", "interval", "date", "strike", "right",
+        "start_time", "end_time", "max_dte", "strike_range",
+    )),
     "option_at_time_quote": frozenset((
         "symbol", "start_date", "end_date", "time_of_day", "expiration",
         "strike", "right", "max_dte", "strike_range",

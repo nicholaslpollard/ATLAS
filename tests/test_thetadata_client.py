@@ -109,6 +109,31 @@ def test_canonical_bytes_are_stable():
     assert client._canonical_bytes(rows) == b'[{"a":"2025-01-06","b":2.0}]\n'
 
 
+def test_hourly_history_surface_uses_single_session_and_exact_interval(fake_worker):
+    response = client.option_history_hourly_quote_surface(
+        symbol="SPY", date_et="2025-06-09", right="both",
+        max_dte=45, strike_range=2,
+    )
+    method, kwargs = fake_worker.calls[-1]
+    assert method == "option_history_quote"
+    assert kwargs == {
+        "symbol": "SPY", "expiration": "*", "interval": "1h",
+        "date": "2025-06-09", "strike": "*", "right": "both",
+        "start_time": "09:30:00", "end_time": "16:00:00",
+        "max_dte": 45, "strike_range": 2,
+    }
+    assert response.library_version == "1.0.12"
+
+
+@pytest.mark.parametrize("bad", [0, -1, 76])
+def test_hourly_history_rejects_invalid_dte_without_request(fake_worker, bad):
+    with pytest.raises(ValueError, match="max_dte"):
+        client.option_history_hourly_quote_surface(
+            symbol="SPY", date_et="2025-06-09", max_dte=bad,
+        )
+    assert fake_worker.calls == []
+
+
 def test_at_time_surface_maps_to_worker_library_method(fake_worker):
     response = client.option_at_time_quote_surface(
         symbol="AAPL",
