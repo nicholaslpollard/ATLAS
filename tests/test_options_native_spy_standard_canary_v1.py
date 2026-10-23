@@ -11,7 +11,35 @@ from packages.data.options_native_spy_standard_canary_v1 import (
     canary_design, run_single_canary, PilotQuoteSourceError,
 )
 from packages.providers.thetadata.client import ThetaDataError
-from tests.test_options_native_spy_thetadata_quote_qualification_v1 import make_response
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+from packages.providers.thetadata.client import (
+    EVIDENCE_ENCODING, TARGET_LIBRARY_VERSION, TRANSPORT, ThetaDataResponse,
+    _canonical_bytes,
+)
+
+
+def make_response(params):
+    day = date(int(params["start_date"][:4]),
+               int(params["start_date"][4:6]), int(params["start_date"][6:]))
+    cutoff = datetime.combine(day, datetime.min.time().replace(hour=10),
+                              ZoneInfo("America/New_York"))
+    exp = (day + timedelta(days=35)).isoformat()
+    rows = tuple({
+        "symbol": "SPY", "expiration": exp, "strike": 500.0,
+        "right": right, "timestamp": (cutoff - timedelta(seconds=1)).isoformat(),
+        "bid_size": 5, "bid_exchange": 1, "bid": 5.0,
+        "bid_condition": 0, "ask_size": 7, "ask_exchange": 1,
+        "ask": 5.10, "ask_condition": 0,
+    } for right in ("CALL", "PUT"))
+    raw = _canonical_bytes(rows)
+    return ThetaDataResponse(
+        http_status=200, rows=rows, headers={}, response_bytes=len(raw),
+        elapsed_seconds=0.1, raw_body=raw, transport=TRANSPORT,
+        library_version=TARGET_LIBRARY_VERSION,
+        provider_environment_fingerprint="1" * 64,
+        evidence_encoding=EVIDENCE_ENCODING, explicit_no_data=False,
+    )
 
 
 class FakeSettings:
