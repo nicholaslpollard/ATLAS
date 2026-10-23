@@ -25,7 +25,7 @@ BATCH_CONTRACT = "atlas-hybrid-options-source-requirement-batch-v1"
 MAX_BATCH_BYTES = 128 * 1024
 MAX_REQUIREMENTS = 64
 MAX_SOURCES_PER_SESSION = 100
-SYMBOL_PATTERN = re.compile(r"[A-Z][A-Z0-9.\\-]{0,15}")
+SYMBOL_PATTERN = re.compile(r"[A-Z][A-Z0-9.-]{0,15}")
 NAME_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_\\-]{0,63}")
 QUERY_FIELDS = frozenset((
     "symbol", "date_et", "expiration", "right", "interval",
@@ -53,8 +53,12 @@ def _scope(raw: Any) -> dict[str, Any]:
         end = time.fromisoformat(raw["end_time"])
     except (TypeError, ValueError) as exc:
         raise HybridGapPlannerError("INVALID_SESSION_OR_CLOCK") from exc
-    if (start >= end or start.hour < 9 or end.hour > 16
-            or start.minute != 30 and start.hour == 9 and start.minute < 30):
+    if (raw["date_et"] != day.isoformat()
+            or raw["start_time"] != start.isoformat()
+            or raw["end_time"] != end.isoformat()
+            or start.tzinfo is not None or end.tzinfo is not None
+            or start < time(9, 30) or end > time(16, 0)
+            or start >= end):
         raise HybridGapPlannerError("INVALID_REGULAR_SESSION_WINDOW")
     if (raw["expiration"] != "*" or raw["right"] not in ("call", "put", "both")
             or raw["interval"] not in INTERVALS
@@ -123,7 +127,7 @@ def normalize_batch(batch: dict[str, Any]) -> list[dict[str, Any]]:
             raise HybridGapPlannerError("REQUEST_FIELDS_INVALID")
         key, purpose = item["strategy_key"], item["purpose"]
         if (not isinstance(key, str) or not NAME_PATTERN.fullmatch(key)
-                or purpose not in PURPOSES):
+                or not isinstance(purpose, str) or purpose not in PURPOSES):
             raise HybridGapPlannerError("STRATEGY_OR_PURPOSE_INVALID")
         normalized.append({
             "strategy_key": key, "purpose": purpose,
