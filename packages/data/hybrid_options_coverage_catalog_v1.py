@@ -150,18 +150,8 @@ def inspect_hourly_source(
         raise HybridCoverageError("HISTORICAL_RAW_SOURCE_SHA_CHANGED")
     rows = _canonical_rows(raw)
     diagnostics = summary.get("source_diagnostics")
-    if (not isinstance(diagnostics, dict)
-            or diagnostics.get("rows") != len(rows)
-            or diagnostics.get("out_of_requested_dte_rows") != 0
-            or diagnostics.get("invalid_expiration_rows") != 0
-            or diagnostics.get("missing_required_quote_fields") != 0
-            or diagnostics.get("invalid_or_naive_timestamps") != 0
-            or not isinstance(summary.get("gzip_9_size_bytes"), int)
-            or summary["gzip_9_size_bytes"] <= 0):
-        # Compression output size can vary across Python/zlib versions.
-        # It is a sizing estimate, not source-integrity evidence.
-        # Original canonical bytes and their SHA are authoritative.
-        pass
+    # Compression size is an estimate, not evidence. zlib versions may
+    # produce different byte counts from the exact same source bytes.
     if (not isinstance(diagnostics, dict)
             or diagnostics.get("rows") != len(rows)
             or diagnostics.get("out_of_requested_dte_rows") != 0
