@@ -284,7 +284,7 @@ def ingest_hourly_source(
         else:
             scope = source["source_scope"]
             con.execute(
-                "INSERT INTO source_units VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO source_units VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 [
                     source["source_id"], source["source_type"], source["provider"],
                     scope["symbol"], scope["date_et"], scope["interval"],
