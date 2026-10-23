@@ -169,7 +169,7 @@ def inspect_saved_expiration_scope(
         "status": "SOURCE_EXPIRATION_SCOPE_DIAGNOSTIC_ONLY",
         "source_sha256": PINNED_BODY_SHA,
         "prior_schema_audit_fingerprint": prior["fingerprint"],
-        "query_fingerprint": prior["original_report_fingerprint"],
+        "original_summary_fingerprint": prior["original_report_fingerprint"],
         "decision_session": PINNED_SESSION.isoformat(),
         "decision_time_et": FROZEN_CLOCK.isoformat(),
         "requested_max_dte": FROZEN_MAX_DTE,
