@@ -105,7 +105,7 @@ def test_write_idempotent_and_safe_lookup(retained_source):
             "source_rows FROM source_units",
         ).fetchall()
         observed = con.execute(
-            "SELECT underlying, expiration, right FROM observed_quote_keys "
+            "SELECT underlying, expiration, option_right FROM observed_quote_keys "
             "ORDER BY ordinal",
         ).fetchall()
     finally:
