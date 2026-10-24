@@ -230,3 +230,48 @@ The write mode checks 40 GiB free headroom and refuses inconsistent
 source/receipt pairs or an altered catalog. Existing source files,
 strategies and protected outcome evidence are unchanged. No broader
 acquisition or archive migration is authorized by this milestone.
+
+## V3 operator acceptance and V4 compressed historical-source retrieval
+
+Operator V3 acceptance (2026-10-23): preview and explicit compressed-archive
+creation both completed successfully; source original **201,148 bytes**,
+gzip-9 **12,121 bytes**, **93.97%** size reduction, **840 rows**,
+`lossless_verified=True`, `archive_inserted=True`,
+`simulator_ready=False`, **zero provider requests**.
+The archive lives at the content-addressed file
+`data/options/hybrid/source_archive_v1/0a/`
+`0af1ad27857cbb1da8fdf51d272a1bd644e972f0d1b49bef29015b8192d91c21.json.gz`
+with a separate immutable receipt at the same SHA stem.
+The original canonical JSON is still stored, so this pilot does not
+reclaim its original disk bytes.
+
+V4 adds `packages/data/hybrid_options_archive_reader_v1.py`, a
+source-only local compressed quote retrieval interface, and
+`scripts/read_hybrid_options_archive_v1.py`, an operator audit CLI.
+The reader fetches the exact catalog source identity and expected
+observation keys, verifies the immutable archive SHA receipt, performs
+**bounded** gzip decompression, checks the original canonical-body
+SHA-256 and byte length, and cross-checks each quote's underlying,
+expiration, strike, CALL/PUT and observed timestamp with its existing
+indexed ordinal. It does **not reopen the original uncompressed quote
+file** and cannot silently download missing data.
+
+After green CI and merge, verify the actual compressed read:
+
+    .\.venv\Scripts\python.exe -m scripts.read_hybrid_options_archive_v1
+
+Expected on the accepted SPY source: **840 archived quotes**, **120
+distinct contracts**, original byte length 201,148, compressed byte
+length 12,121, diagnostic source status and `simulator_ready=False`.
+The CLI reports observed clock bounds and CALL/PUT counts, not trade
+performance or executable prices. Any missing/corrupted archive,
+receipt, changed query status or key inconsistency fails closed.
+This step makes no new ThetaData/broker requests, source writes or
+strategy simulations.
+
+The next major milestone is **generalizing verified source registration
+beyond the single frozen SPY source**, along with using this reader for
+compressed-at-ingestion source storage in an explicitly authorized,
+storage/rate-bounded acquisition pipeline. Do not mistake V4 archive
+retrieval for complete hourly sessions, minute-level exits, OI, Greeks
+or simulator-ready historical fills.
