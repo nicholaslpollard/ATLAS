@@ -275,3 +275,44 @@ compressed-at-ingestion source storage in an explicitly authorized,
 storage/rate-bounded acquisition pipeline. Do not mistake V4 archive
 retrieval for complete hourly sessions, minute-level exits, OI, Greeks
 or simulator-ready historical fills.
+
+
+## V5: Verified compressed-source simulation preflight (2026-10-24)
+
+A separate provider-free preparation module,
+packages/data/hybrid_options_simulation_preflight_v1.py, composes the
+exact V2 requirement/gap planner and V4 immutable archive reader. Its CLI,
+scripts/preflight_hybrid_options_simulator_v1.py, accepts the same explicit
+bounded JSON requirement batch as V2 (or --demo) and reports all deduplicated
+requests, verified original/archive hashes, observed quote counts, historical
+local gaps, source status and simulation readiness.
+
+The preflight reads each reused archived source at most once and rechecks
+original bytes, receipt identity and catalog observation keys. Existing raw
+uncompressed sources are not opened. Missing or corrupted archives are an
+integrity failure and never silently become a new provider download.
+V5 caps distinct archived sources verified per run at eight to bound memory
+and decompression work.
+
+The V1 source-only catalog is intentionally unchanged: the verified 840-row
+hourly source remains diagnostic and cannot be used as a qualified 09:35
+entry, complete holding/exit history, account simulation, or PAPER/LIVE
+authority. The result has simulator_run_permitted=False,
+frozen_simulation_dataset_created=False and explicit local missing-query
+statuses. --require-ready exits nonzero when input readiness is unqualified;
+there is no readiness override or V5 source-promotion path.
+
+After green CI and merge, operator may run two independent offline checks
+against the existing D:-bound catalog/archive:
+
+    .\.venv\Scripts\python.exe -m scripts.read_hybrid_options_archive_v1
+    .\.venv\Scripts\python.exe -m scripts.preflight_hybrid_options_simulator_v1 --demo
+
+The second command should show 5 requirement uses, 4 distinct queries,
+1 reverified original source archive, 3 missing local exact queries,
+0 simulation-ready queries, 0 provider/broker requests and 0 simulations.
+CI runs synthetic fixtures, not the workstation D: evidence. The future
+acquisition coordinator must be explicitly budgeted/authorized and complete
+sources independently qualified and bound into frozen replay inputs before
+any historical strategy evaluation. Passed preflight is an integrity
+diagnostic, not profit or simulator acceptance.
