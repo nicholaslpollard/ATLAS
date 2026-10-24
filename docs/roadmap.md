@@ -409,6 +409,12 @@ Official schedules checked on 2026-10-14 (America/New_York): [Webull US OpenAPI]
 
 Before broker-comparable simulation, bind the broker, US account/classification, order channel/product, fee effective dates, component rates, exceptions and aggregation/rounding rules. Test those rules and reconcile actual broker fee records when available. Keep bid/ask spread, additional slippage, financing/borrow, and recurring data/platform costs separately identified. Preserve the original V2 policy/artifacts; use any qualified fee profile only in a separately bound future run. Fee qualification can advance without ThetaData and creates no new strategy experiment or profitability claim.
 
+### Hybrid historical options compressed-source retrieval — V4 (2026-10-23)
+
+Operator confirmed V3 archival success on D: for the single 2025-06-09 hourly SPY source: original 201,148 bytes, real gzip-9 12,121 bytes, 93.97% lossless size reduction, archive and SHA receipt created, original unchanged and no provider request. Catalog observation count remains 840 and source status remains diagnostic.
+
+V4 adds a [read-only archived historical quote source interface](research/hybrid_historical_options_database_v1_20261023.md) which retrieves directly from the verified gzip without opening the uncompressed original. It checks catalog identity, immutable gzip receipt/hash, restored raw hash and **all** indexed contract/timestamp keys, with a bounded decompressor; no silent source fallback, no provider request, no backtest authority. Operator test command after green CI: `python -m scripts.read_hybrid_options_archive_v1`; expected 840 original observations, 120 unique contracts, no simulation readiness. After this, generalize admissible source registration and migrate new source acquisitions toward compressed-at-ingestion, under explicit quotas and request budgets. Do not automatically promote minute/09:35 fills from hourly observations.
+
 ### Hybrid historical options source archive — V3 lossless single-source pilot (2026-10-23)
 
 Operator completed V2 requirement-gap demo against D:-bound catalog: five uses, four distinct exact quote scopes, one deduplicated use, one observed SPY 2025-06-09 1h source with 840 rows, three exact-query local misses, zero simulation-ready sources, and zero provider requests. Source presence does not establish available executable quotes, and planned gaps do not prove provider unavailability.
