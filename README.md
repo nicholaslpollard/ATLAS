@@ -16,6 +16,8 @@ ATLAS is being built as an options-first research and trading system: discover o
 
 **Hybrid options V5 simulation-input preflight (2026-10-24; PR pending CI):** A provider-free archive-backed input gate now verifies exact-query historical source demand, independent local archive integrity, and missing coverage before any simulation. Current diagnostics remain **NOT simulation ready**, so the gate blocks all attempts to run a source-qualified historical options backtest. The new operator command is `python -m scripts.preflight_hybrid_options_simulator_v1 --demo`; optional `--require-ready` fails closed. No added ThetaData requests or protected outcomes. Existing SPY canary and catalog evidence are untouched.
 
+**Hybrid options V6 (2026-10-24; CI pending):** Generalized quote-source store supports verified multi-symbol/date/right/interval SDK-normalized historical quote responses and compressed-at-ingestion immutable evidence. It is provider-free as submitted, with a read-only V4 SPY bootstrap preview and separately opted-in local import; source quality anomalies are retained, not filtered. V1–V5 receipts remain untouched and simulator readiness remains false. Operator CLI: `python -m scripts.index_hybrid_options_general_source_v2` (preview), then `--import-verified-v4` only after a successful preview. No option acquisition or performance authority.
+
 ## Start here
 
 - [Project guide and roadmap](docs/roadmap.md): the single authority for goals, current state, architecture, dependencies, active work, and continuation.
