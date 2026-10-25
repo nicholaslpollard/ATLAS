@@ -53,7 +53,13 @@ def main(argv: list[str] | None = None) -> int:
         "--max-calls", type=int,
         help="Optional requests this run (default: all remaining; NO fixed campaign limit)",
     )
+    parser.add_argument(
+        "--progress-every", type=int, default=25,
+        help="Show one provider receipt summary per N completed calls (default 25)",
+    )
     args = parser.parse_args(argv)
+    if args.progress_every < 1:
+        parser.error("--progress-every must be a positive integer")
     if args.max_calls is not None and (args.max_calls < 1 or not args.run):
         parser.error("--max-calls requires --run and a positive integer")
     print("ATLAS HYBRID EXACT AT-TIME OPTIONS SOURCE CAMPAIGN V12", flush=True)
@@ -105,6 +111,19 @@ def main(argv: list[str] | None = None) -> int:
             result = run_campaign(
                 settings, args.manifest, args.candidate_plan,
                 max_calls=args.max_calls,
+                progress_every=args.progress_every,
+                progress=lambda update: print(
+                    "  PROGRESS:"
+                    f" calls={update['completed_calls']}"
+                    f" archived={update['archived']}"
+                    f" out_dte={update['out_of_dte']}"
+                    f" invalid={update['invalid']}"
+                    f" session={update['last_date']}"
+                    f" symbol={update['last_symbol']}"
+                    f" last_id={update['last_request_id']}"
+                    f" status={update['state']}",
+                    flush=True,
+                ),
             )
             print(
                 f"  calls={result['provider_calls_this_run']}"
