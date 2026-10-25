@@ -214,10 +214,12 @@ def test_explicit_source_path_and_filename_binding(candidate, tmp_path):
         "data/options/manifests/" + origin.name
     ))
     assert loaded == candidate
+    wrong = origin.parent / (
+        "thetadata_candidate_surface_source_plan_v1_" + "b" * 16 + ".json"
+    )
+    wrong.write_text(json.dumps(candidate))
     with pytest.raises(v9.HybridFrozenDemandError, match="FINGERPRINT"):
-        v9.load_candidate_source_plan(settings, settings.resolved_path(
-            "data/options/manifests/thetadata_candidate_surface_source_plan_v1_bad.json"
-        ))
+        v9.load_candidate_source_plan(settings, wrong)
 
 
 def test_source_path_outside_options_binding_blocked(candidate, tmp_path):
