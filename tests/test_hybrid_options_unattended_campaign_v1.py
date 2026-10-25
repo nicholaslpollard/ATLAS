@@ -305,3 +305,53 @@ def test_cli_reports_safe_archive_audit_error_code_without_provider(
     assert "code=AAL_ARCHIVED_ROWS_FAIL_V10_IDENTITY_REPLAY" in output
     assert "provider_requests=0" in output
     assert not settings.resolved_path(camp.ROOT_REL).exists()
+
+
+
+def test_v16_origin_scoping_never_acquires_the_unrelated_branch(workspace):
+    settings, full, rows = workspace
+    response = camp.run_campaign(
+        settings, Path("full"), Path("source"),
+        allowed_origin="FROZEN_SPY_WEEKLY_OPTIONS_NATIVE",
+        reader=lambda **kw: pytest.fail("09:35 CALL candidate must not be fetched"),
+    )
+    assert response["provider_calls_this_run"] == 0
+    assert response["stop_reason"] == "FULL_FROZEN_MANIFEST_SCANNED"
+    assert not settings.resolved_path(camp.ROOT_REL).exists()
+
+
+def test_v16_acquisition_progress_is_bounded_and_receipted(workspace):
+    settings, full, rows = workspace
+    updates = []
+    result = camp.run_campaign(
+        settings, Path("full"), Path("source"),
+        reader=lambda **kw: _source(rows[1]),
+        max_calls=1, progress=updates.append, progress_every=25,
+    )
+    assert result["provider_calls_this_run"] == 1
+    assert len(updates) == 1
+    assert updates[0]["completed_calls"] == 1
+    assert updates[0]["archived"] == 1
+    assert updates[0]["state"] == "RAW_ARCHIVED_SCOPE_DIAGNOSTIC"
+    assert updates[0]["simulator_ready"] is False
+    assert set(updates[0]) == {
+        "completed_calls", "archived", "out_of_dte", "invalid",
+        "last_date", "last_symbol", "last_request_id", "state",
+        "simulator_ready",
+    }
+
+
+def test_v16_progress_and_origin_arguments_fail_before_any_provider(workspace):
+    settings, full, rows = workspace
+    for settings_to_test in (
+        {"allowed_origin": "UNFROZEN_EXIT_CAMPAIGN"},
+        {"progress_every": 0},
+        {"progress_every": True},
+    ):
+        with pytest.raises(camp.HybridCampaignError):
+            camp.run_campaign(
+                settings, Path("full"), Path("source"),
+                reader=lambda **kw: pytest.fail("invalid input must not call provider"),
+                **settings_to_test,
+            )
+    assert not settings.resolved_path(camp.ROOT_REL).exists()
