@@ -10,7 +10,6 @@ and optionally reserves an immutable one-query intent. A reservation is not
 a provider attempt, authorization, proof of no data, or an executable quote.
 """
 
-from dataclasses import asdict
 import json
 from pathlib import Path
 from typing import Any, Callable
@@ -21,7 +20,7 @@ from packages.data.hybrid_options_archive_reader_v1 import (
     load_verified_archived_option_quotes,
 )
 from packages.data.hybrid_options_gap_planner_v1 import (
-    plan_missing_sources, normalize_batch,
+    plan_missing_sources, normalize_batch, _scope,
 )
 from packages.data.hybrid_options_lossless_archive_v1 import _write_immutable
 from packages.data.hybrid_options_source_store_v2 import (
@@ -36,6 +35,7 @@ from packages.data.research_storage import (
 CONTRACT = "atlas-hybrid-options-offline-acquisition-reservations-v1"
 RESERVATION_ROOT = "data/options/hybrid/acquisition_reservations_v1"
 MAX_VERIFIED_SOURCES = 16
+MAX_LEDGER_RECEIPTS = 4096
 DEFAULT_PER_QUERY_MIB = 128
 DEFAULT_BATCH_MIB = 512
 MAX_BATCH_MIB = 8192
@@ -132,6 +132,54 @@ def _existing_reservation(
             })):
         raise HybridAcquisitionPlanError("RESERVATION_RECEIPT_OR_AUTHORITY_DRIFT")
     return body
+
+
+def _outstanding_reservations(settings: AtlasSettings) -> dict[str, Any]:
+    """Reverify ALL pending receipts before granting another budget slot.
+
+    Even an unrelated prior batch consumes scarce storage headroom. Do not
+    permit a later small batch to ignore outstanding reserved capacity.
+    """
+    root = settings.resolved_path(RESERVATION_ROOT)
+    if root.is_symlink():
+        raise HybridAcquisitionPlanError("RESERVATION_ROOT_SYMLINK_UNSAFE")
+    if not root.exists():
+        return {"count": 0, "bytes": 0}
+    if not root.is_dir():
+        raise HybridAcquisitionPlanError("RESERVATION_ROOT_NOT_DIRECTORY")
+    total, count = 0, 0
+    seen: set[str] = set()
+    # Current ledger contains only bounded 2-level query-id paths. Any
+    # unexpected files or nested symlinked directories are not ignored.
+    for shard in sorted(root.iterdir()):
+        if shard.is_symlink() or not shard.is_dir() or len(shard.name) != 2:
+            raise HybridAcquisitionPlanError("RESERVATION_LEDGER_SHARD_UNSAFE")
+        for proof in sorted(shard.iterdir()):
+            count += 1
+            if count > MAX_LEDGER_RECEIPTS:
+                raise HybridAcquisitionPlanError("RESERVATION_LEDGER_SCAN_CAP")
+            if (proof.is_symlink() or not proof.is_file()
+                    or not proof.name.endswith(".json")
+                    or len(proof.stem) != 64 or proof.stem[:2] != shard.name):
+                raise HybridAcquisitionPlanError("RESERVATION_LEDGER_FILE_UNSAFE")
+            try:
+                header = json.loads(proof.read_bytes())
+                qid = header["query_id"]
+                query = _scope(header["query"])
+            except (ValueError, TypeError, KeyError, UnicodeError) as exc:
+                raise HybridAcquisitionPlanError("RESERVATION_LEDGER_INVALID") from exc
+            if qid != proof.stem or qid in seen:
+                raise HybridAcquisitionPlanError("RESERVATION_LEDGER_DUPLICATE_ID")
+            seen.add(qid)
+            if qid != _fingerprint({
+                "source_type": "option_history_quote", "query": query,
+            }):
+                raise HybridAcquisitionPlanError("RESERVATION_QUERY_FINGERPRINT_DRIFT")
+            verified = _existing_reservation(settings, qid, query)
+            if verified is None:
+                raise HybridAcquisitionPlanError("RESERVATION_RECEIPT_MISSING")
+            total += verified["reserved_worst_case_bytes"]
+    return {"count": count, "bytes": total}
 
 
 def _v6_exact_sources(
@@ -323,9 +371,11 @@ def plan_acquisition_reservations(
         })
 
     storage = _storage_capacity(settings, storage_reader)
+    outstanding = _outstanding_reservations(settings)
     bytes_per = per_request_mib * MIB
     batch_limit = min(
-        batch_budget_mib * MIB, storage["safe_available_bytes"],
+        batch_budget_mib * MIB,
+        max(0, storage["safe_available_bytes"] - outstanding["bytes"]),
     )
     # Preserve old-session priority; user-requested discovery/use order does
     # not permit price/performance lookahead or newer sessions jumping first.
@@ -407,6 +457,8 @@ def plan_acquisition_reservations(
         "reservation_bytes_per_query": bytes_per,
         "newly_planned_reservation_bytes": charged,
         "batch_budget_bytes": batch_budget_mib * MIB,
+        "outstanding_no_call_reservations_before_batch": outstanding["count"],
+        "outstanding_reservation_bytes_before_batch": outstanding["bytes"],
         "storage": storage,
         "queries": sorted_results,
         "provider_requests": 0, "broker_requests": 0,
