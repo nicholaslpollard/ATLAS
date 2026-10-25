@@ -172,7 +172,20 @@ def diagnose_at_time_response(
         if identity in identities:
             raise HybridAtTimeSourceGateError("DUPLICATE_AT_TIME_CONTRACT_ID")
         identities.add(identity)
-        quote_clock = _aware_et(item["timestamp"])
+        # The legacy qualifier's timezone converter may accept a naive
+        # ISO timestamp by assigning an ET interpretation. V10 deliberately
+        # rejects that uncertainty: source timestamps must carry a real
+        # UTC offset before any historical-causality comparison.
+        timestamp = item["timestamp"]
+        if not isinstance(timestamp, str):
+            raise HybridAtTimeSourceGateError("SOURCE_TIMESTAMP_NOT_TEXT")
+        try:
+            stamped = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise HybridAtTimeSourceGateError("SOURCE_TIMESTAMP_INVALID") from exc
+        if stamped.tzinfo is None or stamped.utcoffset() is None:
+            raise HybridAtTimeSourceGateError("SOURCE_TIMESTAMP_NAIVE_UNQUALIFIED")
+        quote_clock = _aware_et(timestamp)
         if quote_clock.date() != request_day or quote_clock > clock:
             raise HybridAtTimeSourceGateError("FUTURE_OR_OTHER_DAY_AT_TIME_QUOTE")
         staleness.append((clock - quote_clock).total_seconds())
