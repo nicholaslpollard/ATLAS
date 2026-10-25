@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V10 OFFLINE AT-TIME SOURCE AUDIT WORKSTATION-ACCEPTED, FULL FROZEN DEMAND MANIFEST IMMUTABLE ON D:; V11 GUARDED ONE-CALL 2021 QUALIFICATION INTERFACE UNDER CI REVIEW. NO BULK ACQUISITION OR SIMULATOR QUALIFICATION.**
+Status: **V11 SINGLE AAL DIAGNOSTIC SUCCESSFULLY ARCHIVED AND QUARANTINED; V12 UNATTENDED RESUMABLE FROZEN 9,866-REQUEST AT-TIME SOURCE ACQUISITION UNDER CI REVIEW. NO EXECUTABLE OPTION-CHAIN/SIMULATOR QUALIFICATION.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -643,3 +643,52 @@ projected to 45/75 DTE, and all V10 diagnostics remain non-executable.
 No V6/strategy/holdout/simulator/PAPER/LIVE authority is granted.
 Actual source-semantic proof, completeness and data throughput are
 still needed before authorizing historical acquisition of 9,866 scopes.
+
+
+## V11 paid AAL 2021 call and V12 user-authorized unattended operation (2026-10-25 ET)
+
+The user ran the V11 AAL single at-time source call. The input was
+the existing frozen 2021-11-30 AAL 09:35 ET CALL max_dte=75 no-strike-range
+request ID
+\`15ac1c4ac389a5b4893530b954f40bc6ed4ee7d4614e1c606aa53a8a920eafe4\`.
+The provider/worker call returned a nonempty SDK-normalized original
+source that was successfully stored as complete lossless gzip; the V10
+gate classified it as \`SOURCE_ARCHIVED_QUARANTINED_DTE\` /
+\`QUARANTINED_OUT_OF_SCOPE_DTE_NO_PROJECTION\` because some expiration
+dates exceeded the requested 75 calendar days. No source promotion or
+simulator access was granted. V11's immutable global once-only marker
+and terminal proof were created: DO NOT rerun V11 paid flags or overwrite
+these records. User explicitly instructed ATLAS to eliminate interactive
+per-call authorizations and to allow continued provider data requests.
+
+V12 preserves exact original V9 source demand and removes *per-call
+authorization friction* in favor of a normal provider-acquisition command.
+Read-only original-AAL receipt+gzip re-audit:
+\`python -m scripts.run_hybrid_options_unattended_campaign_v1\`.
+The module rechecks the original V9 full manifest and 9,455 source plan,
+V11 immutable marker/terminal receipts, the AAL source SHA and lossless
+gzip restore, computes DTE bucket counts and then previews the remaining
+9,866-source queue. Known existing AAL 2021 and saved SPY 2025 at-time
+source queries are skipped; they are never requested again.
+
+A subsequent \`--run\` starts provider acquisition with no consent flags,
+typing prompts, or fixed lifetime request count. Optional \`--max-calls N\`
+controls a single work session; omission means all remaining requests in
+the pinned frozen scope. Each individual query saves an immutable
+pre-dispatch marker (even on timeout/forced process interruption) and a
+terminal receipt, so resuming never resubmits the same query after
+an ambiguous result. Nonempty quotes are stored as deterministic gzip-9
+in the query-keyed V12 D: archive root and verified by SHA-256 and
+bounded decompression. Source schema/DTE issues are recorded as
+non-executable diagnostics, not silently filtered executable sources.
+The runner rechecks D: free-space and joint options research quota before
+every new query, and stops on transport/storage failures.
+
+The provider documentation states max_dte should apply an inclusive
+calendar-day DTE limit; both saved historical canaries returned rows
+outside it. This may be an SDK-forwarding or server-side problem.
+V12 **does not claim to have fixed** that issue; it captures original
+source material for independent investigation. Query count 9,866 is
+the frozen *selected decision-time entry research* scope, not a complete
+ten-year all-symbol all-contract 1h local options database or management
+exit data.
