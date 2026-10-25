@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V11 SINGLE AAL DIAGNOSTIC SUCCESSFULLY ARCHIVED AND QUARANTINED; V12 UNATTENDED RESUMABLE FROZEN 9,866-REQUEST AT-TIME SOURCE ACQUISITION UNDER CI REVIEW. NO EXECUTABLE OPTION-CHAIN/SIMULATOR QUALIFICATION.**
+Status: **V12 UNATTENDED SOURCE ARCHIVE ACTIVE (10/10 INITIAL RESPONSES LOSSLESS VERIFIED BUT EXCESS DTE); V13 ORIGINAL SAVED-SOURCE QUALITY INSPECTION UNDER CI REVIEW. 9,854 EXACT SOURCE QUERIES REMAIN, NONE PROMOTED TO SIMULATOR.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -692,3 +692,45 @@ source material for independent investigation. Query count 9,866 is
 the frozen *selected decision-time entry research* scope, not a complete
 ten-year all-symbol all-contract 1h local options database or management
 exit data.
+
+
+## First unattended V12 SPY batch and V13 full original-source census (2026-10-25)
+
+The workstation's initial fully unattended 10-provider-call batch completed
+without prompts, retries, interruptions or provider/SDK errors. V12 wrote
+10 immutable original compressed source archives and 10 terminal receipts;
+**all 10** original quote sources returned some expirations beyond their
+frozen max_dte=45 days. The 2021 AAL qualification source remained separate
+and unchanged. A read-only V12 queue replay verified 9,854 remaining exact
+research queries, zero ambiguous deliveries, 10 new V12 source IDs archived,
+two historical sources excluded from re-acquisition and safe additional
+119.700 GiB on the D: research storage at the last inspection.
+
+The AAL original source replay fix was operator accepted: 16 regression
+tests passed, 464 unchanged quote rows, 238 with 0–75 DTE, 226 with
+>75 DTE, 16 expirations, 113,899 original bytes, 9,345 compressed
+bytes, SHA256
+\`6ff575bde70b7eaec3ab95854f99cf47d868517ed0d437982fb78677348b1a59\`.
+
+V13 adds read-only independent research diagnostics. Default command:
+
+    .\.venv\Scripts\python.exe -m scripts.audit_hybrid_options_saved_scope_quality_v1
+
+The tool derives per-archived-request and aggregate counts of observations
+within/outside their exact frozen DTE limits, invalid fields or future
+quote timestamps, un-crossed positive two-sided NBBO quotes, oldest quote
+age, expiration buckets, raw and losslessly compressed bytes. Each original
+source is cryptographically replayed against existing immutable receipts;
+no local filtered source is written, no SDK client or provider call made
+and no quote is advanced to strategy/simulator authority.
+
+ThetaData's published v3 docs for both REST and Python at-time option
+quotes describe \`max_dte\` as an inclusive calendar-day expiration cap.
+Saved 2025 SPY, 2021 AAL and 10 SPY archived returns violate that
+description. These observations are evidence of parameter-scope
+nonconformance, NOT proof of a specific SDK or server defect. Subsequent
+work should compare actual in-scope quote quality and evaluate an
+independently versioned locally scoped diagnostic view retaining the
+complete provider original; it must not replace originals or claim full
+chain coverage. Bulk collection may continue later without per-call
+authorizations, but should not be run blind without the scope census.
