@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V14 IMMUTABLE LOCAL DTE POSITIONAL INDEXES WORKSTATION-ACCEPTED (10 INDEPENDENT SIDECARS, 1,336 SOURCE ROW REFERENCES, 26,167 TOTAL SIDECAR BYTES); V15 CAUSAL SOURCE-LINKED OBSERVATION READER UNDER CI REVIEW. 9,854 SOURCE QUERIES REMAIN; SIMULATOR STILL BLOCKED.**
+Status: **V15 SOURCE-LINKED CAUSAL SPY QUOTE RESEARCH ACCEPTED (39 TESTS; 436 EXPERIMENTAL CALL/PUT PAIRS, 393 PASSING EXPLORATORY 60S SPREAD SCREEN). V16 411-WEEK SPY SOURCE ACQUISITION AND FIVE-SESSION EXIT INVENTORY UNDER CI REVIEW; SIMULATOR REMAINS BLOCKED.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -819,3 +819,49 @@ Outstanding dependencies include point-in-time underlying spot, original
 chain completeness, historical OI and the issuer dividend publication
 evidence needed by expiration-specific valuation; none are replaced or
 inferred by the V15 quote diagnostics.
+
+
+## V15 operator acceptance and larger V16 integrated acquisition/simulator-readiness cycle
+
+The operator passed 39 V12–V15 targeted tests. The existing 10
+V12 SPY 10:00 original at-time archived sources replayed to 2,744 original
+quote observations, 1,336 0–45 DTE source-linked row references.
+The V15 exploratory 14–45 DTE read found 872 observed quote rows and
+436 same-expiration/same-strike CALL+PUT pairs, of which 393 satisfied
+the V15 <=60s freshness and <=15% spread-to-mid observation screen.
+These are not trades, complete option chains, underlying forecasts,
+broker fills or simulator-ready input.
+
+The user's priority is now fewer partial small engineering cycles and
+faster collection during the active $80/month ThetaData Options Standard
+subscription. V16 groups an enlarged SPY acquisition workflow, automatic
+existing V14 sidecar indexing and native simulator-readiness assessment
+into a single CI acceptance and workstation operation.
+
+- V12 provider runner gains a strict \`allowed_origin\` gate and periodic
+  provider-call progress summary; original immutable receipt semantics,
+  SHA hashes and deduplication remain unchanged. It cannot accidentally
+  proceed from the SPY pilot into the 9,455 unrelated 09:35 CALL sources.
+- \`python -m scripts.run_spy_pilot_integrated_acquisition_v1\` defaults
+  to provider-free coverage inspection. An \`--run\` execution collects
+  all still-unattempted original SPY weekly 10:00 both-right entry
+  quotes, with no interactive confirmations and optional \`--max-calls\`
+  to bound a single session. It then verifies/creates SHA-linked original
+  positional sidecars using the existing V14 contract.
+- A separately callable read-only
+  \`python -m scripts.review_spy_native_pilot_accelerated_readiness_v1\`
+  audits exact 411 weekly source identities, distinguishes saved,
+  failed, missing and independently retained 2025 SPY observations,
+  applies the native frozen 30–45 DTE and 30s quote-age diagnostics,
+  and plans original 10:00 both-right quote requests for all five
+  following XNYS sessions after each weekly entry. Exact duplicate
+  session requests are deduplicated; no exit quote acquisition/option
+  fills are invented by the planner.
+- Neither V16 script executes backtests, enables the V5 hybrid hourly
+  simulator, substitutes V15 diagnostic pair counts for historical
+  option fill authority, reads protected performance outcomes nor
+  silently ignores missing PIT underlying spot, prior 20 economic
+  returns, OI publication, contract deliverability, rates/dividends,
+  IV/Greeks, executable order latency or account fees/lifecycle.
+  Those independent prerequisites still block the frozen straddle
+  simulator and are surfaced in the readiness report.
