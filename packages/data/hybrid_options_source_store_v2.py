@@ -463,10 +463,14 @@ def read_historical_quote_source(
             raise HybridSourceStoreError("V6_EXACT_SOURCE_NOT_INDEXED")
         record = json.loads(stored[0][0])
         if (record["source_id"] != source_id
-                or stored[0][1:] != (
-                    SOURCE_STATUS, record["diagnostics"]["observed_rows"],
-                    stored[0][3], False, False
-                )):
+                or stored[0][1] != SOURCE_STATUS
+                or stored[0][2] != record["diagnostics"]["observed_rows"]
+                or stored[0][4] is not False
+                or stored[0][5] is not False
+                or record["query_id"] != _fingerprint({
+                    "source_type": "option_history_quote",
+                    "query": record["query"],
+                })):
             raise HybridSourceStoreError("V6_SOURCE_AUTHORITY_CHANGED")
         indices = con.execute(
             "SELECT ordinal,symbol,expiration,strike,option_right,"
@@ -476,6 +480,8 @@ def read_historical_quote_source(
     finally:
         con.close()
     raw = _verify_archive(settings, record)
+    if _paths(settings, source_id)[0].stat().st_size != stored[0][3]:
+        raise HybridSourceStoreError("V6_CATALOG_COMPRESSED_SIZE_CHANGED")
     keys, diagnostic = _source_keys(raw, record["query"])
     if tuple(indices) != tuple(keys):
         raise HybridSourceStoreError("V6_INDEX_VERSUS_ARCHIVED_ROWS_CHANGED")
