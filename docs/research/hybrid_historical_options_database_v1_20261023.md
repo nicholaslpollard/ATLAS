@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V9 EXACT FROZEN DEMAND INVENTORY WORKSTATION-ACCEPTED; V10 OFFLINE AT-TIME SOURCE AUDIT UNDER CI REVIEW; NO PROVIDER ACQUISITION OR SIMULATOR QUALIFICATION.**
+Status: **V10 OFFLINE AT-TIME SOURCE AUDIT WORKSTATION-ACCEPTED, FULL FROZEN DEMAND MANIFEST IMMUTABLE ON D:; V11 GUARDED ONE-CALL 2021 QUALIFICATION INTERFACE UNDER CI REVIEW. NO BULK ACQUISITION OR SIMULATOR QUALIFICATION.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -596,3 +596,50 @@ calls; any future one-request qualification should use new immutable
 pre-dispatch attempt evidence, exact method semantics and independent
 storage/resource checks, never bulk-autorizations or retroactive source
 promotions.
+
+
+## V10 operator source replay and V11 guarded 2021 qualification (2026-10-25 ET)
+
+User verified the exact original retained 2025-06-09 SPY at-time
+10:00 ET source under V10: complete unchanged SDK body SHA-256
+\`cbe1b2d9a48b6812448a6b0a2f394fab21a9ca04dec550e67558a33b155e8ecf\`,
+264 rows; 120 within requested max_dte=45 and 144 beyond.
+V10 status correctly \`QUARANTINED_OUT_OF_SCOPE_DTE_NO_PROJECTION\`;
+no provider call or price promotion occurred. The accepted V9 demand
+manifest was immutably written to
+\`data/options/manifests/hybrid_exact_at_time_research_demand_v1_138234eb2276409a.json\`;
+its full fingerprint remained
+\`138234eb2276409ae641f6e40d7f6eb3c779502ffb5459b612e0dbc439cb4b63\`.
+9,866 exact at-time quote scopes and all scientific clocks/rights remain
+in the file. The V5 simulator gate remained blocked and no provider,
+broker, reserve, trade or outcome access occurred.
+
+V11 (under CI review) adds a **single-attempt only**, globally capped
+2021 candidate-qualification interface, not a bulk source acquisition
+campaign. It requires re-validation of both complete original frozen
+plans, strict at-time SDK mapping, a 2021 09:35 CALL qualification anchor
+and existing research D: storage headroom. It never re-requests the
+known rejected 2025 SPY canary.
+
+Operator preview is ZERO-CALL:
+
+    .\.venv\Scripts\python.exe -m scripts.qualify_one_hybrid_at_time_option_source_v1
+
+Use an explicitly supplied \`--manifest\` and \`--candidate-plan\` only
+when the existing canonical names differ. Its default exact paths refer
+to the already accepted V9 full manifest and accepted source-plan receipt.
+
+Actual paid execution (not authorized by CI/acceptance) additionally
+requires the exact full \`--query-id\`, and ALL of the independent flags:
+\`--authorize-one-paid-qualification-call\`,
+\`--acknowledge-sdk-max-dte-unproven\`, and
+\`--acknowledge-permanent-no-automatic-retry\`. The controlling method
+writes an immutable global once-only receipt *before any provider call*;
+after ambiguous timeout/process crash it blocks **all** other V11
+requests. A returned nonempty source is stored in its entirety in one
+lossless gzip-9 archive on the external options storage, with
+cryptographic readback. The original full source is never silently
+projected to 45/75 DTE, and all V10 diagnostics remain non-executable.
+No V6/strategy/holdout/simulator/PAPER/LIVE authority is granted.
+Actual source-semantic proof, completeness and data throughput are
+still needed before authorizing historical acquisition of 9,866 scopes.
