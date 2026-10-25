@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V6 VERIFIED COMPRESSED SOURCE STORE WORKSTATION-ACCEPTED; V7 OFFLINE REQUEST QUEUE UNDER CI REVIEW; PAID ACQUISITION AND SIMULATOR INTEGRATION NOT IMPLEMENTED.**
+Status: **V7 SOURCE REQUEST QUEUE WORKSTATION-ACCEPTED; V8 GUARDED ONE-ATTEMPT PROVIDER INTERFACE UNDER CI REVIEW; HISTORICAL EXECUTION AND SIMULATOR QUALIFICATION NOT IMPLEMENTED.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -429,3 +429,49 @@ possible delivery, and integration with the generalized gzip-at-ingestion
 store; later, minute/second history and separately verified holding/exit
 quotes must be qualified before simulation. No broker, strategies, holdings
 or protected outcomes are read by V7.
+
+
+## V7 operator acceptance and V8 one-attempt provider interface (2026-10-24 ET)
+
+The operator completed V7 acceptance with 85/85 targeted hybrid tests.
+V7 recognized 5 uses / 4 unique exact queries and deduplicated 1 use.
+The same SPY 1h 2025-06-09 local source is independently verified in
+V4 and V6 but counts as only 1 existing query. Of three exact gaps,
+2018 SPY 1h and 2025 QQQ 1h were eligible for offline reservation; 2025
+SPY 1m was adapter-blocked. The preview created **zero reservations** and
+made **zero provider, broker or simulator calls**. Free D: headroom was
+228.73 GiB; conservatively safe additional storage was 119.70 GiB,
+existing candidate-cache use 0.298 GiB, hybrid subtree 0.00273 GiB.
+These figures are measured policy-constrained capacity, not a ten-year
+dataset size projection.
+
+V8 installs a single-request, **explicitly gated** provider interface.
+Preview is always free of provider calls:
+
+    .\.venv\Scripts\python.exe -m scripts.run_hybrid_options_single_provider_attempt_v1 --demo
+
+A future paid execution requires *all* of: a non-demo frozen
+\`--requirements FILE\`, explicit 64-hex \`--query-id\`, an already
+indexed exact V7 \`RESERVED_NO_PROVIDER_CALL\` receipt, current headroom,
+verified local source absence, matching hourly adapter, plus
+\`--authorize-paid-single-hourly-request\` and
+\`--acknowledge-no-retry-after-ambiguous-attempt\`. No paid execution is
+performed by PR tests or by the operator acceptance preview.
+
+The controller writes a content-addressed immutable
+\`POSSIBLY_DISPATCHED_NO_RETRY\` marker under
+\`data/options/hybrid/provider_attempts_v1\` BEFORE the isolated SDK
+request. If the process crashes between marker and provider call, the
+marker conservatively blocks retry until a separately reviewed manual
+reconciliation. If the provider returns, V8 verifies the canonical
+ThetaData response envelope, delegates direct gzip-at-ingestion indexing
+to V6, and records an immutable terminal receipt; explicit empty/no-data
+and ambiguous timeout/storage failures remain diagnostic. No terminal
+state grants full coverage, causal replay, fills, strategies or
+simulator readiness. There is no bulk loop or automatic retry in V8.
+
+The next stage after independent V8 workstation acceptance is
+preparing an actual 10-year priority-sorted acquisition manifest
+from the two existing frozen research demand branches, with exact
+provider adapter scope and storage budgets. Real paid requests require
+a separately explicit command after the batch is frozen and reviewed.
