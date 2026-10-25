@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V7 SOURCE REQUEST QUEUE WORKSTATION-ACCEPTED; V8 GUARDED ONE-ATTEMPT PROVIDER INTERFACE UNDER CI REVIEW; HISTORICAL EXECUTION AND SIMULATOR QUALIFICATION NOT IMPLEMENTED.**
+Status: **V8 SINGLE-ATTEMPT HOURLY GATE WORKSTATION-ACCEPTED; V9 EXACT FROZEN AT-TIME DEMAND INVENTORY UNDER CI REVIEW; NO HISTORICAL EXECUTION OR SIMULATOR QUALIFICATION.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -475,3 +475,64 @@ preparing an actual 10-year priority-sorted acquisition manifest
 from the two existing frozen research demand branches, with exact
 provider adapter scope and storage budgets. Real paid requests require
 a separately explicit command after the batch is frozen and reviewed.
+
+
+## V8 workstation acceptance and V9 historical source-demand inventory (2026-10-24 ET)
+
+V8 operator acceptance passed all 100 selected V1–V8 regression tests
+in 16.46 seconds. The existing V6 gzip source was independently recovered:
+840 SPY quote observations, status OBSERVED_ONLY, simulator_ready=False.
+The V7 demo recovered 5 uses/4 unique exact request scopes, of which one
+SPY source is already verified under both V4 and V6, two other hourly
+queries were offline reservation candidates, and one SPY minute query
+was blocked by missing exact adapter. No reservations were written and
+no provider or broker calls, outcomes or simulations occurred.
+D: free: 228.73 GiB; conservative safe additional capacity 119.70 GiB;
+candidate cache 0.298 GiB and hybrid subtree 0.00273 GiB. V8 reported
+the SPY 2018 and QQQ 2025 queries as NOT RESERVED, and blocked both the
+existing hourly SPY local source and the unimplemented SPY minute adapter.
+
+V9 addresses a distinct and material gap: V8's **full-session 1h quote
+history** does not represent the original research entry clocks.
+The two existing source plans demand:
+- Weekly SPY options-native 10:00 ET CALL+PUT at-time quote surfaces,
+  generated from the frozen 2018–2025 calendar specification.
+- The separately frozen 9,455 underlying/date CALL candidate
+  surfaces at **09:35 ET** during 2021–2025, DTE <=75,
+  with wildcard expirations and no preselected strike range.
+
+They both require \`/v3/option/at_time/quote\`, not V8's 1h historical
+quote adapter. V9 preserves original endpoint and params, lineage
+fingerprint, CALL/PUT choice, decision time, max DTE, strike range and
+case source identity, and freezes qualification anchors separately from
+chronological remainder. Every entry explicitly states that its
+corresponding at-time adapter has NOT yet been qualified for acquisition.
+A 1h SPY archive therefore neither fills nor satisfies a 09:35 or
+10:00 at-time data gap.
+
+A provider-free, read-only pilot preview is:
+
+    .\.venv\Scripts\python.exe -m scripts.plan_hybrid_options_frozen_research_demand_v1
+
+The full two-branch preview additionally needs the operator's original,
+independently frozen source-plan file on D::
+
+    .\.venv\Scripts\python.exe -m scripts.plan_hybrid_options_frozen_research_demand_v1 --candidate-plan data/options/manifests/thetadata_candidate_surface_source_plan_v1_<FINGERPRINT16>.json
+
+No 9,455-row source plan is embedded in Git; the workstation-owned immutable
+plan is validated against its exact 64-character content fingerprint,
+frozen contract and all source row identities. The explicit optional
+\`--write-manifest\` flag (available only with the full candidate plan)
+creates an immutable bounded source-demand JSON file on D:; it does NOT
+create reservations, make provider calls, qualify at-time quotes, or
+run a simulator. This frozen inventory is *research-selected demand*
+spanning 2018–2025, NOT ten years of all contracts for every security.
+Broader universe and management data requirements must be separately
+designed and measured.
+
+V9 workstation acceptance should exercise the weekly-only preview first,
+then validate the actual frozen 9,455-query source plan. The next stage is
+building a separate explicitly gated ThetaData at-time adapter, resolving
+the old 264-row out-of-DTE diagnostic without changing the scientific
+contract, and independently validating observed 09:35/10:00 timestamps
+before any actual paid broad acquisition.
