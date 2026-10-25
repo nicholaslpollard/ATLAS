@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V12 UNATTENDED SOURCE ARCHIVE ACTIVE (10/10 INITIAL RESPONSES LOSSLESS VERIFIED BUT EXCESS DTE); V13 ORIGINAL SAVED-SOURCE QUALITY INSPECTION UNDER CI REVIEW. 9,854 EXACT SOURCE QUERIES REMAIN, NONE PROMOTED TO SIMULATOR.**
+Status: **V13 COMPLETE ORIGINAL ARCHIVE QUALITY WORKSTATION-ACCEPTED (10 ORIGINAL SOURCES, 1,336/2,744 ROWS WITHIN DTE); V14 FINGERPRINTED LOCAL DTE REFERENCE INDEX UNDER CI REVIEW. 9,854 EXACT SOURCE QUERIES REMAIN; NO SIMULATOR QUALIFICATION.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -734,3 +734,46 @@ independently versioned locally scoped diagnostic view retaining the
 complete provider original; it must not replace originals or claim full
 chain coverage. Bulk collection may continue later without per-call
 authorizations, but should not be run blind without the scope census.
+
+
+## V13 operator result and V14 locally derived source-index-only view (2026-10-25)
+
+The operator's full V13 quality replay independently verified 10 original
+SPY 10:00 ET both-right sources after 20 targeted tests passed. All original
+response cryptographic hashes matched and every one of 2,744 original quotes
+had required causal timestamp, valid identity/expiration and quote fields.
+Zero invalid rows; all 2,744 had positive two-sided displayed sizes.
+1,336 observations were within requested 0–45 calendar-day DTE,
+1,408 were beyond it. No provider call was made by V13.
+Source-original 675,058 JSON bytes were retained as 53,961 deterministic
+gzip bytes (92.01% compression savings). Individual source oldest quote
+staleness never exceeded 32 seconds. The ten source responses remain
+diagnostic only. V12's frozen 9,866-request queue has two previously
+saved external source queries, ten newly archived and 9,854 not attempted;
+the historical AAL source remains 464 rows with 238 in-range and 226
+over-range under the independent V11 acquisition path.
+
+V14 generates a *derived, locally scoped original-row reference index*,
+never falsely representing it as a ThetaData source file or a complete
+historical option chain. Each immutable index stores only positions
+into the verified complete original V12 canonical JSON response,
+the original source body and gzip SHA, frozen V9 query identity,
+original V12 terminal fingerprint, requested date/clock/right/max DTE,
+exact included/excluded row counts, explicit diagnostic status and
+simulator/PAPER/LIVE non-admissibility.
+
+Offline read-only preview:
+
+    .\.venv\Scripts\python.exe -m scripts.build_hybrid_options_derived_dte_index_v1
+
+Explicit source-index-only D: write (no provider/broker calls):
+
+    .\.venv\Scripts\python.exe -m scripts.build_hybrid_options_derived_dte_index_v1 --write-indexes
+
+A repeated write verifies matching immutable sidecar bytes, never replaces
+an existing file. Any new index fingerprint for the same original query
+identity is treated as conflicting source semantics, and the operation
+fails closed. Incomplete or invalid source quotes remain unindexable.
+Do not substitute index-selected rows for the original provider result
+or claim provider-side max_dte correctness, complete executable chains,
+strategy validation, held-out result integrity or simulator readiness.
