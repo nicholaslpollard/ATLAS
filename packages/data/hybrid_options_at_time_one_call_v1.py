@@ -14,13 +14,11 @@ on D: even if its DTE/scope checks subsequently fail. No data enters V6,
 the simulator, strategy evidence, PAPER or LIVE.
 """
 
-from datetime import date
 import gzip
 import hashlib
 import json
 from pathlib import Path
 import re
-import shutil
 from typing import Any, Callable
 import zlib
 
@@ -370,10 +368,15 @@ def run_one_qualification(
         response = reader(**kwargs)
         if not isinstance(response, ThetaDataResponse):
             raise HybridAtTimeQualificationError("SDK_RESPONSE_TYPE_CHANGED")
-        if response.explicit_no_data and not response.rows:
-            status = "EXPLICIT_NO_DATA_NO_COVERAGE"
-        elif not response.rows:
-            status = "EMPTY_RESPONSE_NO_COVERAGE"
+        if not response.rows:
+            # Even an empty/no-data response must prove its canonical SDK
+            # envelope, pinned provenance and explicit no-data semantics.
+            diagnostic = diagnose_at_time_response(row, response)
+            status = (
+                "EXPLICIT_NO_DATA_NO_COVERAGE"
+                if diagnostic["status"] == "EXPLICIT_NO_DATA_NOT_COVERAGE"
+                else "EMPTY_RESPONSE_NO_COVERAGE"
+            )
         else:
             # Preserve the complete raw response BEFORE semantic diagnostics.
             archive = _archive_response(settings, query_id, response)
