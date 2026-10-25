@@ -13,15 +13,14 @@ historical completeness, execution prices or simulator admission.
 """
 
 from pathlib import Path
-import hashlib
 import json
 import re
 from typing import Any, Callable
 
 from packages.core.settings import AtlasSettings
 from packages.data.hybrid_options_acquisition_reservations_v1 import (
-    HOURLY_METHOD, MIB, _adapter_status, _existing_reservation,
-    _outstanding_reservations, _reservation_path,
+    HOURLY_METHOD, _adapter_status, _existing_reservation,
+    _outstanding_reservations,
     plan_acquisition_reservations,
 )
 from packages.data.hybrid_options_gap_planner_v1 import normalize_batch
@@ -31,14 +30,14 @@ from packages.data.hybrid_options_source_store_v2 import (
 )
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.providers.thetadata.client import (
-    ThetaDataResponse, option_history_hourly_quote_surface,
+    EVIDENCE_ENCODING, TARGET_LIBRARY_VERSION, TRANSPORT,
+    ThetaDataResponse, _canonical_bytes, option_history_hourly_quote_surface,
 )
 
 CONTRACT = "atlas-hybrid-options-one-attempt-provider-acquisition-v1"
 ATTEMPT_REL = "data/options/hybrid/provider_attempts_v1"
 SHA = re.compile(r"[a-f0-9]{64}")
 MAX_ATTEMPT_BYTES = 16 * 1024
-MAX_QUERY_SCOPE_BYTES = 8 * 1024
 
 
 class HybridSingleAttemptError(ValueError):
@@ -187,6 +186,12 @@ def inspect_single_attempt(
         raise HybridSingleAttemptError("PLANNER_AUTHORITY_DRIFT")
     reservation = _existing_reservation(settings, query_id, query)
     started, finished = _validate_existing(settings, query_id)
+    if started is not None and (
+        started.get("query") != query
+        or reservation is None
+        or started.get("reservation_fingerprint") != reservation["fingerprint"]
+    ):
+        raise HybridSingleAttemptError("PRIOR_ATTEMPT_SCOPE_OR_RESERVATION_DRIFT")
     if result["verified_sources"]:
         state = "LOCAL_SOURCE_ALREADY_PRESENT_NO_API"
     elif started is not None:
@@ -198,7 +203,7 @@ def inspect_single_attempt(
         state = "ADAPTER_UNAVAILABLE_NO_API"
     elif plan["storage"]["storage_status"] != "SAFE":
         state = "STORAGE_WARNING_OR_BLOCKED_NO_API"
-    elif plan["storage"]["safe_available_bytes"] < reservation["reserved_worst_case_bytes"]:
+    elif plan["storage"]["safe_available_bytes"] < _outstanding_reservations(settings)["bytes"]:
         state = "STORAGE_HEADROOM_INSUFFICIENT_NO_API"
     elif reservation["reserved_worst_case_bytes"] < MAX_SOURCE_BYTES:
         state = "RESERVATION_SMALLER_THAN_SOURCE_LIMIT_NO_API"
@@ -294,7 +299,18 @@ def acquire_one_hourly_source(
             right=query["right"], max_dte=query["max_dte"],
             strike_range=query["strike_range"],
         )
-        if not isinstance(response, ThetaDataResponse):
+        if (not isinstance(response, ThetaDataResponse)
+                or response.transport != TRANSPORT
+                or response.library_version != TARGET_LIBRARY_VERSION
+                or response.evidence_encoding != EVIDENCE_ENCODING
+                or not isinstance(response.provider_environment_fingerprint, str)
+                or not SHA.fullmatch(response.provider_environment_fingerprint)
+                or response.http_status != 200
+                or response.response_bytes != len(response.raw_body)
+                or response.raw_body != _canonical_bytes(response.rows)
+                or len(response.raw_body) > min(
+                    MAX_SOURCE_BYTES, reserved["reserved_worst_case_bytes"],
+                )):
             raise HybridSingleAttemptError("PROVIDER_RESPONSE_ENVELOPE_INVALID")
         response_rows = len(response.rows)
         if response.explicit_no_data:
