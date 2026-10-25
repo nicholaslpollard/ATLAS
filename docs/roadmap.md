@@ -417,7 +417,7 @@ Before invoking the provider, V8 writes an immutable intent marker in `data/opti
 
 V7 operator preview (2026-10-24 ET): 85/85 selected hybrid tests; 5 declared requirements, 4 exact scopes, 1 locally available (V4 and V6 mirrors), 2 eligible hourly reservations, 1 unsupported minute adapter, 0 reservations written, 0 provider calls. Storage 228.73 GiB free, 119.70 GiB maximum safe additional, 0.298 GiB candidate cache, 0.00273 GiB hybrid archive/catalog.
 
-### Historical options request queue — V7 (2026-10-24; under CI review)
+### Historical options request queue — V7 (2026-10-24; merged PR #372, workstation accepted)
 
 ATLAS now has a provider-free reconciliation/reservation layer in `packages/data/hybrid_options_acquisition_reservations_v1.py` and `scripts/plan_hybrid_options_offline_acquisition_v1.py`. It composes the strict V2 exact request batch, independently verifies matching V4 gzip and V6 generalized indexed sources (including duplicate SPY evidence), and queues **only genuinely unindexed queries**. A corrupt local source is an integrity blocker, not permission to download again. The currently pinned hourly adapter only supports 09:30–16:00, 1h, max DTE <=75 and strike_range <=8; minute/second and alternate windows remain adapter-blocked. Oldest sessions are evaluated first, with no outcome-based prioritization.
 
