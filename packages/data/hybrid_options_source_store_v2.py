@@ -311,6 +311,25 @@ def store_historical_quote_source(
     if not options.is_dir():
         raise HybridSourceStoreError("OPTIONS_STORAGE_UNAVAILABLE")
     normalized = _validate_query(query)
+    if verified_v4 is not None:
+        # Provenance is never established by trusting a caller-crafted flag.
+        # Reopen the *compressed*, V4-verified original by its exact source ID.
+        from packages.data.hybrid_options_archive_reader_v1 import (
+            load_verified_archived_option_quotes,
+        )
+        if not isinstance(verified_v4, dict):
+            raise HybridSourceStoreError("LEGACY_ARCHIVE_PROVENANCE_INVALID")
+        verified_again = load_verified_archived_option_quotes(
+            settings, verified_v4.get("source_id"),
+        )
+        if (
+            verified_v4.get("source_sha256") != verified_again["source_sha256"]
+            or verified_v4.get("archive_sha256") != verified_again["archive_sha256"]
+            or verified_v4.get("query_scope") != verified_again["query_scope"]
+            or verified_v4.get("rows") != verified_again["rows"]
+        ):
+            raise HybridSourceStoreError("LEGACY_ARCHIVE_CALLER_VERSUS_RECEIPT_DRIFT")
+        verified_v4 = verified_again
     raw, origin = _provenance(response, verified_v4)
     if verified_v4 is not None and verified_v4.get("query_scope") != normalized:
         raise HybridSourceStoreError("LEGACY_ARCHIVE_QUERY_MISMATCH")
