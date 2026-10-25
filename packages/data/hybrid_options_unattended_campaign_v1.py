@@ -302,12 +302,16 @@ def run_campaign(
     max_calls: int | None = None,
     reader: Callable[..., ThetaDataResponse] = option_at_time_quote_surface,
     storage_reader: Callable[..., Any] = inspect_research_storage,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    progress_every: int = 25,
 ) -> dict[str, Any]:
-    """No interactive authorizations. One invocation resumes saved demand."""
+    """Unattended resumable collection with optional bounded progress receipts."""
     if max_calls is not None and (
         type(max_calls) is not int or max_calls < 1
     ):
         raise HybridCampaignError("MAX_CALLS_MUST_BE_POSITIVE_OR_OMITTED")
+    if type(progress_every) is not int or progress_every < 1:
+        raise HybridCampaignError("PROGRESS_CADENCE_MUST_BE_POSITIVE")
     snapshot = preview_campaign(
         settings, manifest_path, candidate_plan, storage_reader=storage_reader,
     )
@@ -409,6 +413,23 @@ def run_campaign(
             results["out_of_dte_archives_this_run"] += 1
         if state == "RAW_ARCHIVED_INVALID_SCHEMA":
             results["invalid_schema_archives_this_run"] += 1
+        if progress is not None and (
+            results["provider_calls_this_run"] % progress_every == 0
+            or state == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY"
+            or (max_calls is not None
+                and results["provider_calls_this_run"] == max_calls)
+        ):
+            progress({
+                "completed_calls": results["provider_calls_this_run"],
+                "archived": results["archives_written_this_run"],
+                "out_of_dte": results["out_of_dte_archives_this_run"],
+                "invalid": results["invalid_schema_archives_this_run"],
+                "last_date": row["date_et"],
+                "last_symbol": row["symbol"],
+                "last_request_id": qid,
+                "state": state,
+                "simulator_ready": False,
+            })
         if state == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY":
             # Avoid burning the user's plan after an auth or SDK failure.
             results["stop_reason"] = "PROVIDER_OR_STORAGE_FAILURE_STOPPED_RUN"
