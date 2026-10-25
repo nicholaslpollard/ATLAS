@@ -304,14 +304,20 @@ def run_campaign(
     storage_reader: Callable[..., Any] = inspect_research_storage,
     progress: Callable[[dict[str, Any]], None] | None = None,
     progress_every: int = 25,
+    allowed_origin: str | None = None,
 ) -> dict[str, Any]:
-    """Unattended resumable collection with optional bounded progress receipts."""
+    """Unattended resumable collection with optional frozen-origin selection."""
     if max_calls is not None and (
         type(max_calls) is not int or max_calls < 1
     ):
         raise HybridCampaignError("MAX_CALLS_MUST_BE_POSITIVE_OR_OMITTED")
     if type(progress_every) is not int or progress_every < 1:
         raise HybridCampaignError("PROGRESS_CADENCE_MUST_BE_POSITIVE")
+    if allowed_origin not in {
+        None, "FROZEN_SPY_WEEKLY_OPTIONS_NATIVE",
+        "FROZEN_0935_MULTIYEAR_CALL_CANDIDATES",
+    }:
+        raise HybridCampaignError("ORIGIN_MUST_MATCH_EXACT_FROZEN_BRANCH")
     snapshot = preview_campaign(
         settings, manifest_path, candidate_plan, storage_reader=storage_reader,
     )
@@ -336,6 +342,10 @@ def run_campaign(
         return results
     for row in frozen["requests"]:
         qid = row["query_id"]
+        if allowed_origin is not None and row["origin"] != allowed_origin:
+            # SPY entry collection must NEVER spill into 09:35 CALL queries
+            # when one of 411 pilot requests is an empty/error/old source.
+            continue
         if qid in excluded:
             results["skipped_existing_or_ambiguous"] += 1
             continue
