@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **SOURCE-ONLY CATALOG IMPLEMENTED; ACQUISITION AND SIMULATOR INTEGRATION NOT IMPLEMENTED.**
+Status: **V6 VERIFIED COMPRESSED SOURCE STORE WORKSTATION-ACCEPTED; V7 OFFLINE REQUEST QUEUE UNDER CI REVIEW; PAID ACQUISITION AND SIMULATOR INTEGRATION NOT IMPLEMENTED.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -369,3 +369,63 @@ historical execution-source qualification gate and frozen complete paths
 remain prerequisites for simulation. V5 continues to report the existing
 V4 source as unqualified; generalized V6 source storage does not grant V5
 simulator authority.
+
+
+## V6 operator acceptance and V7 offline acquisition-reservation coordinator
+
+Operator-provided V6 workstation acceptance (2026-10-24, America/New_York):
+68/68 selected hybrid regression tests passed. The V6 one-source preview was
+read-only. Explicit import preserved original V4 evidence and created the
+second, generalized archive and DuckDB index for SPY 2025-06-09, 840 quote
+observations / 120 observed contracts / zero requested-DTE violations /
+zero duplicate observation keys, with exact gzip size 12,121 bytes and
+restored canonical-body size 201,148 bytes. V5 simulator preflight still
+found one diagnostic query and three local missing exact queries, with no
+simulator authority. No provider, broker or simulation calls occurred.
+
+V7 is a **bounded, offline-only precursor**, not an automated paid-data
+ingester. The implementation is
+\`packages/data/hybrid_options_acquisition_reservations_v1.py\` and
+\`scripts/plan_hybrid_options_offline_acquisition_v1.py\`.
+Given a V2-style, explicit JSON request batch (at most 64 uses),
+it re-verifies exact query identities against both V4 archived receipts and
+V6 generalized quote-source catalog, checks SHA/body hashes, individual
+observation evidence and unchanged negative simulation authority,
+and counts a mirrored V4/V6 observation as **one available query**.
+A damaged indexed source fails closed instead of becoming new provider work.
+The 5-use demo is intentionally *not* the 10-year acquisition manifest.
+
+For newly missing queries, V7 requires an exact supported method:
+ThetaData isolated worker \`option_history_hourly_quote_surface\` can represent
+regular 09:30–16:00 ET full-session 1h CALL/PUT requests with
+\`1 <= max_dte <= 75\` and \`0 <= strike_range <= 8\`.
+All other intervals and windows are **blocked until a corresponding adapter
+is implemented and tested**. Oldest sessions are considered first, without
+consulting performance. The preview has no filesystem writes:
+
+    .\\.venv\\Scripts\\python.exe -m scripts.plan_hybrid_options_offline_acquisition_v1 --demo
+
+After inspection, the operator may separately issue \`--reserve\`, which
+creates immutable, SHA-fingerprinted \`RESERVED_NO_PROVIDER_CALL\` receipts.
+These are planning claims, not attempted calls or provider availability
+evidence. Repeated calls recheck the original receipt and do not create
+duplicates. An altered or ambiguous receipt is a hard stop.
+
+Default worst-case disk reservation is 128 MiB per distinct eligible query,
+up to a 512 MiB single-batch ceiling. V7 reuses the ATLAS secondary-storage
+snapshot (min/warning free space and overall research budget), measures
+uncategorized \`data/options/hybrid\` alongside the existing
+\`options_candidate_cache\`, conservatively applies their *joint* 120 GiB
+limit, and verifies/deducts **all** pending reservation receipts, including
+prior batches, before allocating additional space. The ledger scan stops at
+4096 receipts; it does not silently assume extra capacity. A reservation is
+not a guarantee actual source storage will fit: later execution must
+reinspect real disk headroom, source limits, query completeness, and the
+provider attempt state independently.
+
+The next version must implement separately authorized call attempts with
+single-attempt receipts, durable unresolved outcomes, no automatic retry after
+possible delivery, and integration with the generalized gzip-at-ingestion
+store; later, minute/second history and separately verified holding/exit
+quotes must be qualified before simulation. No broker, strategies, holdings
+or protected outcomes are read by V7.
