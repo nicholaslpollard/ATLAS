@@ -24,7 +24,9 @@ from packages.core.settings import load_settings
 from packages.data.hybrid_options_at_time_one_call_v1 import (
     PINNED_MANIFEST_FINGERPRINT,
 )
-from packages.data.hybrid_options_saved_aal_audit_v1 import audit_saved_aal
+from packages.data.hybrid_options_saved_aal_audit_v1 import (
+    HybridAalAuditError, audit_saved_aal,
+)
 from packages.data.hybrid_options_unattended_campaign_v1 import (
     preview_campaign, run_campaign,
 )
@@ -128,6 +130,35 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         return 0
+    except HybridAalAuditError as exc:
+        # Only locally declared fixed error codes are used by this exception
+        # class. They are safe to display and reveal no raw quotes, paths,
+        # credentials, provider messages or SDK tracebacks. Without a code,
+        # actual archived-only failures are impossible to diagnose remotely.
+        code = str(exc)
+        if code not in {
+            "AAL_ARCHIVE_FILE_NOT_SAFE",
+            "AAL_ARCHIVE_GZIP_INVALID",
+            "AAL_ARCHIVE_BOUNDARY_OR_TRAILING_BYTES",
+            "AAL_NOT_EXACT_FROZEN_QUERY",
+            "AAL_FROZEN_REQUEST_SHAPE_DRIFT",
+            "AAL_V11_TERMINAL_SCOPE_CHANGED",
+            "AAL_V11_ARCHIVE_RECEIPT_DRIFT",
+            "AAL_ARCHIVE_PATH_IDENTITY_DRIFT",
+            "AAL_COMPRESSED_HASH_MISMATCH",
+            "AAL_ORIGINAL_SHA_OR_SIZE_CHANGED",
+            "AAL_CANONICAL_JSON_INVALID",
+            "AAL_ORIGINAL_CANONICAL_ROWS_CHANGED",
+            "AAL_ARCHIVED_ROWS_FAIL_V10_IDENTITY_REPLAY",
+            "AAL_ARCHIVED_DTE_OVERRUN_NOT_REPRODUCED",
+        }:
+            code = "AAL_AUDIT_UNKNOWN_SAFE_FAILURE"
+        print(
+            "  BLOCKED: HybridAalAuditError code=" + code
+            + " provider_requests=0 source_modified=False",
+            flush=True,
+        )
+        return 3
     except Exception as exc:
         print(
             "  BLOCKED: " + type(exc).__name__

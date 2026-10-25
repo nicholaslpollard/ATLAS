@@ -24,6 +24,9 @@ from packages.data.hybrid_options_at_time_source_gate_v1 import (
     MAX_RESPONSE_BYTES, REQUIRED_FIELDS, validate_exact_request,
 )
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
+from packages.data.thetadata_candidate_surface_qualification_v1 import (
+    _symbol_matches_underlying,
+)
 from packages.providers.thetadata.client import _canonical_bytes
 
 CONTRACT = "atlas-hybrid-v11-saved-aal-full-source-audit-v12"
@@ -146,11 +149,16 @@ def audit_saved_aal(
             )
             if observed.utcoffset() is None:
                 raise ValueError("timestamp offset")
-            if quote["right"] != "call" or (
-                not str(quote["symbol"]).startswith("AAL")
+            # V10 accepted this original quote source by case-normalizing
+            # option right and matching both compact and OCC option roots.
+            # Replaying V11 must use the same rule: SDKs may return "CALL"
+            # instead of "call", or "AAL211..." rather than bare "AAL".
+            right = str(quote["right"]).lower()
+            if right != "call" or not _symbol_matches_underlying(
+                str(quote["symbol"]), "AAL"
             ):
                 raise ValueError("quote identity")
-            rights[str(quote["right"])] += 1
+            rights[right] += 1
             dates[expiry.isoformat()] += 1
             if dte <= 75:
                 within += 1
@@ -168,8 +176,10 @@ def audit_saved_aal(
                 positive_two_sided += 1
         except (ValueError, TypeError, KeyError, OverflowError):
             invalid_rows += 1
-    if outside == 0 or invalid_rows:
-        raise HybridAalAuditError("AAL_ORIGINAL_OUT_DTE_OR_SCHEMA_DRIFT")
+    if invalid_rows:
+        raise HybridAalAuditError("AAL_ARCHIVED_ROWS_FAIL_V10_IDENTITY_REPLAY")
+    if outside == 0:
+        raise HybridAalAuditError("AAL_ARCHIVED_DTE_OVERRUN_NOT_REPRODUCED")
     report = {
         "contract": CONTRACT,
         "status": "REPRODUCED_OUT_DTE_DIAGNOSTIC_SOURCE_ONLY",

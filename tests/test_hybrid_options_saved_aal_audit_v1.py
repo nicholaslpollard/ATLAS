@@ -68,9 +68,12 @@ def setup_aal(tmp_path, monkeypatch):
     folder.mkdir(parents=True)
     rows = []
     for exp, strike in [("2022-01-14", 18.0), ("2022-04-15", 19.0)]:
+        # Original provider rows may use uppercase rights and OCC option
+        # symbols. This is valid under the accepted V10 source gate.
         rows.append({
-            "symbol": "AAL", "expiration": exp,
-            "strike": strike, "right": "call",
+            "symbol": "AAL  211130C00018000" if strike == 18.0 else "AAL",
+            "expiration": exp,
+            "strike": strike, "right": "CALL" if strike == 18.0 else "call",
             "timestamp": "2021-11-30T09:34:50-05:00",
             "bid": 0.8, "ask": 0.9, "bid_size": 1, "ask_size": 2,
             "bid_exchange": 1, "bid_condition": 0,
@@ -116,6 +119,7 @@ def test_saved_aal_raw_is_lossless_and_dte_quarantined(setup_aal):
     assert report["dte_buckets"]["76_180"] == 1
     assert report["dte_buckets"]["15_45"] == 1
     assert report["positive_two_sided_displayed_size_rows"] == 2
+    assert report["observed_rights"] == {"call": 2}
     assert report["sdk_vs_server_cause_proven"] is False
     assert report["source_coverage_proven"] is False
     assert report["provider_requests"] == 0

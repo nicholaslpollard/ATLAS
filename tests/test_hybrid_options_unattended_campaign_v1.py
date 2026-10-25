@@ -288,3 +288,20 @@ def test_cli_no_interactive_auth_and_preview(workspace, monkeypatch, capsys):
     assert not settings.resolved_path(camp.ROOT_REL).exists()
     with pytest.raises(SystemExit):
         cli.main(["--max-calls", "2"])
+
+def test_cli_reports_safe_archive_audit_error_code_without_provider(
+    workspace, monkeypatch, capsys,
+):
+    settings, full, rows = workspace
+    monkeypatch.setattr(cli, "load_settings", lambda *_: settings)
+    monkeypatch.setattr(
+        cli, "audit_saved_aal",
+        lambda *_: (_ for _ in ()).throw(
+            cli.HybridAalAuditError("AAL_ARCHIVED_ROWS_FAIL_V10_IDENTITY_REPLAY")
+        ),
+    )
+    assert cli.main([]) == 3
+    output = capsys.readouterr().out
+    assert "code=AAL_ARCHIVED_ROWS_FAIL_V10_IDENTITY_REPLAY" in output
+    assert "provider_requests=0" in output
+    assert not settings.resolved_path(camp.ROOT_REL).exists()
