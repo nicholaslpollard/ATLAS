@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V13 COMPLETE ORIGINAL ARCHIVE QUALITY WORKSTATION-ACCEPTED (10 ORIGINAL SOURCES, 1,336/2,744 ROWS WITHIN DTE); V14 FINGERPRINTED LOCAL DTE REFERENCE INDEX UNDER CI REVIEW. 9,854 EXACT SOURCE QUERIES REMAIN; NO SIMULATOR QUALIFICATION.**
+Status: **V14 IMMUTABLE LOCAL DTE POSITIONAL INDEXES WORKSTATION-ACCEPTED (10 INDEPENDENT SIDECARS, 1,336 SOURCE ROW REFERENCES, 26,167 TOTAL SIDECAR BYTES); V15 CAUSAL SOURCE-LINKED OBSERVATION READER UNDER CI REVIEW. 9,854 SOURCE QUERIES REMAIN; SIMULATOR STILL BLOCKED.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -777,3 +777,45 @@ fails closed. Incomplete or invalid source quotes remain unindexable.
 Do not substitute index-selected rows for the original provider result
 or claim provider-side max_dte correctness, complete executable chains,
 strategy validation, held-out result integrity or simulator readiness.
+
+
+## V14 operator accepted and V15 read-only causal quote observation adapter (2026-10-25)
+
+The operator completed V14 workstation acceptance with 28/28 relevant
+unit tests, read-only index preview, local index write and repeat
+immutable verification. The original sources were independently
+rechecked against the accepted V9 frozen 9,866-request source plan.
+Ten D:-bound source-linked index JSONs were written, totaling **26,167
+bytes**. They point to **1,336 original in-0..45-DTE observations**
+inside the ten V12 historical SPY CALL+PUT option quote archives, leaving
+**1,408 original over-DTE observations** unindexed. The repeat write
+verified all ten original sidecars and created **zero** new ones.
+No old archive was edited, no new provider requests were made, and
+**9,854 exact frozen query scopes remain unattempted**.
+
+V15 connects this trustworthy positional evidence to a bounded in-memory
+original-quote research reader and separate observed-chain diagnostic.
+Every read revalidates exact V9 query, V12 original source SHA and
+immutable terminal receipt, complete original JSON/gzip, and byte-identical
+V14 local index fingerprint. It materializes exactly the indexed original
+quote dictionaries in RAM, retaining original bid, ask, sizes, quote
+conditions, timestamps, expiry, strike and option right. Nothing is
+persisted as new pricing data. It assesses **observed** CALL/PUT
+expiry-strike pairs at the historical decision clock, counts optional
+14–45-DTE research-window observations, compares original displayed
+bid/ask spread to mid against a 15% quality threshold and timestamp age
+against a 60-second window. Those parameter checks are diagnostics only;
+matching option pairs are not proof of a complete provider-native
+options universe or valid executable fills. No entry/exit simulator or
+strategy outcome data is read.
+
+Use:
+
+    .\.venv\Scripts\python.exe -m scripts.audit_hybrid_options_source_linked_research_v1
+
+No ThetaData, broker calls, user prompts, source writes, source promotion,
+protected outcomes, simulations or historical strategy decisions occur.
+Outstanding dependencies include point-in-time underlying spot, original
+chain completeness, historical OI and the issuer dividend publication
+evidence needed by expiration-specific valuation; none are replaced or
+inferred by the V15 quote diagnostics.
