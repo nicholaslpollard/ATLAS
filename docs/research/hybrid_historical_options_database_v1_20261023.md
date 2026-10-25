@@ -405,7 +405,7 @@ consulting performance. The preview has no filesystem writes:
 
     .\\.venv\\Scripts\\python.exe -m scripts.plan_hybrid_options_offline_acquisition_v1 --demo
 
-After inspection, the operator may separately issue \`--reserve\`, which
+After inspection, the operator may separately issue \`--reserve\` only with a frozen \`--requirements FILE\` batch (\`--demo --reserve\` is rejected), which
 creates immutable, SHA-fingerprinted \`RESERVED_NO_PROVIDER_CALL\` receipts.
 These are planning claims, not attempted calls or provider availability
 evidence. Repeated calls recheck the original receipt and do not create
