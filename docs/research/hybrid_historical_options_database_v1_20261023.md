@@ -316,3 +316,56 @@ acquisition coordinator must be explicitly budgeted/authorized and complete
 sources independently qualified and bound into frozen replay inputs before
 any historical strategy evaluation. Passed preflight is an integrity
 diagnostic, not profit or simulator acceptance.
+
+
+## V6: Generalized, compression-at-ingestion quote source store (2026-10-24; in testing)
+
+A separate versioned source-store implementation can now index **different
+underlyings, dates, rights and quote resolutions (1h / 1m / 1s)** in
+`data/options/hybrid/source_store_v2.duckdb`, with immutable
+content-verified gzip in `data/options/hybrid/source_archive_v2`.
+This is source infrastructure, *not* new provider entitlement, actual
+multi-symbol source acquisition, complete query coverage, executable quotes or
+simulation authority. Existing V1-V5 DuckDB and archive receipts are unchanged.
+
+Each registration validates a strict exact-session query, the original
+SDK-normalized byte representation, complete source rows, underlying and
+contract identities, aware timestamps, book schema, sizes and original
+provenance. Observations outside DTE/clock bounds, crossed books and duplicate
+identities are counted as **retained diagnostics**, not dropped. The original
+request parameters and hashes bind archive and index. Even good diagnostics
+are explicitly `RAW_VERIFIED_DIAGNOSTIC_UNQUALIFIED`,
+`query_coverage_proven=False`, `simulator_ready=False`; importantly,
+quote interval timestamps are **not assumed to be decision-time usable**.
+
+For a controlled offline proof, V6 can independently verify the existing
+V4 compressed SPY source, preview its generalized representation, then
+separately import it into the V6 store **without a provider call**. This
+creates one additional small compressed representation and index while
+preserving the verified V4 original/archive. No historical options data is
+silently deleted, and the first V6 import does not replace V4.
+The command is provider-free by default:
+
+    .\.venv\Scripts\python.exe -m scripts.index_hybrid_options_general_source_v2
+
+After green PR CI/merge and successful preview, explicit one-source import:
+
+    .\.venv\Scripts\python.exe -m scripts.index_hybrid_options_general_source_v2 --import-verified-v4
+
+A repeated import verifies the existing bytes and is idempotent. Existing
+same-query distinct source bodies are a conflict, never overwritten. Incomplete
+archive/receipt pairs, modified compressed bytes, catalogue/row-identity drift,
+and unqualified storage bindings fail closed without acquisition fallback.
+The V6 source-store quota is capped at 120 GiB and also checks the 40 GiB
+free-space reserve. Before broad acquisition, the coordinator must account
+for *all* other candidate-cache usage against the shared quota; the V6
+substore cap alone does not demonstrate total quota availability.
+
+The next engineering stage is a frozen, precisely bounded missing-data
+acquisition and catalog-reconciliation coordinator: enumerate exact requests
+first, skip verified V6/V4 source identities, preserve ambiguous attempts,
+and require explicit paid authorization before opening ThetaData. A separate
+historical execution-source qualification gate and frozen complete paths
+remain prerequisites for simulation. V5 continues to report the existing
+V4 source as unqualified; generalized V6 source storage does not grant V5
+simulator authority.
