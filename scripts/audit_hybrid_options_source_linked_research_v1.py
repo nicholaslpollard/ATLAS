@@ -67,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
                 f" research_dte_14_45={row['research_window_observed_rows']}"
                 f" expirations={row['observed_expirations']}"
                 f" call_put_pairs={row['observed_call_put_strike_pairs']}"
-                f" tight_fresh_pairs={row['observed_pairs_passing_freshness_spread_only'] if 'observed_pairs_passing_freshness_spread_only' in row else row['observed_pairs_passing_freshness_spread_only']}"
+                f" tight_fresh_pairs={row['observed_pairs_passing_freshness_spread_only']}"
                 f" query_id={row['query_id']}",
                 flush=True,
             )
