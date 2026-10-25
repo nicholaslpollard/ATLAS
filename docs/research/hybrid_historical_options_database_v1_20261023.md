@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V8 SINGLE-ATTEMPT HOURLY GATE WORKSTATION-ACCEPTED; V9 EXACT FROZEN AT-TIME DEMAND INVENTORY UNDER CI REVIEW; NO HISTORICAL EXECUTION OR SIMULATOR QUALIFICATION.**
+Status: **V9 EXACT FROZEN DEMAND INVENTORY WORKSTATION-ACCEPTED; V10 OFFLINE AT-TIME SOURCE AUDIT UNDER CI REVIEW; NO PROVIDER ACQUISITION OR SIMULATOR QUALIFICATION.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -536,3 +536,63 @@ building a separate explicitly gated ThetaData at-time adapter, resolving
 the old 264-row out-of-DTE diagnostic without changing the scientific
 contract, and independently validating observed 09:35/10:00 timestamps
 before any actual paid broad acquisition.
+
+
+## V9 operator acceptance and V10 exact SDK source gate (2026-10-25 ET)
+
+Operator V9 workstation checks: 113/113 V1–V9 hybrid tests. The independent
+frozen SPY pilot produced 411 weekly CALL+PUT requests at 10:00 ET,
+2018–2025; the original externally persisted source-plan receipt
+independently verified 9,455 underlying/date CALL 09:35 requests,
+2021–2025, with 15 multiyear qualification anchors. Combined 9,866
+unique at-time queries retained full original request identities. The
+combined read-only manifest fingerprint was
+\`138234eb2276409ae641f6e40d7f6eb3c779502ffb5459b612e0dbc439cb4b63\`.
+V8's exact hourly quote demo remained unreserved/no-call and the V5
+simulator gate continued to block. No provider calls, reservations,
+simulations or source writes were made.
+
+V10 is the *offline exact at-time SDK mapping and saved-source admission
+diagnostic*, implemented in:
+- \`packages/data/hybrid_options_at_time_source_gate_v1.py\`
+- \`scripts/inspect_hybrid_options_at_time_source_gate_v1.py\`
+- \`tests/test_hybrid_options_at_time_source_gate_v1.py\`
+
+It maps a precise, V9-fingerprinted provider query to the pinned
+\`option_at_time_quote_surface\` wrapper without actually invoking
+the wrapper, SDK client or provider. Full original quote responses
+supplied to the pure validator are checked for immutable body/SHA
+equivalence, pinned SDK provenance, required fields, exact CALL/PUT and
+root, nonexpired dates and requested maximum DTE, historical Eastern
+clock causality, duplicate contracts, valid prices, sizes and quote
+conditions. A row beyond requested DTE quarantines the *entire*
+response, retaining all original observations. It never silently
+projects a 45-DTE subset or represents filtered quotes as actual
+provider-requested data.
+
+Preview with zero provider calls, reading the frozen weekly calendar only:
+
+    .\.venv\Scripts\python.exe -m scripts.inspect_hybrid_options_at_time_source_gate_v1
+
+Explicit offline replay of the **already-retained** 2025-06-09
+10:00 SPY failed canary:
+
+    .\.venv\Scripts\python.exe -m scripts.inspect_hybrid_options_at_time_source_gate_v1 --replay-retained-spy
+
+Replay first independently verifies the original retained canary's
+summary, query receipt and SHA/body through the existing audit module,
+then matches its frozen original quote query to the precise SPY V9
+entry. It checks all source rows; historically the canary returned
+264 original quotes, of which 120 were within requested max_dte=45 and
+144 exceeded it. No provider call, fallback, source rewrite, simulated
+fill or new qualification authority is possible.
+
+The direct ThetaData Python SDK 1.0.12 method's \`max_dte\`
+forwarding remains **not proved** by the original static audit. V10
+does not claim to determine whether SDK or server caused the prior
+over-DTE rows. Actual at-time paid source acquisition remains separately
+gated and unimplemented. The next stage must avoid duplicative
+calls; any future one-request qualification should use new immutable
+pre-dispatch attempt evidence, exact method semantics and independent
+storage/resource checks, never bulk-autorizations or retroactive source
+promotions.
