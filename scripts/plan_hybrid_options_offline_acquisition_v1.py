@@ -41,6 +41,8 @@ def main(argv: list[str] | None = None) -> int:
         "--batch-budget-mib", type=int, default=DEFAULT_BATCH_MIB,
     )
     args = parser.parse_args(argv)
+    if args.reserve and args.demo:
+        parser.error("--reserve requires --requirements with a frozen source batch")
     print("ATLAS HYBRID OPTIONS OFFLINE REQUEST QUEUE V7", flush=True)
     print(
         "  SOURCE_ONLY read V4/V6 verified gzip; NO API calls, "
