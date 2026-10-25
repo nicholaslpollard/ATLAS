@@ -162,6 +162,8 @@ def _outstanding_reservations(settings: AtlasSettings) -> dict[str, Any]:
                     or not proof.name.endswith(".json")
                     or len(proof.stem) != 64 or proof.stem[:2] != shard.name):
                 raise HybridAcquisitionPlanError("RESERVATION_LEDGER_FILE_UNSAFE")
+            if not 0 < proof.stat().st_size <= 16 * 1024:
+                raise HybridAcquisitionPlanError("RESERVATION_LEDGER_SIZE_CAP")
             try:
                 header = json.loads(proof.read_bytes())
                 qid = header["query_id"]
