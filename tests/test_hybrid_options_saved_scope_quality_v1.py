@@ -137,7 +137,8 @@ def test_read_only_census_reconciles_two_out_of_dte_archives(saved):
     assert report["observed_outside_requested_dte_rows"] == 2
     assert report["observed_positive_two_sided_rows"] == 4
     assert report["dte_buckets"]["15_45"] == 2
-    assert report["dte_buckets"]["181_PLUS"] == 2
+    assert report["dte_buckets"]["181_PLUS"] == 1
+    assert report["dte_buckets"]["76_180"] == 1
     assert report["provider_requests"] == 0
     assert report["source_chain_completeness_proven"] is False
     assert report["simulator_ready"] is False
