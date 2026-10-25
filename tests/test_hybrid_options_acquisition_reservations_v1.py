@@ -321,11 +321,16 @@ def test_cli_read_only_and_explicit_reserve(setup, monkeypatch, capsys):
     assert cli.main(["--demo"]) == 0
     assert "newly_reserved=0" in capsys.readouterr().out
     assert not settings.resolved_path(v7.RESERVATION_ROOT).exists()
-    assert cli.main(["--demo", "--reserve"]) == 0
+    with pytest.raises(SystemExit):
+        cli.main(["--demo", "--reserve"])
+    frozen = settings.root / "frozen_requirements.json"
+    frozen.write_text(json.dumps(demo_batch()))
+    args = ["--requirements", str(frozen), "--reserve"]
+    assert cli.main(args) == 0
     output = capsys.readouterr().out
     assert "newly_reserved=2" in output
     assert "paid_authority=False" in output
-    assert cli.main(["--demo", "--reserve"]) == 0
+    assert cli.main(args) == 0
     assert "newly_reserved=0" in capsys.readouterr().out
 
 
