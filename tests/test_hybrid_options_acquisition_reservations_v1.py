@@ -327,3 +327,48 @@ def test_cli_read_only_and_explicit_reserve(setup, monkeypatch, capsys):
     assert "paid_authority=False" in output
     assert cli.main(["--demo", "--reserve"]) == 0
     assert "newly_reserved=0" in capsys.readouterr().out
+
+
+
+def one_requirement(entry):
+    from packages.data.hybrid_options_gap_planner_v1 import BATCH_CONTRACT
+    return {"contract": BATCH_CONTRACT, "requests": [entry]}
+
+
+def test_cross_batch_outstanding_reservations_reduce_budget(setup):
+    settings, _ = setup
+    limited = lambda _: snapshot(remaining=0.2)
+    entries = demo_batch()["requests"]
+    old = one_requirement(entries[4])
+    new = one_requirement(entries[3])
+    first = v7.plan_acquisition_reservations(
+        settings, old, reserve=True, storage_reader=limited,
+    )
+    assert first["new_reservations"] == 1
+    second = v7.plan_acquisition_reservations(
+        settings, new, reserve=True, storage_reader=limited,
+    )
+    assert second["outstanding_no_call_reservations_before_batch"] == 1
+    assert second["outstanding_reservation_bytes_before_batch"] == 128 * v7.MIB
+    assert second["new_reservations"] == 0
+    assert second["deferred_budget_queries"] == 1
+
+
+def test_unrelated_reservation_tampering_blocks_later_batch(setup):
+    settings, reader = setup
+    entries = demo_batch()["requests"]
+    old = one_requirement(entries[4])
+    newer = one_requirement(entries[3])
+    reserved = v7.plan_acquisition_reservations(
+        settings, old, reserve=True, storage_reader=reader,
+    )
+    id_ = reserved["queries"][0]["query_id"]
+    path = v7._reservation_path(settings, id_)
+    body = json.loads(path.read_text())
+    body["provider_attempts"] = 1
+    path.write_text(json.dumps(body))
+    with pytest.raises(v7.HybridAcquisitionPlanError):
+        v7.plan_acquisition_reservations(
+            settings, newer, reserve=True, storage_reader=reader,
+        )
+    assert len(list(settings.resolved_path(v7.RESERVATION_ROOT).rglob("*.json"))) == 1
