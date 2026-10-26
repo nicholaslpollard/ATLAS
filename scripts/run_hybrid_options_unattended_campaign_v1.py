@@ -30,6 +30,7 @@ from packages.data.hybrid_options_saved_aal_audit_v1 import (
 from packages.data.hybrid_options_unattended_campaign_v1 import (
     preview_campaign, run_campaign,
 )
+from packages.data.hybrid_options_parallel_campaign_v1 import run_parallel_campaign
 
 DEFAULT_MANIFEST = Path(
     "data/options/manifests/hybrid_exact_at_time_research_demand_v1_"
@@ -57,9 +58,13 @@ def main(argv: list[str] | None = None) -> int:
         "--progress-every", type=int, default=25,
         help="Show one provider receipt summary per N completed calls (default 25)",
     )
+    parser.add_argument("--workers", type=int, default=1,
+                        help="1 sequential (default); 2-4 parallel Standard slots")
     args = parser.parse_args(argv)
     if args.progress_every < 1:
         parser.error("--progress-every must be a positive integer")
+    if not 1 <= args.workers <= 4:
+        parser.error("--workers must be between 1 and 4")
     if args.max_calls is not None and (args.max_calls < 1 or not args.run):
         parser.error("--max-calls requires --run and a positive integer")
     print("ATLAS HYBRID EXACT AT-TIME OPTIONS SOURCE CAMPAIGN V12", flush=True)
@@ -108,8 +113,12 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         if args.run:
-            result = run_campaign(
+            print(f"  acquisition_workers={args.workers}", flush=True)
+            acquire = (run_parallel_campaign if args.workers > 1
+                       else run_campaign)
+            result = acquire(
                 settings, args.manifest, args.candidate_plan,
+                **({"workers": args.workers} if args.workers > 1 else {}),
                 max_calls=args.max_calls,
                 progress_every=args.progress_every,
                 progress=lambda update: print(
