@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from copy import deepcopy
 
 import pytest
 
@@ -65,6 +66,63 @@ def test_all_411_original_frozen_spy_entry_clocks_and_2055_exit_uses(
     assert "PRIOR_STATE_OPTION_OPEN_INTEREST_NOT_BOUND" in report[
         "remaining_simulator_blockers"
     ]
+
+
+def test_global_v9_priority_gaps_keep_all_411_spy_entry_sources(
+    frozen, monkeypatch,
+):
+    # V9 prioritizes anchors from the 9,455 CALL and 411 SPY branches
+    # together. Global priorities need not be consecutive within SPY.
+    interleaved = deepcopy(frozen)
+    for i, row in enumerate(interleaved["requests"]):
+        row["priority"] = i + 1 if i < 10 else i + 7
+    assert len({r["priority"] for r in interleaved["requests"]}) == 411
+    assert interleaved["requests"][10]["priority"] == 17
+    monkeypatch.setattr(v16, "_load_full_manifest", lambda *_: interleaved)
+    monkeypatch.setattr(v16, "_inspect_attempt", lambda *_: "UNATTEMPTED")
+    report = v16.review_native_pilot_acquisition_readiness(
+        Settings(), Path("frozen"), Path("source"),
+        with_quote_geometry=False,
+    )
+    assert report["entry_required"] == 411
+    assert report["entry_outstanding_unattempted"] == 410
+    assert report["exit_review_uses"] == 2055
+    assert report["provider_requests"] == 0
+    assert report["simulator_ready"] is False
+
+
+def test_duplicate_global_spy_priorities_fail_closed(frozen, monkeypatch):
+    altered = deepcopy(frozen)
+    altered["requests"][11]["priority"] = altered["requests"][10]["priority"]
+    monkeypatch.setattr(v16, "_load_full_manifest", lambda *_: altered)
+    monkeypatch.setattr(v16, "_inspect_attempt", lambda *_: "UNATTEMPTED")
+    with pytest.raises(
+        v16.NativePilotAcceleratedReadinessError,
+        match="SPY_GLOBAL_PRIORITIES_NOT_UNIQUE_OR_BOUNDED",
+    ):
+        v16.review_native_pilot_acquisition_readiness(
+            Settings(), Path("frozen"), Path("source"),
+            with_quote_geometry=False,
+        )
+
+
+def test_integrated_cli_reports_exact_preflight_error_without_provider(
+    monkeypatch, capsys,
+):
+    monkeypatch.setattr(cli, "load_settings", lambda *_: Settings())
+    def block(*_args, **_kwargs):
+        raise v16.NativePilotAcceleratedReadinessError(
+            "SPY_GLOBAL_PRIORITIES_NOT_UNIQUE_OR_BOUNDED"
+        )
+    monkeypatch.setattr(cli, "review_native_pilot_acquisition_readiness", block)
+    def no_provider(*_args, **_kwargs):
+        pytest.fail("provider acquisition must not run after preflight failure")
+    monkeypatch.setattr(cli, "run_campaign", no_provider)
+    assert cli.main(["--run"]) == 3
+    out = capsys.readouterr().out
+    assert "phase=ENTRY_COVERAGE_PREFLIGHT" in out
+    assert "code=SPY_GLOBAL_PRIORITIES_NOT_UNIQUE_OR_BOUNDED" in out
+    assert "no_simulation=True" in out
 
 
 def test_first_frozen_entry_clock_is_truly_first_session(

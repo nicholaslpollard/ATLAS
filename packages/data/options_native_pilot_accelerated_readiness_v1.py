@@ -112,9 +112,19 @@ def review_native_pilot_acquisition_readiness(
     if (len(spy) != EXPECTED_ENTRIES
             or len({r["query_id"] for r in spy}) != EXPECTED_ENTRIES):
         raise NativePilotAcceleratedReadinessError("SPY_ENTRY_INVENTORY_NOT_411")
+    # V9 assigns globally unique priorities across BOTH frozen branches,
+    # with qualification anchors and dates interleaved. SPY-only priority
+    # numbers therefore have legitimate gaps and cannot equal 1..411.
+    # The pinned full-manifest loader already verifies original ordering;
+    # retain a defensive unique/bounded check without renumbering rows.
     spy.sort(key=lambda r: r["priority"])
-    if any(row["priority"] != i + 1 for i, row in enumerate(spy)):
-        raise NativePilotAcceleratedReadinessError("SPY_PRIORITY_AND_POSITION_DRIFT")
+    priorities = [row["priority"] for row in spy]
+    if (any(type(p) is not int or not 1 <= p <= EXPECTED_ALL_AT_TIME
+            for p in priorities)
+            or len(set(priorities)) != EXPECTED_ENTRIES):
+        raise NativePilotAcceleratedReadinessError(
+            "SPY_GLOBAL_PRIORITIES_NOT_UNIQUE_OR_BOUNDED"
+        )
     known_source_ids = {row["query_id"] for row in spy}
     source_states = Counter()
     quote_stats = Counter()

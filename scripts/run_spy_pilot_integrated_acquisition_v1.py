@@ -33,7 +33,8 @@ from packages.data.hybrid_options_unattended_campaign_v1 import (
     run_campaign,
 )
 from packages.data.options_native_pilot_accelerated_readiness_v1 import (
-    SPY_ORIGIN, review_native_pilot_acquisition_readiness,
+    SPY_ORIGIN, NativePilotAcceleratedReadinessError,
+    review_native_pilot_acquisition_readiness,
 )
 
 DEFAULT_MANIFEST = Path(
@@ -66,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
                   if args.run else "READ_ONLY_FROZEN_ENTRY_EXIT_COVERAGE")
         + " typed_authorizations=0", flush=True,
     )
+    phase = "ENTRY_COVERAGE_PREFLIGHT"
     try:
         settings = load_settings(ROOT, "development")
         before = review_native_pilot_acquisition_readiness(
@@ -87,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         result = None
         if args.run:
+            phase = "SPY_SOURCE_ACQUISITION"
             result = run_campaign(
                 settings, args.manifest, args.candidate_plan,
                 max_calls=args.max_calls,
@@ -112,6 +115,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             # This is LOCAL-only source-linked index metadata. Complete
             # original quotes remain on the D: archive, never overwritten.
+            phase = "SOURCE_INDEX_VERIFICATION"
             derived = build_dte_reference_indices(
                 settings, args.manifest, args.candidate_plan,
                 write_indexes=True,
@@ -122,6 +126,7 @@ def main(argv: list[str] | None = None) -> int:
                 f" new_sidecars={derived['new_immutable_indices']}",
                 flush=True,
             )
+        phase = "FINAL_SOURCE_READINESS"
         after = review_native_pilot_acquisition_readiness(
             settings, args.manifest, args.candidate_plan,
             with_quote_geometry=True,
@@ -151,9 +156,19 @@ def main(argv: list[str] | None = None) -> int:
         }:
             return 4
         return 0
+    except NativePilotAcceleratedReadinessError as exc:
+        # This exception uses local fixed diagnostic codes only; do not
+        # print arbitrary SDK/provider exceptions, source rows, or secrets.
+        print(
+            f"  BLOCKED: NativePilotAcceleratedReadinessError phase={phase}"
+            f" code={exc} no_simulation=True no_source_promotion=True",
+            flush=True,
+        )
+        return 3
     except Exception as exc:
         print(
             "  BLOCKED: " + type(exc).__name__
+            + f" phase={phase}"
             + " no_simulation=True no_source_promotion=True",
             flush=True,
         )
