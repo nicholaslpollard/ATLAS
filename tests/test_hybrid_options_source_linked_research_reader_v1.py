@@ -199,6 +199,54 @@ def test_zero_bid_or_size_remains_observed_but_not_liquid(accepted):
     assert archive.read_bytes()  # Immutable original stays on disk
 
 
+def test_zero_bid_original_archive_to_immutable_index_to_reader(
+    tmp_path, monkeypatch,
+):
+    settings = FakeSettings(tmp_path)
+    row = spy_row()
+    original = [
+        quote("2019-09-20", 280.0, "CALL"),  # out-of-requested-DTE
+        quote("2019-08-02", 290.0, "CALL", bid=0.0, ask=1.1),
+        quote("2019-08-02", 290.0, "PUT"),
+    ]
+    original[1]["bid_size"] = 0
+    archive = write_source(settings, row, original)
+    original_bytes = archive.read_bytes()
+    frozen = {
+        "manifest_fingerprint": index.PINNED_MANIFEST_FINGERPRINT,
+        "source_request_count": 9866,
+        "requests": [row],
+    }
+    monkeypatch.setattr(index, "_load_full_manifest", lambda *_: frozen)
+    monkeypatch.setattr(index, "_safe_storage", lambda *_: {
+        "safe": True,
+        "available_after_hourly_reservations": 40 * 1024**3,
+    })
+    written = index.build_dte_reference_indices(
+        settings, Path("frozen"), Path("candidate"), write_indexes=True,
+    )
+    assert written["original_archives_scanned"] == 1
+    assert written["in_requested_dte_references"] == 2
+    assert written["new_immutable_indices"] == 1
+    selected = v15.read_selected_original_observations(settings, row)
+    assert selected["source_row_positions"] == (1, 2)
+    geometry = v15.summarize_selected_chain(
+        selected, dte_min=30, dte_max=45,
+        max_quote_age_seconds=30, max_spread_to_mid=0.15,
+    )
+    # Source lineage is real, but one zero-sided leg prevents a liquid pair.
+    # Here both quotes expire in 25 days, so the native 30-45 DTE window
+    # is correctly empty; inspect the 14-45 diagnostic window separately.
+    assert geometry["research_window_observed_rows"] == 0
+    observed = v15.summarize_selected_chain(selected)
+    assert observed["research_window_observed_rows"] == 2
+    assert observed["observed_call_put_strike_pairs"] == 1
+    assert observed["research_window_non_displayed_rows"] == 1
+    assert observed["observed_pairs_passing_freshness_spread_only"] == 0
+    assert observed["execution_admissible"] is False
+    assert archive.read_bytes() == original_bytes
+
+
 def test_positive_crossed_market_remains_a_hard_error(accepted):
     settings, row, original, archive = accepted
     selection = v15.read_selected_original_observations(settings, row)
