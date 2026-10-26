@@ -42,6 +42,7 @@ from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.options_native_pilot_accelerated_readiness_v1 import (
     EXPECTED_ALL_AT_TIME, EXPECTED_ENTRIES, SPY_ORIGIN,
     _exit_at_time_query, _exit_review_sessions,
+    review_native_pilot_acquisition_readiness,
 )
 from packages.data.research_storage import inspect_research_storage
 from packages.data.thetadata_candidate_surface_qualification_v1 import (
@@ -61,6 +62,7 @@ EASTERN = ZoneInfo("America/New_York")
 EXPECTED_EXIT_USES = 2055
 EXPECTED_NEW_SCOPES = 1570
 MAX_WORKERS = 4
+MAX_INVALID_SCHEMAS_PER_RUN = 4
 MAX_RECEIPT_BYTES = 16 * 1024
 MAX_ARCHIVE_BYTES = MAX_RESPONSE_BYTES + 4096
 TERMINAL_STATES = frozenset({
@@ -347,6 +349,17 @@ def preview_exit_campaign(
 ) -> dict[str, Any]:
     settings.assert_external_storage_binding("options")
     plan = _demand(_load_full_manifest(settings, manifest_path, candidate_plan))
+    # Never call an exit request 'reused' if its source-original entry chain
+    # has not actually been completed and independently reverified.
+    prior = review_native_pilot_acquisition_readiness(
+        settings, manifest_path, candidate_plan, with_quote_geometry=False,
+    )
+    if (prior["entry_covered_v12_sources"] != 410
+            or prior["separately_saved_2025_spy_diagnostic"] != 1
+            or prior["entry_outstanding_unattempted"] != 0
+            or prior["additional_distinct_exit_review_queries"] !=
+                EXPECTED_NEW_SCOPES):
+        raise SpyExitSourceError("SPY_ORIGINAL_411_ENTRY_EVIDENCE_INCOMPLETE")
     states = Counter()
     for req in plan["requests"]:
         states[_state(settings, req, plan["plan_fingerprint"])] += 1
@@ -355,6 +368,7 @@ def preview_exit_campaign(
         "contract": CONTRACT, "mode": "EXIT_SOURCE_OFFLINE_PREVIEW",
         "plan_fingerprint": plan["plan_fingerprint"],
         "exit_review_uses": plan["exit_review_uses"],
+        "original_entry_sources_verified": 411,
         "reused_original_entry_queries": plan["reused_original_entry_queries"],
         "additional_distinct_exit_requests": len(plan["requests"]),
         "exit_source_states": dict(sorted(states.items())),
@@ -487,6 +501,12 @@ def run_exit_campaign(
                     result["outside_dte_archives_this_run"] += 1
                 if state == "RAW_ARCHIVED_INVALID_SCHEMA":
                     result["invalid_archives_this_run"] += 1
+                    if (result["invalid_archives_this_run"] >=
+                            MAX_INVALID_SCHEMAS_PER_RUN):
+                        result["stop_reason"] = (
+                            "REPEATED_INVALID_SOURCE_SCHEMA_STOPPED_RUN"
+                        )
+                        stop_new = True
                 count = result["completed_provider_calls_this_run"]
                 if progress is not None and (
                     count % progress_every == 0
