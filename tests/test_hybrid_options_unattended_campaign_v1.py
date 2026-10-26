@@ -5,12 +5,14 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+from threading import Event, Lock
 from types import SimpleNamespace
 
 import pytest
 
 from packages.data import hybrid_options_saved_aal_audit_v1 as audit
 from packages.data import hybrid_options_unattended_campaign_v1 as camp
+from packages.data import hybrid_options_parallel_campaign_v1 as parallel
 from packages.data.hybrid_options_frozen_research_demand_v1 import _entry
 from packages.providers.thetadata.client import (
     EVIDENCE_ENCODING, TARGET_LIBRARY_VERSION, TRANSPORT,
@@ -355,3 +357,174 @@ def test_v16_progress_and_origin_arguments_fail_before_any_provider(workspace):
                 **settings_to_test,
             )
     assert not settings.resolved_path(camp.ROOT_REL).exists()
+
+
+def _parallel_workspace(workspace, monkeypatch):
+    settings, full, rows = workspace
+    # The V12 fixture already overrides the authoritative frozen plan.
+    monkeypatch.setattr(parallel, "_load_full_manifest", lambda *_: full)
+    monkeypatch.setattr(parallel, "_prior_external_source_ids",
+                        lambda *_: {rows[0]["query_id"]})
+    monkeypatch.setattr(parallel, "_safe_storage", camp._safe_storage)
+    return settings, full, rows
+
+
+def test_parallel_two_provider_calls_overlap_and_archive_independently(
+    workspace, monkeypatch,
+):
+    settings, full, rows = _parallel_workspace(workspace, monkeypatch)
+    both_started = Event()
+    lock = Lock()
+    observed = set()
+    indexed = {row["date_et"]: row for row in rows}
+
+    def read(**sdk):
+        with lock:
+            observed.add(sdk["date_et"])
+            if len(observed) == 2:
+                both_started.set()
+        assert both_started.wait(timeout=5), "provider calls did not overlap"
+        return _source(indexed[sdk["date_et"]])
+
+    events = []
+    result = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=2,
+        reader=read, progress=events.append, progress_every=1,
+    )
+    assert both_started.is_set()
+    assert len(observed) == 2
+    assert result["provider_calls_this_run"] == 2
+    assert result["completed_provider_calls_this_run"] == 2
+    assert result["archives_written_this_run"] == 2
+    assert result["stop_reason"] == "FULL_FROZEN_MANIFEST_SCANNED"
+    assert len(events) == 2
+    for row in rows[1:]:
+        qid = row["query_id"]
+        assert parallel._inspect_attempt(settings, qid) == (
+            "RAW_ARCHIVED_SCOPE_DIAGNOSTIC"
+        )
+        assert camp._archive_path(settings, qid).is_file()
+    resumed = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=4,
+        reader=lambda **_: pytest.fail("must never requery archived data"),
+    )
+    assert resumed["provider_calls_this_run"] == 0
+    assert resumed["skipped_existing_or_ambiguous"] == 3
+
+
+def test_parallel_limit_is_global_not_per_worker(workspace, monkeypatch):
+    settings, full, rows = _parallel_workspace(workspace, monkeypatch)
+    # Three eligible frozen requests: the 2-call cap applies across workers.
+    extra = _row("GOOG", "2021-12-03", 4)
+    rows.append(extra)
+    indexed = {r["date_et"]: r for r in rows}
+    observed = []
+    lock = Lock()
+
+    def read(**sdk):
+        with lock:
+            observed.append(sdk["date_et"])
+        return _source(indexed[sdk["date_et"]])
+
+    a = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=4,
+        max_calls=2, reader=read,
+    )
+    assert a["provider_calls_this_run"] == 2
+    assert a["completed_provider_calls_this_run"] == 2
+    assert a["stop_reason"] == "OPTIONAL_RUN_REQUEST_LIMIT_REACHED"
+    assert len(observed) == 2
+    assert camp._inspect_attempt(settings, extra["query_id"]) == "UNATTEMPTED"
+    b = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=4, reader=read,
+    )
+    assert b["provider_calls_this_run"] == 1
+    assert len(observed) == 3
+    c = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=4, reader=read,
+    )
+    assert c["provider_calls_this_run"] == 0
+
+
+def test_parallel_fails_closed_on_provider_error_without_same_id_retry(
+    workspace, monkeypatch,
+):
+    settings, full, rows = _parallel_workspace(workspace, monkeypatch)
+    calls = []
+
+    def read(**sdk):
+        calls.append(sdk["date_et"])
+        if sdk["date_et"] == rows[1]["date_et"]:
+            raise TimeoutError("ambiguous paid provider result")
+        return _source(rows[2])
+
+    first = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=2,
+        reader=read, progress_every=1,
+    )
+    assert first["provider_calls_this_run"] == 2
+    assert first["stop_reason"] == "PROVIDER_OR_STORAGE_FAILURE_STOPPED_RUN"
+    assert camp._inspect_attempt(
+        settings, rows[1]["query_id"],
+    ) == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY"
+    assert camp._inspect_attempt(
+        settings, rows[2]["query_id"],
+    ) == "RAW_ARCHIVED_SCOPE_DIAGNOSTIC"
+    second = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=4,
+        reader=lambda **_: pytest.fail("ambiguous attempt must never repeat"),
+    )
+    assert second["provider_calls_this_run"] == 0
+
+
+def test_parallel_reserves_storage_for_every_inflight_call(
+    workspace, monkeypatch,
+):
+    settings, full, rows = _parallel_workspace(workspace, monkeypatch)
+    monkeypatch.setattr(parallel, "_safe_storage", lambda *_: {
+        "safe": True,
+        "available_after_hourly_reservations":
+            parallel.MIN_CAPACITY_PER_REQUEST,
+    })
+    result = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=4,
+        reader=lambda **_: _source(rows[1]),
+    )
+    assert result["provider_calls_this_run"] == 1
+    assert result["completed_provider_calls_this_run"] == 1
+    assert result["stop_reason"] == "SAFE_STORAGE_HEADROOM_INSUFFICIENT"
+    assert camp._inspect_attempt(
+        settings, rows[2]["query_id"],
+    ) == "UNATTEMPTED"
+
+
+def test_parallel_rejects_oversubscription_or_scope_drift_before_network(
+    workspace, monkeypatch,
+):
+    settings, full, rows = _parallel_workspace(workspace, monkeypatch)
+    for kwargs in (
+        {"workers": 5}, {"workers": 0}, {"workers": True},
+        {"workers": 2, "progress_every": 0},
+        {"workers": 2, "max_calls": 0},
+        {"workers": 2, "allowed_origin": "UNFROZEN_BRANCH"},
+    ):
+        with pytest.raises(camp.HybridCampaignError):
+            parallel.run_parallel_campaign(
+                settings, Path("full"), Path("source"),
+                reader=lambda **_: pytest.fail("must not use provider"),
+                **kwargs,
+            )
+    assert not settings.resolved_path(camp.ROOT_REL).exists()
+
+
+def test_parallel_origin_scope_never_reads_other_branch(
+    workspace, monkeypatch,
+):
+    settings, full, rows = _parallel_workspace(workspace, monkeypatch)
+    result = parallel.run_parallel_campaign(
+        settings, Path("full"), Path("source"), workers=4,
+        allowed_origin="FROZEN_SPY_WEEKLY_OPTIONS_NATIVE",
+        reader=lambda **_: pytest.fail("wrong branch would dispatch"),
+    )
+    assert result["provider_calls_this_run"] == 0
+    assert result["stop_reason"] == "FULL_FROZEN_MANIFEST_SCANNED"

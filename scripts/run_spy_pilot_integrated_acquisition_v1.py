@@ -32,6 +32,7 @@ from packages.data.hybrid_options_derived_dte_index_v1 import (
 from packages.data.hybrid_options_unattended_campaign_v1 import (
     run_campaign,
 )
+from packages.data.hybrid_options_parallel_campaign_v1 import run_parallel_campaign
 from packages.data.options_native_pilot_accelerated_readiness_v1 import (
     SPY_ORIGIN, NativePilotAcceleratedReadinessError,
     review_native_pilot_acquisition_readiness,
@@ -56,11 +57,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-calls", type=int,
                         help="Optional per-run cap; no campaign lifetime cap")
     parser.add_argument("--progress-every", type=int, default=25)
+    parser.add_argument("--workers", type=int, default=1,
+                        help="1 sequential (default); 2-4 parallel Standard slots")
     args = parser.parse_args(argv)
     if args.max_calls is not None and (args.max_calls < 1 or not args.run):
         parser.error("--max-calls must be positive and requires --run")
     if args.progress_every < 1:
         parser.error("--progress-every must be positive")
+    if not 1 <= args.workers <= 4:
+        parser.error("--workers must be between 1 and 4")
     print("ATLAS SPY PILOT BULK ACQUISITION AND READINESS V16", flush=True)
     print(
         "  mode=" + ("UNATTENDED_SPY_411_ENTRY_SOURCES_THEN_INDEX"
@@ -89,9 +94,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         result = None
         if args.run:
+            print(f"  acquisition_workers={args.workers}", flush=True)
             phase = "SPY_SOURCE_ACQUISITION"
-            result = run_campaign(
+            acquire = (run_parallel_campaign if args.workers > 1
+                       else run_campaign)
+            result = acquire(
                 settings, args.manifest, args.candidate_plan,
+                **({"workers": args.workers} if args.workers > 1 else {}),
                 max_calls=args.max_calls,
                 progress_every=args.progress_every,
                 allowed_origin=SPY_ORIGIN,
