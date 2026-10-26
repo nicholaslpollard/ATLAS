@@ -51,6 +51,15 @@ def frozen():
 def world(tmp_path, monkeypatch, frozen):
     settings = Settings(tmp_path)
     monkeypatch.setattr(exits, "_load_full_manifest", lambda *_: frozen)
+    monkeypatch.setattr(
+        exits, "review_native_pilot_acquisition_readiness",
+        lambda *_args, **_kwargs: {
+            "entry_covered_v12_sources": 410,
+            "separately_saved_2025_spy_diagnostic": 1,
+            "entry_outstanding_unattempted": 0,
+            "additional_distinct_exit_review_queries": 1570,
+        },
+    )
     monkeypatch.setattr(exits, "_safe_storage", lambda *_args, **_kwargs: {
         "safe": True,
         "available_after_hourly_reservations": 60 * 1024**3,
@@ -130,6 +139,31 @@ def test_preview_is_read_only_and_only_new_exit_scopes(world):
     assert not settings.resolved_path(exits.ROOT_REL).exists()
 
 
+def test_exit_acquisition_refuses_unverified_original_entry_corpus(
+    world, monkeypatch,
+):
+    settings, plan = world
+    monkeypatch.setattr(
+        exits, "review_native_pilot_acquisition_readiness",
+        lambda *_args, **_kwargs: {
+            "entry_covered_v12_sources": 409,
+            "separately_saved_2025_spy_diagnostic": 1,
+            "entry_outstanding_unattempted": 1,
+            "additional_distinct_exit_review_queries": 1570,
+        },
+    )
+    with pytest.raises(
+        exits.SpyExitSourceError,
+        match="SPY_ORIGINAL_411_ENTRY_EVIDENCE_INCOMPLETE",
+    ):
+        exits.run_exit_campaign(
+            settings, Path("f"), Path("c"),
+            workers=4,
+            reader=lambda **kwargs: pytest.fail("no provider without source"),
+        )
+    assert not settings.resolved_path(exits.ROOT_REL).exists()
+
+
 def test_parallel_real_overlap_global_limit_and_lossless_resume(world):
     settings, plan = world
     first = plan["requests"][:4]
@@ -204,6 +238,34 @@ def test_invalid_schema_archive_is_preserved_not_execution_admitted(world):
         settings, req, plan["plan_fingerprint"]
     ) == "RAW_ARCHIVED_INVALID_SCHEMA"
     assert a["simulator_ready"] is False
+
+
+def test_four_invalid_source_schemas_stop_further_paid_requests(world):
+    settings, plan = world
+    from dataclasses import replace
+    def bad(**kwargs):
+        req = next(
+            r for r in plan["requests"]
+            if r["session_et"] == kwargs["date_et"]
+        )
+        good = source(req)
+        rows = [dict(item) for item in good.rows]
+        rows[0]["timestamp"] = "2099-01-01T10:00:00-05:00"
+        raw = _canonical_bytes(rows)
+        return replace(good, rows=tuple(rows),
+                       raw_body=raw, response_bytes=len(raw))
+    result = exits.run_exit_campaign(
+        settings, Path("f"), Path("c"),
+        workers=1, max_calls=5, reader=bad,
+    )
+    assert result["provider_calls_this_run"] == 4
+    assert result["invalid_archives_this_run"] == 4
+    assert result["stop_reason"] == (
+        "REPEATED_INVALID_SOURCE_SCHEMA_STOPPED_RUN"
+    )
+    assert exits._state(
+        settings, plan["requests"][4], plan["plan_fingerprint"]
+    ) == "UNATTEMPTED"
 
 
 def test_failure_stops_new_dispatch_and_does_not_retry_uncertain(world):
