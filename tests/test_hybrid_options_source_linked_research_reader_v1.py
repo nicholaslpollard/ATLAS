@@ -174,6 +174,44 @@ def test_freshness_gate_discards_stale_pair_without_changing_quotes(accepted):
     assert report["execution_admissible"] is False
 
 
+def test_zero_bid_or_size_remains_observed_but_not_liquid(accepted):
+    settings, row, original, archive = accepted
+    selection = v15.read_selected_original_observations(settings, row)
+    baseline = v15.summarize_selected_chain(selection)
+    assert baseline["research_window_non_displayed_rows"] == 0
+    assert baseline["observed_pairs_passing_freshness_spread_only"] == 1
+
+    changed = dict(selection)
+    quotes = [dict(q) for q in selection["selected_quotes"]]
+    quotes[0]["bid"] = 0.0
+    quotes[0]["bid_size"] = 0
+    changed["selected_quotes"] = tuple(quotes)
+    report = v15.summarize_selected_chain(changed)
+    assert report["research_window_non_displayed_rows"] == 1
+    assert report["research_window_observed_rows"] == 5
+    assert report["observed_call_put_strike_pairs"] == 2
+    assert report["observed_pairs_passing_freshness_spread_only"] == 0
+    assert report["research_window_stale_rows"] == 0
+    assert report["execution_admissible"] is False
+    assert report["simulator_ready"] is False
+    assert report["provider_requests"] == 0
+    assert report["protected_outcomes_read"] == 0
+    assert archive.read_bytes()  # Immutable original stays on disk
+
+
+def test_positive_crossed_market_remains_a_hard_error(accepted):
+    settings, row, original, archive = accepted
+    selection = v15.read_selected_original_observations(settings, row)
+    changed = dict(selection)
+    quotes = [dict(q) for q in selection["selected_quotes"]]
+    quotes[0]["bid"] = 2.5
+    quotes[0]["ask"] = 2.0
+    changed["selected_quotes"] = tuple(quotes)
+    with pytest.raises(v15.HybridSourceLinkedReaderError,
+                       match="CROSSED_TWO_SIDED_QUOTE"):
+        v15.summarize_selected_chain(changed)
+
+
 def test_reject_future_timestamp(accepted):
     settings, row, original, archive = accepted
     data = v15.read_selected_original_observations(settings, row)
@@ -244,6 +282,7 @@ def test_census_source_read_only_and_no_outcomes(accepted):
     assert report["original_rows"] == 7
     assert report["v14_selected_rows"] == 6
     assert report["research_14_45_dte_observed_rows"] == 5
+    assert report["research_14_45_dte_non_displayed_rows"] == 0
     assert report["observed_call_put_strike_pairs"] == 2
     assert report["pairs_passing_freshness_and_spread_only"] == 1
     assert report["simulator_ready"] is False
