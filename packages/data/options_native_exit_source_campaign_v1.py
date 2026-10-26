@@ -23,6 +23,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import shutil
 from typing import Any, Callable
 from zoneinfo import ZoneInfo
 import zlib
@@ -35,6 +36,7 @@ from packages.data.hybrid_options_at_time_source_gate_v1 import (
     MAX_RESPONSE_BYTES, MAX_ROWS, REQUIRED_FIELDS,
 )
 from packages.data.hybrid_options_lossless_archive_v1 import _write_immutable
+from packages.data.hybrid_options_acquisition_reservations_v1 import MIN_FREE_GIB
 from packages.data.hybrid_options_unattended_campaign_v1 import (
     MIN_CAPACITY_PER_REQUEST, _safe_storage,
 )
@@ -44,7 +46,7 @@ from packages.data.options_native_pilot_accelerated_readiness_v1 import (
     _exit_at_time_query, _exit_review_sessions,
     review_native_pilot_acquisition_readiness,
 )
-from packages.data.research_storage import inspect_research_storage
+from packages.data.research_storage import GIB, inspect_research_storage
 from packages.data.thetadata_candidate_surface_qualification_v1 import (
     _finite_number, _nonnegative_int, _symbol_matches_underlying,
     _validate_provider_provenance,
@@ -62,6 +64,7 @@ EASTERN = ZoneInfo("America/New_York")
 EXPECTED_EXIT_USES = 2055
 EXPECTED_NEW_SCOPES = 1570
 MAX_WORKERS = 4
+STORAGE_FULL_AUDIT_EVERY_CALLS = 32
 MAX_INVALID_SCHEMAS_PER_RUN = 4
 MAX_RECEIPT_BYTES = 16 * 1024
 MAX_ARCHIVE_BYTES = MAX_RESPONSE_BYTES + 4096
@@ -382,6 +385,86 @@ def preview_exit_campaign(
     return result
 
 
+def _physical_free_bytes(settings: AtlasSettings) -> int:
+    """Fast disk free-space safety check; does not enumerate files."""
+    bound_path = settings.resolved_path(ROOT_REL)
+    if not bound_path.anchor:
+        raise SpyExitSourceError("EXIT_STORAGE_BINDING_WITHOUT_DRIVE_ANCHOR")
+    try:
+        return int(shutil.disk_usage(bound_path.anchor).free)
+    except OSError as exc:
+        raise SpyExitSourceError("EXIT_BOUND_DISK_USAGE_UNAVAILABLE") from exc
+
+
+def _free_space_floor_bytes(settings: AtlasSettings) -> int:
+    """Use live external-warning policy; fake test settings lack full config."""
+    research = getattr(getattr(settings, "data", None), "research", None)
+    policy = getattr(research, "storage", None)
+    if policy is None:
+        return 0  # Test settings; full _safe_storage gate still applies.
+    return int(max(MIN_FREE_GIB, float(
+        policy.external_warning_free_gib
+    )) * GIB)
+
+
+class _ConservativeExitStorageMeter:
+    """Bounded deep audits + strictly pessimistic per-dispatch allocation.
+
+    A provider source cannot use more than one V12 worst-case allocation:
+    original is at most MAX_RESPONSE_BYTES, gzip/receipts are bounded, and
+    MIN_CAPACITY_PER_REQUEST reserves twice the largest original payload.
+    Every dispatched ID consumes the full allocation in the running meter
+    (even after it finishes), until a source-verified full storage audit
+    reanchors usage. Between audits we inspect actual drive free space with
+    a single cheap disk_usage call, deducting any unexpected space loss above
+    the pessimistic allocation. Third-party category changes are reconciled
+    every 32 dispatches; we deliberately do not claim a cross-process lock.
+    """
+
+    def __init__(
+        self, settings: AtlasSettings,
+        storage_reader: Callable[..., Any],
+    ) -> None:
+        self.settings = settings
+        self.storage_reader = storage_reader
+        self.calls_since_full = 0
+        self.full_audits = 0
+        self.capacity_bytes = 0
+        self.baseline_disk_free_bytes = 0
+        self.policy_safe = False
+        self.floor_bytes = _free_space_floor_bytes(settings)
+
+    def _deep_audit(self) -> None:
+        report = _safe_storage(self.settings, self.storage_reader)
+        self.capacity_bytes = report["available_after_hourly_reservations"]
+        self.policy_safe = bool(report["safe"])
+        self.baseline_disk_free_bytes = _physical_free_bytes(self.settings)
+        self.calls_since_full = 0
+        self.full_audits += 1
+
+    def allow_next(self) -> bool:
+        if (self.full_audits == 0
+                or self.calls_since_full >= STORAGE_FULL_AUDIT_EVERY_CALLS):
+            self._deep_audit()
+        actual_free = _physical_free_bytes(self.settings)
+        reserved = self.calls_since_full * MIN_CAPACITY_PER_REQUEST
+        # Other tasks can also write to D:. Reserve the amount by which
+        # physical free space fell beyond ALL our worst-case reservations.
+        unexpected_consumption = max(
+            0,
+            self.baseline_disk_free_bytes - actual_free - reserved,
+        )
+        available_after_next = (
+            self.capacity_bytes - reserved - unexpected_consumption
+            - MIN_CAPACITY_PER_REQUEST
+        )
+        if (not self.policy_safe or available_after_next < 0
+                or actual_free < self.floor_bytes + MIN_CAPACITY_PER_REQUEST):
+            return False
+        self.calls_since_full += 1
+        return True
+
+
 def run_exit_campaign(
     settings: AtlasSettings, manifest_path: Path, candidate_plan: Path,
     *, workers: int = 4,
@@ -409,6 +492,7 @@ def run_exit_campaign(
         "completed_provider_calls_this_run": 0, "archives_this_run": 0,
         "outside_dte_archives_this_run": 0,
         "invalid_archives_this_run": 0,
+        "full_storage_audits_this_run": 0,
         "stop_reason": "ALL_NEW_EXIT_SCOPES_SCANNED",
         "simulator_ready": False, "source_complete": False,
     }
@@ -419,6 +503,7 @@ def run_exit_campaign(
         req for req in plan["requests"]
         if _state(settings, req, plan["plan_fingerprint"]) == "UNATTEMPTED"
     ]
+    storage_meter = _ConservativeExitStorageMeter(settings, storage_reader)
     cursor = 0
     stop_new = False
     pending: dict[Future, tuple[dict[str, Any], dict[str, Any]]] = {}
@@ -430,10 +515,10 @@ def run_exit_campaign(
                    and len(pending) < workers
                    and (max_calls is None
                         or result["provider_calls_this_run"] < max_calls)):
-                safe = _safe_storage(settings, storage_reader)
-                required = MIN_CAPACITY_PER_REQUEST * (len(pending) + 1)
-                if (not safe["safe"]
-                        or safe["available_after_hourly_reservations"] < required):
+                # Charge every launch its worst-case original plus overhead.
+                # Refresh the expensive full directory census only once per
+                # bounded 32-call window; check actual drive space per call.
+                if not storage_meter.allow_next():
                     result["stop_reason"] = "SHARED_STORAGE_HEADROOM_INSUFFICIENT"
                     stop_new = True
                     break
@@ -522,4 +607,5 @@ def run_exit_campaign(
                 if state == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY":
                     result["stop_reason"] = "PROVIDER_OR_STORAGE_FAILURE_STOP"
                     stop_new = True
+    result["full_storage_audits_this_run"] = storage_meter.full_audits
     return result

@@ -318,6 +318,117 @@ def test_corrupted_archive_fails_closed_before_replay(world):
         exits.preview_exit_campaign(settings, Path("f"), Path("c"))
 
 
+def test_capacity_meter_32_dispatches_have_one_deep_scan(world, monkeypatch):
+    settings, plan = world
+    checks = []
+    def deep(_settings, _reader):
+        checks.append(1)
+        return {
+            "safe": True,
+            "available_after_hourly_reservations": (
+                exits.MIN_CAPACITY_PER_REQUEST * 100
+            ),
+        }
+    monkeypatch.setattr(exits, "_safe_storage", deep)
+    monkeypatch.setattr(
+        exits, "_physical_free_bytes", lambda _settings: 100 * 1024**3,
+    )
+    meter = exits._ConservativeExitStorageMeter(
+        settings, storage_reader=lambda *_: None,
+    )
+    for _ in range(32):
+        assert meter.allow_next() is True
+    assert meter.full_audits == 1
+    assert len(checks) == 1
+    assert meter.allow_next() is True
+    assert meter.full_audits == 2
+    assert len(checks) == 2
+
+
+def test_capacity_meter_worst_case_debits_and_other_writer_pressure(
+    world, monkeypatch,
+):
+    settings, plan = world
+    one = exits.MIN_CAPACITY_PER_REQUEST
+    fake = {"free": 100 * 1024**3}
+    monkeypatch.setattr(
+        exits, "_safe_storage",
+        lambda *_args, **_kwargs: {
+            "safe": True,
+            "available_after_hourly_reservations": one * 2,
+        },
+    )
+    monkeypatch.setattr(
+        exits, "_physical_free_bytes", lambda _settings: fake["free"],
+    )
+    meter = exits._ConservativeExitStorageMeter(
+        settings, storage_reader=lambda *_: None,
+    )
+    assert meter.allow_next() is True
+    fake["free"] -= 2 * one  # One request allowance + unexpected disk writer
+    assert meter.allow_next() is False
+    assert meter.calls_since_full == 1
+
+
+def test_capacity_meter_absolute_external_warning_floor(world, monkeypatch):
+    settings, plan = world
+    from types import SimpleNamespace
+    settings.data = SimpleNamespace(
+        research=SimpleNamespace(
+            storage=SimpleNamespace(external_warning_free_gib=50.0)
+        )
+    )
+    monkeypatch.setattr(
+        exits, "_safe_storage",
+        lambda *_args, **_kwargs: {
+            "safe": True,
+            "available_after_hourly_reservations": 100 * 1024**3,
+        },
+    )
+    monkeypatch.setattr(
+        exits, "_physical_free_bytes",
+        lambda _settings: (
+            50 * 1024**3 + exits.MIN_CAPACITY_PER_REQUEST - 1
+        ),
+    )
+    meter = exits._ConservativeExitStorageMeter(
+        settings, storage_reader=lambda *_: None,
+    )
+    assert meter.allow_next() is False
+    assert meter.full_audits == 1
+
+
+def test_running_campaign_limits_recursive_storage_scans(world, monkeypatch):
+    settings, plan = world
+    audits = []
+    def audited(_settings, _reader):
+        audits.append(1)
+        return {
+            "safe": True,
+            "available_after_hourly_reservations": 100 * 1024**3,
+        }
+    monkeypatch.setattr(exits, "_safe_storage", audited)
+    # Each request consumes only its precharged worst-case budget.
+    monkeypatch.setattr(
+        exits, "_physical_free_bytes", lambda _settings: 110 * 1024**3,
+    )
+    by_date = {r["session_et"]: r for r in plan["requests"][:33]}
+    result = exits.run_exit_campaign(
+        settings, Path("f"), Path("c"),
+        workers=4, max_calls=33,
+        reader=lambda **kw: source(by_date[kw["date_et"]]),
+    )
+    assert result["provider_calls_this_run"] == 33
+    assert result["archives_this_run"] == 33
+    assert result["stop_reason"] == "OPTIONAL_GLOBAL_CALL_LIMIT_REACHED"
+    # One preview audit, then one full scan per 32 launches; no per-GET scan.
+    assert len(audits) == 3
+    assert result["full_storage_audits_this_run"] == 2
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c")
+    )["remaining_unattempted"] == 1570 - 33
+
+
 def test_original_request_identity_and_worker_limits_are_strict(world):
     settings, plan = world
     req = plan["requests"][0]

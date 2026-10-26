@@ -107,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
             f" archives={result['archives_this_run']}"
             f" out_dte={result['outside_dte_archives_this_run']}"
             f" invalid_archives={result['invalid_archives_this_run']}"
+            f" full_storage_audits={result['full_storage_audits_this_run']}"
             f" stop={result['stop_reason']}",
             flush=True,
         )
