@@ -505,6 +505,100 @@ def test_v21_row_valid_archive_does_not_forge_provider_metadata(
     assert issue["state"] == "RAW_ARCHIVED_INVALID_SCHEMA"
 
 
+def test_v22_preserves_origin_provider_error_class_without_secret_data(world):
+    settings, plan = world
+    req = plan["requests"][0]
+    from packages.providers.thetadata.client import ThetaDataError
+
+    def auth_failure(**kwargs):
+        raise ThetaDataError(
+            "provider confidential URL and secret NEVER STORE",
+            provider_error_type="AuthenticationError",
+            provider_grpc_status="UNAUTHENTICATED",
+        )
+
+    progress = []
+    result = exits.run_exit_campaign(
+        settings, Path("f"), Path("c"), workers=1, max_calls=1,
+        reader=auth_failure, progress_every=1, progress=progress.append,
+    )
+    assert result["stop_reason"] == "PROVIDER_OR_STORAGE_FAILURE_STOP"
+    assert exits._state(
+        settings, req, plan["plan_fingerprint"],
+    ) == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY"
+    receipt = exits._receipt(
+        settings, req, plan["plan_fingerprint"], "terminal",
+    )
+    assert receipt["error_type"] == "ThetaDataError"
+    assert receipt["provider_failure_class"] == "AuthenticationError"
+    assert receipt["provider_grpc_status"] == "UNAUTHENTICATED"
+    assert "confidential" not in str(receipt)
+    assert progress[0]["provider_failure_class"] == "AuthenticationError"
+    assert progress[0]["provider_grpc_status"] == "UNAUTHENTICATED"
+
+
+def test_v22_offline_archive_audit_does_not_invent_legacy_provider_details(
+    world, frozen, monkeypatch,
+):
+    settings, plan = world
+    req = plan["requests"][0]
+    started = exits._evidence({
+        "contract": exits.CONTRACT, "kind": "started",
+        "plan_fingerprint": plan["plan_fingerprint"],
+        "session_et": req["session_et"], "query_id": req["query_id"],
+        "sdk_kwargs": exits._sdk_request(req),
+        "state": "POSSIBLY_DISPATCHED_NO_SAME_QUERY_RETRY",
+        "source_complete": False, "simulator_ready": False,
+    })
+    exits._write_receipt(
+        settings, req, plan["plan_fingerprint"], "started", started,
+    )
+    # Deliberately versioned as old V19/V20: no provider-class fields.
+    terminal = exits._evidence({
+        "contract": exits.CONTRACT, "kind": "terminal",
+        "plan_fingerprint": plan["plan_fingerprint"],
+        "session_et": req["session_et"], "query_id": req["query_id"],
+        "started_fingerprint": started["fingerprint"],
+        "archive": None,
+        "state": "PROVIDER_OR_STORAGE_ERROR_NO_RETRY",
+        "error_type": "ThetaDataError",
+        "source_complete": False, "simulator_ready": False,
+    })
+    exits._write_receipt(
+        settings, req, plan["plan_fingerprint"], "terminal", terminal,
+    )
+    monkeypatch.setattr(
+        fault_audit, "_load_full_manifest", lambda *_: frozen,
+    )
+    issue = fault_audit.audit(
+        settings, Path("f"), Path("c"),
+    )["abnormal_identities"][0]
+    assert issue["recorded_error_type"] == "ThetaDataError"
+    assert issue["provider_failure_class"] is None
+    assert issue["provider_grpc_status"] is None
+
+
+def test_v22_sdk_worker_sanitizes_error_class_and_grpc_status():
+    from types import SimpleNamespace
+    from scripts.thetadata_python_worker_v1 import (
+        _sanitized_provider_exception,
+    )
+    class GrpcError(Exception):
+        def code(self):
+            return SimpleNamespace(name="RESOURCE_EXHAUSTED")
+    assert _sanitized_provider_exception(GrpcError("secret")) == {
+        "error_type": "GrpcError",
+        "error_grpc_status": "RESOURCE_EXHAUSTED",
+    }
+    class Unsupported(Exception):
+        def code(self):
+            return SimpleNamespace(name="FAKE_SECRET_STATUS")
+    assert _sanitized_provider_exception(Unsupported("secret")) == {
+        "error_type": "Unsupported",
+        "error_grpc_status": None,
+    }
+
+
 def test_original_request_identity_and_worker_limits_are_strict(world):
     settings, plan = world
     req = plan["requests"][0]

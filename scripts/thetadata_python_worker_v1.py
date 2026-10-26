@@ -439,6 +439,38 @@ class Runtime:
         }
 
 
+_SAFE_GRPC_STATUS_NAMES = frozenset({
+    "OK", "CANCELLED", "UNKNOWN", "INVALID_ARGUMENT", "DEADLINE_EXCEEDED",
+    "NOT_FOUND", "ALREADY_EXISTS", "PERMISSION_DENIED",
+    "RESOURCE_EXHAUSTED", "FAILED_PRECONDITION", "ABORTED",
+    "OUT_OF_RANGE", "UNIMPLEMENTED", "INTERNAL", "UNAVAILABLE",
+    "DATA_LOSS", "UNAUTHENTICATED",
+})
+
+
+def _sanitized_provider_exception(exc: Exception) -> dict[str, Any]:
+    """Only permit fixed-shape class identifiers and standard gRPC statuses.
+
+    Never retain the SDK exception message, underlying URLs or credentials.
+    This metadata only describes *future* failed attempts and is NOT proof
+    whether a possibly dispatched provider query executed on the server.
+    """
+    name = type(exc).__name__
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,99}", name):
+        name = "UnclassifiedProviderException"
+    status = None
+    code_method = getattr(exc, "code", None)
+    if callable(code_method):
+        try:
+            code = code_method()
+            candidate = getattr(code, "name", None)
+            if candidate in _SAFE_GRPC_STATUS_NAMES:
+                status = candidate
+        except Exception:
+            pass
+    return {"error_type": name, "error_grpc_status": status}
+
+
 def serve() -> int:
     runtime = Runtime()
     for raw in sys.stdin:
@@ -461,7 +493,7 @@ def serve() -> int:
             response = {
                 "id": request_id,
                 "ok": False,
-                "error_type": type(exc).__name__,
+                **_sanitized_provider_exception(exc),
                 # Deliberately do not return exception text; provider/auth exceptions
                 # can contain sensitive request context.
             }

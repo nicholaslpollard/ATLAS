@@ -36,9 +36,16 @@ WORKER_RESPONSE_TIMEOUT_SECONDS = 180.0
 
 
 class ThetaDataError(RuntimeError):
-    def __init__(self, message: str, *, http_status: int | None = None) -> None:
+    def __init__(
+        self, message: str, *, http_status: int | None = None,
+        provider_error_type: str | None = None,
+        provider_grpc_status: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.http_status = http_status
+        # Sanitized, bounded provider metadata. Never store raw SDK messages.
+        self.provider_error_type = provider_error_type
+        self.provider_grpc_status = provider_grpc_status
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,8 +188,27 @@ class _Worker:
                     if isinstance(response, dict)
                     else "UNKNOWN"
                 )
+                import re
+                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,99}", error_type):
+                    error_type = "UnclassifiedProviderException"
+                status = (
+                    response.get("error_grpc_status")
+                    if isinstance(response, dict) else None
+                )
+                allowed_status = {
+                    "OK", "CANCELLED", "UNKNOWN", "INVALID_ARGUMENT",
+                    "DEADLINE_EXCEEDED", "NOT_FOUND", "ALREADY_EXISTS",
+                    "PERMISSION_DENIED", "RESOURCE_EXHAUSTED",
+                    "FAILED_PRECONDITION", "ABORTED", "OUT_OF_RANGE",
+                    "UNIMPLEMENTED", "INTERNAL", "UNAVAILABLE",
+                    "DATA_LOSS", "UNAUTHENTICATED",
+                }
+                if status not in allowed_status:
+                    status = None
                 raise ThetaDataError(
-                    f"ThetaData Python-library worker request failed: {error_type}"
+                    f"ThetaData Python-library worker request failed: {error_type}",
+                    provider_error_type=error_type,
+                    provider_grpc_status=status,
                 )
             return response
 
