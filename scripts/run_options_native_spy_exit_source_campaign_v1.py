@@ -97,7 +97,13 @@ def main(argv: list[str] | None = None) -> int:
                 f" over_dte={event['over_dte']}"
                 f" last_date={event['date_et']}"
                 f" query_id={event['query_id']}"
-                f" state={event['state']}",
+                f" state={event['state']}"
+                + (
+                    f" provider_class={event['provider_failure_class']}"
+                    f" grpc_status={event['provider_grpc_status']}"
+                    if event.get("provider_failure_class") or event.get("provider_grpc_status")
+                    else ""
+                ),
                 flush=True,
             ),
         )
