@@ -64,6 +64,12 @@ def audit(settings, manifest: Path, candidate_plan: Path) -> dict:
             "recorded_error_type": (
                 None if terminal is None else terminal.get("error_type")
             ),
+            "provider_failure_class": (
+                None if terminal is None else terminal.get("provider_failure_class")
+            ),
+            "provider_grpc_status": (
+                None if terminal is None else terminal.get("provider_grpc_status")
+            ),
             "archive_present": (
                 terminal is not None and terminal.get("archive") is not None
             ),
@@ -127,6 +133,8 @@ def main(argv: list[str] | None = None) -> int:
                 f" query_id={issue['query_id']}"
                 f" state={issue['state']}"
                 f" error_type={issue['recorded_error_type']}"
+                f" provider_class={issue['provider_failure_class']}"
+                f" grpc_status={issue['provider_grpc_status']}"
                 f" archive_present={issue['archive_present']}"
                 f" row_check={issue['row_only_diagnostic']}",
                 flush=True,
