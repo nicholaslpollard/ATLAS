@@ -1,6 +1,6 @@
 # ATLAS Hybrid Historical Options Database — V1 coverage catalog
 
-Status: **V15 SOURCE-LINKED CAUSAL SPY QUOTE RESEARCH ACCEPTED (39 TESTS; 436 EXPERIMENTAL CALL/PUT PAIRS, 393 PASSING EXPLORATORY 60S SPREAD SCREEN). V16 411-WEEK SPY SOURCE ACQUISITION AND FIVE-SESSION EXIT INVENTORY UNDER CI REVIEW; SIMULATOR REMAINS BLOCKED.**
+Status: **V15 SOURCE-LINKED CAUSAL SPY QUOTE RESEARCH ACCEPTED (39 TESTS; 436 EXPERIMENTAL CALL/PUT PAIRS, 393 PASSING EXPLORATORY 60S SPREAD SCREEN). V16 MERGED PR #382, POST-MERGE CI GREEN; FIRST WORKSTATION --RUN BLOCKED IN OFFLINE PREFLIGHT BY MIXED-BRANCH GLOBAL-PRIORITY CHECK (30/30 TESTS PASSED). CORRECTION ADDS REALISTIC PRIORITY-GAP REGRESSION; PROVIDER CALLS=0 IN FAILED RUN; SIMULATOR REMAINS BLOCKED.**
 Date: 2026-10-23.
 
 ## Objective and constraints
@@ -865,3 +865,4 @@ into a single CI acceptance and workstation operation.
   IV/Greeks, executable order latency or account fees/lifecycle.
   Those independent prerequisites still block the frozen straddle
   simulator and are surfaced in the readiness report.
+\n## V16 workstation no-provider preflight compatibility correction (2026-10-25)\n\nThe first integrated V16 `--run --progress-every 25` passed its 30 targeted workstation regression tests but stopped before entering the V12 downloader. The V16 SPY-only census incorrectly expected `priority=1..411`, whereas V9's immutable full 9,866-request manifest assigns globally unique priorities across both the 411 weekly SPY and 9,455 separate 09:35 CALL campaigns, with qualification anchors interleaved. This was a reader validation defect, not evidence of a ThetaData provider or source-receipt failure. The fix preserves the exact V9 priorities and original immutable source records, rejects duplicates/out-of-bounds values, and reports safe fixed exception codes and preflight/acquisition/index/readiness phase. Tests model the global priority gaps; no historical returns, provider calls, broker actions, source rewrites or simulations are performed by the correction. The paid SPY entry acquisition remains operator-pending.\n
