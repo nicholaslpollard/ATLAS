@@ -162,6 +162,7 @@ def test_selected_quotes_use_native_30_45_dte_30s_not_broad_14_45(
             "observed_pairs_passing_freshness_spread_only": 11,
             "research_window_stale_rows": 1,
             "research_window_wide_spread_rows": 0,
+            "research_window_non_displayed_rows": 2,
         }
     monkeypatch.setattr(v16, "summarize_selected_chain", summarize)
     report = v16.review_native_pilot_acquisition_readiness(
@@ -175,7 +176,37 @@ def test_selected_quotes_use_native_30_45_dte_30s_not_broad_14_45(
     assert report["pilot_quote_diagnostics"]["observed_pairs"] == 12
     assert report["pilot_quote_diagnostics"]["fresh_spread_pairs_only"] == 11
     assert report["pilot_quote_diagnostics"]["indexed_entry_clocks"] == 1
+    assert report["pilot_quote_diagnostics"]["non_displayed_rows"] == 2
     assert report["simulator_ready"] is False
+
+
+def test_v16_reports_readonly_source_id_and_reader_code_without_suppressing(
+    frozen, monkeypatch,
+):
+    first_qid = frozen["requests"][0]["query_id"]
+    monkeypatch.setattr(v16, "_load_full_manifest", lambda *_: frozen)
+    monkeypatch.setattr(
+        v16, "_inspect_attempt",
+        lambda _settings, qid:
+            "RAW_ARCHIVED_OUT_DTE_DIAGNOSTIC" if qid == first_qid
+            else "UNATTEMPTED",
+    )
+    def broken_reader(_settings, _row):
+        raise v16.HybridSourceLinkedReaderError(
+            "RECONSTRUCTED_QUOTE_ESCAPES_SCOPE"
+        )
+    monkeypatch.setattr(v16, "read_selected_original_observations",
+                        broken_reader)
+    with pytest.raises(v16.NativePilotAcceleratedReadinessError) as err:
+        v16.review_native_pilot_acquisition_readiness(
+            Settings(), Path("frozen"), Path("source"),
+            with_quote_geometry=True,
+        )
+    msg = str(err.value)
+    assert "SPY_SOURCE_LINKED_RESEARCH_FAILED" in msg
+    assert frozen["requests"][0]["date_et"] in msg
+    assert first_qid in msg
+    assert "RECONSTRUCTED_QUOTE_ESCAPES_SCOPE" in msg
 
 
 def test_invalid_spy_archive_not_silently_marked_ready(frozen, monkeypatch):

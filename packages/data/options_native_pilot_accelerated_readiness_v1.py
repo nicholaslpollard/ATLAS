@@ -30,6 +30,7 @@ from packages.data.hybrid_options_at_time_source_gate_v1 import validate_exact_r
 from packages.data.hybrid_options_derived_dte_index_v1 import ELIGIBLE_STATES
 from packages.data.hybrid_options_unattended_campaign_v1 import _inspect_attempt
 from packages.data.hybrid_options_source_linked_research_reader_v1 import (
+    HybridSourceLinkedReaderError,
     read_selected_original_observations, summarize_selected_chain,
 )
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
@@ -149,14 +150,24 @@ def review_native_pilot_acquisition_readiness(
         source_states["external_saved" if is_prior else state] += 1
         if state in ELIGIBLE_STATES:
             if with_quote_geometry:
-                source = read_selected_original_observations(settings, row)
-                # Frozen SPY pilot: 30–45 calendar DTE, <=30s quote ages;
-                # *also* requires <=1s pair skew, OI, PIT spot, etc.
-                geometry = summarize_selected_chain(
-                    source, dte_min=MIN_DTE, dte_max=MAX_DTE,
-                    max_quote_age_seconds=30,
-                    max_spread_to_mid=0.15,
-                )
+                try:
+                    source = read_selected_original_observations(settings, row)
+                    # Frozen SPY pilot: 30–45 calendar DTE, <=30s quote ages;
+                    # *also* requires <=1s pair skew, OI, PIT spot, etc.
+                    geometry = summarize_selected_chain(
+                        source, dte_min=MIN_DTE, dte_max=MAX_DTE,
+                        max_quote_age_seconds=30,
+                        max_spread_to_mid=0.15,
+                    )
+                except HybridSourceLinkedReaderError as exc:
+                    # Fixed local V15 error codes plus the exact frozen
+                    # source identity; preserve fail-closed source validation.
+                    raise NativePilotAcceleratedReadinessError(
+                        "SPY_SOURCE_LINKED_RESEARCH_FAILED"
+                        f" date={row['date_et']}"
+                        f" query_id={row['query_id']}"
+                        f" code={exc}"
+                    ) from exc
                 quote_stats["research_window_rows"] += geometry[
                     "research_window_observed_rows"
                 ]
@@ -166,6 +177,9 @@ def review_native_pilot_acquisition_readiness(
                 quote_stats["fresh_spread_pairs_only"] += geometry[
                     "observed_pairs_passing_freshness_spread_only"
                 ]
+                quote_stats["non_displayed_rows"] += geometry.get(
+                    "research_window_non_displayed_rows", 0
+                )
                 quote_stats["stale_rows"] += geometry["research_window_stale_rows"]
                 quote_stats["wide_rows"] += geometry[
                     "research_window_wide_spread_rows"

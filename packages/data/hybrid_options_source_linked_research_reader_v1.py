@@ -153,6 +153,7 @@ def summarize_selected_chain(
     observed_by_pair: dict[tuple[str, float], set[str]] = defaultdict(set)
     stale = 0
     wide = 0
+    non_displayed = 0
     for q in selection["selected_quotes"]:
         exp = date.fromisoformat(str(q["expiration"])[:10])
         dte = (exp - clock.date()).days
@@ -183,8 +184,17 @@ def summarize_selected_chain(
         size_ask = q["ask_size"]
         if not isinstance(size_bid, int) or not isinstance(size_ask, int):
             raise HybridSourceLinkedReaderError("SOURCE_DISPLAY_SIZE_NOT_INTEGER")
-        if bid <= 0 or ask <= 0 or ask < bid or size_bid <= 0 or size_ask <= 0:
-            raise HybridSourceLinkedReaderError("NON_DISPLAYED_QUALIFIED_ROW")
+        # V10/V13 permit zero-sided historical observations in the original
+        # source (nonnegative prices/sizes). They are real SOURCE evidence,
+        # but cannot qualify as displayed, executable two-sided quotes.
+        # Preserve them in observed pair geometry and count the disqualification
+        # separately. A crossed *positive* market remains a structural failure.
+        if bid > 0 and ask > 0 and ask < bid:
+            raise HybridSourceLinkedReaderError("CROSSED_TWO_SIDED_QUOTE")
+        if bid <= 0 or ask <= 0 or size_bid <= 0 or size_ask <= 0:
+            non_displayed += 1
+            eligible.append((exp.isoformat(), strike, right))
+            continue
         mid = (bid + ask) / 2
         spread = (ask - bid) / mid
         fresh = age <= max_quote_age_seconds
@@ -230,6 +240,7 @@ def summarize_selected_chain(
         "research_window_observed_rows": len(eligible),
         "research_window_stale_rows": stale,
         "research_window_wide_spread_rows": wide,
+        "research_window_non_displayed_rows": non_displayed,
         "observed_expirations": len(by_expiry),
         "observed_call_put_strike_pairs": observed_pairs,
         "observed_pairs_passing_freshness_spread_only": quality_pairs,
@@ -272,6 +283,9 @@ def audit_frozen_indexed_chains(
         totals["original_source_rows"] += selected["original_source_row_count"]
         totals["v14_selected_rows"] += detail["v14_in_range_source_rows"]
         totals["research_window_rows"] += detail["research_window_observed_rows"]
+        totals["research_window_non_displayed_rows"] += detail[
+            "research_window_non_displayed_rows"
+        ]
         totals["research_window_stale_rows"] += detail["research_window_stale_rows"]
         totals["research_window_wide_spread_rows"] += detail[
             "research_window_wide_spread_rows"
@@ -288,6 +302,9 @@ def audit_frozen_indexed_chains(
         "original_rows": totals["original_source_rows"],
         "v14_selected_rows": totals["v14_selected_rows"],
         "research_14_45_dte_observed_rows": totals["research_window_rows"],
+        "research_14_45_dte_non_displayed_rows": totals[
+            "research_window_non_displayed_rows"
+        ],
         "research_14_45_dte_stale_rows": totals["research_window_stale_rows"],
         "research_14_45_dte_wide_spread_rows": totals[
             "research_window_wide_spread_rows"
