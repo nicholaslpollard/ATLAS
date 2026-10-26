@@ -295,12 +295,23 @@ def _diagnose(req: dict[str, Any], response: ThetaDataResponse) -> str:
     if not response.rows:
         return ("EXPLICIT_NO_DATA_SOURCE_ONLY" if response.explicit_no_data
                 else "EMPTY_RESPONSE_SOURCE_ONLY")
+    return _diagnose_rows(req, response.rows)
+
+
+def _diagnose_rows(req: dict[str, Any],
+                   rows: tuple[dict[str, Any], ...] | list[dict[str, Any]]) -> str:
+    """Local original quote-row checks only; never verify transport provenance.
+
+    Used during paid receipt diagnosis *after* provenance checks, and during
+    offline forensic review of immutable gzipped originals. Offline replay
+    cannot reconstruct SDK metadata omitted from the original V19 receipt.
+    """
     day = date.fromisoformat(req["session_et"])
     clock = datetime.combine(day, datetime.strptime(
         "10:00:00.000", "%H:%M:%S.%f").time(), EASTERN)
     seen = set()
     out_dte = False
-    for quote in response.rows:
+    for quote in rows:
         if not isinstance(quote, dict) or any(
             key not in quote for key in REQUIRED_FIELDS
         ):
