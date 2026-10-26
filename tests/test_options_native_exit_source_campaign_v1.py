@@ -15,6 +15,7 @@ from packages.providers.thetadata.client import (
     ThetaDataResponse, _canonical_bytes,
 )
 from scripts import run_options_native_spy_exit_source_campaign_v1 as cli
+from scripts import run_options_native_spy_exit_fault_audit_v1 as fault_audit
 
 
 class Settings:
@@ -427,6 +428,81 @@ def test_running_campaign_limits_recursive_storage_scans(world, monkeypatch):
     assert exits.preview_exit_campaign(
         settings, Path("f"), Path("c")
     )["remaining_unattempted"] == 1570 - 33
+
+
+def test_v21_offline_error_audit_preserves_errors_and_original_hashes(
+    world, frozen, monkeypatch,
+):
+    settings, plan = world
+    req_invalid, req_fault = plan["requests"][:2]
+    from dataclasses import replace
+
+    def damaged(**kwargs):
+        if kwargs["date_et"] == req_fault["session_et"]:
+            raise TimeoutError("Original provider request status unknown")
+        r = source(req_invalid)
+        rows = [dict(item) for item in r.rows]
+        rows[0]["timestamp"] = "2099-01-01T10:00:00-05:00"
+        raw = _canonical_bytes(rows)
+        return replace(
+            r, rows=tuple(rows), raw_body=raw, response_bytes=len(raw),
+        )
+    result = exits.run_exit_campaign(
+        settings, Path("f"), Path("c"),
+        workers=2, max_calls=2, reader=damaged,
+    )
+    assert result["provider_calls_this_run"] == 2
+    monkeypatch.setattr(
+        fault_audit, "_load_full_manifest", lambda *_: frozen,
+    )
+    checked = fault_audit.audit(settings, Path("f"), Path("c"))
+    assert checked["total_new_exit_ids"] == 1570
+    assert checked["provider_requests"] == 0
+    assert checked["files_written"] == 0
+    issues = {
+        q["query_id"]: q for q in checked["abnormal_identities"]
+    }
+    assert set(issues) == {
+        req_fault["query_id"], req_invalid["query_id"],
+    }
+    invalid = issues[req_invalid["query_id"]]
+    assert invalid["state"] == "RAW_ARCHIVED_INVALID_SCHEMA"
+    assert invalid["archive_present"] is True
+    assert invalid["row_only_diagnostic"] == (
+        "ORIGINAL_ROW_CHECK_FAILED code=EXIT_QUOTE_ESCAPES_REVIEW_CLOCK"
+    )
+    assert len(invalid["original_sha256"]) == 64
+    failure = issues[req_fault["query_id"]]
+    assert failure["state"] == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY"
+    assert failure["recorded_error_type"] == "TimeoutError"
+    assert failure["row_only_diagnostic"] == "NO_ORIGINAL_ROWS_RETAINED"
+    assert failure["archive_present"] is False
+
+
+def test_v21_row_valid_archive_does_not_forge_provider_metadata(
+    world, frozen, monkeypatch,
+):
+    settings, plan = world
+    req = plan["requests"][0]
+    r = source(req)
+    from dataclasses import replace
+    bad = replace(r, http_status=499)
+    result = exits.run_exit_campaign(
+        settings, Path("f"), Path("c"),
+        workers=1, max_calls=1, reader=lambda **kwargs: bad,
+    )
+    assert result["invalid_archives_this_run"] == 1
+    monkeypatch.setattr(
+        fault_audit, "_load_full_manifest", lambda *_: frozen,
+    )
+    issue = fault_audit.audit(
+        settings, Path("f"), Path("c"),
+    )["abnormal_identities"][0]
+    assert issue["row_only_diagnostic"] == (
+        "ROWS_PASS_LOCAL_CHECK_METADATA_CAUSE_UNRESOLVED"
+        " local_classification=RAW_ARCHIVED_SCOPE_DIAGNOSTIC"
+    )
+    assert issue["state"] == "RAW_ARCHIVED_INVALID_SCHEMA"
 
 
 def test_original_request_identity_and_worker_limits_are_strict(world):
