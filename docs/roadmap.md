@@ -1,5 +1,10 @@
 # ATLAS Project Guide and Roadmap
 
+### V20 after verified V19 rollout: remove per-request deep storage scans without reducing storage protection
+
+Performance bottleneck located in **the active V19 coordinator**, not in ThetaData's configured worker count. Each new exit query repeatedly calls `_safe_storage`, which in turn recursively enumerates all research-category directories and the hybrid options tree, then revalidates outstanding reservations. V20 retains this expensive full storage audit at the beginning of each bounded **32-dispatch window**, while charging every paid query `MIN_CAPACITY_PER_REQUEST` upfront to cover the worst-case uncompressed source, compressed archive, receipts and outstanding writes. A cheap actual disk usage read occurs **before every launch**, with externally consumed space charged against the cached budget and the configured external warning-space floor enforced. If the cached combined budget or physical floor is insufficient, the acquisition refuses a new query; raw source hashes, terminal receipts, frozen query IDs, four concurrent workers, source invalidity stops and no-ambiguous-retry remain unchanged. V20 reports `full_storage_audits_this_run` as measurable instrumentation. This branch makes no improvement to any V19 Python process **already running** on the workstation; do not interrupt the running process automatically. Future wall-clock improvements must be measured before claiming a speedup.
+
+
 ### 2026-10-26: V18 complete 411/411 entry quote source census, V19 exit lifecycle staging
 
 On workstation, V18 tests passed 24/24 and the provider-free SPY review completed: **410 indexed V12 sources plus one separate prior legacy 2025 source, zero unattempted SPY weekly entries; 11,216 observed 30–45 DTE rows; 5,608 observed strike-expiry CALL/PUT pairs; 5,148 pairs meeting only 30s/15% research geometry; six stale, 726 wide, two non-displayed.** Full read-only result fingerprint: `8fb09b63a1e81940ad298eddf594ed479da878b315689e3550920b5690f52c9e`. The research-only quote geometry is not executable fill proof, and all ten native simulator blockers remain.
