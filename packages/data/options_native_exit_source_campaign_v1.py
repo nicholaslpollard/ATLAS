@@ -52,7 +52,7 @@ from packages.data.thetadata_candidate_surface_qualification_v1 import (
     _validate_provider_provenance,
 )
 from packages.providers.thetadata.client import (
-    ThetaDataResponse, _canonical_bytes, option_at_time_quote_surface,
+    ThetaDataError, ThetaDataResponse, _canonical_bytes, option_at_time_quote_surface,
 )
 from packages.strategies.options_native_pilot_v1_contract import (
     SPECIFICATION_FINGERPRINT,
@@ -353,6 +353,33 @@ def _diagnose_rows(req: dict[str, Any],
             else "RAW_ARCHIVED_SCOPE_DIAGNOSTIC")
 
 
+def _safe_provider_failure_category(exc: Exception) -> tuple[str | None, str | None]:
+    """Only bounded class and standard status from a future provider fault.
+
+    V19/V20 terminals with only error_type remain immutable and unknown.
+    Never convert this diagnostic evidence into no-data/duplicate request
+    proof and never serialize an SDK exception message, URL or credentials.
+    """
+    if not isinstance(exc, ThetaDataError):
+        return None, None
+    import re
+    label = getattr(exc, "provider_error_type", None)
+    if not isinstance(label, str) or not re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]{0,99}", label
+    ):
+        label = None
+    status = getattr(exc, "provider_grpc_status", None)
+    if status not in {
+        "OK", "CANCELLED", "UNKNOWN", "INVALID_ARGUMENT",
+        "DEADLINE_EXCEEDED", "NOT_FOUND", "ALREADY_EXISTS",
+        "PERMISSION_DENIED", "RESOURCE_EXHAUSTED", "FAILED_PRECONDITION",
+        "ABORTED", "OUT_OF_RANGE", "UNIMPLEMENTED", "INTERNAL",
+        "UNAVAILABLE", "DATA_LOSS", "UNAUTHENTICATED",
+    }:
+        status = None
+    return label, status
+
+
 def _evidence(data: dict[str, Any]) -> dict[str, Any]:
     return dict(data, fingerprint=_fingerprint(data))
 
@@ -562,6 +589,8 @@ def run_exit_campaign(
                 state = "PROVIDER_OR_STORAGE_ERROR_NO_RETRY"
                 archive = None
                 error_type = None
+                provider_failure_class = None
+                provider_grpc_status = None
                 try:
                     response = future.result()
                     if not isinstance(response, ThetaDataResponse):
@@ -572,10 +601,16 @@ def run_exit_campaign(
                         state = _diagnose(req, response)
                     except Exception as exc:
                         error_type = type(exc).__name__
+                        provider_failure_class, provider_grpc_status = (
+                            _safe_provider_failure_category(exc)
+                        )
                         if archive is not None:
                             state = "RAW_ARCHIVED_INVALID_SCHEMA"
                 except Exception as exc:
                     error_type = type(exc).__name__
+                    provider_failure_class, provider_grpc_status = (
+                        _safe_provider_failure_category(exc)
+                    )
                     if archive is not None:
                         state = "RAW_ARCHIVED_INVALID_SCHEMA"
                 terminal = _evidence({
@@ -585,6 +620,8 @@ def run_exit_campaign(
                     "started_fingerprint": started["fingerprint"],
                     "archive": archive, "state": state,
                     "error_type": error_type,
+                    "provider_failure_class": provider_failure_class,
+                    "provider_grpc_status": provider_grpc_status,
                     "source_complete": False, "simulator_ready": False,
                 })
                 _write_receipt(
@@ -614,6 +651,8 @@ def run_exit_campaign(
                         "over_dte": result["outside_dte_archives_this_run"],
                         "date_et": req["session_et"], "query_id": req["query_id"],
                         "state": state, "simulator_ready": False,
+                        "provider_failure_class": provider_failure_class,
+                        "provider_grpc_status": provider_grpc_status,
                     })
                 if state == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY":
                     result["stop_reason"] = "PROVIDER_OR_STORAGE_FAILURE_STOP"
