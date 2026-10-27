@@ -779,3 +779,54 @@ def test_v23_shared_source_cli_offline_has_no_sdk_or_provider(
     assert cli23.main([]) == 0
     assert "provider_requests=0" in capsys.readouterr().out
     assert not settings.resolved_path(exits.ROOT_REL).exists()
+
+
+def test_v23_shared_auth_setup_failure_is_before_all_paid_receipts(
+    world, monkeypatch, capsys,
+):
+    from scripts import run_options_native_spy_exit_shared_session_v1 as cli23
+    settings, plan = world
+    monkeypatch.setattr(cli23, "load_settings", lambda *_: settings)
+    monkeypatch.setattr(
+        cli23, "_provider_shared_signature_preflight",
+        lambda: {"thetadata_version": "1.0.12",
+                 "shared_authenticated_client_status":
+                 "SHARED_AUTH_CONSTRUCTOR_EXPLICIT"},
+    )
+    def cannot_authenticate():
+        raise RuntimeError("SDK shared client setup refused")
+    monkeypatch.setattr(
+        cli23, "establish_option_quote_shared_authenticated_session",
+        cannot_authenticate,
+    )
+    assert cli23.main(["--run", "--max-calls", "4"]) == 3
+    assert "BLOCKED" in capsys.readouterr().out
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c"),
+    )["remaining_unattempted"] == 1570
+    assert not settings.resolved_path(exits.ROOT_REL).exists()
+
+
+def test_v23_shared_auth_setup_is_idempotent_and_never_uses_history(
+    monkeypatch,
+):
+    from types import ModuleType
+    from scripts import thetadata_python_worker_v1 as worker
+    module = ModuleType("thetadata")
+    created = []
+    class Fake:
+        def __init__(
+            self, *, existing_authorized_client=None, dataframe_type="pandas"
+        ):
+            created.append(existing_authorized_client)
+        def option_at_time_quote(self, **kwargs):
+            raise AssertionError("auth readiness must not request history")
+    module.ThetaClient = Fake
+    monkeypatch.setitem(__import__("sys").modules, "thetadata", module)
+    runtime = worker.Runtime()
+    primary = Fake()
+    runtime.ensure = lambda: primary
+    assert runtime.setup_shared_auth_session()["historical_quote_requests"] == 0
+    assert runtime.setup_shared_auth_session()["historical_quote_requests"] == 0
+    assert len(created) == 4
+    assert created[1:] == [primary] * 3
