@@ -15,7 +15,7 @@ import hashlib
 import json
 from pathlib import Path
 from statistics import mean, median
-from typing import Any
+from typing import Any, Callable
 from zoneinfo import ZoneInfo
 import zlib
 
@@ -291,6 +291,7 @@ def _evaluate_cohort(
 
 def audit_original_spy_pair_observations(
     settings: AtlasSettings, manifest: Path, candidate_plan: Path,
+    *, evaluator: Callable[[list[dict[str, Any]], Any], dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     settings.assert_external_storage_binding("options")
     frozen = _load_full_manifest(settings, manifest, candidate_plan)
@@ -336,7 +337,8 @@ def audit_original_spy_pair_observations(
             seen.popitem(last=False)
         return outcome
 
-    values = _evaluate_cohort(entries, fetch)
+    values = (_evaluate_cohort(entries, fetch) if evaluator is None
+              else evaluator(entries, fetch))
     result = {
         "contract": CONTRACT,
         "status": "RETROSPECTIVE_SOURCE_MATCH_DIAGNOSTIC_ONLY",
