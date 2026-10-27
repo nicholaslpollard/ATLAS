@@ -321,6 +321,21 @@ def inspect_sdk_method_contract() -> dict[str, Any]:
     return result
 
 
+def _shared_session_sdk_signature_status() -> str:
+    """Static pinned class constructor inspection; no SDK client construction."""
+    if _library_version() != TARGET_LIBRARY_VERSION:
+        return "SHARED_CLIENT_SDK_VERSION_UNQUALIFIED"
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            from thetadata import ThetaClient
+        sig = inspect.signature(ThetaClient)
+    except Exception:
+        return "SHARED_CLIENT_SIGNATURE_UNAVAILABLE"
+    return ("SHARED_AUTH_CONSTRUCTOR_EXPLICIT"
+            if "existing_authorized_client" in sig.parameters
+            else "SHARED_AUTH_CONSTRUCTOR_NOT_EXPLICIT")
+
+
 def preflight() -> dict[str, Any]:
     version = _library_version()
     auth_source, auth_present = _auth_source()
@@ -343,6 +358,7 @@ def preflight() -> dict[str, Any]:
         "dotenv_key_status": _dotenv_key_status(),
         "environment_packages": environment_packages,
         "environment_fingerprint": environment_fingerprint,
+        "shared_authenticated_client_status": _shared_session_sdk_signature_status(),
         "sdk_contract_compatible": sdk["compatible"],
         "sdk_contract_status": sdk["status"],
         "sdk_missing_module": sdk.get("missing_module"),
@@ -419,19 +435,18 @@ class Runtime:
         # All query identities are independently pre-receipted by the ATLAS
         # outer coordinator, not by this isolated SDK worker.
         if self.shared_clients is None:
-            if len(queries) > 1:
-                with contextlib.redirect_stdout(sys.stderr):
-                    from thetadata import ThetaClient
-                try:
-                    signature = inspect.signature(ThetaClient)
-                except (TypeError, ValueError) as exc:
-                    raise RuntimeError(
-                        "THETADATA_SHARED_CLIENT_SIGNATURE_UNINSPECTABLE"
-                    ) from exc
-                if "existing_authorized_client" not in signature.parameters:
-                    raise RuntimeError(
-                        "THETADATA_PINNED_SDK_SHARED_AUTH_NOT_SUPPORTED"
-                    )
+            with contextlib.redirect_stdout(sys.stderr):
+                from thetadata import ThetaClient
+            try:
+                signature = inspect.signature(ThetaClient)
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError(
+                    "THETADATA_SHARED_CLIENT_SIGNATURE_UNINSPECTABLE"
+                ) from exc
+            if "existing_authorized_client" not in signature.parameters:
+                raise RuntimeError(
+                    "THETADATA_PINNED_SDK_SHARED_AUTH_NOT_SUPPORTED"
+                )
             base = self.ensure()
             with contextlib.redirect_stdout(sys.stderr):
                 from thetadata import ThetaClient
