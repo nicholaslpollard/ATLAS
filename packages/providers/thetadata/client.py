@@ -430,6 +430,13 @@ def option_at_time_quote_shared_session_batch(
             "strike": "*", "right": "both",
             "max_dte": 45, "strike_range": 2,
         })
+    return _execute_shared_option_quote_batch(raw_queries, expected_count=len(queries))
+
+
+def _execute_shared_option_quote_batch(
+    raw_queries: list[dict[str, Any]], *, expected_count: int,
+) -> list[ThetaDataResponse | ThetaDataError]:
+    """Decode existing four-client SDK batch for any strictly validated query shape."""
     started = time.perf_counter()
     batch = _worker().request(
         "batch_option_at_time_quote_shared_session",
@@ -438,7 +445,7 @@ def option_at_time_quote_shared_session_batch(
     results = batch.get("results")
     if (batch.get("shared_authenticated_session") is not True
             or not isinstance(results, list)
-            or len(results) != len(queries)):
+            or len(results) != expected_count):
         raise ThetaDataError("shared authenticated SDK result shape unqualified")
     elapsed = max(0.0, time.perf_counter() - started)
     completed: list[ThetaDataResponse | ThetaDataError] = []
@@ -496,6 +503,50 @@ def option_at_time_quote_shared_session_batch(
             ),
         ))
     return completed
+
+
+
+def option_at_time_quote_exact_shared_session_batch(
+    queries: list[dict[str, str]],
+) -> list[ThetaDataResponse | ThetaDataError]:
+    """One authenticated SDK session, at most four EXACT SPY option GETs.
+
+    Deliberately separate from the V24 frozen broad-chain batch surface.
+    Each request specifies one date/expiration/strike/right at 10:00 ET.
+    This must never be used to overwrite a frozen V24 original receipt.
+    """
+    if not isinstance(queries, list) or not 1 <= len(queries) <= 4:
+        raise ValueError("exact contract shared batch size must be 1..4")
+    raw_queries: list[dict[str, Any]] = []
+    import re
+    from decimal import Decimal, InvalidOperation
+    for q in queries:
+        if not isinstance(q, dict) or set(q) != {
+            "symbol", "date_et", "time_of_day_et", "expiration", "strike", "right",
+        }:
+            raise ValueError("exact contract shared query shape changed")
+        if (q["symbol"] != "SPY" or q["right"] not in {"call", "put"}
+                or q["time_of_day_et"] != "10:00:00.000"
+                or type(q["strike"]) is not str
+                or re.fullmatch(r"[0-9]+(?:\\.[0-9]{1,3})?", q["strike"]) is None):
+            raise ValueError("exact contract SPY clock/right/strike drift")
+        try:
+            strike_value = Decimal(q["strike"])
+        except InvalidOperation as exc:
+            raise ValueError("exact contract strike invalid") from exc
+        if not strike_value.is_finite() or strike_value <= 0:
+            raise ValueError("exact contract strike nonpositive")
+        session = _day_text(q["date_et"])
+        expiry = _day_text(q["expiration"])
+        if expiry < session:
+            raise ValueError("exact option already expired")
+        raw_queries.append({
+            "symbol": "SPY", "start_date": session, "end_date": session,
+            "expiration": expiry, "strike": q["strike"], "right": q["right"],
+            "time_of_day": "10:00:00.000",
+        })
+    return _execute_shared_option_quote_batch(raw_queries, expected_count=len(queries))
+
 
 
 def option_at_time_quote(
