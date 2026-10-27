@@ -222,7 +222,7 @@ def evaluate_spot_selected_exact_contract_demand(
             })
         cases.append({
             "date_et": label, "status": "PHYSICAL_SPOT_PROVISIONAL_PAIR_ONLY",
-            "reason": reason if False else "PIT_SPOT_AVAILABILITY_OI_IV_RATE_DIVIDEND_NOT_QUALIFIED",
+            "reason": "PIT_SPOT_AVAILABILITY_OI_IV_RATE_DIVIDEND_NOT_QUALIFIED",
             "raw_0959_spot": spots[label]["raw_spot"],
             "spot_native_unit_id": spots[label]["minute_unit_id"],
             "spot_native_unit_sha256": spots[label]["minute_source_sha256"],
