@@ -249,3 +249,22 @@ def test_hard_sdk_authentication_failure_stops_and_keeps_terminal_error(tmp_path
     assert result["provider_failures_this_run"] == 1
     assert result["remaining"] == 0
     assert result["states"]["PROVIDER_OR_STORAGE_ERROR_NO_RETRY"] == 1
+
+
+def test_zero_missing_rights_is_success_without_authentication(tmp_path):
+    plan = preview_plan()
+    plan["missing_exact_contract_right_requests"] = []
+    plan["missing_exact_contract_right_request_count"] = 0
+    plan["fingerprint"] = _fingerprint({
+        k: v for k, v in plan.items() if k != "fingerprint"
+    })
+    result = run_exact_exit_campaign(
+        Settings(tmp_path), plan,
+        authenticator=lambda: (_ for _ in ()).throw(AssertionError("unneeded auth")),
+        batch_reader=lambda q: (_ for _ in ()).throw(AssertionError("unneeded get")),
+        meter_factory=Meter,
+    )
+    assert result["provider_requests_this_run"] == 0
+    assert result["remaining"] == 0
+    assert result["states"] == {}
+    assert result["source_promotion"] is False
