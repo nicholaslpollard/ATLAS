@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from packages.core.settings import AtlasSettings
-from packages.data.hybrid_options_at_time_one_call_v1 import _load_full_manifest
+from packages.data import options_native_exit_source_campaign_v1 as exits
 from packages.data.options_native_exit_source_campaign_v1 import (
     CONTRACT, MAX_INVALID_SCHEMAS_PER_RUN, SpyExitSourceError,
     _ConservativeExitStorageMeter, _demand, _diagnose, _evidence,
@@ -52,7 +52,7 @@ def run_shared_exit_campaign(
         settings, manifest_path, candidate_plan,
         storage_reader=storage_reader,
     )
-    plan = _demand(_load_full_manifest(settings, manifest_path, candidate_plan))
+    plan = _demand(exits._load_full_manifest(settings, manifest_path, candidate_plan))
     result = {
         "contract": CONTRACT,
         "mode": "SHARED_AUTHENTICATED_SESSION_BATCH_SOURCE_ONLY",
