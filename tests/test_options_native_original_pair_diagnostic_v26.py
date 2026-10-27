@@ -8,7 +8,8 @@ import pytest
 
 from packages.data.options_native_original_pair_diagnostic_v26 import (
     CONTRACT, FEE_GRID, PairDiagnosticError, _evaluate_cohort, _pair_observations,
-    _stats, _read_verified_exit_source,
+    _stats, _read_verified_exit_source, register_outcome_inspection_trial,
+    TRIAL_ID, TRIAL_LEDGER_REL,
 )
 from packages.data.options_native_pilot_accelerated_readiness_v1 import (
     _exit_at_time_query, _exit_review_sessions,
@@ -143,3 +144,27 @@ def test_source_reader_is_separate_from_provider_and_account_replay():
     assert "run_exit_campaign(" not in text
     assert "replay_synthetic_account(" not in text
     assert CONTRACT.startswith("atlas-spy-quote-pair")
+
+
+def test_outcome_inspection_is_preregistered_once_before_option_price_review(tmp_path):
+    from packages.performance.ledger import StrategyTrialLedger
+
+    class Settings:
+        def assert_external_storage_binding(self, name):
+            assert name == "options"
+
+        def resolved_path(self, relative):
+            assert relative == TRIAL_LEDGER_REL
+            return tmp_path / "trials.jsonl"
+
+    settings = Settings()
+    first = register_outcome_inspection_trial(settings)
+    assert len(first["newly_registered"]) == 2
+    assert TRIAL_ID in first["trial_ids"]
+    second = register_outcome_inspection_trial(settings)
+    assert second["newly_registered"] == []
+    records = StrategyTrialLedger(settings.resolved_path(TRIAL_LEDGER_REL)).read()
+    assert len(records) == 2
+    assert all(not r.performance_outcomes_opened for r in records)
+    assert all(r.master_protected_return_rows_read == 0 for r in records)
+    assert not first["qualifying_historical_authority"]
