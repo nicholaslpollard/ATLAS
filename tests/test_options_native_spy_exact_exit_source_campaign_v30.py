@@ -6,6 +6,10 @@ from pathlib import Path
 import pytest
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
+from packages.data.options_native_spy_development_clock_coverage_v1 import frozen_clock_demand
+from packages.data.options_native_pilot_accelerated_readiness_v1 import (
+    _exit_at_time_query, _exit_review_sessions,
+)
 from packages.data.options_native_spy_physical_spot_exact_demand_v29 import (
     CONTRACT as V29_CONTRACT, SOURCE_PREVIEW,
 )
@@ -58,10 +62,12 @@ def preview_plan():
         "missing_exact_rights": ["call"],
         "original_exit_source_state": "RAW_ARCHIVED_OUT_DTE_DIAGNOSTIC",
     }
+    frozen, _ = frozen_clock_demand()
     cases = [{
-        "date_et": (date(2016, 1, 1) + timedelta(days=7*i)).isoformat(),
+        "date_et": row["decision_date"],
         "status": "RESEARCH_IDENTITY_NOT_AVAILABLE",
-    } for i in range(410)]
+    } for row in frozen["cases"] if row["decision_date"] != "2025-01-06"]
+    assert len(cases) == 410
     cases.append({
         "date_et": "2025-01-06", "status": "PHYSICAL_SPOT_PROVISIONAL_PAIR_ONLY",
         "selected_expiration": Q["expiration"], "selected_strike": Q["strike"],
@@ -70,7 +76,7 @@ def preview_plan():
     demand = [{
         "query_id": QID, "sdk_method": "option_at_time_quote", "sdk_kwargs": Q,
         "request_state": SOURCE_PREVIEW, "case_date": "2025-01-06",
-        "hold_sessions": 1, "source_original_exit_query_id": "f" * 64,
+        "hold_sessions": 1, "source_original_exit_query_id": _exit_at_time_query(date(2025, 1, 7))["query_id"],
         "entry_spot_unqualified": True,
         "source_response_absence_not_market_absence": True,
     }]
