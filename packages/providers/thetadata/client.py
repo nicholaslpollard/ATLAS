@@ -374,6 +374,104 @@ def option_at_time_quote_surface(
     return _call("option_at_time_quote", **kwargs)
 
 
+def option_at_time_quote_shared_session_batch(
+    queries: list[dict[str, Any]],
+) -> list[ThetaDataResponse | ThetaDataError]:
+    """Up to four frozen independent quote scopes using ONE SDK login.
+
+    No ThetaData SDK is imported into this interpreter. A single isolated
+    worker process owns the authenticated base client and derives the others
+    via ThetaData's documented existing_authorized_client parameter. The
+    worker returns per-query original dataframe values without mixing them.
+    Failure objects retain only type and standard gRPC classification.
+    """
+    if not isinstance(queries, list) or not 1 <= len(queries) <= 4:
+        raise ValueError("shared session batch size must be 1..4")
+    raw_queries: list[dict[str, Any]] = []
+    for q in queries:
+        if not isinstance(q, dict) or set(q) != {
+            "symbol", "date_et", "time_of_day_et", "right",
+            "max_dte", "strike_range",
+        }:
+            raise ValueError("shared session exact query shape changed")
+        if (q["symbol"] != "SPY" or q["right"] != "both"
+                or q["time_of_day_et"] != "10:00:00.000"
+                or q["max_dte"] != 45 or q["strike_range"] != 2):
+            raise ValueError("shared session frozen SPY query drift")
+        day = _day_text(q["date_et"])
+        raw_queries.append({
+            "symbol": "SPY", "start_date": day, "end_date": day,
+            "time_of_day": "10:00:00.000", "expiration": "*",
+            "strike": "*", "right": "both",
+            "max_dte": 45, "strike_range": 2,
+        })
+    started = time.perf_counter()
+    batch = _worker().request(
+        "batch_option_at_time_quote_shared_session",
+        {"queries": raw_queries},
+    )
+    results = batch.get("results")
+    if (batch.get("shared_authenticated_session") is not True
+            or not isinstance(results, list)
+            or len(results) != len(queries)):
+        raise ThetaDataError("shared authenticated SDK result shape unqualified")
+    elapsed = max(0.0, time.perf_counter() - started)
+    completed: list[ThetaDataResponse | ThetaDataError] = []
+    for item in results:
+        if not isinstance(item, dict):
+            raise ThetaDataError("shared authenticated SDK item invalid")
+        if item.get("ok") is not True:
+            label = item.get("error_type")
+            status = item.get("error_grpc_status")
+            import re
+            if not isinstance(label, str) or not re.fullmatch(
+                r"[A-Za-z_][A-Za-z0-9_]{0,99}", label
+            ):
+                label = "UnclassifiedProviderException"
+            valid_status = {
+                "OK", "CANCELLED", "UNKNOWN", "INVALID_ARGUMENT",
+                "DEADLINE_EXCEEDED", "NOT_FOUND", "ALREADY_EXISTS",
+                "PERMISSION_DENIED", "RESOURCE_EXHAUSTED",
+                "FAILED_PRECONDITION", "ABORTED", "OUT_OF_RANGE",
+                "UNIMPLEMENTED", "INTERNAL", "UNAVAILABLE",
+                "DATA_LOSS", "UNAUTHENTICATED",
+            }
+            completed.append(ThetaDataError(
+                "ThetaData shared-session quote failed: " + label,
+                provider_error_type=label,
+                provider_grpc_status=(
+                    status if status in valid_status else None
+                ),
+            ))
+            continue
+        rows = item.get("rows")
+        if not isinstance(rows, list) or any(
+            not isinstance(row, dict) for row in rows
+        ):
+            raise ThetaDataError("shared authenticated SDK quote rows invalid")
+        explicit = item.get("explicit_no_data", False)
+        if type(explicit) is not bool or (explicit and rows):
+            raise ThetaDataError("shared authenticated SDK no-data contradiction")
+        canonical = _canonical_bytes(rows)
+        completed.append(ThetaDataResponse(
+            http_status=200,
+            rows=tuple(rows),
+            headers={
+                "atlas-provider-transport": TRANSPORT,
+                "atlas-provider-method": "option_at_time_quote",
+            },
+            response_bytes=len(canonical),
+            elapsed_seconds=elapsed,
+            raw_body=canonical,
+            explicit_no_data=explicit,
+            library_version=item.get("library_version"),
+            provider_environment_fingerprint=item.get(
+                "environment_fingerprint"
+            ),
+        ))
+    return completed
+
+
 def option_at_time_quote(
     *,
     symbol: str,
