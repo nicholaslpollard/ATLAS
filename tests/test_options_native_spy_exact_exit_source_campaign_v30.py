@@ -336,3 +336,38 @@ def test_reject_unwrapped_v29_report_even_if_inner_fingerprint_valid(tmp_path):
     report.write_text(json.dumps(unwrapped), encoding="utf-8")
     with pytest.raises(ExactExitSourceError, match="FROZEN_PLAN_FINGERPRINT"):
         load_exact_exit_plan(report)
+
+
+
+def test_extra_dte_contracts_are_archived_losslessly_but_local_exact_right_matches(tmp_path):
+    """Extra returned expirations must not veto a uniquely matched exact quote."""
+    settings, plan = Settings(tmp_path), preview_plan()
+    extra_expiry = dict(quote(), expiration="2025-04-18", strike=105.0)
+    result = run_exact_exit_campaign(
+        settings, plan,
+        batch_reader=lambda qs: [good_response(rows=[extra_expiry, quote()])],
+        authenticator=lambda: None, meter_factory=Meter,
+    )
+    assert result["states"]["RAW_ARCHIVED_EXACT_CONTRACT_DIAGNOSTIC"] == 1
+    assert result["archived_this_run"] == 1
+    row = plan["missing_exact_contract_right_requests"][0]
+    from packages.data.options_native_spy_exact_exit_source_campaign_v30 import (
+        _read_receipt, _path,
+    )
+    terminal = _read_receipt(settings, row, plan["fingerprint"], "terminal")
+    assert terminal["archive"]["observed_rows"] == 2
+    assert _path(settings, row["query_id"], "sources").is_file()
+    assert result["source_promotion"] is False
+    assert result["historical_account_replay"] is False
+
+
+def test_duplicate_exact_right_never_admitted_even_if_other_contracts_returned(tmp_path):
+    settings, plan = Settings(tmp_path), preview_plan()
+    result = run_exact_exit_campaign(
+        settings, plan,
+        batch_reader=lambda qs: [good_response(rows=[quote(), quote()])],
+        authenticator=lambda: None, meter_factory=Meter,
+    )
+    assert result["states"]["RAW_ARCHIVED_INVALID_OR_UNMATCHED_CONTRACT"] == 1
+    assert result["archived_this_run"] == 1
+    assert result["remaining"] == 0
