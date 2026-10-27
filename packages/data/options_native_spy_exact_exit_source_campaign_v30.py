@@ -34,6 +34,10 @@ from packages.data.thetadata_candidate_surface_qualification_v1 import (
     REQUIRED_FIELDS, _finite_number, _nonnegative_int,
     _symbol_matches_underlying, _validate_provider_provenance,
 )
+from packages.data.options_native_spy_development_clock_coverage_v1 import frozen_clock_demand
+from packages.data.options_native_pilot_accelerated_readiness_v1 import (
+    _exit_at_time_query, _exit_review_sessions,
+)
 from packages.data.options_native_spy_physical_spot_exact_demand_v29 import (
     CONTRACT as V29_CONTRACT, SOURCE_PREVIEW, MAX_MISSING_RIGHT_QUERIES,
 )
@@ -101,8 +105,10 @@ def load_exact_exit_plan(path: Path) -> dict[str, Any]:
         if not isinstance(case, dict) or case.get("date_et") in original_case:
             raise ExactExitSourceError("V30_CASE_IDENTITY_DUPLICATE")
         original_case[case["date_et"]] = case
-    if len(original_case) != 411:
-        raise ExactExitSourceError("V30_WEEKLY_CASES_MISSING")
+    frozen, _ = frozen_clock_demand()
+    expected_days = {case["decision_date"] for case in frozen["cases"]}
+    if len(original_case) != 411 or set(original_case) != expected_days:
+        raise ExactExitSourceError("V30_WEEKLY_CASES_NOT_IN_ORIGINAL_SPY_PLAN")
     seen = set()
     for row in requests:
         if (not isinstance(row, dict)
@@ -146,8 +152,14 @@ def load_exact_exit_plan(path: Path) -> dict[str, Any]:
         if not isinstance(reviews, list):
             raise ExactExitSourceError("V30_REVIEW_CHAIN_MISSING")
         matches = [x for x in reviews if x.get("hold_sessions") == row["hold_sessions"]]
+        expected_review_day = _exit_review_sessions(
+            date.fromisoformat(row["case_date"])
+        )[row["hold_sessions"] - 1]
+        expected_original = _exit_at_time_query(expected_review_day)["query_id"]
         if (len(matches) != 1
                 or matches[0]["session_et"] != q["date_et"]
+                or q["date_et"] != expected_review_day.isoformat()
+                or row["source_original_exit_query_id"] != expected_original
                 or q["right"] not in matches[0]["missing_exact_rights"]):
             raise ExactExitSourceError("V30_REVIEW_ORIGINAL_ABSENCE_NOT_SUPPORTED")
     return plan
