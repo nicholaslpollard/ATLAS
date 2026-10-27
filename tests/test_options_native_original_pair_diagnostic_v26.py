@@ -168,3 +168,25 @@ def test_outcome_inspection_is_preregistered_once_before_option_price_review(tmp
     assert all(not r.performance_outcomes_opened for r in records)
     assert all(r.master_protected_return_rows_read == 0 for r in records)
     assert not first["qualifying_historical_authority"]
+
+
+def test_extra_expirations_do_not_block_independently_selected_in_dte_pairs():
+    """Extra response expirations are preserved upstream, not a blanket veto."""
+    extra_expiry = ENTRY + timedelta(days=90)
+    extra = [
+        quote(ENTRY, "call", expiration=extra_expiry, bid="1.00", ask="1.10"),
+        quote(ENTRY, "put", expiration=extra_expiry, bid="0.80", ask="0.90"),
+    ]
+    in_scope = pairs(ENTRY)
+    assert len(_pair_observations(in_scope, ENTRY, entry=True)) == 1
+    # The 90-DTE contracts do not contaminate a 30–45 DTE entry screen,
+    # even when returned by ThetaData alongside the desired contracts.
+    chosen = _pair_observations(in_scope + extra, ENTRY, entry=True)
+    assert len(chosen) == 1
+    assert chosen == _pair_observations(in_scope, ENTRY, entry=True)
+    # An option can fall below entry MIN_DTE by exit review and remains
+    # a candidate for closing the IDENTICAL originally purchased contract.
+    day_before_expiry = EXP - timedelta(days=1)
+    assert _pair_observations(pairs(day_before_expiry), day_before_expiry, entry=True) == {}
+    assert len(_pair_observations(pairs(day_before_expiry), day_before_expiry, entry=False)) == 1
+
