@@ -468,18 +468,20 @@ class Runtime:
         self.setup_shared_auth_session()
         def execute(index_and_query):
             index, q = index_and_query
+            # Distinguish local payload conversion from SDK RPC and dataframe
+            # serialization WITHOUT storing arbitrary exception messages.
+            try:
+                converted = _convert_kwargs("option_at_time_quote", q)
+            except Exception as exc:
+                return {
+                    "ok": False, "error_stage": "ARGUMENT_CONVERSION",
+                    **_sanitized_provider_exception(exc),
+                }
             try:
                 client = self.shared_clients[index]
                 func = getattr(client, "option_at_time_quote")
                 with contextlib.redirect_stdout(sys.stderr):
-                    frame = func(**_convert_kwargs("option_at_time_quote", q))
-                return {
-                    "ok": True,
-                    "rows": _records(frame),
-                    "explicit_no_data": False,
-                    "library_version": self.version,
-                    "environment_fingerprint": self.environment_fingerprint,
-                }
+                    frame = func(**converted)
             except Exception as exc:
                 if type(exc).__name__ == "NoDataFoundError":
                     return {
@@ -487,7 +489,24 @@ class Runtime:
                         "library_version": self.version,
                         "environment_fingerprint": self.environment_fingerprint,
                     }
-                return {"ok": False, **_sanitized_provider_exception(exc)}
+                return {
+                    "ok": False, "error_stage": "SDK_QUOTE_CALL",
+                    **_sanitized_provider_exception(exc),
+                }
+            try:
+                rows = _records(frame)
+            except Exception as exc:
+                return {
+                    "ok": False, "error_stage": "DATAFRAME_SERIALIZATION",
+                    **_sanitized_provider_exception(exc),
+                }
+            return {
+                "ok": True,
+                "rows": rows,
+                "explicit_no_data": False,
+                "library_version": self.version,
+                "environment_fingerprint": self.environment_fingerprint,
+            }
         with ThreadPoolExecutor(max_workers=len(queries)) as pool:
             responses = list(pool.map(execute, enumerate(queries)))
         return {
