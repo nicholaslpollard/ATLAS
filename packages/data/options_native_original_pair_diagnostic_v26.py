@@ -249,7 +249,7 @@ def audit_original_spy_pair_observations(
         if qid in known_entry:
             if qid != row["query_id"]:
                 raise PairDiagnosticError("ORIGINAL_ENTRY_REQUEST_DRIFT")
-            if row["date_et"] == SPY_2025_PRIOR_SAVED:
+            if known_entry[qid]["date_et"] == SPY_2025_PRIOR_SAVED:
                 outcome = ("LEGACY_2025_EXTERNALLY_SAVED_UNADMITTED", None)
             else:
                 state = _inspect_attempt(settings, qid)
