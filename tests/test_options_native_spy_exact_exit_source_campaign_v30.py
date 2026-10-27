@@ -82,7 +82,9 @@ def preview_plan():
         "source_response_absence_not_market_absence": True,
     }]
     report = {
-        "contract": V29_CONTRACT, "original_entry_clocks": 411,
+        "contract": V29_CONTRACT,
+        "status": "ORIGINAL_PRICE_SPOT_PROVISIONAL_IDENTITY_AND_EXACT_SOURCE_NEEDS_ONLY",
+        "original_entry_clocks": 411,
         "source_quote_selection_used_future_prices": False,
         "entry_physical_spot_historical_availability_qualified": False,
         "historical_options_fill_authority": False,
