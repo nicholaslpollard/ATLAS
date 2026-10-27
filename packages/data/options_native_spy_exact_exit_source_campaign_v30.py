@@ -348,17 +348,28 @@ def _diagnose(row: dict, response: ThetaDataResponse) -> str:
         return "EXPLICIT_NO_DATA_SOURCE_ONLY"
     if not response.rows:
         return "EMPTY_RESPONSE_UNQUALIFIED"
-    if len(response.rows) != 1:
-        raise ExactExitSourceError("V30_EXACT_CONTRACT_RESPONSE_NOT_ONE_ROW")
     q = row["sdk_kwargs"]
-    src = response.rows[0]
-    if not isinstance(src, dict) or any(k not in src for k in REQUIRED_FIELDS):
+    selected = []
+    # ThetaData's historical broad responses have returned extra DTE rows
+    # despite explicit filters. Preserve ALL original rows in the immutable
+    # archive, but qualify only the exact requested right/strike/expiry.
+    # Never assume a filtered provider request returned only one identity.
+    for source in response.rows:
+        if not isinstance(source, dict) or any(
+            name not in source
+            for name in ("symbol", "expiration", "strike", "right")
+        ):
+            raise ExactExitSourceError("V30_REQUIRED_CONTRACT_IDENTITY_MISSING")
+        if (_symbol_matches_underlying(str(source["symbol"]), "SPY")
+                and date.fromisoformat(str(source["expiration"])[:10]) == date.fromisoformat(q["expiration"])
+                and _decimal(source["strike"]) == _decimal(q["strike"])
+                and str(source["right"]).lower() == q["right"]):
+            selected.append(source)
+    if len(selected) != 1:
+        raise ExactExitSourceError("V30_EXACT_PROVIDER_CONTRACT_MISSING_OR_DUPLICATED")
+    src = selected[0]
+    if any(k not in src for k in REQUIRED_FIELDS):
         raise ExactExitSourceError("V30_REQUIRED_SOURCE_FIELDS_MISSING")
-    if (not _symbol_matches_underlying(str(src["symbol"]), "SPY")
-            or date.fromisoformat(str(src["expiration"])[:10]) != date.fromisoformat(q["expiration"])
-            or _decimal(src["strike"]) != _decimal(q["strike"])
-            or str(src["right"]).lower() != q["right"]):
-        raise ExactExitSourceError("V30_EXACT_PROVIDER_CONTRACT_MISMATCH")
     timestamp = datetime.fromisoformat(str(src["timestamp"]).replace("Z", "+00:00"))
     if timestamp.tzinfo is None or timestamp.utcoffset() is None:
         raise ExactExitSourceError("V30_SOURCE_QUOTE_TIMESTAMP_NAIVE")
