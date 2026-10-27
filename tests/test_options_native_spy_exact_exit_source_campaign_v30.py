@@ -59,7 +59,7 @@ def preview_plan():
         "original_exit_source_state": "RAW_ARCHIVED_OUT_DTE_DIAGNOSTIC",
     }
     cases = [{
-        "date_et": (date(2018, 1, 1) + timedelta(days=7*i)).isoformat(),
+        "date_et": (date(2016, 1, 1) + timedelta(days=7*i)).isoformat(),
         "status": "RESEARCH_IDENTITY_NOT_AVAILABLE",
     } for i in range(410)]
     cases.append({
