@@ -629,3 +629,204 @@ def test_readonly_cli_does_not_dispatch(world, monkeypatch, capsys):
     assert not settings.resolved_path(exits.ROOT_REL).exists()
     with pytest.raises(SystemExit):
         cli.main(["--max-calls", "1"])
+
+
+def test_v23_single_sdk_auth_with_four_parallel_derived_clients(monkeypatch):
+    from threading import Barrier
+    from types import ModuleType
+    from scripts import thetadata_python_worker_v1 as worker
+    import pandas as pd
+
+    module = ModuleType("thetadata")
+    sync = Barrier(4)
+    created = []
+    class FakeThetaClient:
+        def __init__(
+            self, *, existing_authorized_client=None, dataframe_type="polars"
+        ):
+            assert dataframe_type == "pandas"
+            created.append(existing_authorized_client)
+        def option_at_time_quote(self, **kwargs):
+            sync.wait(timeout=5)
+            return pd.DataFrame([{"date_et": kwargs["start_date"].isoformat()}])
+    module.ThetaClient = FakeThetaClient
+    monkeypatch.setitem(__import__("sys").modules, "thetadata", module)
+    rt = worker.Runtime()
+    rt.version = worker.TARGET_LIBRARY_VERSION
+    rt.environment_fingerprint = "a" * 64
+    original_client = FakeThetaClient(dataframe_type="pandas")
+    rt.ensure = lambda: original_client
+    sample = {
+        "symbol": "SPY", "start_date": "2025-01-06",
+        "end_date": "2025-01-06", "time_of_day": "10:00:00.000",
+        "expiration": "*", "strike": "*", "right": "both",
+        "max_dte": 45, "strike_range": 2,
+    }
+    result = rt.request_shared_batch([sample] * 4)
+    assert result["shared_authenticated_session"] is True
+    assert len(result["results"]) == 4
+    assert all(q["ok"] is True for q in result["results"])
+    assert len(created) == 4  # one fake existing base, three derived
+    assert created[0] is None
+    assert created[1:] == [original_client] * 3
+    assert result["environment_fingerprint"] == "a" * 64
+
+
+def test_v23_shared_campaign_reuses_origins_and_avoids_four_auths(world):
+    from packages.data import options_native_exit_shared_session_campaign_v1 as shared
+    settings, plan = world
+    batches = []
+    def batch_reader(queries):
+        batches.append(queries)
+        expected = plan["requests"][4 * (len(batches) - 1):4 * len(batches)]
+        assert len(expected) == 4
+        assert [q["date_et"] for q in queries] == [
+            q["session_et"] for q in expected
+        ]
+        return [source(req, over_dte=True) for req in expected]
+    result = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"), max_calls=8,
+        reader=batch_reader, progress_every=4,
+    )
+    assert result["provider_calls_this_run"] == 8
+    assert result["archives_this_run"] == 8
+    assert result["provider_faults_this_run"] == 0
+    assert result["stop_reason"] == "OPTIONAL_GLOBAL_CALL_LIMIT_REACHED"
+    assert result["account_authenticated_sessions"] == 1
+    assert len(batches) == 2
+    next_result = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"), max_calls=4,
+        reader=lambda queries: [
+            source(req, over_dte=True) for req in plan["requests"][8:12]
+        ],
+    )
+    assert next_result["archives_this_run"] == 4
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c")
+    )["remaining_unattempted"] == 1570 - 12
+
+
+def test_v23_shared_batch_grpc_auth_fault_isolated_and_fails_closed(world):
+    from packages.data import options_native_exit_shared_session_campaign_v1 as shared
+    from packages.providers.thetadata.client import ThetaDataError
+    settings, plan = world
+    fault = ThetaDataError(
+        "provider secret intentionally omitted",
+        provider_error_type="_MultiThreadedRendezvous",
+        provider_grpc_status="UNAUTHENTICATED",
+    )
+    attempts = []
+    def reader(queries):
+        attempts.append(queries)
+        return [
+            source(plan["requests"][0], over_dte=True),
+            fault, fault, fault,
+        ]
+    r = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"),
+        reader=reader, progress_every=1,
+    )
+    assert r["provider_calls_this_run"] == 4
+    assert r["archives_this_run"] == 1
+    assert r["provider_faults_this_run"] == 3
+    assert r["stop_reason"] == "PROVIDER_OR_STORAGE_FAILURE_STOP"
+    assert len(attempts) == 1
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c")
+    )["remaining_unattempted"] == 1566
+    for req in plan["requests"][1:4]:
+        receipt = exits._receipt(
+            settings, req, plan["plan_fingerprint"], "terminal",
+        )
+        assert receipt["provider_failure_class"] == "_MultiThreadedRendezvous"
+        assert receipt["provider_grpc_status"] == "UNAUTHENTICATED"
+        assert "secret" not in str(receipt)
+
+
+def test_v23_shared_batch_transport_failure_never_retries(world):
+    from packages.data import options_native_exit_shared_session_campaign_v1 as shared
+    settings, plan = world
+    batches = []
+    def fail(queries):
+        batches.append(queries)
+        raise TimeoutError("unknown dispatch results")
+    r = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"), reader=fail,
+    )
+    assert r["provider_calls_this_run"] == 4
+    assert r["provider_faults_this_run"] == 4
+    assert r["archives_this_run"] == 0
+    assert len(batches) == 1
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c")
+    )["remaining_unattempted"] == 1566
+    for req in plan["requests"][:4]:
+        assert exits._state(
+            settings, req, plan["plan_fingerprint"]
+        ) == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY"
+
+
+def test_v23_shared_source_cli_offline_has_no_sdk_or_provider(
+    world, monkeypatch, capsys,
+):
+    from scripts import run_options_native_spy_exit_shared_session_v1 as cli23
+    settings, plan = world
+    monkeypatch.setattr(cli23, "load_settings", lambda *_: settings)
+    monkeypatch.setattr(
+        cli23, "_provider_shared_signature_preflight",
+        lambda: pytest.fail("offline must not even preflight provider"),
+    )
+    assert cli23.main([]) == 0
+    assert "provider_requests=0" in capsys.readouterr().out
+    assert not settings.resolved_path(exits.ROOT_REL).exists()
+
+
+def test_v23_shared_auth_setup_failure_is_before_all_paid_receipts(
+    world, monkeypatch, capsys,
+):
+    from scripts import run_options_native_spy_exit_shared_session_v1 as cli23
+    settings, plan = world
+    monkeypatch.setattr(cli23, "load_settings", lambda *_: settings)
+    monkeypatch.setattr(
+        cli23, "_provider_shared_signature_preflight",
+        lambda: {"thetadata_version": "1.0.12",
+                 "shared_authenticated_client_status":
+                 "SHARED_AUTH_CONSTRUCTOR_EXPLICIT"},
+    )
+    def cannot_authenticate():
+        raise RuntimeError("SDK shared client setup refused")
+    monkeypatch.setattr(
+        cli23, "establish_option_quote_shared_authenticated_session",
+        cannot_authenticate,
+    )
+    assert cli23.main(["--run", "--max-calls", "4"]) == 3
+    assert "BLOCKED" in capsys.readouterr().out
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c"),
+    )["remaining_unattempted"] == 1570
+    assert not settings.resolved_path(exits.ROOT_REL).exists()
+
+
+def test_v23_shared_auth_setup_is_idempotent_and_never_uses_history(
+    monkeypatch,
+):
+    from types import ModuleType
+    from scripts import thetadata_python_worker_v1 as worker
+    module = ModuleType("thetadata")
+    created = []
+    class Fake:
+        def __init__(
+            self, *, existing_authorized_client=None, dataframe_type="pandas"
+        ):
+            created.append(existing_authorized_client)
+        def option_at_time_quote(self, **kwargs):
+            raise AssertionError("auth readiness must not request history")
+    module.ThetaClient = Fake
+    monkeypatch.setitem(__import__("sys").modules, "thetadata", module)
+    runtime = worker.Runtime()
+    primary = Fake()
+    runtime.ensure = lambda: primary
+    assert runtime.setup_shared_auth_session()["historical_quote_requests"] == 0
+    assert runtime.setup_shared_auth_session()["historical_quote_requests"] == 0
+    assert len(created) == 4
+    assert created[1:] == [primary] * 3
