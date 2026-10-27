@@ -4,6 +4,14 @@
 
 This closes the **acquisition** queue, not the historical execution/scientific qualification gates. The original over-DTE condition means the provider's source response contains extra expiries; valid quoted in-range observations may be inspected with original SHA and per-row identity intact. The three schema-invalid sources and earlier eight failed dates remain excluded from paired research, **not silently accepted or re-requested**.
 
+## Local DTE admission policy — explicit decision, 2026-10-27
+
+ThetaData may return extra expirations beyond the requested `max_dte`; this is observed in the retained V12/V19 originals despite ThetaData's documentation describing an inclusive calendar-day filter. **Do not treat an otherwise valid response as unusable solely because it contains extra out-of-range expiration rows.** Save the entire unmodified provider-normalized response and immutable source SHA first. For each research or simulation decision, compute calendar DTE locally as `expiration_date - historical_session_date` in whole days, then select just the eligible contracts. The original frozen SPY entry rule remains 30–45 DTE; later exit-review matching permits 0–45 DTE for the **same contract**, so a position is not wrongly discarded when its DTE declines below 30 during the hold. Never quietly substitute different strikes, rights or expirations.
+
+**Separate quality dimensions:** extra-DTE rows are a scope discrepancy, not necessarily corrupted data; in-range row timestamp/freshness, two-sided NBBO, displayed size, non-crossing, source provenance and exact contract identity must still be checked. Independent proof that all needed in-range expiries/strikes are present remains unresolved, and `strike_range=2` may omit a previously purchased strike on later review days when SPY moves. Any missing quote must remain missing or be sourced via a separately authorized targeted exact-contract request—not invented, silently dropped from the denominator or substituted with an adjacent contract. If the present sources meet the intended coverage, do not spend provider time resolving `max_dte` forwarding semantics merely to eliminate extra data.
+
+This policy is already embodied in V14's local DTE positional indexes and V26's per-source entry/exit candidate projection. The new regression asserts that a 90-DTE extra expiration does not veto a valid 30–45 DTE pair.
+
 ## New, additive, offline V26 diagnostic
 
 `packages/data/options_native_original_pair_diagnostic_v26.py` and
