@@ -137,6 +137,7 @@ def main(argv: list[str] | None = None) -> int:
                 + (
                     f" provider_class={e['provider_failure_class']}"
                     f" grpc_status={e['provider_grpc_status']}"
+                    f" provider_stage={e.get('provider_error_stage')}"
                     if e.get("provider_failure_class") or e.get("provider_grpc_status")
                     else ""
                 ), flush=True,
@@ -149,6 +150,8 @@ def main(argv: list[str] | None = None) -> int:
             f" out_dte={result['outside_dte_archives_this_run']}"
             f" invalid_archives={result['invalid_archives_this_run']}"
             f" provider_faults={result['provider_faults_this_run']}"
+            f" isolated_value_errors={result['isolated_value_errors_this_run']}"
+            f" hard_provider_faults={result['hard_provider_faults_this_run']}"
             f" full_storage_audits={result['full_storage_audits_this_run']}"
             f" stop={result['stop_reason']}", flush=True,
         )

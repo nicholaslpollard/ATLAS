@@ -830,3 +830,170 @@ def test_v23_shared_auth_setup_is_idempotent_and_never_uses_history(
     assert runtime.setup_shared_auth_session()["historical_quote_requests"] == 0
     assert len(created) == 4
     assert created[1:] == [primary] * 3
+
+
+def test_v24_worker_classifies_local_scalar_valueerror_without_sdk_messages():
+    from scripts import thetadata_python_worker_v1 as worker
+    class BadFrame:
+        def to_dict(self, **kwargs):
+            return [{"bid": float("nan")}]
+    class FakeClient:
+        def option_at_time_quote(self, **kwargs):
+            return BadFrame()
+    runtime = worker.Runtime()
+    runtime.version = worker.TARGET_LIBRARY_VERSION
+    runtime.environment_fingerprint = "b" * 64
+    runtime.shared_clients = [FakeClient()] * 4
+    runtime.setup_shared_auth_session = lambda: {
+        "ok": True, "shared_authenticated_session": True
+    }
+    query = {
+        "symbol": "SPY", "start_date": "2020-05-01",
+        "end_date": "2020-05-01", "time_of_day": "10:00:00.000",
+        "expiration": "*", "strike": "*", "right": "both",
+        "max_dte": 45, "strike_range": 2,
+    }
+    r = runtime.request_shared_batch([query])["results"][0]
+    assert r == {
+        "ok": False,
+        "error_stage": "DATAFRAME_SERIALIZATION",
+        "error_type": "ValueError",
+        "error_grpc_status": None,
+    }
+
+    class BadSDK:
+        def option_at_time_quote(self, **kwargs):
+            raise ValueError("request has secret text that must not escape")
+    runtime.shared_clients = [BadSDK()] * 4
+    r2 = runtime.request_shared_batch([query])["results"][0]
+    assert r2 == {
+        "ok": False,
+        "error_stage": "SDK_QUOTE_CALL",
+        "error_type": "ValueError",
+        "error_grpc_status": None,
+    }
+    assert "secret" not in str(r2)
+
+
+def test_v24_one_isolated_valueerror_is_quarantined_then_later_sources_acquired(
+    world,
+):
+    from packages.data import options_native_exit_shared_session_campaign_v1 as shared
+    from packages.providers.thetadata.client import ThetaDataError
+    settings, plan = world
+    indexed = {r["session_et"]: r for r in plan["requests"]}
+    calls = []
+    fault = ThetaDataError(
+        "raw SDK error text must never enter receipts",
+        provider_error_type="ValueError",
+        provider_error_stage="SDK_QUOTE_CALL",
+    )
+    def batch_reader(qs):
+        calls.append(len(qs))
+        return [
+            fault if q["date_et"] == plan["requests"][2]["session_et"]
+            else source(indexed[q["date_et"]], over_dte=True)
+            for q in qs
+        ]
+    p = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"),
+        max_calls=12, reader=batch_reader, progress_every=1,
+    )
+    assert p["provider_calls_this_run"] == 12
+    assert p["completed_provider_calls_this_run"] == 12
+    assert p["isolated_value_errors_this_run"] == 1
+    assert p["hard_provider_faults_this_run"] == 0
+    assert p["provider_faults_this_run"] == 1
+    assert p["archives_this_run"] == 11
+    assert p["stop_reason"] == "OPTIONAL_GLOBAL_CALL_LIMIT_REACHED"
+    assert calls == [4, 4, 4]
+    bad = plan["requests"][2]
+    t = exits._receipt(
+        settings, bad, plan["plan_fingerprint"], "terminal",
+    )
+    assert t["provider_error_stage"] == "SDK_QUOTE_CALL"
+    assert t["provider_failure_class"] == "ValueError"
+    assert t["archive"] is None
+    assert "raw SDK" not in str(t)
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c")
+    )["remaining_unattempted"] == 1558
+
+
+def test_v24_clustered_valueerrors_stop_after_two_in_32_without_retries(world):
+    from packages.data import options_native_exit_shared_session_campaign_v1 as shared
+    from packages.providers.thetadata.client import ThetaDataError
+    settings, plan = world
+    indexed = {r["session_et"]: r for r in plan["requests"]}
+    fault_dates = {
+        plan["requests"][1]["session_et"],
+        plan["requests"][5]["session_et"],
+    }
+    fault = ThetaDataError(
+        "SDK exception text stays private",
+        provider_error_type="ValueError",
+        provider_error_stage="DATAFRAME_SERIALIZATION",
+    )
+    calls = []
+    def reader(qs):
+        calls.append(len(qs))
+        return [
+            fault if q["date_et"] in fault_dates
+            else source(indexed[q["date_et"]], over_dte=True)
+            for q in qs
+        ]
+    result = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"),
+        reader=reader, progress_every=4,
+    )
+    assert result["provider_calls_this_run"] == 8
+    assert result["provider_faults_this_run"] == 2
+    assert result["isolated_value_errors_this_run"] == 2
+    assert result["hard_provider_faults_this_run"] == 0
+    assert result["stop_reason"] == "CLUSTERED_SOURCE_VALUE_ERRORS_STOP"
+    assert calls == [4, 4]
+    assert exits.preview_exit_campaign(
+        settings, Path("f"), Path("c")
+    )["remaining_unattempted"] == 1562
+
+
+def test_v24_valueerror_missing_verified_stage_still_stops_immediately(world):
+    from packages.data import options_native_exit_shared_session_campaign_v1 as shared
+    from packages.providers.thetadata.client import ThetaDataError
+    settings, plan = world
+    failure = ThetaDataError(
+        "undetermined failure", provider_error_type="ValueError",
+    )
+    n = 0
+    def reader(qs):
+        nonlocal n
+        n += 1
+        return [failure] * len(qs)
+    out = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"), reader=reader,
+    )
+    assert out["provider_calls_this_run"] == 4
+    assert out["isolated_value_errors_this_run"] == 0
+    assert out["hard_provider_faults_this_run"] == 4
+    assert out["stop_reason"] == "PROVIDER_OR_STORAGE_FAILURE_STOP"
+    assert n == 1
+
+
+def test_v24_valueerror_with_grpc_auth_status_is_hard_stop(world):
+    from packages.data import options_native_exit_shared_session_campaign_v1 as shared
+    from packages.providers.thetadata.client import ThetaDataError
+    settings, plan = world
+    fault = ThetaDataError(
+        "unauthorized", provider_error_type="ValueError",
+        provider_error_stage="SDK_QUOTE_CALL",
+        provider_grpc_status="UNAUTHENTICATED",
+    )
+    out = shared.run_shared_exit_campaign(
+        settings, Path("f"), Path("c"),
+        reader=lambda qs: [fault] * len(qs),
+    )
+    assert out["provider_calls_this_run"] == 4
+    assert out["isolated_value_errors_this_run"] == 0
+    assert out["hard_provider_faults_this_run"] == 4
+    assert out["stop_reason"] == "PROVIDER_OR_STORAGE_FAILURE_STOP"
+

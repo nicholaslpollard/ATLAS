@@ -40,12 +40,21 @@ class ThetaDataError(RuntimeError):
         self, message: str, *, http_status: int | None = None,
         provider_error_type: str | None = None,
         provider_grpc_status: str | None = None,
+        provider_error_stage: str | None = None,
     ) -> None:
         super().__init__(message)
         self.http_status = http_status
         # Sanitized, bounded provider metadata. Never store raw SDK messages.
         self.provider_error_type = provider_error_type
         self.provider_grpc_status = provider_grpc_status
+        # Only one of three fixed internal processing stages, never SDK text.
+        self.provider_error_stage = (
+            provider_error_stage
+            if provider_error_stage in {
+                "ARGUMENT_CONVERSION", "SDK_QUOTE_CALL",
+                "DATAFRAME_SERIALIZATION",
+            } else None
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -458,6 +467,7 @@ def option_at_time_quote_shared_session_batch(
                 provider_grpc_status=(
                     status if status in valid_status else None
                 ),
+                provider_error_stage=item.get("error_stage"),
             ))
             continue
         rows = item.get("rows")
