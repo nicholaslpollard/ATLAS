@@ -1,5 +1,10 @@
 # ATLAS Project Guide and Roadmap
 
+### 2026-10-27 V27 — Fixed 1–5-session historical original-option-quote parameter sweep (PR under CI)
+
+Building on V26's original source-to-source quote matching, V27 executes five **predeclared** SPY option holding-period scenario observations with three fee assumptions each. Every entry-day eligible CALL+PUT pair appears in the denominator of every scenario; no later missing quote can cancel the hypothetical earlier entry, choose a more profitable exit, or substitute an option. The outcome-sensitive source inspection is preregistered with the append-only trial ledger; runs read original D:-bound archives and make **zero ThetaData/provider requests**. Scenario outputs are quote-only, matched-data-conditioned and have **no account P&L, executable 10:01 fills or alpha authority**. The next real simulation milestone is a PIT-spread/OI/underlying-bound ATM entry selector, exact-contract exit evidence and lifecycle-account event adapter. Any missing exact later contracts require **targeted** collection rather than another whole-chain acquisition. See `docs/research/spy_fixed_hold_quote_sensitivity_v27_20261027.md`.
+
+
 ### 2026-10-27 V26: Frozen 1,570 SPY exit-source acquisition COMPLETE, original quote pairing next
 
 The user workstation V24 shared-auth run completed exactly 1,104 remaining 10:00 SPY exit requests, archiving 1,103 originals (1,102 over-DTE diagnostics and one invalid schema), with one explicit no-data source, zero new provider faults, 35 full storage audits and no remaining unattempted IDs. Frozen 1,570 exit states: 1,558 out-DTE original archives; 3 invalid-schema originals; 8 prior no-source provider errors; 1 explicit no-data. These are preserved immutable sources, **not simulator fill authority**. Earlier V21 fault audit found expired-before-review and positive-crossed quote rows in two invalid original sources, while other original gaps remain unqualified.
