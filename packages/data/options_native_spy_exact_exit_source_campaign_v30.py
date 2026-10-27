@@ -71,6 +71,47 @@ class ExactExitSourceError(ValueError):
     pass
 
 
+# The existing V29 CLI uses audit_original_spy_pair_observations (V26) as
+# its SHA/provenance-verified original-source reader. That wrapper accepts
+# V29's inner report WITH its own fingerprint, adds V26 metadata, hashes
+# the entire compound object, and replaces the public fingerprint with
+# the resulting outer hash. The published immutable V29 artifact therefore
+# correctly has a two-layer fingerprint, not a single hash of visible keys.
+# Reconstruct BOTH hashes rather than asking the user to modify or rerun it.
+V26_WRAPPER_FIELDS = frozenset({
+    "original_411_entry_plan", "distinct_new_exit_request_plan",
+    "observed_source_identities_loaded", "source_plan_fingerprint",
+    "note", "pricing", "fee_grid_is_model_assumption",
+    "simulations_run", "account_pnl_reported",
+    "historical_execution_qualified", "protected_outcomes_read",
+    "strategy_promotion",
+})
+
+
+def _verify_v29_wrapped_fingerprint(plan: dict[str, Any]) -> bool:
+    """Verify the exact immutable V29-on-V26 report hashing convention."""
+    if (plan.get("original_411_entry_plan") != 411
+            or plan.get("distinct_new_exit_request_plan") != 1570
+            or plan.get("simulations_run") != 0
+            or plan.get("account_pnl_reported") is not False
+            or plan.get("historical_execution_qualified") is not False
+            or plan.get("protected_outcomes_read") != 0
+            or plan.get("strategy_promotion") is not False):
+        return False
+    outer = {key: value for key, value in plan.items() if key != "fingerprint"}
+    inner = {
+        key: value for key, value in outer.items()
+        if key not in V26_WRAPPER_FIELDS
+    }
+    # The wrapper's four overlapping keys (contract, status, provider/broker
+    # requests) are deliberately retained because V29's values supersede
+    # the V26 defaults in **values.
+    inner_fingerprint = _fingerprint(inner)
+    return plan.get("fingerprint") == _fingerprint({
+        **outer, "fingerprint": inner_fingerprint,
+    })
+
+
 def load_exact_exit_plan(path: Path) -> dict[str, Any]:
     if not path.is_file() or path.is_symlink() or not 0 < path.stat().st_size <= 8 * 1024 * 1024:
         raise ExactExitSourceError("V30_V29_PLAN_PATH_OR_SIZE_INVALID")
@@ -89,9 +130,7 @@ def load_exact_exit_plan(path: Path) -> dict[str, Any]:
             or plan.get("provider_requests") != 0
             or plan.get("broker_requests") != 0
             or plan.get("protected_2026_outcomes_read") != 0
-            or plan.get("fingerprint") != _fingerprint({
-                k: v for k, v in plan.items() if k != "fingerprint"
-            })):
+            or not _verify_v29_wrapped_fingerprint(plan)):
         raise ExactExitSourceError("V30_V29_FROZEN_PLAN_FINGERPRINT_OR_SCOPE_DRIFT")
     requests = plan.get("missing_exact_contract_right_requests")
     cases = plan.get("cases")
