@@ -16,6 +16,7 @@ from packages.data.options_native_spy_physical_spot_exact_demand_v29 import (
 from packages.data.options_native_spy_exact_exit_source_campaign_v30 import (
     CONTRACT, ExactExitSourceError, _state, load_exact_exit_plan,
     preview_exact_exit_campaign, run_exact_exit_campaign,
+    _verify_v29_wrapped_fingerprint,
 )
 from packages.providers.thetadata import client
 from packages.providers.thetadata.client import (
@@ -91,8 +92,27 @@ def preview_plan():
         "missing_exact_contract_right_request_count": 1,
         "cases": cases,
     }
+    # Real V29 CLI wraps the already-fingerprinted V29 evaluator inside V26.
+    # Retain this exact two-layer original-source report convention.
     report["fingerprint"] = _fingerprint(report)
-    return report
+    wrapped = {
+        "contract": "atlas-source-linked-spy-quote-pair-diagnostic-v26",
+        "status": "RETROSPECTIVE_SOURCE_MATCH_DIAGNOSTIC_ONLY",
+        "original_411_entry_plan": 411,
+        "distinct_new_exit_request_plan": 1570,
+        "observed_source_identities_loaded": 1981,
+        "source_plan_fingerprint": "a" * 64,
+        "note": "Unqualified historical quote diagnostic",
+        "pricing": "10:00 quote observation only; no 10:01 trade fills",
+        "fee_grid_is_model_assumption": True,
+        "provider_requests": 0, "broker_requests": 0,
+        "simulations_run": 0, "account_pnl_reported": False,
+        "historical_execution_qualified": False,
+        "protected_outcomes_read": 0, "strategy_promotion": False,
+        **report,
+    }
+    wrapped["fingerprint"] = _fingerprint(wrapped)
+    return wrapped
 
 
 class Settings:
@@ -149,6 +169,7 @@ def test_plan_bound_to_original_entry_choice_and_exact_missing_right(tmp_path):
     plan = preview_plan()
     path = tmp_path / "v29.json"
     path.write_text(json.dumps(plan))
+    assert _verify_v29_wrapped_fingerprint(plan)
     assert load_exact_exit_plan(path)["fingerprint"] == plan["fingerprint"]
     edited = dict(plan)
     edited["missing_exact_contract_right_requests"] = [{
@@ -274,3 +295,44 @@ def test_zero_missing_rights_is_success_without_authentication(tmp_path):
     assert result["remaining"] == 0
     assert result["states"] == {}
     assert result["source_promotion"] is False
+
+
+
+def test_v29_original_two_level_hash_rejects_tampering_without_rewriting_report():
+    """A legitimate CLI-produced wrapper is different from a single digest."""
+    original = preview_plan()
+    assert _verify_v29_wrapped_fingerprint(original) is True
+    assert original["fingerprint"] != _fingerprint({
+        k: v for k, v in original.items() if k != "fingerprint"
+    })
+    tampered = dict(original)
+    tampered["missing_exact_contract_right_request_count"] = 999
+    assert _verify_v29_wrapped_fingerprint(tampered) is False
+    forged_single_hash = dict(original)
+    forged_single_hash["fingerprint"] = _fingerprint({
+        k: v for k, v in original.items() if k != "fingerprint"
+    })
+    assert _verify_v29_wrapped_fingerprint(forged_single_hash) is False
+
+
+def test_reject_unwrapped_v29_report_even_if_inner_fingerprint_valid(tmp_path):
+    original = preview_plan()
+    unwrapped = {
+        k: v for k, v in original.items()
+        if k not in {
+            "original_411_entry_plan", "distinct_new_exit_request_plan",
+            "observed_source_identities_loaded", "source_plan_fingerprint",
+            "note", "pricing", "fee_grid_is_model_assumption",
+            "simulations_run", "account_pnl_reported",
+            "historical_execution_qualified", "protected_outcomes_read",
+            "strategy_promotion",
+        }
+    }
+    unwrapped["fingerprint"] = _fingerprint({
+        k: v for k, v in unwrapped.items() if k != "fingerprint"
+    })
+    report = tmp_path / "unwrapped_v29.json"
+    import json
+    report.write_text(json.dumps(unwrapped), encoding="utf-8")
+    with pytest.raises(ExactExitSourceError, match="FROZEN_PLAN_FINGERPRINT"):
+        load_exact_exit_plan(report)
