@@ -14,6 +14,7 @@ core ATLAS/Webull environment.
 
 import argparse
 import contextlib
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 import importlib.metadata
 import hashlib
@@ -375,6 +376,7 @@ class Runtime:
         self.client = None
         self.version = None
         self.environment_fingerprint = None
+        self.shared_clients = None
 
     def ensure(self):
         if self.client is not None:
@@ -394,6 +396,83 @@ class Runtime:
         self.version = version
         _, self.environment_fingerprint = _provider_environment()
         return self.client
+
+    def request_shared_batch(self, queries: list[dict[str, Any]]) -> dict[str, Any]:
+        """At most four quote GETs through one authenticated SDK session.
+
+        Only a single base ThetaClient performs independent authentication.
+        Derived clients must explicitly support existing_authorized_client;
+        if the installed pinned library lacks that keyword, refuse BEFORE
+        issuing any quote request. Each query result stays independent.
+        """
+        if (not isinstance(queries, list) or not 1 <= len(queries) <= 4):
+            raise RuntimeError("THETADATA_SHARED_BATCH_SIZE_NOT_1_TO_4")
+        for q in queries:
+            if (not isinstance(q, dict)
+                    or not q
+                    or set(q) - ALLOWED_METHOD_ARGUMENTS["option_at_time_quote"]
+                    or "symbol" not in q
+                    or "start_date" not in q
+                    or "end_date" not in q
+                    or "time_of_day" not in q):
+                raise RuntimeError("THETADATA_SHARED_BATCH_ARGUMENTS_INVALID")
+        # All query identities are independently pre-receipted by the ATLAS
+        # outer coordinator, not by this isolated SDK worker.
+        if self.shared_clients is None:
+            if len(queries) > 1:
+                with contextlib.redirect_stdout(sys.stderr):
+                    from thetadata import ThetaClient
+                try:
+                    signature = inspect.signature(ThetaClient)
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError(
+                        "THETADATA_SHARED_CLIENT_SIGNATURE_UNINSPECTABLE"
+                    ) from exc
+                if "existing_authorized_client" not in signature.parameters:
+                    raise RuntimeError(
+                        "THETADATA_PINNED_SDK_SHARED_AUTH_NOT_SUPPORTED"
+                    )
+            base = self.ensure()
+            with contextlib.redirect_stdout(sys.stderr):
+                from thetadata import ThetaClient
+                self.shared_clients = [base]
+                # All derived clients use the base's existing authorization.
+                for _ in range(3):
+                    self.shared_clients.append(ThetaClient(
+                        existing_authorized_client=base,
+                        dataframe_type="pandas",
+                    ))
+        def execute(index_and_query):
+            index, q = index_and_query
+            try:
+                client = self.shared_clients[index]
+                func = getattr(client, "option_at_time_quote")
+                with contextlib.redirect_stdout(sys.stderr):
+                    frame = func(**_convert_kwargs("option_at_time_quote", q))
+                return {
+                    "ok": True,
+                    "rows": _records(frame),
+                    "explicit_no_data": False,
+                    "library_version": self.version,
+                    "environment_fingerprint": self.environment_fingerprint,
+                }
+            except Exception as exc:
+                if type(exc).__name__ == "NoDataFoundError":
+                    return {
+                        "ok": True, "rows": [], "explicit_no_data": True,
+                        "library_version": self.version,
+                        "environment_fingerprint": self.environment_fingerprint,
+                    }
+                return {"ok": False, **_sanitized_provider_exception(exc)}
+        with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+            responses = list(pool.map(execute, enumerate(queries)))
+        return {
+            "ok": True,
+            "results": responses,
+            "library_version": self.version,
+            "environment_fingerprint": self.environment_fingerprint,
+            "shared_authenticated_session": True,
+        }
 
     def request(self, method: str, kwargs: dict[str, Any]) -> dict[str, Any]:
         # The frozen downstream plan supplies annual dividend dollars in the
@@ -487,7 +566,12 @@ def serve() -> int:
             kwargs = payload.get("kwargs")
             if not isinstance(kwargs, dict):
                 raise ValueError("KWARGS_NOT_OBJECT")
-            result = runtime.request(method, kwargs)
+            if method == "batch_option_at_time_quote_shared_session":
+                if set(kwargs) != {"queries"}:
+                    raise ValueError("SHARED_BATCH_KEYWORDS_INVALID")
+                result = runtime.request_shared_batch(kwargs["queries"])
+            else:
+                result = runtime.request(method, kwargs)
             response = {"id": request_id, **result}
         except Exception as exc:
             response = {
@@ -497,8 +581,17 @@ def serve() -> int:
                 # Deliberately do not return exception text; provider/auth exceptions
                 # can contain sensitive request context.
             }
-        sys.stdout.write(json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n")
-        sys.stdout.flush()
+        # os.write uses the original protocol fd even when individual SDK
+        # request threads redirect Python's process-global sys.stdout.
+        raw_response = (
+            json.dumps(response, sort_keys=True, separators=(",", ":")) + "\n"
+        ).encode("utf-8")
+        off = 0
+        while off < len(raw_response):
+            chunk = os.write(1, raw_response[off:])
+            if chunk <= 0:
+                raise RuntimeError("WORKER_PROTOCOL_WRITE_FAILED")
+            off += chunk
     return 0
 
 
