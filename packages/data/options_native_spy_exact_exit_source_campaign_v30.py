@@ -51,6 +51,7 @@ MAX_RAW = 16 * 1024 * 1024
 MAX_ARCHIVE = MAX_RAW + 4096
 MAX_RECEIPT = 32 * 1024
 MAX_INVALID_ARCHIVES_PER_RUN = 4
+MAX_PROVIDER_FAULTS_PER_RUN = 4
 MAX_WORKERS = 4
 EASTERN = ZoneInfo("America/New_York")
 TERMINAL = {
@@ -358,6 +359,9 @@ def run_exact_exit_campaign(
     }
     if not rows:
         result["remaining"] = 0
+        result["states"] = before["states"]
+        result["source_promotion"] = False
+        result["historical_account_replay"] = False
         return result
     # Authenticate/construct one four-client shared session BEFORE ANY
     # started receipt or paid quote dispatch.
@@ -436,6 +440,8 @@ def run_exact_exit_campaign(
                 hard_failure = True
             if state == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY":
                 result["provider_failures_this_run"] += 1
+                if result["provider_failures_this_run"] >= MAX_PROVIDER_FAULTS_PER_RUN:
+                    hard_failure = True
             elif state == "EXPLICIT_NO_DATA_SOURCE_ONLY":
                 result["no_data_this_run"] += 1
             if archive is not None:
