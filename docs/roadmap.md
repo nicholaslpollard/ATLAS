@@ -1,5 +1,8 @@
 # ATLAS Project Guide and Roadmap
 
+V23 anti-ID-burn safeguard: `--run` performs an explicit shared-session authentication handshake and constructs all derived SDK clients before any immutable STARTED receipt. A failure during session/client construction leaves all historical query IDs unattempted; this handshake may contact the authentication service but sends zero historical quote data requests. Plain `--sdk-preflight` remains fully local/offline. Query STARTED receipts are still written before the subsequent batch of up to 4 paid quotes, preserving no-ambiguous-retry authority.
+
+
 ### 2026-10-26 V23: Shared-authenticated Python SDK concurrency instead of four independent logins
 
 **New evidence:** user V22 latest four-worker canary again failed three of four ThetaData requests; newly retained exceptions are `_MultiThreadedRendezvous` with gRPC `UNAUTHENTICATED` for SPY at-time query dates 2019-04-02, 2019-04-03, 2019-04-04, while 2019-03-29 original successfully archived. This strongly implicates independent client authentication/session competition, not an ordinary internet outage, but the provider has not explicitly confirmed the mechanism. Accumulated original exact source states now 242 out-DTE archives, one invalid archived original, seven distinct no-source provider-error receipts, and 1320 unattempted (sum 1570). The normal V22 `--workers 1` 2019-03-28 original succeeded. Do not retry any of the previously attempted 250 identities or the originally frozen 411 entry identities.
