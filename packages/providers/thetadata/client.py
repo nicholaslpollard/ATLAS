@@ -374,6 +374,22 @@ def option_at_time_quote_surface(
     return _call("option_at_time_quote", **kwargs)
 
 
+def establish_option_quote_shared_authenticated_session() -> None:
+    """Construct the single SDK auth session before any immutable query start.
+
+    SDK authentication may contact ThetaData's authorization service, but
+    this sends ZERO historical market-data requests. The established clients
+    persist in the caller thread's isolated provider subprocess and are reused
+    by all subsequent quote batches in that same process.
+    """
+    observed = _worker().request(
+        "shared_authenticated_session_ready", {},
+    )
+    if (observed.get("shared_authenticated_session") is not True
+            or observed.get("historical_quote_requests") != 0):
+        raise ThetaDataError("shared quote authentication readiness failed")
+
+
 def option_at_time_quote_shared_session_batch(
     queries: list[dict[str, Any]],
 ) -> list[ThetaDataResponse | ThetaDataError]:
