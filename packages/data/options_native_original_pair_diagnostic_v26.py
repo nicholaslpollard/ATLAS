@@ -305,10 +305,14 @@ def audit_original_spy_pair_observations(
         raise PairDiagnosticError("FROZEN_SOURCE_PLAN_CHANGED")
     known_entry = {r["query_id"]: r for r in entries}
     exit_req = {r["query_id"]: r for r in plan["requests"]}
-    # Bounded locality cache: keep only nearby weekly review sources in RAM.\n    # The full 8-year quote corpus is not duplicated in memory.\n    seen: OrderedDict[str, tuple[str, tuple[dict[str, Any], ...] | None]] = OrderedDict()\n    source_ids_seen: set[str] = set()
+    # Keep only nearby weekly quote surfaces resident in RAM.
+    # Query IDs already encountered remain counted even after eviction.
+    seen: OrderedDict[str, tuple[str, tuple[dict[str, Any], ...] | None]] = OrderedDict()
+    source_ids_seen: set[str] = set()
 
     def fetch(qid: str, row: dict[str, Any]):
         if qid in seen:
+            seen.move_to_end(qid)
             return seen[qid]
         if qid in known_entry:
             if qid != row["query_id"]:
@@ -327,6 +331,9 @@ def audit_original_spy_pair_observations(
                 raise PairDiagnosticError("EXIT_REQUEST_OUTSIDE_FROZEN_PLAN")
             outcome = _read_verified_exit_source(settings, exit_req[qid], plan["plan_fingerprint"])
         seen[qid] = outcome
+        source_ids_seen.add(qid)
+        if len(seen) > 48:
+            seen.popitem(last=False)
         return outcome
 
     values = _evaluate_cohort(entries, fetch)
