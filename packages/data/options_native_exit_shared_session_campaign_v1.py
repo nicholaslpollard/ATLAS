@@ -13,6 +13,17 @@ No exact preexisting original is retried. No simulator runs or fill promotion.
 from pathlib import Path
 from typing import Any, Callable
 
+# A source-specific SDK/serialization ValueError may be quarantined while
+# collecting other immutable historical IDs. Any auth/network/unknown fault
+# remains an immediate stop; two such ValueErrors in 32 queries, or six
+# cumulative, stop to prevent an uncontrolled run of bad historical sources.
+MAX_ISOLATED_VALUE_ERRORS_PER_RUN = 6
+MAX_CLUSTERED_VALUE_ERRORS = 2
+CLUSTER_WINDOW_COMPLETED_QUERIES = 32
+SAFE_ISOLATED_VALUEERROR_STAGES = frozenset({
+    "SDK_QUOTE_CALL", "DATAFRAME_SERIALIZATION",
+})
+
 from packages.core.settings import AtlasSettings
 from packages.data import options_native_exit_source_campaign_v1 as exits
 from packages.data.options_native_exit_source_campaign_v1 import (
@@ -65,6 +76,8 @@ def run_shared_exit_campaign(
         "outside_dte_archives_this_run": 0,
         "invalid_archives_this_run": 0,
         "provider_faults_this_run": 0,
+        "isolated_value_errors_this_run": 0,
+        "hard_provider_faults_this_run": 0,
         "full_storage_audits_this_run": 0,
         "stop_reason": "ALL_NEW_EXIT_SCOPES_SCANNED",
         "simulator_ready": False, "source_complete": False,
@@ -79,6 +92,7 @@ def run_shared_exit_campaign(
     meter = _ConservativeExitStorageMeter(settings, storage_reader)
     index = 0
     stopped = False
+    isolated_failure_positions: list[int] = []
     while index < len(eligible) and not stopped:
         batch: list[tuple[dict[str, Any], dict[str, Any]]] = []
         while index < len(eligible) and len(batch) < 4 and (
@@ -124,6 +138,7 @@ def run_shared_exit_campaign(
             error_type = None
             provider_class = None
             grpc_status = None
+            provider_stage = None
             try:
                 if isinstance(observed, Exception):
                     raise observed
@@ -138,12 +153,18 @@ def run_shared_exit_campaign(
                     provider_class, grpc_status = (
                         _safe_provider_failure_category(exc)
                     )
+                    provider_stage = getattr(
+                        exc, "provider_error_stage", None
+                    )
                     if archive is not None:
                         state = "RAW_ARCHIVED_INVALID_SCHEMA"
             except Exception as exc:
                 error_type = type(exc).__name__
                 provider_class, grpc_status = (
                     _safe_provider_failure_category(exc)
+                )
+                provider_stage = getattr(
+                    exc, "provider_error_stage", None
                 )
                 if archive is not None:
                     state = "RAW_ARCHIVED_INVALID_SCHEMA"
@@ -156,6 +177,13 @@ def run_shared_exit_campaign(
                 "error_type": error_type,
                 "provider_failure_class": provider_class,
                 "provider_grpc_status": grpc_status,
+                "provider_error_stage": (
+                    provider_stage
+                    if provider_stage in (
+                        "ARGUMENT_CONVERSION", "SDK_QUOTE_CALL",
+                        "DATAFRAME_SERIALIZATION",
+                    ) else None
+                ),
                 "source_complete": False, "simulator_ready": False,
             })
             _write_receipt(
@@ -168,12 +196,25 @@ def run_shared_exit_campaign(
                 result["outside_dte_archives_this_run"] += 1
             if state == "RAW_ARCHIVED_INVALID_SCHEMA":
                 result["invalid_archives_this_run"] += 1
+            count = result["completed_provider_calls_this_run"]
             if state == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY":
                 result["provider_faults_this_run"] += 1
-            count = result["completed_provider_calls_this_run"]
+                if (
+                    provider_class == "ValueError"
+                    and grpc_status is None
+                    and provider_stage in SAFE_ISOLATED_VALUEERROR_STAGES
+                    and error_type == "ThetaDataError"
+                ):
+                    result["isolated_value_errors_this_run"] += 1
+                    isolated_failure_positions.append(count)
+                else:
+                    result["hard_provider_faults_this_run"] += 1
             if progress is not None and (
                 count % progress_every == 0
-                or state == "PROVIDER_OR_STORAGE_ERROR_NO_RETRY"
+                or state in (
+                    "PROVIDER_OR_STORAGE_ERROR_NO_RETRY",
+                    "RAW_ARCHIVED_INVALID_SCHEMA",
+                )
                 or (max_calls is not None and count == max_calls)
             ):
                 progress({
@@ -185,10 +226,32 @@ def run_shared_exit_campaign(
                     "state": state,
                     "provider_failure_class": provider_class,
                     "provider_grpc_status": grpc_status,
+                    "provider_error_stage": (
+                        provider_stage
+                        if provider_stage in (
+                            "ARGUMENT_CONVERSION", "SDK_QUOTE_CALL",
+                            "DATAFRAME_SERIALIZATION",
+                        ) else None
+                    ),
                     "simulator_ready": False,
                 })
-        if result["provider_faults_this_run"]:
+        # Auth, transport, unknown or failed local query argument validation
+        # always stop. Only the narrowly evidenced per-date ValueError is
+        # tolerated; it remains permanently quarantined, never re-requested.
+        clustered = sum(
+            1 for pos in isolated_failure_positions
+            if result["completed_provider_calls_this_run"] - pos
+                < CLUSTER_WINDOW_COMPLETED_QUERIES
+        )
+        if result["hard_provider_faults_this_run"]:
             result["stop_reason"] = "PROVIDER_OR_STORAGE_FAILURE_STOP"
+            stopped = True
+        elif clustered >= MAX_CLUSTERED_VALUE_ERRORS:
+            result["stop_reason"] = "CLUSTERED_SOURCE_VALUE_ERRORS_STOP"
+            stopped = True
+        elif (result["isolated_value_errors_this_run"]
+              >= MAX_ISOLATED_VALUE_ERRORS_PER_RUN):
+            result["stop_reason"] = "ISOLATED_VALUE_ERROR_BUDGET_EXHAUSTED"
             stopped = True
         elif (result["invalid_archives_this_run"]
               >= MAX_INVALID_SCHEMAS_PER_RUN):
