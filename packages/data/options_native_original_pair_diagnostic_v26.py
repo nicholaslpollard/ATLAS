@@ -9,7 +9,7 @@ Prices are hypothetical ask-to-bid references, NOT historical executions.
 """
 
 from collections import Counter, defaultdict, OrderedDict
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
 import hashlib
 import json
@@ -20,6 +20,9 @@ from zoneinfo import ZoneInfo
 import zlib
 
 from packages.core.settings import AtlasSettings
+from packages.performance.ledger import StrategyTrialLedger
+from packages.schemas.strategy_lab import (StrategyTrialDraft, StrategyTrialStage, StrategyTrialDisposition)
+from packages.strategies.options_native_pilot_v1_contract import (SPECIFICATION_FINGERPRINT, DATA_FINGERPRINT, PILOT_ID, specification_trial_draft)
 from packages.data.hybrid_options_at_time_one_call_v1 import (
     PINNED_MANIFEST_FINGERPRINT, _load_full_manifest,
 )
@@ -49,6 +52,67 @@ ENTRY_ARCHIVE_OK = EXIT_ARCHIVE_OK
 
 class PairDiagnosticError(ValueError):
     pass
+
+
+TRIAL_ID = "options-native.spy-original-paired-quote-economics.v26"
+TRIAL_LEDGER_REL = "data/options/hybrid/strategy_trial_ledger_v26.jsonl"
+
+
+def register_outcome_inspection_trial(settings: AtlasSettings) -> dict[str, Any]:
+    """Preregister frozen pilot and diagnostic BEFORE future option quote reads.
+
+    This is an append-only source RESEARCH registration, not promotion,
+    paper/live authorization, or qualification of the modeled cash return.
+    """
+    settings.assert_external_storage_binding("options")
+    path = settings.resolved_path(TRIAL_LEDGER_REL)
+    ledger = StrategyTrialLedger(path)
+    before = {record.trial_id: record for record in ledger.read()}
+    now = datetime.now(UTC)
+    specification = specification_trial_draft(now)
+    diagnostic = StrategyTrialDraft(
+        trial_id=TRIAL_ID,
+        registered_at_utc=now,
+        stage=StrategyTrialStage.SPECIFICATION,
+        disposition=StrategyTrialDisposition.REGISTERED,
+        family_ids=("options_native_underpriced_movement",),
+        strategy_ids=(PILOT_ID,),
+        strategy_policy_fingerprint=SPECIFICATION_FINGERPRINT,
+        feature_fingerprint=DATA_FINGERPRINT,
+        hypotheses=(
+            "Describe original 10:00 CALL/PUT entry-pair to fixed future-review"
+            " quote observability and ask-to-bid premium changes without choosing"
+            " an ATM entry, strategy exit, or execution fill.",
+        ),
+        notes=(
+            "Retrospective 2018–2025 DEVELOPMENT exploratory source diagnostic.",
+            "Fixed entry candidate DTE 30-45, 30s age, 15% spread, 1s skew.",
+            "Fixed exit dates first five trading sessions; retain all missing.",
+            "Fee grid per contract per side 0.00/0.65/1.30 USD.",
+            "No new protected confirmation and no trading authority.",
+        ),
+    )
+    appended = []
+    for draft in (specification, diagnostic):
+        existing = before.get(draft.trial_id)
+        if existing is not None:
+            if (existing.strategy_policy_fingerprint != draft.strategy_policy_fingerprint
+                    or existing.feature_fingerprint != draft.feature_fingerprint
+                    or existing.stage != StrategyTrialStage.SPECIFICATION
+                    or existing.disposition != StrategyTrialDisposition.REGISTERED
+                    or existing.performance_outcomes_opened
+                    or existing.master_protected_return_rows_read):
+                raise PairDiagnosticError("FROZEN_TRIAL_REGISTRATION_DRIFT")
+        else:
+            ledger.append(draft)
+            appended.append(draft.trial_id)
+    return {
+        "ledger_path": str(path), "trial_ids": [specification.trial_id, diagnostic.trial_id],
+        "newly_registered": appended,
+        "qualifying_historical_authority": False,
+        "protected_outcomes_read": 0,
+    }
+
 
 
 def _decimal(x: Any) -> Decimal:
