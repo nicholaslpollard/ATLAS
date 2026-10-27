@@ -166,7 +166,7 @@ def evaluate_spot_selected_exact_contract_demand(
                 "date_et": label, "status": "RESEARCH_IDENTITY_NOT_AVAILABLE",
                 "reason": reason, "selected_expiration": (
                     selection[0] if selection else None
-                ), "selected_strike": selection[1] if selection else None,
+                ), "selected_strike": (format(Decimal(selection[1]), "f") if selection else None),
                 "raw_0959_spot": spots[label]["raw_spot"],
                 "review_results": [],
             })
