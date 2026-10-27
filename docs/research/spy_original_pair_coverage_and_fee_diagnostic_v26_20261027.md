@@ -9,7 +9,7 @@ This closes the **acquisition** queue, not the historical execution/scientific q
 `packages/data/options_native_original_pair_diagnostic_v26.py` and
 `scripts/run_options_native_original_pair_diagnostic_v26.py` perform a single
 read-only pass over the original 411 weekly entry requests and their five
-post-entry 10:00 review requests. It uses the existing V12 receipt+V14 index
+post-entry 10:00 review requests. Before inspecting historical option exit values it creates or verifies the frozen SPY pilot and V26 exploratory diagnostic registrations in the append-only hash-chained strategy trial ledger. This metadata operation leaves the original archives unchanged and does not grant performance authority. It uses the existing V12 receipt+V14 index
 source-linked entry reader (410 archive identities), and the SHA/gzip/terminal
 receipt-verified V19 exit archive reader. The separately stored 2025-06-09
 entry remains unavailable to this adapter until it has independently
