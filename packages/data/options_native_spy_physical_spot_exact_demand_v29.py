@@ -192,7 +192,7 @@ def evaluate_spot_selected_exact_contract_demand(
                         "symbol": "SPY", "date_et": exit_day.isoformat(),
                         "time_of_day_et": "10:00:00.000",
                         "expiration": selection[0],
-                        "strike": selection[1],
+                        "strike": format(Decimal(selection[1]), "f"),
                         "right": right,
                     }
                     # This key is LOCAL original demand identity, not a provider
@@ -226,7 +226,7 @@ def evaluate_spot_selected_exact_contract_demand(
             "raw_0959_spot": spots[label]["raw_spot"],
             "spot_native_unit_id": spots[label]["minute_unit_id"],
             "spot_native_unit_sha256": spots[label]["minute_source_sha256"],
-            "selected_expiration": selection[0], "selected_strike": selection[1],
+            "selected_expiration": selection[0], "selected_strike": format(Decimal(selection[1]), "f"),
             "entry_original_query_id": record["query_id"],
             "selection_used_future_prices": False,
             "review_results": review_results,
