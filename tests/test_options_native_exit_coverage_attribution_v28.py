@@ -86,6 +86,10 @@ def test_one_pass_distinguishes_exact_contract_missing_vs_quote_age_vs_clock():
         assert data["by_entry_year"]["2025"][reason] == 1
     assert report["scenarios"]["3"]["quote_quality_rejection_reasons_individual_legs"] == {"STALE": 1}
     assert report["distinct_absent_original_contract_rights_across_all_exit_dates"] == 3
+    preview = report["chronologically_selected_absent_right_probe_preview_by_year"]
+    assert len(preview) == 2
+    assert all(x["authority"] == "OFFLINE_PREVIEW_ONLY_NOT_PROVIDER_REQUEST" for x in preview)
+    assert not report["preview_selection_used_future_returns"]
 
 
 def test_source_error_is_a_distinct_non_fill_reason():
