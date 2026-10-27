@@ -165,5 +165,5 @@ def test_bad_selected_entry_quotes_do_not_trigger_lucky_next_strike_fallback(mon
     assert result["provisional_entry_pairs"] == 0
     assert not called_exit
     assert result["missing_exact_contract_right_request_count"] == 0
-    assert all(r["selected_strike"] == "1E+2" for r in result["cases"])
+    assert all(r["selected_strike"] == "100" for r in result["cases"])
     assert all(r["reason"] == "SELECTED_ENTRY_PAIR_FAILED_QUOTE_QUALITY" for r in result["cases"])
