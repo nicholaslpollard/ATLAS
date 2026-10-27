@@ -198,6 +198,25 @@ def evaluate_exit_coverage_root_causes(
                 if total_weekly_entry_pairs else None
             ),
         }
+    # Source-only illustrative exact-contract probes are deliberately chosen
+    # from earliest absent identities in each calendar year, not from returns.
+    # They do NOT authorize provider calls or imply SDK/server support.
+    sample_per_year: dict[str, int] = defaultdict(int)
+    missing_probe_sample: list[dict[str, str]] = []
+    for review_date, expiry, strike, right in sorted(unique_missing_contracts):
+        year = review_date[:4]
+        if sample_per_year[year] >= 2:
+            continue
+        sample_per_year[year] += 1
+        missing_probe_sample.append({
+            "symbol": "SPY",
+            "review_session_et": review_date,
+            "time_of_day_et": "10:00:00.000",
+            "expiration": expiry,
+            "strike": strike,
+            "right": right,
+            "authority": "OFFLINE_PREVIEW_ONLY_NOT_PROVIDER_REQUEST",
+        })
     report = {
         "contract": CONTRACT,
         "status": "SOURCE_ONLY_EXIT_ATTRITION_EXPLANATION_NOT_HISTORICAL_ACCOUNT",
@@ -207,6 +226,8 @@ def evaluate_exit_coverage_root_causes(
         "fixed_holding_periods": list(HOLD_SESSIONS),
         "scenarios": scenarios,
         "distinct_absent_original_contract_rights_across_all_exit_dates": len(unique_missing_contracts),
+        "chronologically_selected_absent_right_probe_preview_by_year": missing_probe_sample,
+        "preview_selection_used_future_returns": False,
         "missing_rights_are_absent_from_retained_response_not_proven_absent_from_market": True,
         "source_read_uses": total_source_read_uses,
         "original_source_hashes_verified_by_v26": True,
