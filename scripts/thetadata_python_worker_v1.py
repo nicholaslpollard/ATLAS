@@ -413,27 +413,13 @@ class Runtime:
         _, self.environment_fingerprint = _provider_environment()
         return self.client
 
-    def request_shared_batch(self, queries: list[dict[str, Any]]) -> dict[str, Any]:
-        """At most four quote GETs through one authenticated SDK session.
+    def setup_shared_auth_session(self) -> dict[str, Any]:
+        """Authorize one SDK client and build three derived clients, no quotes.
 
-        Only a single base ThetaClient performs independent authentication.
-        Derived clients must explicitly support existing_authorized_client;
-        if the installed pinned library lacks that keyword, refuse BEFORE
-        issuing any quote request. Each query result stays independent.
+        Called by ATLAS before ANY source query STARTED receipt, so invalid
+        constructor/token setup cannot burn never-dispatched source identities.
+        This is an SDK authentication operation, NOT a historical quote read.
         """
-        if (not isinstance(queries, list) or not 1 <= len(queries) <= 4):
-            raise RuntimeError("THETADATA_SHARED_BATCH_SIZE_NOT_1_TO_4")
-        for q in queries:
-            if (not isinstance(q, dict)
-                    or not q
-                    or set(q) - ALLOWED_METHOD_ARGUMENTS["option_at_time_quote"]
-                    or "symbol" not in q
-                    or "start_date" not in q
-                    or "end_date" not in q
-                    or "time_of_day" not in q):
-                raise RuntimeError("THETADATA_SHARED_BATCH_ARGUMENTS_INVALID")
-        # All query identities are independently pre-receipted by the ATLAS
-        # outer coordinator, not by this isolated SDK worker.
         if self.shared_clients is None:
             with contextlib.redirect_stdout(sys.stderr):
                 from thetadata import ThetaClient
@@ -457,6 +443,29 @@ class Runtime:
                         existing_authorized_client=base,
                         dataframe_type="pandas",
                     ))
+        return {"ok": True, "shared_authenticated_session": True,
+                "historical_quote_requests": 0}
+
+    def request_shared_batch(self, queries: list[dict[str, Any]]) -> dict[str, Any]:
+        """At most four quote GETs through one authenticated SDK session.
+
+        Only a single base ThetaClient performs independent authentication.
+        Derived clients must explicitly support existing_authorized_client;
+        if the installed pinned library lacks that keyword, refuse BEFORE
+        issuing any quote request. Each query result stays independent.
+        """
+        if (not isinstance(queries, list) or not 1 <= len(queries) <= 4):
+            raise RuntimeError("THETADATA_SHARED_BATCH_SIZE_NOT_1_TO_4")
+        for q in queries:
+            if (not isinstance(q, dict)
+                    or not q
+                    or set(q) - ALLOWED_METHOD_ARGUMENTS["option_at_time_quote"]
+                    or "symbol" not in q
+                    or "start_date" not in q
+                    or "end_date" not in q
+                    or "time_of_day" not in q):
+                raise RuntimeError("THETADATA_SHARED_BATCH_ARGUMENTS_INVALID")
+        self.setup_shared_auth_session()
         def execute(index_and_query):
             index, q = index_and_query
             try:
@@ -581,7 +590,11 @@ def serve() -> int:
             kwargs = payload.get("kwargs")
             if not isinstance(kwargs, dict):
                 raise ValueError("KWARGS_NOT_OBJECT")
-            if method == "batch_option_at_time_quote_shared_session":
+            if method == "shared_authenticated_session_ready":
+                if kwargs:
+                    raise ValueError("SHARED_AUTH_READY_KEYWORDS_INVALID")
+                result = runtime.setup_shared_auth_session()
+            elif method == "batch_option_at_time_quote_shared_session":
                 if set(kwargs) != {"queries"}:
                     raise ValueError("SHARED_BATCH_KEYWORDS_INVALID")
                 result = runtime.request_shared_batch(kwargs["queries"])
