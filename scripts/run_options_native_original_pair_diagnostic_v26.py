@@ -18,7 +18,7 @@ if __name__ == "__main__" and not __package__:
 from packages.core.settings import load_settings
 from packages.data.hybrid_options_at_time_one_call_v1 import PINNED_MANIFEST_FINGERPRINT
 from packages.data.options_native_original_pair_diagnostic_v26 import (
-    audit_original_spy_pair_observations,
+    audit_original_spy_pair_observations, register_outcome_inspection_trial,
 )
 
 DEFAULT_MANIFEST = Path(
@@ -42,14 +42,17 @@ def main(argv: list[str] | None = None) -> int:
     print("  provider_requests=0 broker_requests=0 fills=0 protected_outcomes=0", flush=True)
     try:
         settings = load_settings(ROOT, "development")
+        if args.output is not None and (args.output.exists() or args.output.is_symlink()):
+            raise FileExistsError("DIAGNOSTIC_OUTPUT_ALREADY_EXISTS")
+        trial = register_outcome_inspection_trial(settings)
+        print("  trial_ledger=" + trial["ledger_path"], flush=True)
+        print("  preregistered_trials=" + str(trial["trial_ids"]), flush=True)
         result = audit_original_spy_pair_observations(
             settings, args.manifest, args.candidate_plan,
         )
         content = json.dumps(result, indent=2, sort_keys=True, allow_nan=False) + "\n"
         if args.output is not None:
             # Results are diagnostic. Never replace a retained version.
-            if args.output.exists() or args.output.is_symlink():
-                raise FileExistsError("DIAGNOSTIC_OUTPUT_ALREADY_EXISTS")
             args.output.parent.mkdir(parents=True, exist_ok=True)
             with args.output.open("x", encoding="utf-8") as handle:
                 handle.write(content)
@@ -72,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         if args.output is None:
-            print("  No report written; supply --output for one immutable local JSON report.")
+            print("  No derived report written; the trial ledger is append-only.")
         return 0
     except Exception as exc:
         print(
