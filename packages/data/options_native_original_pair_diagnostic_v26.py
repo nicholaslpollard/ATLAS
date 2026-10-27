@@ -8,7 +8,7 @@ meeting simple quote-age/spread screens are retained as the denominator.
 Prices are hypothetical ask-to-bid references, NOT historical executions.
 """
 
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, OrderedDict
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 import hashlib
@@ -241,7 +241,7 @@ def audit_original_spy_pair_observations(
         raise PairDiagnosticError("FROZEN_SOURCE_PLAN_CHANGED")
     known_entry = {r["query_id"]: r for r in entries}
     exit_req = {r["query_id"]: r for r in plan["requests"]}
-    seen: dict[str, tuple[str, tuple[dict[str, Any], ...] | None]] = {}
+    # Bounded locality cache: keep only nearby weekly review sources in RAM.\n    # The full 8-year quote corpus is not duplicated in memory.\n    seen: OrderedDict[str, tuple[str, tuple[dict[str, Any], ...] | None]] = OrderedDict()\n    source_ids_seen: set[str] = set()
 
     def fetch(qid: str, row: dict[str, Any]):
         if qid in seen:
@@ -271,7 +271,7 @@ def audit_original_spy_pair_observations(
         "status": "RETROSPECTIVE_SOURCE_MATCH_DIAGNOSTIC_ONLY",
         "original_411_entry_plan": len(entries),
         "distinct_new_exit_request_plan": len(exit_req),
-        "observed_source_identities_loaded": len(seen),
+        "observed_source_identities_loaded": len(source_ids_seen),
         "source_plan_fingerprint": plan["plan_fingerprint"],
         "note": "Every matching candidate pair included; not the frozen strategy selector; future match availability conditions the return sample.",
         "pricing": "10:00 observed ASK entry / 10:00 observed BID review; 100 multiplier hypothetical; no 10:01 fill proof, option OI, PIT spot, dividend or contract settlement.",
