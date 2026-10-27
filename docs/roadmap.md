@@ -1,5 +1,12 @@
 # ATLAS Project Guide and Roadmap
 
+### 2026-10-27 V26: Frozen 1,570 SPY exit-source acquisition COMPLETE, original quote pairing next
+
+The user workstation V24 shared-auth run completed exactly 1,104 remaining 10:00 SPY exit requests, archiving 1,103 originals (1,102 over-DTE diagnostics and one invalid schema), with one explicit no-data source, zero new provider faults, 35 full storage audits and no remaining unattempted IDs. Frozen 1,570 exit states: 1,558 out-DTE original archives; 3 invalid-schema originals; 8 prior no-source provider errors; 1 explicit no-data. These are preserved immutable sources, **not simulator fill authority**. Earlier V21 fault audit found expired-before-review and positive-crossed quote rows in two invalid original sources, while other original gaps remain unqualified.
+
+V26 (under CI) provides a single read-only first-pair coverage/economics screen on these newly acquired historical sources: all available preexisting 411 weekly entry candidate pairs are matched without lookahead contract switching to five exact later review sessions. The script reports by-year observed quote opportunities and hypothetical 10:00 ask-to-10:00 bid premium changes under 3 explicit commission assumptions. No future source presence is permitted to affect entry candidate eligibility, and the conditional matched-pair means are **not a causal portfolio return**. This measures whether usable quote trajectories exist before integrating historical PIT spot, OI, corporate actions, rates, actual order eligibility, American IV and real account capital management. See `docs/research/spy_original_pair_coverage_and_fee_diagnostic_v26_20261027.md`.
+
+
 ### 2026-10-27 V25 — Profitability-first strategy simulation fast lane (PR #392)
 
 The operator's current priority during the active $80 ThetaData Standard subscription is to finish reusable historical-data acquisition while bringing up an offline **individual strategy -> bounded scenario sweep -> combined shared-capital portfolio** simulator. Every parametric replay must reuse the **same immutable source observation manifest**, without another provider request for each policy variant. Independent cash/equity accounting, period profitability and forward evidence matter more than further fine-grained data-processing embellishments. Acquisition and simulator software work can proceed in parallel, but no historical/source gate may be bypassed.
