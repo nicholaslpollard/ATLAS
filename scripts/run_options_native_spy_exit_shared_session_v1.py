@@ -27,6 +27,7 @@ from packages.data.options_native_exit_source_campaign_v1 import (
     preview_exit_campaign,
 )
 from packages.providers.thetadata.client import (
+    establish_option_quote_shared_authenticated_session,
     provider_python_path, WORKER_SCRIPT,
 )
 from scripts.run_options_native_spy_exit_source_campaign_v1 import (
@@ -114,6 +115,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if not before["shared_storage_safe"]:
             raise RuntimeError("STORAGE_HEADROOM_NOT_SAFE")
+        # SDK auth/derived client creation is verified before even ONE
+        # frozen query identity is labeled possibly-dispatched. This
+        # contacts auth service only, not historical quote endpoint.
+        establish_option_quote_shared_authenticated_session()
+        print(
+            "  SDK_SHARED_AUTH_READY clients=4 independent_logins=1"
+            " historical_quote_requests=0", flush=True,
+        )
         result = run_shared_exit_campaign(
             settings, args.manifest, args.candidate_plan,
             max_calls=args.max_calls,
