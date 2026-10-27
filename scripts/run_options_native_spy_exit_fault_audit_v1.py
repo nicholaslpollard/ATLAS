@@ -70,6 +70,9 @@ def audit(settings, manifest: Path, candidate_plan: Path) -> dict:
             "provider_grpc_status": (
                 None if terminal is None else terminal.get("provider_grpc_status")
             ),
+            "provider_error_stage": (
+                None if terminal is None else terminal.get("provider_error_stage")
+            ),
             "archive_present": (
                 terminal is not None and terminal.get("archive") is not None
             ),
@@ -135,6 +138,7 @@ def main(argv: list[str] | None = None) -> int:
                 f" error_type={issue['recorded_error_type']}"
                 f" provider_class={issue['provider_failure_class']}"
                 f" grpc_status={issue['provider_grpc_status']}"
+                f" provider_stage={issue['provider_error_stage']}"
                 f" archive_present={issue['archive_present']}"
                 f" row_check={issue['row_only_diagnostic']}",
                 flush=True,
