@@ -1,5 +1,9 @@
 # ATLAS Project Guide and Roadmap
 
+### 2026-10-28 V35 — Unblock V34 using V32's actual nested quote-tape fingerprints
+
+The operator's first V34 workstation attempt stopped before simulation with `V34_SOURCE_TAPE_FINGERPRINT_MISMATCH`, despite matching the V32 report's printed fingerprint. Root cause: V32 first hashes its **inner** 361×5 observation tape and then V26's outer `audit_original_spy_pair_observations` spreads that tape (including the **inner** digest) into wrapper metadata and hashes it **again**, replacing the file's `fingerprint`. V34 incorrectly required a one-stage hash. V35 reconstructs the exact 20-field V32 inner preimage, recomputes its digest, substitutes it into the complete frozen V26 wrapper preimage and verifies the resulting outer SHA against the user's independently pinned `a0bfbd1a...`. A regression builds this two-stage structure and rejects both modified observations and wrapper metadata. No source files are rewritten, no provider calls are introduced, no quote is upgraded into an executable fill. The V34 same 20 scenarios can be rerun after this fix merges.
+
 ### 2026-10-28 V34 — Simulation-first historical quote economics and bounded cash scenarios
 
 The **operator completed V33 paid exact recovery**: 2,264 newly original-archived quote rights, final 2,344/2,352 archived, 8 prior uncertain STARTED/no-retry, **0 unattempted, 0 new provider faults** (39 targeted tests passed). The provider-free V32 output at `data/research/spy_quote_tape_post_v33_20261028_155608.json`, fingerprint `a0bfbd1ae8db9d3b502ee21780db17a23d37d5284655611167078c5a870c365e`, shows 361 provisional pairs/50 abstentions out of 411 weekly entries; +1 through +5 trading-session qualified exit quote pairs = **307/322/307/282/296** (of 361 each), total **1,514/1,805** original+exact source-linked review quotes, 291 missing/unqualified. **No further broad SPY exact exit campaign is warranted before testing source-based economics.**
