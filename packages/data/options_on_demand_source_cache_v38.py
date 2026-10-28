@@ -9,6 +9,7 @@ Cache receipts are historical evidence only, not causal availability or fills.
 """
 
 from datetime import date
+from contextlib import contextmanager
 import gzip
 import hashlib
 import inspect
@@ -100,22 +101,31 @@ def _database(settings: AtlasSettings) -> Path:
     return db
 
 
-def _connect(db: Path) -> sqlite3.Connection:
+@contextmanager
+def _connect(db: Path):
+    """Ensure SQLite connections close on Windows even if a provider call fails."""
     con = sqlite3.connect(db, timeout=30)
-    con.execute("PRAGMA busy_timeout=30000")
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS sources (
-          query_id TEXT PRIMARY KEY,
-          request_json TEXT NOT NULL,
-          state TEXT NOT NULL,
-          touched REAL NOT NULL,
-          source_sha TEXT,
-          gzip_sha TEXT,
-          stored_path TEXT,
-          source_rows INTEGER
-        )
-    """)
-    return con
+    try:
+        con.execute("PRAGMA busy_timeout=30000")
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS sources (
+              query_id TEXT PRIMARY KEY,
+              request_json TEXT NOT NULL,
+              state TEXT NOT NULL,
+              touched REAL NOT NULL,
+              source_sha TEXT,
+              gzip_sha TEXT,
+              stored_path TEXT,
+              source_rows INTEGER
+            )
+        """)
+        yield con
+        con.commit()
+    except Exception:
+        con.rollback()
+        raise
+    finally:
+        con.close()
 
 
 def _unpack(settings: AtlasSettings, row: tuple, request: dict) -> dict:
