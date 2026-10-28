@@ -49,3 +49,38 @@ If the V29 report path already exists, use a fresh output filename and pass that
 Merge recovered V30 exact original quote rows *as a separately typed diagnostic evidence source* with the source-verified broad original exit quotes. For each originally selected CALL+PUT contract, evaluate chronological spot-driven entry, prior-20 economic return/IV variance signal and frozen dynamic exits. Require point-in-time stock bars, timestamp availability or a clearly labeled bounded historical-latency model, standard OCC deliverables, prior OI, corporate-action/rate/dividend inputs and option order eligibility. Reserve capital from entry, mark or carry unresolved positions at each review session, and never turn a merely observed 10:00 bid/ask quote into an actual 10:01 fill. Mark terminal account equity `null` if a required position cannot be marked/settled; preserve weekly/monthly/yearly and cost/drawdown comparisons with independent forward evidence.
 
 The active Standard window should first secure the needed exact original contract observations. Profitability cannot be claimed from V27/V28 conditional option quote returns or the mere availability of V30 source archives.
+
+
+## 2026-10-28 V33 correction — two consecutive ambiguous four-request batches
+
+User's first V30 paid session archived 80 exact-right sources, then one entire four-request batch was STARTED but no complete worker batch result returned. On the next manually initiated V30 session, the first four-request batch again stopped ambiguous with **zero new completed sources**. Current immutable state: **80 archived**, **8 uncertain started-only**, **2,264 unattempted**, total 2,352. No proof exists that either ambiguous batch reached ThetaData; all eight identities remain excluded from all automatic retries.
+
+**Confirmed local implementation defect:** the original V30 exact-provider client used a regular expression with *two literal backslashes* before the decimal point, incorrectly rejecting legitimate fractional strikes (e.g. `100.5`). The V30 plan itself correctly accepted those decimals. The provider client performed that validation **inside the batch call, after STARTED receipts had been written**, so one local validation error could make four unused identifiers appear ambiguously dispatched. This bug is a plausible but not confirmed explanation for the two user-observed interruptions; the original error log did not expose the query strikes or worker exception type.
+
+V33 corrects and regression-tests the single-backslash decimal regex. It factors exact SDK request normalization into a **pure no-provider pre-dispatch validator** called by the campaign BEFORE any new STARTED receipts, using exactly the same validator inside the provider batch function. Invalid local requests now block without losing any identities or making historical provider calls.
+
+Second independent root-cause class: the four-result SDK adapter used to raise a whole-batch exception if just one ordered returned item was malformed, had inconsistent no-data flags or could not be JSON-canonicalized (e.g. nonfinite numbers). V33 instead emits a **terminal per-right sanitized ThetaDataError** only for that item and preserves the other three original returned observations/archives. A failure in the worker's entire ordered response still remains genuinely ambiguous; V33 never fabricates completion or retries any affected ID.
+
+**Optional adaptive recovery** via V30 `--run --adaptive-recovery` (after V33 CI/merge): on the **first** genuinely ambiguous ordered four-query batch, keep its 1–4 STARTED IDs uncertain, restart a fresh authenticated isolated SDK worker without making an historical request, then test **16 NEW distinct unattempted IDs one-at-a-time**. After those 16 safe completed single-ID results, return to four-way shared-auth batches. A second ambiguity or failed reauthentication stops rather than draining the queue. The CLI prints bounded category codes (e.g. `PROVIDER_WORKER_RESPONSE_TIMEOUT`, `LOCAL_BATCH_RESULT_VALIDATION`) and counts, never raw SDK messages or credentials. Default V30 behavior without `--adaptive-recovery` remains the original fail-on-first-ambiguity contract.
+
+**Safe operator command after V33 merge:** no need to rerun V29, delete receipts or reinstall ThetaData.
+
+```powershell
+& {
+  $ErrorActionPreference = 'Stop'
+  Set-Location 'C:\Users\cyberdyne\Desktop\ATLAS'
+  if ((git branch --show-current).Trim() -ne 'main') { throw 'Not on main' }
+  if (@(git status --porcelain --untracked-files=no).Count -gt 0) { throw 'Tracked changes exist' }
+  git pull --ff-only origin main
+  if ($LASTEXITCODE -ne 0) { throw 'Git pull failed' }
+  $py = '.\.venv\Scripts\python.exe'
+  & $py -m pytest -q tests/test_options_native_spy_exact_exit_source_campaign_v30.py tests/test_thetadata_client.py
+  if ($LASTEXITCODE -ne 0) { throw 'V33 tests failed' }
+  & $py -m scripts.run_options_native_spy_exact_exit_recovery_v30 --plan data/research/spy_one_pair_exact_exit_demand_v29.json
+  if ($LASTEXITCODE -ne 0) { throw 'V33 offline receipt preview failed' }
+  & $py -m scripts.run_options_native_spy_exact_exit_recovery_v30 --plan data/research/spy_one_pair_exact_exit_demand_v29.json --run --adaptive-recovery --progress-every 25
+  if ($LASTEXITCODE -ne 0) { throw 'V33 paid acquisition stopped; preserve full output' }
+}
+```
+
+No historical transaction or fill is modeled. When V30 finishes or stops, run the V32 original+exact quote tape to measure exact selected CALL/PUT pair coverage; V32 must never run concurrently with V30 writing source receipts.
