@@ -2,7 +2,7 @@
 
 ## Motivation and workstation checkpoint (October 28, 2026)
 
-The workstation's V33 paid acquisition completed **2,344 / 2,352** exact SPY option-right original archives, **zero unattempted**, and **eight earlier uncertain STARTED identities not retried**. V32 (fingerprint \`a0bfbd1ae8db9d3b502ee21780db17a23d37d5284655611167078c5a870c365e\`) observed **361** preselected original entry pairs out of **411** frozen weekly clocks, with **50** original abstentions. Recovered valid selected-pair exit quotes:
+The workstation's V33 paid acquisition completed **2,344 / 2,352** exact SPY option-right original archives, **zero unattempted**, and **eight earlier uncertain STARTED identities not retried**. V32 (fingerprint `a0bfbd1ae8db9d3b502ee21780db17a23d37d5284655611167078c5a870c365e`) observed **361** preselected original entry pairs out of **411** frozen weekly clocks, with **50** original abstentions. Recovered valid selected-pair exit quotes:
 
 | Post-entry review session | Original | New exact | Total matched / 361 | Unresolved |
 | --- | ---: | ---: | ---: | ---: |
@@ -16,7 +16,7 @@ The workstation's V33 paid acquisition completed **2,344 / 2,352** exact SPY opt
 
 ## Implemented rapid diagnostic
 
-\`packages/simulation/options_native_spy_quote_account_diagnostic_v34.py\` accepts the **saved** V32 JSON report, verifies its original V32 SHA-256 content fingerprint and all 361×5 frozen denominators, and analyzes 20 predeclared quote scenarios: 1–5 exit sessions, $0.65/$1.30 commission per contract per side, and $0/$0.05 adverse slippage per share per leg. It includes:
+`packages/simulation/options_native_spy_quote_account_diagnostic_v34.py` accepts the **saved** V32 JSON report, verifies its original V32 SHA-256 content fingerprint and all 361×5 frozen denominators, and analyzes 20 predeclared quote scenarios: 1–5 exit sessions, $0.65/$1.30 commission per contract per side, and $0/$0.05 adverse slippage per share per leg. It includes:
 
 - Matched-only **conditional quote-to-quote percentage returns**, with unmatched cases explicitly counted and never imputed.
 - A separate chronological **hypothetical quote-cash ledger** beginning at $100,000, allocating at most 10% of available cash per candidate, two open pair slots, and ten two-leg pairs per entry. Exit events occur before same-date entries; future observations never determine an earlier entry.
@@ -24,25 +24,25 @@ The workstation's V33 paid acquisition completed **2,344 / 2,352** exact SPY opt
 - Realized hypothetical P&L by exit ISO week, month, and year, never mislabeled as periodic investment returns. Drawdown is NULL without independent interim marks.
 - Immutable separately written output and a registered, explicitly retrospective experiment before reading V32 outcome data.
 
-The input is **real historical market data**, but the trade policy is explicitly **ALL preselected pairs hypothetically entered**. The options-native SPY volatility signal has not been calculated. Exact 10:00 observed asks and bids are *not demonstrated 10:01 executable fills*. This report is not an actual portfolio backtest, out-of-sample validation, paper result, broker order, or live authority. It must not be fed into synthetic \`ReplaySignal\` or ranked as validated alpha.
+The input is **real historical market data**, but the trade policy is explicitly **ALL preselected pairs hypothetically entered**. The options-native SPY volatility signal has not been calculated. Exact 10:00 observed asks and bids are *not demonstrated 10:01 executable fills*. This report is not an actual portfolio backtest, out-of-sample validation, paper result, broker order, or live authority. It must not be fed into synthetic `ReplaySignal` or ranked as validated alpha.
 
 ## Next local execution
 
 Only after this PR merges and CI passes. The V32 report must be present at the workstation; the already printed fingerprint is fixed. This command makes **zero provider/broker calls** and writes an exclusive new report:
 
-\`\`\`powershell
+```powershell
 Set-Location 'C:\Users\cyberdyne\Desktop\ATLAS'
 git pull --ff-only origin main
 $py = '.\.venv\Scripts\python.exe'
 $inputTape = 'data/research/spy_quote_tape_post_v33_20261028_155608.json'
 $output = "data/research/spy_v34_quote_cash_diagnostic_$(Get-Date -Format 'yyyyMMdd_HHmmss').json"
-& $py -m scripts.run_options_native_spy_quote_account_diagnostic_v34 \`
-  --tape $inputTape \`
-  --expect-fingerprint 'a0bfbd1ae8db9d3b502ee21780db17a23d37d5284655611167078c5a870c365e' \`
+& $py -m scripts.run_options_native_spy_quote_account_diagnostic_v34 `
+  --tape $inputTape `
+  --expect-fingerprint 'a0bfbd1ae8db9d3b502ee21780db17a23d37d5284655611167078c5a870c365e' `
   --output $output
 if ($LASTEXITCODE -ne 0) { throw 'V34 source-based diagnostic stopped' }
 Write-Host "V34 report: $output"
-\`\`\`
+```
 
 ## After V34 — simulator critical path
 
