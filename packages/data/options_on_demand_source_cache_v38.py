@@ -12,6 +12,7 @@ from datetime import date
 import gzip
 import hashlib
 import inspect
+import io
 import json
 import os
 from pathlib import Path
@@ -136,7 +137,7 @@ def _unpack(settings: AtlasSettings, row: tuple, request: dict) -> dict:
     packed = path.read_bytes()
     if _digest(packed) != gzip_sha:
         raise OnDemandSourceError("CACHED_GZIP_DIGEST_CHANGED")
-    with gzip.GzipFile(fileobj=__import__("io").BytesIO(packed)) as stream:
+    with gzip.GzipFile(fileobj=io.BytesIO(packed)) as stream:
         raw = stream.read(MAX_RAW_BYTES + 1)
         if stream.read(1) or not 0 < len(raw) <= MAX_RAW_BYTES:
             raise OnDemandSourceError("CACHED_SOURCE_TOO_LARGE")
@@ -208,7 +209,8 @@ def read_through_historical_options(
                 or len(rows) > MAX_SOURCE_ROWS
                 or not isinstance(raw, bytes)
                 or not 0 < len(raw) <= MAX_RAW_BYTES
-                or theta._canonical_bytes(rows) != raw):
+                or theta._canonical_bytes(rows) != raw
+                or response.response_bytes != len(raw)):
             raise OnDemandSourceError("PROVIDER_SOURCE_CANONICAL_OR_SIZE_UNQUALIFIED")
         if response.explicit_no_data:
             if rows:
