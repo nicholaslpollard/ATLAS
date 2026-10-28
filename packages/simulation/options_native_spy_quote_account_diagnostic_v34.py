@@ -36,6 +36,57 @@ class QuoteScenarioError(ValueError):
     pass
 
 
+# V32's evaluator builds and fingerprints the inner quote tape. Its V26
+# source-audit wrapper then spreads that entire inner tape (including its
+# "fingerprint") into the audited result, and REPLACES "fingerprint" with
+# the wrapper digest. Saved V32 reports therefore need BOTH hash layers
+# reconstructed: hash(inner without fingerprint), then hash(outer with
+# fingerprint temporarily replaced by that inner digest).
+V32_INNER_FIELDS = frozenset({
+    "contract", "status", "source_plan_fingerprint",
+    "original_frozen_weekly_entries", "provisionally_selected_original_weekly_pairs",
+    "original_weekly_abstentions", "hold_sessions", "by_exit_horizon",
+    "exact_requested_right_terminal_states_encountered",
+    "quote_review_observations", "observations",
+    "original_source_archives_unmodified",
+    "historical_stock_spot_pit_availability_proven",
+    "original_option_contract_roster_completeness_proven",
+    "historical_101_order_fills", "historical_account_profitability",
+    "simulator_ready", "provider_requests", "broker_requests",
+    "protected_2026_outcomes_read",
+})
+V26_AUDIT_ONLY_FIELDS = frozenset({
+    "original_411_entry_plan", "distinct_new_exit_request_plan",
+    "observed_source_identities_loaded", "note", "pricing",
+    "fee_grid_is_model_assumption", "simulations_run",
+    "account_pnl_reported", "historical_execution_qualified",
+    "protected_outcomes_read", "strategy_promotion",
+})
+
+
+def _verify_v32_fingerprint(tape: dict, expected: str) -> None:
+    """Accept the direct V32 evaluator or actual V26-wrapped V32 SHA preimage.
+
+    The caller still supplies the original independently pinned final digest.
+    Neither path changes the file or accepts a digest recalculated from an
+    untrusted report as a replacement for that independently pinned digest.
+    """
+    if tape.get("fingerprint") != expected:
+        raise QuoteScenarioError("V34_SOURCE_TAPE_FINGERPRINT_MISMATCH")
+    without_digest = {key: val for key, val in tape.items() if key != "fingerprint"}
+    if _fingerprint(without_digest) == expected:
+        return  # Direct source evaluator result, common in isolated fixtures.
+    if (not V32_INNER_FIELDS.issubset(tape)
+            or not V26_AUDIT_ONLY_FIELDS.issubset(tape)
+            or set(tape) != V32_INNER_FIELDS | V26_AUDIT_ONLY_FIELDS | {"fingerprint"}):
+        raise QuoteScenarioError("V34_SOURCE_TAPE_FINGERPRINT_MISMATCH")
+    inner = {key: tape[key] for key in V32_INNER_FIELDS}
+    nested_preimage = dict(tape)
+    nested_preimage["fingerprint"] = _fingerprint(inner)
+    if _fingerprint(nested_preimage) != expected:
+        raise QuoteScenarioError("V34_SOURCE_TAPE_FINGERPRINT_MISMATCH")
+
+
 def _num(value: Any, label: str, *, positive: bool = False) -> Decimal:
     if not isinstance(value, str) or not value or value.strip() != value:
         raise QuoteScenarioError("V34_INVALID_DECIMAL_" + label)
@@ -56,10 +107,7 @@ def validate_v32_tape(tape: Any, expected_fingerprint: str) -> dict[int, list[di
     """Verify the persisted outcome tape and entire frozen entry denominator."""
     if not isinstance(tape, dict) or not isinstance(expected_fingerprint, str):
         raise QuoteScenarioError("V34_TAPE_NOT_VERIFIABLE")
-    fp = tape.get("fingerprint")
-    if (fp != expected_fingerprint
-            or _fingerprint({k: v for k, v in tape.items() if k != "fingerprint"}) != fp):
-        raise QuoteScenarioError("V34_SOURCE_TAPE_FINGERPRINT_MISMATCH")
+    _verify_v32_fingerprint(tape, expected_fingerprint)
     if (tape.get("contract") != V32_CONTRACT
             or tape.get("status") != "ORIGINAL_AND_EXACT_QUOTE_EVIDENCE_TAPE_NO_HISTORICAL_FILL"
             or tape.get("original_frozen_weekly_entries") != 411
