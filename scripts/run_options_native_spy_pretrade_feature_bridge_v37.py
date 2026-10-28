@@ -86,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     print("ATLAS V37 SPY ORIGINAL SOURCE-BOUND PRETRADE FEATURE BRIDGE")
     print("  mode=PRETRADE_RESEARCH_EVIDENCE_ONLY provider_requests=0"
-          " broker_requests=0 strategy_trials=NONE", flush=True)
+          " broker_requests=0 historical_simulations=0", flush=True)
     try:
         if (args.expect_fingerprint != PINNED_TAPE_FINGERPRINT
                 or args.output.exists() or args.output.is_symlink()):
