@@ -21,7 +21,7 @@ The frozen V29 identity is never reselected by later market price, completeness 
 
 Every one of the five horizons preserves the **361** selected-pair denominator (no post-outcome deletion). For each originally selected pair/horizon an append-only *derived report* records original entry source identity, original review source identity, exact source IDs when archived, request terminal states, observed two-leg 10:00 ASK at entry and 10:00 BID at later review **only when both exact rights qualify**. An absent match retains `null` exit quote. The published tape is source-verifiable and intended as input for an eventually admitted execution model, **not** a historical filled trade tape or portfolio backtest.
 
-The reader can run during acquisition (e.g. after the first 80 archived rights) and later run again after further V30 receipts exist. Since it is derived, every invocation writes a new exclusive-create filename; previous reports and original source archives stay untouched. The report includes full source references, plan/source fingerprints, status/denominator reconciliation and a new research trial ledger registration.
+Run the reader only when V30 has stopped or finished a campaign invocation (e.g. after its first 80 archived rights), not simultaneously with V30 writing source receipts. Later, run the reader again after additional V30 receipts have been durably written. Since it is derived, every invocation writes a new exclusive-create filename; previous reports and original source archives stay untouched. The report includes full source references, plan/source fingerprints, status/denominator reconciliation and a new research trial ledger registration.
 
 ## Workstation command (after green CI and V32 merge)
 
