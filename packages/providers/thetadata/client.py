@@ -399,6 +399,17 @@ def establish_option_quote_shared_authenticated_session() -> None:
         raise ThetaDataError("shared quote authentication readiness failed")
 
 
+def restart_option_quote_shared_authenticated_session_after_ambiguous_batch() -> None:
+    """Discard a potentially broken worker, then authenticate a new session.
+
+    Call ONLY after a complete historical batch response was not received.
+    Caller must preserve the already STARTED query IDs as uncertain and never
+    resend them. This creates no historical requests by itself.
+    """
+    reset_thread_worker_for_tests()
+    establish_option_quote_shared_authenticated_session()
+
+
 def option_at_time_quote_shared_session_batch(
     queries: list[dict[str, Any]],
 ) -> list[ThetaDataResponse | ThetaDataError]:
@@ -451,7 +462,15 @@ def _execute_shared_option_quote_batch(
     completed: list[ThetaDataResponse | ThetaDataError] = []
     for item in results:
         if not isinstance(item, dict):
-            raise ThetaDataError("shared authenticated SDK item invalid")
+            # A trustworthy ordered batch response can contain one malformed
+            # item. Do not discard three OTHER completed provider results or
+            # mark them as ambiguous: preserve their original evidence.
+            completed.append(ThetaDataError(
+                "ThetaData shared-session item invalid",
+                provider_error_type="MalformedProviderBatchItem",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
         if item.get("ok") is not True:
             label = item.get("error_type")
             status = item.get("error_grpc_status")
@@ -481,11 +500,32 @@ def _execute_shared_option_quote_batch(
         if not isinstance(rows, list) or any(
             not isinstance(row, dict) for row in rows
         ):
-            raise ThetaDataError("shared authenticated SDK quote rows invalid")
+            completed.append(ThetaDataError(
+                "ThetaData shared-session result rows invalid",
+                provider_error_type="MalformedProviderQuoteRows",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
         explicit = item.get("explicit_no_data", False)
         if type(explicit) is not bool or (explicit and rows):
-            raise ThetaDataError("shared authenticated SDK no-data contradiction")
-        canonical = _canonical_bytes(rows)
+            completed.append(ThetaDataError(
+                "ThetaData shared-session no-data evidence inconsistent",
+                provider_error_type="ContradictoryProviderNoData",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
+        try:
+            canonical = _canonical_bytes(rows)
+        except (TypeError, ValueError, OverflowError) as exc:
+            # Nonfinite provider option quotes occasionally arrive as NaN/
+            # inf. They must never be promoted as valid evidence, but one
+            # failed right cannot consume three otherwise completed rights.
+            completed.append(ThetaDataError(
+                "ThetaData shared-session quote cannot be serialized safely",
+                provider_error_type="UnserializableProviderQuoteRows",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
         completed.append(ThetaDataResponse(
             http_status=200,
             rows=tuple(rows),
@@ -506,14 +546,15 @@ def _execute_shared_option_quote_batch(
 
 
 
-def option_at_time_quote_exact_shared_session_batch(
+def validate_option_at_time_quote_exact_queries(
     queries: list[dict[str, str]],
-) -> list[ThetaDataResponse | ThetaDataError]:
-    """One authenticated SDK session, at most four EXACT SPY option GETs.
+) -> list[dict[str, Any]]:
+    """Pre-dispatch pure local exact SPY query validation, at most four IDs.
 
     Deliberately separate from the V24 frozen broad-chain batch surface.
     Each request specifies one date/expiration/strike/right at 10:00 ET.
-    This must never be used to overwrite a frozen V24 original receipt.
+    This MUST run BEFORE immutable STARTED receipts are written; invalid
+    fractional-strike syntax must never consume an undispatched identity.
     """
     if not isinstance(queries, list) or not 1 <= len(queries) <= 4:
         raise ValueError("exact contract shared batch size must be 1..4")
@@ -528,7 +569,7 @@ def option_at_time_quote_exact_shared_session_batch(
         if (q["symbol"] != "SPY" or q["right"] not in {"call", "put"}
                 or q["time_of_day_et"] != "10:00:00.000"
                 or type(q["strike"]) is not str
-                or re.fullmatch(r"[0-9]+(?:\\.[0-9]{1,3})?", q["strike"]) is None):
+                or re.fullmatch(r"[0-9]+(?:\.[0-9]{1,3})?", q["strike"]) is None):
             raise ValueError("exact contract SPY clock/right/strike drift")
         try:
             strike_value = Decimal(q["strike"])
@@ -545,8 +586,20 @@ def option_at_time_quote_exact_shared_session_batch(
             "expiration": expiry, "strike": q["strike"], "right": q["right"],
             "time_of_day": "10:00:00.000",
         })
-    return _execute_shared_option_quote_batch(raw_queries, expected_count=len(queries))
+    return raw_queries
 
+
+
+def option_at_time_quote_exact_shared_session_batch(
+    queries: list[dict[str, str]],
+) -> list[ThetaDataResponse | ThetaDataError]:
+    """One authenticated session, up to four exact SPY historical quote GETs.
+
+    Validation is shared identically with the pre-STARTED source campaign
+    preflight. It never silently changes V24 frozen broad query behavior.
+    """
+    raw_queries = validate_option_at_time_quote_exact_queries(queries)
+    return _execute_shared_option_quote_batch(raw_queries, expected_count=len(queries))
 
 
 def option_at_time_quote(

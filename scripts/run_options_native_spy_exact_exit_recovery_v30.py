@@ -32,6 +32,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-calls", type=int, default=None,
                         help="Optional absolute per-run paid request cap; default all missing")
     parser.add_argument("--progress-every", type=int, default=50)
+    parser.add_argument("--adaptive-recovery", action="store_true",
+                        help="After one ambiguous four-query batch, leave its IDs uncertain, "
+                             "restart SDK authentication and use 16 new single-query "
+                             "batches before returning to four workers; stop at two failures")
     args = parser.parse_args(argv)
     print("ATLAS V30 SPY EXACT CONTRACT SHARED-AUTH SOURCE RECOVERY", flush=True)
     print(
@@ -48,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
             f"  missing_right_requests={preview['total_exact_right_requests']}"
             f" unattempted={preview['remaining_unattempted']}"
             f" states={preview['states']}"
+            f" fractional_strike_states={preview['fractional_strike_source_states']}"
             f" source_plan_fp={plan['fingerprint']}",
             flush=True,
         )
@@ -69,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             max_calls=args.max_calls,
             progress=progress,
             progress_every=args.progress_every,
+            adaptive_recovery=args.adaptive_recovery,
         )
         print(
             f"  dispatched={done['provider_requests_this_run']}"
@@ -77,6 +83,11 @@ def main(argv: list[str] | None = None) -> int:
             f" provider_failures={done['provider_failures_this_run']}"
             f" invalid_archives={done['invalid_archives_this_run']}"
             f" full_storage_audits={done['storage_audits_this_run']}"
+            f" ambiguous_batches={done['ambiguous_batch_failures_this_run']}"
+            f" uncertain_new={done['ambiguous_query_ids_preserved_this_run']}"
+            f" ambiguous_error_class={done['last_ambiguous_error_type']}"
+            f" ambiguous_category={done['last_ambiguous_failure_category']}"
+            f" single_fallback={done['adaptive_single_query_fallback_activated']}"
             f" stop={done['stop_reason']}", flush=True,
         )
         print(f"  remaining={done['remaining']} states={done['states']}", flush=True)

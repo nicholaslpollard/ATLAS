@@ -47,6 +47,8 @@ from packages.providers.thetadata.client import (
     ThetaDataResponse, ThetaDataError, _canonical_bytes,
     establish_option_quote_shared_authenticated_session,
     option_at_time_quote_exact_shared_session_batch,
+    validate_option_at_time_quote_exact_queries,
+    restart_option_quote_shared_authenticated_session_after_ambiguous_batch,
 )
 
 CONTRACT = "atlas-spy-exact-contract-shared-session-source-campaign-v30"
@@ -69,6 +71,30 @@ TERMINAL = {
 
 class ExactExitSourceError(ValueError):
     pass
+
+
+def _safe_ambiguous_category(exc: Exception) -> str:
+    """Classification labels only; never record SDK exception contents."""
+    if isinstance(exc, ThetaDataError):
+        label = str(exc)
+        if label == "ThetaData provider worker timed out waiting for a response":
+            return "PROVIDER_WORKER_RESPONSE_TIMEOUT"
+        if label == "ThetaData provider worker returned no response":
+            return "PROVIDER_WORKER_EOF"
+        if label == "ThetaData provider worker returned invalid protocol JSON":
+            return "PROVIDER_WORKER_PROTOCOL_JSON"
+        if label == "ThetaData provider worker exited unexpectedly":
+            return "PROVIDER_WORKER_EXITED"
+        if label.startswith("ThetaData provider worker communication failed:"):
+            return "PROVIDER_WORKER_PIPE_ERROR"
+        if label.startswith("ThetaData Python-library worker request failed:"):
+            return "PROVIDER_WORKER_SDK_EXCEPTION"
+        if label == "shared authenticated SDK result shape unqualified":
+            return "SHARED_RESULT_ENVELOPE_UNQUALIFIED"
+        return "UNCLASSIFIED_THETADATA_TRANSPORT_ERROR"
+    if isinstance(exc, ValueError):
+        return "LOCAL_BATCH_RESULT_VALIDATION"
+    return "UNCLASSIFIED_BATCH_EXCEPTION"
 
 
 # The existing V29 CLI uses audit_original_spy_pair_observations (V26) as
@@ -299,12 +325,20 @@ def preview_exact_exit_campaign(
 ) -> dict[str, Any]:
     settings.assert_external_storage_binding("options")
     rows = report["missing_exact_contract_right_requests"]
-    states = Counter(_state(settings, r, report["fingerprint"]) for r in rows)
+    # A frozen receipt-by-strike census helps diagnose whether the eight
+    # earlier ambiguous request identities involved decimal SPY strikes. The
+    # full original source plan remains unchanged, and no SDK is constructed.
+    inspected = [(r, _state(settings, r, report["fingerprint"])) for r in rows]
+    states = Counter(state for _, state in inspected)
+    fractional_states = Counter(
+        state for r, state in inspected if "." in r["sdk_kwargs"]["strike"]
+    )
     out = {
         "contract": CONTRACT, "mode": "OFFLINE_SOURCE_RECEIPT_PREVIEW",
         "plan_fingerprint": report["fingerprint"],
         "total_exact_right_requests": len(rows),
         "states": dict(sorted(states.items())),
+        "fractional_strike_source_states": dict(sorted(fractional_states.items())),
         "remaining_unattempted": states["UNATTEMPTED"],
         "provider_requests": 0, "broker_requests": 0,
         "simulator_ready": False, "source_promoted": False,
@@ -400,11 +434,23 @@ def run_exact_exit_campaign(
     storage_reader: Callable[..., Any] = inspect_research_storage,
     progress: Callable[[dict], None] | None = None,
     progress_every: int = 50,
+    adaptive_recovery: bool = False,
+    restart_authenticator: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
     if max_calls is not None and (type(max_calls) is not int or max_calls < 1):
         raise ExactExitSourceError("V30_MAX_CALLS_INVALID")
     if type(progress_every) is not int or progress_every < 1:
         raise ExactExitSourceError("V30_PROGRESS_INVALID")
+    if type(adaptive_recovery) is not bool:
+        raise ExactExitSourceError("V33_ADAPTIVE_MODE_INVALID")
+    # Injected provider doubles can reuse the supplied authenticator; only
+    # the real default SDK path may restart its isolated worker subprocess.
+    if restart_authenticator is None:
+        restart_authenticator = (
+            restart_option_quote_shared_authenticated_session_after_ambiguous_batch
+            if authenticator is establish_option_quote_shared_authenticated_session
+            else authenticator
+        )
     before = preview_exact_exit_campaign(settings, report)
     rows = [r for r in report["missing_exact_contract_right_requests"]
             if _state(settings, r, report["fingerprint"]) == "UNATTEMPTED"]
@@ -415,6 +461,11 @@ def run_exact_exit_campaign(
         "provider_requests_this_run": 0, "archived_this_run": 0,
         "no_data_this_run": 0, "invalid_archives_this_run": 0,
         "provider_failures_this_run": 0, "storage_audits_this_run": 0,
+        "ambiguous_batch_failures_this_run": 0,
+        "ambiguous_query_ids_preserved_this_run": 0,
+        "last_ambiguous_error_type": None,
+        "last_ambiguous_failure_category": None,
+        "adaptive_single_query_fallback_activated": False,
         "stop_reason": "ALL_ELIGIBLE_EXACT_RIGHT_QUERIES_SCANNED",
         "source_only": True, "simulator_ready": False,
         "broker_requests": 0, "protected_2026_outcomes_read": 0,
@@ -431,9 +482,11 @@ def run_exact_exit_campaign(
     meter = meter_factory(settings, storage_reader)
     idx = 0
     stop = False
+    active_batch_size = MAX_WORKERS
+    recovered_single_batches = 0
     while idx < len(rows) and not stop:
         batch = []
-        for req in rows[idx: idx + MAX_WORKERS]:
+        for req in rows[idx: idx + active_batch_size]:
             if max_calls is not None and result["provider_requests_this_run"] + len(batch) >= max_calls:
                 result["stop_reason"] = "CALL_LIMIT_REACHED"
                 stop = True
@@ -444,6 +497,20 @@ def run_exact_exit_campaign(
                 break
             batch.append(req)
         if not batch:
+            break
+        # Pure local SDK argument validation happens BEFORE creating any
+        # possibly-dispatched STARTED identity. Previously a fractional strike
+        # was rejected inside batch_reader AFTER the 4 started receipts,
+        # silently converting a local bug into four uncertain "provider" calls.
+        # Fail closed without marking these identities dispatched.
+        try:
+            validate_option_at_time_quote_exact_queries(
+                [req["sdk_kwargs"] for req in batch]
+            )
+        except Exception as exc:
+            result["stop_reason"] = "LOCAL_EXACT_SDK_PREFLIGHT_BLOCKED_NO_DISPATCH"
+            result["local_preflight_error_type"] = type(exc).__name__
+            stop = True
             break
         started = []
         for req in batch:
@@ -465,12 +532,51 @@ def run_exact_exit_campaign(
             received = batch_reader([req["sdk_kwargs"] for req in batch])
             if not isinstance(received, list) or len(received) != len(batch):
                 raise ExactExitSourceError("V30_BATCH_RESULT_LENGTH_DRIFT")
-        except Exception:
-            # Batch transport ambiguity means every STARTED identity is
-            # potentially dispatched; leave terminal uncertain and STOP.
-            result["stop_reason"] = "AMBIGUOUS_SHARED_BATCH_NO_SAME_QUERY_RETRY"
-            stop = True
-            break
+        except Exception as exc:
+            # Every started query from this batch is now UNKNOWN, even if
+            # some provider GETs completed before the transport failed.
+            # Never repeat them, inspect outcomes, or invent terminal rows.
+            result["ambiguous_batch_failures_this_run"] += 1
+            result["ambiguous_query_ids_preserved_this_run"] += len(batch)
+            result["last_ambiguous_error_type"] = type(exc).__name__
+            result["last_ambiguous_failure_category"] = _safe_ambiguous_category(exc)
+            if (not adaptive_recovery
+                    or result["ambiguous_batch_failures_this_run"] >= 2):
+                result["stop_reason"] = "AMBIGUOUS_SHARED_BATCH_NO_SAME_QUERY_RETRY"
+                stop = True
+                break
+            # Distinct remaining unattempted IDs CAN be attempted, but after
+            # an ambiguous four-way response, start a FRESH authenticated SDK
+            # worker with one quote per subsequent batch. This recovery itself
+            # never resends an uncertain ID. A second ambiguity stops the run.
+            try:
+                restart_authenticator()
+            except Exception as restart_exc:
+                result["last_restart_error_type"] = type(restart_exc).__name__
+                result["stop_reason"] = "AMBIGUOUS_BATCH_REAUTH_BLOCKED_NO_RETRY"
+                stop = True
+                break
+            active_batch_size = 1
+            recovered_single_batches = 0
+            result["adaptive_single_query_fallback_activated"] = True
+            if progress is not None:
+                progress({
+                    "calls": result["provider_requests_this_run"],
+                    "archives": result["archived_this_run"],
+                    "explicit_no_data": result["no_data_this_run"],
+                    "provider_faults": result["provider_failures_this_run"],
+                    "invalid_archives": result["invalid_archives_this_run"],
+                    "last_date": batch[-1]["sdk_kwargs"]["date_et"],
+                    "ambiguous_preserved": result["ambiguous_query_ids_preserved_this_run"],
+                    "single_query_fallback": True,
+                })
+            continue
+        if active_batch_size == 1:
+            recovered_single_batches += 1
+            # Do not trust four-way batching again until at least sixteen
+            # distinct one-query successes in the newly authenticated worker.
+            if recovered_single_batches >= 16:
+                active_batch_size = MAX_WORKERS
         for req, started_record, value in zip(batch, started, received, strict=True):
             state, archive, error_type, grpc = (
                 "PROVIDER_OR_STORAGE_ERROR_NO_RETRY", None, None, None
