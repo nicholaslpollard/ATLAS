@@ -325,12 +325,20 @@ def preview_exact_exit_campaign(
 ) -> dict[str, Any]:
     settings.assert_external_storage_binding("options")
     rows = report["missing_exact_contract_right_requests"]
-    states = Counter(_state(settings, r, report["fingerprint"]) for r in rows)
+    # A frozen receipt-by-strike census helps diagnose whether the eight
+    # earlier ambiguous request identities involved decimal SPY strikes. The
+    # full original source plan remains unchanged, and no SDK is constructed.
+    inspected = [(r, _state(settings, r, report["fingerprint"])) for r in rows]
+    states = Counter(state for _, state in inspected)
+    fractional_states = Counter(
+        state for r, state in inspected if "." in r["sdk_kwargs"]["strike"]
+    )
     out = {
         "contract": CONTRACT, "mode": "OFFLINE_SOURCE_RECEIPT_PREVIEW",
         "plan_fingerprint": report["fingerprint"],
         "total_exact_right_requests": len(rows),
         "states": dict(sorted(states.items())),
+        "fractional_strike_source_states": dict(sorted(fractional_states.items())),
         "remaining_unattempted": states["UNATTEMPTED"],
         "provider_requests": 0, "broker_requests": 0,
         "simulator_ready": False, "source_promoted": False,
