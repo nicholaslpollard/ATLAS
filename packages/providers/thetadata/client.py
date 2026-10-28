@@ -451,7 +451,15 @@ def _execute_shared_option_quote_batch(
     completed: list[ThetaDataResponse | ThetaDataError] = []
     for item in results:
         if not isinstance(item, dict):
-            raise ThetaDataError("shared authenticated SDK item invalid")
+            # A trustworthy ordered batch response can contain one malformed
+            # item. Do not discard three OTHER completed provider results or
+            # mark them as ambiguous: preserve their original evidence.
+            completed.append(ThetaDataError(
+                "ThetaData shared-session item invalid",
+                provider_error_type="MalformedProviderBatchItem",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
         if item.get("ok") is not True:
             label = item.get("error_type")
             status = item.get("error_grpc_status")
@@ -481,11 +489,32 @@ def _execute_shared_option_quote_batch(
         if not isinstance(rows, list) or any(
             not isinstance(row, dict) for row in rows
         ):
-            raise ThetaDataError("shared authenticated SDK quote rows invalid")
+            completed.append(ThetaDataError(
+                "ThetaData shared-session result rows invalid",
+                provider_error_type="MalformedProviderQuoteRows",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
         explicit = item.get("explicit_no_data", False)
         if type(explicit) is not bool or (explicit and rows):
-            raise ThetaDataError("shared authenticated SDK no-data contradiction")
-        canonical = _canonical_bytes(rows)
+            completed.append(ThetaDataError(
+                "ThetaData shared-session no-data evidence inconsistent",
+                provider_error_type="ContradictoryProviderNoData",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
+        try:
+            canonical = _canonical_bytes(rows)
+        except (TypeError, ValueError, OverflowError) as exc:
+            # Nonfinite provider option quotes occasionally arrive as NaN/
+            # inf. They must never be promoted as valid evidence, but one
+            # failed right cannot consume three otherwise completed rights.
+            completed.append(ThetaDataError(
+                "ThetaData shared-session quote cannot be serialized safely",
+                provider_error_type="UnserializableProviderQuoteRows",
+                provider_error_stage="DATAFRAME_SERIALIZATION",
+            ))
+            continue
         completed.append(ThetaDataResponse(
             http_status=200,
             rows=tuple(rows),
