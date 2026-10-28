@@ -72,6 +72,30 @@ class ExactExitSourceError(ValueError):
     pass
 
 
+def _safe_ambiguous_category(exc: Exception) -> str:
+    """Classification labels only; never record SDK exception contents."""
+    if isinstance(exc, ThetaDataError):
+        label = str(exc)
+        if label == "ThetaData provider worker timed out waiting for a response":
+            return "PROVIDER_WORKER_RESPONSE_TIMEOUT"
+        if label == "ThetaData provider worker returned no response":
+            return "PROVIDER_WORKER_EOF"
+        if label == "ThetaData provider worker returned invalid protocol JSON":
+            return "PROVIDER_WORKER_PROTOCOL_JSON"
+        if label == "ThetaData provider worker exited unexpectedly":
+            return "PROVIDER_WORKER_EXITED"
+        if label.startswith("ThetaData provider worker communication failed:"):
+            return "PROVIDER_WORKER_PIPE_ERROR"
+        if label.startswith("ThetaData Python-library worker request failed:"):
+            return "PROVIDER_WORKER_SDK_EXCEPTION"
+        if label == "shared authenticated SDK result shape unqualified":
+            return "SHARED_RESULT_ENVELOPE_UNQUALIFIED"
+        return "UNCLASSIFIED_THETADATA_TRANSPORT_ERROR"
+    if isinstance(exc, ValueError):
+        return "LOCAL_BATCH_RESULT_VALIDATION"
+    return "UNCLASSIFIED_BATCH_EXCEPTION"
+
+
 # The existing V29 CLI uses audit_original_spy_pair_observations (V26) as
 # its SHA/provenance-verified original-source reader. That wrapper accepts
 # V29's inner report WITH its own fingerprint, adds V26 metadata, hashes
@@ -431,6 +455,7 @@ def run_exact_exit_campaign(
         "ambiguous_batch_failures_this_run": 0,
         "ambiguous_query_ids_preserved_this_run": 0,
         "last_ambiguous_error_type": None,
+        "last_ambiguous_failure_category": None,
         "adaptive_single_query_fallback_activated": False,
         "stop_reason": "ALL_ELIGIBLE_EXACT_RIGHT_QUERIES_SCANNED",
         "source_only": True, "simulator_ready": False,
@@ -491,6 +516,7 @@ def run_exact_exit_campaign(
             result["ambiguous_batch_failures_this_run"] += 1
             result["ambiguous_query_ids_preserved_this_run"] += len(batch)
             result["last_ambiguous_error_type"] = type(exc).__name__
+            result["last_ambiguous_failure_category"] = _safe_ambiguous_category(exc)
             if (not adaptive_recovery
                     or result["ambiguous_batch_failures_this_run"] >= 2):
                 result["stop_reason"] = "AMBIGUOUS_SHARED_BATCH_NO_SAME_QUERY_RETRY"
