@@ -17,6 +17,9 @@ from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.options_native_spy_physical_spot_exact_demand_v29 import (
     CONTRACT as V29_CONTRACT,
 )
+from packages.data.options_native_spy_exact_exit_source_campaign_v30 import (
+    _verify_v29_wrapped_fingerprint,
+)
 from packages.data.options_native_spy_full_period_retrospective_dividend_variance_v1 import (
     CONTRACT as GRID_CONTRACT,
 )
@@ -74,7 +77,7 @@ def bridge_pretrade_inputs(v32: dict, v29: dict, variance_grid: dict) -> dict:
             or v29.get("historical_options_fill_authority") is not False
             or v29.get("protected_2026_outcomes_read") != 0
             or v29.get("fingerprint") != v32.get("source_plan_fingerprint")
-            or not _hash_matches(v29, "fingerprint")):
+            or not _verify_v29_wrapped_fingerprint(v29)):
         raise QuoteScenarioError("V37_ORIGINAL_PAIR_PLAN_SCOPE_OR_FINGERPRINT_DRIFT")
     grouped = validate_v32_tape(v32, PINNED_TAPE_FINGERPRINT)
     if (not isinstance(variance_grid, dict)
