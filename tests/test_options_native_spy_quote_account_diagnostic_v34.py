@@ -157,3 +157,61 @@ def test_cost_stresses_cannot_improve_identical_matched_quote_returns():
               for x in cells}
     assert values[("0.65", "0.00")] > values[("1.30", "0.00")]
     assert values[("0.65", "0.00")] > values[("0.65", "0.05")]
+
+
+def test_real_v32_v26_two_stage_fingerprint_format_is_verifiable():
+    """Reproduce the exact V32 evaluator -> V26 wrapper fingerprint sequence."""
+    # The direct test fixture omits fields V32 normally publishes; reconstruct
+    # the complete inner tape before the outer V26 source-audit projection.
+    from packages.simulation.options_native_spy_quote_account_diagnostic_v34 import (
+        V32_INNER_FIELDS, V26_AUDIT_ONLY_FIELDS,
+    )
+    inner = tape()
+    inner.update({
+        "source_plan_fingerprint": "b" * 64,
+        "exact_requested_right_terminal_states_encountered": {
+            "RAW_ARCHIVED_EXACT_CONTRACT_DIAGNOSTIC": 2344,
+            "UNCERTAIN_PREVIOUS_DISPATCH_NO_RETRY": 8,
+        },
+        "original_source_archives_unmodified": True,
+        "original_option_contract_roster_completeness_proven": False,
+    })
+    assert set(inner) == V32_INNER_FIELDS | {"fingerprint"}
+    inner["fingerprint"] = _fingerprint({
+        key: value for key, value in inner.items() if key != "fingerprint"
+    })
+    # audit_original_spy_pair_observations emits these wrapper-only keys,
+    # copies **inner (including its digest), and THEN replaces the digest.
+    outer = {
+        "original_411_entry_plan": 411,
+        "distinct_new_exit_request_plan": 1570,
+        "observed_source_identities_loaded": 900,
+        "note": "outer V26 audit",
+        "pricing": "original at-time quote evidence",
+        "fee_grid_is_model_assumption": True,
+        "simulations_run": 0,
+        "account_pnl_reported": False,
+        "historical_execution_qualified": False,
+        "protected_outcomes_read": 0,
+        "strategy_promotion": False,
+        **inner,
+    }
+    assert set(outer) == V32_INNER_FIELDS | V26_AUDIT_ONLY_FIELDS | {"fingerprint"}
+    outer["fingerprint"] = _fingerprint(outer)
+    assert _fingerprint({k: v for k, v in outer.items() if k != "fingerprint"}) != outer["fingerprint"]
+
+    report = run_quote_account_diagnostic(outer, outer["fingerprint"])
+    assert report["scenario_count"] == 20
+    assert report["original_v32_fingerprint"] == outer["fingerprint"]
+    assert report["provider_requests"] == report["broker_requests"] == 0
+
+    modified = deepcopy(outer)
+    modified["observations"][0]["original_100share_two_leg_entry_ask"] = "5.00"
+    with pytest.raises(QuoteScenarioError, match="FINGERPRINT_MISMATCH"):
+        run_quote_account_diagnostic(modified, outer["fingerprint"])
+    modified = deepcopy(outer)
+    modified["note"] = "edited wrapper metadata"
+    with pytest.raises(QuoteScenarioError, match="FINGERPRINT_MISMATCH"):
+        run_quote_account_diagnostic(modified, outer["fingerprint"])
+    with pytest.raises(QuoteScenarioError, match="FINGERPRINT_MISMATCH"):
+        run_quote_account_diagnostic(outer, "f" * 64)
