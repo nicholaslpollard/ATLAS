@@ -52,6 +52,7 @@ def main(argv: list[str] | None = None) -> int:
             f"  missing_right_requests={preview['total_exact_right_requests']}"
             f" unattempted={preview['remaining_unattempted']}"
             f" states={preview['states']}"
+            f" fractional_strike_states={preview['fractional_strike_source_states']}"
             f" source_plan_fp={plan['fingerprint']}",
             flush=True,
         )
