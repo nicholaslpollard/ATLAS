@@ -546,14 +546,14 @@ def _execute_shared_option_quote_batch(
 
 
 
-def option_at_time_quote_exact_shared_session_batch(
+def validate_option_at_time_quote_exact_queries(
     queries: list[dict[str, str]],
-) -> list[ThetaDataResponse | ThetaDataError]:
-    """One authenticated SDK session, at most four EXACT SPY option GETs.
+) -> list[dict[str, Any]]:
+    """Pre-dispatch pure local exact SPY query validation, at most four IDs.
 
     Deliberately separate from the V24 frozen broad-chain batch surface.
     Each request specifies one date/expiration/strike/right at 10:00 ET.
-    This must never be used to overwrite a frozen V24 original receipt.
+    This MUST run BEFORE immutable STARTED receipts are written; invalid\n    fractional-strike syntax must never consume an undispatched identity.
     """
     if not isinstance(queries, list) or not 1 <= len(queries) <= 4:
         raise ValueError("exact contract shared batch size must be 1..4")
@@ -568,7 +568,7 @@ def option_at_time_quote_exact_shared_session_batch(
         if (q["symbol"] != "SPY" or q["right"] not in {"call", "put"}
                 or q["time_of_day_et"] != "10:00:00.000"
                 or type(q["strike"]) is not str
-                or re.fullmatch(r"[0-9]+(?:\\.[0-9]{1,3})?", q["strike"]) is None):
+                or re.fullmatch(r"[0-9]+(?:\.[0-9]{1,3})?", q["strike"]) is None):
             raise ValueError("exact contract SPY clock/right/strike drift")
         try:
             strike_value = Decimal(q["strike"])
@@ -585,8 +585,20 @@ def option_at_time_quote_exact_shared_session_batch(
             "expiration": expiry, "strike": q["strike"], "right": q["right"],
             "time_of_day": "10:00:00.000",
         })
-    return _execute_shared_option_quote_batch(raw_queries, expected_count=len(queries))
+    return raw_queries
 
+
+
+def option_at_time_quote_exact_shared_session_batch(
+    queries: list[dict[str, str]],
+) -> list[ThetaDataResponse | ThetaDataError]:
+    """One authenticated session, up to four exact SPY historical quote GETs.
+
+    Validation is shared identically with the pre-STARTED source campaign
+    preflight. It never silently changes V24 frozen broad query behavior.
+    """
+    raw_queries = validate_option_at_time_quote_exact_queries(queries)
+    return _execute_shared_option_quote_batch(raw_queries, expected_count=len(queries))
 
 
 def option_at_time_quote(
