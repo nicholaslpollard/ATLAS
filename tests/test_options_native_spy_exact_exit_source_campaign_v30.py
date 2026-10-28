@@ -536,3 +536,31 @@ def test_v33_invalid_local_exact_request_never_consumes_started_receipt(tmp_path
     assert result["ambiguous_query_ids_preserved_this_run"] == 0
     assert result["remaining"] == 1
     assert _state(settings, bad, plan["fingerprint"]) == "UNATTEMPTED"
+
+
+
+def test_v33_offline_preview_shows_fractional_strike_uncertain_receipts(tmp_path):
+    settings, plan = Settings(tmp_path), preview_plan()
+    row = plan["missing_exact_contract_right_requests"][0]
+    frac = dict(Q, strike="100.5")
+    row["sdk_kwargs"] = frac
+    row["query_id"] = _fingerprint({
+        "provider": "thetadata", "method": "option_at_time_quote",
+        "kwargs": frac,
+    })
+    before = preview_exact_exit_campaign(settings, plan)
+    assert before["fractional_strike_source_states"] == {"UNATTEMPTED": 1}
+    from packages.data.options_native_spy_exact_exit_source_campaign_v30 import _save_receipt
+    started = {
+        "contract": CONTRACT, "kind": "started",
+        "plan_fingerprint": plan["fingerprint"],
+        "query_id": row["query_id"], "sdk_kwargs": frac,
+        "state": "POSSIBLY_DISPATCHED_NO_SAME_QUERY_RETRY",
+        "simulator_ready": False,
+    }
+    _save_receipt(settings, row, plan["fingerprint"], "started", started)
+    after = preview_exact_exit_campaign(settings, plan)
+    assert after["fractional_strike_source_states"] == {
+        "UNCERTAIN_PREVIOUS_DISPATCH_NO_RETRY": 1
+    }
+    assert after["remaining_unattempted"] == 0
