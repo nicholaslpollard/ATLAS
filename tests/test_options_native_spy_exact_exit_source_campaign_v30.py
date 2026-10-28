@@ -505,3 +505,34 @@ def test_v33_restart_auth_failure_stops_without_consuming_additional_ids(tmp_pat
     assert result["remaining"] == 8
     assert result["states"]["UNCERTAIN_PREVIOUS_DISPATCH_NO_RETRY"] == 4
     assert result["last_restart_error_type"] == "ThetaDataError"
+
+
+
+def test_v33_fractional_strikes_are_validated_identically_before_and_during_dispatch(monkeypatch):
+    from packages.providers.thetadata import client
+    for strike in ("100", "100.5", "100.25", "100.125"):
+        q = dict(Q, strike=strike)
+        raw = client.validate_option_at_time_quote_exact_queries([q])
+        assert len(raw) == 1
+        assert raw[0]["strike"] == strike
+        assert raw[0]["expiration"] == Q["expiration"]
+    for strike in ("100\\.5", "100.1234", "1E+2", "-100", "0"):
+        with pytest.raises(ValueError, match="strike"):
+            client.validate_option_at_time_quote_exact_queries([dict(Q, strike=strike)])
+
+
+def test_v33_invalid_local_exact_request_never_consumes_started_receipt(tmp_path):
+    settings, plan = Settings(tmp_path), preview_plan()
+    bad = plan["missing_exact_contract_right_requests"][0]
+    bad["sdk_kwargs"] = dict(Q, strike="100.1234")
+    result = run_exact_exit_campaign(
+        settings, plan,
+        authenticator=lambda: None, meter_factory=Meter,
+        batch_reader=lambda *_: (_ for _ in ()).throw(AssertionError("paid request")),
+    )
+    assert result["stop_reason"] == "LOCAL_EXACT_SDK_PREFLIGHT_BLOCKED_NO_DISPATCH"
+    assert result["local_preflight_error_type"] == "ValueError"
+    assert result["provider_requests_this_run"] == 0
+    assert result["ambiguous_query_ids_preserved_this_run"] == 0
+    assert result["remaining"] == 1
+    assert _state(settings, bad, plan["fingerprint"]) == "UNATTEMPTED"
