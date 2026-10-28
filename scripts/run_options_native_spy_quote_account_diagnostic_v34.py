@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
                 or args.output.exists() or args.output.is_symlink()):
             raise ValueError("V34_TAPE_OR_OUTPUT_PREFLIGHT_REJECTED")
         settings = load_settings(ROOT, "development")
-        settings.assert_external_storage_binding("research")
+        settings.assert_external_storage_binding("research_evidence")
         _register_trial(settings)
         tape = json.loads(args.tape.read_text(encoding="utf-8"))
         report = run_quote_account_diagnostic(tape, args.expect_fingerprint)
