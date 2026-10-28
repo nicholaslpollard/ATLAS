@@ -553,7 +553,8 @@ def validate_option_at_time_quote_exact_queries(
 
     Deliberately separate from the V24 frozen broad-chain batch surface.
     Each request specifies one date/expiration/strike/right at 10:00 ET.
-    This MUST run BEFORE immutable STARTED receipts are written; invalid\n    fractional-strike syntax must never consume an undispatched identity.
+    This MUST run BEFORE immutable STARTED receipts are written; invalid
+    fractional-strike syntax must never consume an undispatched identity.
     """
     if not isinstance(queries, list) or not 1 <= len(queries) <= 4:
         raise ValueError("exact contract shared batch size must be 1..4")
