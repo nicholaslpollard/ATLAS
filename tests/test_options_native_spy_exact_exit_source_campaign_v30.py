@@ -373,3 +373,135 @@ def test_duplicate_exact_right_never_admitted_even_if_other_contracts_returned(t
     assert result["states"]["RAW_ARCHIVED_INVALID_OR_UNMATCHED_CONTRACT"] == 1
     assert result["archived_this_run"] == 1
     assert result["remaining"] == 0
+
+
+
+def _many_source_requests(count: int):
+    """Exercise started IDs independently, not the frozen 411-week loader."""
+    plan = preview_plan()
+    first = plan["missing_exact_contract_right_requests"][0]
+    rows = []
+    for i in range(count):
+        q = dict(first["sdk_kwargs"], date_et=f"2025-01-{7+i:02d}")
+        rows.append({
+            **first,
+            "query_id": _fingerprint({
+                "provider": "thetadata", "method": "option_at_time_quote",
+                "kwargs": q,
+            }),
+            "sdk_kwargs": q,
+        })
+    plan["missing_exact_contract_right_requests"] = rows
+    plan["missing_exact_contract_right_request_count"] = count
+    return plan
+
+
+def test_v33_one_bad_returned_sdk_item_preserves_three_good_original_results(monkeypatch):
+    from packages.providers.thetadata import client
+    class Worker:
+        def request(self, method, kwargs):
+            assert method == "batch_option_at_time_quote_shared_session"
+            bad = dict(quote(), bid=float("nan"))
+            rows = [[quote()], [bad], [quote()], [quote()]]
+            return {
+                "shared_authenticated_session": True,
+                "results": [{
+                    "ok": True, "rows": r, "explicit_no_data": False,
+                    "library_version": TARGET_LIBRARY_VERSION,
+                    "environment_fingerprint": "a" * 64,
+                } for r in rows],
+            }
+
+    monkeypatch.setattr(client, "_worker", lambda: Worker())
+    received = client.option_at_time_quote_exact_shared_session_batch([Q] * 4)
+    assert len(received) == 4
+    assert isinstance(received[1], ThetaDataError)
+    assert received[1].provider_error_type == "UnserializableProviderQuoteRows"
+    assert received[1].provider_error_stage == "DATAFRAME_SERIALIZATION"
+    assert all(
+        isinstance(received[i], ThetaDataResponse) and received[i].rows[0]["bid"] == 1.0
+        for i in (0, 2, 3)
+    )
+
+
+def test_v33_adaptive_recovery_preserves_failed_four_and_continues_new_id_singly(tmp_path):
+    settings, plan = Settings(tmp_path), _many_source_requests(24)
+    calls = []
+    auth = []
+    restart = []
+
+    def dispatch(queries):
+        calls.append([x["date_et"] for x in queries])
+        if len(calls) == 1:
+            assert len(queries) == 4
+            raise ThetaDataError("worker lost full batch envelope")
+        assert all(q not in calls[0] for q in calls[-1])
+        return [good_response(explicit=True) for _ in queries]
+
+    result = run_exact_exit_campaign(
+        settings, plan, adaptive_recovery=True, batch_reader=dispatch,
+        authenticator=lambda: auth.append("initial"),
+        restart_authenticator=lambda: restart.append("fresh-session"),
+        meter_factory=Meter,
+    )
+    assert auth == ["initial"]
+    assert restart == ["fresh-session"]
+    assert result["ambiguous_batch_failures_this_run"] == 1
+    assert result["ambiguous_query_ids_preserved_this_run"] == 4
+    assert result["last_ambiguous_error_type"] == "ThetaDataError"
+    assert result["adaptive_single_query_fallback_activated"] is True
+    assert result["stop_reason"] == "ALL_ELIGIBLE_EXACT_RIGHT_QUERIES_SCANNED"
+    assert result["provider_requests_this_run"] == 24
+    assert result["remaining"] == 0
+    assert result["states"]["UNCERTAIN_PREVIOUS_DISPATCH_NO_RETRY"] == 4
+    assert result["states"]["EXPLICIT_NO_DATA_SOURCE_ONLY"] == 20
+    assert all(len(q) == 1 for q in calls[1:17])
+    assert len(calls[17]) == 4
+    # No one can send any of the four prior uncertain IDs on a resume.
+    second = run_exact_exit_campaign(
+        settings, plan, adaptive_recovery=True,
+        batch_reader=lambda q: (_ for _ in ()).throw(AssertionError("retry")),
+        authenticator=lambda: (_ for _ in ()).throw(AssertionError("auth")),
+        meter_factory=Meter,
+    )
+    assert second["provider_requests_this_run"] == 0
+    assert second["remaining"] == 0
+
+
+def test_v33_second_ambiguous_batch_stops_without_consuming_rest_of_plan(tmp_path):
+    settings, plan = Settings(tmp_path), _many_source_requests(24)
+    requested = []
+    def fail_every_batch(queries):
+        requested.append([x["date_et"] for x in queries])
+        raise RuntimeError("worker unavailable")
+    result = run_exact_exit_campaign(
+        settings, plan, adaptive_recovery=True,
+        batch_reader=fail_every_batch,
+        authenticator=lambda: None,
+        restart_authenticator=lambda: None,
+        meter_factory=Meter,
+    )
+    assert len(requested) == 2
+    assert len(requested[0]) == 4 and len(requested[1]) == 1
+    assert set(requested[0]).isdisjoint(requested[1])
+    assert result["ambiguous_batch_failures_this_run"] == 2
+    assert result["ambiguous_query_ids_preserved_this_run"] == 5
+    assert result["remaining"] == 19
+    assert result["states"]["UNCERTAIN_PREVIOUS_DISPATCH_NO_RETRY"] == 5
+    assert result["stop_reason"] == "AMBIGUOUS_SHARED_BATCH_NO_SAME_QUERY_RETRY"
+
+
+def test_v33_restart_auth_failure_stops_without_consuming_additional_ids(tmp_path):
+    settings, plan = Settings(tmp_path), _many_source_requests(12)
+    result = run_exact_exit_campaign(
+        settings, plan, adaptive_recovery=True,
+        batch_reader=lambda _: (_ for _ in ()).throw(RuntimeError("worker timeout")),
+        authenticator=lambda: None,
+        restart_authenticator=lambda: (_ for _ in ()).throw(ThetaDataError("reconnect unavailable")),
+        meter_factory=Meter,
+    )
+    assert result["stop_reason"] == "AMBIGUOUS_BATCH_REAUTH_BLOCKED_NO_RETRY"
+    assert result["provider_requests_this_run"] == 4
+    assert result["remaining"] == 8
+    assert result["states"]["UNCERTAIN_PREVIOUS_DISPATCH_NO_RETRY"] == 4
+    assert result["last_restart_error_type"] == "ThetaDataError"
