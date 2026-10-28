@@ -9,7 +9,6 @@ Crucially, historical source presence does not establish availability at the
 """
 
 from collections import Counter, defaultdict
-from dateutil.parser import isoparse
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from typing import Any
