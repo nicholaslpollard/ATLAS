@@ -399,6 +399,17 @@ def establish_option_quote_shared_authenticated_session() -> None:
         raise ThetaDataError("shared quote authentication readiness failed")
 
 
+def restart_option_quote_shared_authenticated_session_after_ambiguous_batch() -> None:
+    """Discard a potentially broken worker, then authenticate a new session.
+
+    Call ONLY after a complete historical batch response was not received.
+    Caller must preserve the already STARTED query IDs as uncertain and never
+    resend them. This creates no historical requests by itself.
+    """
+    reset_thread_worker_for_tests()
+    establish_option_quote_shared_authenticated_session()
+
+
 def option_at_time_quote_shared_session_batch(
     queries: list[dict[str, Any]],
 ) -> list[ThetaDataResponse | ThetaDataError]:
