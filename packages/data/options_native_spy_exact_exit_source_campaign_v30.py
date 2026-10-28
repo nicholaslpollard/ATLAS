@@ -47,6 +47,7 @@ from packages.providers.thetadata.client import (
     ThetaDataResponse, ThetaDataError, _canonical_bytes,
     establish_option_quote_shared_authenticated_session,
     option_at_time_quote_exact_shared_session_batch,
+    validate_option_at_time_quote_exact_queries,
     restart_option_quote_shared_authenticated_session_after_ambiguous_batch,
 )
 
@@ -488,6 +489,20 @@ def run_exact_exit_campaign(
                 break
             batch.append(req)
         if not batch:
+            break
+        # Pure local SDK argument validation happens BEFORE creating any
+        # possibly-dispatched STARTED identity. Previously a fractional strike
+        # was rejected inside batch_reader AFTER the 4 started receipts,
+        # silently converting a local bug into four uncertain "provider" calls.
+        # Fail closed without marking these identities dispatched.
+        try:
+            validate_option_at_time_quote_exact_queries(
+                [req["sdk_kwargs"] for req in batch]
+            )
+        except Exception as exc:
+            result["stop_reason"] = "LOCAL_EXACT_SDK_PREFLIGHT_BLOCKED_NO_DISPATCH"
+            result["local_preflight_error_type"] = type(exc).__name__
+            stop = True
             break
         started = []
         for req in batch:
