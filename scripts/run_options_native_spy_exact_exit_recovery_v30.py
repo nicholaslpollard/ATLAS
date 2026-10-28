@@ -85,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
             f" ambiguous_batches={done['ambiguous_batch_failures_this_run']}"
             f" uncertain_new={done['ambiguous_query_ids_preserved_this_run']}"
             f" ambiguous_error_class={done['last_ambiguous_error_type']}"
+            f" ambiguous_category={done['last_ambiguous_failure_category']}"
             f" single_fallback={done['adaptive_single_query_fallback_activated']}"
             f" stop={done['stop_reason']}", flush=True,
         )
