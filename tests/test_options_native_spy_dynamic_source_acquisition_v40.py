@@ -87,8 +87,9 @@ def test_three_demand_sources_per_selected_week_clock():
     assert len(needs) == 3
     oi,call,put=needs
     assert oi["method"]=="option_history_open_interest_surface"
-    assert oi["kwargs"]["date_et"] == "2019-06-02"
+    assert oi["kwargs"]["date_et"] == "2019-06-03"
     assert oi["kwargs"]["right"] == "both"
+    assert oi["purpose"] == "decision_date_prior_state_oi_surface"
     assert oi["kwargs"]["max_dte"] == 75
     assert call["method"]==put["method"]=="option_at_time_quote"
     assert call["kwargs"]["time_of_day_et"] == "10:01:00.000"
