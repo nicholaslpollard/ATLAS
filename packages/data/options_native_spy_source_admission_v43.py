@@ -75,7 +75,7 @@ def _match(row: dict, *, expiry: str, strike: str, right: str) -> bool:
         # ThetaData's original underlying may also be an OCC OSI compact
         # symbol; check both exact underlying and standard OCC token form.
         compact = symbol.replace(" ", "").upper()
-        root_ok = compact == "SPY" or (
+        root_ok = compact in ("SPY", "SPY.US") or (
             compact.startswith("SPY")
             and len(compact) == 18
             and compact[3:9].isdigit()
