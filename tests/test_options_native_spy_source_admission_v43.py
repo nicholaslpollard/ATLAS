@@ -90,6 +90,13 @@ def test_qualified_exact_quotes_and_oi_still_never_become_order_fills():
     assert case["source_10_01_call"]["historically_executable_order_fill"] is False
 
 
+def test_v40_accepted_spy_us_underlying_alias_remains_exact_match():
+    alternate = tuple({**r, "symbol": "SPY.US"} for r in exact_quote("call"))
+    case = gate.assess_case(original_case(), group(call=alternate))
+    assert case["status"] == "SOURCE_MICROSTRUCTURE_OI_CHECKS_PASS"
+    assert case["source_10_01_call"]["matched_original_rows"] == 1
+
+
 def test_stale_and_wide_quote_filters_preserve_original_value():
     case = gate.assess_case(
         original_case(),
