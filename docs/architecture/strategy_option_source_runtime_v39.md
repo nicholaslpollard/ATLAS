@@ -49,6 +49,6 @@ This is the reusable **simulator-facing source resolver**. The existing V34/V36 
 
 **Do not use this as an authorization to trade live, as permission to forge missing quote/settlement events, or as independent historical strategy qualification.**
 
-## V42 observation hook
+## V42 progress event hook
 
-`resolve_strategy_source_demands` now accepts optional `on_progress(event, details)` alongside the existing optional `on_source`. It reports **source_started**, **provider_dispatch**, **source_done** and **source_failed** with the exact candidate/purpose/date/query identity and snapshot of **actual** attempted provider calls, archive receipts, cache hits, explicit no-data and retryable failures. No future provider call total is predicted or prohibited. The V40 CLI uses `SourceProgressMonitor` to show ET timestamped 15-second heartbeats during blocking GETs, every-25 progress reports, current active request age and a rough observed ETA, while flushing an on-disk progress log. Callback/monitoring cannot authorize an incomplete source for trading. [Operating requirements](atlas_living_operating_requirements_20261029.md).
+`resolve_strategy_source_demands` accepts optional `on_progress(event, details)` alongside `on_source`, reporting source_started, provider_dispatch, source_done and source_failed with actual request, cache-hit and error counters. The V40 progress observer reports **ET timestamped milestones every 10% of known source requirements**, plus immediate failure reports. It does not use a timer/heartbeat or write a separate progress log. Query receipts and use/candidate lineage remain durable in V38/V39. No future API call total is predicted or prohibited. [Operating requirements](atlas_living_operating_requirements_20261029.md).
