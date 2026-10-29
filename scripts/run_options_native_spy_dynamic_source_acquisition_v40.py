@@ -35,10 +35,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--v37", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--heartbeat-seconds", type=float, default=15.0,
-                        help="Print a timestamped heartbeat while a provider call is in progress.")
-    parser.add_argument("--progress-every", type=int, default=25,
-                        help="Also print progress after every N resolved sources.")
     parser.add_argument(
         "--strategy-version", default=STRATEGY_VERSION,
         help="Cache-use lineage version, not a fixed restriction on source candidates.",
@@ -60,13 +56,10 @@ def main(argv: list[str] | None = None) -> int:
         # The runtime fetches what the source generator needs, archives each
         # successful response and records every use in durable SQLite. Missing
         # source receipts stay retryable rather than deleting candidate trades.
-        log_path = args.output.with_suffix(".progress.log")
-        print(f"  progress_log={log_path} heartbeat={args.heartbeat_seconds}s"
-              f" every={args.progress_every} source_uses"
-              f" original_cohort_requirements={len(entries) * 3}", flush=True)
+        print(f"  live_progress_every=10% of completed requirements"
+              f" expected_source_uses={len(entries) * 3}", flush=True)
         with SourceProgressMonitor(
-            log_path, expected_source_uses=len(entries) * 3,
-            heartbeat_seconds=args.heartbeat_seconds, every=args.progress_every,
+            expected_source_uses=len(entries) * 3,
         ) as monitor:
             acquisition = resolve_strategy_source_demands(
                 settings,
@@ -101,7 +94,6 @@ def main(argv: list[str] | None = None) -> int:
         print("  STATUS=" + acquisition["status"])
         print("  PIT_SIGNAL_AND_REAL_EXECUTION_NOT_YET_QUALIFIED")
         print("  saved=" + str(args.output), flush=True)
-        print("  timestamped_progress_log=" + str(log_path), flush=True)
         return 0 if acquisition["status"] == "ALL_REQUESTED_SOURCES_PRESENT" else 2
     except (OSError, ValueError, KeyError, TypeError, ArithmeticError) as exc:
         print(f"  STOPPED: {type(exc).__name__}: {str(exc)[:350]}", flush=True)
