@@ -159,12 +159,12 @@ def resolve_strategy_source_demands(
                 _put(db, version=version, candidate=candidate, purpose=purpose,
                      request=normalized, query_id=query_id, status=status,
                      source_sha=source["source_sha256"])
+            if on_source is not None:
+                on_source(dict(item), source)
             counts["source_uses_resolved"] += status in SUCCESS
             counts["source_uses_explicit_no_data"] += status in NO_DATA
             counts["provider_fetch_successes"] += status.startswith("FETCHED_")
             counts["persisted_cache_hits"] += status.startswith("CACHE")
-            if on_source is not None:
-                on_source(dict(item), source)
             notify("source_done", status=status)
         except Exception as exc:
             counts["source_uses_failed_or_unresolved"] += 1
