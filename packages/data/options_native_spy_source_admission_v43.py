@@ -231,8 +231,10 @@ def assess_case(row: dict, sources: dict) -> dict:
             "missing_source_purposes": missing,
             "entry_signal": None, "execution_fill": None,
         }
-    call = _exact_quote(*sources["call_1001_quote"])
-    put = _exact_quote(*sources["put_1001_quote"])
+    call_item, call_source = sources["call_1001_quote"]
+    put_item, put_source = sources["put_1001_quote"]
+    call = _exact_quote(call_source, call_item)
+    put = _exact_quote(put_source, put_item)
     oi = _exact_oi(sources["decision_date_prior_state_oi_surface"][1], row)
     reasons = []
     if call["status"] != "QUOTE_MICROSTRUCTURE_PASSES":
