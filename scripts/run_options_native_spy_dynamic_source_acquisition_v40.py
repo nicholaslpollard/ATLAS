@@ -49,7 +49,7 @@ def main(argv: list[str] | None = None) -> int:
         report = json.loads(args.v37.read_text(encoding="utf-8"))
         entries = validate_v37_source_packet(report)
         print(f"  validated_2018_2025_original_pairs={len(entries)}"
-              " each=prior_open_interest,10:01_call,10:01_put")
+              " each=decision_morning_prior_session_open_interest,10:01_call,10:01_put")
         settings = load_settings(ROOT, "development")
         evidence = Counter()
         # The runtime fetches what the source generator needs, archives each
