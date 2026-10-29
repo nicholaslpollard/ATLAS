@@ -296,7 +296,7 @@ def build_report(v37: dict, v40: dict, cases: list[dict], acquisition: dict) -> 
         "original_cases": sorted(cases, key=lambda x: x["date_et"]),
         "source_only_quote_not_a_broker_fill": True,
         "quote_1001_is_not_1000_entry_signal_input": True,
-        "poi_corporate_action_rate_dividend_iv_qualification_not_complete": True,
+        "pit_corporate_action_rate_dividend_iv_qualification_not_complete": True,
         "actual_strategy_entry_count": None,
         "actual_historical_profitability": None,
         "next": "SOURCE_ADMISSION_REPAIR_AND_PIT_SOFR_DIVIDEND_AMERICAN_IV_BRIDGE",
