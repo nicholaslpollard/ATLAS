@@ -186,9 +186,16 @@ def _exact_oi(source: dict, row: dict) -> dict:
     for item in source["source_rows"]:
         if not isinstance(item, dict):
             continue
-        for right in both:
-            if _match(item, expiry=expiry, strike=strike, right=right):
-                both[right].append(item)
+        # Each morning surface contains thousands of contracts. Reject
+        # unrelated expirations/rights before Decimal strike normalization,
+        # then do one exact identity comparison for at most the right found.
+        if str(item.get("expiration", ""))[:10] != expiry:
+            continue
+        right = str(item.get("right", "")).lower()
+        if right not in both:
+            continue
+        if _match(item, expiry=expiry, strike=strike, right=right):
+            both[right].append(item)
     legs = {}
     reasons = []
     for right in ("call", "put"):
