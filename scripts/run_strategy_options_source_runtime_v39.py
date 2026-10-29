@@ -65,7 +65,8 @@ def main(argv: list[str] | None = None) -> int:
             f" failed_or_pending={result['source_uses_failed_or_unresolved']}"
         )
         print(
-            f"  fetched_and_saved={result['provider_fetch_successes']}"
+            f"  provider_dispatch_attempts={result['provider_dispatch_attempts']}"
+            f" fetched_and_saved={result['provider_fetch_successes']}"
             f" reused_cached={result['persisted_cache_hits']}"
         )
         print(f"  {result['status']}")
