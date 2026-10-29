@@ -34,3 +34,7 @@ It supports the existing read-only ThetaData client methods: exact and broad at-
 ### Consequence for research process
 
 Frozen research plans remain useful for reproducibility. **Freezing a research cohort never freezes the system's ability to acquire newly demanded data**. New strategy runs must get a new strategy version/fingerprint and should obtain missing compatible historical sources automatically. One account simulation's incomplete coverage must be reported, not silently treated as an unfavorable trade or global acquisition endpoint.
+
+## V42 operational observability requirement
+
+Long demand-driven acquisition/strategy runs must report **actual** API requests and show timestamped progress and heartbeat even when a single provider call remains in flight, along with source cache/archiving/no-data/failure counts and rough observed ETA. Completed source receipts and a flushed progress log must survive process interruption. The original source cache remains unlimited by a lifetime GET count, while an individual response still has capacity/schema and physical storage safeguards. Do not mistake `source_only` as historical trade eligibility. See [full operating requirements](atlas_living_operating_requirements_20261029.md).
