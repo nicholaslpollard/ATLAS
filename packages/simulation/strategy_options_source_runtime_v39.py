@@ -88,6 +88,7 @@ def resolve_strategy_source_demands(
     *,
     provider_call: Callable | None = None,
     on_source: Callable[[dict, dict], None] | None = None,
+    on_progress: Callable[[str, dict], None] | None = None,
     continue_on_error: bool = False,
 ) -> dict:
     """Consume arbitrarily many dynamic requirements one at a time.
@@ -108,11 +109,20 @@ def resolve_strategy_source_demands(
     with _connect(db_path) as db:
         _journal(db)
     counts = Counter()
+    current = {"candidate_id": "", "purpose": "", "method": "", "query_id": "", "date_et": ""}
+
+    def notify(event: str, *, status: str | None = None, error: str | None = None):
+        if on_progress is not None:
+            on_progress(event, {
+                **current, "status": status, "error": error,
+                "counts": dict(counts),
+            })
 
     def counted_provider_call(method: str, kwargs: dict):
         # Count *attempts* at runtime, including a provider failure; neither
         # cache hits nor a printed preflight can predict this number.
         counts["provider_dispatch_attempts"] += 1
+        notify("provider_dispatch")
         if provider_call is not None:
             return provider_call(method, kwargs)
         return getattr(theta, method)(**kwargs)
@@ -131,6 +141,12 @@ def resolve_strategy_source_demands(
                  request=normalized, query_id=query_id, status="SOURCE_REQUIRED",
                  source_sha=None)
         counts["source_uses_requested"] += 1
+        current = {
+            "candidate_id": candidate, "purpose": purpose,
+            "method": item["method"], "query_id": query_id,
+            "date_et": normalized["kwargs"].get("date_et", ""),
+        }
+        notify("source_started")
         try:
             source = read_through_historical_options(
                 settings, item["method"], item["kwargs"],
@@ -143,18 +159,21 @@ def resolve_strategy_source_demands(
                 _put(db, version=version, candidate=candidate, purpose=purpose,
                      request=normalized, query_id=query_id, status=status,
                      source_sha=source["source_sha256"])
+            if on_source is not None:
+                on_source(dict(item), source)
             counts["source_uses_resolved"] += status in SUCCESS
             counts["source_uses_explicit_no_data"] += status in NO_DATA
             counts["provider_fetch_successes"] += status.startswith("FETCHED_")
             counts["persisted_cache_hits"] += status.startswith("CACHE")
-            if on_source is not None:
-                on_source(dict(item), source)
-        except Exception:
+            notify("source_done", status=status)
+        except Exception as exc:
             counts["source_uses_failed_or_unresolved"] += 1
             with _connect(db_path) as db:
                 _put(db, version=version, candidate=candidate, purpose=purpose,
                      request=normalized, query_id=query_id,
                      status="SOURCE_RETRY_REQUIRED", source_sha=None)
+            notify("source_failed", status="SOURCE_RETRY_REQUIRED",
+                   error=f"{type(exc).__name__}:{str(exc)[:160]}")
             if not continue_on_error:
                 raise
     return {

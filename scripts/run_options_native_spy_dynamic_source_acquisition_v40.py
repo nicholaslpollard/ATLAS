@@ -25,6 +25,7 @@ from packages.data.options_native_spy_dynamic_source_acquisition_v40 import (
 from packages.simulation.strategy_options_source_runtime_v39 import (
     resolve_strategy_source_demands,
 )
+from packages.simulation.strategy_source_progress_v42 import SourceProgressMonitor
 
 MAX_INPUT_BYTES = 2 * 1024 * 1024
 STRATEGY_VERSION = "spy_original_v37_feature_inputs_v40"
@@ -55,13 +56,19 @@ def main(argv: list[str] | None = None) -> int:
         # The runtime fetches what the source generator needs, archives each
         # successful response and records every use in durable SQLite. Missing
         # source receipts stay retryable rather than deleting candidate trades.
-        acquisition = resolve_strategy_source_demands(
-            settings,
-            args.strategy_version,
-            source_demands_for_entries(entries),
-            on_source=lambda item, src: count_source_observation(item, src, evidence),
-            continue_on_error=True,
-        )
+        print(f"  live_progress_every=10% of completed requirements"
+              f" expected_source_uses={len(entries) * 3}", flush=True)
+        with SourceProgressMonitor(
+            expected_source_uses=len(entries) * 3,
+        ) as monitor:
+            acquisition = resolve_strategy_source_demands(
+                settings,
+                args.strategy_version,
+                source_demands_for_entries(entries),
+                on_source=lambda item, src: count_source_observation(item, src, evidence),
+                on_progress=monitor.event,
+                continue_on_error=True,
+            )
         result = source_evidence_summary(report, acquisition, evidence)
         if result["contract"] != CONTRACT:
             raise ValueError("V40_OUTPUT_CONTRACT_CHANGED")
@@ -86,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {name}={value}")
         print("  STATUS=" + acquisition["status"])
         print("  PIT_SIGNAL_AND_REAL_EXECUTION_NOT_YET_QUALIFIED")
-        print("  saved=" + str(args.output))
+        print("  saved=" + str(args.output), flush=True)
         return 0 if acquisition["status"] == "ALL_REQUESTED_SOURCES_PRESENT" else 2
     except (OSError, ValueError, KeyError, TypeError, ArithmeticError) as exc:
         print(f"  STOPPED: {type(exc).__name__}: {str(exc)[:350]}", flush=True)

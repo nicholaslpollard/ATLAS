@@ -34,3 +34,7 @@ It supports the existing read-only ThetaData client methods: exact and broad at-
 ### Consequence for research process
 
 Frozen research plans remain useful for reproducibility. **Freezing a research cohort never freezes the system's ability to acquire newly demanded data**. New strategy runs must get a new strategy version/fingerprint and should obtain missing compatible historical sources automatically. One account simulation's incomplete coverage must be reported, not silently treated as an unfavorable trade or global acquisition endpoint.
+
+## V42 operational observability requirement
+
+Long source acquisition and strategy runs with a known denominator must display **ET timestamped progress once per 10% completed**, including completed/total, actual API attempts, cache/archiving/no-data/failure counts, elapsed time, throughput and rough observed ETA. Do not require 15-second heartbeat messages or separate progress logs. Completed source receipts and lineage remain persisted for recovery. There is no artificial lifetime provider-call limit or frozen candidate roster; finite provider, source-schema and disk safeguards continue to apply. [Full operating requirements](atlas_living_operating_requirements_20261029.md).
