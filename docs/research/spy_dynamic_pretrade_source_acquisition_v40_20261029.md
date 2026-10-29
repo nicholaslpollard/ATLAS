@@ -15,7 +15,7 @@ User completed the V37 411-week source-bound variance bridge on Oct 29, 2026:
 Build the exact entry/initial risk source demand from all V37 selected contracts and process through the V39 source resolver backed by V38's immutable compressed ThetaData source archive.
 
 Per selected SPY entry session, generate:
-1. Previous **XNYS trading session** historical open-interest surface, both rights, with historical scope DTE up to 75 and all eligible strikes; the selected expiration is ~30–45 DTE at the entry session. A historical prior-session state is still NOT proof that that state was published and available by 10:01 ET.
+1. **Decision-date morning OI publication** representing the previous XNYS trading session's end-of-day open interest, both rights, with historical scope DTE up to 75 and all eligible strikes; the selected expiration is ~30–45 DTE at the entry session. ThetaData documents publication at approximately 06:30 ET; the actual OPRA timestamp and source availability by 10:01 ET remain unverified until the returned historical evidence is qualified. Querying the previous session date would normally return OI for the session before that.
 2. Exact selected expiration/strike call quote at **10:01:00 ET**, using `option_at_time_quote`.
 3. Identical exact selected expiration/strike put quote at **10:01:00 ET**.
 
