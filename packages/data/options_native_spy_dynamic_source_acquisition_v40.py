@@ -25,7 +25,7 @@ CONTRACT = "atlas-spy-v40-dynamic-pretrade-source-acquisition-v1"
 V37_STATUS = "SOURCE_BOUND_HISTORICAL_PRETRADE_FEATURE_GAP_PACKET_NOT_SIGNAL"
 USE_CLOCK = "10:01:00.000"
 FOCUSED_OI_DTE = 75  # Existing 30..45 selected expiry + prior-session day offset.
-SOURCE_LABELS = ("previous_session_oi_surface", "call_1001_quote", "put_1001_quote")
+SOURCE_LABELS = ("decision_date_prior_state_oi_surface", "call_1001_quote", "put_1001_quote")
 
 
 class PretradeSourceDemandError(ValueError):
@@ -106,17 +106,20 @@ def source_demands_for_entries(
         prior = calendar.sessions_in_range(when - timedelta(days=10), when - timedelta(days=1))
         if not prior:
             raise PretradeSourceDemandError("PREVIOUS_XNYS_SESSION_NOT_FOUND")
-        prior_et = prior[-1].isoformat()
-        # OI history is a prior *session state*. Its publication-time
-        # availability by the decision clock remains unproved.
+        # ThetaData describes the approx. 06:30 ET *decision-date* OPRA
+        # message as the OI state at the END OF THE PREVIOUS trading session.
+        # Request decision-date publication, NOT previous-date publication,
+        # which would normally lag an additional trading session. The prior
+        # XNYS session is checked above; actual message source timestamp and
+        # historical availability still require downstream qualification.
         prefix = f"SPY.{when.isoformat()}.{expiry}.{strike}"
         yield {
             "candidate_id": prefix,
-            "purpose": "previous_session_oi_surface",
+            "purpose": "decision_date_prior_state_oi_surface",
             "method": "option_history_open_interest_surface",
             "kwargs": {
                 "symbol": "SPY",
-                "date_et": prior_et,
+                "date_et": d,
                 "right": "both",
                 "max_dte": FOCUSED_OI_DTE,
                 "strike_range": None,
