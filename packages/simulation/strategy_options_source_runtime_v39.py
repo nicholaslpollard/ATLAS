@@ -20,6 +20,7 @@ from typing import Any, Callable, Iterable
 
 from packages.core.settings import AtlasSettings
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
+from packages.providers.thetadata import client as theta
 from packages.data.options_on_demand_source_cache_v38 import (
     _connect, _database, normalize_source_requirement,
     read_through_historical_options,
@@ -107,6 +108,15 @@ def resolve_strategy_source_demands(
     with _connect(db_path) as db:
         _journal(db)
     counts = Counter()
+
+    def counted_provider_call(method: str, kwargs: dict):
+        # Count *attempts* at runtime, including a provider failure; neither
+        # cache hits nor a printed preflight can predict this number.
+        counts["provider_dispatch_attempts"] += 1
+        if provider_call is not None:
+            return provider_call(method, kwargs)
+        return getattr(theta, method)(**kwargs)
+
     for item in demands:
         if not isinstance(item, dict) or set(item) != {
             "candidate_id", "purpose", "method", "kwargs",
@@ -124,7 +134,7 @@ def resolve_strategy_source_demands(
         try:
             source = read_through_historical_options(
                 settings, item["method"], item["kwargs"],
-                provider_call=provider_call,
+                provider_call=counted_provider_call,
             )
             status = source["status"]
             if status not in OUTCOMES or source["query_id"] != query_id:
@@ -150,7 +160,9 @@ def resolve_strategy_source_demands(
     return {
         "contract": CONTRACT, "strategy_version": version,
         "status": (
-            "ALL_REQUESTED_SOURCES_PRESENT"
+            "NO_STRATEGY_SOURCE_DEMANDS_YET"
+            if not counts["source_uses_requested"]
+            else "ALL_REQUESTED_SOURCES_PRESENT"
             if counts["source_uses_requested"] == counts["source_uses_resolved"]
             else "SOURCE_REQUIREMENTS_UNRESOLVED_OR_NO_DATA"
         ),
@@ -158,6 +170,7 @@ def resolve_strategy_source_demands(
         "source_uses_resolved": counts["source_uses_resolved"],
         "source_uses_explicit_no_data": counts["source_uses_explicit_no_data"],
         "source_uses_failed_or_unresolved": counts["source_uses_failed_or_unresolved"],
+        "provider_dispatch_attempts": counts["provider_dispatch_attempts"],
         "provider_fetch_successes": counts["provider_fetch_successes"],
         "persisted_cache_hits": counts["persisted_cache_hits"],
         "exact_query_store": str(db_path),
