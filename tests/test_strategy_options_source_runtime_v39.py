@@ -76,6 +76,7 @@ def test_changed_strategy_parameters_fetch_and_reuse_all_exact_sources(tmp_path,
     assert a["source_uses_requested"] == 3
     assert a["source_uses_resolved"] == 3
     assert a["provider_fetch_successes"] == 2
+    assert a["provider_dispatch_attempts"] == 2
     assert a["persisted_cache_hits"] == 1
     assert calls == [
         ("option_at_time_quote", "600"), ("option_at_time_quote", "605")
