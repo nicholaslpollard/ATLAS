@@ -12,6 +12,7 @@ from bisect import bisect_left
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_FLOOR, ROUND_HALF_UP
 import re
+import time as _time
 from zoneinfo import ZoneInfo
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
@@ -243,6 +244,7 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
         progress(f"STAGE_START parse_quote_observation_clocks rows={len(rows)}")
     stamps = []
     milestone = 10
+    phase_started = _time.monotonic()
     for i,row in enumerate(rows):
         try:
             stamps.append(_read_timestamp(row, day))
@@ -250,9 +252,13 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
             events.append({"type": "SOURCE_CLOCK_REJECTION", "row": i, "reason": str(exc)})
             return finish("NO_ENTRY", "SOURCE_OBSERVATION_CLOCK_UNQUALIFIED")
         while progress and milestone <= 100 and 100*(i+1) >= milestone*len(rows):
+            elapsed = max(_time.monotonic()-phase_started,.001)
+            rate = (i+1)/elapsed
+            eta = (len(rows)-i-1)/rate
             progress(f"PROGRESS_{milestone}PCT phase=parse_quote_observation_clocks"
                      f" completed={i+1}/{len(rows)} percent={100*(i+1)/len(rows):.1f}"
-                     f" last_row={i}")
+                     f" last_row={i} elapsed={elapsed:.1f}s"
+                     f" throughput_rows_s={rate:.1f} eta_rough_s={eta:.1f}")
             milestone += 10
     if stamps != sorted(stamps) or len(set(stamps)) != len(stamps):
         return finish("NO_ENTRY", "AMBIGUOUS_OR_OUT_OF_ORDER_QUOTE_TAPE")
@@ -305,6 +311,7 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
     deadline = datetime.combine(day, time(15,30),tzinfo=ET)
     total_reviews = len(rows) - action_idx - 1
     review_milestone = 10
+    review_started = _time.monotonic()
     for i in range(action_idx + 1, len(rows)):
         now = stamps[i]
         if now > deadline:
@@ -312,9 +319,14 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
         if progress:
             completed = i - action_idx
             while review_milestone <= 100 and 100*completed >= review_milestone*max(1,total_reviews):
+                elapsed = max(_time.monotonic()-review_started,.001)
+                rate = completed/elapsed
+                eta = max(0,total_reviews-completed)/rate if rate else 0
                 progress(f"PROGRESS_{review_milestone}PCT phase=replay_exit_quote_path"
                          f" completed={completed}/{total_reviews}"
-                         f" percent={100*completed/max(1,total_reviews):.1f} last_row={i}")
+                         f" percent={100*completed/max(1,total_reviews):.1f}"
+                         f" elapsed={elapsed:.1f}s throughput_rows_s={rate:.1f}"
+                         f" eta_rough_s={eta:.1f} last_row={i}")
                 review_milestone += 10
         gap = (now - last_time).total_seconds()
         try:
