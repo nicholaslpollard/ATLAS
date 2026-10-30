@@ -179,6 +179,14 @@ def execution_action_diagnostic(
         if not isinstance(before, dict) or not isinstance(after, dict):
             reasons.append(f"{right.upper()}_MISSING_ACTION_QUOTE")
             continue
+        # Delayed packets must explicitly bind to the SAME original right,
+        # expiration and strike; a different contract cannot be substituted.
+        original_id, action_id = before.get("contract_identity"), after.get("contract_identity")
+        if (not isinstance(original_id, str) or not original_id
+                or action_id != original_id):
+            reasons.append(f"{right.upper()}_ACTION_CONTRACT_IDENTITY_UNPROVEN")
+        if not after.get("source_query_id") or not after.get("source_sha256"):
+            reasons.append(f"{right.upper()}_ACTION_SOURCE_PROVENANCE_MISSING")
         before_at = _timestamp(before.get("timestamp_et"))
         after_at = _timestamp(after.get("timestamp_et"))
         pre_ask, post_ask = _number(before.get("ask")), _number(after.get("ask"))
@@ -204,6 +212,9 @@ def execution_action_diagnostic(
             "action_source_query_id": after.get("source_query_id"),
             "action_source_sha256": after.get("source_sha256"),
         }
+    if (isinstance(action.get("call"), dict) and isinstance(action.get("put"), dict)
+            and action["call"].get("contract_identity") == action["put"].get("contract_identity")):
+        reasons.append("ACTION_CALL_AND_PUT_IDENTITY_NOT_DISTINCT")
     skew = None
     if all(isinstance(action.get(right), dict) and _timestamp(action[right].get("timestamp_et"))
            for right in RIGHTS):
