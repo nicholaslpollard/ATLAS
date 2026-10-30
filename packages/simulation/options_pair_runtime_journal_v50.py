@@ -121,9 +121,12 @@ def save_runtime_journal(path: Path, replay: dict) -> dict:
             if len(line)>EVENT_BYTE_CEILING:
                 raise PairReplayError("V50_OVERSIZED_JOURNAL_RECORD")
             f.write(line)
-            f.flush()
-            os.fsync(f.fileno())
+            if (seq+1)%64==0:
+                f.flush()
+                os.fsync(f.fileno())
             prev=record["sha256"]
+        f.flush()
+        os.fsync(f.fileno())
     checked=verify_runtime_journal(path)
     if checked["simulation_fingerprint"]!=replay["fingerprint"]:
         raise PairReplayError("V50_JOURNAL_VERIFICATION_FAILED")
