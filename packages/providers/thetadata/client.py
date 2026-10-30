@@ -12,11 +12,13 @@ No Theta Terminal or Java is involved.
 
 import atexit
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from datetime import date
 import json
 import os
 from pathlib import Path
 import queue
+import re
 import subprocess
 import threading
 import time
