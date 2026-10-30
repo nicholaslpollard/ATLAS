@@ -193,6 +193,57 @@ def _case_check(cases: list[dict]) -> list[dict]:
     return ordered
 
 
+def _closed_trade_periods(events: list[dict], *, account_incomplete: bool) -> dict:
+    """Closed modeled quote-reference sales only; no invented open-position P&L."""
+    cohorts={"week":{},"month":{},"year":{}}
+    completed=[]
+    for event in events:
+        if event["event_type"]!="MODELED_EXIT_QUOTE_REFERENCE":
+            continue
+        pnl=_dec(event["modeled_realized_pnl"])
+        at=_time(event["at_utc"]).astimezone(EASTERN)
+        iso=at.isocalendar()
+        date_keys={
+            "week":f"{iso.year:04d}-W{iso.week:02d}",
+            "month":f"{at.year:04d}-{at.month:02d}",
+            "year":f"{at.year:04d}",
+        }
+        completed.append({
+            "opportunity_id":event["opportunity_id"],
+            "exit_date_et":at.date().isoformat(),
+            "exit_reason":event["cause"],
+            "net_reference_pnl_dollars":str(_money(pnl)),
+            "reference_cash_after":event["cash_after"],
+            "proven_broker_fill":False,
+        })
+        for unit,key in date_keys.items():
+            d=cohorts[unit].setdefault(key,{"closed":0,"wins":0,"losses":0,
+                                           "breakeven":0,"net":Decimal("0")})
+            d["closed"]+=1
+            d["net"]+=pnl
+            d["wins"]+=int(pnl>0)
+            d["losses"]+=int(pnl<0)
+            d["breakeven"]+=int(pnl==0)
+    for unit in cohorts:
+        cohorts[unit]=[
+            {"period":key,"closed_reference_pairs":v["closed"],
+             "winning_reference_pairs":v["wins"],
+             "losing_reference_pairs":v["losses"],
+             "breakeven_reference_pairs":v["breakeven"],
+             "modeled_net_reference_pnl_dollars":str(_money(v["net"])),
+             "whole_account_economic_window_proven":False}
+            for key,v in sorted(cohorts[unit].items())
+        ]
+    return {
+        "status":"CLOSED_QUOTE_REFERENCE_PERIODS_NOT_VALIDATED_STRATEGY_PNL",
+        "account_terminal_unresolved":account_incomplete,
+        "closed_trades":completed,
+        "weekly":cohorts["week"],"monthly":cohorts["month"],
+        "annual":cohorts["year"],
+        "unfinished_positions_excluded_from_realized_summary":True,
+    }
+
+
 def replay_pairs(
     cases: list[dict], *,
     starting_cash: str = "100000.00",
@@ -408,6 +459,7 @@ def replay_pairs(
         "opportunity_dispositions":dict(sorted(counts.items())),
         "modeled_quote_reference_entries":sum(e["event_type"]=="MODELED_ENTRY_QUOTE_REFERENCE" for e in events),
         "modeled_quote_reference_exits":sum(e["event_type"]=="MODELED_EXIT_QUOTE_REFERENCE" for e in events),
+        "reference_realized_periods":_closed_trade_periods(events,account_incomplete=missing_review),
         "events":events,
         "broker_orders_or_fills":0,"provider_requests":0,
         "strategy_pnl_validated":False,
