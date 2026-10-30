@@ -15,7 +15,7 @@ from typing import Any
 
 CONTRACT = "atlas-options-simulator-opportunity-trace-and-clock-sensitivity-v49"
 PINNED = {
-    "v45": ("atlas-spy-v45-unified-two-clock-source-cohort",
+    "v45": ("atlas-spy-unified-two-clock-original-plus-alternate-v45",
             "450da4ee779aad96b6656e1d7a03435bf3521875c72ebca6f69b845a7205bd5e"),
     "v46": ("atlas-spy-provisional-variance-economics-v46",
             "966a6155d57423cd680a26a84bc5bf85e6d02b1f0f06015037612659ef0cc2f7"),
