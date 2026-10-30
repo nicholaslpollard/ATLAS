@@ -88,6 +88,29 @@ def _leg_quote(packet,identity,at):
     }
 
 
+def _validate_exit_review_schedule(reviews, action_at):
+    """Validate entire supplied chronology before modeling ANY entry or exit.
+
+    Early profit/stop events may end the economical position, but later corrupt
+    input records must not evade the source-input validation simply because a
+    prior quote happened to hit a target in the development sample.
+    """
+    if not isinstance(reviews,list) or len(reviews)>390:
+        raise OrbReplayError("V51_OPTION_REVIEW_SCOPE_INVALID")
+    previous=action_at
+    for index,review in enumerate(reviews):
+        if not isinstance(review,dict) or not isinstance(review.get("at_et"),str):
+            raise OrbReplayError("V51_EXIT_REVIEW_CLOCK_INVALID_OR_OUT_OF_ORDER")
+        try:
+            at=_when(review["at_et"])
+        except (ValueError,TypeError,KeyError) as exc:
+            raise OrbReplayError("V51_EXIT_REVIEW_CLOCK_INVALID_OR_OUT_OF_ORDER") from exc
+        if (at<=previous or at.date()!=action_at.date()
+                or at.time()>time(15,30)):
+            raise OrbReplayError("V51_EXIT_REVIEW_CLOCK_INVALID_OR_OUT_OF_ORDER")
+        previous=at
+
+
 def replay_orb_quote_reference(
     input_cases:list[dict], *,
     starting_cash="25000.00", adverse_action_price_change_limit_pct="1",
@@ -147,6 +170,8 @@ def replay_orb_quote_reference(
             raise OrbReplayError("V51_EXACT_0DTE_CONTRACT_INVALID")
         order_at=_when(demand["first_known_tick_et"])
         action_at=order_at+timedelta(seconds=action_lag_seconds)
+        reviews=item.get("intraday_option_reviews",[])
+        _validate_exit_review_schedule(reviews,action_at)
         order=_leg_quote(item.get("order_quote"),identity,order_at)
         action=_leg_quote(item.get("action_quote"),identity,action_at)
         if order["status"]!="QUOTE_REFERENCE_QUALIFIED" or action["status"]!="QUOTE_REFERENCE_QUALIFIED":
@@ -195,9 +220,6 @@ def replay_orb_quote_reference(
         exit_complete=False
         failed_path=False
         last_observed=action_at
-        reviews=item.get("intraday_option_reviews",[])
-        if not isinstance(reviews,list) or len(reviews)>390:
-            raise OrbReplayError("V51_OPTION_REVIEW_SCOPE_INVALID")
         last_review=None
         for rr in reviews:
             at=_when(rr["at_et"])
