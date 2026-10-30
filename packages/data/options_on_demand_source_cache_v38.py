@@ -33,6 +33,7 @@ DB_REL = ROOT_REL + "/source_receipts.sqlite3"
 ARCHIVE_REL = ROOT_REL + "/archive"
 ALLOWED = frozenset({
     "option_at_time_quote",
+    "option_history_exact_quote_tape",
     "option_at_time_quote_surface",
     "option_history_hourly_quote_surface",
     "option_history_open_interest_surface",
@@ -77,6 +78,22 @@ def normalize_source_requirement(method: str, kwargs: dict[str, Any]) -> dict:
                 raise ValueError("negative parameter")
         if args.get("right", "both") not in ("both", "call", "put"):
             raise ValueError("invalid option right")
+        if method == "option_history_exact_quote_tape":
+            if (args["right"] not in ("call", "put")
+                    or args.get("interval") not in ("1s", "tick", "1m")):
+                raise ValueError("non-exact source scope")
+            if not re.fullmatch(r"[0-9]{1,6}(?:\\.[0-9]{1,3})?", str(args["strike"])):
+                raise ValueError("non-canonical exact strike")
+            # Require one session, exact contract, bounded clock range.
+            from datetime import datetime as _datetime
+            start = _datetime.strptime(args["start_time_et"], "%H:%M:%S.%f").time()
+            end = _datetime.strptime(args["end_time_et"], "%H:%M:%S.%f").time()
+            if (start > end or not (9 <= start.hour <= 16)
+                    or not (9 <= end.hour <= 16)
+                    or start < _datetime.strptime("09:30:00.000", "%H:%M:%S.%f").time()
+                    or end > _datetime.strptime("16:00:00.000", "%H:%M:%S.%f").time()
+                    or args["date_et"] > args["expiration"]):
+                raise ValueError("source exact date/clock outside market bounds")
         # JSON serialization rejects NaNs and unsupported API input objects;
         # no mutable caller dict is passed into provider or source registry.
         json.dumps(args, sort_keys=True, allow_nan=False)
