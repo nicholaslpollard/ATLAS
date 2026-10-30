@@ -87,6 +87,7 @@ def test_no_trade_signal_and_pit_failures_get_full_decision_events():
     c=case(id="c")
     c["signal_at_utc"]="2020-01-06T15:00:00+00:00"
     c["causal_signal_evidence_verified"]=False
+    c["exit_reviews"]=[]  # no planned reviews for an unqualified, never-entered opportunity
     c["order_at_utc"]="2020-01-06T15:01:00+00:00"
     c["action_at_utc"]="2020-01-06T15:01:03+00:00"
     result=run([c,b,a])
