@@ -9,6 +9,7 @@ separately source-proven tick and actionable option quote tape.
 """
 
 from datetime import datetime, timedelta, time
+import re
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
@@ -54,7 +55,7 @@ def _snapshot(bar: dict) -> dict:
     if start.second!=0 or start.microsecond!=0:
         raise OrbError("V51_EXPECTED_MINUTE_START")
     end=start+timedelta(minutes=1)
-    if not isinstance(bar.get("source_query_id"),str) or not bar["source_query_id"] or not isinstance(bar.get("source_sha256"),str) or len(bar["source_sha256"])!=64:
+    if not isinstance(bar.get("source_query_id"),str) or not bar["source_query_id"] or not isinstance(bar.get("source_sha256"),str) or re.fullmatch(r"[0-9a-f]{64}",bar["source_sha256"]) is None:
         raise OrbError("V51_UNVERIFIED_SOURCE_REF")
     # A bar's OHLC is not known at the beginning of the minute.
     known=_when(bar["available_at_et"])
@@ -126,10 +127,16 @@ def first_breakout_candidate(
             base["reason_codes"]=["SOURCE_PUBLISHED_MWF_FILTER"]
         else:
             first=None
+            missing_before_first=False
+            expected_next=open_start+timedelta(minutes=5)
             for r in rows:
                 start=_when(r["bar_start_et"])
                 if start<open_start+timedelta(minutes=5) or start>=session_end:
                     continue
+                if start!=expected_next:
+                    missing_before_first=True
+                    break
+                expected_next=start+timedelta(minutes=1)
                 above=_value(r["high"])>high
                 below=_value(r["low"])<low
                 if above or below:
@@ -138,7 +145,10 @@ def first_breakout_candidate(
                     )}
                     break
             base["first_possible_breakout_bar"]=first
-            if first is None:
+            if missing_before_first:
+                base["status"]="BREAKOUT_MINUTE_SEQUENCE_INCOMPLETE"
+                base["reason_codes"]=["MISSING_MINUTE_BEFORE_FIRST_POSSIBLE_BREAKOUT"]
+            elif first is None:
                 base["status"]="NO_BREAKOUT_WITHIN_OBSERVED_MINUTE_BARS"
                 base["reason_codes"]=["NO_BREAKOUT_SOURCE_OBSERVED"]
             elif not first["first_publication_proven"]:
@@ -172,12 +182,14 @@ def exact_entry_demands(
             or verified_first_breakout_tick.get("first_breakout_tick_verified") is not True
             or verified_first_breakout_tick.get("same_day_first_breakout_certified") is not True
             or not verified_first_breakout_tick.get("source_query_id")
-            or not verified_first_breakout_tick.get("source_sha256")):
+            or re.fullmatch(r"[0-9a-f]{64}", str(verified_first_breakout_tick.get("source_sha256",""))) is None):
         raise OrbError("V51_BREAKOUT_TICK_PROVENANCE_UNVERIFIED")
     ts=_when(verified_first_breakout_tick["timestamp_et"])
     known=_when(verified_first_breakout_tick["available_at_et"])
     if known<ts or ts.date().isoformat()!=candidate["date_et"]:
         raise OrbError("V51_TICK_TIME_OR_SESSION_INVALID")
+    if (known-ts).total_seconds()>3:
+        raise OrbError("V51_TICK_PUBLICATION_LAG_UNQUALIFIED_FOR_ONE_TO_THREE_SECOND_ACTION")
     opening_finish=datetime.combine(ts.date(),time(9,35),tzinfo=EASTERN)
     if not opening_finish<=ts<datetime.combine(ts.date(),time(15,30),tzinfo=EASTERN):
         raise OrbError("V51_TICK_OUTSIDE_ALLOWED_BREAKOUT_HOURS")
@@ -196,6 +208,8 @@ def exact_entry_demands(
     # Source-only exact quotes at the first *known* tick or a later action clock:
     # an observation date alone is never an executable order or first-pub proof.
     reference=max(ts,known)
+    if reference+timedelta(seconds=max(action_lag_seconds))>=datetime.combine(ts.date(),time(15,30),tzinfo=EASTERN):
+        raise OrbError("V51_ACTION_CLOCK_NOT_BEFORE_PUBLISHED_TIME_EXIT")
     expiry=candidate["date_et"]
     right="call" if direction=="CALL" else "put"
     qs=[]
