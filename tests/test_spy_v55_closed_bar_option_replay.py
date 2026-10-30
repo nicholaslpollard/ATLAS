@@ -230,3 +230,14 @@ def test_journal_streaming_milestones_are_real_record_counts(tmp_path):
     save_journal(tmp_path/"events.jsonl",r,progress=lines.append)
     for n in range(10,101,10):
         assert any(line.startswith(f"PROGRESS_{n}PCT") for line in lines)
+
+
+def test_thetadata_history_naive_et_timestamp_is_explicitly_unverified():
+    rows=[quote(1),quote(2),quote(3,bid="2.30",ask="2.34")]
+    for item in rows:
+        item["timestamp"]=item.pop("timestamp_et").replace("-04:00","")
+    replay=replay_source(signal(),source(rows))
+    assert replay["status"]=="CLOSED_QUOTE_REFERENCE"
+    assert replay["naive_provider_history_timestamp_interpreted_as_ET_if_present"] is True
+    assert replay["publication_verified"] is False
+    assert replay["actual_fills"]==0
