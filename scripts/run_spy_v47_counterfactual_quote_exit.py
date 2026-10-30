@@ -76,7 +76,7 @@ def main(argv=None) -> int:
                   f" primary_mean_net_pct={pm['mean']} primary_median_net_pct={pm['median']}"
                   f" reference_profitable={pm['positive']}/{pm['n']}", flush=True)
         for row in result["chronological_one_slot_quote_reference_accounts"]:
-            print(f"  account_hold={row['hold_sessions']} cost={row['cost_scenario']}"
+            print(f"  account_variant={row['research_variant']} account_hold={row['hold_sessions']} cost={row['cost_scenario']}"
                   f" modeled_closed={row['closed_quote_reference_pairs']}"
                   f" ending_cash_if_resolved={row['ending_cash_if_fully_resolved']}"
                   f" unresolved={row['unresolved_position'] is not None}", flush=True)
