@@ -104,7 +104,7 @@ def closed_bar_signal(rows, *, session: date, source_sha256: str, source_unit_id
     upper = max(row[1] for row in opening)
     lower = min(row[2] for row in opening)
     result["opening_high"], result["opening_low"] = str(upper), str(lower)
-    for minute in range(5, 360):
+    for minute in range(5, 359):
         t = start + timedelta(minutes=minute)
         bar = timeline.get(t)
         if bar is None:
@@ -141,9 +141,13 @@ def _read_timestamp(row, day):
             return _at(row[key])
     if row.get("ms_of_day") is not None:
         raw = row["ms_of_day"]
-        if isinstance(raw, bool) or int(raw) != float(raw) or not 0 <= int(raw) < 86400000:
+        try:
+            val = Decimal(str(raw))
+        except (TypeError, ValueError, InvalidOperation) as exc:
+            raise V55Error("BAD_MS_OF_DAY") from exc
+        if isinstance(raw, bool) or not val.is_finite() or val != int(val) or not 0 <= val < 86400000:
             raise V55Error("BAD_MS_OF_DAY")
-        return datetime.combine(day, time(0, 0), tzinfo=ET) + timedelta(milliseconds=int(raw))
+        return datetime.combine(day, time(0, 0), tzinfo=ET) + timedelta(milliseconds=int(val))
     raise V55Error("NO_OBSERVATION_TIMESTAMP")
 
 
@@ -180,7 +184,7 @@ def _quote(row, *, day, contract):
 
 
 def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
-                  max_adverse_pct="1"):
+                  max_adverse_pct="1", progress=None):
     """Research quote-reference replay: trade assumptions are explicitly labeled.
 
     Every supplied quote observation generates a review or a rejection event.
@@ -233,31 +237,48 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
     rows = source["source_rows"]
     if not rows:
         return finish("NO_ENTRY", "OPTION_SOURCE_EMPTY")
-    obs = []
+    # Inspect source observation CLOCKS only up front. Future prices must not
+    # be used to reject or select an earlier entry.
+    if progress:
+        progress(f"STAGE_START parse_quote_observation_clocks rows={len(rows)}")
+    stamps = []
+    milestone = 10
     for i,row in enumerate(rows):
         try:
-            quote = _quote(row, day=day, contract=contract)
+            stamps.append(_read_timestamp(row, day))
         except (V55Error, KeyError, TypeError) as exc:
-            events.append({"type": "SOURCE_REJECTION", "row": i, "reason": str(exc)})
-            return finish("NO_ENTRY", "OPTION_SOURCE_HAS_UNQUALIFIED_ROWS")
-        obs.append(quote)
-    # Strict: do not reorder possible stop vs target observations in a source.
-    stamps = [_at(x["timestamp_et"]) for x in obs]
+            events.append({"type": "SOURCE_CLOCK_REJECTION", "row": i, "reason": str(exc)})
+            return finish("NO_ENTRY", "SOURCE_OBSERVATION_CLOCK_UNQUALIFIED")
+        while progress and milestone <= 100 and 100*(i+1) >= milestone*len(rows):
+            progress(f"PROGRESS_{milestone}PCT phase=parse_quote_observation_clocks"
+                     f" completed={i+1}/{len(rows)} percent={100*(i+1)/len(rows):.1f}"
+                     f" last_row={i}")
+            milestone += 10
     if stamps != sorted(stamps) or len(set(stamps)) != len(stamps):
         return finish("NO_ENTRY", "AMBIGUOUS_OR_OUT_OF_ORDER_QUOTE_TAPE")
+    if progress:
+        progress(f"STAGE_PASS parse_quote_observation_clocks rows={len(rows)}")
     decision = _at(signal["decision_at_et"])
     idx = bisect_left(stamps, decision)
-    if idx >= len(obs):
+    if idx >= len(rows):
         return finish("NO_ENTRY", "NO_QUOTE_AFTER_BAR_CLOSE_DECISION")
-    order = obs[idx]
+    try:
+        order = _quote(rows[idx], day=day, contract=contract)
+    except (V55Error, KeyError, TypeError) as exc:
+        events.append({"type": "ENTRY_QUOTE_REJECTION", "row": idx, "reason": str(exc)})
+        return finish("NO_ENTRY", "FIRST_ORDER_QUOTE_NOT_ELIGIBLE")
     order_at = stamps[idx]
     if (order_at - decision).total_seconds() > 30:
         return finish("NO_ENTRY", "NO_FRESH_QUOTE_FOR_DECISION")
     action_target = order_at + timedelta(seconds=lag_seconds)
     action_idx = bisect_left(stamps, action_target)
-    if action_idx >= len(obs) or (stamps[action_idx] - action_target).total_seconds() > 1:
+    if action_idx >= len(rows) or (stamps[action_idx] - action_target).total_seconds() > 1:
         return finish("NO_ENTRY", "NO_OBSERVED_ACTION_QUOTE_WITHIN_ONE_SECOND")
-    action = obs[action_idx]
+    try:
+        action = _quote(rows[action_idx], day=day, contract=contract)
+    except (V55Error, KeyError, TypeError) as exc:
+        events.append({"type": "ACTION_QUOTE_REJECTION", "row": action_idx, "reason": str(exc)})
+        return finish("NO_ENTRY", "ACTION_QUOTE_NOT_ELIGIBLE")
     change = (_dec(action["ask"]) / _dec(order["ask"]) - 1) * 100
     events.append({"type": "ORDER_ACTION_QUOTE_REFERENCE",
                    "decision_at_et": decision.isoformat(),
@@ -279,25 +300,45 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
                    "cash_after": str(cash), "broker_fill_verified": False})
     last_time = stamps[action_idx]
     last_eligible = action
+    if progress:
+        progress(f"STAGE_START replay_exit_quote_path rows_remaining={len(rows)-action_idx-1}")
     deadline = datetime.combine(day, time(15,30),tzinfo=ET)
-    for i in range(action_idx + 1, len(obs)):
+    total_reviews = len(rows) - action_idx - 1
+    review_milestone = 10
+    for i in range(action_idx + 1, len(rows)):
         now = stamps[i]
         if now > deadline:
             break
+        if progress:
+            completed = i - action_idx
+            while review_milestone <= 100 and 100*completed >= review_milestone*max(1,total_reviews):
+                progress(f"PROGRESS_{review_milestone}PCT phase=replay_exit_quote_path"
+                         f" completed={completed}/{total_reviews}"
+                         f" percent={100*completed/max(1,total_reviews):.1f} last_row={i}")
+                review_milestone += 10
         gap = (now - last_time).total_seconds()
-        bid = _dec(obs[i]["bid"])
+        try:
+            current = _quote(rows[i], day=day, contract=contract)
+        except (V55Error, KeyError, TypeError) as exc:
+            events.append({"type": "EXIT_SOURCE_REJECTION", "row": i,
+                           "at_et": now.isoformat(), "reason": str(exc)})
+            return finish("UNRESOLVED_POSITION", "UNQUALIFIED_EXIT_QUOTE_PATH")
+        bid = _dec(current["bid"])
         reason = ("TAKE_PROFIT_100" if bid >= ask*2 else
                   "STOP_LOSS_50" if bid <= ask/2 else "HOLD")
-        ev = {"type": "EXIT_REVIEW", "row": i, "quote": obs[i],
+        ev = {"type": "EXIT_REVIEW", "row": i, "quote": current,
               "observed_gap_seconds": gap, "reason": reason}
         events.append(ev)
         if gap > 60:
             return finish("UNRESOLVED_POSITION", "QUOTE_PATH_GAP_OVER_60_SECONDS")
-        if qty > obs[i]["bid_size"] and reason != "HOLD":
+        if qty > current["bid_size"] and reason != "HOLD":
             return finish("UNRESOLVED_POSITION", "EXIT_BID_SIZE_INSUFFICIENT")
         last_time = now
-        last_eligible = obs[i]
+        last_eligible = current
         if reason != "HOLD":
+            if progress:
+                progress(f"STAGE_PASS replay_exit_quote_path exit_trigger={reason}"
+                         f" reviewed={i-action_idx}/{total_reviews}")
             credit = _usd(qty * (bid*100-FEE))
             report["exit_credit"] = str(credit)
             report["trade_net_pnl"] = str(_usd(credit-debit))
@@ -308,6 +349,8 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
                            "account_after": report["terminal_equity_if_resolved"],
                            "broker_fill_verified": False})
             return finish("CLOSED_QUOTE_REFERENCE")
+    if progress:
+        progress(f"STAGE_PASS replay_exit_quote_path completed_through={last_time.isoformat()}")
     if (deadline-last_time).total_seconds() > 30 or last_time > deadline:
         return finish("UNRESOLVED_POSITION", "NO_FRESH_15_30_QUOTE_FOR_LIQUIDATION")
     bid = _dec(last_eligible["bid"])
