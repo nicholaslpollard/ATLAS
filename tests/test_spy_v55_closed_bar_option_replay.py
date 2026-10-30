@@ -126,7 +126,7 @@ def test_invalid_source_identity_and_action_price_are_abstentions_not_fills():
     q=source([quote(1),quote(2)])
     q["exact_requirement"]["kwargs"]["right"]="put"
     assert replay_source(a,q)["censor_reason"]=="OPTION_SOURCE_EXACT_IDENTITY_INVALID"
-    q=source([quote(1),quote(2,ask="1.40")])
+    q=source([quote(1),quote(2,bid="1.30",ask="1.40")])
     r=replay_source(a,q)
     assert r["status"]=="NO_ENTRY"
     assert r["censor_reason"]=="ACTION_ASK_PRICE_CHANGE_OVER_LIMIT"
@@ -201,4 +201,4 @@ def test_one_source_failure_is_archived_as_no_entry_not_fake_loss(tmp_path,monke
     assert result["trade_net_pnl"] is None
     assert result["observed_provider_requests"] is None
     assert not any("private token" in x for x in lines)
-    assert rc==0
+    assert rc==2
