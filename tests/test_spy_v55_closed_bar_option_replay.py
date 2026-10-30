@@ -172,6 +172,7 @@ def test_workstation_runner_announces_blocking_stage_before_provider_and_saves(t
     out=tmp_path/"run.json"
     rc=cli.run("2025-06-09",output=out,emit=lines.append,source_get=provider)
     assert rc==0 and out.is_file()
+    assert out.with_suffix(".jsonl").is_file()
     result=json.loads(out.read_text())
     assert result["trade_net_pnl"]=="470.80"
     assert result["observed_provider_requests"]==0
@@ -202,3 +203,30 @@ def test_one_source_failure_is_archived_as_no_entry_not_fake_loss(tmp_path,monke
     assert result["observed_provider_requests"] is None
     assert not any("private token" in x for x in lines)
     assert rc==2
+
+
+def test_hash_chained_journal_detects_tampering_and_truncation(tmp_path):
+    from packages.simulation.spy_v55_event_journal import save_journal,verify_journal,JournalError
+    r=replay_source(signal(),source([quote(1),quote(2),quote(3,bid="2.30",ask="2.34")]))
+    path=tmp_path/"journal.jsonl"
+    receipt=save_journal(path,r)
+    assert receipt["runtime_events"]==len(r["events"])
+    assert receipt["tip_sha256"]==verify_journal(path)["tip_sha256"]
+    with pytest.raises(JournalError,match="OUTPUT_EXISTS"):
+        save_journal(path,r)
+    raw=path.read_text()
+    path.write_text(raw.replace("CLOSED_QUOTE_REFERENCE","FAKE_PROFIT",1))
+    with pytest.raises(JournalError,match="BROKEN_SEQUENCE_OR_SHA"):
+        verify_journal(path)
+    path.write_text(raw.splitlines(True)[0])
+    with pytest.raises(JournalError,match="TRUNCATED_OR_INCONSISTENT"):
+        verify_journal(path)
+
+
+def test_journal_streaming_milestones_are_real_record_counts(tmp_path):
+    from packages.simulation.spy_v55_event_journal import save_journal
+    r=replay_source(signal(),source([quote(1),quote(2),quote(3,bid="2.30",ask="2.34")]))
+    lines=[]
+    save_journal(tmp_path/"events.jsonl",r,progress=lines.append)
+    for n in range(10,101,10):
+        assert any(line.startswith(f"PROGRESS_{n}PCT") for line in lines)
