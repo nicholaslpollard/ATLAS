@@ -25,6 +25,8 @@ The available V45 quotes measure **09:59→10:01, a two-minute interval**, not a
 - Reject future timestamps, out-of-order snapshots, invalid two-sided markets and unqualified missing/sparse quotes. Future action price tape must carry exact contract and SHA provenance.
 - Never retrospectively choose 1s or 3s or a price band by the observed 2018–2025 V47 returns. Keep original-vs-alternate strategy versions separated, and require unseen prospective/held-out evidence for a new policy.
 
+**Additional pre-execution observation (not fill evidence):** Among 339 V45 source cases with a recorded pair on both clocks, 13 original predecision 09:59 pairs had CALL/PUT quote skew strictly above 1s but at most 3s. The already-qualified 106 V46 hypothetical LONGs had observed 09:59→10:01 paired-ASK price drift median approximately **-0.01977%**, with **1/106** adverse paired-ASK price increases above **0.5%**, **0/106** above **1%**, and **0/106** above **2%**. These are within-two-minute price changes, not measured order-routing/acknowledgment delay or executable fill costs. Non-hypothetical dates are retained without outcomes.
+
 ## V49 initial audit: all evaluated cases, not just trades
 
 V49 is a reproducible offline **source-fingerprint-pinned** derived report from three already completed workstation reports:
