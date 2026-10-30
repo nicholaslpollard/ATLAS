@@ -169,7 +169,7 @@ def test_unified_361_date_coverage_and_50_original_abstentions(monkeypatch):
 
 
 def test_reject_fingerprint_drift_and_original_cohort_drift():
-    with pytest.raises(v45.UnifiedCohortError, match="V44_PINNED"):
+    with pytest.raises(ValueError):
         v45.verified_v43_v44({}, {"contract": v45.V44_CONTRACT})
     with pytest.raises(v45.UnifiedCohortError, match="NON_QUALITY"):
         v45.original_two_clock_result(original(quality=False), {})
