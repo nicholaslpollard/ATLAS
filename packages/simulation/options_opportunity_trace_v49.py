@@ -146,6 +146,10 @@ def same_contract_two_clock_drift(pretrade: dict | None, execution: dict | None)
         "absolute_cost_change_dollars": str((after-before)*100),
         "cost_change_pct": round(float(drift), 5),
         "adverse_cost_increase_pct": round(float(max(0, drift)), 5),
+        "absolute_pair_cost_change_pct": round(float(abs(drift)), 5),
+        "diagnostic_only_absolute_movement_band_pass": {
+            str(cap): abs(drift) <= cap for cap in PRICE_DRIFT_PCT
+        },
         "diagnostic_only_price_band_pass": {
             str(cap): drift <= cap for cap in PRICE_DRIFT_PCT
         },
@@ -239,6 +243,7 @@ def execution_action_diagnostic(
         "observed_action_lag_seconds": float(lag),
         "observed_pair_skew_seconds": skew,
         "observed_pair_buy_ask_cost_change_pct": round(float(drift), 5) if drift is not None else None,
+        "observed_absolute_pair_buy_ask_change_pct": round(float(abs(drift)), 5) if drift is not None else None,
         "max_pair_skew_seconds": max_skew_seconds,
         "max_adverse_pair_cost_change_pct": str(cap),
         "reason_codes": sorted(set(reasons)),
