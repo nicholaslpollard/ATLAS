@@ -52,6 +52,8 @@ def test_drift_uses_same_leg_ask_and_pair_cost_not_cross_right_prices():
     d=v49.same_contract_two_clock_drift(pre,post)
     assert d["status"]=="OBSERVED_TWO_CLOCK_PRICE_CHANGE_NOT_LATENCY"
     assert d["pair_ask"]["cost_change_pct"]==1.0
+    assert d["pair_ask"]["absolute_pair_cost_change_pct"]==1.0
+    assert d["pair_ask"]["diagnostic_only_absolute_movement_band_pass"]["0.5"] is False
     assert d["pair_ask"]["diagnostic_only_price_band_pass"]["0.5"] is False
     assert d["pair_ask"]["diagnostic_only_price_band_pass"]["1"] is True
     assert d["pair_ask"]["diagnostic_only_price_band_pass"]["2"] is True
@@ -71,6 +73,7 @@ def test_action_diagnostic_requires_observed_later_quote_and_checks_drift():
         max_skew_seconds=1,max_adverse_pair_cost_change_pct="1")
     assert outcome["status"]=="COUNTERFACTUAL_QUOTE_GATES_PASS_NO_FILL"
     assert outcome["observed_action_lag_seconds"]==3.0
+    assert outcome["observed_absolute_pair_buy_ask_change_pct"]==0.5
     assert not outcome["actual_order_fill_proven"]
     bad=copy.deepcopy(nextq)
     bad["put"]["ask"]=10.5
