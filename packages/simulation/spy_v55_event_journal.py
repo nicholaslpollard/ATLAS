@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import time as _time
 from pathlib import Path
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
@@ -94,6 +95,7 @@ def save_journal(path, report, *, progress=None):
     path.parent.mkdir(parents=True,exist_ok=True)
     prev=None
     milestone=10
+    started=_time.monotonic()
     with path.open("xb") as stream:
         for i,(kind,data) in enumerate(records):
             row=_record(i,prev,kind,data)
@@ -106,9 +108,14 @@ def save_journal(path, report, *, progress=None):
                 stream.flush()
                 os.fsync(stream.fileno())
             while progress and milestone<=100 and 100*(i+1)>=milestone*len(records):
+                elapsed=max(_time.monotonic()-started,.001)
+                rate=(i+1)/elapsed
+                eta=(len(records)-i-1)/rate
                 progress(f"PROGRESS_{milestone}PCT phase=journal_write"
                          f" completed={i+1}/{len(records)}"
-                         f" percent={100*(i+1)/len(records):.1f}")
+                         f" percent={100*(i+1)/len(records):.1f}"
+                         f" elapsed={elapsed:.1f}s throughput_records_s={rate:.1f}"
+                         f" eta_rough_s={eta:.1f}")
                 milestone+=10
         stream.flush()
         os.fsync(stream.fileno())
