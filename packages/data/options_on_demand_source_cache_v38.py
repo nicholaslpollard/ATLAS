@@ -82,7 +82,7 @@ def normalize_source_requirement(method: str, kwargs: dict[str, Any]) -> dict:
             if (args["right"] not in ("call", "put")
                     or args.get("interval") not in ("1s", "tick", "1m")):
                 raise ValueError("non-exact source scope")
-            if not re.fullmatch(r"[0-9]{1,6}(?:\\.[0-9]{1,3})?", str(args["strike"])):
+            if not re.fullmatch(r"[0-9]{1,6}(?:\.[0-9]{1,3})?", str(args["strike"])):
                 raise ValueError("non-canonical exact strike")
             # Require one session, exact contract, bounded clock range.
             from datetime import datetime as _datetime
