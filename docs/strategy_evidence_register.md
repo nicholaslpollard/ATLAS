@@ -1,5 +1,9 @@
 # ATLAS Strategy Evidence Register
 
+## V49 operator run — independently verified original source decision audit (Oct 30, 2026)
+
+Accepted full original JSON and event journal: 411 original frozen weeks, 361 detailed opportunity IDs, 50 earlier source-less abstentions, 106 hypothetical long signal cases, 206 hypothetical abstentions, 38 source-quality rejects, 7 scenario-dependent, 2 missing prior-volatility proxy and 2 identical call/put source reviews. The **all-363-event append-only journal's complete record-chain SHA validated independently** against the reported trace fingerprint `9dbfa6c1d69d06deab4a842db52bb52e5beea31a73a68973fb27d043363fb1fe`. Original 09:59 paired 1s skew passes **323/339**, diagnostic 3s **336/339**, while 10:01 passes **339/339** under either; 14 of 18 censored future exits would meet 3s **on skew alone**. Two-minute 09:59→10:01 combined ASK absolute drift <=0.5% in **326/339**, <=1% **336/339** and <=2% **338/339**; **not actual 1–3s order latency**. V49 generated zero new provider/broker calls and zero actual trades. No original 1s-gate revision or success promotion; original V47/V48 adverse quote-reference economics stand. [Full accepted V49 workstation audit and immutable receipt identifiers](research/spy_v49_workstation_audit_accepted_20261030.md).
+
 **Original scientific consolidation 2026-10-12 at `64175780`; source-only continuation reviewed through merged PR #354 (`94807e2e`) on 2026-10-22. No new performance evidence opened.**
 
 This register summarizes completed evidence and current research dispositions. The [project guide](roadmap.md) owns goals and work order. Code/contracts and original immutable artifacts own exact behavior/results; [the original full register](https://github.com/nicholaslpollard/ATLAS/blob/641757803b00bbebf75eb5c20c366b2668ee9707/docs/strategy_evidence_register.md) retains every earlier detailed entry and fingerprint. Consolidation does not alter prior verdicts or authorize reruns.
