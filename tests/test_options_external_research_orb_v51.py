@@ -192,3 +192,23 @@ def test_incorrect_bar_or_duplicate_or_cross_session_refused():
     data[2]["bar_start_et"]="2025-06-10T09:32:00-04:00"
     with pytest.raises(OrbError,match="MULTIPLE_SESSIONS"):
         first_breakout_candidate(data)
+
+
+def test_missing_minute_before_first_breakout_blocks_claim_of_first_trade():
+    b=bars()
+    b=[x for i,x in enumerate(b) if i!=5]
+    result=first_breakout_candidate(b)
+    assert result["status"]=="BREAKOUT_MINUTE_SEQUENCE_INCOMPLETE"
+    assert "MISSING_MINUTE_BEFORE_FIRST_POSSIBLE_BREAKOUT" in result["reason_codes"]
+
+
+def test_verified_breakout_tick_cannot_be_invented_from_minutes_or_delayed_until_after_close():
+    c=first_breakout_candidate(bars())
+    late=verified_tick()
+    late["available_at_et"]="2025-06-09T09:36:31-04:00"
+    with pytest.raises(OrbError,match="PUBLICATION_LAG"):
+        exact_entry_demands(c,late)
+    late=verified_tick()
+    late["source_sha256"]="not-a-sha"
+    with pytest.raises(OrbError,match="PROVENANCE"):
+        exact_entry_demands(c,late)
