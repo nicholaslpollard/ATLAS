@@ -12,11 +12,13 @@ No Theta Terminal or Java is involved.
 
 import atexit
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from datetime import date
 import json
 import os
 from pathlib import Path
 import queue
+import re
 import subprocess
 import threading
 import time
@@ -600,6 +602,56 @@ def option_at_time_quote_exact_shared_session_batch(
     """
     raw_queries = validate_option_at_time_quote_exact_queries(queries)
     return _execute_shared_option_quote_batch(raw_queries, expected_count=len(queries))
+
+
+def option_history_exact_quote_tape(
+    *,
+    symbol: str,
+    expiration: str,
+    strike: str,
+    right: str,
+    date_et: str,
+    start_time_et: str,
+    end_time_et: str,
+    interval: str = "1s",
+) -> ThetaDataResponse:
+    """Bounded one-day EXACT original contract historical NBBO quote tape.
+
+    This is a raw source: timestamps, bid/ask and sizes are not an order fill
+    or independently proven first-publication clock. One second is a default
+    compromise; 'tick' is more faithful but can breach V38 archive bounds.
+    """
+    from datetime import datetime as _datetime
+    if not isinstance(symbol, str) or not re.fullmatch(r"[A-Z][A-Z0-9.-]{0,15}", symbol):
+        raise ValueError("EXACT_QUOTE_TAPE_UNDERLYING_INVALID")
+    day = _day_text(date_et)
+    expiry = _day_text(expiration)
+    if date.fromisoformat(day) > date.fromisoformat(expiry):
+        raise ValueError("EXACT_QUOTE_TAPE_DATE_AFTER_EXPIRY")
+    if right not in {"call", "put"}:
+        raise ValueError("EXACT_QUOTE_TAPE_RIGHT_INVALID")
+    try:
+        price = Decimal(str(strike))
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("EXACT_QUOTE_TAPE_STRIKE_INVALID") from exc
+    if not price.is_finite() or price <= 0 or price.as_tuple().exponent < -3:
+        raise ValueError("EXACT_QUOTE_TAPE_STRIKE_INVALID")
+    if interval not in {"tick", "1s", "1m"}:
+        raise ValueError("EXACT_QUOTE_TAPE_INTERVAL_INVALID")
+    try:
+        start = _datetime.strptime(start_time_et, "%H:%M:%S.%f").time()
+        end = _datetime.strptime(end_time_et, "%H:%M:%S.%f").time()
+    except (TypeError, ValueError) as exc:
+        raise ValueError("EXACT_QUOTE_TAPE_CLOCK_INVALID") from exc
+    if (not ("09:30:00" <= start.strftime("%H:%M:%S") <= "16:00:00")
+            or not ("09:30:00" <= end.strftime("%H:%M:%S") <= "16:00:00")
+            or start > end):
+        raise ValueError("EXACT_QUOTE_TAPE_CLOCK_ORDER_OR_SCOPE_INVALID")
+    return _call(
+        "option_history_quote", symbol=symbol, date=day, expiration=expiry,
+        strike=str(price), right=right, interval=interval,
+        start_time=start_time_et, end_time=end_time_et,
+    )
 
 
 def option_at_time_quote(
