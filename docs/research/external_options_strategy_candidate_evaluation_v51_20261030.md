@@ -41,6 +41,18 @@ Three **WATCH** leads are also retained separately, without claiming complete pr
 
 **Important:** the original published ORB script may have used one-minute high/low observations without tick-accurate entry. V51's conservative no-lookahead first-tick requirement is a documented **reproducibility-evidence guard**, not a claim that the developer's trade list can already be exactly regenerated. Until that evidence is available, produce a preview-only first-breakout candidate population, not strategy returns. Even when a minute bar has source provenance, its `first_publication_proven` flag must eventually be independently certified by an ATLAS source admission adapter; caller-supplied flags alone cannot prove original publication.
 
+### Actual existing SPY native SIP one-minute preview — no downloads
+
+`packages/data/spy_v51_native_minute_orb_inventory.py` and `scripts/run_spy_v51_native_opening_range_preview.py` inspect the already-retained `data/v2_build/alpaca_sip_v2` native 1-minute SPY source on a requested date. They locate the exact completed monthly checkpoint, verify **original canonical Parquet and raw-bundle SHA**, enforce raw SIP/1m timeframe and full original month metadata, filter **SPY only**, verify bar OHLC and timestamp geometry, then display the observed first candidate minute following 09:35 after a complete five-minute opening range; any missing minute before first possible breakout censors first-event determination. The report retains month source SHA and exact reasons; **a completed minute is not an independently observed first breakout tick**, so no option strike/fill/strategy P&L is promoted. If the month/symbol/date isn't retained, report a grounded source gap without inventing data.
+
+After V51 is merged, run the preview and V52 exact-contract two-minute paid quote canary independently; either can indicate a missing source. The two canaries do **not** together establish the original strategy's first-tick ATM option contract, nor a full-session target/stop chronology. They are the smallest warranted provider/source readiness pilots before any broad historical 0DTE acquisition.
+
+```powershell
+& '.\.venv\Scripts\python.exe' -m scripts.run_spy_v51_native_opening_range_preview `
+  --date 2025-06-09 `
+  --output "data/research/spy_v51_orb_preview_$(Get-Date -Format yyyyMMdd_HHmmss).json"
+```
+
 ### Single-leg breakout account replay added in the same V51 batch
 
 `packages/simulation/spy_0dte_orb_single_long_reference_v51.py` adds a **source-supplied single-CALL or single-PUT** 0DTE quote-reference replay; this was deliberately not squeezed through V50's two-long-leg straddle kernel. It consumes only SHA-pinned ORB candidate/tick/contract-identity receipts and independent historically known bid/ask at order and action clocks. Every selected opportunity produces a source-linked decision event, including outside weekday, no breakout, missing tick, missing or crossed/wide quotes, excessive adverse price drift, insufficient $500 premium budget, or unresolved existing position. The first valid contract is fixed using the separately known original breakout tick, not after seeing its future P&L.
