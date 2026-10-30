@@ -57,3 +57,35 @@ def test_missing_per_row_identity_remains_unproven():
     assert a["contract_identity_conflict_count"]==0
     assert a["source_sha256"]=="b"*64
     assert a["historical_fill_verified"] is False
+
+
+def test_canary_announces_source_stage_before_blocking_provider(monkeypatch,tmp_path):
+    from scripts import run_spy_v52_exact_intraday_quote_canary as cli
+    messages=[]
+    monkeypatch.setattr(cli,"_progress",messages.append)
+    monkeypatch.setattr(cli,"load_settings",lambda *args:object())
+    def provider(*args):
+        assert any("STAGE_START exact_source_cache_lookup_or_provider" in x for x in messages)
+        assert messages[0].startswith("START V52")
+        return source()
+    monkeypatch.setattr(cli,"read_through_historical_options",provider)
+    output=tmp_path/"quote-source.json"
+    assert cli.main(["--output",str(output)])==0
+    assert output.is_file()
+    assert any("PROGRESS_10PCT" in x for x in messages)
+    assert any("PROGRESS_100PCT" in x for x in messages)
+    assert any("STAGE_PASS exact_source_cache_lookup_or_provider" in x for x in messages)
+    assert messages[-1].startswith("COMPLETE")
+
+
+def test_canary_prints_stopped_not_raw_provider_error(monkeypatch,tmp_path):
+    from scripts import run_spy_v52_exact_intraday_quote_canary as cli
+    messages=[]
+    monkeypatch.setattr(cli,"_progress",messages.append)
+    monkeypatch.setattr(cli,"load_settings",lambda *args:object())
+    def provider(*args):
+        raise RuntimeError("TOP_SECRET_CREDENTIAL_SHOULD_NOT_PRINT")
+    monkeypatch.setattr(cli,"read_through_historical_options",provider)
+    assert cli.main(["--output",str(tmp_path/"quote.json")])==2
+    assert any(x.startswith("STOPPED") for x in messages)
+    assert not any("TOP_SECRET" in x for x in messages)
