@@ -35,7 +35,8 @@ def _progress(message: str) -> None:
     print(f"[{stamp}] {message}",flush=True)
 
 
-def summarize_source(source: dict, *, strike: str, right: str, session: str,\n                     progress: Callable[[str], None] | None = None) -> dict:
+def summarize_source(source: dict, *, strike: str, right: str, session: str,
+                     progress: Callable[[str], None] | None = None) -> dict:
     rows=source["source_rows"]
     sample=[]
     present_keys=set()
