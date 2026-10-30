@@ -299,8 +299,19 @@ def report(v46: dict, v45: dict, plan: dict, sources: dict, acquisition: dict) -
                 "censored": sum(r["status"]!="PAIRED_EXIT_QUOTE_QUALIFIED" for r in rows if r["date"].startswith(year)),
             } for year in sorted({r["date"][:4] for r in rows})},
         }
-    accounts = [_account_scenario(results, hold, key)
-                for hold in HOLD_DAYS for key in ("primary", "stress")]
+    # Preserve original and alternate strategy variants as independent cash
+    # studies; the explicitly labeled union is a NEW exploratory hybrid, never
+    # evidence for the unchanged frozen-original strategy.
+    account_cohorts = (
+        ("ORIGINAL_V43_ONLY", [c for c in results if c["cohort_origin"] == "ORIGINAL_V43"]),
+        ("V44_ALTERNATE_ONLY", [c for c in results if c["cohort_origin"] == "V44_OI_ALTERNATE_VARIANT"]),
+        ("EXPLORATORY_COMBINED_NEW_VARIANT", results),
+    )
+    accounts = [
+        {"research_variant": label, **_account_scenario(cohort, hold, key)}
+        for label, cohort in account_cohorts
+        for hold in HOLD_DAYS for key in ("primary", "stress")
+    ]
     out = {
         "contract": CONTRACT, "status": "EXPLORATORY_EXIT_QUOTE_ECONOMICS_NOT_STRATEGY_PNL",
         "source_v46_fingerprint": v46["fingerprint"],
@@ -309,6 +320,7 @@ def report(v46: dict, v45: dict, plan: dict, sources: dict, acquisition: dict) -
         "exit_hold_sessions": list(HOLD_DAYS), "historical_quote_metrics_by_hold": metrics,
         "source_qualified_count_by_origin": {k:dict(v) for k,v in sorted(by_origin.items())},
         "chronological_one_slot_quote_reference_accounts": accounts,
+        "account_replay_variants_separately_labeled": [name for name, _ in account_cohorts],
         "cases": results,
         "hypothetical_rate_dividend_and_raw_return_inputs_not_pit": True,
         "fixed_hold_does_not_match_frozen_dynamic_exit": True,
