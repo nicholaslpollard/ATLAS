@@ -38,6 +38,8 @@ It preserves a complete source-linked trace for **361** original selected weekly
 
 The original historical 411 frozen decision dates included **50 initial selections that abstained** before V45's 361-case data; the three reports do not contain per-date identities for those 50. V49 keeps the 411/361/50 denominators and **does not invent rows**. Future integrated simulator must log these preselection abstentions individually at the time of discovery, plus reasons. The V49 event records are explicitly hypothetical and do not represent a historical live or paper execution.
 
+**Auditable append-only artifact now implemented:** The same V49 CLI also creates a NEW sibling `.jsonl` journal (manifest + one complete event for each of 361 evaluated cases + closeout = **363** records). Every record includes its chronological sequence, unique event identity, prior-record SHA-256 and its own canonical SHA-256; file writes are flushed/fsynced, and the resulting chain is re-read and verified. Truncated, altered, repeated or existing journals fail closed. It retains complete per-opportunity source provenance, reasons and contextual observations but references existing underlying archives via SHA rather than rewriting raw chains. The V49 journal is an **offline derived research journal**; future live simulator execution must append observed order/ack/partial/cancel/fill/exit/mark/account events using this same audited-event principle.
+
 Code: `packages/simulation/options_opportunity_trace_v49.py` with `build_trace`, `clock_gate`, `same_contract_two_clock_drift`, and `execution_action_diagnostic`. The last function is a future input seam: it can analyze **supplied** delayed reference/action quote packets but does not fetch or interpolate them.
 
 ## Required simulator logging contract for the next integrated development
@@ -83,4 +85,4 @@ V49 supplies the **offline SPY evidence trace and a tested quote comparison prim
 }
 ```
 
-Zero provider/broker calls. The resulting trace is a development audit; it does not need to be rerun when the integrated simulator adds real-time later quote capture. The repository work order must explicitly make future fully integrated simulator traces a launch-readiness gate.
+Zero provider/broker calls. The command creates **both** the new fingerprinted `.json` report and matching hash-chained `.jsonl` opportunity journal. The resulting trace is a development audit; it does not need to be rerun when the integrated simulator adds real-time later quote capture. The repository work order must explicitly make future fully integrated simulator traces a launch-readiness gate.
