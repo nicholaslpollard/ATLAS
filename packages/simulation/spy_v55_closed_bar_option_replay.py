@@ -139,7 +139,17 @@ def closed_bar_signal(rows, *, session: date, source_sha256: str, source_unit_id
 def _read_timestamp(row, day):
     for key in ("timestamp_et", "timestamp", "datetime", "timestamp_utc"):
         if row.get(key) is not None:
-            return _at(row[key])
+            try:
+                return _at(row[key])
+            except V55Error as exc:
+                # ThetaData option history timestamps use the requested ET
+                # session clock; a serialized naive 'timestamp' is treated
+                # as ET only in this explicitly unverified research variant.
+                # Never reinterpret an explicitly UTC column as local ET.
+                if str(exc) != "QUOTE_TIMESTAMP_TIMEZONE_MISSING" or key not in ("timestamp", "timestamp_et"):
+                    raise
+                stamp = datetime.fromisoformat(str(row[key]))
+                return stamp.replace(tzinfo=ET)
     if row.get("ms_of_day") is not None:
         raw = row["ms_of_day"]
         try:
@@ -209,6 +219,7 @@ def replay_source(signal, source, *, starting_cash="25000", lag_seconds=1,
         "actual_fills": 0, "publication_verified": False, "valid_historical_alpha": False,
         "assumed_1s_bar_close_publication_lag": True,
         "quote_reference_not_broker_execution": True,
+        "naive_provider_history_timestamp_interpreted_as_ET_if_present": True,
         "policy": {"max_premium_usd": "500", "take_profit_option_pct": "100",
                    "stop_option_pct": "-50", "time_exit_et": "15:30",
                    "lag_seconds": lag_seconds, "max_adverse_pct": str(max_adverse_pct)}
