@@ -148,7 +148,10 @@ def run(date_et, *, output, lag_seconds=1, max_adverse_pct="1",
          f" terminal_cash={replay['terminal_equity_if_resolved']}"
          f" source_fingerprint={replay['fingerprint']}"
          f" elapsed={time.monotonic()-began:.1f}s saved={output}")
-    return 0 if replay["status"] in ("CLOSED_QUOTE_REFERENCE","NO_SIGNAL","NO_ENTRY") else 2
+    return (0 if replay["status"] in ("CLOSED_QUOTE_REFERENCE","NO_SIGNAL","NO_ENTRY")
+            and "source_stage_failure_type" not in replay
+            and replay.get("censor_reason") != "OPTION_SOURCE_MISSING_OR_UNQUALIFIED"
+            else 2)
 
 
 def main(argv=None):
