@@ -128,3 +128,30 @@ def test_strict_pin_rejects_any_noncurrent_or_tampered_v46_v45():
         v47.verified_cases({}, {})
     with pytest.raises(v47.V47Error,match="FINGERPRINT"):
         v47._check({"contract":"x","fingerprint":"0"*64},"x","0"*64)
+
+
+def test_report_separates_original_alternate_and_new_combined_ledgers(monkeypatch):
+    original=_source("2023-06-05")
+    alternate=_source("2023-06-12")
+    alternate["cohort_origin"]="V44_OI_ALTERNATE_VARIANT"
+    monkeypatch.setattr(v47, "verified_cases", lambda _a,_b:[original,alternate])
+    plan=v47.build_plan([original,alternate],calendar=Calendar())
+    def fake_exit(_sources, hold):
+        return {"status":"PAIRED_EXIT_QUOTE_QUALIFIED",
+                "call":_leg(5,5.2), "put":_leg(4,4.2),
+                "skew_seconds":0.0}
+    monkeypatch.setattr(v47,"_pair_quote_exit",fake_exit)
+    result=v47.report({"fingerprint":"v46"},{"fingerprint":"v45"},plan,{},
+                      {"source_uses_requested":20})
+    assert result["hypothetical_long_candidates"]==2
+    assert result["account_replay_variants_separately_labeled"]==[
+        "ORIGINAL_V43_ONLY","V44_ALTERNATE_ONLY","EXPLORATORY_COMBINED_NEW_VARIANT"
+    ]
+    accounts=result["chronological_one_slot_quote_reference_accounts"]
+    assert len(accounts)==30
+    assert {a["research_variant"] for a in accounts}==set(
+        result["account_replay_variants_separately_labeled"]
+    )
+    assert result["historical_strategy_profitability"] is None
+    assert result["historical_strategy_trades_executed"] is None
+    assert result["missing_exit_not_zero_proceeds"] is True
