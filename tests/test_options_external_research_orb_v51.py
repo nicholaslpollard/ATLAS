@@ -190,6 +190,7 @@ def test_incorrect_bar_or_duplicate_or_cross_session_refused():
         first_breakout_candidate(data)
     data=bars()
     data[2]["bar_start_et"]="2025-06-10T09:32:00-04:00"
+    data[2]["available_at_et"]="2025-06-10T09:33:00-04:00"
     with pytest.raises(OrbError,match="MULTIPLE_SESSIONS"):
         first_breakout_candidate(data)
 
