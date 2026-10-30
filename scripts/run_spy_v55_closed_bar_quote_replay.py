@@ -32,6 +32,7 @@ from packages.simulation.spy_v55_closed_bar_option_replay import (
     CONTRACT, closed_bar_signal, replay_source,
 )
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
+from packages.simulation.spy_v55_event_journal import save_journal
 
 
 def progress(message):
@@ -138,6 +139,12 @@ def run(date_et, *, output, lag_seconds=1, max_adverse_pct="1",
     replay["native_source_warning_codes"] = v["warnings"]
     replay["run_elapsed_seconds"] = round(time.monotonic()-began,3)
     replay["fingerprint"] = _fingerprint({k:x for k,x in replay.items() if k!="fingerprint"})
+    journal_path=output.with_suffix(".jsonl")
+    emit(f"STAGE_START save_and_verify_immutable_hash_chained_journal"
+         f" events={len(replay['events'])} path={journal_path}")
+    receipt=save_journal(journal_path,replay,progress=emit)
+    emit(f"STAGE_PASS journal_records={receipt['journal_rows']}"
+         f" journal_tip={receipt['tip_sha256']}")
     emit(f"STAGE_START save_full_quote_source_and_decision_audit events={len(replay['events'])}")
     output.parent.mkdir(parents=True,exist_ok=True)
     with output.open("x",encoding="utf-8") as f:
@@ -147,7 +154,7 @@ def run(date_et, *, output, lag_seconds=1, max_adverse_pct="1",
          f" net_pnl={replay['trade_net_pnl']}"
          f" terminal_cash={replay['terminal_equity_if_resolved']}"
          f" source_fingerprint={replay['fingerprint']}"
-         f" elapsed={time.monotonic()-began:.1f}s saved={output}")
+         f" elapsed={time.monotonic()-began:.1f}s saved={output} journal={journal_path}")
     return (0 if replay["status"] in ("CLOSED_QUOTE_REFERENCE","NO_SIGNAL","NO_ENTRY")
             and "source_stage_failure_type" not in replay
             and replay.get("censor_reason") != "OPTION_SOURCE_MISSING_OR_UNQUALIFIED"
