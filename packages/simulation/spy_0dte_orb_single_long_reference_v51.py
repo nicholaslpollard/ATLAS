@@ -162,9 +162,12 @@ def replay_orb_quote_reference(
             if increase>_amount(adverse_action_price_change_limit_pct):
                 status="ADVERSE_ACTION_PRICE_CHANGE_OVER_POLICY"
             else:
-                unit_cost=_usd(action_ask*MULTIPLIER+FEE_PER_CONTRACT_SIDE)
-                qty=int((min(cash,CAP)/unit_cost).to_integral_value(rounding=ROUND_FLOOR))
-                if qty<1:
+                # The published $500 sizing is PREMIUM, not premium+fees.
+                # Fees are charged in the cash ledger separately.
+                premium_per_contract=action_ask*MULTIPLIER
+                qty=int((CAP/premium_per_contract).to_integral_value(rounding=ROUND_FLOOR))
+                unit_cost=_usd(premium_per_contract+FEE_PER_CONTRACT_SIDE)
+                if qty<1 or unit_cost*qty>cash:
                     status="PREMIUM_CAP_OR_AVAILABLE_CASH_INSUFFICIENT"
                 else:
                     status="MODELED_SINGLE_LONG_ENTRY_QUOTE_REFERENCE"
@@ -205,15 +208,18 @@ def replay_orb_quote_reference(
             bid=_amount(q["bid"]) if q["status"]=="QUOTE_REFERENCE_QUALIFIED" else None
             gross=bid*MULTIPLIER*qty if bid is not None else None
             net=_usd(gross-FEE_PER_CONTRACT_SIDE*qty) if gross is not None else None
+            gross_option_change=(bid/action_ask-1)*100 if bid is not None else None
             gain=(net/debit-1)*100 if net is not None else None
             trigger=("TIME_15:30" if at.time()==time(15,30) else
-                     "PROFIT_PLUS_100" if gain is not None and gain>=100 else
-                     "STOP_MINUS_50" if gain is not None and gain<=-50 else "HOLD")
+                     "PROFIT_PLUS_100" if gross_option_change is not None and gross_option_change>=100 else
+                     "STOP_MINUS_50" if gross_option_change is not None and gross_option_change<=-50 else "HOLD")
             if gap_seconds>60:
                 failed_path=True
             events.append({"type":"EXIT_REVIEW","at_et":at.isoformat(),
                            "opportunity_id":f"{day}:{identity}",
-                           "quote_diagnostics":q,"reference_return_pct":str(gain) if gain is not None else None,
+                           "quote_diagnostics":q,
+                           "observed_option_bid_vs_entry_ask_pct":str(gross_option_change) if gross_option_change is not None else None,
+                           "reference_net_after_fee_return_pct":str(gain) if gain is not None else None,
                            "observation_gap_seconds":gap_seconds,
                            "intrabar_trigger_order_independently_proven":False,
                            "trigger":trigger,"missing_path_censored":failed_path,
