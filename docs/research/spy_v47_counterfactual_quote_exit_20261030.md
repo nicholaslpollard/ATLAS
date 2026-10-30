@@ -40,7 +40,7 @@ observed 10:01 paired option ask references.
    be executable broker fills.
 6. Generate per-hold observed, censored and net-quote-return metrics with
    denominators. Also separately create five one-position-at-a-time
-   hypothetical $100,000 cash ledgers with the frozen 5% entry-debit
+   hypothetical $100,000 cash ledgers **separately for original, alternate, and an explicitly new combined research variant** with the frozen 5% entry-debit
    constraint, for each price stress. A missing scheduled exit **keeps its
    position unresolved and blocks later hypothetical entries**;
    ending account equity is withheld when an open position cannot be marked.
