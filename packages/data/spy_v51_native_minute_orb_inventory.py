@@ -178,18 +178,21 @@ def preview(rows: list[dict], *, session: date, source_sha256: str,
     return report
 
 
-def inspect_native_spy_day(project_root: Path, *, session: date,\n                           progress: Callable[[str], None] | None = None) -> dict:
+def inspect_native_spy_day(project_root: Path, *, session: date,
+                           progress: Callable[[str], None] | None = None) -> dict:
     if session>B34_MAX_SAMPLE_DATE:
         raise ValueError("V51_REFUSES_UNINSPECTED_MASTER_OR_FUTURE_SOURCE_DATE")
     layout=V2Layout.beneath(project_root/"data")
-    if progress:\n        progress(f"STAGE_START discover_native_minutes date={session.isoformat()} provider_requests=0")
+    if progress:
+        progress(f"STAGE_START discover_native_minutes date={session.isoformat()} provider_requests=0")
     try:
         units=discover_minute_units(layout)
     except IntradaySemanticsAuditError:
         return {"contract":CONTRACT,"session":session.isoformat(),
                 "status":"NO_COMPLETED_NATIVE_MINUTE_CHECKPOINTS",
                 "source_ready":False,"provider_calls":0}
-    if progress:\n        progress(f"STAGE_PASS discover_native_minutes scanned_units={len(units)}")
+    if progress:
+        progress(f"STAGE_PASS discover_native_minutes scanned_units={len(units)}")
     matching=[u for u in units if (u.year,u.month)==(session.year,session.month)
               and "SPY" in u.symbols]
     if not matching:
@@ -205,14 +208,17 @@ def inspect_native_spy_day(project_root: Path, *, session: date,\n              
                 "status":"CANONICAL_SOURCE_SHA_OR_RAW_BUNDLE_REJECTED",
                 "unit_id":unit.unit_id,"source_ready":False,
                 "integrity_errors":integrity["errors"],"provider_calls":0}
-    if progress:\n        progress(f"STAGE_START read_SPY_one_session_from_monthly_parquet date={session.isoformat()} file={unit.canonical_path.name}")
+    if progress:
+        progress(f"STAGE_START read_SPY_one_session_from_monthly_parquet date={session.isoformat()} file={unit.canonical_path.name}")
     rows=_sample_rows(unit.canonical_path,symbol="SPY",session_date=session)
-    if progress:\n        progress(f"STAGE_PASS read_SPY_one_session_from_monthly_parquet rows={len(rows)}")
+    if progress:
+        progress(f"STAGE_PASS read_SPY_one_session_from_monthly_parquet rows={len(rows)}")
     if not rows:
         return {"contract":CONTRACT,"session":session.isoformat(),
                 "status":"NO_SPY_MINUTES_ON_REQUESTED_DATE",
                 "source_ready":False,"provider_calls":0}
-    if progress:\n        progress(f"STAGE_START validate_SPY_1m_geometry rows={len(rows)}")
+    if progress:
+        progress(f"STAGE_START validate_SPY_1m_geometry rows={len(rows)}")
     check=validate_minute_rows(rows,sample_class="SPY_0DTE_ORB_SOURCE_PREVIEW",
         symbol="SPY",session_date=session)
     if not check["accepted"]:
@@ -220,11 +226,13 @@ def inspect_native_spy_day(project_root: Path, *, session: date,\n              
                 "status":"SPY_CANONICAL_MINUTE_GEOMETRY_UNQUALIFIED",
                 "source_ready":False,"source_row_errors":check["errors"][:15],
                 "provider_calls":0}
-    if progress:\n        progress("STAGE_PASS validate_SPY_1m_geometry")
+    if progress:
+        progress("STAGE_PASS validate_SPY_1m_geometry")
         progress("STAGE_START classify_first_possible_breakout_minute")
     result=preview(rows,session=session,source_sha256=unit.canonical_sha256,
                    source_unit_id=unit.unit_id)
-    if progress:\n        progress("STAGE_PASS classify_first_possible_breakout_minute")
+    if progress:
+        progress("STAGE_PASS classify_first_possible_breakout_minute")
     result["source_ready"]=True
     result["integrity_validated"]=True
     result["minute_source_warning_codes"]=check["warnings"]
