@@ -223,3 +223,42 @@ def test_later_exit_price_does_not_change_prior_signal_or_entry_ledger():
     assert a["events"][1]==b["events"][1]
     assert a["events"][2]!=b["events"][2]
     assert a["fingerprint"]!=b["fingerprint"]
+
+
+def test_full_review_schedule_fails_before_modeling_even_when_early_exit_would_fire():
+    # First review at 09:37 realizes +100%; a later invalid 09:36:59
+    # record must not be silently ignored as if it were a valid source tape.
+    a=case()
+    a["intraday_option_reviews"].append({
+        "at_et":"2025-06-09T09:36:59-04:00",
+        "quote":quote("2025-06-09T09:36:59-04:00"),
+    })
+    with pytest.raises(OrbReplayError,match="OUT_OF_ORDER"):
+        run([a])
+    # Invalid date/time bounds similarly fail, regardless of prior profit.
+    a=case()
+    a["intraday_option_reviews"].append({
+        "at_et":"2025-06-10T09:38:00-04:00",
+        "quote":quote("2025-06-10T09:38:00-04:00"),
+    })
+    with pytest.raises(OrbReplayError,match="OUT_OF_ORDER"):
+        run([a])
+    a=case()
+    a["intraday_option_reviews"].append({
+        "at_et":"2025-06-09T15:30:01-04:00",
+        "quote":quote("2025-06-09T15:30:01-04:00"),
+    })
+    with pytest.raises(OrbReplayError,match="OUT_OF_ORDER"):
+        run([a])
+
+
+def test_first_profit_exit_still_closes_normally_with_valid_later_unused_source():
+    a=case()
+    a["intraday_option_reviews"].append({
+        "at_et":"2025-06-09T09:38:00-04:00",
+        "quote":quote("2025-06-09T09:38:00-04:00"),
+    })
+    r=run([a])
+    assert r["terminal_equity_if_complete"] is not None
+    assert [e["type"] for e in r["events"]].count("MODELED_EXIT_QUOTE_REFERENCE")==1
+    assert [e["type"] for e in r["events"]].count("EXIT_REVIEW")==1
