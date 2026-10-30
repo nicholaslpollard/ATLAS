@@ -1,5 +1,9 @@
 # ATLAS Strategy Evidence Register
 
+## V51 external options strategy candidates, never accepted ATLAS historical profitability (2026-10-30)
+
+Seven primary candidates and three watch leads registered from developer, third-party open-source or trader-reported evidence. The published SPY 0DTE ORB author's +59.4% result is total in-sample model return after optimizing opening-window/weekdays and is **not** reproducible fill evidence. WealthyOption SPXW short six-sleeve and a separate SPY adaptation use short-premium margin and cannot be replayed by V50's one-pair long engine; Sandvand condors, Chambless MEIC, and Ruchel SPX 0DTE multi-leg strategies similarly require independent complete per-leg execution/collateral and settlement. V51 has a fully logged original SPY five-minute range preview plus fictional-source-only, **single-long-leg quote-reference** target/stop/15:30 model. Historical first actual crossing time, as-of stock spot, selected right and original 0DTE contract quote path/stop chronology remain required. A 1s/3s action-price scenario cannot be assumed to fill or used to retrospectively tune a winner. [Original strategy evidence and gaps](research/external_options_strategy_candidate_evaluation_v51_20261030.md).
+
 **Original scientific consolidation 2026-10-12 at `64175780`; source-only continuation reviewed through merged PR #354 (`94807e2e`) on 2026-10-22. No new performance evidence opened.**
 
 This register summarizes completed evidence and current research dispositions. The [project guide](roadmap.md) owns goals and work order. Code/contracts and original immutable artifacts own exact behavior/results; [the original full register](https://github.com/nicholaslpollard/ATLAS/blob/641757803b00bbebf75eb5c20c366b2668ee9707/docs/strategy_evidence_register.md) retains every earlier detailed entry and fingerprint. Consolidation does not alter prior verdicts or authorize reruns.
