@@ -23,8 +23,10 @@ def pair(*, skew=0, pre=False):
     clock="2020-01-02T09:59:00+00:00" if pre else "2020-01-02T10:01:00+00:00"
     first=datetime.fromisoformat(clock)
     return {
-        "call": q(first.isoformat(), pre=pre),
-        "put": q((first+timedelta(seconds=skew)).isoformat(), pre=pre),
+        "call": {**q(first.isoformat(), pre=pre),
+                 "contract_identity": "SPY:2020-02-21:270:C"},
+        "put": {**q((first+timedelta(seconds=skew)).isoformat(), pre=pre),
+                "contract_identity": "SPY:2020-02-21:270:P"},
         "skew_seconds": skew,
     }
 
@@ -75,6 +77,11 @@ def test_action_diagnostic_requires_observed_later_quote_and_checks_drift():
     rejected=v49.execution_action_diagnostic(initial,bad,**base,
         max_skew_seconds=3,max_adverse_pair_cost_change_pct="1")
     assert "ACTION_PAIR_ADVERSE_PRICE_DRIFT_OVER_POLICY" in rejected["reason_codes"]
+    changed_identity=copy.deepcopy(nextq)
+    changed_identity["put"]["contract_identity"]="SPY:2020-02-21:269:P"
+    identity_result=v49.execution_action_diagnostic(initial,changed_identity,**base,
+        max_skew_seconds=1,max_adverse_pair_cost_change_pct="1")
+    assert "PUT_ACTION_CONTRACT_IDENTITY_UNPROVEN" in identity_result["reason_codes"]
     nonexistent=v49.execution_action_diagnostic(initial,{},**base,
         max_skew_seconds=1,max_adverse_pair_cost_change_pct="1")
     assert nonexistent["status"]=="COUNTERFACTUAL_QUOTE_GATES_REJECT"
