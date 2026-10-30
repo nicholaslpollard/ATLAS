@@ -13,7 +13,7 @@ from math import isfinite
 from zoneinfo import ZoneInfo
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
-from packages.simulation.american_option_iv_lr_v41 import american_lr_implied_volatility
+from packages.simulation.american_option_iv_lr_v41 import (AmericanIvError, american_lr_implied_volatility)
 
 CONTRACT = "atlas-spy-provisional-variance-economics-v46"
 V45_CONTRACT = "atlas-spy-unified-two-clock-original-plus-alternate-v45"
@@ -146,10 +146,13 @@ def evaluate(v45: dict, v37: dict, *, progress=None) -> dict:
                 ivs = {}
                 for right in ("call", "put"):
                     bid, ask = quote[right]
-                    ivs[right] = american_lr_implied_volatility(
-                        right, bid=bid, ask=ask, spot=spot, strike=strike,
-                        years=years, rate=rate, dividend_yield=dividend,
-                    )
+                    try:
+                        ivs[right] = american_lr_implied_volatility(
+                            right, bid=bid, ask=ask, spot=spot, strike=strike,
+                            years=years, rate=rate, dividend_yield=dividend,
+                        )
+                    except AmericanIvError:
+                        ivs[right] = None
                 if any(v is None for v in ivs.values()):
                     decision = "MODEL_IV_UNSOLVABLE"
                 else:
