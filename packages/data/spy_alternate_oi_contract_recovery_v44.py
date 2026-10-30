@@ -138,12 +138,13 @@ def discover_alternate(original: dict, source: dict) -> dict:
         call_oi, c_time = legs["call"][0]
         put_oi, p_time = legs["put"][0]
         proximity = abs(float(strike) - spot)
-        # Same expiration first, then proximity to last valid 09:59 spot.
-        # No current/future option price or later trade outcome is inspected.
+        # Prior 09:59 near-the-money strike first, then prefer original
+        # expiry on ties. Price at 10:01 or a future outcome is never read.
         order = (
+            proximity,
             0 if expiry == original["expiration"] else 1,
-            proximity, abs((date.fromisoformat(expiry) - d).days
-                           - (date.fromisoformat(original["expiration"]) - d).days),
+            abs((date.fromisoformat(expiry) - d).days
+                - (date.fromisoformat(original["expiration"]) - d).days),
             -min(call_oi, put_oi), expiry, strike,
         )
         possible.append((order, {
