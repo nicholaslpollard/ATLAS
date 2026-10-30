@@ -82,9 +82,13 @@ def test_no_trade_signal_and_pit_failures_get_full_decision_events():
     b=case(id="b")
     b["signal_at_utc"]="2020-01-03T15:00:00+00:00"
     b["feature_available_at_utc"]="2020-01-03T15:02:00+00:00"
+    b["order_at_utc"]="2020-01-03T15:01:00+00:00"
+    b["action_at_utc"]="2020-01-03T15:01:03+00:00"
     c=case(id="c")
     c["signal_at_utc"]="2020-01-06T15:00:00+00:00"
     c["causal_signal_evidence_verified"]=False
+    c["order_at_utc"]="2020-01-06T15:01:00+00:00"
+    c["action_at_utc"]="2020-01-06T15:01:03+00:00"
     result=run([c,b,a])
     assert result["modeled_quote_reference_entries"]==0
     assert result["opportunity_dispositions"]=={
@@ -198,3 +202,46 @@ def test_changed_future_exit_quotes_cannot_affect_prior_entry_selection():
     assert a["events"][1]==b["events"][1]
     assert a["events"][2]!=b["events"][2]
     assert a["fingerprint"]!=b["fingerprint"]
+
+
+def test_same_underlying_expiration_strike_right_and_expiry_proof_are_required():
+    unrelated=case()
+    unrelated["put_identity"]="QQQ:2020-02-21:270:P"
+    with pytest.raises(PairReplayError,match="MISMATCH"):
+        run([unrelated])
+    put_wrong_strike=case()
+    put_wrong_strike["put_identity"]="SPY:2020-02-21:275:P"
+    with pytest.raises(PairReplayError,match="MISMATCH"):
+        run([put_wrong_strike])
+    put_wrong_right=case()
+    put_wrong_right["put_identity"]="SPY:2020-02-21:270:C"
+    with pytest.raises(PairReplayError,match="MISMATCH"):
+        run([put_wrong_right])
+    invalid=case()
+    invalid["call_identity"]="O:SPY200221C00270000"
+    with pytest.raises(PairReplayError,match="FORMAT"):
+        run([invalid])
+    after_expiry=case()
+    after_expiry["signal_at_utc"]="2020-02-24T15:00:00+00:00"
+    with pytest.raises(PairReplayError,match="EXPIRATION"):
+        run([after_expiry])
+
+
+def test_post_expiry_future_quote_cannot_force_account_sale_without_exercise_evidence():
+    original=case(reviews=[review(
+        at="2020-02-24T15:01:00+00:00",hold=1,bid="9",ask="9.1"
+    )])
+    actual=run([original],maximum_hold_reviews=1)
+    exit_review=next(e for e in actual["events"] if e["event_type"]=="EXIT_REVIEW")
+    assert "POST_EXPIRY_ASSIGNMENT_OR_EXERCISE_EVIDENCE_REQUIRED" in exit_review["review_reason_codes"]
+    assert actual["open_unresolved_position_id"]=="test1"
+    assert actual["terminal_equity_if_fully_resolved"] is None
+
+
+def test_input_offset_variants_sorted_by_actual_utc_instant_not_raw_iso_string():
+    first=case(id="first",signal="ABSTAIN")
+    first["signal_at_utc"]="2020-01-02T09:00:00-05:00"  # 14:00 UTC
+    second=case(id="second",signal="ABSTAIN")
+    second["signal_at_utc"]="2020-01-02T14:30:00+00:00"
+    result=run([second,first])
+    assert [e["opportunity_id"] for e in result["events"]]==["first","second"]
