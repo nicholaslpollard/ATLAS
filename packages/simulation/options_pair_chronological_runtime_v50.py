@@ -26,7 +26,7 @@ MAX_CASES = 200000
 MAX_REVIEWS = 10
 MAX_SOURCE_AGE_SECONDS = Decimal("30")
 EASTERN = ZoneInfo("America/New_York")
-SERIES = re.compile(r"^([A-Z]{1,8}):(\\d{4}-\\d{2}-\\d{2}):(\\d+(?:\\.\\d+)?):([CP])$")
+SERIES = re.compile(r"^([A-Z]{1,8}):(\d{4}-\d{2}-\d{2}):(\d+(?:\.\d+)?):([CP])$")
 
 
 class PairReplayError(ValueError):
