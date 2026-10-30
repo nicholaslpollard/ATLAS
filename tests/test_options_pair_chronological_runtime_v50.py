@@ -245,3 +245,19 @@ def test_input_offset_variants_sorted_by_actual_utc_instant_not_raw_iso_string()
     second["signal_at_utc"]="2020-01-02T14:30:00+00:00"
     result=run([second,first])
     assert [e["opportunity_id"] for e in result["events"]]==["first","second"]
+
+
+def test_weekly_monthly_annual_reference_cash_periods_keep_unresolved_separate():
+    complete=run([case()])
+    periods=complete["reference_realized_periods"]
+    assert periods["status"]=="CLOSED_QUOTE_REFERENCE_PERIODS_NOT_VALIDATED_STRATEGY_PNL"
+    assert periods["closed_trades"][0]["net_reference_pnl_dollars"]=="397.40"
+    assert periods["weekly"][0]["period"]=="2020-W01"
+    assert periods["monthly"][0]["period"]=="2020-01"
+    assert periods["annual"][0]["period"]=="2020"
+    assert periods["annual"][0]["modeled_net_reference_pnl_dollars"]=="397.40"
+    assert periods["annual"][0]["whole_account_economic_window_proven"] is False
+    none=run([case(reviews=[])])
+    assert none["terminal_equity_if_fully_resolved"] is None
+    assert none["reference_realized_periods"]["annual"]==[]
+    assert none["reference_realized_periods"]["account_terminal_unresolved"] is True
