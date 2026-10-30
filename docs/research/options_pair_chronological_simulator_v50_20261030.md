@@ -20,6 +20,8 @@ The user needs to review all potential trades and the reasons they were taken/re
 8. Source absence, future quote, missing right, invalid quoted size/price or rejected sync/price leave an **unresolved open position**, not a made-up winning, losing or zero-value fill. No same-strategy new entries while the original slot is occupied. Final equity is `null` until positions are fully closed/valued.
 9. No broker order receipts, order-book queue-position reconstruction, bid/ask fill guarantee, assignment or exercise/settlement proof. Hypothetical sale proceeds are immediately reflected in **quote-reference cash**, not claimed to be real settled buying power. Actual historical performance remains **unvalidated** even if sample data contains apparently clean quotes.
 
+**Window accounting:** Each qualified modeled exit is joined to its immutable opportunity ID and exit reason, and separately included in a closed-trades-only **weekly, monthly and annual** dollar summary (wins/losses/breakeven). Open/unresolved positions contribute **no invented P&L** and make terminal equity `null`. These are labeled quote-reference cash summaries, never validated full-window profitability. The complete lifecycle includes raw entry/review context in the event stream.
+
 ### Auditable durable outputs
 
 `packages/simulation/options_pair_runtime_journal_v50.py` writes a NEW immutable JSONL event journal containing a RUN_MANIFEST, every runtime decision/entry/review/exit/unresolved event, and RUN_CLOSEOUT. Each line has its sequence, previous-record SHA and canonical SHA; a full readback rejects missing, truncated, altered, out-of-order or post-closeout records. No overwrite; no raw market-chain duplication.
