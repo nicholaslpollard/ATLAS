@@ -21,7 +21,7 @@ The available V45 quotes measure **09:59→10:01, a two-minute interval**, not a
 ### Predeclared diagnostics, not a policy optimization
 
 - Side-by-side baseline **1s** and separate **3s** CALL/PUT timestamp-skew review, using unchanged positive size, <=30s quote age, <=15% spread and exact source requirements.
-- Independent maximum *adverse* paired-ASK debit increases **0.5%, 1%, 2%**, not limits on each arbitrary right's raw price and not new alpha; improvement in usable coverage does not establish more realistic fills.
+- Independent *adverse* paired-ASK debit increases **0.5%, 1%, 2%** and separately the **absolute price movement** (either direction) against the same bands. An adverse increase informs the cost/slippage control; absolute movement can warn of a stale thesis even if the price moved favorably. Neither is a comparison of the CALL price directly with the PUT price, a new alpha feature or a validated threshold; more usable observations do not establish more realistic fills.
 - Reject future timestamps, out-of-order snapshots, invalid two-sided markets and unqualified missing/sparse quotes. Future action price tape must carry explicit matching per-right `contract_identity` (including original expiry/strike/right) and original query/SHA provenance; a quote on a different contract is a reject, even if its price happens to look comparable.
 - Never retrospectively choose 1s or 3s or a price band by the observed 2018–2025 V47 returns. Keep original-vs-alternate strategy versions separated, and require unseen prospective/held-out evidence for a new policy.
 
