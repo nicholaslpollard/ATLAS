@@ -8,7 +8,9 @@ verified fill. Every opportunity and every evaluated exit emits an event.
 """
 
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, date
+import re
+from zoneinfo import ZoneInfo
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
@@ -23,6 +25,8 @@ VALID_SIGNAL = {"ENTER_LONG_PAIR", "ABSTAIN", "REJECT"}
 MAX_CASES = 200000
 MAX_REVIEWS = 10
 MAX_SOURCE_AGE_SECONDS = Decimal("30")
+EASTERN = ZoneInfo("America/New_York")
+SERIES = re.compile(r"^([A-Z]{1,8}):(\\d{4}-\\d{2}-\\d{2}):(\\d+(?:\\.\\d+)?):([CP])$")
 
 
 class PairReplayError(ValueError):
@@ -47,6 +51,18 @@ def _dec(raw: Any, *, positive: bool = False) -> Decimal:
     if not d.is_finite() or (positive and d <= 0):
         raise PairReplayError("V50_NONFINITE_OR_NONPOSITIVE")
     return d
+
+
+def _series(identity: str) -> tuple[str, date, Decimal, str]:
+    match = SERIES.fullmatch(identity) if isinstance(identity,str) else None
+    if match is None:
+        raise PairReplayError("V50_ORIGINAL_OPTION_SERIES_FORMAT_INVALID")
+    try:
+        expiry=date.fromisoformat(match.group(2))
+    except ValueError as exc:
+        raise PairReplayError("V50_ORIGINAL_OPTION_EXPIRATION_INVALID") from exc
+    strike=_dec(match.group(3),positive=True)
+    return match.group(1),expiry,strike,match.group(4)
 
 
 def _money(raw: Decimal) -> Decimal:
@@ -138,7 +154,7 @@ def _case_check(cases: list[dict]) -> list[dict]:
     if not isinstance(cases,list) or not 1<=len(cases)<=MAX_CASES:
         raise PairReplayError("V50_CASE_COUNT_INVALID")
     ids=set()
-    ordered=sorted(cases,key=lambda c:(c["signal_at_utc"],c["opportunity_id"]))
+    ordered=sorted(cases,key=lambda c:(_time(c["signal_at_utc"]),c["opportunity_id"]))
     for case in ordered:
         cid=case.get("opportunity_id")
         if not isinstance(cid,str) or not cid or cid in ids:
@@ -150,8 +166,13 @@ def _case_check(cases: list[dict]) -> list[dict]:
         for key in ("call_identity","put_identity","strategy_version"):
             if not isinstance(case.get(key),str) or not case[key]:
                 raise PairReplayError("V50_MISSING_STRATEGY_OR_ORIGINAL_CONTRACT")
-        if case["call_identity"]==case["put_identity"]:
-            raise PairReplayError("V50_CALL_PUT_IDENTITY_NOT_DISTINCT")
+        call_series=_series(case["call_identity"])
+        put_series=_series(case["put_identity"])
+        if (call_series[:3]!=put_series[:3] or
+                call_series[3]!="C" or put_series[3]!="P"):
+            raise PairReplayError("V50_CALL_PUT_UNDERLYING_EXPIRY_STRIKE_OR_RIGHT_MISMATCH")
+        if signal_at.astimezone(EASTERN).date()>call_series[1]:
+            raise PairReplayError("V50_ENTRY_AFTER_ORIGINAL_OPTION_EXPIRATION")
         if case["signal_status"]=="ENTER_LONG_PAIR":
             order_at=_time(case["order_at_utc"])
             action_at=_time(case["action_at_utc"])
@@ -227,6 +248,12 @@ def replay_pairs(
             review_index+=1
             q=_paired_quote(review.get("quote_pair"),
                 call=opened["call"],put=opened["put"],at=at,max_skew=pair_skew_seconds)
+            if at.astimezone(EASTERN).date()>opened["expiry"]:
+                q["status"]="PAIR_QUOTE_UNQUALIFIED_EXPIRED"
+                q["reason_codes"]=sorted(set(q["reason_codes"]+[
+                    "POST_EXPIRY_ASSIGNMENT_OR_EXERCISE_EVIDENCE_REQUIRED"]))
+                q["ask"]=None
+                q["bid"]=None
             pct=None
             reasons=list(q["reason_codes"])
             if q["status"]=="PAIRED_QUALIFIED_QUOTE_REFERENCE":
@@ -349,6 +376,7 @@ def replay_pairs(
                actual_fill=False,broker_order_id=None,
                independent_broker_execution_verified=False)
         opened={"id":cid,"call":c["call_identity"],"put":c["put_identity"],
+                "expiry":_series(c["call_identity"])[1],
                 "entry_debit":debit,"reviews":c.get("exit_reviews",[])}
         review_index=0
     process_reviews(None)
