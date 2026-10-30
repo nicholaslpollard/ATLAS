@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -37,13 +38,18 @@ def make_quote_data(row, *, offset=0, missing_put=False):
         if missing_put and need["kwargs"]["right"] == "put":
             continue
         right = need["kwargs"]["right"]
+        observed = datetime.combine(
+            date.fromisoformat(row["date_et"]), time(9, 59),
+            tzinfo=ZoneInfo("America/New_York"),
+        )
+        if offset == 2 and right == "put":
+            observed += timedelta(seconds=2)
         source_row = {
             "symbol": "SPY", "expiration": row["expiration"],
             "strike": row["strike"], "right": right,
-            "timestamp": row["date_et"] + (
-                "T09:59:02-04:00" if offset == 2 and right == "put"
-                else "T09:59:00-04:00"),
-            "bid": 3.0, "ask": 3.1,
+            "timestamp": observed.isoformat(),
+            "bid": 3.0 if right == "call" else 3.2,
+            "ask": 3.1 if right == "call" else 3.3,
             "bid_size": 1, "ask_size": 1,
         }
         sources[need["purpose"]] = (
