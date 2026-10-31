@@ -127,6 +127,9 @@ def run(parent_dir,output_dir,*,expected_parent_sha,
     emit_event(f"START V76 days={len(days)} policies={len(POLICIES)} "
                f"lags={len(LAGS)} original_options=READ_ONLY_SIGNED "
                "provider_calls=0 broker_orders=0")
+    emit_event(f"STAGE_START V76 signed event journal writes directory={output_dir} "
+               f"files_planned={len(days)*len(POLICIES)*len(LAGS)} "
+               "compression=gzip output_immutable=True")
     output_dir.mkdir(parents=True,exist_ok=False)
     total=len(days)*len(POLICIES)*len(LAGS)
     completed=0
