@@ -88,6 +88,8 @@ def test_source_surface_ignores_target_598_and_future_option_observations():
         row(600,expiry="2025-06-20"),
         row(601,t="09:59:55.000"),
         row(596,bid=0.2,ask=0.6),
+        {**row(595), "bid_size":1.5},
+        {**row(594), "right":"P"},
     ])
     assert data["categorization"]["TARGET_PUT_EXCLUDED_FROM_INDEPENDENT_IV"]==1
     assert data["categorization"]["CANDIDATE_ALTERNATE_PUT_AT_PRIOR_CLOCK"]==1
@@ -95,6 +97,8 @@ def test_source_surface_ignores_target_598_and_future_option_observations():
     assert data["categorization"]["OTHER_EXPIRY_NOT_0DTE"]==1
     assert data["categorization"]["STALE_PRIOR_QUOTE_OVER_2S"]==1
     assert data["categorization"]["WIDE_PRIOR_OPTION_SPREAD"]==1
+    assert data["categorization"]["SOURCE_BID_ASK_UNQUALIFIED"]==1
+    assert data["categorization"]["CANDIDATE_ALTERNATE_PUT_AT_PRIOR_CLOCK"]==2
     assert data["candidate_rows_do_not_equal_verified_independent_iv"] is True
 
 
