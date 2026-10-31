@@ -141,6 +141,7 @@ def replay(order:dict,events:list[dict]|tuple[dict,...],*,as_of_et:str)->dict:
     fee=_dec(order["per_contract_exit_fee"],positive=False)
     seen=set()
     previous=created
+    previous_available=created
     status="PLANNED"
     filled=0
     proceeds=Decimal("0")
@@ -159,9 +160,11 @@ def replay(order:dict,events:list[dict]|tuple[dict,...],*,as_of_et:str)->dict:
         seen.add(eid)
         at=_clock(item["at_et"])
         available=_clock(item["available_at_et"])
-        if at<previous or available<at or available>cutoff or at>expires:
+        if (at<previous or available<at or available<previous_available or
+                available>cutoff or at>expires):
             raise V81Error("V81_EVENT_CAUSAL_CLOCK_OR_EXPIRY_INVALID")
         previous=at
+        previous_available=available
         oid=item.get("broker_order_id")
         if oid is not None and (not isinstance(oid,str) or not oid):
             raise V81Error("V81_INVALID_PROVIDER_ORDER_ID")
