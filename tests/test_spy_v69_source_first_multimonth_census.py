@@ -45,6 +45,11 @@ def fake_day(day, idx, source_state):
     })
     return v69.signed({
         "session": day, "day_index": idx,
+        "weekday": date.fromisoformat(day).strftime("%A"),
+        "original_minute_rows": 390,
+        "native_source_warnings": [],
+        "signal_status": "COMPLETED_BAR_BREAKOUT_DEVELOPMENT"
+                         if chosen else "WEEKDAY_OUTSIDE_MWF_VERSION",
         "signal_fingerprint": signal["fingerprint"],
         "native_minute_source_sha256": "a" * 64,
         "selected_contract": signal["selected_contract"],
@@ -194,3 +199,19 @@ def test_missing_source_demand_cannot_be_counted_as_genuine_trade_rejection():
     assert x["unresolved_source_requirements"][0]["status"] == (
         "SOURCE_REQUIREMENT_UNRESOLVED"
     )
+
+
+def test_missing_eligible_spy_minute_bar_source_is_blocker_not_no_signal(tmp_path):
+    base = fake_day("2025-06-09", 1, "NOT_REGISTERED")
+    base.pop("fingerprint")
+    base["original_minute_rows"] = 0
+    base["signal_status"] = "MISSING_OPENING_MINUTE"
+    base["native_source_warnings"] = ["NO_SOURCE_BARS_FOR_ELIGIBLE_DAY"]
+    bad = v69.signed(base)
+    report = v69.signed({
+        "contract": v69.V65, "start": "2025-06-09", "end": "2025-06-09",
+        "provider_requests": 0, "broker_orders": 0,
+        "session_reports": [bad],
+    })
+    with pytest.raises(v69.V69Error, match="REQUIRED_SPY_MINUTE_SESSION_SOURCE_INCOMPLETE"):
+        v69.inspect_input(report, date(2025,6,9), date(2025,6,9))
