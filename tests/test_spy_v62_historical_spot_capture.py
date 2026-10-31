@@ -121,7 +121,7 @@ def test_incomplete_pages_are_not_admitted_even_when_prior_quote_seen(tmp_path):
             return AlpacaApiPage("v62", "",200,raw,obj,{},
                                  kwargs["page_token"],obj["next_page_token"])
     report=collect(v61(tmp_path),tmp_path/"archive",
-                   client_factory=Infinite,settings_factory=lambda _:object(),
+                   client_factory=Infinite,settings_factory=lambda *args:object(),
                    progress=lambda _:None)
     assert len(seen)==12
     assert report["status"]=="CENSORED_TOO_MANY_HISTORICAL_PAGES"
@@ -161,7 +161,7 @@ def test_action_quote_missing_or_invalid_never_claimed_to_be_fair(tmp_path):
     p=page([q("10:00:01.000000001"),q("10:00:01.7")],None,None)
     report=collect(v61(tmp_path),tmp_path/"archive",
                    client_factory=client_factory([p],seen),
-                   settings_factory=lambda _:object(),progress=lambda _:None)
+                   settings_factory=lambda *args:object(),progress=lambda _:None)
     assert report["status"]=="COMPLETE_SOURCE_WINDOW"
     assert report["latest_past_only_stock_nbbo"] is None
     assert report["independent_spot_quote_archive_exists"] is False
