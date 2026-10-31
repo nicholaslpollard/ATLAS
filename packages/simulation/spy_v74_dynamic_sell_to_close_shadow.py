@@ -47,7 +47,15 @@ def verified(doc):
 
 
 def money(x):
-    return _dec(x).quantize(Decimal(".01"),rounding=ROUND_HALF_UP)
+    # Prices must be positive; signed financial P&L must also accept zero
+    # and losses. Do not reuse V55._dec (a strictly positive quote validator).
+    try:
+        number = Decimal(str(x))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise V74Error("V74_NONNUMERIC_FINANCIAL_AMOUNT") from exc
+    if not number.is_finite():
+        raise V74Error("V74_NONFINITE_FINANCIAL_AMOUNT")
+    return number.quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
 
 
 def replay(original, source, *,broker="webull",action_lag_seconds=1,
