@@ -26,7 +26,7 @@ Run from the V71 reviewed GitHub revision after CI acceptance, or from `main` af
 Set-Location 'C:\Users\cyberdyne\Desktop\ATLAS'
 $py = '.\.venv\Scripts\python.exe'
 $testTmp = Join-Path $env:USERPROFILE ('at' + [guid]::NewGuid().ToString('N').Substring(0, 4))
-& $py -m pytest -q --basetemp $testTmp tests/test_spy_v71_original_exit_clock_and_month_catalog.py tests/test_spy_v69_source_first_multimonth_census.py tests/test_spy_v70_causal_portfolio_ledger.py
+& $py -m pytest -q --basetemp $testTmp tests/test_spy_v71_original_exit_clock_and_month_catalog.py tests/test_spy_v69_source_first_multimonth_census.py tests/test_strategy_options_source_runtime_v39.py
 if ($LASTEXITCODE -ne 0) { throw 'V71 regression test gate failed; source evidence untouched' }
 $stamp = Get-Date -Format yyyyMMdd_HHmmss
 & $py -m scripts.run_spy_v71_original_exit_clock_and_month_catalog `
