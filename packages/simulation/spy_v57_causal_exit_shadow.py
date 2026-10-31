@@ -122,6 +122,7 @@ def replay_adaptive_shadow(original):
     last_at=entry_clock
     noise_recent=deque(maxlen=60)
     trail_enabled=False
+    protected_trail_floor=None
     result["entry_cost"]=str(paid)
     result["risk_budget_dollars"]=str(budget)
     result["initial_stop_bid"]=str(stop)
@@ -153,7 +154,11 @@ def replay_adaptive_shadow(original):
             trail_enabled=True
         noise_width=3*mean_abs_delta/high
         trail_pct=min(TRAIL_MAX,max(TRAIL_BASE,noise_width))
-        trailing_floor=high*(1-trail_pct) if trail_enabled else None
+        if trail_enabled:
+            candidate_floor=high*(1-trail_pct)
+            protected_trail_floor=(candidate_floor if protected_trail_floor is None
+                                   else max(protected_trail_floor,candidate_floor))
+        trailing_floor=protected_trail_floor
         floor=max(stop,trailing_floor) if trailing_floor is not None else stop
         reason=("RISK_BUDGET_STOP" if bid<=stop else
                 "PROFIT_HIGH_WATER_TRAIL" if trailing_floor is not None and bid<=trailing_floor else
