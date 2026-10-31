@@ -81,6 +81,31 @@ def _put(db, *, version: str, candidate: str, purpose: str,
     ))
 
 
+
+def _source_receipt_state(db_path, requirement: dict, query_id: str) -> str:
+    """Read exact original V38 state before allowing any new provider dispatch.
+
+    V38 legacy FAILED_RETRYABLE and expired IN_FLIGHT leases do not prove that
+    a previous provider call was never received. Never automatically dispatch
+    that indistinguishable query again from this strategy runtime.
+    """
+    with _connect(db_path) as db:
+        row = db.execute(
+            "SELECT request_json,state FROM sources WHERE query_id=?",
+            (query_id,),
+        ).fetchone()
+    if row is None:
+        return "NOT_REGISTERED"
+    expected = json.dumps(requirement, sort_keys=True, separators=(",", ":"))
+    if row[0] != expected:
+        raise StrategySourceRuntimeError("SOURCE_QUERY_FINGERPRINT_COLLISION")
+    if row[1] not in {
+        "ARCHIVED", "NO_DATA_EXPLICIT", "FAILED_RETRYABLE", "IN_FLIGHT",
+    }:
+        raise StrategySourceRuntimeError("SOURCE_RECEIPT_UNKNOWN_STATE")
+    return row[1]
+
+
 def resolve_strategy_source_demands(
     settings: AtlasSettings,
     strategy_version: str,
@@ -100,7 +125,8 @@ def resolve_strategy_source_demands(
     *causal* observations. The coordinator does not itself grant that gate.
 
     Rerun/resume simply replays needs: completed source queries are cache hits,
-    failures can be retried; all use/candidate associations persist in SQLite.
+    ambiguous earlier dispatches require reconciliation; independent requirements
+    continue and all strategy/candidate source needs stay persisted in SQLite.
     """
     version = _name(strategy_version, "STRATEGY_VERSION")
     if type(continue_on_error) is not bool:
@@ -147,6 +173,28 @@ def resolve_strategy_source_demands(
             "date_et": normalized["kwargs"].get("date_et", ""),
         }
         notify("source_started")
+        prior_state = _source_receipt_state(db_path, normalized, query_id)
+        if prior_state in ("FAILED_RETRYABLE", "IN_FLIGHT"):
+            counts["source_uses_failed_or_unresolved"] += 1
+            counts["source_uses_ambiguous_prior_dispatch"] += 1
+            with _connect(db_path) as db:
+                _put(db, version=version, candidate=candidate, purpose=purpose,
+                     request=normalized, query_id=query_id,
+                     status="SOURCE_RECONCILIATION_REQUIRED", source_sha=None)
+            notify("source_blocked", status="SOURCE_RECONCILIATION_REQUIRED",
+                   error="AMBIGUOUS_PREVIOUS_DISPATCH_NO_SAME_QUERY_RETRY")
+            if not continue_on_error:
+                raise StrategySourceRuntimeError(
+                    "AMBIGUOUS_PREVIOUS_DISPATCH_NO_SAME_QUERY_RETRY"
+                )
+            continue
+        # Persist source intent before the first read-through provider call.
+        # Cached rows are reused; new source requests still dispatch normally.
+        with _connect(db_path) as db:
+            _put(db, version=version, candidate=candidate, purpose=purpose,
+                 request=normalized, query_id=query_id,
+                 status="SOURCE_CACHE_OR_FIRST_DISPATCH_PENDING", source_sha=None)
+        attempts_before = counts["provider_dispatch_attempts"]
         try:
             source = read_through_historical_options(
                 settings, item["method"], item["kwargs"],
@@ -168,12 +216,20 @@ def resolve_strategy_source_demands(
             notify("source_done", status=status)
         except Exception as exc:
             counts["source_uses_failed_or_unresolved"] += 1
+            was_dispatched = counts["provider_dispatch_attempts"] > attempts_before
+            failure_status = (
+                "SOURCE_DISPATCH_OUTCOME_UNKNOWN" if was_dispatched
+                else "SOURCE_ACQUISITION_REVIEW_REQUIRED"
+            )
+            if was_dispatched:
+                counts["source_uses_ambiguous_current_dispatch"] += 1
             with _connect(db_path) as db:
                 _put(db, version=version, candidate=candidate, purpose=purpose,
                      request=normalized, query_id=query_id,
-                     status="SOURCE_RETRY_REQUIRED", source_sha=None)
-            notify("source_failed", status="SOURCE_RETRY_REQUIRED",
-                   error=f"{type(exc).__name__}:{str(exc)[:160]}")
+                     status=failure_status, source_sha=None)
+            # Never print raw provider exception text (may contain secrets).
+            notify("source_failed", status=failure_status,
+                   error=type(exc).__name__)
             if not continue_on_error:
                 raise
     return {
@@ -189,6 +245,8 @@ def resolve_strategy_source_demands(
         "source_uses_resolved": counts["source_uses_resolved"],
         "source_uses_explicit_no_data": counts["source_uses_explicit_no_data"],
         "source_uses_failed_or_unresolved": counts["source_uses_failed_or_unresolved"],
+        "source_uses_ambiguous_prior_dispatch": counts["source_uses_ambiguous_prior_dispatch"],
+        "source_uses_ambiguous_current_dispatch": counts["source_uses_ambiguous_current_dispatch"],
         "provider_dispatch_attempts": counts["provider_dispatch_attempts"],
         "provider_fetch_successes": counts["provider_fetch_successes"],
         "persisted_cache_hits": counts["persisted_cache_hits"],
