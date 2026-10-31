@@ -17,6 +17,8 @@ from zoneinfo import ZoneInfo
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from scripts.run_spy_v73_xnys_calendar_source_first import run as run_v73
 from scripts.run_spy_v76_registered_exit_benchmark import run as run_v76, POLICIES
+from scripts.run_spy_v74_original_dynamic_exit_cohort import signed_file
+from scripts.run_spy_v76_registered_exit_benchmark import V69
 
 ET=ZoneInfo("America/New_York")
 CONTRACT="atlas-v77-multi-month-exact-source-plus-exit-benchmark-v1"
@@ -75,9 +77,7 @@ def run(start,end,output_dir,*,source_run=run_v73,
         if first.month==12:
             last=date(first.year,12,31)
         else:
-            last=date(first.year,first.month+1,1).fromordinal(
-                date(first.year,first.month+1,1).toordinal()-1
-            )
+            last=date.fromordinal(date(first.year,first.month+1,1).toordinal()-1)
         source_dir=output_dir/f"{ym}_v73_original_sources"
         variants_dir=output_dir/f"{ym}_v76_registered_exit_variants"
         status="UNKNOWN"
@@ -87,6 +87,7 @@ def run(start,end,output_dir,*,source_run=run_v73,
         dispatches=None
         monthly_option_cache_hits=None
         requested=None
+        explicit_no_data=None
         describe=None
         emit(f"STAGE_START V77 month={ym} source_first dates={first}/{last} "
              "monthly_original_SHA=MANDATORY exact_options=ON_MISS "
@@ -110,6 +111,16 @@ def run(start,end,output_dir,*,source_run=run_v73,
             elif chunk["status"]!="SOURCE_CHECKED_AND_REPLAYED":
                 status="ORIGINAL_STOCK_OR_SOURCE_BLOCKED"
             else:
+                emit(f"STAGE_START V77 month={ym} verify signed provider source receipt")
+                receipt=signed_file(source_dir/"chunk_0001.sources.json",V69)
+                sr=receipt["runtime_source_receipt"]
+                dispatches=sr["provider_dispatch_attempts"]
+                monthly_option_cache_hits=sr["persisted_cache_hits"]
+                requested=sr["source_uses_requested"]
+                explicit_no_data=sr["source_uses_explicit_no_data"]
+                emit(f"STAGE_PASS V77 month={ym} source_requirements={requested} "
+                     f"provider_dispatches={dispatches} cache_hits={monthly_option_cache_hits} "
+                     f"source_explicit_no_data={explicit_no_data}")
                 emit(f"STAGE_START V77 month={ym} V76 all_variants "
                      "cache=READ_ONLY broker_orders=0")
                 results=benchmark_run(source_dir,variants_dir,
@@ -139,6 +150,10 @@ def run(start,end,output_dir,*,source_run=run_v73,
             "month":ym,"start":first.isoformat(),"end":last.isoformat(),
             "source_report_dir":str(source_dir),
             "source_summary_fingerprint":source_sha,
+            "source_uses_requested":requested,
+            "provider_dispatch_attempts":dispatches,
+            "persisted_cache_hits":monthly_option_cache_hits,
+            "explicit_no_data_requirements":explicit_no_data,
             "exit_matrix_dir":str(variants_dir) if exit_sha else None,
             "exit_matrix_fingerprint":exit_sha,
             "status":status,"error_class":error_class,
@@ -182,7 +197,11 @@ def run(start,end,output_dir,*,source_run=run_v73,
         "no_silent_skips":True,
         "real_option_broker_fills":0,
         "broker_orders":0,
-        "provider_requests":"ACTUAL_COUNTS_RETAINED_IN_ORIGINAL_V73_V69_RECEIPTS",
+        "provider_dispatches_in_confirmed_month_receipts":sum(
+            r["provider_dispatch_attempts"] or 0 for r in month_reports),
+        "provider_requests_unknown_for_blocked_stages":any(
+            r["provider_dispatch_attempts"] is None for r in month_reports),
+        "provider_requests_detail":"EXACT_ORIGINAL_V73_V69_SIGNED_SOURCE_RECEIPTS",
         "future_period_not_promoted_as_unseen_holdout":True,
         "cash_censored_on_any_unresolved_month":True,
         "historical_profitability_proven":False,
