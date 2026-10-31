@@ -371,3 +371,51 @@ class AlpacaMarketDataClient:
             },
             page_token_used=page_token,
         )
+
+    def historical_stock_quote_page(
+        self,
+        *,
+        symbol: str,
+        start: str,
+        end: str,
+        feed: str = "sip",
+        page_token: str | None = None,
+        page_limit: int = 10000,
+    ) -> AlpacaApiPage:
+        """One immutable historical NBBO quote page; caller owns raw-page archiving.
+
+        No broker interface, no source-cache promotion, no implied fills. One
+        symbol and one historical time window; reject unknown/mixed feeds.
+        """
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        if symbol != "SPY" or feed not in ("sip", "iex"):
+            raise ValueError("V62_HISTORICAL_QUOTE_SYMBOL_OR_FEED_INVALID")
+        try:
+            beginning = datetime.fromisoformat(start.replace("Z", "+00:00"))
+            ending = datetime.fromisoformat(end.replace("Z", "+00:00"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("V62_HISTORICAL_QUOTE_TIME_INVALID") from exc
+        if (beginning.tzinfo is None or ending.tzinfo is None
+                or beginning.utcoffset() is None or ending.utcoffset() is None
+                or not beginning < ending
+                or (ending-beginning).total_seconds() > 20
+                or beginning.date() != ending.date()):
+            raise ValueError("V62_HISTORICAL_QUOTE_TIME_WINDOW_INVALID")
+        if type(page_limit) is not int or not 1 <= page_limit <= 10000:
+            raise ValueError("V62_HISTORICAL_QUOTE_PAGE_LIMIT_INVALID")
+        if page_token is not None and (not isinstance(page_token, str)
+                                       or not 0 < len(page_token) <= 1024):
+            raise ValueError("V62_HISTORICAL_QUOTE_PAGE_TOKEN_INVALID")
+        return self._request_json(
+            request_name="v62_historical_spy_stock_quotes",
+            base_url=self.cfg.base_url,
+            path="v2/stocks/SPY/quotes",
+            params={
+                "start": start, "end": end, "feed": feed,
+                "sort": "asc", "limit": page_limit,
+                "page_token": page_token,
+            },
+            page_token_used=page_token,
+        )
