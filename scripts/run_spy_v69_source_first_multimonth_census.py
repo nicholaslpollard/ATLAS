@@ -203,7 +203,12 @@ def run(start, end, output_dir, *, audit=v65_inspect,
     # Validate the desired date interval before creating output or making
     # requests; contiguous chunks retain the full date scope without a
     # fixed lifetime roster or source-count cap.
-    days = list(dates_in_window(start, end))
+    # Calendar filtering is opt-in. Previously frozen V69 weekday reports
+    # remain compatible and auditable without rewriting original evidence.
+    days = list(session_calendar(start,end) if session_calendar is not None
+                else dates_in_window(start, end))
+    if days != sorted(set(days)) or any(d<start or d>end for d in days):
+        raise V69Error('V69_INVALID_EXCHANGE_SESSION_CALENDAR')
     if not days:
         raise V69Error("V69_NO_WEEKDAY_SESSIONS")
     if output_dir.is_symlink() or output_dir.exists():
