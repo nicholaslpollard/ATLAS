@@ -261,7 +261,29 @@ def run(start,end,output,*,acquire_options=False,
         "exact_provider_calls_automatic_only_if_acquire_options":acquire_options,
     })
     acquired=None
+    source_receipt_sha=None
     if acquire_options and demands:
+        original_source_receipts=[]
+        source_terminal_events=[]
+        def on_source_receipt(item,source):
+            # Minimal source lineage only; preserve original full data in V38.
+            original_source_receipts.append({
+                "candidate_id":item["candidate_id"],
+                "date_et":item["kwargs"]["date_et"],
+                "method":item["method"],
+                "query_id":source["query_id"],
+                "status":source["status"],
+                "source_sha256":source["source_sha256"],
+            })
+        def on_source_progress(event,detail):
+            if event in ("source_done","source_blocked","source_failed"):
+                source_terminal_events.append({
+                    "event":event,"candidate_id":detail.get("candidate_id"),
+                    "query_id":detail.get("query_id"),"date_et":detail.get("date_et"),
+                    "status":detail.get("status"),"error_type":detail.get("error"),
+                })
+            emit(f"V83_PROVIDER_{event.upper()} date={detail.get('date_et')} "
+                 f"query={detail.get('query_id')} status={detail.get('status')}")
         emit(f"STAGE_START V83 cache-first paid exact options data source "
              f"requirements={len(demands)} V39=ENABLED "
              "no_request_quota=True safe_ambiguous_retry=False broker_orders=0")
@@ -270,9 +292,8 @@ def run(start,end,output,*,acquire_options=False,
             settings,"spy_v82_three_family_registry_20261031",
             (v39_demand(item) for item in demands),
             continue_on_error=True,
-            on_progress=lambda k,v:emit(
-                f"V83_PROVIDER_{k.upper()} date={v.get('date_et')} "
-                f"query={v.get('query_id')} status={v.get('status')}")
+            on_source=on_source_receipt,
+            on_progress=on_source_progress,
         )
         # V39 returns a typed but unsigned runtime summary, while original
         # per-query provider receipts are persisted in its SQLite cache.
@@ -284,11 +305,22 @@ def run(start,end,output,*,acquire_options=False,
                 "atlas-strategy-options-data-demand-runtime-v39"):
             raise V82Error("V83_SOURCE_RESOLUTION_COUNTS_OR_CONTRACT_INVALID")
         acquired=signed(original_source_resolution)
+        receipts=write_once(output/"source_receipts.json",{
+            "contract":CONTRACT+"-source-receipts-v1",
+            "option_source_plan_sha":option_report["fingerprint"],
+            "original_provider_source_receipts":original_source_receipts,
+            "terminal_status_events":source_terminal_events,
+            "source_use_requested":len(demands),
+            "provider_dispatch_attempts":original_source_resolution["provider_dispatch_attempts"],
+            "broker_orders":0,
+            "all_historical_fills_unproven":True,
+        })
+        source_receipt_sha=receipts["fingerprint"]
     output_report=write_once(output/"summary.json",{
         "contract":CONTRACT+"-summary-v1",
         "entry_screen_sha":decision_report["fingerprint"],
         "option_source_plan_sha":option_report["fingerprint"],
-        "source_resolution":acquired,
+        "source_resolution":acquired,"source_receipt_report_sha":source_receipt_sha,
         "sessions":len(sessions),"family_cases":len(records),
         "entry_dispositions":dict(sorted(Counter(x["status"] for x in records).items())),
         "planned_exact_option_demands":len(demands),
