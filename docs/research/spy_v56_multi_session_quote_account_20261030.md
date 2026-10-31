@@ -21,7 +21,7 @@ The V55 output is **one losing development example**, not a reason to optimize t
 
 ## First cohort / workstation handoff
 
-Use PR-merged `main`, with the same activated ThetaData Standard and connected D: option source binding as in the successful V55 workstation run. Do not run concurrently with another ThetaData bulk process. Initially run **2025-06-09 through 2025-06-20** (ten regular weekdays including two Tuesday/Thursday exclusions and any session holiday). The exact source workload is discovered only when a signal selects a contract; existing 2025-06-09 source should hit V38 cache.
+Use PR-merged `main`, with the same activated ThetaData Standard and connected D: option source binding as in the successful V55 workstation run. Do not run concurrently with another ThetaData bulk process. Initially run **2025-06-09 through 2025-06-20** (ten weekdays, including four Tuesday/Thursday policy exclusions). The exact source workload is discovered only when a signal selects a contract; existing 2025-06-09 source should hit V38 cache.
 
 ```powershell
 $stamp=Get-Date -Format yyyyMMdd_HHmmss
