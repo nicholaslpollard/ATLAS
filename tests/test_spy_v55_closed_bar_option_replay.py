@@ -187,7 +187,7 @@ def test_one_source_failure_is_archived_as_no_entry_not_fake_loss(tmp_path,monke
         unit_id="native-test",canonical_sha256="a"*64,
         checkpoint_path=tmp_path/"checkpoint.json",
         canonical_path=tmp_path/"unit.parquet")
-    monkeypatch.setattr(cli,"discover_minute_units",lambda *args:(unit,))
+    monkeypatch.setattr(cli,"discover_minute_units",lambda *args,**kwargs:(unit,))
     monkeypatch.setattr(cli,"_verify_monthly_unit_with_progress",lambda *args:{"accepted":True})
     monkeypatch.setattr(cli,"_sample_rows",lambda *args,**kwargs:minutes())
     monkeypatch.setattr(cli,"validate_minute_rows",lambda *args,**kwargs:{"accepted":True,"warnings":[]})
