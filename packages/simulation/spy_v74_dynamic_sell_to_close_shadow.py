@@ -93,8 +93,8 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
             or source.get("query_id")!=receipt["query_id"]
             or source.get("source_sha256")!=receipt["archive_sha256"]
             or source.get("exact_requirement")!=requirement
-            or source.get("status") not in ("RAW_ARCHIVED","ARCHIVED","RAW_ARCHIVED_EXACT_CONTRACT_DIAGNOSTIC")
-            or not isinstance(source.get("source_rows"),list)):
+            or source.get("status") != "CACHE_HIT"
+            or not isinstance(source.get("source_rows"),(tuple,list))):
         raise V74Error("V74_EXACT_ORIGINAL_SOURCE_SHA_OR_IDENTITY_UNQUALIFIED")
     original_entry=entry[0]
     entry_at=datetime.fromisoformat(original_entry["at_et"])
