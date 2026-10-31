@@ -206,10 +206,17 @@ def run(campaign_dir, output_dir, *, source_reader=_local_cache_only,
         closed = [x for x in values if x["status"]=="CLOSED_QUOTE_REFERENCE"]
         gains = sum((Decimal(x["quote_reference_pnl_usd"]) for x in closed),Decimal("0"))
         stress = sum((Decimal(x["quote_reference_pnl_2pct_exit_haircut_usd"]) for x in closed),Decimal("0"))
+        marketable = [x for x in closed if x["original_trigger_limit_marketable_at_action"] is True]
+        marketable_gains = sum((Decimal(x["quote_reference_pnl_usd"]) for x in marketable),Decimal("0"))
+        marketable_stress = sum((Decimal(x["quote_reference_pnl_2pct_exit_haircut_usd"]) for x in marketable),Decimal("0"))
         economics.append({
             "strategy":family, "policy":policy, "lag_seconds":lag,
             "window_kind":level,"window":period,
             "cases":len(values),"closed_quote_reference_cases":len(closed),
+            "closed_original_trigger_limit_marketable_cases":len(marketable),
+            "closed_original_trigger_limit_unmarketable_cases":len(closed)-len(marketable),
+            "original_limit_marketable_subset_reference_pnl_usd":str(marketable_gains),
+            "original_limit_marketable_subset_2pct_haircut_pnl_usd":str(marketable_stress),
             "no_entry":sum(x["status"]=="NO_ENTRY" for x in values),
             "unresolved_positions":sum(x["status"]=="UNRESOLVED_POSITION" for x in values),
             "quote_reference_closed_only_pnl_usd":str(gains),
