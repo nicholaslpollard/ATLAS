@@ -193,7 +193,8 @@ def evaluate(family,*,session:str,stock_source_sha:str,bars:list[dict],
 
 
 def exact_option_demand(decision:dict,*,selected_contract:dict,
-                        selection_at_et:str,selection_source_sha256:str):
+                        selection_at_et:str,selection_source_sha256:str,
+                        end_time_et:str="15:30:00.000"):
     """Build one new V39 source need only for a causally selected contract.
 
     No strike/expiry derived from later option tape. New families or contract
@@ -226,7 +227,7 @@ def exact_option_demand(decision:dict,*,selected_contract:dict,
         "option_history_exact_quote_tape",{
             **selected_contract,
             "start_time_et":t.strftime("%H:%M:%S")+".000",
-            "end_time_et":"15:30:00.000","interval":"1s",
+            "end_time_et":end_time_et,"interval":"1s",
         })
     qid=_fingerprint(req)
     return _signed({
