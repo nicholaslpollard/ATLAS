@@ -131,10 +131,16 @@ def inspect(start,end,output,*,discover=discover_minute_units,
             signal_factory=closed_bar_signal,
             cache_read=_local_cache_only,
             settings_factory=load_settings,receipt_reader=None,
-            replay_fn=replay_source,progress=announce):
+            replay_fn=replay_source,progress=announce,
+            session_calendar=None):
     if output.exists() or output.is_symlink():
         raise V65Error("V65_IMMUTABLE_OUTPUT_EXISTS")
-    days=list(dates_in_window(start,end))
+    # Opt-in exchange calendar: keep the immutable legacy V65 weekday
+    # contract unchanged unless a new experiment explicitly supplies XNYS.
+    days=list(session_calendar(start,end) if session_calendar is not None
+              else dates_in_window(start,end))
+    if days != sorted(set(days)) or any(d<start or d>end for d in days):
+        raise V65Error('V65_INVALID_EXCHANGE_SESSION_CALENDAR')
     if not days or len(days)>45:
         raise V65Error("V65_EMPTY_OR_OVERSIZED_DATE_WINDOW")
     progress("START V65 offline full-window SPY signal and source inventory"
