@@ -205,7 +205,13 @@ def replay(order:dict,events:list[dict]|tuple[dict,...],*,as_of_et:str)->dict:
             delta=cumulative-filled
             proceeds+=price*Decimal(delta)*100-fee*Decimal(delta)
             filled=cumulative
-            status="FILLED" if cumulative==quantity else "PARTIALLY_FILLED"
+            # Fill updates can arrive while cancellation is in flight.
+            # The request remains pending for the remaining contracts until
+            # an explicit CANCEL_ACK, unless the whole order fills first.
+            cancel_pending=status=="CANCEL_PENDING"
+            status=("FILLED" if cumulative==quantity else
+                    "CANCEL_PENDING" if cancel_pending else
+                    "PARTIALLY_FILLED")
             reason=f"SYNTHETIC_FILL_DELTA_{delta}_UNVERIFIED"
         elif kind=="CANCEL_REQUESTED":
             if status not in ("WORKING","PARTIALLY_FILLED") or oid!=broker_id:
