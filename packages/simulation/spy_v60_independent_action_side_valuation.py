@@ -146,6 +146,10 @@ def classify_action_side(x:IndependentActionEvidence):
     width=upper-lower
     lower_band=max(0,lower-PRICE_TOLERANCE_DOLLARS)
     upper_band=upper+PRICE_TOLERANCE_DOLLARS
+    def model_relation(price):
+        return ("BELOW_INDEPENDENT_BAND" if price<lower_band else
+                "ABOVE_INDEPENDENT_BAND" if price>upper_band else
+                "WITHIN_INDEPENDENT_BAND")
     base={
         "contract":CONTRACT,"action":action,"option_right":right,
         "action_price":action_price,"opposite_side_price":other,
@@ -157,6 +161,12 @@ def classify_action_side(x:IndependentActionEvidence):
         "qualified_price_band_with_tolerance":[lower_band,upper_band],
         "model_width_relative_to_mid":width/max(reference_mid,0.01),
         "model_reference_mid":reference_mid,
+        "bid_vs_independent_model":model_relation(x.bid),
+        "ask_vs_independent_model":model_relation(x.ask),
+        "bid_minus_model_mid":x.bid-reference_mid,
+        "ask_minus_model_mid":x.ask-reference_mid,
+        "bid_minus_model_mid_pct":100*(x.bid-reference_mid)/max(reference_mid,0.01),
+        "ask_minus_model_mid_pct":100*(x.ask-reference_mid)/max(reference_mid,0.01),
         "quote_at":quote_at.isoformat(),"decision_at":now.isoformat(),
         "spot_source_id":x.spot_source_id,"volatility_source_id":x.iv_source_id,
         "rate_source_id":x.rate_source_id,"dividend_source_id":x.dividend_source_id,
