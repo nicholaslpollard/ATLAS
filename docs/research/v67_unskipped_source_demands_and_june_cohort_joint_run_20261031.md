@@ -38,3 +38,7 @@ V67 does not override ThetaData SDK worker's 180-second response timeout and per
 4. Evaluate the corrected SPY strategy and other strategies across new independent historical windows. Train adaptive trade exits only from earlier folds; do not optimize from the already-observed June 9 outcome. Preserve weekly/monthly/annual after-cost economics and censored periods separately. Never promote quote-reference P&L to actual broker fills.
 
 **Important**: A V39 source-use record is not proof the information existed at the historical strategy decision time. The original feed publication, quote clock, historical OI reporting time, underlying bid/ask, rates/dividend evidence, liquidity/size, and execution-price/slippage gates remain independent.
+
+## Acceptance and CI authority
+
+Synthetic Linux/Windows CI validates source routing, guarded ambiguity, complete exact-demand coverage, and launcher behavior without real provider access. The actual ThetaData workstation run is still required to qualify the new original June 16/18/20 quotes and any resulting simulated trade. A green CI test is not equivalent to completed historical market data acquisition.
