@@ -171,3 +171,22 @@ def test_unknown_reconciliation_preserves_known_partial_exposure():
     assert result["remaining_quantity_unverified"]==2
     assert result["needs_broker_reconciliation_before_retry_or_switch"] is True
     assert result["historical_broker_cash_credited"] is None
+
+
+def test_partial_fills_during_cancel_pending_do_not_clear_cancel_request():
+    seq=start()+[
+        event(3,"CANCEL_REQUESTED",47,broker_order_id="broker-order-1"),
+        event(4,"PARTIAL_FILL",48,broker_order_id="broker-order-1",
+              cumulative_filled=1,fill_price="2.21"),
+    ]
+    still_pending=v81.replay(
+        order(),seq,as_of_et="2025-08-20T09:53:48-04:00")
+    assert still_pending["status"]=="CANCEL_PENDING"
+    assert still_pending["remaining_quantity_unverified"]==3
+    assert still_pending["needs_broker_reconciliation_before_retry_or_switch"] is True
+    cancelled=v81.replay(
+        order(),seq+[event(5,"CANCEL_ACK",49,broker_order_id="broker-order-1")],
+        as_of_et="2025-08-20T09:53:49-04:00")
+    assert cancelled["status"]=="CANCELLED"
+    assert cancelled["cumulative_fixture_filled_quantity"]==1
+    assert cancelled["historical_broker_cash_credited"] is None
