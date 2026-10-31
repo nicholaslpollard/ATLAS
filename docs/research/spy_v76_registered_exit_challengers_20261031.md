@@ -32,3 +32,20 @@ A new V76 experiment should run against six already-acquired original months wit
 ```
 
 **Acceptance goals:** baseline V76 control 1s/3s must reproduce V74 same-day statuses/P&L; original contract and entry remain identical; all valid/invalid quote decisions retained and no policy can claim a broker fill; all ten policy/lag combinations produce signed journals with 10%-completed progress. The comparison must focus on worst-case loss distribution, trade expectancy, number of qualified exits, 1s/3s sensitivity and weeks/months losing. Subsequent candidates should include different entry families, not merely exit tuning on one entry signal.
+
+
+## V77 multi-month acquisition + immediate variant comparison
+
+`scripts/run_spy_v77_multi_month_source_and_exit_campaign.py` is the single-run wrapper for any explicitly selected inclusive range of months. It executes each XNYS-calendar-aware V73 monthly original stock SHA + V39 exact option cache-first acquisition, saves immutable original source receipts, then runs the **same preregistered 5×2 V76 exit comparison** on each newly source-qualified month. A blocked month is written as an independent signed receipt and does not suppress later months; ambiguous original provider requests are never blindly retried. Actual provider dispatch/cache/no-data counts are extracted from signed original source receipts, not inferred from a planned candidate count. Complete per-date/per-policy event journals remain gzipped on the workstation and the campaign prints stage-start and true 10%-completion progress. Outputs never submit orders, exercise options or claim Webull-versus-Alpaca fill differences.
+
+For future previously uninspected periods, the five-policy roster is frozen by the commit/registry SHA before sourcing. Later results cannot be used to rewrite the policy roster and then re-label the same period as untouched. The monthly policy quote P&L sums are **not an integrated portfolio account**, and a missing/uncertain exact source leaves account proof censored. Early XNYS closes are time-qualified public calendar inputs: V76 proactively moves its *experimental* sell-to-close clock to 60 minutes before the official close and last permitted action to 55 minutes before; normal 16:00 sessions preserve V74's 15:00 / 15:05 clocks. November 28 and December 24, 2025 are exchange early-close sessions, not assumed ordinary 16:00 option expiries.
+
+One-command **example** (run only after tests pass and merge or pinned reviewed commit):
+
+```powershell
+& '.\.venv\Scripts\python.exe' -m scripts.run_spy_v77_multi_month_source_and_exit_campaign `
+  --start-month 2025-07 --end-month 2025-12 `
+  --output-dir "data/research/spy_v77_2025_h2_$(Get-Date -Format yyyyMMdd_HHmmss)"
+```
+
+This is the next **larger original-source simulator research campaign** rather than repeating Jan–Jun diagnostics and is appropriate only after accepting the registered risk/strategy scope. Since all five alternatives retain the *same* original M/W/F opening-range-breakout entry, this is a **multi-exit** race, not a comparison across distinct entry strategies or a broker-certified full portfolio simulator. Distinct entry families, stock fallback, multi-strategy cash/risk allocation and actual option broker adapter acceptance remain later integration work.
