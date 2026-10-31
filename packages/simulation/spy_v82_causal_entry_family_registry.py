@@ -31,7 +31,7 @@ REGISTRY={
         "version":"v82.1",
     },
     "gap_fade_0935":{
-        "decision_clock":"09:35:00",
+        "decision_clock":"09:35:01",
         "setup":"prior full-session close versus 09:30 gap and first five-minute fade",
         "required_prior_evidence":"PREVIOUS_SESSION_CLOSE_AND_FIRST_FIVE_MINUTES",
         "version":"v82.1",
