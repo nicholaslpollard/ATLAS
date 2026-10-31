@@ -149,3 +149,36 @@ def test_immutable_rejects_preexisting_output_without_source_activity(tmp_path):
         v76.run(tmp_path/"source",out,expected_parent_sha="a"*64,
                 source_reader=lambda *a:pytest.fail("forbidden"),
                 emit_event=lambda msg:None)
+
+
+def test_early_exchange_close_applies_earlier_causal_cutoff_only_when_explicit():
+    from datetime import datetime
+    from packages.core.market_calendar import get_market_calendar
+
+    # NYSE day after Thanksgiving 2025 actually closed at 13:00 ET.
+    _,early=get_market_calendar("XNYS").regular_open_close(date(2025,11,28))
+    assert early.astimezone(v74.ET).hour==13
+
+    parent,tape=_case()
+    close=datetime.fromisoformat("2025-06-04T13:00:00-04:00")
+    experimental=v74.replay(parent,tape,
+                             market_close_et=close,
+                             **v76.POLICIES["fast_25_40"])
+    assert experimental["strategy_params"]["early_exchange_close_cutoff_applied"] is True
+    assert experimental["strategy_params"]["planned_liquidation_et"]=="12:00:00"
+    assert experimental["strategy_params"]["last_attempt_et"]=="12:05:00"
+    regular=v74.replay(parent,tape,**v76.POLICIES["fast_25_40"])
+    assert "early_exchange_close_cutoff_applied" not in regular["strategy_params"]
+    assert regular["strategy_params"]["planned_liquidation_et"]=="15:00:00"
+    assert regular["fingerprint"]!=experimental["fingerprint"]
+
+
+def test_mismatched_or_naive_exchange_close_is_rejected():
+    from datetime import datetime
+    parent,tape=_case()
+    with pytest.raises(v74.V74Error,match="INVALID_EXCHANGE_CLOSE_CLOCK"):
+        v74.replay(parent,tape,
+                   market_close_et=datetime.fromisoformat("2025-06-04T13:00:00"))
+    with pytest.raises(v74.V74Error,match="INVALID_EXCHANGE_CLOSE_CLOCK"):
+        v74.replay(parent,tape,
+                   market_close_et=datetime.fromisoformat("2025-06-05T13:00:00-04:00"))
