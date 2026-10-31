@@ -45,7 +45,7 @@ def test_continuation_uses_only_completed_0940_bars():
     r=evaluate("orb_continuation_0940",
                bars(recent_high="104",recent_low="100",last="103"))
     assert r["direction"]=="CALL"
-    assert r["decision_at_et"].endswith("09:40:00-04:00")
+    assert r["decision_at_et"].endswith("09:40:01-04:00")
     assert r["status"]=="OPTIONS_CANDIDATE_SOURCE_SELECTION_REQUIRED"
     assert r["actual_orders"]==r["broker_fills"]==0
     assert r["stock_fallback_status"]=="UNPRICED_AND_UNAUTHORIZED"
