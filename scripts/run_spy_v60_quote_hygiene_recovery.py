@@ -104,7 +104,11 @@ def _sanitize_quote_tape(source,original,*,params=None):
     actidx=bisect_left(clocks,action_at)
     if actidx>=len(clocks) or clocks[actidx]!=action_at:
         raise RecoveryError("V60_ACTION_QUOTE_MISSING_FROM_ORIGINAL")
-    if _quote(rows[actidx],day=day,contract=contract)["ask"]!=str(ask):
+    try:
+        action_quote=_quote(rows[actidx],day=day,contract=contract)
+    except (V55Error,KeyError,TypeError,ValueError) as exc:
+        raise RecoveryError("V60_INVALID_PREENTRY_OR_ACTION_QUOTE") from exc
+    if Decimal(action_quote["ask"])!=ask:
         raise RecoveryError("V60_ORIGINAL_ACTION_PRICE_CHANGED")
     stop=ask/Decimal(2)
     target=ask*2
