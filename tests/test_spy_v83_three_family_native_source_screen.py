@@ -94,6 +94,24 @@ def test_native_original_stock_source_three_families_no_provider(tmp_path):
     assert report["cases"][2]["status"]=="NO_SIGNAL"
 
 
+def test_shortened_xnys_session_source_end_is_market_bounded(tmp_path):
+    kw,_=fixtures()
+    class EarlyCloseCalendar(Calendar):
+        def regular_open_close(self,day):
+            opened,_=super().regular_open_close(day)
+            return opened,opened.replace(hour=13,minute=0)
+    kw["calendar"]=EarlyCloseCalendar()
+    result=v83.run(date(2025,8,20),date(2025,8,20),
+                   tmp_path/"early",**kw)
+    from json import loads
+    plan=loads((tmp_path/"early"/"option_source_plan.json").read_text())
+    decisions=loads((tmp_path/"early"/"entry_screen.json").read_text())
+    assert result["planned_exact_option_demands"]==1
+    assert plan["demands"][0]["kwargs"]["end_time_et"]=="12:05:00.000"
+    assert decisions["cases"][0]["option_source_end_time_et"]=="12:05:00.000"
+    assert result["broker_orders"]==0
+
+
 def test_explicit_cache_first_mode_no_arbitrary_demand_count_cap(tmp_path):
     kw,_=fixtures()
     captured=[]
