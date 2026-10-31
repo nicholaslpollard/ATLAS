@@ -190,3 +190,19 @@ def test_partial_fills_during_cancel_pending_do_not_clear_cancel_request():
     assert cancelled["status"]=="CANCELLED"
     assert cancelled["cumulative_fixture_filled_quantity"]==1
     assert cancelled["historical_broker_cash_credited"] is None
+
+
+def test_later_available_ack_cannot_authorize_earlier_received_fill():
+    delayed_ack=v81.event(
+        event_id="late-ack",kind="BROKER_ACK",
+        at_et="2025-08-20T09:53:46-04:00",
+        available_at_et="2025-08-20T09:53:52-04:00",
+        broker="webull",client_order_id="atlas-v81-test-A",
+        broker_order_id="broker-order-1",
+    )
+    alleged_fill=event(
+        3,"PARTIAL_FILL",47,broker_order_id="broker-order-1",
+        cumulative_filled=1,fill_price="2.21")
+    with pytest.raises(v81.V81Error,match="CAUSAL_CLOCK"):
+        v81.replay(order(),[start()[0],delayed_ack,alleged_fill],
+                   as_of_et="2025-08-20T09:53:53-04:00")
