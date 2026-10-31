@@ -8,6 +8,7 @@ no broker orders are possible. Never fixes or promotes an invalid quote.
 """
 
 import argparse
+from contextlib import closing
 from collections import Counter
 from datetime import date, datetime
 from decimal import Decimal
@@ -60,8 +61,8 @@ def _local_cache_only(settings,query_id):
         return {"cache_evidence":"READ_ONLY_SOURCE_INDEX_ABSENT","source":None}
     # URI mode=ro prevents sqlite write locks, table creation and WAL changes.
     try:
-        with sqlite3.connect(db.resolve().as_uri()+"?mode=ro",uri=True,
-                             timeout=20) as con:
+        with closing(sqlite3.connect(db.resolve().as_uri()+"?mode=ro",uri=True,
+                                     timeout=20)) as con:
             row=con.execute(
                 "SELECT query_id,request_json,state,touched,source_sha,"
                 "gzip_sha,stored_path,source_rows FROM sources WHERE query_id=?",
