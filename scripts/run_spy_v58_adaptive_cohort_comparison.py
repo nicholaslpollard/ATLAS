@@ -246,8 +246,12 @@ def evaluate(cohort_dir,outdir,*,verify=verify_journal,emit=announce):
         with (outdir/f"{sid}.json").open("x",encoding="utf-8") as f:
             json.dump(adaptive,f,sort_keys=True,indent=2,allow_nan=False)
             f.write("\n")
+        # An intermediate checkpoint must not claim terminal full-cohort equity.
+        checkpoint_blocker=blocker or (
+            {"session":sid,"reason":"PENDING_REMAINING_SESSIONS"}
+            if i<len(days) else None)
         _atomic(outdir/"checkpoint.json",_cohort_snapshot(
-            parent,rows,starting=starting,cash=cash,blocker=blocker))
+            parent,rows,starting=starting,cash=cash,blocker=checkpoint_blocker))
         emit(f"STAGE_PASS verified_and_shadowed date={sid}"
              f" baseline={source['status']} adaptive={adaptive['status']}"
              f" adaptive_net={anet} paired_delta={delta}"
@@ -263,6 +267,11 @@ def evaluate(cohort_dir,outdir,*,verify=verify_journal,emit=announce):
                  f" date={sid} reason={blocker['reason']}"
                  " no_assumed_following_trade_returns")
             break
+    if blocker is None and parent.get("blocker") is not None:
+        blocker={"session":rows[-1]["session"],"reason":"V56_PARENT_COHORT_INCOMPLETE"}
+    if (blocker is None and len(rows)!=parent.get("calendar_weekday_sessions_expected",
+                                                len(parent["sessions"]))):
+        blocker={"session":rows[-1]["session"],"reason":"V56_PARENT_EXPECTED_DAYS_MISSING"}
     result=_cohort_snapshot(parent,rows,starting=starting,cash=cash,blocker=blocker)
     _atomic(outdir/"summary.json",result)
     emit(f"COMPLETE V58 status={result['account_status']}"
