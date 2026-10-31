@@ -25,7 +25,7 @@ def spy_minutes(day):
 
 def option_source(day,kwargs):
     def quote(second,bid="1.00",ask="1.10"):
-        clock=datetime(day.year,day.month,day.day,9,35,second,tzinfo=ET)
+        clock=datetime(day.year,day.month,day.day,9,36,second,tzinfo=ET)
         return {"timestamp_et":clock.isoformat(),"symbol":"SPY",
                 "expiration":day.isoformat(),"strike":"102","right":"call",
                 "bid":bid,"ask":ask,"bid_size":50,"ask_size":50}
@@ -114,8 +114,8 @@ def test_multi_day_one_month_sha_once_skip_weekday_then_compound_cash_and_journa
         "CLOSED_QUOTE_REFERENCE":2,"NO_SIGNAL":1}
     assert result["source_counts"]=={"FETCHED_AND_ARCHIVED":2}
     assert result["starting_cash"]=="25000.00"
-    assert result["closed_net_pnl"]=="958.40"
-    assert result["terminal_equity_if_complete"]=="25958.40"
+    assert result["closed_net_pnl"]=="949.60"
+    assert result["terminal_equity_if_complete"]=="25949.60"
     assert result["weekly"][0]["closed_trades"]==2
     assert result["monthly"][0]["closed_trades"]==2
     assert result["annual"][0]["closed_trades"]==2
