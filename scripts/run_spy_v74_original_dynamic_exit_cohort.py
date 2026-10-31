@@ -62,7 +62,7 @@ def review(v69_folder,output_dir,*,expected_fingerprint,
     summary=signed_file(v69_folder/"summary.json",V69,expected_fingerprint)
     if (summary["broker_orders"]!=0 or summary["chunks"]!=1 or
             len(summary["chunk_summaries"])!=1 or
-            summary["chunk_summaries"][0]["blocked"]):
+            summary["chunk_summaries"][0]["status"]!="SOURCE_CHECKED_AND_REPLAYED"):
         raise V74Error("V74_PARENT_SOURCE_CENSUS_NOT_REPLAYED")
     chunk=signed_file(v69_folder/"chunk_0001.summary.json",V69,
                       summary["chunk_summaries"][0]["fingerprint"])
