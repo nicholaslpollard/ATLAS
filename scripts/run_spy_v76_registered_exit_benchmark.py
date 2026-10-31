@@ -19,6 +19,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from packages.core.settings import load_settings
+from packages.core.market_calendar import get_market_calendar
 from packages.simulation.spy_v74_dynamic_sell_to_close_shadow import (
     replay, verified, signed, money, V74Error,
 )
@@ -123,6 +124,8 @@ def run(parent_dir,output_dir,*,expected_parent_sha,
             row["exact_option_requirement"]!=first["exact_option_requirement"] or
             row["native_minute_source_sha256"]!=first["native_minute_source_sha256"]):
             raise ValueError("V76_ORIGINAL_ENTRY_OR_SOURCE_DRIFT")
+    emit_event("STAGE_START V76 verified XNYS session-close calendar initialization")
+    calendar=get_market_calendar("XNYS")
     settings=settings_factory(ROOT,"development")
     emit_event(f"START V76 days={len(days)} policies={len(POLICIES)} "
                f"lags={len(LAGS)} original_options=READ_ONLY_SIGNED "
@@ -137,6 +140,11 @@ def run(parent_dir,output_dir,*,expected_parent_sha,
     summaries=defaultdict(list)
     qcache={}
     for row in days:
+        session_day=date.fromisoformat(row["session"])
+        if not calendar.is_session(session_day):
+            raise ValueError("V76_PARENT_SESSION_NOT_IN_XNYS_CALENDAR")
+        _,session_close=calendar.regular_open_close(session_day)
+        close_et=session_close.astimezone(ET)
         req=row.get("exact_option_requirement")
         receipt=row.get("exact_option_receipt")
         if (req is None)!=(receipt is None):
@@ -168,7 +176,8 @@ def run(parent_dir,output_dir,*,expected_parent_sha,
                     })
                 else:
                     trial=replay(row,source,broker="webull",
-                                 action_lag_seconds=lag,**params)
+                                 action_lag_seconds=lag,
+                                 market_close_et=close_et,**params)
                     entry=signed({
                         "contract":CONTRACT,
                         "session":row["session"],
