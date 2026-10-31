@@ -57,6 +57,8 @@ def review(v69_folder,output_dir,*,expected_fingerprint,
            emit=event):
     if output_dir.exists() or output_dir.is_symlink():
         raise V74Error("V74_IMMUTABLE_OUTPUT_EXISTS")
+    emit(f"STAGE_START V74 verify_signed_parent folder={v69_folder} "
+         "no_new_sources=True broker_orders=0")
     summary=signed_file(v69_folder/"summary.json",V69,expected_fingerprint)
     if (summary["broker_orders"]!=0 or summary["chunks"]!=1 or
             len(summary["chunk_summaries"])!=1 or
