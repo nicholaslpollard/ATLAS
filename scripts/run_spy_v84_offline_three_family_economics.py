@@ -93,6 +93,7 @@ def _load_campaign(folder):
     if len(candidates) != len(plan["demands"]) or None in candidates:
         raise V84Error("V84_ENTRY_TO_SOURCE_BINDING_MISMATCH")
     demand_by_qid = {}
+    candidate_ids = set()
     for demand in plan["demands"]:
         if (not verified(demand) or demand["fingerprint"] not in candidates
                 or demand["query_id"] != _fingerprint({
@@ -101,12 +102,13 @@ def _load_campaign(folder):
         source_case = candidates[demand["fingerprint"]]
         if (not verified(source_case["causal_decision"])
                 or source_case["causal_decision"]["fingerprint"] != demand["strategy_decision_sha"]
-                or demand["candidate_id"] in demand_by_qid):
+                or demand["candidate_id"] in candidate_ids):
             # candidate_id is deliberately unique per signal, but V39 query
             # identity is the true immutable archive/cache key.
             raise V84Error("V84_ORIGINAL_ENTRY_SOURCE_IDENTITY_CHANGED")
         if demand["query_id"] in demand_by_qid:
             raise V84Error("V84_DUPLICATE_EXACT_QUERY_ID")
+        candidate_ids.add(demand["candidate_id"])
         demand_by_qid[demand["query_id"]] = (source_case, demand)
     receipt_by_qid = {}
     for receipt in receipts["original_provider_source_receipts"]:
