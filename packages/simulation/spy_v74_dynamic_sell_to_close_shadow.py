@@ -7,7 +7,7 @@ Previously accepted V55 baseline original entries remain frozen.
 """
 
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
