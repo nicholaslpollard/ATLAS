@@ -48,6 +48,8 @@ class IndependentActionEvidence:
     independent_iv_lower: float
     independent_iv_upper: float
     volatility_at: datetime
+    historical_rate_observed_at: datetime
+    dividend_observed_at: datetime
     historical_rate: float
     historical_dividend_yield: float
     strike: float
@@ -90,6 +92,8 @@ def classify_action_side(x:IndependentActionEvidence):
     now=_stamp(x.decision_at,"DECISION")
     spot_at=_stamp(x.spot_at,"SPOT")
     iv_at=_stamp(x.volatility_at,"VOLATILITY")
+    rate_at=_stamp(x.historical_rate_observed_at,"RATE")
+    dividend_at=_stamp(x.dividend_observed_at,"DIVIDEND")
     expiry=_stamp(x.expiration_at,"EXPIRY")
     for field in ("bid","ask","spot","strike","independent_iv_lower",
                   "independent_iv_upper","historical_rate","historical_dividend_yield"):
@@ -103,6 +107,7 @@ def classify_action_side(x:IndependentActionEvidence):
             or type(x.ask_size) is not int or x.ask_size<0):
         raise QuoteSideError("INVALID_PRICE_VOL_OR_SIZE")
     if (expiry<=now or now<quote_at or now<spot_at or now<iv_at
+            or now<rate_at or now<dividend_at
             or (now-quote_at).total_seconds()>MAX_QUOTE_AGE_SECONDS
             or (now-spot_at).total_seconds()>MAX_SPOT_AGE_SECONDS
             or (now-iv_at).total_seconds()>MAX_VOL_AGE_SECONDS):
@@ -155,6 +160,7 @@ def classify_action_side(x:IndependentActionEvidence):
         "quote_at":quote_at.isoformat(),"decision_at":now.isoformat(),
         "spot_source_id":x.spot_source_id,"volatility_source_id":x.iv_source_id,
         "rate_source_id":x.rate_source_id,"dividend_source_id":x.dividend_source_id,
+        "rate_asof":rate_at.isoformat(),"dividend_asof":dividend_at.isoformat(),
         "acted_quote_source_id":x.acted_quote_source_id,
         "iv_derived_from_acted_quote":False,
         "quote_is_not_an_observed_fill":True,
