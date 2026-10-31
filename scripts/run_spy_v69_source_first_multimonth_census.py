@@ -75,6 +75,18 @@ def inspect_input(report, first, last):
             or len({row["session"] for row in rows}) != len(rows)):
         raise V69Error("V69_ORIGINAL_SESSION_COVERAGE_INVALID")
     for row in rows:
+        # A source-incomplete eligible day must generate an underlying-data
+        # requirement, not masquerade as a day with no breakout signal.
+        # Tue/Thu weekday exclusions do not require option/spot acquisition.
+        if row.get("weekday") in ("Monday", "Wednesday", "Friday"):
+            if (row.get("original_minute_rows", 0) < 5
+                    or row.get("signal_status") in (
+                        "MISSING_OPENING_MINUTE",
+                        "MISSING_MINUTE_BEFORE_SIGNAL",
+                    )
+                    or "NO_SOURCE_BARS_FOR_ELIGIBLE_DAY" in
+                        row.get("native_source_warnings", [])):
+                raise V69Error("V69_REQUIRED_SPY_MINUTE_SESSION_SOURCE_INCOMPLETE")
         if (row["fingerprint"] != _fingerprint({
                 k: v for k, v in row.items() if k != "fingerprint"
             })):
