@@ -35,7 +35,9 @@ def audit(first,last,output):
 
 def run(start,end,output_dir,*, calendar=xnys,underlying_audit=None,
         source_runner=v69,emit=event):
-    emit(f"START V73 XNYS sessions={len(calendar(start,end))} dates={start}/{end} "
+    emit(f"STAGE_START V73 XNYS exchange_calendar_range={start}/{end}")
+    valid_days=calendar(start,end)
+    emit(f"START V73 XNYS sessions={len(valid_days)} dates={start}/{end} "
          "stock_original_sha=MANDATORY option_source=ON_MISS broker_orders=0")
     def checked_audit(first,last,output):
         if underlying_audit is not None:
