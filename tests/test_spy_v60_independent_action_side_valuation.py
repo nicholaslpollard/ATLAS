@@ -35,6 +35,8 @@ def evidence(action="buy",right="call",*,other_side_bad=True):
         spot=100.0,spot_at=NOW-timedelta(milliseconds=300),
         independent_iv_lower=.499,independent_iv_upper=.501,
         volatility_at=NOW-timedelta(seconds=1),
+        historical_rate_observed_at=NOW-timedelta(hours=4),
+        dividend_observed_at=NOW-timedelta(days=1),
         historical_rate=.04,historical_dividend_yield=.01,strike=100,
         spot_source_id="independent-tick-spy-prior-sha",
         iv_source_id="calibrated-prior-cross-strike-iv-sha",
@@ -95,6 +97,8 @@ def test_spot_and_volatility_must_precede_action_not_future():
     assert classify_action_side(replace(q,volatility_at=NOW-timedelta(seconds=11)))[
         "status"]=="ABSTAIN_STALE_OR_FUTURE_REFERENCE"
     assert classify_action_side(replace(q,quote_at=NOW-timedelta(seconds=2)))[
+        "status"]=="ABSTAIN_STALE_OR_FUTURE_REFERENCE"
+    assert classify_action_side(replace(q,historical_rate_observed_at=NOW+timedelta(seconds=1)))[
         "status"]=="ABSTAIN_STALE_OR_FUTURE_REFERENCE"
     assert classify_action_side(replace(q,expiration_at=NOW))[
         "status"]=="ABSTAIN_STALE_OR_FUTURE_REFERENCE"
