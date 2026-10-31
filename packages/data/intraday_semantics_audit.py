@@ -117,14 +117,56 @@ def _path_from_checkpoint(value: object, checkpoint_path: Path) -> Path:
     return path.resolve()
 
 
-def discover_minute_units(layout: V2Layout) -> tuple[MinuteUnit, ...]:
+def discover_minute_units(
+    layout: V2Layout, *,
+    target_year: int | None = None,
+    target_month: int | None = None,
+    progress=None,
+) -> tuple[MinuteUnit, ...]:
+    """Discover complete, SHA-receipted native units.
+
+    A specified month searches ONLY its checkpoint subtree, not every
+    historical checkpoint. It never skips subsequent full original source
+    SHA verification. An unscoped call retains the prior API behavior.
+    """
     root = layout.checkpoints / "native_units" / "1m"
+    if (target_year is None) != (target_month is None):
+        raise IntradaySemanticsAuditError("year and month scope must be supplied together")
+    if target_year is not None:
+        if (type(target_year) is not int or type(target_month) is not int
+                or not 1900 <= target_year <= 2100 or not 1 <= target_month <= 12):
+            raise IntradaySemanticsAuditError("invalid native checkpoint month scope")
+        if date(target_year,target_month,1) > date(B34_MAX_SAMPLE_DATE.year,B34_MAX_SAMPLE_DATE.month,1):
+            raise IntradaySemanticsAuditError("cannot scan protected native minute month")
+        root = root / f"year={target_year:04d}" / f"month={target_month:02d}"
+    if progress:
+        progress(f"STAGE_START native_checkpoint_file_enumeration root={root}")
     if not root.is_dir():
         raise IntradaySemanticsAuditError(f"missing V2 minute checkpoint root: {root}")
 
+    paths = sorted(root.rglob("*.json"))
+    if progress:
+        progress(f"STAGE_PASS native_checkpoint_file_enumeration checkpoint_files={len(paths)}")
+        progress(f"STAGE_START native_checkpoint_metadata_review files={len(paths)}")
     units: list[MinuteUnit] = []
-    for checkpoint_path in sorted(root.rglob("*.json")):
+    checkpoint_milestone = 10
+    import time as _clock
+    review_start = _clock.monotonic()
+    for idx, checkpoint_path in enumerate(paths, start=1):
         document = _read_json(checkpoint_path)
+        if progress and paths:
+            while checkpoint_milestone <= 100 and 100*idx >= checkpoint_milestone*len(paths):
+                elapsed = max(_clock.monotonic()-review_start,.001)
+                throughput = idx/elapsed
+                eta = (len(paths)-idx)/throughput
+                progress(f"PROGRESS_{checkpoint_milestone}PCT"
+                         f" phase=native_checkpoint_metadata_review"
+                         f" completed={idx}/{len(paths)}"
+                         f" percent={100*idx/len(paths):.1f}"
+                         f" last_source={checkpoint_path.name}"
+                         f" elapsed={elapsed:.1f}s throughput_files_s={throughput:.1f}"
+                         f" eta_rough_s={eta:.1f}")
+                checkpoint_milestone += 10
         status = str(document.get("status") or "")
         if status not in COMPLETE_UNIT_STATUSES:
             continue
@@ -164,6 +206,9 @@ def discover_minute_units(layout: V2Layout) -> tuple[MinuteUnit, ...]:
         raise IntradaySemanticsAuditError(
             "no completed pre-protected V2 minute units were found"
         )
+    if progress:
+        progress(f"STAGE_PASS native_checkpoint_metadata_review"
+                 f" files={len(paths)} completed_units={len(units)}")
     return tuple(units)
 
 

@@ -61,7 +61,9 @@ def run(date_et, *, output, lag_seconds=1, max_adverse_pct="1",
     if output.exists() or output.is_symlink():
         raise ValueError("V55_OUTPUT_ALREADY_EXISTS")
     emit("STAGE_START discover_original_monthly_SPY_native_source")
-    units = discover_minute_units(V2Layout.beneath(ROOT / "data"))
+    units = discover_minute_units(V2Layout.beneath(ROOT / "data"),
+                                  target_year=session.year, target_month=session.month,
+                                  progress=emit)
     matching = [x for x in units if (x.year, x.month) == (session.year,session.month)
                 and "SPY" in x.symbols]
     if len(matching) != 1:
