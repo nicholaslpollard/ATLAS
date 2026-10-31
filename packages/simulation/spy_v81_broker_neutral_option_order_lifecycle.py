@@ -251,7 +251,10 @@ def replay(order:dict,events:list[dict]|tuple[dict,...],*,as_of_et:str)->dict:
                 raise V81Error("V81_RECONCILED_MISSING_FILL_PRICE_EVIDENCE")
             if resolved=="REJECTED" and filled:
                 raise V81Error("V81_REJECT_CANNOT_ERASE_PARTIAL_FILL")
-            status=resolved
+            # A reconciliation claiming WORKING cannot erase known
+            # partially-filled quantity. Preserve outstanding exposure.
+            status=("PARTIALLY_FILLED" if resolved=="WORKING" and filled>0
+                    else resolved)
             unknown=False
             reason="RECONCILED_FIXTURE_NOT_REAL_BROKER_ACCOUNT"
         else:
