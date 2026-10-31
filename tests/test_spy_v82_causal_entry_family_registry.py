@@ -55,6 +55,7 @@ def test_failed_breakout_fade_is_distinct_from_continuation():
     r=evaluate("failed_breakout_fade_0940",
                bars(recent_high="103",recent_low="99",last="100"))
     assert r["direction"]=="PUT"
+    assert r["decision_at_et"].endswith("09:40:01-04:00")
     cont=evaluate("orb_continuation_0940",
                   bars(recent_high="103",recent_low="99",last="100"))
     assert cont["direction"] is None
@@ -72,6 +73,7 @@ def test_gap_mean_reversion_0935_is_prior_close_qualified():
     assert r["direction"]=="PUT"
     assert v82.REGISTRY["gap_fade_0935"]["minimum_gap_pct"]=="0.60"
     assert r["source_bar_count"]==5
+    assert r["features"]["prior_closing_bar_publication_independently_proven"] is False
 
 
 def test_unclosed_or_future_bar_rejected_without_source_calls():
