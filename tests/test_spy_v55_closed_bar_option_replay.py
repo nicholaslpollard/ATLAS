@@ -156,7 +156,7 @@ def test_workstation_runner_announces_blocking_stage_before_provider_and_saves(t
         unit_id="native-test",canonical_sha256="a"*64,
         checkpoint_path=tmp_path/"checkpoint.json",
         canonical_path=tmp_path/"unit.parquet")
-    monkeypatch.setattr(cli,"discover_minute_units",lambda *args:(unit,))
+    monkeypatch.setattr(cli,"discover_minute_units",lambda *args,**kwargs:(unit,))
     monkeypatch.setattr(cli,"_verify_monthly_unit_with_progress",
                         lambda _unit,emit:emit("STAGE_PASS original_SHA_test") or {"accepted":True})
     monkeypatch.setattr(cli,"_sample_rows",lambda *args,**kwargs:minutes())
