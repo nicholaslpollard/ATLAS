@@ -16,7 +16,7 @@ V56 previously generated new option contracts dynamically and cached original qu
 This scope is a **genuine new strategy-driven source-acquisition workflow**, not merely an offline chart. It does not itself produce a trustworthy cumulative account when unresolved exits persist, and it does not implement prior-fold training or out-of-sample validation.
 
 ## Initial workstation procedure
-First test V69 offline. The following example uses May 1–30, 2025 **only if the existing native May SPY source checkpoint is present**; if not, expect an explicit original-stock-source blocker and review it rather than claiming a no-signal month. The user may specify another historical month with locally accepted original SPY minute units. This test may produce new ThetaData source requests for genuine selected candidates, so ensure Options Standard is active.
+Start with **June 23–30, 2025**, a continuation inside the same June monthly native SPY source archive already SHA-verified by V65/V67. This avoids guessing whether a different month's underlying checkpoints have been installed, and causes V69 to request genuinely new exact contract tapes automatically for fresh signals. If the June archive does not contain accepted minute bars for one of those days, record the source blocker rather than claiming no trading signal. A later multi-month run can extend to other verified native stock months. This test may make **new paid ThetaData requests** for eligible selected contracts, so ensure the Options Standard provider is active.
 
 ```powershell
 Set-Location 'C:\Users\cyberdyne\Desktop\ATLAS'
@@ -26,8 +26,8 @@ $testTmp = Join-Path $env:USERPROFILE ('at' + [guid]::NewGuid().ToString('N').Su
 if ($LASTEXITCODE -ne 0) { throw 'Regression tests failed; no provider requests' }
 $stamp = Get-Date -Format yyyyMMdd_HHmmss
 & $py -m scripts.run_spy_v69_source_first_multimonth_census `
-  --start 2025-05-01 --end 2025-05-30 `
-  --output-dir "data/research/spy_v69_may_source_first_$stamp"
+  --start 2025-06-23 --end 2025-06-30 `
+  --output-dir "data/research/spy_v69_june_extension_$stamp"
 if ($LASTEXITCODE -ne 0) { Write-Warning 'Inspect saved V69 per-window blockers and source receipts before other requests' }
 ```
 
