@@ -155,3 +155,19 @@ def test_accidental_broker_swap_fails_same_order():
     )]
     with pytest.raises(v81.V81Error,match="EVENT_IDENTITY"):
         v81.replay(order(),seq,as_of_et="2025-08-20T09:53:49-04:00")
+
+
+def test_unknown_reconciliation_preserves_known_partial_exposure():
+    seq=start()+[
+        event(3,"PARTIAL_FILL",47,broker_order_id="broker-order-1",
+              cumulative_filled=2,fill_price="2.25"),
+        event(4,"BROKER_TIMEOUT",48,broker_order_id="broker-order-1"),
+        event(5,"BROKER_RECONCILIATION",49,broker_order_id="broker-order-1",
+              cumulative_filled=2,resolved_status="WORKING"),
+    ]
+    result=v81.replay(order(),seq,as_of_et="2025-08-20T09:53:49-04:00")
+    assert result["status"]=="PARTIALLY_FILLED"
+    assert result["cumulative_fixture_filled_quantity"]==2
+    assert result["remaining_quantity_unverified"]==2
+    assert result["needs_broker_reconciliation_before_retry_or_switch"] is True
+    assert result["historical_broker_cash_credited"] is None
