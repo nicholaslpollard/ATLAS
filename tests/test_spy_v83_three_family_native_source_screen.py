@@ -94,6 +94,15 @@ def test_native_original_stock_source_three_families_no_provider(tmp_path):
     assert report["cases"][2]["status"]=="NO_SIGNAL"
 
 
+def test_three_actual_2025_xnys_early_closes_are_1300_et():
+    from zoneinfo import ZoneInfo
+    from packages.core.market_calendar import get_market_calendar
+    market=get_market_calendar("XNYS")
+    for day in ("2025-07-03","2025-11-28","2025-12-24"):
+        close=market.regular_open_close(date.fromisoformat(day))[1]
+        assert close.astimezone(ZoneInfo("America/New_York")).strftime("%H:%M")=="13:00"
+
+
 def test_shortened_xnys_session_source_end_is_market_bounded(tmp_path):
     kw,_=fixtures()
     class EarlyCloseCalendar(Calendar):
