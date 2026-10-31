@@ -62,7 +62,7 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
            trailing_arm_pct="20",trail_from_high_pct="15",
            max_bad_quote_seconds=30,max_observation_gap_seconds=60,
            max_hold_minutes=180,stop_loss_option_pct="-50",
-           take_profit_option_pct="100"):
+           take_profit_option_pct="100",market_close_et=None):
     # The original V74 default remains bit-for-bit stable. Nondefault
     # V76 research variants are a small, preregistered finite policy set.
     # This function never enables a new provider or broker operation.
@@ -133,6 +133,26 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
     plan=PROFILES[broker]
     planned=datetime.combine(day,time.fromisoformat(plan["planned_exit"]),ET)
     hard=datetime.combine(day,time.fromisoformat(plan["hard_liquidation"]),ET)
+    # Optional future V76 cohort uses the publicly known exchange schedule.
+    # Legacy V74 calls without an explicit schedule retain identical clocks.
+    early_close=False
+    if market_close_et is not None:
+        if (not isinstance(market_close_et,datetime)
+                or market_close_et.utcoffset() is None
+                or market_close_et.astimezone(ET).date()!=day):
+            raise V74Error("V76_INVALID_EXCHANGE_CLOSE_CLOCK")
+        close=market_close_et.astimezone(ET)
+        official_regular=datetime.combine(day,time(16,0),ET)
+        if close>official_regular or close.time()<time(11,0):
+            raise V74Error("V76_INVALID_EXCHANGE_SESSION_BOUNDARY")
+        if close<official_regular:
+            early_close=True
+            # Known NYSE early close (typically 13:00 ET): initiate exit
+            # one hour before market close, last action 55 minutes before.
+            # These are conservative experimental ATLAS risk clocks, not
+            # either broker's promised liquidation cutoff.
+            planned=min(planned,close-timedelta(minutes=60))
+            hard=min(hard,close-timedelta(minutes=55))
     max_hold=entry_at+timedelta(minutes=max_hold_minutes)
     events=[{
         "type":"ORIGINAL_ENTRY_REUSED",
@@ -174,8 +194,11 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
                 "max_bad_quote_seconds":max_bad_quote_seconds,
                 "max_observation_gap_seconds":max_observation_gap_seconds,
                 "max_hold_minutes":max_hold_minutes,
-                "planned_liquidation_et":plan["planned_exit"],
-                "last_attempt_et":plan["hard_liquidation"],
+                "planned_liquidation_et":planned.time().isoformat() if early_close else plan["planned_exit"],
+                "last_attempt_et":hard.time().isoformat() if early_close else plan["hard_liquidation"],
+                **({"early_exchange_close_cutoff_applied":True,
+                    "original_exchange_session_close_et":market_close_et.astimezone(ET).isoformat()}
+                   if early_close else {}),
                 "broker_automatic_sale_guaranteed":False,
             },
             "entry_debit":str(debit),
