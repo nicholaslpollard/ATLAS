@@ -109,6 +109,8 @@ def review(v69_folder,output_dir,*,expected_fingerprint,
         if q is not None and not original_blocked:
             qid=q["query_id"]
             if qid not in cache:
+                emit(f"STAGE_START V74 SHA-verify original options archive "
+                     f"date={row['session']} query={qid} provider_calls=0")
                 try:
                     data=source_reader(setting,qid)
                 except Exception as exc:
