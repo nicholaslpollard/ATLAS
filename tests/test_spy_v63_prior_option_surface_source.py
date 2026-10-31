@@ -108,7 +108,9 @@ def test_one_v38_source_call_and_no_provider_broker_side_effects(tmp_path):
         return source([row(598),row(599)])
     path=original(tmp_path)
     result=acquire(path,tmp_path/"out.json",get=get,
-                   settings_factory=lambda *a:object(),emit=lambda s:None)
+                   settings_factory=lambda *a:object(),
+                   preflight=lambda _:{"state":"NOT_REGISTERED","query_id":"test"},
+                   emit=lambda s:None)
     assert len(calls)==1
     assert calls[0][1]=="option_at_time_quote_surface"
     assert calls[0][2]==REQUEST
@@ -128,7 +130,9 @@ def test_missing_spot_causes_no_thetadata_get(tmp_path):
     calls=[]
     result=acquire(p,tmp_path/"no_source.json",
                    get=lambda *a:calls.append(a),
-                   settings_factory=lambda *a:object(),emit=lambda s:None)
+                   settings_factory=lambda *a:object(),
+                   preflight=lambda _:{"state":"NOT_REGISTERED","query_id":"test"},
+                   emit=lambda s:None)
     assert not calls
     assert result["status"]=="ABSTAIN_NO_PRIOR_SPY_SPOT_AT_PRECALIBRATION"
     assert result["v38_query_id"] is None
@@ -141,6 +145,7 @@ def test_exact_provider_scope_cannot_be_falsified(tmp_path):
     with pytest.raises(PriorOptionSourceError,match="V63_V38_SOURCE_PARAMETERS_CHANGED"):
         acquire(path,tmp_path/"bad.json",
                 get=lambda *a:r,settings_factory=lambda *a:object(),
+                preflight=lambda _:{"state":"NOT_REGISTERED","query_id":"test"},
                 emit=lambda s:None)
     assert not (tmp_path/"bad.json").exists()
 
