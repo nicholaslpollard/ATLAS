@@ -131,7 +131,8 @@ def inspect(start,end,output,*,discover=discover_minute_units,
             signal_factory=closed_bar_signal,
             cache_read=_local_cache_only,
             settings_factory=load_settings,receipt_reader=None,
-            replay_fn=replay_source,progress=announce):
+            replay_fn=replay_source,progress=announce,
+            session_calendar=None):
     if output.exists() or output.is_symlink():
         raise V65Error("V65_IMMUTABLE_OUTPUT_EXISTS")
     days=list(dates_in_window(start,end))
