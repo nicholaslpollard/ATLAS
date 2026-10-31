@@ -25,7 +25,7 @@ REGISTRY={
         "version":"v82.1",
     },
     "failed_breakout_fade_0940":{
-        "decision_clock":"09:40:00",
+        "decision_clock":"09:40:01",
         "setup":"09:30-09:34 range breakout rejected by 09:39 close",
         "required_prior_evidence":"FIRST_TEN_MINUTES_OF_SESSION",
         "version":"v82.1",
@@ -91,6 +91,7 @@ def _bar(raw,day,decision):
 
 def evaluate(family,*,session:str,stock_source_sha:str,bars:list[dict],
              prior_close=None,prior_close_at_et=None,prior_close_available_at_et=None,
+             prior_closing_bar_publication_independently_proven:bool=False,
              market_session_verified:bool=False):
     if family not in REGISTRY:
         raise V82Error("V82_UNREGISTERED_ENTRY_FAMILY")
@@ -145,6 +146,8 @@ def evaluate(family,*,session:str,stock_source_sha:str,bars:list[dict],
         feature["recent_crossed_high"]=crossed_high
         feature["recent_crossed_low"]=crossed_low
     else:
+        if type(prior_closing_bar_publication_independently_proven) is not bool:
+            raise V82Error("V82_PRIOR_CLOSE_PUBLICATION_PROOF_FLAG_INVALID")
         if prior_close is None or prior_close_at_et is None or prior_close_available_at_et is None:
             raise V82Error("V82_PRIOR_CLOSE_EVIDENCE_REQUIRED")
         prior_at=_dt(prior_close_at_et)
@@ -162,6 +165,7 @@ def evaluate(family,*,session:str,stock_source_sha:str,bars:list[dict],
         feature["opening_gap_pct"]=str(gap)
         feature["prior_close_at_et"]=prior_at.isoformat()
         feature["prior_close_available_at_et"]=prior_available.isoformat()
+        feature["prior_closing_bar_publication_independently_proven"]=prior_closing_bar_publication_independently_proven
     if call and put:
         raise V82Error("V82_CONTRADICTORY_STRATEGY_DIRECTION")
     direction="CALL" if call else "PUT" if put else None
@@ -205,7 +209,8 @@ def exact_option_demand(decision:dict,*,selected_contract:dict,
             len(selection_source_sha256)!=64 or
             any(c not in "0123456789abcdef" for c in selection_source_sha256)):
         raise V82Error("V82_OPTION_SELECTION_SOURCE_NOT_PROVEN")
-    if _dt(selection_at_et)>_dt(decision["decision_at_et"]):
+    # Contract selection evidence must predate the registered signal clock.
+    if _dt(selection_at_et)>=_dt(decision["decision_at_et"]):
         raise V82Error("V82_FUTURE_SELECTED_CONTRACT_FORBIDDEN")
     expected=("call" if decision["direction"]=="CALL" else "put")
     if (selected_contract.get("symbol")!="SPY" or
