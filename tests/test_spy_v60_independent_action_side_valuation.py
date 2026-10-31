@@ -56,6 +56,8 @@ def test_side_aware_fair_acting_side_survives_abnormal_other_side(action,right):
     assert result["historical_fills"]==0
     assert result["historical_alpha_validated"] is False
     assert result["reason"]=="ACTED_SIDE_NEAR_INDEPENDENT_FAIR_VALUE_OTHERSIDE_SUSPECT"
+    assert result["bid_vs_independent_model"]==("BELOW_INDEPENDENT_BAND" if action=="buy" else "WITHIN_INDEPENDENT_BAND")
+    assert result["ask_vs_independent_model"]==("ABOVE_INDEPENDENT_BAND" if action=="sell" else "WITHIN_INDEPENDENT_BAND")
     assert result["volatility_source_id"]!=result["acted_quote_source_id"]
 
 
