@@ -118,15 +118,26 @@ def classify_option_source_rows(rows):
             expiration=str(row.get("expiration",""))
             strike=Decimal(str(row["strike"]))
             right=str(row.get("right","")).lower()
+            if right=="p":
+                right="put"
             bid=Decimal(str(row["bid"]))
             ask=Decimal(str(row["ask"]))
-            sz_b=int(row["bid_size"])
-            sz_a=int(row["ask_size"])
+            raw_bsz=row["bid_size"]
+            raw_asz=row["ask_size"]
+            sz_b=int(raw_bsz)
+            sz_a=int(raw_asz)
+            exact_size=(not isinstance(raw_bsz,bool)
+                        and not isinstance(raw_asz,bool)
+                        and Decimal(str(raw_bsz))==sz_b
+                        and Decimal(str(raw_asz))==sz_a)
         except (KeyError,TypeError,ValueError,ArithmeticError):
             categories["SOURCE_FIELDS_UNQUALIFIED"]+=1
             continue
         if (not strike.is_finite() or not bid.is_finite() or not ask.is_finite()
-                or strike<=0 or bid<=0 or ask<bid or sz_b<=0 or sz_a<=0):
+                or strike<=0 or bid<=0 or ask<bid or sz_b<=0 or sz_a<=0
+                or not exact_size
+                or (row.get("symbol") is not None and
+                    str(row.get("symbol")).upper()!="SPY")):
             categories["SOURCE_BID_ASK_UNQUALIFIED"]+=1
             continue
         seen_exp.add(expiration)
