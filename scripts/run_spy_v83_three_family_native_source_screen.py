@@ -191,7 +191,10 @@ def run(start,end,output,*,acquire_options=False,
                     }
                     required=exact_option_demand(
                         candidate,selected_contract=contract,
-                        selection_at_et=candidate["decision_at_et"],
+                        # Latest completed minute is eligible one second before
+                        # the decision clock. Never backdate option quotes.
+                        selection_at_et=(datetime.fromisoformat(
+                            candidate["decision_at_et"])-timedelta(seconds=1)).isoformat(),
                         selection_source_sha256=curr_unit.canonical_sha256)
                     demands.append(required)
                     status="OPTIONS_EXACT_SOURCE_DEMAND_PREPARED"
