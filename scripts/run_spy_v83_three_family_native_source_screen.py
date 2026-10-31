@@ -34,7 +34,7 @@ from packages.simulation.strategy_options_source_runtime_v39 import (
 
 ROOT=Path(__file__).resolve().parents[1]
 ET=ZoneInfo("America/New_York")
-CONTRACT="atlas-v83-original-native-three-entry-family-source-screen-v1"
+CONTRACT="atlas-v83-original-native-three-entry-family-source-screen-v2"
 
 
 def info(msg):
@@ -179,6 +179,16 @@ def run(start,end,output,*,acquire_options=False,
                     stock_source_sha=curr_unit.canonical_sha256,
                     bars=first_bars,market_session_verified=True,**kwargs)
                 if candidate["status"]=="OPTIONS_CANDIDATE_SOURCE_SELECTION_REQUIRED":
+                    # A 0DTE tape cannot extend to 15:30 on an XNYS early close.
+                    # Match accepted V77: on an early close, reserve 55 minutes
+                    # before the verified close (13:00 -> 12:05). Normal: 15:30.
+                    official_close=market.regular_open_close(day)[1].astimezone(ET)
+                    if official_close.date()!=day:
+                        raise V82Error("V83_XNYS_MARKET_CLOSE_DATE_INVALID")
+                    early_close=official_close.hour<16
+                    cutoff=(official_close-timedelta(minutes=55)).strftime("%H:%M:%S")+".000" if early_close else "15:30:00.000"
+                    if cutoff<=candidate["decision_at_et"][11:19]+".000":
+                        raise V82Error("V83_MARKET_CLOSE_BEFORE_SOURCE_DECISION")
                     # This ATM strike proxy is driven solely by ORIGINAL stock
                     # bar close known before decision. It is NOT yet proof the
                     # option strike/expiry was listed or liquid at that clock.
@@ -195,7 +205,8 @@ def run(start,end,output,*,acquire_options=False,
                         # the decision clock. Never backdate option quotes.
                         selection_at_et=(datetime.fromisoformat(
                             candidate["decision_at_et"])-timedelta(seconds=1)).isoformat(),
-                        selection_source_sha256=curr_unit.canonical_sha256)
+                        selection_source_sha256=curr_unit.canonical_sha256,
+                        end_time_et=cutoff)
                     demands.append(required)
                     status="OPTIONS_EXACT_SOURCE_DEMAND_PREPARED"
                     source_sha=required["fingerprint"]
@@ -208,6 +219,8 @@ def run(start,end,output,*,acquire_options=False,
                     "reason":candidate["reason"],
                     "causal_decision":candidate,
                     "source_demand_sha":source_sha,
+                    "official_market_close_at_et":official_close.isoformat() if source_sha else None,
+                    "option_source_end_time_et":cutoff if source_sha else None,
                     "selected_option_listing_historically_verified":False,
                     "option_contract_liquidity_verified":False,
                     "broker_orders":0,
