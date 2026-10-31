@@ -122,3 +122,29 @@ def test_variant_restrictions_keep_no_arbitrary_assumptions():
         v74.replay(parent,source,action_lag_seconds=0)
     with pytest.raises(v74.V74Error,match="UNREGISTERED"):
         v74.replay(parent,source,broker="unknown")
+
+
+def test_realized_money_accepts_losses_and_zero_not_invalid_option_prices():
+    assert v74.money("-45.20")==Decimal("-45.20")
+    assert v74.money("0")==Decimal("0.00")
+    assert v74.money("0.005")==Decimal("0.01")
+    with pytest.raises(v74.V74Error,match="NONFINITE_FINANCIAL"):
+        v74.money("NaN")
+    with pytest.raises(v74.V74Error,match="NONNUMERIC_FINANCIAL"):
+        v74.money("not-a-number")
+
+
+def test_registered_three_second_exit_action_does_not_use_prior_quote():
+    parent,source=case([
+        q(2,"0.99","1.00"),
+        q(3,"0.40","0.42"),
+        q(4,"0.38","0.40"),
+        q(5,"0.32","0.34"),
+        q(6,"0.25","0.27"),
+    ])
+    result=v74.replay(parent,source,action_lag_seconds=3)
+    assert result["status"]=="CLOSED_QUOTE_REFERENCE"
+    assert result["exit_at_et"].endswith("09:36:06-04:00")
+    assert result["exit_bid"]=="0.25"
+    assert result["strategy_params"]["dynamic_action_lag_seconds"]==3
+    assert result["actual_broker_fills"]==0
