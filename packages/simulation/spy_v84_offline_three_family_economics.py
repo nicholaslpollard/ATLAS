@@ -116,12 +116,18 @@ def replay(decision, demand, source, prepared, *, policy, lag_seconds, market_cl
         raise V84Error("V84_NON_0DTE_CONTRACT")
     if contract["right"] != decision["direction"].lower():
         raise V84Error("V84_OPTION_DIRECTION_DRIFT")
+    if demand["kwargs"]["start_time_et"] != cutoff.astimezone(ET).strftime("%H:%M:%S")+".000":
+        raise V84Error("V84_SOURCE_START_AND_CAUSAL_DECISION_DRIFT")
 
     events = []
     counts = {"observations_reviewed": 0, "invalid_quotes": 0,
               "insufficient_bid_size": 0, "review_events_suppressed": 0}
     def note(event, **fields):
-        if len(events) < MAX_REVIEW_EVENTS or event != "QUOTE_HOLD_REVIEW":
+        # Compact repeated review/rejection observations, but never suppress
+        # entry/exit decisions or censoring. Original quote rows remain in
+        # the full immutable V38 source tape, and counts examine every row.
+        compactable = event in ("QUOTE_HOLD_REVIEW", "QUOTE_REJECTED")
+        if len(events) < MAX_REVIEW_EVENTS or not compactable:
             events.append({"event": event, **fields})
         else:
             counts["review_events_suppressed"] += 1
@@ -135,7 +141,6 @@ def replay(decision, demand, source, prepared, *, policy, lag_seconds, market_cl
     exit_data = None
     reference = None
     reference_at = None
-    first_good = None
     last_good = None
     bad_start = None
     high = Decimal("0")
