@@ -124,12 +124,21 @@ def test_shortened_xnys_session_source_end_is_market_bounded(tmp_path):
 def test_explicit_cache_first_mode_no_arbitrary_demand_count_cap(tmp_path):
     kw,_=fixtures()
     captured=[]
-    def resolve(settings,version,demands,*,continue_on_error,on_progress):
+    def resolve(settings,version,demands,*,continue_on_error,on_source,on_progress):
         values=list(demands)
         captured.extend(values)
         assert version=="spy_v82_three_family_registry_20261031"
         assert continue_on_error is True
         assert len(values)==1
+        on_source(values[0],{
+            "query_id":values[0]["query_id"] if "query_id" in values[0] else "fixture-query",
+            "status":"FETCHED_ARCHIVED","source_sha256":"a"*64,
+        })
+        on_progress("source_done",{
+            "candidate_id":values[0]["candidate_id"],
+            "query_id":"fixture-query","date_et":"2025-08-20",
+            "status":"FETCHED_ARCHIVED","error":None,
+        })
         return {
             "contract":"atlas-strategy-options-data-demand-runtime-v39",
             "strategy_version":version,
@@ -146,6 +155,11 @@ def test_explicit_cache_first_mode_no_arbitrary_demand_count_cap(tmp_path):
         settings_factory=lambda *args:object(),**kw,
     )
     assert len(captured)==1
+    from json import loads
+    receipts=loads((tmp_path/"acquired"/"source_receipts.json").read_text())
+    assert len(receipts["original_provider_source_receipts"])==1
+    assert receipts["terminal_status_events"][0]["event"]=="source_done"
+    assert result["source_receipt_report_sha"]==receipts["fingerprint"]
     assert result["source_resolution"]["source_uses_requested"]==1
     assert result["source_resolution"]["provider_dispatch_attempts"]==1
     assert result["source_resolution"]["fingerprint"]==_fingerprint({
