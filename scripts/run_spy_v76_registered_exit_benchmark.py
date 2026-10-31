@@ -142,9 +142,18 @@ def run(parent_dir,output_dir,*,expected_parent_sha,
     for row in days:
         session_day=date.fromisoformat(row["session"])
         if not calendar.is_session(session_day):
-            raise ValueError("V76_PARENT_SESSION_NOT_IN_XNYS_CALENDAR")
-        _,session_close=calendar.regular_open_close(session_day)
-        close_et=session_close.astimezone(ET)
+            # Frozen legacy V69 monthly rosters can contain closed-market
+            # Tuesdays/Thursdays: e.g. Juneteenth Thu 2025-06-19.
+            # They may be retained ONLY as independently verified NO_SIGNAL
+            # with no source demand. Never synthesize a tradable holiday.
+            if (row.get("standalone_replay_disposition")!="NO_SIGNAL" or
+                    row.get("exact_option_requirement") is not None or
+                    row.get("exact_option_receipt") is not None):
+                raise ValueError("V76_TRADING_ON_NONEXCHANGE_SESSION_FORBIDDEN")
+            close_et=None
+        else:
+            _,session_close=calendar.regular_open_close(session_day)
+            close_et=session_close.astimezone(ET)
         req=row.get("exact_option_requirement")
         receipt=row.get("exact_option_receipt")
         if (req is None)!=(receipt is None):
