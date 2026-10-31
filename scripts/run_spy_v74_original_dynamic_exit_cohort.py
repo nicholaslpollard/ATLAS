@@ -53,8 +53,11 @@ def write_once(path,doc):
 
 
 def review(v69_folder,output_dir,*,expected_fingerprint,
+           action_lag_seconds=1,
            settings_factory=load_settings,source_reader=_local_cache_only,
            emit=event):
+    if action_lag_seconds not in (1,3):
+        raise V74Error("V74_EXIT_ACTION_LAG_INVALID")
     if output_dir.exists() or output_dir.is_symlink():
         raise V74Error("V74_IMMUTABLE_OUTPUT_EXISTS")
     emit(f"STAGE_START V74 verify_signed_parent folder={v69_folder} "
@@ -90,7 +93,7 @@ def review(v69_folder,output_dir,*,expected_fingerprint,
                 or row["exact_option_requirement"]!=old["exact_option_requirement"]):
             raise V74Error("V74_NATIVE_SIGNAL_OR_ORIGINAL_SELECTION_CHANGED")
     emit(f"START V74 source_sessions={len(rows)} "
-         f"brokers={','.join(BROKERS)} source=SHA_VERIFIED_CACHE_ONLY "
+         f"brokers={','.join(BROKERS)} action_lag_seconds={action_lag_seconds} source=SHA_VERIFIED_CACHE_ONLY "
          "fills=0 provider_calls=0")
     setting=settings_factory(ROOT,"development")
     reports={b:[] for b in BROKERS}
@@ -132,7 +135,8 @@ def review(v69_folder,output_dir,*,expected_fingerprint,
                     "events":[],"actual_broker_fills":0,"provider_requests":0,
                 })
             else:
-                result=replay(row,source,broker=broker)
+                result=replay(row,source,broker=broker,
+                              action_lag_seconds=action_lag_seconds)
             path=output_dir/f"{broker}_{row['session']}.json"
             stored=write_once(path,{k:v for k,v in result.items() if k!="fingerprint"})
             reports[broker].append({
@@ -194,6 +198,7 @@ def review(v69_folder,output_dir,*,expected_fingerprint,
         "contract":CONTRACT,
         "status":"COMPLETE_OFFLINE_ORIGINAL_DYNAMIC_EXIT_REPLAY",
         "original_v69_sha":summary["fingerprint"],
+        "experimental_exit_action_lag_seconds":action_lag_seconds,
         "original_v69_date_range":[summary["start"],summary["end"]],
         "profiles":profiles,
         "no_broker_submissions_or_exercise_instructions":True,
@@ -215,10 +220,12 @@ def main(argv=None):
     p.add_argument("--v69-folder",type=Path,required=True)
     p.add_argument("--output-dir",type=Path,required=True)
     p.add_argument("--expected-v69-fingerprint",required=True)
+    p.add_argument("--exit-action-lag-seconds",type=int,choices=(1,3),default=1)
     a=p.parse_args(argv)
     try:
         review(a.v69_folder,a.output_dir,
-               expected_fingerprint=a.expected_v69_fingerprint)
+               expected_fingerprint=a.expected_v69_fingerprint,
+               action_lag_seconds=a.exit_action_lag_seconds)
         return 0
     except Exception as exc:
         event(f"STOPPED V74 reason_type={type(exc).__name__} "
