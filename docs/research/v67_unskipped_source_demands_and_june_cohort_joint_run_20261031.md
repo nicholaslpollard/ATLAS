@@ -15,7 +15,7 @@ This is a **specific supported-path improvement, not a blanket claim that every 
 
 ### Single guarded PowerShell test/acquisition/replay command
 
-**2026-10-31 local Windows finding:** The original operator path `C:\\Users\\cyberdyne\\AppData\\Local\\Temp\\pytest-of-cyberdyne\\pytest-43\\...` made V38 synthetic SHA archive targets approximately 295 characters, triggering Windows `FileNotFoundError` on `.json.gz` creation. GitHub Windows/Linux CI for V67's tested head passed, confirming this is a local pytest temporary-directory issue; `--basetemp` under `$env:USERPROFILE\\AT` shortens synthetic target paths below legacy Windows limits without weakening a source-integrity test or touching original option archives. This affects only the synthetic test-stage temporary workspace, not the live source cache. Original run stopped before any paid provider requests.
+**2026-10-31 local Windows finding:** The original operator path `C:\\Users\\cyberdyne\\AppData\\Local\\Temp\\pytest-of-cyberdyne\\pytest-43\\...` made V38 synthetic SHA archive targets approximately 295 characters, triggering Windows `FileNotFoundError` on `.json.gz` creation. GitHub Windows/Linux CI for V67's tested head passed, confirming this is a local pytest temporary-directory issue; `--basetemp` under a **new**, short, randomly suffixed folder in `$env:USERPROFILE` shortens synthetic target paths below legacy Windows limits without weakening a source-integrity test or touching original option archives. This affects only the synthetic test-stage temporary workspace, not the live source cache. Original run stopped before any paid provider requests.
 
 On the development revision or after merge into `main`, with only one ThetaData source session active:
 ```powershell
@@ -25,7 +25,8 @@ $py = '.\.venv\Scripts\python.exe'
 if ($LASTEXITCODE -ne 0) { throw 'ATLAS compilation failed; no paid source requests' }
 # Windows pytest temp paths must be short: the V38 SHA-archive filenames are long.
 # This short directory is writable under the operator profile; only temporary tests use it.
-$testTmp = Join-Path $env:USERPROFILE 'AT'
+$testTmp = Join-Path $env:USERPROFILE ('at' + [guid]::NewGuid().ToString('N').Substring(0, 4))
+if (Test-Path -LiteralPath $testTmp) { throw 'Refusing to reuse a pytest temporary folder' }
 & $py -m pytest -q --basetemp "$testTmp" tests/test_options_on_demand_source_cache_v38.py tests/test_strategy_options_source_runtime_v39.py tests/test_spy_v65_full_june_offline_simulator_readiness.py tests/test_spy_v66_three_missing_exact_tape_acquisition.py tests/test_spy_v67_acquire_then_offline_reaudit.py
 if ($LASTEXITCODE -ne 0) { throw 'ATLAS regression tests failed; no paid source requests' }
 $stamp = Get-Date -Format yyyyMMdd_HHmmss
