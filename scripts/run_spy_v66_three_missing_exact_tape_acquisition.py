@@ -6,9 +6,8 @@ Source-only. Verify V65 June 9-20 signed report; select only its three
 registered missing exact source IDs. Read V38 SQLite mode=ro before EACH
 source. If absent, create an immutable, fsynced dispatch intent before
 calling V38's existing read-through source archive. Never repeat a
-FAILED_RETRYABLE / IN_FLIGHT / unknown-state exact query. On first failure,
-write a censored summary and stop; caller can audit/recover only via verified
-original receipts. No equity reconstruction, no broker orders.
+FAILED_RETRYABLE / IN_FLIGHT / unknown-state exact query. An individual request failure is recorded without retrying that exact query;
+other independent source requirements continue and keep immutable receipts. No equity reconstruction, no broker orders.
 """
 
 import argparse
