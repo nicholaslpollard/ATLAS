@@ -14,13 +14,19 @@ This is a **specific supported-path improvement, not a blanket claim that every 
 `scripts/run_spy_v67_acquire_then_offline_reaudit.py` executes the already accepted V65 source fingerprint and exact three V66 missing requests, then reruns the immutable V55/V65 ten-day **standalone, not chained-cash** 0DTE completed-minute breakout source audit. It records a signed combined summary and retains V66 per-exact-query intent/source receipts and the full new V65 event report. If one independent provider request fails ambiguously, V66 attempts the **other distinct** needs; the offline V65 audit still runs against whatever original sources were successfully verified. A source is not counted as a losing or flat trade while missing.
 
 ### Single guarded PowerShell test/acquisition/replay command
+
+**2026-10-31 local Windows finding:** The original operator path `C:\\Users\\cyberdyne\\AppData\\Local\\Temp\\pytest-of-cyberdyne\\pytest-43\\...` made V38 synthetic SHA archive targets approximately 295 characters, triggering Windows `FileNotFoundError` on `.json.gz` creation. GitHub Windows/Linux CI for V67's tested head passed, confirming this is a local pytest temporary-directory issue; `--basetemp` under `$env:USERPROFILE\\AT` shortens synthetic target paths below legacy Windows limits without weakening a source-integrity test or touching original option archives. This affects only the synthetic test-stage temporary workspace, not the live source cache. Original run stopped before any paid provider requests.
+
 On the development revision or after merge into `main`, with only one ThetaData source session active:
 ```powershell
 Set-Location 'C:\Users\cyberdyne\Desktop\ATLAS'
 $py = '.\.venv\Scripts\python.exe'
 & $py -m compileall -q packages/simulation/strategy_options_source_runtime_v39.py scripts/run_spy_v66_three_missing_exact_tape_acquisition.py scripts/run_spy_v67_acquire_then_offline_reaudit.py
 if ($LASTEXITCODE -ne 0) { throw 'ATLAS compilation failed; no paid source requests' }
-& $py -m pytest -q tests/test_options_on_demand_source_cache_v38.py tests/test_strategy_options_source_runtime_v39.py tests/test_spy_v65_full_june_offline_simulator_readiness.py tests/test_spy_v66_three_missing_exact_tape_acquisition.py tests/test_spy_v67_acquire_then_offline_reaudit.py
+# Windows pytest temp paths must be short: the V38 SHA-archive filenames are long.
+# This short directory is writable under the operator profile; only temporary tests use it.
+$testTmp = Join-Path $env:USERPROFILE 'AT'
+& $py -m pytest -q --basetemp "$testTmp" tests/test_options_on_demand_source_cache_v38.py tests/test_strategy_options_source_runtime_v39.py tests/test_spy_v65_full_june_offline_simulator_readiness.py tests/test_spy_v66_three_missing_exact_tape_acquisition.py tests/test_spy_v67_acquire_then_offline_reaudit.py
 if ($LASTEXITCODE -ne 0) { throw 'ATLAS regression tests failed; no paid source requests' }
 $stamp = Get-Date -Format yyyyMMdd_HHmmss
 & $py -m scripts.run_spy_v67_acquire_then_offline_reaudit `
