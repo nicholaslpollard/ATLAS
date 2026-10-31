@@ -19,7 +19,7 @@ CONTRACT="atlas-v82-options-first-three-independent-entry-family-registry-v1"
 
 REGISTRY={
     "orb_continuation_0940":{
-        "decision_clock":"09:40:00",
+        "decision_clock":"09:40:01",
         "setup":"09:30-09:34 opening-range breakout with 09:35-09:39 continuation",
         "required_prior_evidence":"FIRST_TEN_MINUTES_OF_SESSION",
         "version":"v82.1",
