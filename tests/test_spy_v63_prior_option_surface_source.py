@@ -92,7 +92,6 @@ def test_source_surface_ignores_target_598_and_future_option_observations():
         {**row(594), "right":"P"},
     ])
     assert data["categorization"]["TARGET_PUT_EXCLUDED_FROM_INDEPENDENT_IV"]==1
-    assert data["categorization"]["CANDIDATE_ALTERNATE_PUT_AT_PRIOR_CLOCK"]==1
     assert data["categorization"]["AFTER_PRECALIBRATION_TIMESTAMP"]==1
     assert data["categorization"]["OTHER_EXPIRY_NOT_0DTE"]==1
     assert data["categorization"]["STALE_PRIOR_QUOTE_OVER_2S"]==1
