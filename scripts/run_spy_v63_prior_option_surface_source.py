@@ -178,8 +178,58 @@ def classify_option_source_rows(rows):
     }
 
 
+def preflight_same_query_no_repeat(settings):
+    """Block V38 automatic retries after any ambiguous prior provider dispatch.
+
+    V38 transitions all exceptions to FAILED_RETRYABLE, including unknown
+    provider-worker outcomes; its 'retryable' does not prove no dispatch.
+    This check reads exact-query SQLite only, without constructing SDK
+    clients, altering reservations, or contacting a provider.
+    """
+    from contextlib import closing
+    import sqlite3
+    from packages.data.options_on_demand_source_cache_v38 import (
+        DB_REL,normalize_source_requirement,
+    )
+    requirement=normalize_source_requirement(QUOTE_METHOD,dict(REQUEST))
+    qid=_fingerprint(requirement)
+    db=settings.resolved_path(DB_REL)
+    if db.is_symlink():
+        raise PriorOptionSourceError("V63_SOURCE_INDEX_SYMLINK_UNSAFE")
+    if not db.is_file():
+        return {"state":"NOT_REGISTERED","query_id":qid,
+                "cache_only":False,"duplicate_dispatch_refused":False}
+    try:
+        with closing(sqlite3.connect(db.resolve().as_uri()+"?mode=ro",
+                                     uri=True,timeout=20)) as con:
+            result=con.execute(
+                "SELECT request_json,state FROM sources WHERE query_id=?",
+                (qid,)).fetchone()
+    except sqlite3.Error as exc:
+        raise PriorOptionSourceError("V63_READONLY_SOURCE_PRECHECK_FAILED") from exc
+    if result is None:
+        return {"state":"NOT_REGISTERED","query_id":qid,
+                "cache_only":False,"duplicate_dispatch_refused":False}
+    request_json,state=result
+    try:
+        actual=json.loads(request_json)
+    except (ValueError,TypeError) as exc:
+        raise PriorOptionSourceError("V63_INVALID_PRIOR_REQUEST_IDENTITY") from exc
+    if actual!=requirement or _fingerprint(actual)!=qid:
+        raise PriorOptionSourceError("V63_PRIOR_QUERY_FINGERPRINT_CONFLICT")
+    if state in ("IN_FLIGHT","FAILED_RETRYABLE"):
+        raise PriorOptionSourceError(
+            "V63_AMBIGUOUS_PRIOR_DISPATCH_REFUSE_SAME_QUERY_RETRY"
+        )
+    if state not in ("ARCHIVED","NO_DATA_EXPLICIT"):
+        raise PriorOptionSourceError("V63_UNKNOWN_PRIOR_DISPATCH_STATE")
+    return {"state":state,"query_id":qid,
+            "cache_only":True,"duplicate_dispatch_refused":False}
+
+
 def acquire(stock_summary,output,*,get=read_through_historical_options,
-            settings_factory=load_settings,emit=progress):
+            settings_factory=load_settings,preflight=preflight_same_query_no_repeat,
+            emit=progress):
     if output.exists() or output.is_symlink():
         raise PriorOptionSourceError("V63_IMMUTABLE_OUTPUT_ALREADY_EXISTS")
     emit("START V63 independently calibrated prior quote source"
@@ -198,6 +248,9 @@ def acquire(stock_summary,output,*,get=read_through_historical_options,
              f" time={REQUEST['time_of_day_et']}"
              " max_dte=1 strike_range=3 right=put")
         settings=settings_factory(ROOT,"development")
+        safe=preflight(settings)
+        emit(f"STAGE_PASS V63 no_duplicate_dispatch_preflight state={safe['state']}"
+             f" query_id={safe['query_id']} source_network_only_if_new=True")
         source=get(settings,QUOTE_METHOD,dict(REQUEST))
         if not isinstance(source,dict) or source.get("exact_requirement",{}).get("method")!=QUOTE_METHOD:
             raise PriorOptionSourceError("V63_V38_SOURCE_REQUEST_IDENTITY_INVALID")
