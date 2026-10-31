@@ -53,7 +53,8 @@ def test_wrapper_passes_one_calendar_to_source_and_signal_readers(tmp_path):
         ('source',[date(2025,1,2),date(2025,1,3)]),
         ('audit',date(2025,1,2),date(2025,1,3))
     ]
-    assert messages[0].startswith('START V73')
+    assert messages[0].startswith('STAGE_START V73 XNYS')
+    assert any(x.startswith('START V73') for x in messages)
     assert messages[-1].startswith('COMPLETE V73')
 
 
