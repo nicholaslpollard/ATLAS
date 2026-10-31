@@ -76,7 +76,7 @@ def test_gap_mean_reversion_0935_is_prior_close_qualified():
 
 def test_unclosed_or_future_bar_rejected_without_source_calls():
     future=bars(recent_high="104",recent_low="100",last="103")
-    future[-1]["available_at_et"]=DAY+"T09:40:01-04:00"
+    future[-1]["available_at_et"]=DAY+"T09:40:02-04:00"
     with pytest.raises(v82.V82Error,match="FUTURE_OR_NOT_YET_CLOSED"):
         evaluate("orb_continuation_0940",future)
     missing=bars()[:-1]
