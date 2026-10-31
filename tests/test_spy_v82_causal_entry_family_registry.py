@@ -113,6 +113,14 @@ def test_exact_option_demand_reuses_normalized_v39_provider_shape():
     )
     assert source["method"]=="option_history_exact_quote_tape"
     assert source["kwargs"]["start_time_et"]=="09:40:01.000"
+    shortened=v82.exact_option_demand(
+        r,selected_contract={
+            "symbol":"SPY","date_et":DAY,"expiration":DAY,
+            "strike":"650","right":"call",
+        },selection_at_et=DAY+"T09:39:59-04:00",
+        selection_source_sha256="d"*64,end_time_et="12:05:00.000")
+    assert shortened["kwargs"]["end_time_et"]=="12:05:00.000"
+    assert shortened["query_id"]!=source["query_id"]
     assert source["query_id"]
     item=v82.v39_demand(source)
     assert item["candidate_id"].startswith("SPY_2025-08-20_orb_continuation")
