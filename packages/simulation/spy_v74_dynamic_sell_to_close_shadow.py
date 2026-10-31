@@ -61,12 +61,18 @@ def money(x):
 def replay(original, source, *,broker="webull",action_lag_seconds=1,
            trailing_arm_pct="20",trail_from_high_pct="15",
            max_bad_quote_seconds=30,max_observation_gap_seconds=60,
-           max_hold_minutes=180):
+           max_hold_minutes=180,stop_loss_option_pct="-50",
+           take_profit_option_pct="100",market_close_et=None):
+    # The original V74 default remains bit-for-bit stable. Nondefault
+    # V76 research variants are a small, preregistered finite policy set.
+    # This function never enables a new provider or broker operation.
     if (broker not in BROKERS or action_lag_seconds not in (1,3)
-            or trailing_arm_pct not in ("20",) or
-            trail_from_high_pct not in ("15",)
+            or trailing_arm_pct not in ("10","20","30") or
+            trail_from_high_pct not in ("10","15","20")
+            or stop_loss_option_pct not in ("-25","-35","-50")
+            or take_profit_option_pct not in ("40","75","100","150")
             or max_bad_quote_seconds not in (15,30) or
-            max_observation_gap_seconds != 60 or max_hold_minutes not in (120,180)):
+            max_observation_gap_seconds != 60 or max_hold_minutes not in (60,120,180)):
         raise V74Error("V74_UNREGISTERED_PREDECLARED_EXIT_VARIANT")
     if not verified(original) or not verified(original.get("standalone_replay_report")):
         raise V74Error("V74_PARENT_ORIGINAL_SIGNATURE_INVALID")
@@ -127,6 +133,26 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
     plan=PROFILES[broker]
     planned=datetime.combine(day,time.fromisoformat(plan["planned_exit"]),ET)
     hard=datetime.combine(day,time.fromisoformat(plan["hard_liquidation"]),ET)
+    # Optional future V76 cohort uses the publicly known exchange schedule.
+    # Legacy V74 calls without an explicit schedule retain identical clocks.
+    early_close=False
+    if market_close_et is not None:
+        if (not isinstance(market_close_et,datetime)
+                or market_close_et.utcoffset() is None
+                or market_close_et.astimezone(ET).date()!=day):
+            raise V74Error("V76_INVALID_EXCHANGE_CLOSE_CLOCK")
+        close=market_close_et.astimezone(ET)
+        official_regular=datetime.combine(day,time(16,0),ET)
+        if close>official_regular or close.time()<time(11,0):
+            raise V74Error("V76_INVALID_EXCHANGE_SESSION_BOUNDARY")
+        if close<official_regular:
+            early_close=True
+            # Known NYSE early close (typically 13:00 ET): initiate exit
+            # one hour before market close, last action 55 minutes before.
+            # These are conservative experimental ATLAS risk clocks, not
+            # either broker's promised liquidation cutoff.
+            planned=min(planned,close-timedelta(minutes=60))
+            hard=min(hard,close-timedelta(minutes=55))
     max_hold=entry_at+timedelta(minutes=max_hold_minutes)
     events=[{
         "type":"ORIGINAL_ENTRY_REUSED",
@@ -139,8 +165,10 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
     last_good=entry_at
     bad_since=None
     intent=None
-    stop=ask/2
-    target=ask*2
+    stop=ask*(1+Decimal(stop_loss_option_pct)/100)
+    target=ask*(1+Decimal(take_profit_option_pct)/100)
+    if stop<=0 or target<=ask:
+        raise V74Error("V76_EXIT_THRESHOLD_GEOMETRY_INVALID")
     def result(status,reason,*,exit_at=None,bid=None,credit=None):
         return signed({
             "contract":CONTRACT,"session":day.isoformat(),
@@ -158,11 +186,19 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
                 "trailing_pct_from_high":trail_from_high_pct,
                 "original_stop_option_pct":"-50",
                 "original_profit_target_pct":"100",
+                **({
+                    "registered_v76_stop_loss_option_pct":stop_loss_option_pct,
+                    "registered_v76_profit_target_option_pct":take_profit_option_pct,
+                } if (stop_loss_option_pct!="-50" or
+                      take_profit_option_pct!="100") else {}),
                 "max_bad_quote_seconds":max_bad_quote_seconds,
                 "max_observation_gap_seconds":max_observation_gap_seconds,
                 "max_hold_minutes":max_hold_minutes,
-                "planned_liquidation_et":plan["planned_exit"],
-                "last_attempt_et":plan["hard_liquidation"],
+                "planned_liquidation_et":planned.time().isoformat() if early_close else plan["planned_exit"],
+                "last_attempt_et":hard.time().isoformat() if early_close else plan["hard_liquidation"],
+                **({"early_exchange_close_cutoff_applied":True,
+                    "original_exchange_session_close_et":market_close_et.astimezone(ET).isoformat()}
+                   if early_close else {}),
                 "broker_automatic_sale_guaranteed":False,
             },
             "entry_debit":str(debit),
@@ -203,8 +239,10 @@ def replay(original, source, *,broker="webull",action_lag_seconds=1,
         if high>=ask*(1+_dec(trailing_arm_pct)/100):
             candidate=high*(1-_dec(trail_from_high_pct)/100)
             trailing=max(trailing or Decimal("0"),candidate)
-        reason=("BASELINE_PROFIT_TARGET" if bid>=target else
-                "BASELINE_STOP" if bid<=stop else
+        reason=(("BASELINE_PROFIT_TARGET" if take_profit_option_pct=="100"
+                 else "REGISTERED_VARIANT_PROFIT_TARGET") if bid>=target else
+                ("BASELINE_STOP" if stop_loss_option_pct=="-50"
+                 else "REGISTERED_VARIANT_STOP") if bid<=stop else
                 "CAUSAL_TRAILING_PROFIT" if trailing is not None and bid<=trailing else
                 "MAX_HOLD" if at>=max_hold else
                 "PRE_EXPIRY_SELL_TO_CLOSE" if at>=planned else None)
