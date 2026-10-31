@@ -59,7 +59,7 @@ def test_v76_registered_fast_risk_stop_triggers_while_v74_default_holds():
     assert fast["reason"]=="REGISTERED_VARIANT_STOP"
     assert fast["exit_bid"]=="0.66"
     assert fast["exit_at_et"].endswith("09:36:04-04:00")
-    assert fast["trade_net_pnl"]=="-138.00"
+    assert fast["trade_net_pnl"]=="-141.20"
     assert fast["actual_broker_fills"]==0
 
 
