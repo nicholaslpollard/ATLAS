@@ -220,7 +220,8 @@ def run(parent_dir,output_dir,*,expected_parent_sha,
                 "modeled_closed_trade_pnl":str(money(sum(outcomes))),
                 "gross_profit_factor":str((wins/-losses).quantize(Decimal("0.0001"))) if losses else None,
                 "unresolved_days":blocked,
-                "entire_month_cash_valid":len(blocked)==0,
+                "exit_source_coverage_complete":len(blocked)==0,
+                "cash_account_not_constructed":True,
                 "standalone_account_not_chained_across_months":True,
                 "daily_event_receipts":rows,
             })
@@ -236,7 +237,8 @@ def run(parent_dir,output_dir,*,expected_parent_sha,
         "provider_calls":0,"broker_orders":0,
         "out_of_sample_perf_proven":False,
         "cash_must_censor_at_first_unresolved_date":True,
-        "this_month_outcomes_used_to_select_parameters":False,
+        "historical_jan_jun_outcomes_inspected_before_registry":True,
+        "candidate_selection_and_performance_in_sample_only":True,
     })
     emit_event(f"COMPLETE V76 days={len(days)} "
                f"variants={len(policies)} archive_cache_reads={len(qcache)} "
