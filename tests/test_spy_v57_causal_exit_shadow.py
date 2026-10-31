@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from decimal import Decimal
 from datetime import datetime
 from pathlib import Path
 import json
@@ -80,7 +81,7 @@ def test_adaptive_high_water_profit_trail_is_causal_and_not_best_future_high():
         assert report["candidate_exit"]["observed_bid"]=="1.43"
         assert report["net_pnl"]=="94.80"
         assert report["observed_quotes"]==len(quotes)
-        assert report["highest_bid_observed_before_exit"]=="1.60"
+        assert Decimal(report["highest_bid_observed_before_exit"])==Decimal("1.60")
         assert report["terminal_equity_if_resolved"]=="25094.80"
         assert report["decision_journal"][-2]["trail_active"] is True
         assert report["decision_journal"][-1]["decision"]=="PROFIT_HIGH_WATER_TRAIL"
