@@ -250,7 +250,7 @@ def run(start,end,output,*,acquire_options=False,
              f"requirements={len(demands)} V39=ENABLED "
              "no_request_quota=True safe_ambiguous_retry=False broker_orders=0")
         settings=settings_factory(ROOT,"development")
-        acquired=resolve(
+        original_source_resolution=resolve(
             settings,"spy_v82_three_family_registry_20261031",
             (v39_demand(item) for item in demands),
             continue_on_error=True,
@@ -258,9 +258,16 @@ def run(start,end,output,*,acquire_options=False,
                 f"V83_PROVIDER_{k.upper()} date={v.get('date_et')} "
                 f"query={v.get('query_id')} status={v.get('status')}")
         )
-        if acquired.get("fingerprint")!=_fingerprint({
-                k:v for k,v in acquired.items() if k!="fingerprint"}):
-            raise V82Error("V83_SOURCE_RESOLUTION_RECEIPT_UNSIGNED_OR_DRIFT")
+        # V39 returns a typed but unsigned runtime summary, while original
+        # per-query provider receipts are persisted in its SQLite cache.
+        # Bind the returned exact status/counts to this immutable V83 report
+        # instead of assuming V39 itself produces a signed fingerprint.
+        if (not isinstance(original_source_resolution,dict) or
+                original_source_resolution.get("source_uses_requested")!=len(demands)
+                or original_source_resolution.get("contract")!=
+                "atlas-strategy-options-data-demand-runtime-v39"):
+            raise V82Error("V83_SOURCE_RESOLUTION_COUNTS_OR_CONTRACT_INVALID")
+        acquired=signed(original_source_resolution)
     output_report=write_once(output/"summary.json",{
         "contract":CONTRACT+"-summary-v1",
         "entry_screen_sha":decision_report["fingerprint"],
