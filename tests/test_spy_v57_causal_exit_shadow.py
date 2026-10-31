@@ -66,21 +66,23 @@ def test_declared_account_risk_stop_is_activated_with_fee_aware_cash():
 
 
 def test_adaptive_high_water_profit_trail_is_causal_and_not_best_future_high():
-    quotes=[row("2025-06-09T09:36:03-04:00",1.20),
-            row("2025-06-09T09:36:04-04:00",1.50),
-            row("2025-06-09T09:36:05-04:00",1.60),
-            row("2025-06-09T09:36:06-04:00",1.43)]
+    # Gradual realistic increments rather than a manufactured 30-cent
+    # one-second jump that intentionally widens the volatility-aware trail.
+    quotes=[row(f"2025-06-09T09:36:{i+3:02d}-04:00",
+                float(f"{1.20+i*.01:.2f}"))
+            for i in range(41)]
+    quotes.append(row("2025-06-09T09:36:44-04:00",1.43))
     prefix=replay_adaptive_shadow(parent(quotes))
     longer=replay_adaptive_shadow(parent(quotes+
-        [row("2025-06-09T09:36:07-04:00",3.0)]))
+        [row("2025-06-09T09:36:45-04:00",3.0)]))
     for report in (prefix,longer):
         assert report["exit_reason"]=="PROFIT_HIGH_WATER_TRAIL"
         assert report["candidate_exit"]["observed_bid"]=="1.43"
         assert report["net_pnl"]=="94.80"
-        assert report["observed_quotes"]==4
+        assert report["observed_quotes"]==len(quotes)
         assert report["highest_bid_observed_before_exit"]=="1.60"
         assert report["terminal_equity_if_resolved"]=="25094.80"
-        assert report["decision_journal"][2]["trail_active"] is True
+        assert report["decision_journal"][-2]["trail_active"] is True
         assert report["decision_journal"][-1]["decision"]=="PROFIT_HIGH_WATER_TRAIL"
 
 
