@@ -89,6 +89,7 @@ def test_native_original_stock_source_three_families_no_provider(tmp_path):
     assert report["cases"][0]["causal_decision"]["direction"]=="CALL"
     assert plan["demands"][0]["kwargs"]["strike"]=="103"
     assert plan["demands"][0]["kwargs"]["start_time_et"]=="09:40:01.000"
+    assert plan["demands"][0]["selection_at_et"].endswith("09:40:00-04:00")
     assert report["cases"][1]["status"]=="NO_SIGNAL"
     assert report["cases"][2]["status"]=="NO_SIGNAL"
 
