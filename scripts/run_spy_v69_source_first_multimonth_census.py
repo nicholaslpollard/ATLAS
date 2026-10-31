@@ -198,7 +198,8 @@ def summarize_chunk(before, after, source_resolution, first, last, index):
 
 
 def run(start, end, output_dir, *, audit=v65_inspect,
-        resolve=resolve_strategy_source_demands, emit=info):
+        resolve=resolve_strategy_source_demands, emit=info,
+        session_calendar=None):
     # Validate the desired date interval before creating output or making
     # requests; contiguous chunks retain the full date scope without a
     # fixed lifetime roster or source-count cap.
