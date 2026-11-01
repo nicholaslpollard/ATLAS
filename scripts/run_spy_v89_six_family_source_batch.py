@@ -24,6 +24,7 @@ from packages.core.settings import load_settings
 from packages.data.alpaca_v2_rebuild import V2Layout
 from packages.data.intraday_semantics_audit import (
     B34_MAX_SAMPLE_DATE,discover_minute_units,_sample_rows,validate_minute_rows,
+    IntradaySemanticsAuditError,
 )
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.data.options_on_demand_source_cache_v38 import normalize_source_requirement
@@ -140,7 +141,7 @@ def run(start,end,output,*,acquire_options=False,
         if prev:
             try:
                 prior=previous_session_close(day_rows(prev),prev,calendar)
-            except (V89Error,ValueError,KeyError) as exc:
+            except (V89Error,ValueError,KeyError,IntradaySemanticsAuditError,OSError) as exc:
                 failures.append({"session":day.isoformat(),
                                  "reason":"PRIOR_STOCK_CLOSE_SOURCE_NOT_VERIFIED",
                                  "error_type":type(exc).__name__})
