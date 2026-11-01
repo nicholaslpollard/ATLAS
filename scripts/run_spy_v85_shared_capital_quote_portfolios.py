@@ -2,8 +2,8 @@ from __future__ import annotations
 
 """V85: original-source-linked shared-capital quote-reference simulator.
 
-Reads previously completed V83 and V84 evidence and *all* 606 original
-compressed journals with SHA verification. Absolutely no ThetaData GET,
+Reads previously completed V83 and V84 evidence and *all* source-derived
+original compressed journals with SHA verification. Absolutely no ThetaData GET,
 broker order, implied fill, missing-source healing or future-price selection.
 """
 
@@ -71,21 +71,28 @@ def verify_input(v83dir,v84dir,*,announce=log):
             or outcomes["parent_v83_summary_sha"]!=pre["fingerprint"]
             or windows["parent_candidate_outcomes_sha"]!=outcomes["fingerprint"]
             or pre["planned_exact_option_demands"]!=early["candidate_sources"]
-            or early["candidate_sources"]!=101
+            or early["candidate_sources"]<1
             or early["trial_count"]!=len(outcomes["trials"])
-            or early["trial_count"]!=606
+            or early["trial_count"]!=early["candidate_sources"]*len(POLICIES)*len(LAGS)
             or len(screen["cases"])!=pre["family_cases"]
-            or pre["family_cases"]!=384
+            or pre["family_cases"]!=pre["sessions"]*3
             or early["provider_requests"]!=0 or early["broker_orders"]!=0
             or pre["broker_orders"]!=0 or early["actual_broker_fills"]!=0):
         raise V85Error("V85_V83_V84_PARENT_CHAIN_OR_ACCOUNT_AUTHORITY_DRIFT")
     selected=[x for x in screen["cases"] if x["status"]=="OPTIONS_EXACT_SOURCE_DEMAND_PREPARED"]
     no_signal=[x for x in screen["cases"] if x["status"]=="NO_SIGNAL"]
-    if len(selected)!=101 or len(no_signal)!=283:
+    unqualified=[x for x in screen["cases"] if x["status"]=="SOURCE_UNQUALIFIED_NO_TRADE"]
+    if (len(selected)!=early["candidate_sources"]
+            or len(selected)+len(no_signal)+len(unqualified)!=len(screen["cases"])):
         raise V85Error("V85_ORIGINAL_ENTRY_OPPORTUNITY_DENOMINATOR_DRIFT")
+    all_ids={(x["session"],x["strategy"]) for x in screen["cases"]}
     original_ids={(x["session"],x["strategy"]) for x in selected}
-    if len(original_ids)!=101:
+    if len(all_ids)!=len(screen["cases"]) or len(original_ids)!=len(selected):
         raise V85Error("V85_DUPLICATE_ORIGINAL_STRATEGY_OPPORTUNITY")
+    if (screen.get("xnys_sessions",pre["sessions"])!=pre["sessions"]
+            or screen.get("option_source_requirements_prepared",len(selected))!=len(selected)
+            or pre.get("entry_dispositions",{}).get("OPTIONS_EXACT_SOURCE_DEMAND_PREPARED",len(selected))!=len(selected)):
+        raise V85Error("V85_ORIGINAL_SIGNED_SOURCE_DENOMINATOR_MISMATCH")
     announces_every=60
     trials=[]
     keys=set()
@@ -139,7 +146,7 @@ def verify_input(v83dir,v84dir,*,announce=log):
         for policy in POLICIES for lag in LAGS
     }
     if keys!=expected:
-        raise V85Error("V85_NOT_ALL_101_ORIGINAL_SIGNALS_6_VARIANTS_PRESENT")
+        raise V85Error("V85_MISSING_ORIGINAL_SIGNALS_OR_REGISTERED_VARIANTS")
     return pre,screen,early,outcomes,trials
 
 
@@ -149,7 +156,7 @@ def run(v83dir,v84dir,output,*,announce=log):
     announce("STAGE_START V85 immutable V83/V84 evidence SHA audit "
              "provider_calls=0 broker_orders=0")
     pre,screen,early,outcomes,trials=verify_input(v83dir,v84dir,announce=announce)
-    announce("STAGE_PASS V85 original signatures and 606 compressed event journals")
+    announce(f"STAGE_PASS V85 original signatures and {len(trials)} compressed event journals")
     output.mkdir(parents=True,exist_ok=False)
     portfolio_runs=[]
     progress=10
@@ -228,7 +235,7 @@ def run(v83dir,v84dir,output,*,announce=log):
         "original_spy_sessions":pre["sessions"],
         "all_original_strategy_decisions":len(screen["cases"]),
         "original_no_signal_decisions":sum(x["status"]=="NO_SIGNAL" for x in screen["cases"]),
-        "original_signed_option_candidates":101,
+        "original_signed_option_candidates":len({(t["session"],t["strategy"]) for t in trials}),
         "original_sha_verified_trial_journals":len(trials),
         "portfolio_scenarios":len(portfolio_runs),
         "one_position_max_concurrent":True,
@@ -239,7 +246,7 @@ def run(v83dir,v84dir,output,*,announce=log):
         "provider_requests":0,"broker_orders":0,"actual_fills":0,
     })
     announce(f"COMPLETE V85 scenarios={len(portfolio_runs)} "
-             "original_journals_verified=606 source_gets=0 broker_orders=0")
+             f"original_journals_verified={len(trials)} source_gets=0 broker_orders=0")
     return summary
 
 
