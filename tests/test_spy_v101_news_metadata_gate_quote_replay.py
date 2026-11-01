@@ -201,3 +201,101 @@ def test_unresolved_signed_account_never_promoted_to_complete_quote_pnl(monkeypa
     assert out["quote_pnl_usd"] is None
     assert out["original_account_sha"] == "a"*64
     assert out["unresolved_open_entry_premium_usd"] == "175.00"
+
+
+def _real_v90_pair(*, pnl="35.20", unresolved=False, rejected=False):
+    """Actual V84/V86 signed original-shape fixture through unmodified V90."""
+    from packages.simulation.spy_v84_offline_three_family_economics import signed as s84
+    from packages.simulation.spy_v86_original_option_exit_recheck import signed as s86
+    day = "2024-01-02"
+    status = ("NO_ENTRY" if rejected else
+              "UNRESOLVED_POSITION" if unresolved else "CLOSED_QUOTE_REFERENCE")
+    a = s84({
+        "contract": "atlas-v84-offline-three-family-option-quote-shadow-v1",
+        "session": day, "strategy": "acceleration_0940",
+        "policy": "balanced_35_100", "lag_seconds": 3,
+        "decision_at_et": day + "T09:40:01-05:00",
+        "entry_action_at_et": None if rejected else day + "T09:40:10-05:00",
+        "entry_debit_usd": None if rejected else "200.00",
+        "entry_qty": 0 if rejected else 2,
+        "status": status, "reason": "ENTRY_REJECTED" if rejected else "ORIGINAL_EXIT",
+        "source_query_id": "v101-synthetic-fixture",
+        "provider_requests": 0, "actual_broker_fills": 0,
+    })
+    b = s86({
+        "contract": "atlas-v86-original-option-exit-limit-recheck-v1",
+        "original_trial_sha": a["fingerprint"],
+        "session": day, "strategy": "acceleration_0940",
+        "policy": "balanced_35_100", "lag_seconds": 3,
+        "limit_rest_seconds": 10,
+        "status": status, "reason": "ENTRY_REJECTED" if rejected else "ORIGINAL_EXIT",
+        "exit_action_at_et": None if (unresolved or rejected)
+                             else day + "T09:41:10-05:00",
+        "quote_reference_pnl_usd": None if (unresolved or rejected) else pnl,
+        "quote_reference_pnl_2pct_bid_haircut_usd":
+            None if (unresolved or rejected) else pnl,
+        "provider_requests": 0, "actual_broker_fills": 0,
+    })
+    return a, b
+
+
+@pytest.mark.parametrize("pnl", ["35.20", "-35.20", "0.00"])
+def test_real_v90_signed_entry_to_v101_cash_result(pnl):
+    from packages.simulation.spy_v90_six_family_capital_ledger import simulate
+    result = v101.filtered_cash(
+        [_real_v90_pair(pnl=pnl)], missing=[], coverage_known=True,
+        simulate=simulate, scope="acceleration_0940",
+        policy="balanced_35_100", lag=3, dwell=10)
+    assert result["cash_equity_known"] is True
+    assert result["status"] == "COMPLETE_QUOTE_CASH"
+    assert result["quote_pnl_usd"] == pnl
+    assert result["unresolved_open_entry_premium_usd"] is None
+    assert result["account"]["actual_broker_orders"] == 0
+
+
+def test_real_v90_rejected_entry_to_v101_no_trade_result():
+    from packages.simulation.spy_v90_six_family_capital_ledger import simulate
+    result = v101.filtered_cash(
+        [_real_v90_pair(rejected=True)], missing=[], coverage_known=True,
+        simulate=simulate, scope="acceleration_0940",
+        policy="balanced_35_100", lag=3, dwell=10)
+    assert result["status"] == "COMPLETE_QUOTE_CASH"
+    assert result["quote_pnl_usd"] == "0"
+    assert result["account"]["dispositions"]["NO_ENTRY_REJECTED"] == 1
+
+
+def test_real_v90_unresolved_expiry_to_v101_censored_result():
+    from packages.simulation.spy_v90_six_family_capital_ledger import simulate
+    result = v101.filtered_cash(
+        [_real_v90_pair(unresolved=True)], missing=[], coverage_known=True,
+        simulate=simulate, scope="acceleration_0940",
+        policy="balanced_35_100", lag=3, dwell=10)
+    assert result["status"] == "SOURCE_OR_SETTLEMENT_CENSORED"
+    assert result["cash_equity_known"] is False
+    assert result["quote_pnl_usd"] is None
+    assert result["unresolved_open_entry_premium_usd"] == "200.00"
+    assert result["account"]["terminal_equity_known_if_flat_usd"] is None
+
+
+def test_source_missing_stays_censored_even_with_closed_quote():
+    from packages.simulation.spy_v90_six_family_capital_ledger import simulate
+    result = v101.filtered_cash(
+        [_real_v90_pair()], missing=[{"session":"2024-01-03"}],
+        coverage_known=True, simulate=simulate, scope="acceleration_0940",
+        policy="balanced_35_100", lag=3, dwell=10)
+    assert result["status"] == "SOURCE_OR_SETTLEMENT_CENSORED"
+    assert result["quote_pnl_usd"] is None
+    assert result["original_missing_source_candidates"] == 1
+    assert result["account"]["closed_trade_stressed_quote_pnl_usd"] == "35.20"
+
+
+def test_unknown_news_coverage_does_not_call_capital_simulation():
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unknown news must not become a simulated flat account")
+    result = v101.filtered_cash(
+        [], missing=[], coverage_known=False, simulate=forbidden,
+        scope="acceleration_0940", policy="balanced_35_100",
+        lag=3, dwell=10)
+    assert result["status"] == "NEWS_COVERAGE_UNQUALIFIED"
+    assert result["cash_equity_known"] is False
+    assert result["quote_pnl_usd"] is None
