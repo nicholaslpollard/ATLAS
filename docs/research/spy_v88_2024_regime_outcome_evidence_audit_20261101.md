@@ -64,3 +64,21 @@ The combined capital account is NOT the arithmetic sum of independently simulate
 **FAIL: historical regime robustness** for all three original families and the combined account. Earlier favorable 2025/2026 quote outputs **remain valid as source-linked observations** but do not establish portable profit. Do **NOT** promote `failed_breakout_fade_0940`, the other two original families, or the all-family mixed strategy to live trading or label them profitable. Replacing 3-second action delay with the best backtested delay, excluding May/Aug 2024 after seeing losses, treating hypothetical BID as guaranteed fills, or cherry-picking a policy is NOT valid forward validation.
 
 ATLAS next should stop investing further paid source acquisition into *this exact three-family unchanged system* until a genuinely new ex-ante hypothesis exists. Reuse already archived sources for **diagnostic** research: identify underlying stock/option market differences, signed rejection causes, and exit-order price sensitivity without changing prior reported outcomes. Develop a substantively distinct strategy in a separately labeled **development** cohort, predefine execution and risk assumptions, then reserve a genuinely new period for prospective validation. Protected master holdout **2026-05-12 through 2026-08-11 remains sealed**; do not open for an already failed candidate.
+
+## Independent signed exit-reason decomposition (frozen replay only)
+
+In addition to the 75 quote-cash ledger exits, the original compressed V86 journals were read for each frozen primary (lag 3s / balanced / 10s), **without recategorizing exits** or changing original stop/target decisions. The reason strings were authenticated by the signed original V86 journal hashes. Dollar values are the original stressed quote economics after the 2% haircut.
+
+| Original recorded exit reason | 2024 75 modeled entries | 2025 H2 39 modeled entries | 2026 Jan–Apr 17 modeled entries |
+| --- | ---: | ---: | ---: |
+| STOP_LOSS | **26**, −$4,122.10 | **10**, −$1,317.16 | **3**, −$472.24 |
+| CAUSAL_TRAIL | **46**, +$2,200.22 | **27**, +$1,478.32 | **12**, +$503.42 |
+| PROFIT_TARGET | **2**, +$793.88 | **2**, +$810.52 | **2**, +$852.52 |
+| MAX_HOLD | **1**, −$21.96 | 0 | 0 |
+| **Total original stressed P&L** | **−$1,149.96** | **+$971.68** | **+$883.70** |
+
+The difference is important: original 2024 STOP_LOSS outcomes were **26/75 = 34.7%** of modeled entries; 2025 H2 had **10/39 = 25.6%**, and 2026 Jan–Apr **3/17 = 17.6%**. In all three samples, just two PROFIT_TARGET outcomes supplied substantial gross gains, but the 2024 stop-loss frequency and gross dollar loss overwhelmed the 46 original positive-trail outcomes plus two targets. This is an **observed retrospective exit-reason explanation, not a validated causal pre-entry regime indicator**. Stop-loss versus trail is known only after entry and MUST NOT be used as a look-ahead trade filter.
+
+### Original fixed-limit marketability conditional diagnostics, not fill proof
+
+Original frozen 2024 75 accepted exits: at-action limit quote-marketable **44 trades, −$720.38**; later fixed-limit quote-marketable during original 10s rest **16 trades, −$46.06**; hypothetical cancel/reprice BID quote reference **15 trades, −$383.52**. The three classifications sum to −$1,149.96 and represent post-entry outcomes; differences are affected by original price-path, cannot establish execution advantage and cannot be used as retrospective entry rules. Historical quote sizes, queue priority, cancel acknowledgement, partial fills and realistic spread/market orders remain unverified.
