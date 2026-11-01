@@ -134,6 +134,13 @@ def run(research_dir: Path,output_parent: Path,*,max_part_mib=90,
         for original,alias in group:
             if original.is_symlink() or not original.is_file():
                 raise BundleError("SOURCE_FILE_CHANGED_OR_BECAME_SYMLINK")
+            if original.suffix==".zip":
+                try:
+                    with zipfile.ZipFile(original,"r") as source_zip:
+                        if source_zip.testzip() is not None:
+                            raise BundleError("EXISTING_ORIGINAL_RESEARCH_ZIP_CRC_INVALID")
+                except zipfile.BadZipFile as exc:
+                    raise BundleError("EXISTING_ORIGINAL_RESEARCH_ZIP_INVALID") from exc
             members.append({
                 "name":alias,
                 "source_size_bytes":original.stat().st_size,
