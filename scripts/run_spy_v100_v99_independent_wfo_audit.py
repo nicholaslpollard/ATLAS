@@ -71,7 +71,8 @@ def scenario_key(item):
 
 def source_journal_audit(root,manifest):
     entries=manifest["source_tape_family_journals"]
-    if len(entries)!=manifest["total_source_family_journals"]!=630:
+    if (len(entries)!=manifest["total_source_family_journals"]
+            or len(entries)!=630):
         raise V100Error("V100_630_ORIGINAL_TRIAL_JOURNALS_REQUIRED")
     status=Counter()
     cohorts=Counter()
