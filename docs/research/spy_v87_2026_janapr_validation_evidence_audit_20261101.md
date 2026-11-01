@@ -47,3 +47,19 @@ Combined 2026 January–April account is negative **-$325.82**, with 49 accepted
 The next research gate must emphasize original-order marketability, hypothetical fill assumptions, overconcentration and *independent forward evidence*; do not optimize 2026 for a different exit/rest combination. At minimum, require additional independently timed source periods or actual clocked paper-order observations (never fake broker fills), severe extra slippage and outlier-deletion robustness checks, and model expiration/assignment risks explicitly before any live-trading proposal. Maintain the one-slot $25,000 model and original frozen decision clock in all such comparators.
 
 Status: **2026 temporal validation PASS as source-linked, signed offline research; NOT a strategy-promotion pass**.
+
+## Extra execution-price fragility sweep (post-validation diagnostic; NOT a strategy choice)
+
+Independent analyst recomputed each original **preselected and signed trade** using its original logged option exit BID, signed action quantity, original entry debit and $0.65 per-contract exit fee. The original 2% stressed P&L of 2025 H2 and 2026 Jan–Apr was reproduced **exactly cent for cent** before evaluating any additional haircuts. Entry opportunities, no-entry rejections, exit action clocks, quantities, option strikes, monthly periods and strategy configuration remain unchanged. Added haircuts are **post-result execution sensitivity diagnostics only**.
+
+| Adverse exit BID haircut | 2025 H2 39 exit quotes | 2026 Jan–Apr 17 exit quotes |
+| --- | ---: | ---: |
+| 0% (observed BID reference) | +$1,303.60 | +$1,047.00 |
+| 2% (preregistered case) | +$971.68 | +$883.70 |
+| 4% | +$639.76 | +$720.40 |
+| 6% | +$307.84 | +$557.10 |
+| 8% | **-$24.08** | +$393.80 |
+| 10% | **-$356.00** | +$230.50 |
+
+There are 118 modeled contracts across 39 accepted 2025 entries and 40 modeled contracts across 17 accepted 2026 entries (contract count here counts *trade quantities*, not unique listings). The results still rely on **full hypothetical exit of each modeled quantity** at the registered historical quote minus chosen haircut, and therefore do not establish actual fills, queue priority, bid depth throughout that quantity, exercise loss, or live slippage distributions. The 2025 H2 result turns negative by an 8% haircut; neither period passes a true fill-verification gate.
+
