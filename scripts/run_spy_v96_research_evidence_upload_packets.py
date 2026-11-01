@@ -127,7 +127,7 @@ def source_code_strategy_census(repo_root:Path) -> dict:
     reg=base/"registry.py"
     reference_ids=(re.findall(r'strategy_id="([^"]+)"',
                        ref.read_text(encoding="utf8")) if ref.is_file() else [])
-    registry_ids=(re.findall(r'_rule\\(\\s*"([^"]+)"',
+    registry_ids=(re.findall(r'_rule\(\s*"([^"]+)"',
                        reg.read_text(encoding="utf8")) if reg.is_file() else [])
     return {
         "strategy_python_files":len(files),
