@@ -173,3 +173,97 @@ def test_static_strategy_code_inventory_counts_reference_not_placeholders():
     assert len(r["generic_daily_strategy_registry_ids"])==8
     assert r["empty_placeholders"]>=1
     assert r["outside_V89_strategies_option_adapter_is_not_yet_qualified"] is True
+
+
+def source_missing_fixture(root,folder,index,reason):
+    """Produce a genuinely SHA-linked V89 source-unqualified no-decision row."""
+    entry_file=folder/"entry_screen.json"
+    plan_file=folder/"exact_option_source_plan.json"
+    receipt_file=folder/"source_receipts.json"
+    summary_file=folder/"summary.json"
+    entry=json.loads(entry_file.read_text())
+    no_source=entry["cases"][index]
+    assert no_source["status"]=="NO_SIGNAL"
+    no_source["causal_decision"]=None
+    no_source["status"]="SOURCE_UNQUALIFIED_NO_TRADE"
+    no_source["reason"]=reason
+    no_source.pop("stock_source_sha256",None)
+    entry=signed({k:v for k,v in entry.items() if k!="fingerprint"})
+    dump(entry_file,entry)
+    plan=json.loads(plan_file.read_text())
+    plan["parent_entry_sha"]=entry["fingerprint"]
+    plan=signed({k:v for k,v in plan.items() if k!="fingerprint"})
+    dump(plan_file,plan)
+    receipts=json.loads(receipt_file.read_text())
+    receipts["parent_plan_sha"]=plan["fingerprint"]
+    receipts=signed({k:v for k,v in receipts.items() if k!="fingerprint"})
+    dump(receipt_file,receipts)
+    summary=json.loads(summary_file.read_text())
+    summary["entry_sha"]=entry["fingerprint"]
+    summary["source_plan_sha"]=plan["fingerprint"]
+    summary["receipt_sha"]=receipts["fingerprint"]
+    summary=signed({k:v for k,v in summary.items() if k!="fingerprint"})
+    dump(summary_file,summary)
+
+
+@pytest.mark.parametrize("reason",[
+    "V89_PRIOR_CLOSE_UNAVAILABLE",
+    "V89_EXACT_CLOSED_MINUTES_REQUIRED",
+])
+def test_original_source_unqualified_null_decision_is_preserved_as_no_trade(
+    tmp_path,monkeypatch,reason
+):
+    root,folder=fixture(tmp_path)
+    source_missing_fixture(root,folder,4,reason)
+    monkeypatch.setattr(v97,"COHORTS",{
+        "2019_full":("2022-01-01","2022-12-31",
+                     "spy_v95_v89_six_families_2022_full_*")})
+    monkeypatch.setattr(v97,"code_census",lambda root:{})
+    out=tmp_path/"report"
+    summary=v97.run(root,out,reporter=lambda _:None)
+    assert v97.verify(summary)
+    assert summary["original_stock_source_unqualified_null_decision_considerations"]==1
+    assert summary["no_signal_or_no_demand_considerations"]==3
+    assert summary["original_CALL_sources_archived"]==1
+    data=json.loads((out/"original_call_source_considerations.json").read_text())
+    missing=[x for x in data["decisions"] if
+             x["CALL_only_source_status"]==
+             "ORIGINAL_STOCK_SOURCE_UNQUALIFIED_NO_CAUSAL_DECISION"]
+    assert len(missing)==1
+    row=missing[0]
+    assert row["original_reason"]==reason
+    assert row["source_unqualified_null_original_decision"] is True
+    assert row["original_decision_sha"] is None
+    assert row["original_stock_sha256"] is None
+    assert row["as_of_stock_feature_values"] is None
+    assert row["original_side"] is None
+    assert row["decision_at_et"] is None
+    assert row["call_original_source_sha256"] is None
+    assert row["exact_option_query_id"] is None
+    assert row["historical_broker_fill_verified"] is False
+
+
+def test_null_decision_cannot_mask_a_real_option_source_request(tmp_path,monkeypatch):
+    root,folder=fixture(tmp_path)
+    entry_file=folder/"entry_screen.json"
+    entry=json.loads(entry_file.read_text())
+    entry["cases"][0]["causal_decision"]=None
+    entry=signed({k:v for k,v in entry.items() if k!="fingerprint"})
+    dump(entry_file,entry)
+    monkeypatch.setattr(v97,"COHORTS",{
+        "2019_full":("2022-01-01","2022-12-31",
+                     "spy_v95_v89_six_families_2022_full_*")})
+    with pytest.raises(v97.V97AError):
+        v97.run(root,tmp_path/"should_not_exist",reporter=lambda _:None)
+    assert not (tmp_path/"should_not_exist").exists()
+
+
+def test_malformed_source_null_reason_not_silently_accepted(tmp_path,monkeypatch):
+    root,folder=fixture(tmp_path)
+    source_missing_fixture(root,folder,3,"NOT_AN_ORIGINAL_V89_SOURCE_REASON")
+    monkeypatch.setattr(v97,"COHORTS",{
+        "2019_full":("2022-01-01","2022-12-31",
+                     "spy_v95_v89_six_families_2022_full_*")})
+    with pytest.raises(v97.V97AError,match="NULL_DECISION_SOURCE_REJECTION"):
+        v97.run(root,tmp_path/"should_not_exist",reporter=lambda _:None)
+    assert not (tmp_path/"should_not_exist").exists()
