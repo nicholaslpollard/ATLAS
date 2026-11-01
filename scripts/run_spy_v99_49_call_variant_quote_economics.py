@@ -160,6 +160,30 @@ def inspect_v98(v97b_dir,v98_dir,calendar):
     if (len(expected_new)!=209 or len(cached)!=17
             or expected_new!=set(original_index)-set(cached)):
         raise V99Error("V99_FIRST_DISPATCH_SOURCE_INTENTS_CHANGED")
+    journal=v98_dir/"source_events.jsonl"
+    if not journal.is_file() or journal.is_symlink():
+        raise V99Error("V99_ORIGINAL_V98_DISPATCH_JOURNAL_MISSING")
+    last=None
+    event_count=0
+    kinds=Counter()
+    observed_queries={"source_started":set(),"provider_dispatch":set(),
+                      "source_done":set()}
+    with journal.open("r",encoding="utf8") as stream:
+        for line in stream:
+            row=check(json.loads(line),V98+"-source-event-journal-v1")
+            event_count+=1
+            if (row["sequence"]!=event_count or row["previous_event_sha"]!=last
+                    or row["event"] not in observed_queries
+                    or row["query_id"] not in expected_new):
+                raise V99Error("V99_ORIGINAL_V98_DISPATCH_EVENT_CHAIN_INVALID")
+            observed_queries[row["event"]].add(row["query_id"])
+            kinds[row["event"]]+=1
+            last=row["fingerprint"]
+    if (event_count!=627 or last!=results["source_events_sha_head"]
+            or results["source_event_count"]!=event_count
+            or any(kinds[x]!=209 or observed_queries[x]!=expected_new
+                   for x in observed_queries)):
+        raise V99Error("V99_INCOMPLETE_OR_UNTRUSTED_V98_PROVIDER_EVENTS")
     receipts={}
     for row in results["verified_cached_or_fetched_receipts"]:
         qid=row["query_id"]
