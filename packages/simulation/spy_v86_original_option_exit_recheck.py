@@ -96,6 +96,15 @@ def recheck(trial,source,prepared,*,dwell_seconds):
     if (type(orig_marketable) is not bool
             or orig_marketable!=(original_bid>=trigger_bid)):
         raise V86Error("V86_ORIGINAL_EXIT_MARKETABILITY_CHANGED")
+    # Reconstruct V84 trigger and action BID from the same original tape
+    # before extending the subsequent marketability-check clock.
+    trigger_quote=next((q for at,q,err,idx in prepared if at==trigger_at),None)
+    action_quote=next((q for at,q,err,idx in prepared if at==action),None)
+    if (trigger_quote is None or action_quote is None
+            or Decimal(trigger_quote["bid"])!=trigger_bid
+            or Decimal(action_quote["bid"])!=original_bid
+            or action_quote["bid_size"]<qty):
+        raise V86Error("V86_ORIGINAL_TRIGGER_OR_ACTION_QUOTE_NOT_REPRODUCIBLE")
 
     def completed(at,bid,*,kind):
         credit=money(qty*(bid*100-FEE))
