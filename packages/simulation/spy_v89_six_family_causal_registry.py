@@ -97,9 +97,13 @@ def evaluate(family,*,session,stock_source_sha,bars,
         raise V89Error("V89_EXACT_CLOSED_MINUTES_REQUIRED")
     ordered={}
     for bar in bars:
-        at=datetime.fromisoformat(bar["minute_at_et"]).astimezone(ET)
-        available=datetime.fromisoformat(bar["available_at_et"]).astimezone(ET)
-        if (at.utcoffset() is None or available.utcoffset() is None
+        source_at=datetime.fromisoformat(bar["minute_at_et"])
+        source_available=datetime.fromisoformat(bar["available_at_et"])
+        if source_at.utcoffset() is None or source_available.utcoffset() is None:
+            raise V89Error("V89_NAIVE_ORIGINAL_SOURCE_CLOCK")
+        at=source_at.astimezone(ET)
+        available=source_available.astimezone(ET)
+        if (available.utcoffset() is None
                 or available<at+timedelta(minutes=1) or available>decision
                 or at.date()!=day or at.second!=0):
             raise V89Error("V89_FUTURE_OR_NOT_YET_PUBLISHED_MINUTE")
@@ -164,8 +168,12 @@ def evaluate(family,*,session,stock_source_sha,bars,
             if (prior_close is None or prior_close_at_et is None
                     or prior_close_available_at_et is None):
                 raise V89Error("V89_GAP_PRIOR_SESSION_CLOSE_REQUIRED")
-            pat=datetime.fromisoformat(prior_close_at_et).astimezone(ET)
-            pav=datetime.fromisoformat(prior_close_available_at_et).astimezone(ET)
+            original_pat=datetime.fromisoformat(prior_close_at_et)
+            original_pav=datetime.fromisoformat(prior_close_available_at_et)
+            if original_pat.utcoffset() is None or original_pav.utcoffset() is None:
+                raise V89Error("V89_NAIVE_PRIOR_STOCK_CLOSE_CLOCK")
+            pat=original_pat.astimezone(ET)
+            pav=original_pav.astimezone(ET)
             if pat.date()>=day or pav<pat or pav>decision:
                 raise V89Error("V89_PRIOR_CLOSE_NOT_CAUSALLY_AVAILABLE")
             gap=percent(o,decimal(prior_close))
