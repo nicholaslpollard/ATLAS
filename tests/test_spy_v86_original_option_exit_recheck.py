@@ -141,8 +141,8 @@ def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path):
         srcrows=[]
         for j in range(17):
             bid="1.91" if j!=6 else "1.96"
-            if j==4:bid="1.95"
-            if j==5:bid="1.90"
+            if j==3:bid="1.95"
+            if j==4:bid="1.90"
             srcrows.append({
                 "ms_of_day":(9*3600+40*60+1+j)*1000,
                 "symbol":"SPY","expiration":day,"strike":"617","right":"call",
