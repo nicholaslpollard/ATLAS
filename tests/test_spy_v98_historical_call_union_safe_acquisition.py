@@ -75,14 +75,16 @@ def test_sqlite_source_index_read_only_unknown_and_no_data(tmp_path,monkeypatch)
                               ("2022-12-05","NO_DATA_EXPLICIT"),
                               ("2022-12-07","ARCHIVED"),
                               ("2022-12-09","IN_FLIGHT")]:
-            item=v98.build_requirement(preview(session),Calendar())
+            source_plan=preview(session)
+            item={**source_plan,**v98.build_requirement(source_plan,Calendar())}
             states.append(item)
             expected=normalize_source_requirement(item["method"],item["kwargs"])
             conn.execute("INSERT INTO sources VALUES (?,?,?,?,?,?,?,?)",
                          (item["query_id"],json.dumps(expected,sort_keys=True,
                             separators=(",",":")),state,1,
                           "a"*64,"b"*64,"data/options/test.json.gz",1))
-    missing=v98.build_requirement(preview("2022-12-12"),Calendar())
+    missing_plan=preview("2022-12-12")
+    missing={**missing_plan,**v98.build_requirement(missing_plan,Calendar())}
     calls=[]
     def unpack(settings,row,request):
         calls.append(row[2])
@@ -105,6 +107,15 @@ def test_sqlite_source_index_read_only_unknown_and_no_data(tmp_path,monkeypatch)
     ]
     assert calls==["NO_DATA_EXPLICIT","ARCHIVED"]
     assert sum(x["new_request_eligible_for_first_dispatch"] for x in results)==1
+    assert [x["date_et"] for x in results]==[
+        "2022-12-02","2022-12-05","2022-12-07",
+        "2022-12-09","2022-12-12",
+    ]
+    assert all(x["right"]=="call" and x["strike"]=="400" for x in results)
+    assert all(x["query_retry_automatically_authorized"] is False for x in results)
+    assert results[-1]["original_variant_ids"]==[
+        "V97B-impulse_0935-00",
+    ]
 
 
 def test_first_time_acquisition_queues_only_read_only_not_registered(
