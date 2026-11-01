@@ -121,17 +121,28 @@ def chain_months(months, *, calendar_sessions, initial=START):
         if not isinstance(month, dict) or month.get("month") is None:
             raise V103Error("V103_MONTH_RECORD_INVALID")
         report = month.get("original_v65")
+        compact = month.get("classified_sessions")
+        if report is not None and compact is not None:
+            raise V103Error("V103_DUPLICATED_RAW_AND_COMPACT_MONTH")
         if report is not None:
             if not verify(report) or report.get("contract") != V65:
                 raise V103Error("V103_V65_MONTH_SIGNED_PARENT_INVALID")
             ancestry.append(report["fingerprint"])
-            for row in report["session_reports"]:
-                day = date.fromisoformat(row["session"])
-                if day in day_lookup:
-                    raise V103Error("V103_DUPLICATE_SOURCE_SESSION")
-                day_lookup[day] = row
+            source_rows = report["session_reports"]
+        elif compact is not None:
+            if (not isinstance(month.get("original_v65_sha"), str)
+                    or len(month["original_v65_sha"]) != 64):
+                raise V103Error("V103_COMPACT_PARENT_SHA_MISSING")
+            ancestry.append(month["original_v65_sha"])
+            source_rows = compact
         else:
             ancestry.append(None)
+            source_rows = []
+        for row in source_rows:
+            day = date.fromisoformat(row["session"])
+            if day in day_lookup:
+                raise V103Error("V103_DUPLICATE_SOURCE_SESSION")
+            day_lookup[day] = row
     censored = False
     first_block = None
     events = []
@@ -145,8 +156,20 @@ def chain_months(months, *, calendar_sessions, initial=START):
     for day in calendar_sessions:
         key = day.isoformat()
         if day in day_lookup:
-            verdict, detail = classify(day_lookup[day], day)
-            source_parent = day_lookup[day]["fingerprint"]
+            row = day_lookup[day]
+            if row.get("compact_v103_disposition") is True:
+                if not verify(row) or row.get("original_v65_session_sha") is None:
+                    raise V103Error("V103_COMPACT_SIGNED_SESSION_INVALID")
+                verdict, detail = row["disposition"], row["detail"]
+                if verdict not in ("POLICY_EXCLUDED", "VERIFIED_NO_SIGNAL",
+                                   "STOCK_SOURCE_CENSORED", "OPTION_SOURCE_CENSORED",
+                                   "SOURCE_VERIFIED_ENTRY_REJECTED",
+                                   "CLOSED_QUOTE_REFERENCE", "UNKNOWN_EXIT_CENSORED"):
+                    raise V103Error("V103_COMPACT_DISPOSITION_INVALID")
+                source_parent = row["original_v65_session_sha"]
+            else:
+                verdict, detail = classify(row, day)
+                source_parent = row["fingerprint"]
         else:
             relevant = next((m for m in months if m["month"] == key[:7]), None)
             if relevant is None:
