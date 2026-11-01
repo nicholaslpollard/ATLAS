@@ -10,7 +10,7 @@ import zipfile
 import pytest
 
 from scripts.run_spy_v96_research_evidence_upload_packets import (
-    BundleError,collect,run,split_chunks,
+    BundleError,collect,run,split_chunks,source_code_strategy_census,
 )
 
 
@@ -100,3 +100,14 @@ def test_output_never_included_as_input(tmp_path):
     run(research,research,max_part_mib=10,stamp="one",reporter=lambda _:None)
     result=run(research,research,max_part_mib=10,stamp="two",reporter=lambda _:None)
     assert result["original_evidence_file_count"]==1
+
+
+def test_original_strategy_catalog_counts_do_not_treat_empty_files_as_runnable():
+    repo=Path(__file__).resolve().parents[1]
+    census=source_code_strategy_census(repo)
+    assert census["strategy_python_files"] >= 28
+    assert census["zero_byte_placeholders"] > 0
+    assert census["nonempty_files_including_infrastructure"] > 0
+    assert len(census["reference_strategy_ids"])==9
+    assert len(census["default_daily_registry_ids"])==8
+    assert census["all_strategies_historically_tested"] is False
