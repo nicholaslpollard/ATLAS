@@ -117,6 +117,9 @@ def chain_months(months, *, calendar_sessions, initial=START):
         raise V103Error("V103_CALENDAR_DUPLICATE_OR_ORDER_INVALID")
     day_lookup = {}
     ancestry = []
+    month_keys = [m.get("month") for m in months if isinstance(m, dict)]
+    if (len(month_keys) != len(months) or month_keys != sorted(set(month_keys))):
+        raise V103Error("V103_MONTH_RECORD_ORDER_OR_DUPLICATE_INVALID")
     for month in months:
         if not isinstance(month, dict) or month.get("month") is None:
             raise V103Error("V103_MONTH_RECORD_INVALID")
@@ -140,6 +143,8 @@ def chain_months(months, *, calendar_sessions, initial=START):
             source_rows = []
         for row in source_rows:
             day = date.fromisoformat(row["session"])
+            if day.strftime("%Y-%m") != month["month"]:
+                raise V103Error("V103_ORIGINAL_SESSION_MONTH_IDENTITY_DRIFT")
             if day in day_lookup:
                 raise V103Error("V103_DUPLICATE_SOURCE_SESSION")
             day_lookup[day] = row
