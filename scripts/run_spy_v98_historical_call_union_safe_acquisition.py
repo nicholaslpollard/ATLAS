@@ -245,6 +245,11 @@ def run(preview_dir,output,*,acquire=False,
     summary,events,original,distinct=verify_preview(preview_dir,calendar)
     settings=settings_factory(ROOT,"development")
     read_states=read_only_v38_state(settings,distinct)
+    intended={r["query_id"] for r in distinct}
+    observed=[r["query_id"] for r in read_states]
+    if (len(read_states)!=len(distinct) or len(set(observed))!=len(observed)
+            or set(observed)!=intended):
+        raise V98Error("V98_READ_ONLY_QUERY_ID_CENSUS_INCOMPLETE_OR_MUTATED")
     counts=dict(sorted(Counter(x["read_only_v38_state"]
                                for x in read_states).items()))
     output.mkdir(parents=True,exist_ok=False)
