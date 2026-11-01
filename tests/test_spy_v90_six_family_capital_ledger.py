@@ -101,3 +101,14 @@ def test_higher_reference_pnl_not_used_as_prior_hindsight_selection():
     assert r["closed_trade_stressed_quote_pnl_usd"]=="-60.00"
     assert r["largest_positive_1_stressed_quote_usd"] is None
     assert r["pnl_excluding_top_two_positive_quote_outcomes_usd"]=="-60.00"
+
+
+def test_actual_causal_entry_action_clock_precedes_registration_order():
+    later=pair("later","acceleration_0940",start="09:40:14",
+               exit_at="09:41:30",pnl="800.00")
+    earlier=pair("earlier","pullback_resume_0940",start="09:40:07",
+                 exit_at="09:41:30",pnl="-25.00")
+    r=run([later,earlier])
+    assert r["closed_trade_stressed_quote_pnl_usd"]=="-25.00"
+    assert r["dispositions"]["BLOCKED_SHARED_CAPITAL_POSITION_BUSY"]==1
+    assert r["actual_broker_fills"]==0
