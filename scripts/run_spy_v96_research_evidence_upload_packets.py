@@ -61,7 +61,9 @@ def _sha(path: Path) -> str:
 
 
 def collect(research_dir: Path) -> tuple[list[tuple[Path,str]],list[str]]:
-    if not research_dir.is_dir() or research_dir.is_symlink():
+    # The user may intentionally bind data/research to D: by a Windows
+    # junction. Permit the selected root, but never follow child symlinks.
+    if not research_dir.is_dir():
         raise BundleError("RESEARCH_EVIDENCE_ROOT_INVALID")
     entries=[]
     skipped=[]
@@ -118,7 +120,7 @@ def split_chunks(files: list[tuple[Path,str]],max_bytes: int):
 def run(research_dir: Path,output_parent: Path,*,max_part_mib=90,
         stamp: str | None = None, reporter=print) -> dict:
     if (type(max_part_mib) is not int or not 10<=max_part_mib<=512
-            or not output_parent.is_dir() or output_parent.is_symlink()):
+            or not output_parent.is_dir()):
         raise BundleError("PACKET_LIMIT_OR_OUTPUT_PARENT_INVALID")
     files,missing=collect(research_dir)
     packet_groups=split_chunks(files,max_part_mib*1024*1024)
