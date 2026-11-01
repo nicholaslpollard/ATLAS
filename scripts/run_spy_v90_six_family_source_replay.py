@@ -99,7 +99,29 @@ def audit_input(folder):
             or len(entry["cases"])!=summary["market_sessions"]*len(FAMILIES)
             or not summary["all_required_sources_archived"]):
         raise V90BatchError("V90_ORIGINAL_SOURCE_CENSUS_OR_SHA_CHAIN_DRIFT")
+    # Verify the append-only signed acquisition journal, not only a final
+    # aggregate provider receipt. A partial/interrupted campaign cannot be
+    # silently reinterpreted as a complete historical quote population.
+    path=folder/"source_events.jsonl"
+    if not path.is_file() or path.is_symlink():
+        raise V90BatchError("V90_SIGNED_SOURCE_EVENT_CHAIN_MISSING")
+    parent=None
+    count=0
+    with path.open(encoding="utf8") as src:
+        for line in src:
+            event=json.loads(line)
+            count+=1
+            if (not verify89(event)
+                    or event["parent_event_sha"]!=parent
+                    or event["sequence"]!=count
+                    or event["contract"]!=V89+"-append-only-source-event-v1"):
+                raise V90BatchError("V90_SOURCE_EVENT_SHA_CHAIN_INVALID")
+            parent=event["fingerprint"]
+    if (count!=receipts["source_event_count"]
+            or parent!=receipts["last_event_sha"]):
+        raise V90BatchError("V90_PROVIDER_RECEIPT_EVENT_CHAIN_MISMATCH")
     candidate_map={}
+    dates=set()
     for case in entry["cases"]:
         if (case["strategy"] not in FAMILIES or
                 case["status"] not in ("NO_SIGNAL","OPTIONS_EXACT_SOURCE_DEMAND_PREPARED",
@@ -108,7 +130,20 @@ def audit_input(folder):
         k=(case["session"],case["strategy"])
         if k in candidate_map:
             raise V90BatchError("V90_DUPLICATE_CAUSAL_DECISION")
+        if case["status"]=="SOURCE_UNQUALIFIED_NO_TRADE":
+            if case.get("causal_decision") is not None or case.get("source_demand_sha") is not None:
+                raise V90BatchError("V90_UNQUALIFIED_STOCK_BECAME_TRADE")
+        else:
+            if (not verify89(case["causal_decision"])
+                    or case["causal_decision"]["strategy_id"]!=case["strategy"]
+                    or case["causal_decision"]["session"]!=case["session"]
+                    or (case["status"]=="NO_SIGNAL")!=(
+                        case["causal_decision"]["direction"] is None)):
+                raise V90BatchError("V90_STOCK_DECISION_SHA_OR_STATUS_CHANGED")
         candidate_map[k]=case
+        dates.add(case["session"])
+    if len(dates)!=summary["market_sessions"]:
+        raise V90BatchError("V90_STOCK_SESSION_CENSUS_CHANGED")
     if (len(plan["demands"])!=summary["exact_source_requirements"]
             or len(plan["demands"])!=len(receipts["original_provider_source_receipts"])):
         raise V90BatchError("V90_MISSING_HISTORICAL_OPTION_SOURCE")
