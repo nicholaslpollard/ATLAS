@@ -12,6 +12,7 @@ source rejections, hashes and top-two-win concentration. NO network.
 import argparse
 import csv
 from datetime import datetime
+from decimal import Decimal
 import hashlib
 import json
 import os
@@ -182,7 +183,7 @@ def run(inputs,out_dir):
                         })
                     if all(not x["unresolved_exercise_or_expiry_cash"] for x in triple):
                         complete_triples+=1
-                        if all(float(x["closed_trade_stressed_quote_pnl_usd"])>0 for x in triple):
+                        if all(Decimal(x["closed_trade_stressed_quote_pnl_usd"])>0 for x in triple):
                             completed_positive_all_cohorts+=1
     if len(rows)!=len(SCOPES)*len(POLICIES)*len(LAGS)*len(DWELLS)*len(COHORTS):
         raise V91Error("V91_INCOMPLETE_CROSS_COHORT_MATRIX")
