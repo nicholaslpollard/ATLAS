@@ -230,5 +230,5 @@ def test_serialize_strictly_before_writing_cohort_evidence(tmp_path):
     assert saved==result
     assert saved["historical_end"]=="2018-12-31"
     assert saved["fingerprint"]==_fingerprint({
-        k:v for k,v in saved.items() if k!="fingerprint",
+        k:v for k,v in saved.items() if k!="fingerprint"
     })
