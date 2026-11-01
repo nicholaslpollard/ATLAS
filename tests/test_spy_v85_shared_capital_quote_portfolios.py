@@ -87,29 +87,29 @@ def test_modified_trial_signature_is_rejected():
                  lag_seconds=1,mode="repriced_bid_quote_shadow")
 
 
-def _fixture_campaign(tmp_path):
+def _fixture_campaign(tmp_path, *, source_count=101, sessions=128):
     v83dir=tmp_path/"v83";v84dir=tmp_path/"v84";v83dir.mkdir();v84dir.mkdir()
     (v84dir/"journals").mkdir()
     families=SCOPES[1:]
     source_cases=[]
     trials=[]
     original_signal_ids=[]
-    for i in range(101):
+    for i in range(source_count):
         day=(date(2025,7,1)+timedelta(days=i)).isoformat()
         strategy=families[i%3]
         qid=f"{i+1:064x}"
         original_signal_ids.append((day,strategy,qid))
         source_cases.append({"session":day,"strategy":strategy,
                             "status":"OPTIONS_EXACT_SOURCE_DEMAND_PREPARED"})
-    for i in range(283):
+    for i in range(3*sessions-source_count):
         source_cases.append({"session":"2025-09-02",
                              "strategy":families[i%3],"status":"NO_SIGNAL"})
     v83screen=signed({"contract":v85.V83,"cases":source_cases})
     v83summary=signed({
         "contract":v85.V83+"-summary-v1",
         "entry_screen_sha":v83screen["fingerprint"],
-        "family_cases":384,"planned_exact_option_demands":101,
-        "sessions":128,"broker_orders":0,
+        "family_cases":3*sessions,"planned_exact_option_demands":source_count,
+        "sessions":sessions,"broker_orders":0,
     })
     outcomes=[]
     from packages.simulation.spy_v84_offline_three_family_economics import POLICIES,LAGS
@@ -143,7 +143,7 @@ def _fixture_campaign(tmp_path):
         "parent_v83_entry_sha":v83screen["fingerprint"],
         "candidate_outcomes_sha":v84out["fingerprint"],
         "window_economics_sha":v84windows["fingerprint"],
-        "candidate_sources":101,"trial_count":606,
+        "candidate_sources":source_count,"trial_count":source_count*6,
         "broker_orders":0,"provider_requests":0,"actual_broker_fills":0,
     })
     for folder,rows in ((v83dir,(("summary",v83summary),("entry_screen",v83screen))),
@@ -170,6 +170,30 @@ def test_all_606_archived_journals_are_verified_in_48_portfolios(tmp_path):
     assert len(compare["results"])==48
     assert all(x["historical_broker_fills"]==0 for x in compare["results"])
 
+
+
+def test_2026_period_77_sources_dynamic_census(tmp_path):
+    v83dir,v84dir=_fixture_campaign(tmp_path,source_count=77,sessions=82)
+    result=v85.run(v83dir,v84dir,tmp_path/"janapr_replay",announce=lambda _:None)
+    assert verified(result)
+    assert result["original_spy_sessions"]==82
+    assert result["all_original_strategy_decisions"]==246
+    assert result["original_no_signal_decisions"]==169
+    assert result["original_signed_option_candidates"]==77
+    assert result["original_sha_verified_trial_journals"]==462
+    assert result["portfolio_scenarios"]==48
+    assert result["provider_requests"]==result["broker_orders"]==0
+
+
+def test_dynamic_denominators_fail_closed_if_prior_census_drifts(tmp_path):
+    v83dir,v84dir=_fixture_campaign(tmp_path,source_count=77,sessions=82)
+    pre=json.loads((v83dir/"summary.json").read_text())
+    pre["sessions"]=83
+    pre=signed({k:v for k,v in pre.items() if k!="fingerprint"})
+    (v83dir/"summary.json").write_text(json.dumps(pre))
+    with pytest.raises(V85Error,match="PARENT_CHAIN"):
+        v85.run(v83dir,v84dir,tmp_path/"should_not_exist",announce=lambda _:None)
+    assert not (tmp_path/"should_not_exist").exists()
 
 def test_tampered_original_gzip_fails_before_simulation(tmp_path):
     v83dir,v84dir=_fixture_campaign(tmp_path)
