@@ -181,7 +181,7 @@ def run(campaign_dir, output_dir, *, source_reader=_local_cache_only,
                         "in_sample_development_only":False,
                         "temporal_validation_not_protected_master_holdout":True,
                     })
-                path = f"{i:04d_{day.isoformat()}_{decision['strategy_id']}_{policy}_{lag}s.json.gz"
+                path = f"{i:04d}_{day.isoformat()}_{decision['strategy_id']}_{policy}_{lag}s.json.gz"
                 sha, raw_bytes, compressed_bytes = write_gzip_once(journals/path, result)
                 exit_data = result.get("exit")
                 trials.append({
