@@ -102,7 +102,8 @@ def _fixture_campaign(tmp_path, *, source_count=101, sessions=128):
         source_cases.append({"session":day,"strategy":strategy,
                             "status":"OPTIONS_EXACT_SOURCE_DEMAND_PREPARED"})
     for i in range(3*sessions-source_count):
-        source_cases.append({"session":"2025-09-02",
+        no_signal_day=(date(2025,11,1)+timedelta(days=i//3)).isoformat()
+        source_cases.append({"session":no_signal_day,
                              "strategy":families[i%3],"status":"NO_SIGNAL"})
     v83screen=signed({"contract":v85.V83,"cases":source_cases})
     v83summary=signed({
