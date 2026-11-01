@@ -202,7 +202,8 @@ def audit_v90_cash(book):
         elif (unknown != 0 or terminal is None or cash(terminal) != end
               or end - start != pnl):
             raise ValueError("flat cash reconciliation mismatch")
-        return {"unresolved": unresolved, "remaining_entry_premium_usd":
+        return {"unresolved": unresolved, "closed_pnl_usd": str(pnl),
+                "remaining_entry_premium_usd":
                 str(latest_unknown_debit) if unresolved else None}
     except (ValueError, TypeError, KeyError, ArithmeticError) as exc:
         raise V101Error("V101_GATED_CASH_ARITHMETIC_INVALID") from exc
@@ -224,7 +225,7 @@ def filtered_cash(pairs, *, missing, coverage_known, simulate, scope, policy, la
     complete = not missing and not book["unresolved_exercise_or_expiry_cash"]
     return {"status": "COMPLETE_QUOTE_CASH" if complete else "SOURCE_OR_SETTLEMENT_CENSORED",
             "cash_equity_known": complete,
-            "quote_pnl_usd": str(pnl) if complete else None,
+            "quote_pnl_usd": cash_audit["closed_pnl_usd"] if complete else None,
             "original_missing_source_candidates": len(missing),
             "original_account_sha": book["fingerprint"],
             "unresolved_open_entry_premium_usd": cash_audit["remaining_entry_premium_usd"],
