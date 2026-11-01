@@ -67,8 +67,12 @@ def simulate(pairs,*,scope,policy,lag_seconds,dwell_seconds):
             raise V90Error("V90_BROKEN_ORIGINAL_TRIAL_SOURCE_PAIR")
         if scope=="all_six_new_families" or a["strategy"]==scope:
             selected.append((a,b))
+    # Only the original causal entry-action timestamp may determine who gets
+    # the single position first. Never sort by a winning future exit/P&L.
+    # Rejected entries have no action and keep their registered decision clock.
     selected.sort(key=lambda pair:(
-        datetime.fromisoformat(pair[0]["decision_at_et"]),
+        datetime.fromisoformat(
+            pair[0]["entry_action_at_et"] or pair[0]["decision_at_et"]),
         ORDER[pair[0]["strategy"]],
         pair[0]["source_query_id"],
     ))
