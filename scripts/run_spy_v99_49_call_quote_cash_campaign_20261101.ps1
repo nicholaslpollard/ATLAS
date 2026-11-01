@@ -40,6 +40,10 @@ try {
         'tests/test_options_on_demand_source_cache_v38.py',
         'tests/test_strategy_options_source_runtime_v39.py'
     )
+    & $py -m py_compile @tests
+    if ($LASTEXITCODE -ne 0) {
+        throw 'V99 regression module syntax verification failed; no replay started'
+    }
     & $py -m pytest -q --basetemp $tmp @tests
     if ($LASTEXITCODE -ne 0) {
         throw 'V99 regressions failed. No new quote-cash simulation started.'
