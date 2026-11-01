@@ -481,6 +481,18 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
         if len(ledger_rows)!=50*24:
             raise V99Error("V99_EXPECTED_1200_CAPITAL_SCENARIOS_PER_COHORT")
         for row in ledger_rows:
+            result=row["qualified"]
+            book=result["original_v90_account_ledger"]
+            if result["cash_equity_known"]:
+                pnl=Decimal(result["original_stressed_quote_pnl_usd_if_complete"])
+                months=sum((Decimal(x) for x in
+                            book["stressed_month_pnl_usd"].values()),Decimal("0"))
+                weeks=sum((Decimal(x) for x in
+                           book["stressed_week_pnl_usd"].values()),Decimal("0"))
+                end=Decimal(book["ending_stressed_quote_cash_usd"])
+                start=Decimal(book["starting_cash_usd"])
+                if months!=pnl or weeks!=pnl or end-start!=pnl:
+                    raise V99Error("V99_WEEK_MONTH_CASH_LEDGER_ARITHMETIC_DRIFT")
             k=(row["trial_id"],row["policy"],row["lag_seconds"],
                row["limit_rest_seconds"])
             scenario_history[k].append({
