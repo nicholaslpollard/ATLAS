@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """V86 offline source-backed post-trigger exit order recheck and cash sensitivities.
 
-Requires original V83 reports, all 606 V84 SHA-verified journals, and exact
+Requires original V83 reports, every V84 SHA-verified journal, and exact
 immutable V38 option source cache. Prohibits provider calls and broker orders.
 """
 
@@ -91,18 +91,24 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         source_reader=_local_cache_only,announce=emit):
     if output.exists() or output.is_symlink():
         raise V86Error("V86_IMMUTABLE_OUTPUT_ALREADY_EXISTS")
-    announce("STAGE_START V86 verify V83/V84 SHA chain and 606 original event journals "
+    announce("STAGE_START V86 verify V83/V84 SHA chain and original event journals "
              "provider_calls=0 broker_orders=0")
     pre,screen,early,outcomes,trials=verify_input(v83dir,v84dir,announce=announce)
     _,plan,source_summary,demands,receipts=_load_campaign(v83dir)
     if pre["fingerprint"]!=source_summary["fingerprint"]:
         raise V86Error("V86_V83_SOURCE_AND_V84_PARENT_SHA_DIFFER")
-    if len(demands)!=101 or len(receipts)!=101:
+    expected_sources=pre["planned_exact_option_demands"]
+    if (expected_sources<1 or len(demands)!=expected_sources
+            or len(receipts)!=expected_sources
+            or len(plan["demands"])!=expected_sources
+            or early["candidate_sources"]!=expected_sources):
         raise V86Error("V86_ORIGINAL_SOURCE_CENSUS_CHANGED")
     original_by_qid=defaultdict(list)
     for t in trials:
         original_by_qid[t["source_query_id"]].append(t)
-    if len(original_by_qid)!=101 or any(len(r)!=6 for r in original_by_qid.values()):
+    expected_trials=expected_sources*len(POLICIES)*len(LAGS)
+    if (len(trials)!=expected_trials or len(original_by_qid)!=expected_sources
+            or any(len(r)!=len(POLICIES)*len(LAGS) for r in original_by_qid.values())):
         raise V86Error("V86_MISSING_ALTERNATIVE_ENTRY_EXIT_TRIALS")
     settings=settings_factory(ROOT,"development")
     announce("STAGE_START V86 read original V38 cache only, recheck 0/3/10/30s "
@@ -129,7 +135,7 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         # Keep just the verified SHA and row count, never 101 full tapes.
         del record,source,tape
         if n%25==0:
-            announce(f"PROGRESS V86 original_source_sha_verified={n}/101")
+            announce(f"PROGRESS V86 original_source_sha_verified={n}/{expected_sources}")
     output.mkdir(parents=True,exist_ok=False)
     (output/"journals").mkdir()
     rows=[]
@@ -176,8 +182,8 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         # Only one original options tape remains allocated at a time.
         del record,source,tape
         if len(rows)%400<24:
-            announce(f"PROGRESS V86 new_signed_quote_reference_journals={len(rows)}/2424")
-    if len(rows)!=2424 or len(variants)!=len(DWELLS)*3*2:
+            announce(f"PROGRESS V86 new_signed_quote_reference_journals={len(rows)}/{expected_trials*len(DWELLS)}")
+    if len(rows)!=expected_trials*len(DWELLS) or len(variants)!=len(DWELLS)*len(POLICIES)*len(LAGS):
         raise V86Error("V86_EXPECTED_VARIANTS_NOT_COMPLETE")
     verdicts=[]
     portfolio_ledgers=[]
@@ -270,7 +276,7 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         "in_sample_development_only":True,
         "provider_calls":0,"broker_orders":0,"actual_broker_fills":0,
     })
-    announce(f"COMPLETE V86 original_tapes=101 trials={len(rows)} "
+    announce(f"COMPLETE V86 original_tapes={expected_sources} trials={len(rows)} "
              f"portfolio_scenarios={len(verdicts)} "
              f"unresolved_portfolios={summary['portfolio_scenarios_with_unresolved_exit']} "
              "provider_calls=0 broker_orders=0")
