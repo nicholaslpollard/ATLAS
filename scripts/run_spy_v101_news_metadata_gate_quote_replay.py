@@ -220,13 +220,14 @@ def filtered_cash(pairs, *, missing, coverage_known, simulate, scope, policy, la
         raise V101Error("V101_SOURCE_LINKED_REPLAY_LEDGER_INVALID")
     # Original V90 counts debits for an unresolved option; that premium is
     # not a realized loss, so net cash != closed-trade PnL until flat.
-    audit_v90_cash(book)
+    cash_audit = audit_v90_cash(book)
     complete = not missing and not book["unresolved_exercise_or_expiry_cash"]
     return {"status": "COMPLETE_QUOTE_CASH" if complete else "SOURCE_OR_SETTLEMENT_CENSORED",
             "cash_equity_known": complete,
             "quote_pnl_usd": str(pnl) if complete else None,
             "original_missing_source_candidates": len(missing),
             "original_account_sha": book["fingerprint"],
+            "unresolved_open_entry_premium_usd": cash_audit["remaining_entry_premium_usd"],
             "account": book, "original_quote_pairs_considered": len(pairs)}
 
 
