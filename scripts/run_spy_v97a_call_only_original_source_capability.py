@@ -18,8 +18,9 @@ import re
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.simulation.spy_v89_six_family_causal_registry import (
-    FAMILIES,CONTRACT as V89,verified as verified_decision,
+    FAMILIES,verified as verified_decision,
 )
+from scripts.run_spy_v89_six_family_source_batch import CONTRACT as V89
 from scripts.run_spy_v90_six_family_source_replay import read_signed
 
 ROOT=Path(__file__).resolve().parents[1]
