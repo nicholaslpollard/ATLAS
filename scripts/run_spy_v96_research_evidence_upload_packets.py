@@ -117,6 +117,30 @@ def split_chunks(files: list[tuple[Path,str]],max_bytes: int):
     return chunks
 
 
+def source_code_strategy_census(repo_root:Path) -> dict:
+    """Static inventory, not a claim that a file or rule has historic fills."""
+    base=repo_root/"packages"/"strategies"
+    files=sorted(base.rglob("*.py")) if base.is_dir() else []
+    empty=[f for f in files if f.stat().st_size==0]
+    nonempty=[f for f in files if f.stat().st_size>0]
+    ref=base/"reference_library.py"
+    reg=base/"registry.py"
+    reference_ids=(re.findall(r'strategy_id="([^"]+)"',
+                       ref.read_text(encoding="utf8")) if ref.is_file() else [])
+    registry_ids=(re.findall(r'_rule\\(\\s*"([^"]+)"',
+                       reg.read_text(encoding="utf8")) if reg.is_file() else [])
+    return {
+        "strategy_python_files":len(files),
+        "zero_byte_placeholders":len(empty),
+        "nonempty_files_including_infrastructure":len(nonempty),
+        "reference_strategy_ids":reference_ids,
+        "default_daily_registry_ids":registry_ids,
+        "nonempty_is_not_proof_of_options_execution":True,
+        "all_strategies_historically_tested":False,
+        "original_option_per_strategy_capability_still_requires_audit":True,
+    }
+
+
 def run(research_dir: Path,output_parent: Path,*,max_part_mib=90,
         stamp: str | None = None, reporter=print) -> dict:
     if (type(max_part_mib) is not int or not 10<=max_part_mib<=512
@@ -196,6 +220,7 @@ def run(research_dir: Path,output_parent: Path,*,max_part_mib=90,
         "packet_count":len(payloads),"original_evidence_file_count":len(files),
         "packets":payloads,"missing_expected_stage_prefixes":missing,
         "source_files_unmodified":True,
+        "static_strategy_source_code_census":source_code_strategy_census(ROOT),
         "no_provider_calls":True,"no_broker_orders":True,
         "output_folder":str(output),
         "instruction":"Upload ALL atlas_v96_evidence_part_*.zip files. Each ZIP has its own MANIFEST.json.",
