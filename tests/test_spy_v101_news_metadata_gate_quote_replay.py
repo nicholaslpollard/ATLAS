@@ -130,3 +130,73 @@ def test_protected_master_holdout_partitions_not_opened_by_v101_source_reader(mo
     with pytest.raises(v101.V101Error,match="TEST_STOP"):
         v101.accepted_news_to_april_2026(object())
     assert scanned==["2026-04-01"]
+
+
+def _cash_book(*, unresolved=False):
+    events = [
+        {"event": "ENTRY_ASK_REFERENCE_ONLY", "debit_usd": "200.00"},
+        {"event": "MODELED_EXIT_QUOTE_CREDIT", "two_pct_haircut_credit_usd": "220.00"},
+    ]
+    end = "25020.00"
+    if unresolved:
+        events.extend([
+            {"event": "ENTRY_ASK_REFERENCE_ONLY", "debit_usd": "175.00"},
+            {"event": "UNKNOWN_EXPIRY_OR_EXERCISE_CASH"},
+        ])
+        end = "24845.00"
+    return {
+        "starting_cash_usd": "25000.00", "ending_stressed_quote_cash_usd": end,
+        "closed_trade_stressed_quote_pnl_usd": "20.00",
+        "stressed_month_pnl_usd": {"2024-06": "20.00"},
+        "stressed_week_pnl_usd": {"2024-W23": "20.00"},
+        "all_considered_and_blocked_events": events,
+        "unresolved_exercise_or_expiry_cash": unresolved,
+        "terminal_equity_known_if_flat_usd": None if unresolved else "25020.00",
+    }
+
+
+def test_cash_with_unknown_expiry_is_censored_not_false_arithmetic_error():
+    book = _cash_book(unresolved=True)
+    audit = v101.audit_v90_cash(book)
+    assert audit["unresolved"] is True
+    assert audit["remaining_entry_premium_usd"] == "175.00"
+    assert book["closed_trade_stressed_quote_pnl_usd"] == "20.00"
+    assert book["ending_stressed_quote_cash_usd"] == "24845.00"
+
+
+def test_closed_account_requires_exact_original_cash_arithmetic():
+    assert v101.audit_v90_cash(_cash_book()) == {
+        "unresolved": False, "remaining_entry_premium_usd": None}
+
+
+def test_unknown_cash_does_not_exempt_event_or_closed_pnl_tampering():
+    import copy
+    broken = copy.deepcopy(_cash_book(unresolved=True))
+    broken["stressed_week_pnl_usd"]["2024-W23"] = "21.00"
+    with pytest.raises(v101.V101Error, match="GATED_CASH_ARITHMETIC"):
+        v101.audit_v90_cash(broken)
+    broken = copy.deepcopy(_cash_book(unresolved=True))
+    broken["all_considered_and_blocked_events"][2]["debit_usd"] = "174.00"
+    with pytest.raises(v101.V101Error, match="GATED_CASH_ARITHMETIC"):
+        v101.audit_v90_cash(broken)
+    broken = copy.deepcopy(_cash_book(unresolved=True))
+    broken["terminal_equity_known_if_flat_usd"] = "24845.00"
+    with pytest.raises(v101.V101Error, match="GATED_CASH_ARITHMETIC"):
+        v101.audit_v90_cash(broken)
+
+
+def test_unresolved_signed_account_never_promoted_to_complete_quote_pnl(monkeypatch):
+    from types import SimpleNamespace
+    import sys
+    monkeypatch.setitem(sys.modules,
+        "packages.simulation.spy_v90_six_family_capital_ledger",
+        SimpleNamespace(verified=lambda book: True))
+    book = {**_cash_book(unresolved=True), "fingerprint": "a"*64,
+            "actual_broker_orders": 0}
+    out = v101.filtered_cash([], missing=[], coverage_known=True,
+        simulate=lambda *args, **kw: book,
+        scope="impulse_0935", policy="balanced_35_100", lag=1, dwell=0)
+    assert out["status"] == "SOURCE_OR_SETTLEMENT_CENSORED"
+    assert out["cash_equity_known"] is False
+    assert out["quote_pnl_usd"] is None
+    assert out["original_account_sha"] == "a"*64
