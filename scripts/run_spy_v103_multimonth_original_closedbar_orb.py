@@ -103,7 +103,8 @@ def frozen_calendar(start, end, *, cal=None):
 
 def run(out_dir, *, start=date(2025, 6, 1), end=date(2026, 4, 30),
         discover=discover_minute_units, inspector=inspect,
-        calendar_factory=get_market_calendar, announce=print):
+        calendar_factory=get_market_calendar,
+        layout_factory=V2Layout.beneath, announce=print):
     windows = list(month_bounds(start,end))
     if out_dir.exists() or out_dir.is_symlink() or len(windows)>120:
         raise V103Error("V103_OUTPUT_OR_MONTH_BOUNDARY_INVALID")
@@ -114,7 +115,7 @@ def run(out_dir, *, start=date(2025, 6, 1), end=date(2026, 4, 30),
     all_sessions, _, _ = frozen_calendar(start,end,cal=calendar)
     if not all_sessions:
         raise V103Error("V103_ZERO_VALID_EXCHANGE_SESSIONS")
-    layout = V2Layout.beneath(ROOT/"data")
+    layout = layout_factory(ROOT/"data")
     compact_months = []
     receipts = []
     monthly_results = []
@@ -169,7 +170,9 @@ def run(out_dir, *, start=date(2025, 6, 1), end=date(2026, 4, 30),
             receipts.append({"month":label, **receipt, "original_v65_sha":original["fingerprint"]})
             del original
         elif month_status == "ORIGINAL_MONTH_AVAILABLE":
-            compact["classified_sessions"] = []
+            # Entire observed month comprised preregistered shortened sessions.
+            # It needs no option or full-session minute evidence.
+            compact["classified_sessions"] = None
             compact["original_v65_sha"] = None
         # Do not write the huge duplicated V65 journals into the compact ledger.
         eligible = [x for x in month_sessions if x not in short]
