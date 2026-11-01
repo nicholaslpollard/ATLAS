@@ -145,7 +145,7 @@ def run(start,end,output,*,acquire_options=False,
                                  "reason":"PRIOR_STOCK_CLOSE_SOURCE_NOT_VERIFIED",
                                  "error_type":type(exc).__name__})
         official=calendar.regular_open_close(day)[1].astimezone(ET)
-        if official.date()!=day.isoformat() and official.date()!=day:
+        if official.date()!=day:
             raise V89Error("V89_OFFICIAL_SESSION_CLOSE_DRIFT")
         early=official.hour<16
         cutoff=((official-timedelta(minutes=55)).strftime("%H:%M:%S")
@@ -156,8 +156,13 @@ def run(start,end,output,*,acquire_options=False,
                     raise V89Error("V89_ORIGINAL_STOCK_BARS_MISSING")
                 stop="09:35:00" if spec["decision"]=="09:35:01" else "09:40:00"
                 bars=source_bars(current,day,before=stop)
-                prior_kwargs=prior if family=="gap_followthrough_0940" else {}
-                if prior_kwargs is None:
+                prior_kwargs=(
+                    {k:prior[k] for k in (
+                        "prior_close","prior_close_at_et",
+                        "prior_close_available_at_et")}
+                    if family=="gap_followthrough_0940" and prior else {}
+                )
+                if family=="gap_followthrough_0940" and not prior:
                     raise V89Error("V89_PRIOR_CLOSE_UNAVAILABLE")
                 decision=evaluate(
                     family,session=day.isoformat(),
@@ -178,7 +183,7 @@ def run(start,end,output,*,acquire_options=False,
                     "option_source_end_time_et":cutoff if demand else None,
                     "broker_orders":0,
                 })
-            except (V89Error,KeyError,ValueError) as exc:
+            except (V89Error,KeyError,ValueError,TypeError) as exc:
                 records.append({
                     "session":day.isoformat(),"strategy":family,
                     "status":"SOURCE_UNQUALIFIED_NO_TRADE",
