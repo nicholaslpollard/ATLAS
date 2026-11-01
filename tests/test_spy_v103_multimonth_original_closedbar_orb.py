@@ -292,3 +292,28 @@ def test_signed_compact_data_wrong_month_is_rejected():
         chain_months([{"month":"2025-07","original_v65_sha":original["fingerprint"],
                       "classified_sessions":[compact]}],
                      calendar_sessions=[DAY])
+
+
+@pytest.mark.parametrize("source_module", [
+    "packages.simulation.spy_v103_offline_orb_causal_account",
+    "scripts.run_spy_v103_multimonth_original_closedbar_orb",
+])
+def test_no_undefined_globals_in_new_v103_source(source_module):
+    """Catch undeclared names before large historical acquisition-free campaign."""
+    import builtins
+    import importlib
+    import symtable
+    path=Path(importlib.import_module(source_module).__file__)
+    tree=symtable.symtable(path.read_text(encoding="utf8"),str(path),"exec")
+    defined={x.get_name() for x in tree.get_symbols()
+             if x.is_assigned() or x.is_imported() or x.is_parameter()}
+    allowed=defined | set(dir(builtins)) | {"__file__","__name__"}
+    errors=[]
+    def inspect(scope):
+        for s in scope.get_symbols():
+            if s.is_global() and s.is_referenced() and s.get_name() not in allowed:
+                errors.append((scope.get_name(),s.get_name()))
+        for child in scope.get_children():
+            inspect(child)
+    inspect(tree)
+    assert errors==[]
