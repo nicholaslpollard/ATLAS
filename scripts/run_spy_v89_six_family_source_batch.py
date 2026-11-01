@@ -42,6 +42,30 @@ ET=ZoneInfo("America/New_York")
 CONTRACT="atlas-v89-six-family-original-source-campaign-v1"
 
 
+def regular_spy_zero_dte_schedule_eligible(day):
+    """Conservative historical SPY weekly expiration screen; NOT an
+    independently verified daily listing. Holiday-shifted expirations can
+    fall outside this base schedule and must remain explicit no-trades.
+
+    Cboe: Monday SPY expirations added Feb 2018, Wednesday since 2016,
+    Tuesday/Thursday SPY expirations added Nov 2022. These are expiration
+    dates rather than first series listing announcement dates. Source:
+    https://datashop.cboe.com/faqs
+    """
+    dow=day.weekday()
+    if dow==0:
+        return day>=date(2018,2,26)
+    if dow==1:
+        return day>=date(2022,11,22)
+    if dow==2:
+        return True
+    if dow==3:
+        return day>=date(2022,12,1)
+    if dow==4:
+        return True
+    return False
+
+
 def emit(msg):
     print(f"[{datetime.now(ET).strftime('%Y-%m-%d %H:%M:%S %Z')}] {msg}",flush=True)
 
@@ -170,13 +194,21 @@ def run(start,end,output,*,acquire_options=False,
                     stock_source_sha=unit.canonical_sha256,bars=bars,
                     market_session_verified=True,**prior_kwargs)
                 demand=None
+                status="NO_SIGNAL"
+                reason=decision["reason"]
                 if decision["status"]=="OPTIONS_CANDIDATE_SOURCE_SELECTION_REQUIRED":
-                    demand=exact_demand(decision,unit.canonical_sha256,end_time_et=cutoff)
-                    demands.append(demand)
+                    if regular_spy_zero_dte_schedule_eligible(day):
+                        demand=exact_demand(decision,unit.canonical_sha256,
+                                            end_time_et=cutoff)
+                        demands.append(demand)
+                        status="OPTIONS_EXACT_SOURCE_DEMAND_PREPARED"
+                    else:
+                        status="OPTION_0DTE_BASE_SCHEDULE_UNQUALIFIED_NO_TRADE"
+                        reason="NO_REGULAR_SAME_DAY_SPY_WEEKLY_ON_HISTORICAL_BASE_SCHEDULE;HOLIDAY_SHIFT_NOT_VERIFIED"
                 records.append({
                     "session":day.isoformat(),"strategy":family,
-                    "status":"OPTIONS_EXACT_SOURCE_DEMAND_PREPARED" if demand else "NO_SIGNAL",
-                    "reason":decision["reason"],
+                    "status":status,
+                    "reason":reason,
                     "causal_decision":decision,
                     "source_demand_sha":demand["fingerprint"] if demand else None,
                     "stock_source_sha256":unit.canonical_sha256,
