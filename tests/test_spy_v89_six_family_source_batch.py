@@ -80,3 +80,67 @@ def test_protected_master_holdout_and_existing_output_rejected(tmp_path):
     existing=tmp_path/"existing";existing.mkdir()
     with pytest.raises(v89.V89Error,match="IMMUTABLE"):
         v89.run(DAY,DAY,existing)
+
+
+def test_completed_six_family_cached_source_receipts_have_signed_event_chain(tmp_path):
+    from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
+    from packages.data.options_on_demand_source_cache_v38 import normalize_source_requirement
+    from scripts.run_spy_v90_six_family_source_replay import audit_input
+
+    unit=SimpleNamespace(year=2024,month=1,symbols=("SPY",),
+        canonical_sha256="a"*64,raw_bundle_sha256="b"*64,
+        unit_id="unit-202401",canonical_path=tmp_path/"native.parquet")
+    def sample(path,*,symbol,session_date):
+        rows=[]
+        for i in range(10):
+            at=datetime(2024,1,2,9,30,tzinfo=ET)+timedelta(minutes=i)
+            o=100+i*.06
+            rows.append({
+                "timestamp_utc":at,
+                "open":o,"high":o+.07,"low":o-.01,"close":o+.06,
+            })
+        return rows
+    def resolve(settings,version,needs,*,continue_on_error,on_source,on_progress):
+        needs=list(needs)
+        assert version=="spy_v89_six_distinct_entry_hypotheses_20261101"
+        for d in needs:
+            qid=_fingerprint(normalize_source_requirement(d["method"],d["kwargs"]))
+            base={"candidate_id":d["candidate_id"],"query_id":qid,
+                  "date_et":d["kwargs"]["date_et"],"status":None,"error":None}
+            on_progress("source_started",base)
+            on_progress("source_done",{**base,"status":"CACHE_HIT"})
+            on_source(d,{"query_id":qid,"status":"CACHE_HIT",
+                         "source_sha256":"c"*64})
+        return {
+            "contract":"atlas-strategy-options-data-demand-runtime-v39",
+            "source_uses_requested":len(needs),
+            "provider_dispatch_attempts":0,
+            "status":"ALL_REQUESTED_SOURCES_PRESENT",
+        }
+    output=tmp_path/"complete"
+    report=v89.run(DAY,DAY,output,acquire_options=True,
+        discover=lambda *a,**k:[unit],
+        verify=lambda u,log:{"accepted":True},
+        sample=sample,
+        validate=lambda *a,**k:{"accepted":True},
+        resolver=resolve,
+        settings_factory=lambda *a:object(),
+        market=OneDayMarket(),reporter=lambda _:None)
+    assert report["all_required_sources_archived"]
+    assert report["exact_source_requirements"]>0
+    entry,plan,receipts,summary,actual=audit_input(output)
+    assert len(actual)==report["exact_source_requirements"]
+    assert verified(entry) and verified(plan) and verified(receipts)
+    assert summary["fingerprint"]==report["fingerprint"]
+    events=[json.loads(x) for x in (output/"source_events.jsonl").read_text().splitlines()]
+    assert len(events)==report["exact_source_requirements"]*2
+    assert receipts["last_event_sha"]==events[-1]["fingerprint"]
+
+    # The first signed source-event alteration must fail closed.
+    altered=dict(events[0])
+    altered["event"]="provider_dispatch"
+    lines=(output/"source_events.jsonl").read_text().splitlines()
+    lines[0]=json.dumps(altered)
+    (output/"source_events.jsonl").write_text("\n".join(lines)+"\n")
+    with pytest.raises(Exception,match="SOURCE_EVENT_SHA_CHAIN_INVALID"):
+        audit_input(output)
