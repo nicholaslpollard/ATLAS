@@ -200,3 +200,4 @@ def test_unresolved_signed_account_never_promoted_to_complete_quote_pnl(monkeypa
     assert out["cash_equity_known"] is False
     assert out["quote_pnl_usd"] is None
     assert out["original_account_sha"] == "a"*64
+    assert out["unresolved_open_entry_premium_usd"] == "175.00"
