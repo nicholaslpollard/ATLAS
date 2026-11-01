@@ -144,8 +144,8 @@ def test_all_1344_matrix_rows_and_unresolved_scenario_are_preserved(tmp_path):
     result=v95.run(inputs,tmp_path/"matrix",v93_preflight_dir=make_gate(tmp_path),v95_2020_reconciliation_dir=make_gap(tmp_path))
     assert result["total_comparison_rows"]==1344
     assert result["cross_cohort_configurations"]==168
-    assert result["complete_eight_complete_cohort_2020_censored_configurations"]==167
-    assert result["diagnostic_positive_in_all_eight_complete_cohort_2020_censoreds"]==167
+    assert result["complete_eight_cohort_configurations"]==167
+    assert result["diagnostic_positive_in_all_eight_cohorts"]==167
     assert result["posthoc_variant_selection_prohibited"] is True
     assert result["protected_2026_master_holdout_accessed"] is False
     assert result["2020_cohort_excluded_due_unresolved_exact_option_sources"] is True
