@@ -141,6 +141,20 @@ def test_altered_v84_signed_trial_or_original_source_is_fatal():
         recheck(t,s,p,dwell_seconds=3)
 
 
+def test_portfolio_adapter_replaces_all_original_exit_economic_fields():
+    original,source,tape=_example()
+    result=recheck(original,source,tape,dwell_seconds=0)
+    altered=v86._v85_trial_compatible(original,result)
+    assert verified(altered)
+    assert altered["exit"]["quote_reference_credit_usd"] == result["quote_reference_credit_usd"]
+    assert altered["exit"]["reference_pnl"] == result["quote_reference_pnl_usd"]
+    assert (altered["exit"]["pnl_with_2pct_exit_bid_haircut"] ==
+            result["quote_reference_pnl_2pct_bid_haircut_usd"])
+    assert altered["quote_reference_pnl_usd"] == result["quote_reference_pnl_usd"]
+    assert altered["v86_post_trigger_recheck_sha"] == result["fingerprint"]
+    assert altered["provider_requests"] == altered["actual_broker_fills"] == 0
+
+
 def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path):
     # Contract-test the orchestration with synthetic original reports; no
     # actual SPY provider bytes are embedded in this test or in Git.
