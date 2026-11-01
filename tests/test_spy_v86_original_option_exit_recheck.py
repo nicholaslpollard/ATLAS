@@ -102,6 +102,16 @@ def test_missing_fallback_action_censors_and_never_creates_cash():
     assert r["expiry_or_exercise_cash_unknown"]
 
 
+def test_frozen_three_second_exit_lag_must_be_respected():
+    original,source,tape=_example()
+    payload={k:v for k,v in original.items() if k!="fingerprint"}
+    payload["lag_seconds"]=3
+    mutated=signed(payload)
+    assert verified(mutated)
+    with pytest.raises(V86Error,match="LATENCY_SHORTER_THAN_REGISTERED"):
+        recheck(mutated,source,tape,dwell_seconds=10)
+
+
 def test_signed_but_unreproducible_original_action_quote_is_rejected():
     original,source,tape=_example()
     payload={k:v for k,v in original.items() if k!="fingerprint"}
