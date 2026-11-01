@@ -9,8 +9,9 @@ import pytest
 
 from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
 from packages.simulation.spy_v89_six_family_causal_registry import (
-    FAMILIES,CONTRACT as V89,
+    FAMILIES,
 )
+from scripts.run_spy_v89_six_family_source_batch import CONTRACT as V89
 from scripts import run_spy_v97a_call_only_original_source_capability as v97
 
 
