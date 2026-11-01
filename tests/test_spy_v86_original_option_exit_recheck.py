@@ -155,16 +155,19 @@ def test_portfolio_adapter_replaces_all_original_exit_economic_fields():
     assert altered["provider_requests"] == altered["actual_broker_fills"] == 0
 
 
-def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path):
+@pytest.mark.parametrize("source_count", [101, 77])
+def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path, source_count):
     # Contract-test the orchestration with synthetic original reports; no
     # actual SPY provider bytes are embedded in this test or in Git.
     p83=tmp_path/"v83";p84=tmp_path/"v84";p83.mkdir();p84.mkdir()
     one,one_source,one_prepared=_example()
-    pre=signed({"contract":"pretend-v83-parent","broker_orders":0})
-    early=signed({"contract":"pretend-v84-parent","broker_orders":0})
+    pre=signed({"contract":"pretend-v83-parent","broker_orders":0,
+                "planned_exact_option_demands":source_count})
+    early=signed({"contract":"pretend-v84-parent","broker_orders":0,
+                  "candidate_sources":source_count})
     screen=signed({"contract":"pretend-v83-screen","cases":[]})
     plans=[];requests={};trials=[];original_lookup={};demand_bindings={}
-    for i in range(101):
+    for i in range(source_count):
         day=(date(2025,7,2)+timedelta(days=i)).isoformat()
         kwargs={**one_source["exact_requirement"]["kwargs"],
                 "date_et":day,"expiration":day}
@@ -214,13 +217,13 @@ def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path):
                 "cache_evidence":"CACHE_HIT","source":requests[qid]},
             announce=lambda _:None)
     assert verified(r)
-    assert r["original_sha_verified_option_tapes"]==101
-    assert r["original_sha_verified_v84_trials"]==606
-    assert r["v86_recheck_journals"]==2424
+    assert r["original_sha_verified_option_tapes"]==source_count
+    assert r["original_sha_verified_v84_trials"]==source_count*6
+    assert r["v86_recheck_journals"]==source_count*24
     assert r["portfolio_scenarios"]==96
     assert r["provider_calls"]==r["broker_orders"]==0
     assert (tmp_path/"out"/"portfolio_comparisons.json").is_file()
-    assert len(list((tmp_path/"out"/"journals").glob("*.json.gz")))==2424
+    assert len(list((tmp_path/"out"/"journals").glob("*.json.gz")))==source_count*24
 
 
 def test_outcome_rejects_missing_or_modified_original_source_before_writing(tmp_path):
