@@ -257,7 +257,12 @@ def read_through_historical_options(
         options = settings.resolved_path("data/options")
         if shutil.disk_usage(options).free < MIN_FREE_STORAGE_BYTES + len(packed) + 32768:
             raise OnDemandSourceError("PHYSICAL_STORAGE_HEADROOM_UNAVAILABLE")
-        rel = f"{ARCHIVE_REL}/{qid[:2]}/{qid}_{_digest(raw)}.json.gz"
+        # Keep new source paths short enough for Windows test/workstation paths.
+        # Query identity is already a full SHA-256; the independently verified
+        # full original source SHA and gzip SHA remain in the SQLite receipt.
+        # Existing longer qid_sourceSha archives are read by their stored_path
+        # unchanged through _unpack(): this affects NEW archives only.
+        rel = f"{ARCHIVE_REL}/{qid[:2]}/{qid}.json.gz"
         path = settings.resolved_path(rel)
         if path.is_symlink():
             raise OnDemandSourceError("ARCHIVE_LINK_UNSAFE")
