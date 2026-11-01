@@ -275,7 +275,10 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         "historical_broker_execution_unproven":True,
         "historical_order_cancel_replace_unproven":True,
         "expiry_or_exercise_settlement_not_inferred":True,
-        "in_sample_development_only":True,
+        "in_sample_development_only":not bool(
+            early.get("temporal_validation_not_protected_master_holdout",False)),
+        "temporal_validation_not_protected_master_holdout":bool(
+            early.get("temporal_validation_not_protected_master_holdout",False)),
         "provider_calls":0,"broker_orders":0,"actual_broker_fills":0,
     })
     announce(f"COMPLETE V86 original_tapes={expected_sources} trials={len(rows)} "
