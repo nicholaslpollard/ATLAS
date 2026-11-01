@@ -70,6 +70,17 @@ def test_auto_fetch_persist_and_reuse_with_exact_identity(tmp_path, monkeypatch)
     assert cache_hit["query_id"] == first["query_id"]
     assert cache_hit["source_rows"] == first["source_rows"]
     assert len(calls) == 1
+    # New archive key is one 256-bit exact query digest, not two concatenated
+    # 64-hex SHA strings. The full raw and gzip SHA remain immutable receipts.
+    with sqlite3.connect(settings.resolved_path(cache.DB_REL)) as db:
+        stored_path, source_sha, gzip_sha = db.execute(
+            "SELECT stored_path,source_sha,gzip_sha FROM sources WHERE query_id=?",
+            (first["query_id"],),
+        ).fetchone()
+    assert stored_path.endswith(first["query_id"] + ".json.gz")
+    assert source_sha == cache._digest(response().raw_body)
+    assert len(gzip_sha) == 64
+    assert len(stored_path.split("/")[-1]) == 72
 
     # Strategy change: date, strike, right, etc. create new, automatically
     # fetched sources without amending any frozen candidate plan.
