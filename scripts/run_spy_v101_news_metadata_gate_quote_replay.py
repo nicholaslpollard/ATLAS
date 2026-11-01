@@ -232,6 +232,24 @@ def filtered_cash(pairs, *, missing, coverage_known, simulate, scope, policy, la
             "account": book, "original_quote_pairs_considered": len(pairs)}
 
 
+def replay_zero_source_preflight(*, simulate, definitions, scopes):
+    """Exercise all V90 scope/execution result paths before costly source audit."""
+    if len(definitions) != 24 or len(scopes) != 7:
+        raise V101Error("V101_PREFLIGHT_VARIANT_GRID_DRIFT")
+    cases = 0
+    for scope in scopes:
+        for policy, lag, dwell in definitions:
+            outcome = filtered_cash(
+                [], missing=[], coverage_known=True, simulate=simulate,
+                scope=scope, policy=policy, lag=lag, dwell=dwell)
+            if (outcome["status"] != "COMPLETE_QUOTE_CASH"
+                    or outcome["quote_pnl_usd"] != "0.00"
+                    or outcome["original_quote_pairs_considered"] != 0):
+                raise V101Error("V101_PREFLIGHT_EMPTY_ACCOUNT_NOT_FLAT")
+            cases += 1
+    return cases
+
+
 def signed_write(path, item, v100):
     record = {**item, "fingerprint": v100._fingerprint(item)}
     payload = (json.dumps(record, sort_keys=True, separators=(",", ":"),
@@ -248,7 +266,7 @@ def signed_write(path, item, v100):
 
 def run(v99_dir, output_dir, *, reporter=print):
     from packages.core.settings import load_settings
-    from packages.simulation.spy_v90_six_family_capital_ledger import simulate
+    from packages.simulation.spy_v90_six_family_capital_ledger import simulate, SCOPES
     from packages.data.marketdata_candidate_chain_cache_v1 import _fingerprint
     from scripts import run_spy_v100_v99_independent_wfo_audit as v100
     from scripts.run_spy_v97b_49_variant_call_source_union_preview import params, BASELINES
@@ -261,6 +279,10 @@ def run(v99_dir, output_dir, *, reporter=print):
                          V99+"-eight-period-account-robustness-v1")
     manifest = v100.source(v99_dir/"trial_archive_manifest.json",
                            V99+"-signed-trial-archive-manifest-v1")
+    preflight_cases = replay_zero_source_preflight(
+        simulate=simulate, definitions=DEFINITIONS, scopes=SCOPES)
+    reporter(f"V101_PREFLIGHT signed_flat_account_cases={preflight_cases} "
+             "provider_requests=0 broker_orders=0")
     _, audit = v100.verify_every_ledger(v99_dir, summary, matrix, manifest, full_journals=True)
     if (audit["account_scenarios_sha_verified"] != 10800
             or audit["signed_source_archive_provenance"]["archive_sha_checked"] != 630
