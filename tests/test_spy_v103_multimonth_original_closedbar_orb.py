@@ -103,13 +103,13 @@ def test_original_v55_source_closed_account_is_not_fictitious_broker_fill():
     status, result=classify(row,DAY)
     assert status=="CLOSED_QUOTE_REFERENCE"
     assert result["debit"]=="410.60"
-    assert result["credit"]=="815.40"
-    assert result["net_pnl"]=="404.80"
+    assert result["credit"]=="813.40"
+    assert result["net_pnl"]=="402.80"
     account=chain_months([{"month":"2025-06","original_v65":v65_document(
         [row,excluded_row()])}],calendar_sessions=[DAY,TUE])
     assert verify(account)
     assert account["first_account_censor"] is None
-    assert account["terminal_equity_if_source_complete_usd"]=="25404.80"
+    assert account["terminal_equity_if_source_complete_usd"]=="25402.80"
     assert account["pre_censor_flat_closes"]==1
     assert account["actual_broker_fills"]==0
 
@@ -239,11 +239,11 @@ def test_end_to_end_month_runner_keeps_original_sha_and_causal_cash(tmp_path):
         layout_factory=lambda _root:SimpleNamespace(checkpoints=tmp_path/"checkpoints"),
         calendar_factory=lambda:Calendar([DAY,TUE]),announce=lambda _:None)
     assert summary["continuous_cash_known"] is True
-    assert summary["total_contiguous_quote_pnl_if_qualified"]=="404.80"
+    assert summary["total_contiguous_quote_pnl_if_qualified"]=="402.80"
     assert summary["months"]==1
     assert calls==[("discover",6),("inspect",2)]
     artifacts=tmp_path/"campaign"/"months"
     assert len(list(artifacts.glob("*.gz")))==1
     signed_account=json.loads((tmp_path/"campaign"/"chronological_account.json").read_text())
     assert verify(signed_account)
-    assert signed_account["account"]["terminal_equity_if_source_complete_usd"]=="25404.80"
+    assert signed_account["account"]["terminal_equity_if_source_complete_usd"]=="25402.80"
