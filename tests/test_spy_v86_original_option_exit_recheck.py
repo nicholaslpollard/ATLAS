@@ -102,6 +102,16 @@ def test_missing_fallback_action_censors_and_never_creates_cash():
     assert r["expiry_or_exercise_cash_unknown"]
 
 
+def test_signed_but_unreproducible_original_action_quote_is_rejected():
+    original,source,tape=_example()
+    payload={k:v for k,v in original.items() if k!="fingerprint"}
+    payload["exit"]={**original["exit"],"action_bid":"1.91"}
+    altered=signed(payload)
+    assert verified(altered)
+    with pytest.raises(V86Error,match="QUOTE_NOT_REPRODUCIBLE"):
+        recheck(altered,source,tape,dwell_seconds=10)
+
+
 def test_rejected_entry_is_frozen_and_never_turned_into_exit():
     t,s,p=_example(no_entry=True)
     r=recheck(t,s,p,dwell_seconds=10)
