@@ -166,7 +166,8 @@ def test_cash_with_unknown_expiry_is_censored_not_false_arithmetic_error():
 
 def test_closed_account_requires_exact_original_cash_arithmetic():
     assert v101.audit_v90_cash(_cash_book()) == {
-        "unresolved": False, "remaining_entry_premium_usd": None}
+        "unresolved": False, "closed_pnl_usd": "20.00",
+        "remaining_entry_premium_usd": None}
 
 
 def test_unknown_cash_does_not_exempt_event_or_closed_pnl_tampering():
