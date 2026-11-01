@@ -91,6 +91,8 @@ def recheck(trial,source,prepared,*,dwell_seconds):
     if (type(qty) is not int or qty<1 or paid<=0 or trigger_bid<=0
             or trigger_at>action or trigger_at<entry):
         raise V86Error("V86_INVALID_ORIGINAL_SELL_LIMIT_GEOMETRY")
+    if action < trigger_at + timedelta(seconds=lag):
+        raise V86Error("V86_ORIGINAL_EXIT_ACTION_LATENCY_SHORTER_THAN_REGISTERED")
     original_bid=Decimal(ex["action_bid"])
     orig_marketable=ex["original_trigger_limit_marketable_at_action"]
     if (type(orig_marketable) is not bool
