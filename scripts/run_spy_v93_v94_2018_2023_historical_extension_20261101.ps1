@@ -57,6 +57,7 @@ try {
     )
     & $py -m pytest -q --basetemp "$tmp" `
         tests/test_spy_v93_frozen_2018_2023_preflight.py `
+        tests/test_spy_v93_historical_spy_0dte_expiry_screen.py `
         tests/test_spy_v94_nine_cohort_original_source_matrix.py `
         tests/test_spy_v92_pre2024_original_minute_coverage.py `
         tests/test_spy_v89_six_family_causal_registry.py `
