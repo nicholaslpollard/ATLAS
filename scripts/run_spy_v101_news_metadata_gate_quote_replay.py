@@ -154,6 +154,60 @@ def original_pairs(doc, *, v100):
     return pairs
 
 
+def audit_v90_cash(book):
+    """Reconcile original V90 cash events without inventing unresolved equity."""
+    try:
+        def cash(value):
+            v = Decimal(str(value))
+            if not v.is_finite():
+                raise ValueError("nonfinite cash")
+            return v
+
+        pnl = cash(book["closed_trade_stressed_quote_pnl_usd"])
+        weekly = sum((cash(v) for v in book["stressed_week_pnl_usd"].values()), Decimal(0))
+        monthly = sum((cash(v) for v in book["stressed_month_pnl_usd"].values()), Decimal(0))
+        start = cash(book["starting_cash_usd"])
+        end = cash(book["ending_stressed_quote_cash_usd"])
+        debit = Decimal(0)
+        credit = Decimal(0)
+        unknown = 0
+        latest_entry = None
+        latest_unknown_debit = None
+        for event in book["all_considered_and_blocked_events"]:
+            kind = event["event"]
+            if kind == "ENTRY_ASK_REFERENCE_ONLY":
+                value = cash(event["debit_usd"])
+                if value <= 0:
+                    raise ValueError("invalid entry debit")
+                debit += value
+                latest_entry = value
+            elif kind == "MODELED_EXIT_QUOTE_CREDIT":
+                value = cash(event["two_pct_haircut_credit_usd"])
+                if value < 0:
+                    raise ValueError("invalid exit credit")
+                credit += value
+                latest_entry = None
+            elif kind == "UNKNOWN_EXPIRY_OR_EXERCISE_CASH":
+                unknown += 1
+                latest_unknown_debit = latest_entry
+        unresolved = book["unresolved_exercise_or_expiry_cash"]
+        terminal = book["terminal_equity_known_if_flat_usd"]
+        if (type(unresolved) is not bool or pnl != weekly or pnl != monthly
+                or end - start != credit - debit):
+            raise ValueError("weekly/monthly or debit/credit flow mismatch")
+        if unresolved:
+            if (unknown != 1 or latest_unknown_debit is None or terminal is not None
+                    or pnl - (end - start) != latest_unknown_debit):
+                raise ValueError("unresolved option premium reconciliation mismatch")
+        elif (unknown != 0 or terminal is None or cash(terminal) != end
+              or end - start != pnl):
+            raise ValueError("flat cash reconciliation mismatch")
+        return {"unresolved": unresolved, "remaining_entry_premium_usd":
+                str(latest_unknown_debit) if unresolved else None}
+    except (ValueError, TypeError, KeyError, ArithmeticError) as exc:
+        raise V101Error("V101_GATED_CASH_ARITHMETIC_INVALID") from exc
+
+
 def filtered_cash(pairs, *, missing, coverage_known, simulate, scope, policy, lag, dwell):
     if not coverage_known:
         return {"status": "NEWS_COVERAGE_UNQUALIFIED", "cash_equity_known": False,
@@ -164,13 +218,9 @@ def filtered_cash(pairs, *, missing, coverage_known, simulate, scope, policy, la
     from packages.simulation.spy_v90_six_family_capital_ledger import verified as verified90
     if not verified90(book) or book["actual_broker_orders"] != 0:
         raise V101Error("V101_SOURCE_LINKED_REPLAY_LEDGER_INVALID")
-    pnl = Decimal(book["closed_trade_stressed_quote_pnl_usd"])
-    weekly = sum(map(Decimal, book["stressed_week_pnl_usd"].values()), Decimal(0))
-    monthly = sum(map(Decimal, book["stressed_month_pnl_usd"].values()), Decimal(0))
-    diff = (Decimal(book["ending_stressed_quote_cash_usd"])
-            - Decimal(book["starting_cash_usd"]))
-    if not pnl.is_finite() or pnl != weekly or pnl != monthly or pnl != diff:
-        raise V101Error("V101_GATED_CASH_ARITHMETIC_INVALID")
+    # Original V90 counts debits for an unresolved option; that premium is
+    # not a realized loss, so net cash != closed-trade PnL until flat.
+    audit_v90_cash(book)
     complete = not missing and not book["unresolved_exercise_or_expiry_cash"]
     return {"status": "COMPLETE_QUOTE_CASH" if complete else "SOURCE_OR_SETTLEMENT_CENSORED",
             "cash_equity_known": complete,
