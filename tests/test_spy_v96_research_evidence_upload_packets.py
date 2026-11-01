@@ -76,7 +76,7 @@ def test_chunk_boundary_and_safety_guards(tmp_path):
     research=tmp_path/"research";research.mkdir()
     output=tmp_path/"out";output.mkdir()
     sample=make_zip(research,"spy_v95_original_2020_read_only_reconciliation_test.zip")
-    assert len(split_chunks([(sample,"one"),(sample,"two")],1))==2
+    assert len(split_chunks([(sample,"one"),(sample,"two")],sample.stat().st_size))==2
     with pytest.raises(BundleError,match="PACKET_LIMIT"):
         run(research,output,max_part_mib=1,reporter=lambda _:None)
     empty=tmp_path/"empty";empty.mkdir()
