@@ -136,6 +136,54 @@ def test_completed_six_family_cached_source_receipts_have_signed_event_chain(tmp
     assert len(events)==report["exact_source_requirements"]*2
     assert receipts["last_event_sha"]==events[-1]["fingerprint"]
 
+    # Exercise V90 orchestration with deterministic signed fake quote results.
+    # No real ThetaData tape, provider request, or broker order is used.
+    from unittest.mock import patch
+    from scripts import run_spy_v90_six_family_source_replay as v90
+    from packages.simulation.spy_v84_offline_three_family_economics import signed as sign84
+    from packages.simulation.spy_v86_original_option_exit_recheck import signed as sign86
+
+    def fake_replay(decision,demand,source,tape,*,policy,lag_seconds,market_close_et):
+        return sign84({
+            "contract":"atlas-v84-offline-three-family-option-quote-shadow-v1",
+            "session":decision["session"],"strategy":decision["strategy_id"],
+            "policy":policy,"lag_seconds":lag_seconds,
+            "decision_at_et":decision["decision_at_et"],
+            "entry_action_at_et":decision["session"]+"T09:41:00-05:00",
+            "entry_debit_usd":"200.00","entry_qty":1,
+            "status":"CLOSED_QUOTE_REFERENCE","reason":"SYNTHETIC_TEST_ONLY",
+            "source_query_id":demand["query_id"],"provider_requests":0,
+            "actual_broker_fills":0,
+        })
+    def fake_recheck(trial,source,tape,*,dwell_seconds):
+        return sign86({
+            "contract":"atlas-v86-original-option-exit-limit-recheck-v1",
+            "original_trial_sha":trial["fingerprint"],
+            "session":trial["session"],"strategy":trial["strategy"],
+            "policy":trial["policy"],"lag_seconds":trial["lag_seconds"],
+            "limit_rest_seconds":dwell_seconds,
+            "status":"CLOSED_QUOTE_REFERENCE","reason":"SYNTHETIC_TEST_ONLY",
+            "exit_action_at_et":trial["session"]+"T09:42:00-05:00",
+            "quote_reference_pnl_usd":"15.00",
+            "quote_reference_pnl_2pct_bid_haircut_usd":"12.00",
+            "provider_requests":0,"actual_broker_fills":0,
+        })
+    replay_dir=tmp_path/"replay"
+    with patch.object(v90,"prepare_original_tape",return_value=[]), \
+         patch.object(v90,"replay",side_effect=fake_replay), \
+         patch.object(v90,"recheck",side_effect=fake_recheck):
+        replay=v90.run(
+            output,replay_dir,
+            reader=lambda settings,qid:{"cache_evidence":"CACHE_HIT",
+                "source":{"query_id":qid,"source_sha256":"c"*64}},
+            settings_factory=lambda *a:object(),
+            market=OneDayMarket(),reporter=lambda _:None)
+    assert replay["signed_quote_trial_journals"]==24*len(actual)
+    assert replay["portfolio_scenarios"]==168
+    assert replay["new_provider_requests"]==replay["broker_orders"]==0
+    assert (replay_dir/"trial_manifest.json").is_file()
+    assert (replay_dir/"portfolio_ledgers.json").is_file()
+
     # The first signed source-event alteration must fail closed.
     altered=dict(events[0])
     altered["event"]="provider_dispatch"
