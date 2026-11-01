@@ -66,6 +66,10 @@ def simulate(trials,*,scope,policy,lag_seconds,mode,
     realized_stress=Decimal("0")
     realized_by_month=defaultdict(lambda:Decimal("0"))
     stressed_by_month=defaultdict(lambda:Decimal("0"))
+    realized_by_week=defaultdict(lambda:Decimal("0"))
+    stressed_by_week=defaultdict(lambda:Decimal("0"))
+    realized_by_year=defaultdict(lambda:Decimal("0"))
+    stressed_by_year=defaultdict(lambda:Decimal("0"))
     max_drawdown=Decimal("0")
     peak_flat_equity=starting_cash
     max_deployed=Decimal("0")
@@ -76,6 +80,8 @@ def simulate(trials,*,scope,policy,lag_seconds,mode,
         if open_pos is None or open_pos["release_at"]>at:
             return
         pos=open_pos
+        if pos["release_at"].year==9999:
+            return
         # Fixed-limit nonmarketability never becomes a fictional cash credit.
         if mode=="original_fixed_limit_censored" and not pos["marketable"]:
             events.append({"type":"EXIT_LIMIT_NOT_MARKETABLE_POSITION_UNRESOLVED",
@@ -94,6 +100,12 @@ def simulate(trials,*,scope,policy,lag_seconds,mode,
         month=pos["session"][:7]
         realized_by_month[month]+=pos["pnl"]
         stressed_by_month[month]+=pos["stress_pnl"]
+        year,week,_=datetime.fromisoformat(pos["release_at"].isoformat()).isocalendar()
+        wk=f"{year}-W{week:02d}"
+        realized_by_week[wk]+=pos["pnl"]
+        stressed_by_week[wk]+=pos["stress_pnl"]
+        realized_by_year[pos["session"][:4]]+=pos["pnl"]
+        stressed_by_year[pos["session"][:4]]+=pos["stress_pnl"]
         disposition["MODELED_EXIT_CREDIT_REFERENCE"]+=1
         events.append({"type":"MODELED_EXIT_BID_CREDIT_REFERENCE",
                        "session":pos["session"],"strategy":pos["strategy"],
@@ -203,6 +215,10 @@ def simulate(trials,*,scope,policy,lag_seconds,mode,
         "realized_closed_2pct_exit_haircut_pnl_usd":str(realized_stress),
         "realized_by_month":{k:str(v) for k,v in sorted(realized_by_month.items())},
         "realized_2pct_haircut_by_month":{k:str(v) for k,v in sorted(stressed_by_month.items())},
+        "realized_by_week":{k:str(v) for k,v in sorted(realized_by_week.items())},
+        "realized_2pct_haircut_by_week":{k:str(v) for k,v in sorted(stressed_by_week.items())},
+        "realized_by_year":{k:str(v) for k,v in sorted(realized_by_year.items())},
+        "realized_2pct_haircut_by_year":{k:str(v) for k,v in sorted(stressed_by_year.items())},
         "ending_cash_reference_usd":str(cash),
         "ending_cash_2pct_haircut_usd":str(stressed_cash),
         "terminal_cash_only_not_liquidation_equity":True,
