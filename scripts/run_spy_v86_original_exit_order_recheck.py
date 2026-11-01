@@ -163,6 +163,7 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
     if len(rows)!=2424 or len(variants)!=len(DWELLS)*3*2:
         raise V86Error("V86_EXPECTED_VARIANTS_NOT_COMPLETE")
     verdicts=[]
+    portfolio_ledgers=[]
     for (dwell,policy,lag),pairs in sorted(variants.items()):
         for scope in SCOPES:
             selected=[(orig,r) for orig,r in pairs
@@ -175,6 +176,10 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
                     mode="repriced_bid_quote_shadow")
                 if not verify85(result):
                     raise V86Error("V86_SHARED_CAPITAL_REPORT_SIGNATURE_INVALID")
+                portfolio_ledgers.append({
+                    "scope":scope,"policy":policy,"lag_seconds":lag,
+                    "limit_rest_seconds":dwell,"signed_original_quote_ledger":result,
+                })
             verdicts.append({
                 "scope":scope,"policy":policy,"lag_seconds":lag,
                 "limit_rest_seconds":dwell,
@@ -214,9 +219,16 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         "trial_rows":rows,"original_option_tapes_read":len(sources),
         "provider_calls":0,"broker_orders":0,
     })
+    full_portfolios=write_signed(output/"portfolio_ledgers.json",{
+        "contract":REPORT+"-portfolio-event-ledgers-v1",
+        "original_trial_rechecks_sha":r1["fingerprint"],
+        "conditional_full_quote_reference_ledgers":portfolio_ledgers,
+        "source_linked_quote_events_not_actual_order_fills":True,
+    })
     r2=write_signed(output/"portfolio_comparisons.json",{
         "contract":REPORT+"-portfolio-compare-v1",
         "original_trial_rechecks_sha":r1["fingerprint"],
+        "full_portfolio_ledgers_sha":full_portfolios["fingerprint"],
         "scenarios":verdicts,
         "unresolved_scenarios_do_not_claim_complete_account_equity":True,
         "synthetic_quote_reference_cannot_establish_fill":True,
@@ -226,6 +238,7 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         "parent_v83_summary_sha":pre["fingerprint"],
         "parent_v84_summary_sha":early["fingerprint"],
         "trial_rechecks_sha":r1["fingerprint"],
+        "portfolio_ledgers_sha":full_portfolios["fingerprint"],
         "portfolio_comparisons_sha":r2["fingerprint"],
         "original_sha_verified_option_tapes":len(sources),
         "original_sha_verified_v84_trials":len(trials),
