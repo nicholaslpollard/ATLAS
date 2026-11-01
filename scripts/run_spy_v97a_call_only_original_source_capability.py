@@ -131,7 +131,21 @@ def read_original_cohort(folder,key,start,end):
     all_candidates=set()
     for case in entry["cases"]:
         decision=case["causal_decision"]
-        if (case["session"]!=decision["session"]
+        no_source_decision=decision is None
+        if no_source_decision:
+            # V89 intentionally logs a null causal decision when a necessary
+            # original *past* bar is unavailable. Keep this consideration and
+            # its original no-trade reason, never create a synthetic signal.
+            if (case["status"]!="SOURCE_UNQUALIFIED_NO_TRADE"
+                    or case["reason"] not in (
+                        "V89_PRIOR_CLOSE_UNAVAILABLE",
+                        "V89_EXACT_CLOSED_MINUTES_REQUIRED")
+                    or case.get("source_demand_sha") is not None
+                    or case.get("stock_source_sha256") is not None
+                    or case["strategy"] not in FAMILIES
+                    or not start<=case["session"]<=end):
+                raise V97AError("ORIGINAL_NULL_DECISION_SOURCE_REJECTION_INVALID")
+        elif (case["session"]!=decision["session"]
                 or case["strategy"]!=decision["strategy_id"]
                 or case["strategy"] not in FAMILIES
                 or not verified_decision(decision)):
@@ -165,16 +179,19 @@ def read_original_cohort(folder,key,start,end):
         cases.append({
             "cohort":key,"session":case["session"],
             "strategy":case["strategy"],
-            "original_decision_sha":decision["fingerprint"],
-            "original_stock_sha256":case["stock_source_sha256"],
+            "original_decision_sha":decision["fingerprint"] if decision else None,
+            "original_stock_sha256":case.get("stock_source_sha256"),
             "original_signal_status":case["status"],
             "original_reason":case["reason"],
-            "decision_at_et":decision["decision_at_et"],
-            "original_side":decision["direction"],
-            "as_of_stock_feature_values":decision["features"],
+            "decision_at_et":decision["decision_at_et"] if decision else None,
+            "original_side":decision["direction"] if decision else None,
+            "as_of_stock_feature_values":decision["features"] if decision else None,
+            "source_unqualified_null_original_decision":no_source_decision,
             "exact_option_query_id":d["query_id"] if d else None,
             "original_demand_sha":d["fingerprint"] if d else None,
             "CALL_only_source_status":(
+                "ORIGINAL_STOCK_SOURCE_UNQUALIFIED_NO_CAUSAL_DECISION"
+                if no_source_decision else
                 ("CALL_VERIFIED_ORIGINAL_ARCHIVE" if src
                  else "CALL_ORIGINAL_SOURCE_UNRESOLVED")
                 if d and d["kwargs"]["right"]=="call" else
@@ -217,6 +234,8 @@ def read_original_cohort(folder,key,start,end):
                                      for c,d in demands.items() if c in receipts),
         "PUT_demands_excluded_from_CALL_replay":sum(
             d["kwargs"]["right"]=="put" for d in demands.values()),
+        "source_unqualified_null_decision_considerations":sum(
+            x["source_unqualified_null_original_decision"] for x in cases),
         "historical_quote_execution_not_proven":True,
     }
     return cases,lineage
@@ -287,6 +306,8 @@ def run(root,output,*,reporter=print):
             status["PUT_EXCLUDED_FROM_CALL_ONLY"],
         "no_signal_or_no_demand_considerations":
             status["NO_ORIGINAL_EXECUTABLE_OPTION_DEMAND"],
+        "original_stock_source_unqualified_null_decision_considerations":
+            status["ORIGINAL_STOCK_SOURCE_UNQUALIFIED_NO_CAUSAL_DECISION"],
         "per_family_source_capabilities":by_strategy,
         "distinct_qualifying_call_query_ids":len({
             x["exact_option_query_id"] for x in cases
