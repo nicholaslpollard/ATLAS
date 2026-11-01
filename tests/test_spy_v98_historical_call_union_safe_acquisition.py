@@ -124,12 +124,16 @@ def test_first_time_acquisition_queues_only_read_only_not_registered(
         "read_only_source_sha256":None,"new_request_eligible_for_first_dispatch":True,
         "query_retry_automatically_authorized":False,
     }
+    uncertain_scope=v98.build_requirement(
+        preview("2022-12-05"),Calendar())
     blocked={**missing_state,
-        "query_id":"9"*64,
+        "query_id":uncertain_scope["query_id"],
+        "date_et":"2022-12-05",
         "read_only_v38_state":"BLOCKED_POSSIBLY_DISPATCHED_NO_AUTO_RETRY",
         "new_request_eligible_for_first_dispatch":False,
     }
-    monkeypatch.setattr(v98,"verify_preview",lambda *_:(summary,events,original,[fresh]))
+    monkeypatch.setattr(v98,"verify_preview",lambda *_:(
+        summary,events,original,[fresh,uncertain_scope]))
     monkeypatch.setattr(v98,"read_only_v38_state",lambda *x:[blocked,missing_state])
     dispatched=[]
     def resolver(settings,version,demands,**kw):
@@ -180,7 +184,7 @@ def test_first_time_acquisition_queues_only_read_only_not_registered(
 
 def test_preview_only_does_not_call_resolver(tmp_path,monkeypatch):
     s=v98.signed({"contract":"original"})
-    monkeypatch.setattr(v98,"verify_preview",lambda *_:(s,s,s,[preview()]))
+    monkeypatch.setattr(v98,"verify_preview",lambda *_:(s,s,s,[]))
     monkeypatch.setattr(v98,"read_only_v38_state",lambda *x:[])
     def deny(*args,**kwargs):
         pytest.fail("provider-capable resolver invoked in preview-only mode")
@@ -191,3 +195,19 @@ def test_preview_only_does_not_call_resolver(tmp_path,monkeypatch):
     assert result["mode"]=="READ_ONLY_NO_NEW_PROVIDER_CALLS"
     assert result["provider_dispatch_attempts"]==0
     assert not (out/"first_dispatch_source_intents.json").exists()
+
+
+def test_incomplete_read_only_preflight_fails_before_create_or_resolver(
+    tmp_path,monkeypatch
+):
+    source=v98.build_requirement(preview(),Calendar())
+    s=v98.signed({"contract":"source"})
+    monkeypatch.setattr(v98,"verify_preview",lambda *_:(s,s,s,[source]))
+    monkeypatch.setattr(v98,"read_only_v38_state",lambda *x:[])
+    def deny(*args,**kwargs):
+        pytest.fail("source resolver invoked after incomplete RO audit")
+    target=tmp_path/"should_not_exist"
+    with pytest.raises(v98.V98Error,match="QUERY_ID_CENSUS_INCOMPLETE"):
+        v98.run(tmp_path,target,acquire=True,settings_factory=lambda *x:object(),
+                resolver=deny,calendar=Calendar(),reporter=lambda _:None)
+    assert not target.exists()
