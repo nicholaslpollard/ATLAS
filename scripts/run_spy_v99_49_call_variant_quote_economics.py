@@ -11,6 +11,7 @@ orders. Missing exact source remains unknown; never fabricated as a zero PnL.
 import argparse
 from collections import Counter,defaultdict
 from datetime import date,datetime,time
+from decimal import Decimal
 import gzip
 import hashlib
 import json
@@ -365,6 +366,7 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
     total_books=0
     total_unique_source_family=0
     missing_total=Counter()
+    scenario_history=defaultdict(list)
     for name,start,end in COHORTS:
         cohort_events=by_cohort[name]
         grouped=defaultdict(list)
@@ -478,6 +480,24 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
                 "qualified":result})
         if len(ledger_rows)!=50*24:
             raise V99Error("V99_EXPECTED_1200_CAPITAL_SCENARIOS_PER_COHORT")
+        for row in ledger_rows:
+            k=(row["trial_id"],row["policy"],row["lag_seconds"],
+               row["limit_rest_seconds"])
+            scenario_history[k].append({
+                "cohort":name,
+                "quote_pnl_if_complete_usd":row["qualified"][
+                    "original_stressed_quote_pnl_usd_if_complete"],
+                "source_complete":row["qualified"]["source_complete"],
+                "cash_equity_known":row["qualified"]["cash_equity_known"],
+                "simulated_closed_wins":row["qualified"][
+                    "original_v90_account_ledger"]["positive_closed"],
+                "simulated_closed_losses":row["qualified"][
+                    "original_v90_account_ledger"]["negative_closed"],
+                "monthly_stressed_pnl_usd":row["qualified"][
+                    "original_v90_account_ledger"]["stressed_month_pnl_usd"],
+                "weekly_stressed_pnl_usd":row["qualified"][
+                    "original_v90_account_ledger"]["stressed_week_pnl_usd"],
+            })
         books=write_once(out_dir/f"{name}_capital_scenarios.json",{
             "contract":CONTRACT+"-1200-scenarios-cohort-v1",
             "cohort":name,"historical_start":start,"historical_end":end,
@@ -507,6 +527,59 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
         reporter(f"V99 PERIOD_COMPLETE {name} ledgers={len(ledger_rows)} "
                  f"qualified_flat={cohort_rows[-1]['qualified_and_flat_scenarios']} "
                  f"source_unknown_candidates={cohort_rows[-1]['source_unknown_candidate_occurrences']}")
+    if len(scenario_history)!=50*24 or total_books!=9*50*24:
+        raise V99Error("V99_COMPLETE_HISTORY_SCENARIO_GRID_NOT_RECTANGULAR")
+    historical_comparison=[]
+    for (trial_id,policy,lag,dwell),history in sorted(scenario_history.items()):
+        if len(history)!=9 or len({h["cohort"] for h in history})!=9:
+            raise V99Error("V99_DUPLICATE_OR_MISSING_HISTORICAL_COHORT")
+        development=[h for h in history if h["cohort"]!="2020_SOURCE_PARTIAL"]
+        complete=[h for h in development if h["cash_equity_known"]]
+        if any(h["quote_pnl_if_complete_usd"] is None for h in complete):
+            raise V99Error("V99_CASH_COMPLETE_SCENARIO_WITH_NULL_PNL")
+        positive=sum(Decimal(h["quote_pnl_if_complete_usd"])>0 for h in complete)
+        monthly=[Decimal(pnl) for h in complete
+                 for pnl in h["monthly_stressed_pnl_usd"].values()]
+        weekly=[Decimal(pnl) for h in complete
+                for pnl in h["weekly_stressed_pnl_usd"].values()]
+        nominal=sum((Decimal(h["quote_pnl_if_complete_usd"]) for h in complete),
+                    Decimal("0"))
+        historical_comparison.append({
+            "trial_id":trial_id,"policy":policy,
+            "lag_seconds":lag,"limit_rest_seconds":dwell,
+            "historical_periods":history,
+            "expected_eight_source_complete_cohorts":8,
+            "qualified_flat_development_cohorts":len(complete),
+            "unqualified_or_cash_unresolved_development_cohorts":
+                [h["cohort"] for h in development if not h["cash_equity_known"]],
+            "positive_qualified_development_cohorts":positive,
+            "positive_in_all_eight_if_full_coverage":(
+                len(complete)==8 and positive==8),
+            "nominal_partial_quote_pnl_usd":str(nominal),
+            "nominal_eight_period_quote_pnl_usd_if_complete":(
+                str(nominal) if len(complete)==8 else None),
+            "positive_completed_months":sum(x>0 for x in monthly),
+            "negative_completed_months":sum(x<0 for x in monthly),
+            "positive_completed_weeks":sum(x>0 for x in weekly),
+            "negative_completed_weeks":sum(x<0 for x in weekly),
+            "original_2020_source_cohort_excluded_from_eight_period_gate":True,
+            "in_sample_exploratory_not_independent_validation":True,
+        })
+    comparison=write_once(out_dir/"eight_period_exploratory_matrix.json",{
+        "contract":CONTRACT+"-eight-period-account-robustness-v1",
+        "original_v98_source_sha":v98["fingerprint"],
+        "comparison_scenario_count":len(historical_comparison),
+        "historical_comparisons":historical_comparison,
+        "fully_comparable_eight_period_scenarios":sum(
+            h["qualified_flat_development_cohorts"]==8
+            for h in historical_comparison),
+        "positive_in_all_eight_scenarios":sum(
+            h["positive_in_all_eight_if_full_coverage"]
+            for h in historical_comparison),
+        "2020_partial_source_omitted_from_eight_period_profit_gate":True,
+        "not_a_compounded_return_or_out_of_sample_alpha_proof":True,
+        "provider_calls":0,"broker_orders":0,
+    })
     manifest=write_once(out_dir/"trial_archive_manifest.json",{
         "contract":CONTRACT+"-signed-trial-archive-manifest-v1",
         "original_V97B_signed_summary_sha":original["fingerprint"],
@@ -521,6 +594,11 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
         "original_V97B_candidate_root_sha":root["fingerprint"],
         "original_V98_summary_sha":v98["fingerprint"],
         "trial_manifest_sha":manifest["fingerprint"],
+        "eight_period_exploratory_comparison_sha":comparison["fingerprint"],
+        "fully_comparable_eight_period_scenarios":comparison[
+            "fully_comparable_eight_period_scenarios"],
+        "positive_in_all_eight_qualified_scenarios":comparison[
+            "positive_in_all_eight_scenarios"],
         "cohorts":cohort_rows,
         "preregistered_call_entry_variants":49,
         "preregistered_risk_execution_variants":24,
@@ -540,6 +618,8 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
     })
     reporter(f"V99 COMPLETE 49 entry x 24 exit/latency quote scenarios "
              f"capital_ledgers={total_books} source_family_journals={len(all_journals)} "
+             f"eight_period_fully_comparable={comparison['fully_comparable_eight_period_scenarios']} "
+             f"positive_in_all_eight={comparison['positive_in_all_eight_scenarios']} "
              "providers=0 broker_orders=0 asof_news_join=NOT_RUN")
     return report
 
