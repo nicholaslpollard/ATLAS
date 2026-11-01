@@ -82,15 +82,32 @@ def read(path,contract):
 
 
 def write_once(path,doc):
+    # Verify all objects serialize BEFORE touching an immutable output path.
+    # Do not silently stringify Decimal metadata to disguise broken dates.
     result=signed(doc)
+    payload=json.dumps(result,indent=2,sort_keys=True,allow_nan=False)+"\n"
     with path.open("x",encoding="utf8") as f:
-        json.dump(result,f,indent=2,sort_keys=True,allow_nan=False)
-        f.write("\n");f.flush();os.fsync(f.fileno())
+        f.write(payload);f.flush();os.fsync(f.fileno())
     return result
 
 
 def source_key(event):
     return (event["session"],event["decision_clock_et"],event["strike"])
+
+
+def cohort_bounds(name,start,end):
+    if (not isinstance(start,str) or not isinstance(end,str)
+            or name not in {row[0] for row in COHORTS}):
+        raise V99Error("V99_HISTORICAL_PERIOD_BOUNDS_NOT_DATE_STRINGS")
+    try:
+        first=date.fromisoformat(start)
+        last=date.fromisoformat(end)
+    except ValueError as exc:
+        raise V99Error("V99_HISTORICAL_PERIOD_BOUNDS_INVALID") from exc
+    expected=next((row for row in COHORTS if row[0]==name),None)
+    if not expected or (start,end)!=(expected[1],expected[2]) or first>last:
+        raise V99Error("V99_HISTORICAL_COHORT_BOUNDARY_DRIFT")
+    return {"cohort":name,"historical_start":start,"historical_end":end}
 
 
 def cohort(session):
@@ -489,9 +506,9 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
                             book["stressed_month_pnl_usd"].values()),Decimal("0"))
                 weeks=sum((Decimal(x) for x in
                            book["stressed_week_pnl_usd"].values()),Decimal("0"))
-                end=Decimal(book["ending_stressed_quote_cash_usd"])
-                start=Decimal(book["starting_cash_usd"])
-                if months!=pnl or weeks!=pnl or end-start!=pnl:
+                cash_end=Decimal(book["ending_stressed_quote_cash_usd"])
+                cash_start=Decimal(book["starting_cash_usd"])
+                if months!=pnl or weeks!=pnl or cash_end-cash_start!=pnl:
                     raise V99Error("V99_WEEK_MONTH_CASH_LEDGER_ARITHMETIC_DRIFT")
             k=(row["trial_id"],row["policy"],row["lag_seconds"],
                row["limit_rest_seconds"])
@@ -512,7 +529,7 @@ def run(v97b_dir,v98_dir,out_dir,*,source_reader=_local_cache_only,
             })
         books=write_once(out_dir/f"{name}_capital_scenarios.json",{
             "contract":CONTRACT+"-1200-scenarios-cohort-v1",
-            "cohort":name,"historical_start":start,"historical_end":end,
+            **cohort_bounds(name,start,end),
             "source_family_tape_groups":len(grouped),
             "candidate_occurrences":len(cohort_events),
             "source_unknown_candidate_occurrences":sum(
