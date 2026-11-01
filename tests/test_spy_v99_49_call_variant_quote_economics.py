@@ -3,6 +3,9 @@ from __future__ import annotations
 """V99 offline 49x24 derived original quote case integrity; no provider calls."""
 
 from datetime import date,datetime
+from decimal import Decimal
+import ast
+import inspect
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -158,3 +161,74 @@ def test_actual_original_signed_v97b_v98_admission_if_on_research_workstation():
     assert any(ev["session"]=="2022-01-19" and ev["new_source_explicit_no_data"]
                for ev in entries)
     assert all(ev["session"]<="2026-04-30" for ev in entries)
+
+
+@pytest.mark.parametrize("period",v99.COHORTS)
+def test_historical_start_end_immutable_date_strings_in_cohort_report(period):
+    name,start,end=period
+    metadata=v99.cohort_bounds(name,start,end)
+    assert metadata=={
+        "cohort":name,"historical_start":start,"historical_end":end,
+    }
+    assert isinstance(metadata["historical_start"],str)
+    assert isinstance(metadata["historical_end"],str)
+    assert date.fromisoformat(metadata["historical_end"])>=date.fromisoformat(
+        metadata["historical_start"]
+    )
+
+
+@pytest.mark.parametrize("bad_start,bad_end",[
+    (Decimal("25000.00"),"2018-12-31"),
+    ("2018-01-01",Decimal("24363.52")),
+    ("2017-01-01","2018-12-31"),
+    ("2018-01-01","2019-01-01"),
+])
+def test_historical_boundaries_never_accept_cash_decimals_or_modified_dates(
+    bad_start,bad_end
+):
+    with pytest.raises(v99.V99Error,match="BOUNDS|BOUNDARY"):
+        v99.cohort_bounds("2018_full",bad_start,bad_end)
+
+
+def test_regression_no_cash_reconciliation_assignment_to_cohort_start_end():
+    # The original production crash shadowed these loop variables with
+    # Decimal cash balances, then attempted to dump them as historical dates.
+    source=inspect.getsource(v99.run)
+    parsed=ast.parse(source)
+    assigned=[]
+    for node in ast.walk(parsed):
+        if isinstance(node,(ast.Assign,ast.AnnAssign,ast.AugAssign,
+                            ast.NamedExpr)):
+            if isinstance(node,ast.Assign):
+                targets=node.targets
+            else:
+                targets=[node.target]
+            for target in targets:
+                assigned.extend(
+                    x.id for x in ast.walk(target)
+                    if isinstance(x,ast.Name) and isinstance(x.ctx,ast.Store)
+                )
+    assert "start" not in assigned and "end" not in assigned
+
+
+def test_serialize_strictly_before_writing_cohort_evidence(tmp_path):
+    target=tmp_path/"2018_full_capital_scenarios.json"
+    with pytest.raises(TypeError,match="Decimal"):
+        v99.write_once(target,{
+            "contract":"test",
+            "cohort":"2018_full",
+            "historical_start":"2018-01-01",
+            "historical_end":Decimal("24363.52"),
+        })
+    assert not target.exists()
+    result=v99.write_once(target,{
+        "contract":"test",
+        **v99.cohort_bounds("2018_full","2018-01-01","2018-12-31"),
+        "capital_scenarios":[],
+    })
+    saved=json.loads(target.read_text())
+    assert saved==result
+    assert saved["historical_end"]=="2018-12-31"
+    assert saved["fingerprint"]==_fingerprint({
+        k:v for k,v in saved.items() if k!="fingerprint",
+    })
