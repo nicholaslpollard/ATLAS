@@ -164,7 +164,8 @@ def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path, source
     pre=signed({"contract":"pretend-v83-parent","broker_orders":0,
                 "planned_exact_option_demands":source_count})
     early=signed({"contract":"pretend-v84-parent","broker_orders":0,
-                  "candidate_sources":source_count})
+                  "candidate_sources":source_count,
+                  "temporal_validation_not_protected_master_holdout":source_count==77})
     screen=signed({"contract":"pretend-v83-screen","cases":[]})
     plans=[];requests={};trials=[];original_lookup={};demand_bindings={}
     for i in range(source_count):
@@ -220,6 +221,8 @@ def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path, source
     assert r["original_sha_verified_option_tapes"]==source_count
     assert r["original_sha_verified_v84_trials"]==source_count*6
     assert r["v86_recheck_journals"]==source_count*24
+    assert r["in_sample_development_only"] is (source_count!=77)
+    assert r["temporal_validation_not_protected_master_holdout"] is (source_count==77)
     assert r["portfolio_scenarios"]==96
     assert r["provider_calls"]==r["broker_orders"]==0
     assert (tmp_path/"out"/"portfolio_comparisons.json").is_file()
