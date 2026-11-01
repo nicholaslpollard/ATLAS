@@ -27,3 +27,18 @@ All these historical cash references are hypothetical and **not actual market fi
 4. Freeze results once opened: any adjustments to improve the 2024 outcome become a new **development** branch and cannot reuse 2024 as independent validation.
 
 At the time this plan is registered, no 2024 original option outcome or source census is known in this chat. It may fail source acquisition due to missing stock archives; that is a genuine blocker, not permission to substitute future or neighboring bars.
+
+## Source acquisition COMPLETE, independent V83 ZIP audit (2026-11-01)
+
+Received user original workstation V83 source campaign ZIP `spy_v83_source_first_2024_full_20261101_081710.zip`. Independently opened the ZIP and confirmed CRC integrity and every signed top-level report's compact sorted-JSON/newline SHA-256 fingerprint, with **four of four original V83 root documents matching**:
+
+- `entry_screen.json`: `f24ecbcc9c7a7c3f22200048b33a8631daeb2121b6ec0b3bc9283b997818f32e`
+- `option_source_plan.json`: `6d81364b40587d69361241fb1c6b955a0ed19e578e1dd88c6c23e88909dfaf41`
+- `source_receipts.json`: `fdf9ebfc10583febb53b9199fd7b257a2e5615140d80b26fa66e473511f04db3`
+- `summary.json`: `c08008c476cdd90eb8fee33749af2c3b64780e4ce4c1098f3bd317caa967d1d9`
+
+Full-year census **252** original XNYS sessions, **756** strategy decisions (each of three families every session), **207** exact original ThetaData 1-second option-source demands, **549** NO_SIGNAL. Candidate plan by family: 94 ORB continuation, **90 failed-breakout fade**, 23 gap fade. Verified each demand's internal signature, true `thetadata` request query hash, unique binding to a source-prepared original decision, exact ID linkage to 207 original provider receipts. **207/207** receipt states `FETCHED_AND_ARCHIVED`, no missing or ambiguous receipts, 207 paid source dispatches logged, zero broker orders. All decision/demand dates within Jan 2 to Dec 31, 2024. 2024 registry SHA `ccd5234f77dc86619c3187c6f49c182b3ca808b2e81dd480a5f2c482faaf3ac6`, unchanged original V82 selection. The original V83 ZIP contains report hashes and receipt linkages, not 207 raw 1-second source tapes; the local V38 cache will be fully SHA-checked again during offline V84/V86 replay. No 2024 strategy outcome/P&L has been seen at this step.
+
+The dedicated `scripts.run_spy_v88_frozen_2024_regime_challenge` orchestrator pins **all four signed V83 root SHA hashes exactly**, demands precisely 252/756/207/549 and the original entry registry, checks 2024-only dates and untouched 2026 holdout, and then invokes **unchanged** V84 → V85 → V86 source-only replays. Expected **1242** original V84 signed journals, **48** V85 portfolio cases, **4968** source-linked V86 signed post-exit rechecks and **96** V86 portfolio cases; these are planned counts, NOT completed simulations. Preregistered primary remains `failed_breakout_fade_0940 / balanced_35_100 / action lag 3s / original fixed sell limit rest 10s / adverse 2% BID stress`. Other settings cannot be selected after evaluating the data. V88's own signed output labels 2024 as **historical regime challenge, not forward validation**. Unchanged historical V84/V86 stage code may carry legacy `in_sample_development_only=True` metadata; that is the original stage-code label, not V88's overall cohort classification. Do not rewrite signed historical source or original trade economics to normalize labeling.
+
+**Next action:** run the V88 source-only orchestrator on the workstation's original `data/research/spy_v83_source_first_2024_full_20261101_081710` directory, with a fresh evidence directory and no provider or broker calls. Preserve and upload signed ZIP before any strategy edits.
