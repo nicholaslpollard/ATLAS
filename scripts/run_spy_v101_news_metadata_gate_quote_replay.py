@@ -370,9 +370,14 @@ def run(v99_dir, output_dir, *, reporter=print):
                         (cohort, gate, base_id) in unknown_coverage
                         for base_id in (baseline.values() if trial_id not in trial_scope
                                         else (trial_id,)))
-                    result = filtered_cash(
-                        selected, missing=missing, coverage_known=coverage_known,
-                        simulate=simulate, scope=scope, policy=policy, lag=lag, dwell=dwell)
+                    try:
+                        result = filtered_cash(
+                            selected, missing=missing, coverage_known=coverage_known,
+                            simulate=simulate, scope=scope, policy=policy, lag=lag, dwell=dwell)
+                    except V101Error as exc:
+                        raise V101Error(
+                            f"{exc} cohort={cohort} gate={gate} trial={trial_id} "
+                            f"policy={policy} lag={lag} dwell={dwell}") from exc
                     scenarios.append({"trial_id": trial_id, "gate": gate,
                                       "strategy": scope, "policy": policy,
                                       "lag_seconds": lag, "limit_rest_seconds": dwell,
