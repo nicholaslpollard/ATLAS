@@ -65,6 +65,7 @@ try {
     $tmp=Join-Path $env:USERPROFILE (
         'at' + [guid]::NewGuid().ToString('N').Substring(0,8))
     & $py -m pytest -q --basetemp "$tmp" `
+        tests/test_spy_v95_powershell_launch_static_gate.py `
         tests/test_spy_v95_2020_read_only_source_reconciliation.py `
         tests/test_spy_v95_eight_complete_cohort_2020_censored_matrix.py `
         tests/test_spy_v93_frozen_2018_2023_preflight.py `
