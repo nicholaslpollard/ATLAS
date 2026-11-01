@@ -103,8 +103,7 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
              "resting limits plus 1s/3s hypothetical cancel/replace; provider_requests=0")
     # Verify every source before creating output: fail closed on a mutated or
     # missing archive, rather than emit a misleading partial cash result.
-    sources={}
-    tapes={}
+    inventory={}
     for n,d in enumerate(plan["demands"],1):
         qid=d["query_id"]
         record=source_reader(settings,qid)
@@ -120,8 +119,9 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         contract={k:d["kwargs"][k] for k in
                   ("symbol","date_et","expiration","strike","right")}
         tape=prepare_original_tape(source,contract,d["kwargs"]["date_et"])
-        sources[qid]=source
-        tapes[qid]=tape
+        inventory[qid]=(source["source_sha256"],len(tape))
+        # Keep just the verified SHA and row count, never 101 full tapes.
+        del record,source,tape
         if n%25==0:
             announce(f"PROGRESS V86 original_source_sha_verified={n}/101")
     output.mkdir(parents=True,exist_ok=False)
@@ -132,9 +132,18 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
     index=0
     for d in plan["demands"]:
         qid=d["query_id"]
+        record=source_reader(settings,qid)
+        if not isinstance(record,dict) or record.get("cache_evidence")!="CACHE_HIT":
+            raise V86Error("V86_PREVERIFIED_ORIGINAL_SOURCE_MISSING_DURING_REPLAY")
+        source=record["source"]
+        if (source.get("source_sha256"),len(source.get("source_rows",())))!=inventory[qid]:
+            raise V86Error("V86_ORIGINAL_SOURCE_CHANGED_AFTER_PREFLIGHT")
+        contract={k:d["kwargs"][k] for k in
+                  ("symbol","date_et","expiration","strike","right")}
+        tape=prepare_original_tape(source,contract,d["kwargs"]["date_et"])
         for trial in original_by_qid[qid]:
             for dwell in DWELLS:
-                result=recheck(trial,sources[qid],tapes[qid],dwell_seconds=dwell)
+                result=recheck(trial,source,tape,dwell_seconds=dwell)
                 index+=1
                 filename=(f"{index:04d}_{trial['session']}_{trial['strategy']}_"
                           f"{trial['policy']}_{trial['lag_seconds']}s_{dwell}s.json.gz")
@@ -158,6 +167,8 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
                     (trial,result))
                 outcomes_by_scope[(dwell,trial["policy"],trial["lag_seconds"])][
                     result["outcome_class"]]+=1
+        # Only one original options tape remains allocated at a time.
+        del record,source,tape
         if len(rows)%400<24:
             announce(f"PROGRESS V86 new_signed_quote_reference_journals={len(rows)}/2424")
     if len(rows)!=2424 or len(variants)!=len(DWELLS)*3*2:
@@ -216,7 +227,7 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         "contract":REPORT+"-trial-rechecks-v1",
         "original_v83_sha":pre["fingerprint"],
         "original_v84_sha":early["fingerprint"],
-        "trial_rows":rows,"original_option_tapes_read":len(sources),
+        "trial_rows":rows,"original_option_tapes_read":len(inventory),
         "provider_calls":0,"broker_orders":0,
     })
     full_portfolios=write_signed(output/"portfolio_ledgers.json",{
@@ -240,7 +251,7 @@ def run(v83dir,v84dir,output,*,settings_factory=load_settings,
         "trial_rechecks_sha":r1["fingerprint"],
         "portfolio_ledgers_sha":full_portfolios["fingerprint"],
         "portfolio_comparisons_sha":r2["fingerprint"],
-        "original_sha_verified_option_tapes":len(sources),
+        "original_sha_verified_option_tapes":len(inventory),
         "original_sha_verified_v84_trials":len(trials),
         "v86_recheck_journals":len(rows),
         "portfolio_scenarios":len(verdicts),
