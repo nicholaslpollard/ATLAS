@@ -72,7 +72,13 @@ def _v85_trial_compatible(original,result):
     copy["exit"]={**copy["exit"],
                   "action_at_et":result["exit_action_at_et"],
                   "action_bid":result["exit_bid_reference"],
-                  "quote_reference_credit_usd":result["quote_reference_credit_usd"]}
+                  "quote_reference_credit_usd":result["quote_reference_credit_usd"],
+                  "reference_pnl":result["quote_reference_pnl_usd"],
+                  "pnl_with_2pct_exit_bid_haircut":result[
+                      "quote_reference_pnl_2pct_bid_haircut_usd"],
+                  "adverse_bid_change_from_trigger_pct":str(
+                      (Decimal(result["exit_bid_reference"]) /
+                       Decimal(copy["exit"]["trigger_bid"]) - 1) * 100)}
     copy["quote_reference_pnl_usd"]=result["quote_reference_pnl_usd"]
     copy["quote_reference_pnl_2pct_exit_haircut_usd"]=result[
         "quote_reference_pnl_2pct_bid_haircut_usd"]
@@ -281,7 +287,7 @@ def main(argv=None):
         run(args.v83_dir,args.v84_dir,args.output_dir)
         return 0
     except Exception as exc:
-        emit(f"STOP V86 type={type(exc).__name__} "
+        emit(f"STOP V86 type={type(exc).__name__} reason={str(exc)[:160]} "
              "original_sources_preserved=True provider_calls=0 broker_orders=0")
         return 2
 
