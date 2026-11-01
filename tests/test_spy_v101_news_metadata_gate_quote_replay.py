@@ -260,7 +260,7 @@ def test_real_v90_rejected_entry_to_v101_no_trade_result():
         simulate=simulate, scope="acceleration_0940",
         policy="balanced_35_100", lag=3, dwell=10)
     assert result["status"] == "COMPLETE_QUOTE_CASH"
-    assert result["quote_pnl_usd"] == "0"
+    assert result["quote_pnl_usd"] == "0.00"
     assert result["account"]["dispositions"]["NO_ENTRY_REJECTED"] == 1
 
 
