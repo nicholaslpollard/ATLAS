@@ -102,6 +102,15 @@ def read_original_v103(full_zip: Path, *, required_original_sha: str=ORIGINAL_FU
                 or summary.get("zero_broker_orders") is not True
                 or summary.get("window_end")!="2026-04-30"):
             raise V104Error("V104_ORIGINAL_V103_ROOT_FINGERPRINT_OR_SCOPE_INVALID")
+        chrono=json.loads(archive.read(lookup["chronological_account.json"]))
+        if (not verified(chrono) or not verified(chrono.get("account"))
+                or chrono["fingerprint"]!=summary["combined_account_sha"]
+                or len(chrono["account"].get("all_sessions",[]))!=230
+                or chrono["account"].get("actual_broker_orders")!=0):
+            raise V104Error("V104_ORIGINAL_230_SESSION_ACCOUNT_PARENT_NOT_SIGNED")
+        for event in chrono["account"]["all_sessions"]:
+            if not verified(event):
+                raise V104Error("V104_ORIGINAL_CHRONOLOGICAL_SESSION_SHA_INVALID")
         by_receipt={r["month"]:r for r in summary["original_V65_gzip_receipts"]}
         by_month={r["month"]:r for r in summary["monthly_source_linked_accounts"]}
         if set(by_receipt)!=set(EXPECTED_MONTHS) or set(by_month)!=set(EXPECTED_MONTHS):
