@@ -124,8 +124,10 @@ def audit_input(folder):
     dates=set()
     for case in entry["cases"]:
         if (case["strategy"] not in FAMILIES or
-                case["status"] not in ("NO_SIGNAL","OPTIONS_EXACT_SOURCE_DEMAND_PREPARED",
-                                       "SOURCE_UNQUALIFIED_NO_TRADE")):
+                case["status"] not in (
+                    "NO_SIGNAL","OPTIONS_EXACT_SOURCE_DEMAND_PREPARED",
+                    "SOURCE_UNQUALIFIED_NO_TRADE",
+                    "OPTION_0DTE_BASE_SCHEDULE_UNQUALIFIED_NO_TRADE")):
             raise V90BatchError("V90_UNREGISTERED_OR_MISSING_CANDIDATE_STATUS")
         k=(case["session"],case["strategy"])
         if k in candidate_map:
@@ -140,6 +142,14 @@ def audit_input(folder):
                     or (case["status"]=="NO_SIGNAL")!=(
                         case["causal_decision"]["direction"] is None)):
                 raise V90BatchError("V90_STOCK_DECISION_SHA_OR_STATUS_CHANGED")
+            if case["status"]=="OPTION_0DTE_BASE_SCHEDULE_UNQUALIFIED_NO_TRADE":
+                from scripts.run_spy_v89_six_family_source_batch import regular_spy_zero_dte_schedule_eligible
+                if (regular_spy_zero_dte_schedule_eligible(
+                        date.fromisoformat(case["session"]))
+                        or case.get("source_demand_sha") is not None
+                        or not case["reason"].startswith(
+                            "NO_REGULAR_SAME_DAY_SPY_WEEKLY_ON_HISTORICAL_BASE_SCHEDULE")):
+                    raise V90BatchError("V90_INVALID_HISTORICAL_ZERO_DTE_SCHEDULE_REJECTION")
         candidate_map[k]=case
         dates.add(case["session"])
     if len(dates)!=summary["market_sessions"]:
