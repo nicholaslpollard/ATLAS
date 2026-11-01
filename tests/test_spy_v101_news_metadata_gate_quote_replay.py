@@ -300,3 +300,32 @@ def test_unknown_news_coverage_does_not_call_capital_simulation():
     assert result["status"] == "NEWS_COVERAGE_UNQUALIFIED"
     assert result["cash_equity_known"] is False
     assert result["quote_pnl_usd"] is None
+
+
+def test_v101_no_unbound_global_names_regression():
+    """Catch orphaned locals such as the earlier `pnl` NameError at collection."""
+    import builtins
+    import symtable
+    from pathlib import Path
+    filename = v101.__file__
+    module = symtable.symtable(Path(filename).read_text(encoding="utf8"), filename, "exec")
+    defined = {x.get_name() for x in module.get_symbols()
+               if x.is_assigned() or x.is_imported() or x.is_parameter()}
+    allowed = defined | set(dir(builtins)) | {"__file__", "__name__"}
+    violations = []
+    def walk(scope):
+        for symbol in scope.get_symbols():
+            if (symbol.is_global() and symbol.is_referenced()
+                    and symbol.get_name() not in allowed):
+                violations.append((scope.get_name(), symbol.get_name()))
+        for child in scope.get_children():
+            walk(child)
+    walk(module)
+    assert not violations, violations
+
+
+def test_real_v90_preflight_covers_all_scope_execution_combinations():
+    from packages.simulation.spy_v90_six_family_capital_ledger import SCOPES, simulate
+    from scripts.run_spy_v99_49_call_variant_quote_economics import DEFINITIONS
+    assert v101.replay_zero_source_preflight(
+        simulate=simulate, definitions=DEFINITIONS, scopes=SCOPES) == 168
