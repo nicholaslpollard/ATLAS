@@ -20,6 +20,8 @@ DAY=date(2024,1,2)
 class OneDayMarket:
     def sessions_in_range(self,start,end):
         return [DAY] if start<=DAY<=end else []
+    def is_session(self,day):
+        return day==DAY
     def regular_open_close(self,day):
         return (datetime(2024,1,2,9,30,tzinfo=ET),
                 datetime(2024,1,2,16,0,tzinfo=ET))
