@@ -139,7 +139,7 @@ def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path):
     pre=signed({"contract":"pretend-v83-parent","broker_orders":0})
     early=signed({"contract":"pretend-v84-parent","broker_orders":0})
     screen=signed({"contract":"pretend-v83-screen","cases":[]})
-    plans=[];requests={};trials=[];original_lookup={}
+    plans=[];requests={};trials=[];original_lookup={};demand_bindings={}
     for i in range(101):
         day=(date(2025,7,2)+timedelta(days=i)).isoformat()
         kwargs={**one_source["exact_requirement"]["kwargs"],
@@ -148,11 +148,12 @@ def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path):
              "kwargs":kwargs}
         qid=_fingerprint(req)
         plans.append({"query_id":qid,"method":req["method"],"kwargs":kwargs})
+        demand_bindings[qid]={"query_id":qid,"method":req["method"],"kwargs":kwargs}
         srcrows=[]
         for j in range(17):
-            bid="1.91" if j!=6 else "1.96"
+            bid="1.91" if j!=9 else "1.96"
             if j==3:bid="1.95"
-            if j==4:bid="1.90"
+            if j in (4,6):bid="1.90"
             srcrows.append({
                 "ms_of_day":(9*3600+40*60+1+j)*1000,
                 "symbol":"SPY","expiration":day,"strike":"617","right":"call",
@@ -174,13 +175,13 @@ def test_v86_provenance_101_archives_606_journals_2424_rechecks(tmp_path):
                     "source_query_id":qid,
                     "exit":{**base["exit"],
                             "trigger_at_et":f"{day}T09:40:04{ET}",
-                            "action_at_et":f"{day}T09:40:05{ET}"},
+                            "action_at_et":f"{day}T09:40:{5 if lag==1 else 7:02d}{ET}"},
                 })
                 trials.append(signed(base))
     settings=object()
     with patch.object(v86,"verify_input",return_value=(pre,screen,early,{},trials)), \
          patch.object(v86,"_load_campaign",return_value=(screen,{"demands":plans},pre,
-                                                         {},original_lookup)), \
+                                                         demand_bindings,original_lookup)), \
          patch.object(v86,"prepare_original_tape",wraps=v86.prepare_original_tape), \
          patch.object(v86,"simulate",wraps=v86.simulate):
         r=v86.run(p83,p84,tmp_path/"out",
