@@ -162,7 +162,7 @@ try {
     Write-Host "Signed comparison rows: $($report.total_comparison_rows)"
     Write-Host "Fully comparable eight-cohort configurations: $($report.complete_eight_cohort_configurations)"
     Write-Host "Positive all eight original periods (diagnostic only): $($report.diagnostic_positive_in_all_eight_cohorts)"
-    Write-Host "Original 2020 censored exact sources: $($report.2020_missing_query_count)"
+    Write-Host "Original 2020 censored exact sources: $($report.PSObject.Properties['2020_missing_query_count'].Value)"
     Write-Host 'Historical broker orders: 0'
     Write-Host 'Protected May-Aug 2026 master holdout: UNTOUCHED'
 }
