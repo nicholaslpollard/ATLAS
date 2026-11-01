@@ -114,7 +114,14 @@ def run(inputs,out_dir,*,v93_preflight_dir):
             registered={(x["year"],x["month"]):x for x in entry["source_months"]}
             expected={(y,m):v for (y,m),v in validated_months.items()
                       if y==int(cohort[:4])}
-            if (set(registered)!=set(expected)
+            previous_year=int(cohort[:4])-1
+            # The V89 previous-close feature may legitimately consult the
+            # preceding December for the first January session; that month
+            # is explicitly outside the frozen 12-month performance cohort.
+            allowed=set(expected)|{(previous_year,12)}
+            if (not set(expected).issubset(registered)
+                    or not set(registered).issubset(allowed)
+                    or len(entry["source_months"])!=len(registered)
                     or any(registered[k]["unit_id"]!=expected[k]["unit_id"]
                            or registered[k]["original_stock_sha256"]!=
                               expected[k]["canonical_sha256"]
