@@ -131,6 +131,13 @@ def run(campaign_dir, output_dir, *, source_reader=_local_cache_only,
             or output_dir.exists() or output_dir.is_symlink()):
         raise V84Error("V84_CAMPAIGN_OR_IMMUTABLE_OUTPUT_INVALID")
     entry, plan, prior, demands, receipts = _load_campaign(campaign_dir)
+    # Only this previously declared, later calendar period receives an
+    # explicit temporal-validation label. All 2025 development journal
+    # metadata and experiment rules are byte-for-byte unchanged.
+    temporal_validation = (
+        entry.get("start") == "2026-01-01"
+        and entry.get("end") == "2026-04-30"
+    )
     market = calendar or get_market_calendar("XNYS")
     settings = settings_factory(ROOT, "development")
     ordered = list(plan["demands"])
@@ -166,7 +173,15 @@ def run(campaign_dir, output_dir, *, source_reader=_local_cache_only,
             for lag in LAGS:
                 result = replay(decision, demand, source, original, policy=policy,
                                 lag_seconds=lag, market_close_et=close)
-                path = f"{i:04d}_{day.isoformat()}_{decision['strategy_id']}_{policy}_{lag}s.json.gz"
+                if temporal_validation:
+                    # Annotate a validation-only research trial without
+                    # changing entry, quote, stop, latency or exit economics.
+                    result = signed({
+                        **{k:v for k,v in result.items() if k != "fingerprint"},
+                        "in_sample_development_only":False,
+                        "temporal_validation_not_protected_master_holdout":True,
+                    })
+                path = f"{i:04d_{day.isoformat()}_{decision['strategy_id']}_{policy}_{lag}s.json.gz"
                 sha, raw_bytes, compressed_bytes = write_gzip_once(journals/path, result)
                 exit_data = result.get("exit")
                 trials.append({
@@ -233,7 +248,8 @@ def run(campaign_dir, output_dir, *, source_reader=_local_cache_only,
     economics_report = write_once(output_dir/"window_economics.json",{
         "contract":CONTRACT+"-windows-v1","parent_candidate_outcomes_sha":candidate_report["fingerprint"],
         "window_rows":economics, "closed_only_not_true_portfolio_pnl":True,
-        "in_sample_development_only":True,
+        "in_sample_development_only":not temporal_validation,
+        "temporal_validation_not_protected_master_holdout":temporal_validation,
     })
     report = write_once(output_dir/"summary.json",{
         "contract":CONTRACT,"parent_v83_summary_sha":prior["fingerprint"],
@@ -252,6 +268,8 @@ def run(campaign_dir, output_dir, *, source_reader=_local_cache_only,
         "quotes_not_real_fills":True,"no_autoexercise_assumptions":True,
         "no_future_prices_used_to_enter":True,
         "scenario_results_not_proven_profitability":True,
+        "in_sample_development_only":not temporal_validation,
+        "temporal_validation_not_protected_master_holdout":temporal_validation,
         "actual_broker_fills":0,"broker_orders":0,"provider_requests":0,
     })
     reporter(f"COMPLETE V84 candidates={len(ordered)} trials={len(trials)} "
