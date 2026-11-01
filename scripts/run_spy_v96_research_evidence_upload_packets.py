@@ -93,7 +93,7 @@ def collect(research_dir: Path) -> tuple[list[tuple[Path,str]],list[str]]:
             entries.append((f,f.relative_to(research_dir).as_posix()))
     if not entries:
         raise BundleError("NO_RELEVANT_V83_V95_SIGNED_RESEARCH_EVIDENCE_FOUND")
-    names={x.name for x,_ in entries}
+    names={alias for _,alias in entries}
     miss=[p for p in REQUIRED_PREFIXES if not any(n.startswith(p) for n in names)]
     return sorted(entries,key=lambda x:x[1]),miss+skipped
 
@@ -165,6 +165,13 @@ def run(research_dir: Path,output_parent: Path,*,max_part_mib=90,
         with zipfile.ZipFile(destination) as check:
             if check.testzip() is not None or len(check.namelist())!=len(members)+1:
                 raise BundleError("NEW_EVIDENCE_UPLOAD_PACKET_CRC_INVALID")
+            for m in members:
+                digest=hashlib.sha256()
+                with check.open(f"research/{m['name']}") as inp:
+                    for part in iter(lambda:inp.read(1024*1024),b""):
+                        digest.update(part)
+                if digest.hexdigest()!=m["source_sha256"]:
+                    raise BundleError("SOURCE_CHANGED_DURING_EVIDENCE_PACKAGING")
         payloads.append({
             "packet":destination.name,
             "packet_bytes":destination.stat().st_size,
