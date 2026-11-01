@@ -247,3 +247,48 @@ def test_end_to_end_month_runner_keeps_original_sha_and_causal_cash(tmp_path):
     signed_account=json.loads((tmp_path/"campaign"/"chronological_account.json").read_text())
     assert verify(signed_account)
     assert signed_account["account"]["terminal_equity_if_source_complete_usd"]=="25402.80"
+
+
+def test_missing_stock_month_is_explicit_source_censor_not_flat_zero(tmp_path):
+    examined = []
+    def no_inspect(*args, **kwargs):
+        raise AssertionError("Do not simulate without verified native stock month")
+    summary=run(tmp_path/"missing",
+        start=DAY,end=TUE,
+        inspector=no_inspect,
+        layout_factory=lambda _root:SimpleNamespace(checkpoints=tmp_path/"absent"),
+        calendar_factory=lambda:Calendar([DAY,TUE]),
+        announce=examined.append)
+    assert summary["months"]==1
+    assert summary["continuous_cash_known"] is False
+    assert summary["total_contiguous_quote_pnl_if_qualified"] is None
+    assert summary["first_contiguous_account_censor"]["reason"]=="STOCK_SOURCE_CENSORED"
+    assert summary["monthly_source_linked_accounts"][0]["source_status"]=="NATIVE_MONTH_CHECKPOINT_NOT_PRESENT"
+    assert all("provider_calls=0" in x for x in examined if x.startswith("V103 MONTH_DONE"))
+
+
+def test_only_early_closing_day_is_excluded_without_option_source(tmp_path):
+    day=DAY
+    summary=run(tmp_path/"short",
+        start=day,end=day,
+        layout_factory=lambda _root:SimpleNamespace(checkpoints=tmp_path/"no-native"),
+        calendar_factory=lambda:Calendar([day],short=[day]),
+        announce=lambda _msg:None)
+    assert summary["continuous_cash_known"] is True
+    assert summary["total_contiguous_quote_pnl_if_qualified"]=="0"
+    account=json.loads((tmp_path/"short"/"chronological_account.json").read_text())
+    assert account["account"]["dispositions"]=={"EARLY_CLOSE_EXCLUDED":1}
+
+
+def test_signed_compact_data_wrong_month_is_rejected():
+    original=v65_document([original_pair()])
+    compact=signed({
+        "session":DAY.isoformat(),"disposition":"CLOSED_QUOTE_REFERENCE",
+        "detail":{"debit":"410.60","credit":"813.40","net_pnl":"402.80"},
+        "original_v65_session_sha":original["session_reports"][0]["fingerprint"],
+        "compact_v103_disposition":True,
+    })
+    with pytest.raises(V103Error,match="MONTH_IDENTITY"):
+        chain_months([{"month":"2025-07","original_v65_sha":original["fingerprint"],
+                      "classified_sessions":[compact]}],
+                     calendar_sessions=[DAY])
