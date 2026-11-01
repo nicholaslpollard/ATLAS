@@ -255,7 +255,13 @@ def run(root,output,*,reporter=print):
                  and (p/"summary.json").is_file()]
         if len(matches)!=1:
             raise V97AError(f"V97A_ORIGINAL_COHORT_NOT_UNIQUE:{key}")
-        subset,parent=read_original_cohort(matches[0],key,start,end)
+        try:
+            subset,parent=read_original_cohort(matches[0],key,start,end)
+        except (OSError,ValueError,TypeError,KeyError) as exc:
+            raise V97AError(
+                f"V97A_COHORT_SOURCE_AUDIT_FAILED:{key}:"
+                f"{type(exc).__name__}:{str(exc)[:160]}"
+            ) from exc
         cases.extend(subset);lineage.append(parent)
         reporter(f"V97A {key}: sessions={parent['original_sessions']} "
                  f"CALL_archived={parent['CALL_original_receipts']}/"
@@ -340,6 +346,7 @@ def main(argv=None):
         return 0
     except (OSError,ValueError,TypeError,KeyError) as exc:
         print(f"STOP V97A source census error_type={type(exc).__name__} "
+              f"reason={str(exc)[:240]} "
               "provider_calls=0 broker_orders=0",flush=True)
         return 2
 
